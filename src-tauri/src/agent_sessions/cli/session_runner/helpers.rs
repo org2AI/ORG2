@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use tokio::sync::Mutex;
 
@@ -20,7 +20,7 @@ type RunningSessionsMap = HashMap<String, tokio::task::JoinHandle<()>>;
 pub static RUNNING_SESSIONS: std::sync::LazyLock<Arc<Mutex<RunningSessionsMap>>> =
     std::sync::LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
 
-type SessionControlLocksMap = HashMap<String, Arc<Mutex<()>>>;
+type SessionControlLocksMap = HashMap<String, Weak<Mutex<()>>>;
 
 /// Per-session serialization of lifecycle control (cancel vs. new-turn
 /// dispatch). Without it, a slow `cancel_session` can interleave with a
@@ -29,34 +29,33 @@ type SessionControlLocksMap = HashMap<String, Arc<Mutex<()>>>;
 static SESSION_CONTROL_LOCKS: std::sync::LazyLock<Mutex<SessionControlLocksMap>> =
     std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 
+// Provider identity (runtime/account/native UUID) is immutable for the whole
+// runner lifetime. Unlike the short control lock, this guard travels with the
+// background task through final native publication; a model picker may stage a
+// next-turn choice but cannot retarget the active runner's filesystem binding.
+static SESSION_IDENTITY_LOCKS: std::sync::LazyLock<Mutex<SessionControlLocksMap>> =
+    std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+
 pub async fn session_control_lock(session_id: &str) -> Arc<Mutex<()>> {
     let mut locks = SESSION_CONTROL_LOCKS.lock().await;
-    locks
-        .entry(session_id.to_string())
-        .or_insert_with(|| Arc::new(Mutex::new(())))
-        .clone()
+    locks.retain(|_, lock| lock.strong_count() > 0);
+    if let Some(lock) = locks.get(session_id).and_then(Weak::upgrade) {
+        return lock;
+    }
+    let lock = Arc::new(Mutex::new(()));
+    locks.insert(session_id.to_string(), Arc::downgrade(&lock));
+    lock
 }
 
-/// Strip the `<ide_context>...</ide_context>` block from user input.
-/// IDE context is prepended by `inject_ide_context_into_prompt` for the CLI agent,
-/// but should not be stored in the DB or shown to the user in chat history.
-pub(super) fn strip_ide_context(input: &str) -> String {
-    const OPEN: &str = "<ide_context>";
-    const CLOSE: &str = "</ide_context>";
-
-    let Some(start) = input.find(OPEN) else {
-        return input.to_string();
-    };
-    let Some(close_start) = input.find(CLOSE) else {
-        return input.to_string();
-    };
-    let mut after = close_start + CLOSE.len();
-    while after < input.len() && input.as_bytes()[after].is_ascii_whitespace() {
-        after += 1;
+pub async fn session_identity_lock(session_id: &str) -> Arc<Mutex<()>> {
+    let mut locks = SESSION_IDENTITY_LOCKS.lock().await;
+    locks.retain(|_, lock| lock.strong_count() > 0);
+    if let Some(lock) = locks.get(session_id).and_then(Weak::upgrade) {
+        return lock;
     }
-    let mut result = input[..start].to_string();
-    result.push_str(&input[after..]);
-    result
+    let lock = Arc::new(Mutex::new(()));
+    locks.insert(session_id.to_string(), Arc::downgrade(&lock));
+    lock
 }
 
 /// Persist an ActivityChunk to the database and broadcast it via WebSocket.

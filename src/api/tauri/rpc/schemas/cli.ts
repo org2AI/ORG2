@@ -12,6 +12,7 @@ export const CliMessageRequestSchema = z.object({
   ideContext: z.unknown().optional(),
   mode: z.string().optional(),
   images: z.array(z.string()).optional(),
+  allowNativeContextRecovery: z.boolean().optional(),
 });
 
 /** `cli_agent_message` takes a single `request` struct, like the other
@@ -40,6 +41,7 @@ export const CliStatusSchema = z
     status: z.string(),
     updatedAt: z.string(),
     errorMessage: z.string().nullable().optional(),
+    contextExhausted: z.boolean(),
     totalTokens: z.number().optional(),
     transcriptSource: z.string().optional(),
   })

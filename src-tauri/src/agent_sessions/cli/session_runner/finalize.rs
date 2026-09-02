@@ -1,10 +1,11 @@
 //! Post-run finalization for CLI sessions.
 //!
 //! Everything after the spawn/stdout loop returns: compute the final session
-//! status, extract a user-facing error message from stderr, persist status,
-//! clear live-status, requeue Agent Org member turns, broadcast the terminal
-//! event, commit worktree changes, fetch Cursor usage, and tear down the MITM
-//! proxy / proxy token / synced skill files. Extracted from
+//! status, extract a user-facing error message from stderr, flush and publish
+//! provider-native history, persist status, clear live-status, requeue Agent
+//! Org member turns, broadcast the terminal event, commit worktree changes,
+//! fetch Cursor usage, and tear down the MITM proxy / proxy token / synced
+//! skill files. Extracted from
 //! `session::run_session`.
 
 use std::collections::{HashSet, VecDeque};
@@ -16,7 +17,7 @@ use key_vault::key_store::{ModelType, KEY_SERVICE};
 
 use super::super::parsers::{canonicalize_cli_error_message, is_codex_fallback_metadata_notice};
 use super::super::persistence::{self, CodeSession};
-use super::super::types::SessionStatus;
+use super::super::types::{KeySource, SessionStatus};
 use super::cursor_usage::fetch_cursor_usage_for_session;
 use super::helpers::{clear_live_status, flush_and_broadcast};
 use super::oauth_setup::is_cli_oauth_failure_message;
@@ -334,7 +335,7 @@ pub(super) async fn finalize_session_run(
     })
     .await;
 
-    let raw_final_status = if cli_plan_approval_gate_reached {
+    let mut raw_final_status = if cli_plan_approval_gate_reached {
         SessionStatus::Completed
     } else if use_codex_app_server {
         // exit_code is meaningless here — we kill the long-lived server
@@ -355,27 +356,93 @@ pub(super) async fn finalize_session_run(
     } else {
         SessionStatus::Failed
     };
-    if raw_final_status == SessionStatus::Failed {
-        super::input_assembly::forget_session_context(session_id);
-    }
-
+    // A CLI that exhausted its context can exit 0 while its result frame
+    // reports `terminal_reason: prompt_too_long`. Demote the false success
+    // so the run records the overflow and the next wake starts fresh.
+    raw_final_status = if raw_final_status == SessionStatus::Completed
+        && terminal_error_message
+            .as_deref()
+            .is_some_and(app_utils::runtime_errors::is_context_exhausted_message)
+    {
+        SessionStatus::Failed
+    } else {
+        raw_final_status
+    };
     // CLI member sessions inside an Agent Org run must land on `Idle` after each
     // successful turn so they remain available for the next coordinator dispatch.
     // `Completed` is terminal (is_terminal() == true) and would cause
     // `reconcile_run_finality` to prematurely end the run.
     let is_org_member = session.org_member_id.is_some();
-    let final_status = if raw_final_status == SessionStatus::Completed && is_org_member {
+    let mut final_status = if raw_final_status == SessionStatus::Completed && is_org_member {
         SessionStatus::Idle
     } else {
         raw_final_status
     };
 
-    let error_message: Option<String> = if final_status == SessionStatus::Failed {
+    let mut error_message: Option<String> = if final_status == SessionStatus::Failed {
         let buf = stderr_lines.lock().await;
         resolve_cli_failure_message(terminal_oauth_error.clone(), terminal_error_message, &buf)
     } else {
         None
     };
+
+    // Provider-native publication is part of the durable turn boundary, not a
+    // best-effort metadata side effect. Serialize it with follow-ups and finish
+    // it before any terminal lifecycle, WorkItem receipt, member-availability,
+    // or terminal broadcast can advertise a result that the native App cannot
+    // resume. The runner transcript remains in place when publication fails so
+    // a later recovery can retry the copy.
+    let publishes_native_conversation = session.key_source == KeySource::OwnKey
+        && matches!(agent, ModelType::Codex | ModelType::ClaudeCode);
+    let native_control_lock = if publishes_native_conversation {
+        Some(super::helpers::session_control_lock(session_id).await)
+    } else {
+        None
+    };
+    let native_control_guard = match native_control_lock.as_ref() {
+        Some(lock) => Some(lock.lock().await),
+        None => None,
+    };
+
+    // Flush pending assistant/tool deltas into the authoritative CLI store
+    // before materializing that store into the provider-native transcript.
+    flush_and_broadcast(session_id).await;
+    let native_publication_error = if publishes_native_conversation {
+        match super::super::native_materializer::publish_cli_native_transcript_after_turn(
+            session_id,
+        )
+        .await
+        {
+            Ok(true) => None,
+            Ok(false) if raw_final_status == SessionStatus::Completed => Some(
+                "Provider-native transcript publication failed: a completed turn has no native transcript"
+                    .to_string(),
+            ),
+            Ok(false) => None,
+            Err(err) => Some(format!(
+                "Provider-native transcript publication failed: {err}"
+            )),
+        }
+    } else {
+        None
+    };
+    if let Some(publication_error) = native_publication_error.as_ref() {
+        tracing::error!(
+            session_id,
+            error = %publication_error,
+            "failed to publish provider-native conversation at terminal boundary"
+        );
+        raw_final_status = SessionStatus::Failed;
+        final_status = SessionStatus::Failed;
+        error_message = Some(match error_message.take() {
+            Some(existing) => format!("{existing}\n{publication_error}"),
+            None => publication_error.clone(),
+        });
+    }
+
+    if raw_final_status == SessionStatus::Failed {
+        super::input_assembly::forget_session_context(session_id);
+    }
 
     super::harness_hooks::finish_turn(
         session_id,
@@ -520,9 +587,6 @@ pub(super) async fn finalize_session_run(
         agent_core::lifecycle::finalize_agent_org_member_turn(None, session_id, &outcome);
     }
 
-    // Flush any pending streaming deltas before signaling session end
-    flush_and_broadcast(session_id).await;
-
     let mut status_msg = serde_json::json!({
         "type": "code_session.status_changed",
         "session_id": session_id,
@@ -539,6 +603,7 @@ pub(super) async fn finalize_session_run(
         status_msg["turn_intent_id"] = serde_json::Value::String(turn_intent_id.to_string());
     }
     websocket_handler::broadcast(status_msg.to_string());
+    drop(native_control_guard);
 
     // The generic terminal status preserves the existing lifecycle contract,
     // but it is not a replay-readiness barrier: Cursor may commit the provider

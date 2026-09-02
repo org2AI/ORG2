@@ -1,5 +1,6 @@
 use super::super::env_setup::{
-    atlascloud_model_id, clear_codex_compatible_profile, codex_needs_compatible_profile,
+    atlascloud_model_id, claude_isolated_hooks_path, clear_codex_compatible_profile,
+    codex_isolated_hooks_path, codex_needs_compatible_profile, cursor_isolated_hooks_path,
     opencode_zenmux_model_id, resolve_orgtrack_product_mode, setup_codex_compatible_profile,
     setup_codex_hosted_profile, setup_opencode_atlascloud_profile, setup_opencode_zenmux_profile,
     validate_codex_own_key_provider,
@@ -73,6 +74,14 @@ fn stderr_redaction_covers_resolved_environment_secrets() {
     assert!(!redacted.contains("arbitrary-token-value"));
     assert!(!redacted.contains("sk-abcdefghijklmnopqrstuvwxyz"));
     assert!(redacted.contains("[REDACTED_SECRET]"));
+}
+
+#[test]
+fn isolated_provider_hook_paths_match_each_config_root_contract() {
+    let root = Path::new("/isolated/profile");
+    assert_eq!(cursor_isolated_hooks_path(root), root.join("hooks.json"));
+    assert_eq!(claude_isolated_hooks_path(root), root.join("settings.json"));
+    assert_eq!(codex_isolated_hooks_path(root), root.join("hooks.json"));
 }
 
 #[test]
@@ -720,6 +729,61 @@ fn atlas_model_string_is_preserved_before_the_codex_provider_gate_rejects_it() {
 }
 
 #[test]
+fn claude_cross_type_session_model_overrides_the_account_fallback() {
+    let mut env = HashMap::from([
+        ("ANTHROPIC_MODEL".to_string(), "zai-org/glm-5.1".to_string()),
+        (
+            "ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(),
+            "zai-org/glm-5.1".to_string(),
+        ),
+        (
+            "ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(),
+            "zai-org/glm-5.1".to_string(),
+        ),
+        (
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(),
+            "zai-org/glm-5.1".to_string(),
+        ),
+    ]);
+
+    apply_claude_cross_type_session_model(
+        &ModelType::ClaudeCode,
+        Some(&ModelType::AtlascloudApi),
+        Some("deepseek-ai/deepseek-v3.2"),
+        &mut env,
+    );
+
+    for key in [
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    ] {
+        assert_eq!(
+            env.get(key).map(String::as_str),
+            Some("deepseek-ai/deepseek-v3.2"),
+        );
+    }
+}
+
+#[test]
+fn claude_native_session_keeps_its_cli_model_path() {
+    let mut env = HashMap::from([("ANTHROPIC_MODEL".to_string(), "account-default".to_string())]);
+
+    apply_claude_cross_type_session_model(
+        &ModelType::ClaudeCode,
+        Some(&ModelType::ClaudeCode),
+        Some("claude-opus-4-8"),
+        &mut env,
+    );
+
+    assert_eq!(
+        env.get("ANTHROPIC_MODEL").map(String::as_str),
+        Some("account-default"),
+    );
+}
+
+#[test]
 fn codex_rejects_chat_only_providers_and_zenmux_preserves_aggregator_namespace() {
     for provider in [ModelType::ZhipuApi, ModelType::AtlascloudApi] {
         let key = ModelKey::new(provider);
@@ -831,6 +895,52 @@ fn child_env_sanitization_keeps_runtime_tokens_out_of_subprocess_env() {
     );
     assert!(!codex_env.contains_key(CODEX_REFRESH_TOKEN_ENV_KEY));
     assert!(!codex_env.contains_key(CODEX_ID_TOKEN_ENV_KEY));
+}
+
+#[test]
+fn explicit_claude_account_clears_inherited_routing_not_owned_by_source() {
+    let selected = HashMap::from([
+        (
+            "ANTHROPIC_AUTH_TOKEN".to_string(),
+            "selected-oauth".to_string(),
+        ),
+        (
+            "CLAUDE_CONFIG_DIR".to_string(),
+            "/selected/profile".to_string(),
+        ),
+    ]);
+    let mut command = Command::new("claude");
+    apply_child_environment(&mut command, &ModelType::ClaudeCode, true, &selected);
+
+    let explicit = command
+        .as_std()
+        .get_envs()
+        .map(|(key, value)| {
+            (
+                key.to_string_lossy().into_owned(),
+                value.map(|value| value.to_string_lossy().into_owned()),
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    assert_eq!(
+        explicit.get("ANTHROPIC_AUTH_TOKEN"),
+        Some(&Some("selected-oauth".to_string()))
+    );
+    assert_eq!(explicit.get("ANTHROPIC_API_KEY"), Some(&None));
+    assert_eq!(explicit.get("ANTHROPIC_BASE_URL"), Some(&None));
+    assert_eq!(explicit.get("ANTHROPIC_MODEL"), Some(&None));
+    assert_eq!(
+        explicit.get("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"),
+        Some(&None)
+    );
+}
+
+#[test]
+fn ambient_claude_profile_keeps_shell_environment_available() {
+    let mut command = Command::new("claude");
+    apply_child_environment(&mut command, &ModelType::ClaudeCode, false, &HashMap::new());
+
+    assert!(command.as_std().get_envs().next().is_none());
 }
 
 #[test]

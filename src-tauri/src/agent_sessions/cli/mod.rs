@@ -12,9 +12,11 @@
 //! - `commands` — Tauri commands exposed to the frontend
 
 pub mod agent_core_bridge;
+mod codex_native_catalog;
 pub mod commands;
 pub mod hook_approvals;
 pub mod launch_profile_store;
+pub mod native_materializer;
 pub mod native_transcript;
 pub mod parsers;
 pub mod persistence;

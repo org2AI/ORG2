@@ -98,12 +98,12 @@ async fn wait_for_terminal_session_after_update(
     while std::time::Instant::now() < deadline {
         match cli_agent_status(session_id.to_string()).await {
             Ok(Some(session))
-                if terminal_status(session.status)
+                if terminal_status(session.session.status)
                     && previous_updated_at
-                        .map(|updated_at| session.updated_at != updated_at)
+                        .map(|updated_at| session.session.updated_at != updated_at)
                         .unwrap_or(true) =>
             {
-                return Ok(session);
+                return Ok(session.session);
             }
             Ok(_) => {
                 tokio::time::sleep(std::time::Duration::from_millis(POLL_INTERVAL_MS)).await;

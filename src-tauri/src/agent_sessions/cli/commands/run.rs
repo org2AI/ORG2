@@ -1,6 +1,6 @@
 //! `cli_agent_run` / `cli_agent_message` / `cli_agent_approval_response` —
-//! spawning and driving the background CLI agent runner, plus IDE-context
-//! injection and TUI-pane release.
+//! spawning and driving the background CLI agent runner, plus typed IDE
+//! context forwarding and TUI-pane release.
 
 use super::super::persistence;
 use super::super::session_runner;
@@ -37,6 +37,8 @@ pub struct CliRunRequest {
     /// entry points such as Mobile Remote must request the authoritative row.
     #[serde(default)]
     pub materialize_user_message_event: bool,
+    #[serde(default)]
+    pub allow_native_context_recovery: bool,
 }
 
 /// Send a follow-up message on an existing session, optionally switching the
@@ -58,6 +60,8 @@ pub struct CliMessageRequest {
     /// True when the caller has no desktop-side optimistic EventStore row.
     #[serde(default)]
     pub materialize_user_message_event: bool,
+    #[serde(default)]
+    pub allow_native_context_recovery: bool,
 }
 
 /// Identity of a single turn. `turn_intent_id` keys the `turn_intents` row and
@@ -83,28 +87,51 @@ fn new_id() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 
+/// A forced follow-up owns the old runner from interruption through terminal
+/// persistence. If its native partial cannot be proven publishable, fail the
+/// old turn before returning so the queue/footer never remains `Running`.
+async fn fail_interrupted_turn(session_id: &str, error: &str) -> Result<(), String> {
+    let persist_session_id = session_id.to_string();
+    let persist_error = error.to_string();
+    let active_turn_intent_id = tokio::task::spawn_blocking(move || {
+        let active = session_persistence::turn_intents::latest_for_sessions(
+            std::slice::from_ref(&persist_session_id),
+        )
+        .map_err(|err| err.to_string())?
+        .remove(&persist_session_id)
+        .filter(|intent| {
+            intent.status == session_persistence::turn_intents::TurnIntentStatus::Running
+        })
+        .map(|intent| intent.turn_intent_id);
+        persistence::update_cli_turn_lifecycle(
+            &persist_session_id,
+            SessionStatus::Failed,
+            Some(&persist_error),
+            active.as_deref().map(|turn_intent_id| {
+                (
+                    turn_intent_id,
+                    session_persistence::turn_intents::TurnIntentStatus::Failed,
+                )
+            }),
+        )
+        .map_err(|err| err.to_string())?;
+        Ok::<_, String>(active)
+    })
+    .await
+    .map_err(|err| format!("Task error: {err}"))??;
+    super::failure_broadcast::broadcast_async_run_failure(
+        session_id,
+        error,
+        active_turn_intent_id.as_deref(),
+    )
+    .await;
+    Ok(())
+}
+
 /// Mint a turn intent id for a path that has no `TurnIdentity` of its own
 /// (currently `cli_agent_resume`), so every turn is attributable.
 pub(super) fn new_turn_intent_id() -> String {
     new_id()
-}
-
-/// Prepend IDE context (open files, git status, etc.) to the user prompt
-/// so external CLI agents are aware of the user's IDE state.
-fn inject_ide_context_into_prompt(user_input: &str, ide_context: Option<&IdeContext>) -> String {
-    let Some(ctx) = ide_context else {
-        return user_input.to_string();
-    };
-
-    let section = agent_core::core::session::prompt::ide_context::format_ide_context(ctx);
-    if section.is_empty() {
-        return user_input.to_string();
-    }
-
-    format!(
-        "<ide_context>\n{}\n</ide_context>\n\n{}",
-        section, user_input
-    )
 }
 
 /// Park a TUI-hosted session when its terminal pane goes away (PTY exit or
@@ -260,6 +287,7 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
         turn_intent_id: _,
         client_message_id: _,
         materialize_user_message_event,
+        allow_native_context_recovery,
     } = request;
     let TurnIdentity {
         turn_intent_id,
@@ -311,11 +339,36 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
         return Ok(());
     }
 
-    // Hold the registry lock across acceptance persistence + spawn so two
-    // concurrent calls cannot both create a running intent for one session.
-    let mut sessions = session_runner::RUNNING_SESSIONS.lock().await;
+    // Reject an active runner before waiting for provider identity. The
+    // current finalizer owns identity and then needs the caller-held control
+    // lock, so reversing that order would deadlock a duplicate start. Do not
+    // retain the global registry lock while a background catalog refresh may
+    // still own identity for this one session.
+    {
+        let sessions = session_runner::RUNNING_SESSIONS.lock().await;
+        if let Some(handle) = sessions.get(&session_id) {
+            if !handle.is_finished() {
+                return Err(format!(
+                    "Session {} already has a running agent. Cancel it first.",
+                    session_id
+                ));
+            }
+        }
+    }
 
-    // Guard: prevent duplicate parallel agents for the same session
+    // Freeze runtime/account/native binding through the complete background
+    // turn, including final provider-native publication. `session_patch`
+    // waits on this guard and therefore applies picker changes to the next
+    // turn instead of retargeting the active runner.
+    let identity_guard = session_runner::session_identity_lock(&session_id)
+        .await
+        .lock_owned()
+        .await;
+
+    // Hold the registry lock across acceptance persistence + spawn so an old
+    // resume entry point that does not share the caller's control guard cannot
+    // race this turn between the optimistic check above and registration.
+    let mut sessions = session_runner::RUNNING_SESSIONS.lock().await;
     if let Some(handle) = sessions.get(&session_id) {
         if !handle.is_finished() {
             return Err(format!(
@@ -333,10 +386,19 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
         None
     };
 
+    tokio::task::spawn_blocking({
+        let session_id = session_id.clone();
+        move || {
+            super::super::native_materializer::freeze_cli_native_publication_context(&session_id)
+        }
+    })
+    .await
+    .map_err(|err| format!("native publication snapshot task failed: {err}"))??;
+
     let persist_session_id = session_id.clone();
     let persist_turn_intent_id = turn_intent_id.clone();
     let persist_client_message_id = client_message_id.clone();
-    tokio::task::spawn_blocking(move || {
+    let accept_result = tokio::task::spawn_blocking(move || {
         persistence::accept_cli_turn(
             &persist_session_id,
             &persist_turn_intent_id,
@@ -345,7 +407,12 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
         .map_err(|err| format!("failed to accept CLI turn lifecycle: {err}"))
     })
     .await
-    .map_err(|err| format!("Task error: {err}"))??;
+    .map_err(|err| format!("Task error: {err}"))
+    .and_then(|result| result);
+    if let Err(error) = accept_result {
+        super::super::native_materializer::clear_cli_native_publication_context(&session_id);
+        return Err(error);
+    }
 
     // The desktop composer appends a synthetic user event before dispatch and
     // native-transcript sessions intentionally avoid echoing another chunk.
@@ -402,7 +469,6 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
     crate::api::websocket_handler::broadcast(running_msg.to_string());
 
     let sid = session_id.clone();
-    let cli_input = inject_ide_context_into_prompt(&user_input, ide_context.as_ref());
     let resume_id = cli_resume_id.clone();
     let agent_mode = mode.clone();
     let runner_turn_intent_id = turn_intent_id.clone();
@@ -411,17 +477,21 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
 
     // Spawn as background task
     let handle = tokio::spawn(async move {
-        if let Err(e) = session_runner::run_session(
+        let _identity_guard = identity_guard;
+        if let Err(e) = session_runner::run_session_with_ide_context(
             sid.clone(),
-            cli_input,
+            user_input,
+            ide_context,
             resume_id,
             agent_mode.as_deref(),
             images,
             Some(&runner_turn_intent_id),
+            allow_native_context_recovery,
         )
         .await
         {
             tracing::error!("[CodeSession] Session {} failed: {}", sid, e);
+            super::super::native_materializer::clear_cli_native_publication_context(&sid);
             session_runner::forget_session_context(&sid);
             session_runner::flush_cli_streams_for_session(&sid).await;
             // Best-effort: if marking the row as Failed itself fails, log
@@ -524,6 +594,7 @@ pub async fn cli_agent_message(request: CliMessageRequest) -> Result<CliRunRecei
         turn_intent_id,
         client_message_id,
         materialize_user_message_event,
+        allow_native_context_recovery,
     } = request;
     let turn = TurnIdentity::from_client(turn_intent_id, client_message_id);
     tracing::info!(
@@ -555,23 +626,88 @@ pub async fn cli_agent_message(request: CliMessageRequest) -> Result<CliRunRecei
 
     let target_account_id = account_id.as_deref().or(session.account_id.as_deref());
 
-    // If the user switched model/account, persist the change so run_session picks it up.
+    // From the kill through run_turn acceptance this must not interleave
+    // with a cancel_session for the same session (see session_control_lock).
+    let control_lock = session_runner::session_control_lock(&session_id).await;
+    let control_guard = control_lock.lock().await;
+
+    // Hosted-key CLIs keep their provider-native transcript inside the
+    // session-scoped hosted profile. They are not materialized into the
+    // user's signed-in native App store, so there is no App-copy boundary to
+    // publish here. The hosted runner itself remains the transcript of record.
+    let publishes_native_conversation = session.key_source == KeySource::OwnKey
+        && matches!(
+            session.cli_agent_type.as_deref(),
+            Some("codex" | "claude_code")
+        );
+    let interrupt_outcome = if publishes_native_conversation {
+        // Codex can flush an interrupted rollout through its supported RPC.
+        // The call is a no-op for every other transport.
+        crate::agent_sessions::cli::parsers::codex_app_server::interrupt_session_gracefully(
+            &session_id,
+        )
+        .await
+    } else {
+        crate::agent_sessions::cli::parsers::codex_app_server::GracefulInterruptOutcome::NotRunning
+    };
+
+    // Kill the existing agent process, Tokio task, and per-session proxy.
+    tracing::info!(session_id = %session_id, "cli_agent_message: killing existing runner");
+    session_runner::kill_running_agent(&session_id).await;
+    // The old runner has dropped its lifetime guard. Hold identity across
+    // partial publication and any account/model rebinding; otherwise a queued
+    // catalog refresh can read the transcript halfway through replacement.
+    let identity_guard = session_runner::session_identity_lock(&session_id)
+        .await
+        .lock_owned()
+        .await;
+    // The killed runner's finalize never runs (task aborted), so wake any
+    // parked approval long-poll here — otherwise it lingers until the 120s
+    // park timeout even though its process is gone.
+    super::super::hook_approvals::unregister_session(&session_id);
+    if matches!(
+        interrupt_outcome,
+        crate::agent_sessions::cli::parsers::codex_app_server::GracefulInterruptOutcome::TimedOut
+    ) {
+        super::super::native_materializer::clear_cli_native_publication_context(&session_id);
+        let error = "Codex did not finish its native interrupted turn; the partial runner was preserved without replacing the native App transcript";
+        fail_interrupted_turn(&session_id, error).await?;
+        return Err(error.to_string());
+    }
+    if publishes_native_conversation {
+        match super::super::native_materializer::publish_cli_native_transcript_after_turn(
+            &session_id,
+        )
+        .await
+        {
+            Ok(true) => {}
+            // The provider was interrupted before it minted a native UUID.
+            // The canonical user/tool rows remain authoritative and the next
+            // episode will materialize them into the selected runtime.
+            Ok(false) => {}
+            Err(err) => {
+                let error = format!("Provider-native partial turn publication failed: {err}");
+                fail_interrupted_turn(&session_id, &error).await?;
+                return Err(error);
+            }
+        }
+    }
+    tracing::info!(session_id = %session_id, "cli_agent_message: existing runner cleanup complete");
+
+    // Publish the old account's runner before changing the binding lookup.
+    // Otherwise a Codex/Claude account switch asks the publisher to resolve
+    // the old file through the new account profile and either loses the
+    // interrupted suffix or fails a valid runtime switch.
     if model.is_some() || account_id.is_some() {
         let sid = session_id.clone();
         let mdl = model.clone();
         let acc = account_id.clone();
         tokio::task::spawn_blocking(move || {
-            if let Err(err) =
-                persistence::update_model_and_account(&sid, mdl.as_deref(), acc.as_deref())
-            {
-                tracing::warn!(
-                    "[CodeSession] Failed to update model/account for follow-up: {}",
-                    err
-                );
-            }
+            persistence::update_model_and_account(&sid, mdl.as_deref(), acc.as_deref())
+                .map_err(|err| format!("update model/account for follow-up: {err}"))
         })
         .await
-        .map_err(|e| format!("Task error: {}", e))?;
+        .map_err(|e| format!("Task error: {e}"))??;
 
         if let Some(ref new_account_id) = account_id {
             if session.account_id.as_deref() != Some(new_account_id.as_str()) {
@@ -585,20 +721,6 @@ pub async fn cli_agent_message(request: CliMessageRequest) -> Result<CliRunRecei
             }
         }
     }
-
-    // From the kill through run_turn acceptance this must not interleave
-    // with a cancel_session for the same session (see session_control_lock).
-    let control_lock = session_runner::session_control_lock(&session_id).await;
-    let control_guard = control_lock.lock().await;
-
-    // Kill the existing agent process, Tokio task, and per-session proxy.
-    tracing::info!(session_id = %session_id, "cli_agent_message: killing existing runner");
-    session_runner::kill_running_agent(&session_id).await;
-    // The killed runner's finalize never runs (task aborted), so wake any
-    // parked approval long-poll here — otherwise it lingers until the 120s
-    // park timeout even though its process is gone.
-    super::super::hook_approvals::unregister_session(&session_id);
-    tracing::info!(session_id = %session_id, "cli_agent_message: existing runner cleanup complete");
 
     // Resolve the resume id AFTER the old runner is dead — a slow runner
     // can commit a fresh cli_session_id right up until the kill, so an
@@ -641,6 +763,11 @@ pub async fn cli_agent_message(request: CliMessageRequest) -> Result<CliRunRecei
         cli_resume_id = ?cli_resume_id,
         "cli_agent_message: resolved resume state"
     );
+
+    // The old transcript and identity rebinding are now complete. `run_turn`
+    // takes the next lifetime guard; do not retain this one across hosted
+    // proxy allocation or other network I/O.
+    drop(identity_guard);
 
     // For hosted_key sessions (or legacy proxy billing), allocate a fresh token.
     // The previous token was released when the last run completed (or expired
@@ -697,6 +824,7 @@ pub async fn cli_agent_message(request: CliMessageRequest) -> Result<CliRunRecei
             turn_intent_id: None,
             client_message_id: None,
             materialize_user_message_event,
+            allow_native_context_recovery,
         },
         turn,
     )

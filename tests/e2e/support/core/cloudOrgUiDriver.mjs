@@ -795,7 +795,7 @@ export async function setCloudSessionVisibilityViaDialog(
 }
 
 // ============================================================================
-// Session comments + owner-local in-place agent follow-up
+// Session comments + local native continuation
 // ============================================================================
 //
 // Same contract as everything above: assertions and clicks stay on the

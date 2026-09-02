@@ -67,6 +67,7 @@ const EDITED_COMMENT_BODY = `@agent dual-instance edited task ${RUN_ID}`;
 const EDITED_COMMENT_BRIEF = EDITED_COMMENT_BODY.slice("@agent ".length);
 const REPLY_BODY = `Owner reply from the other instance ${RUN_ID}`;
 const TEAM_INBOX_MENTION_BODY = `Team Inbox mention ${RUN_ID}`;
+const TEAM_CHAT_MENTION_BODY = `Team Chat mention ${RUN_ID}`;
 const SEND_BODY = `Continue this work from the matching workspace ${RUN_ID}`;
 const PROJECT_NAME = `Dual cloud project ${RUN_ID}`;
 const PROJECT_SLUG = PROJECT_NAME.toLowerCase()
@@ -2452,6 +2453,173 @@ describe("Cloud collaboration with two independent rendered app instances", func
         "mention projection leaked the teammate-targeted comment into the owner Inbox"
       );
     }
+  });
+
+  it("C3. sends a Team Chat @mention with pending/failed/retry delivery and reaches the teammate Inbox", async function () {
+    this.timeout(240_000);
+
+    unwrap(
+      await invokeE2E("openSession", sessionId),
+      "primary reopen source session for Team Chat mention"
+    );
+    await clickRendered(
+      '[data-testid="conversation-mode-pill"] button[aria-label="Team chat"]',
+      "primary select Team Chat composer mode"
+    );
+    await browser.waitUntil(
+      async () =>
+        execJS(`
+          const button = document.querySelector('[data-testid="conversation-mode-pill"] button[aria-label="Team chat"]');
+          return button?.getAttribute('aria-pressed') === 'true';
+        `),
+      {
+        timeout: 15_000,
+        interval: 100,
+        timeoutMsg: "Team Chat composer mode did not become active",
+      }
+    );
+
+    const editorSelector = '[data-testid="chat-input"] [contenteditable="true"]';
+    await waitForRendered(editorSelector, "primary Team Chat editor");
+    const typedAt = await execJS(`
+      const editors = Array.from(document.querySelectorAll(${JSON.stringify(editorSelector)}))
+        .filter((element) => element.isContentEditable && element.getClientRects().length > 0);
+      const editor = editors.at(-1);
+      if (!editor) return false;
+      editor.focus();
+      document.execCommand('selectAll', false, null);
+      document.execCommand('insertText', false, '@');
+      editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: '@' }));
+      return true;
+    `);
+    if (!typedAt) throw new Error("primary Team Chat editor rejected @");
+    await clickRendered(
+      `[data-testid="agent-org-mention-option"][data-mention-id="${teammate.userId}"]`,
+      "primary choose teammate mention pill"
+    );
+    const appended = await execJS(`
+      const editor = Array.from(document.querySelectorAll(${JSON.stringify(editorSelector)}))
+        .filter((element) => element.isContentEditable && element.getClientRects().length > 0)
+        .at(-1);
+      if (!editor || !editor.querySelector('[data-composer-pill="true"][data-pill-id]')) return false;
+      editor.focus();
+      document.execCommand('insertText', false, ${JSON.stringify(` ${TEAM_CHAT_MENTION_BODY}`)});
+      editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ${JSON.stringify(` ${TEAM_CHAT_MENTION_BODY}`)} }));
+      return true;
+    `);
+    if (!appended) {
+      throw new Error("Team Chat mention pill was not preserved while appending body");
+    }
+
+    await execJS(`
+      window.__e2eTeamChatDeliveryStates = [];
+      window.__e2eTeamChatDeliveryObserver?.disconnect?.();
+      const record = () => {
+        for (const status of ['pending', 'failed']) {
+          if (document.querySelector('[data-testid="chat-message-delivery-' + status + '"]')) {
+            window.__e2eTeamChatDeliveryStates.push(status);
+          }
+        }
+      };
+      const observer = new MutationObserver(record);
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+      window.__e2eTeamChatDeliveryObserver = observer;
+      record();
+      return true;
+    `);
+    let failedState = null;
+    await applyCloudEndpointOverride(UNREACHABLE_CLOUD_ENDPOINT);
+    try {
+      await clickRendered(
+        '[data-testid="chat-send-button"]',
+        "primary send offline Team Chat mention"
+      );
+      await waitForRendered(
+        '[data-testid="chat-message-delivery-failed"]',
+        "failed Team Chat delivery row",
+        CLOUD_FETCH_TIMEOUT_MS
+      );
+      failedState = await execJS(`
+        const editor = Array.from(document.querySelectorAll(${JSON.stringify(editorSelector)}))
+          .filter((element) => element.getClientRects().length > 0)
+          .at(-1);
+        return {
+          observed: window.__e2eTeamChatDeliveryStates ?? [],
+          composerText: editor?.textContent ?? '',
+          failedText: document.querySelector('[data-testid="chat-message-delivery-failed"]')
+            ?.closest('[data-chat-group-index]')?.textContent ?? document.body.textContent ?? '',
+          retryPresent: Boolean(document.querySelector('[data-testid="chat-message-delivery-retry"]')),
+        };
+      `);
+    } finally {
+      await applyCloudEndpointOverride(env);
+    }
+    if (
+      !failedState ||
+      !failedState.observed.includes("pending") ||
+      !failedState.observed.includes("failed") ||
+      failedState.composerText.includes(TEAM_CHAT_MENTION_BODY) ||
+      !failedState.failedText.includes(TEAM_CHAT_MENTION_BODY) ||
+      !failedState.retryPresent
+    ) {
+      throw new Error(
+        `Team Chat delivery did not follow pending -> failed with a durable retry row: ${JSON.stringify(failedState)}`
+      );
+    }
+
+    await clickRendered(
+      '[data-testid="chat-message-delivery-retry"]',
+      "retry failed Team Chat mention"
+    );
+    await waitForGone(
+      '[data-testid="chat-message-delivery-failed"]',
+      "failed Team Chat status after retry",
+      CLOUD_FETCH_TIMEOUT_MS
+    );
+    await browser.waitUntil(
+      async () =>
+        execJS(`
+          const transcript = document.querySelector('[data-testid="chat-message-list"]');
+          return Boolean(
+            transcript?.textContent?.includes(${JSON.stringify(TEAM_CHAT_MENTION_BODY)}) &&
+            !transcript.querySelector('[data-testid="chat-message-delivery-pending"]') &&
+            !transcript.querySelector('[data-testid="chat-message-delivery-failed"]')
+          );
+        `),
+      {
+        timeout: CLOUD_FETCH_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg: "retried Team Chat message never became sent",
+      }
+    );
+    await execJS(`
+      window.__e2eTeamChatDeliveryObserver?.disconnect?.();
+      delete window.__e2eTeamChatDeliveryObserver;
+      return true;
+    `);
+
+    await clickRenderedOn(
+      second.client,
+      '[data-testid="sidebar-team-inbox"]',
+      "secondary Team Inbox for Team Chat mention"
+    );
+    await second.client.waitUntil(
+      async () =>
+        executeOn(
+          second.client,
+          `
+            return Array.from(document.querySelectorAll('[data-testid="team-inbox-row"]'))
+              .some((row) => (row.textContent ?? '').includes(arguments[0]));
+          `,
+          [TEAM_CHAT_MENTION_BODY]
+        ),
+      {
+        timeout: CLOUD_FETCH_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg:
+          "Team Chat @mention never reached the teammate's rendered Inbox",
+      }
+    );
   });
 
   it("D. syncs comment CRUD/status, intercepts send into a same-remote fork, and revokes directed access live", async function () {

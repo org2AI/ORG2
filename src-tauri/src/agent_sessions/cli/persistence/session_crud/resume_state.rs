@@ -26,6 +26,78 @@ fn resume_profile_key(account_id: Option<&str>) -> String {
         .to_string()
 }
 
+fn stage_cli_session_id_for_account_with_tx(
+    tx: &rusqlite::Transaction<'_>,
+    session_id: &str,
+    account_id: Option<&str>,
+    cli_session_id: &str,
+) -> SqliteResult<bool> {
+    let profile_key = resume_profile_key(account_id);
+    let affected = tx.execute(
+        "UPDATE code_sessions
+         SET cli_session_id = CASE
+             WHEN account_id IS ?3 THEN ?2
+             ELSE cli_session_id
+         END
+         WHERE session_id = ?1",
+        params![session_id, cli_session_id, account_id],
+    )?;
+    if affected == 0 {
+        return Ok(false);
+    }
+    tx.execute(
+        "INSERT INTO code_session_cli_resume_state
+            (session_id, profile_key, cli_session_id, updated_at)
+         VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(session_id, profile_key)
+         DO UPDATE SET cli_session_id = excluded.cli_session_id,
+                       updated_at = excluded.updated_at",
+        params![session_id, profile_key, cli_session_id, now_iso()],
+    )?;
+    Ok(true)
+}
+
+/// Record a recoverable materialization intent in the existing resume binding
+/// owner. Unlike publication, staging deliberately does not add the UUID to
+/// the append-only native-transcript ledger until its artifact is durable.
+pub fn stage_cli_session_id_for_account(
+    session_id: &str,
+    account_id: Option<&str>,
+    cli_session_id: &str,
+) -> SqliteResult<bool> {
+    let conn = get_connection()?;
+    let tx = conn.unchecked_transaction()?;
+    let staged =
+        stage_cli_session_id_for_account_with_tx(&tx, session_id, account_id, cli_session_id)?;
+    tx.commit()?;
+    Ok(staged)
+}
+
+/// Remove one unpublished materialization intent without invalidating resume
+/// bindings for other accounts/providers attached to the canonical session.
+pub fn clear_staged_cli_session_id_for_account(
+    session_id: &str,
+    account_id: Option<&str>,
+    expected_cli_session_id: &str,
+) -> SqliteResult<bool> {
+    let conn = get_connection()?;
+    let tx = conn.unchecked_transaction()?;
+    let profile_key = resume_profile_key(account_id);
+    let removed = tx.execute(
+        "DELETE FROM code_session_cli_resume_state
+         WHERE session_id = ?1 AND profile_key = ?2 AND cli_session_id = ?3",
+        params![session_id, profile_key, expected_cli_session_id],
+    )?;
+    tx.execute(
+        "UPDATE code_sessions
+         SET cli_session_id = NULL
+         WHERE session_id = ?1 AND account_id IS ?2 AND cli_session_id = ?3",
+        params![session_id, account_id, expected_cli_session_id],
+    )?;
+    tx.commit()?;
+    Ok(removed > 0)
+}
+
 /// Store the CLI agent's own session/conversation ID for resume support.
 /// Internal bookkeeping — does not bump `updated_at`.
 pub fn update_cli_session_id(session_id: &str, cli_session_id: &str) -> SqliteResult<bool> {
@@ -50,33 +122,14 @@ pub fn update_cli_session_id_for_account(
     cli_session_id: &str,
 ) -> SqliteResult<bool> {
     let conn = get_connection()?;
-    let profile_key = resume_profile_key(account_id);
     let tx = conn.unchecked_transaction()?;
-    let affected = tx.execute(
-        "UPDATE code_sessions
-         SET cli_session_id = CASE
-             WHEN account_id IS ?3 THEN ?2
-             ELSE cli_session_id
-         END
-         WHERE session_id = ?1",
-        params![session_id, cli_session_id, account_id],
-    )?;
-    if affected == 0 {
+    if !stage_cli_session_id_for_account_with_tx(&tx, session_id, account_id, cli_session_id)? {
         tx.commit()?;
         return Ok(false);
     }
-    tx.execute(
-        "INSERT INTO code_session_cli_resume_state
-            (session_id, profile_key, cli_session_id, updated_at)
-         VALUES (?1, ?2, ?3, ?4)
-         ON CONFLICT(session_id, profile_key)
-         DO UPDATE SET cli_session_id = excluded.cli_session_id,
-                       updated_at = excluded.updated_at",
-        params![session_id, profile_key, cli_session_id, now_iso()],
-    )?;
     // Append-only binding ledger (native-transcript replay + sidebar dedup
     // keep recognizing superseded forks after account switch / message edit).
-    let binding = conn
+    let binding = tx
         .query_row(
             "SELECT COALESCE(cli_agent_type, platform) FROM code_sessions WHERE session_id = ?1",
             params![session_id],

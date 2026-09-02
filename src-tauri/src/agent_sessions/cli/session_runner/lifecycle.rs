@@ -1,7 +1,7 @@
 //! Session lifecycle management — kill, cancel, cleanup.
 
 use super::super::persistence;
-use super::super::types::SessionStatus;
+use super::super::types::{KeySource, SessionStatus};
 use super::helpers::{flush_cli_streams_for_session, RUNNING_SESSIONS};
 use agent_core::state::control_flow::CancelReason;
 
@@ -76,6 +76,19 @@ pub async fn kill_running_agent(session_id: &str) -> bool {
         // start/stop operations would serialize behind it.
         flush_cli_streams_for_session(session_id).await;
         handle.abort();
+        // `abort()` only requests cancellation. Await the handle so the
+        // runner future has actually dropped its provider-identity guard
+        // before a follow-up publishes the interrupted snapshot or launches
+        // another turn against the same native UUID.
+        if let Err(error) = handle.await {
+            if !error.is_cancelled() {
+                tracing::warn!(
+                    session_id,
+                    error = %error,
+                    "CLI runner failed while waiting for cancellation"
+                );
+            }
+        }
     }
 
     let process_session_id = session_id.to_string();
@@ -104,7 +117,7 @@ pub async fn cancel_session(session_id: &str, reason: CancelReason) -> Result<bo
     // accepted would otherwise cancel the NEW intent and kill the new
     // process ("stop then send loses both messages").
     let control_lock = super::helpers::session_control_lock(session_id).await;
-    let _control_guard = control_lock.lock().await;
+    let control_guard = control_lock.lock().await;
 
     // The previous `.ok().flatten()` collapsed a DB error and a
     // legitimate "session not found" into the same `None`. The
@@ -153,23 +166,95 @@ pub async fn cancel_session(session_id: &str, reason: CancelReason) -> Result<bo
     // Codex app-server transport: ask the running turn to interrupt
     // gracefully (bounded wait) so codex finalizes the rollout before we
     // kill the process tree. No-op for every other transport/agent.
-    crate::agent_sessions::cli::parsers::codex_app_server::interrupt_session_gracefully(session_id)
+    let interrupt_outcome =
+        crate::agent_sessions::cli::parsers::codex_app_server::interrupt_session_gracefully(
+            session_id,
+        )
         .await;
 
     let had_running = kill_running_agent(session_id).await;
+    // `kill_running_agent` awaits the aborted runner, so its lifetime identity
+    // guard is gone. Reacquire identity while the control guard is still held
+    // and keep partial native publication/account binding/catalog metadata on
+    // one serialized boundary.
+    let _identity_guard = super::session_identity_lock(session_id)
+        .await
+        .lock_owned()
+        .await;
+
+    let session_agent = session.as_ref().and_then(|session| {
+        session
+            .cli_agent_type
+            .as_deref()
+            .and_then(key_vault::key_store::ModelType::from_str)
+    });
+    let publishes_native_conversation = session
+        .as_ref()
+        .is_some_and(|session| session.key_source == KeySource::OwnKey)
+        && session_agent.as_ref().is_some_and(|agent| {
+            matches!(
+                agent,
+                key_vault::key_store::ModelType::Codex
+                    | key_vault::key_store::ModelType::ClaudeCode
+            )
+        });
+    // Cancellation is not durably terminal until the interrupted runner has
+    // been copied into the provider-native transcript. Keep the control lock
+    // and runner artifact intact across this boundary. If publication fails,
+    // the cancel attempt lands as Failed rather than falsely advertising a
+    // resumable Cancelled conversation.
+    let publication_error = if matches!(
+        interrupt_outcome,
+        crate::agent_sessions::cli::parsers::codex_app_server::GracefulInterruptOutcome::TimedOut
+    ) {
+        super::super::native_materializer::clear_cli_native_publication_context(session_id);
+        Some(
+            "Codex did not finish its native interrupted turn; the partial runner was preserved without replacing the native App transcript"
+                .to_string(),
+        )
+    } else if publishes_native_conversation {
+        match super::super::native_materializer::publish_cli_native_transcript_after_turn(
+            session_id,
+        )
+        .await
+        {
+            Ok(true) => None,
+            Ok(false) => None,
+            Err(err) => {
+                tracing::error!(
+                    session_id,
+                    error = %err,
+                    "failed to publish interrupted provider-native conversation"
+                );
+                Some(format!(
+                    "Provider-native transcript publication failed after cancellation: {err}"
+                ))
+            }
+        }
+    } else {
+        None
+    };
+    let terminal_status = if publication_error.is_some() {
+        SessionStatus::Failed
+    } else {
+        SessionStatus::Cancelled
+    };
+    let terminal_intent_status = if publication_error.is_some() {
+        session_persistence::turn_intents::TurnIntentStatus::Failed
+    } else {
+        session_persistence::turn_intents::TurnIntentStatus::Cancelled
+    };
 
     let persist_session_id = session_id.to_string();
     let persist_turn_intent_id = active_turn_intent_id.clone();
+    let persist_error = publication_error.clone();
     tokio::task::spawn_blocking(move || {
         persistence::update_cli_turn_lifecycle(
             &persist_session_id,
-            SessionStatus::Cancelled,
-            None,
+            terminal_status,
+            persist_error.as_deref(),
             persist_turn_intent_id.as_deref().map(|turn_intent_id| {
-                (
-                    turn_intent_id,
-                    session_persistence::turn_intents::TurnIntentStatus::Cancelled,
-                )
+                (turn_intent_id, terminal_intent_status)
             }),
         )
     })
@@ -181,19 +266,11 @@ pub async fn cancel_session(session_id: &str, reason: CancelReason) -> Result<bo
     // agent type is known, but the else branches skip it.
     super::super::hook_approvals::unregister_session(session_id);
 
-    // Cancelled is terminal: drop any hook-derived live status so the
+    // The persisted state is terminal: drop any hook-derived live status so the
     // sidebar doesn't keep a ghost working/waiting entry for this session.
     if let Some(ref session) = session {
-        if let Some(agent) = session
-            .cli_agent_type
-            .as_deref()
-            .and_then(key_vault::key_store::ModelType::from_str)
-        {
-            super::helpers::clear_live_status(
-                &agent,
-                session_id,
-                session.cli_session_id.as_deref(),
-            );
+        if let Some(ref agent) = session_agent {
+            super::helpers::clear_live_status(agent, session_id, session.cli_session_id.as_deref());
         } else {
             crate::orgtrack::agent_live_status::clear(&[session_id]);
         }
@@ -204,15 +281,30 @@ pub async fn cancel_session(session_id: &str, reason: CancelReason) -> Result<bo
     let mut status_msg = serde_json::json!({
         "type": "code_session.status_changed",
         "session_id": session_id,
-        "status": "cancelled",
+        "status": terminal_status.as_ref(),
         "reason": reason.as_str(),
         "background": session.as_ref().is_some_and(|s| s.background),
         "session_name": session.as_ref().map(|s| s.name.clone()),
     });
+    if let Some(ref error_message) = publication_error {
+        status_msg["error_message"] = serde_json::Value::String(error_message.clone());
+    }
     if let Some(turn_intent_id) = active_turn_intent_id {
         status_msg["turn_intent_id"] = serde_json::Value::String(turn_intent_id);
     }
     crate::api::websocket_handler::broadcast(status_msg.to_string());
+    drop(control_guard);
+
+    if let Some(error) = publication_error {
+        tracing::error!(
+            "[CodeSession] Session {} cancellation failed closed (reason={}, had_running={}): {}",
+            session_id,
+            reason.as_str(),
+            had_running,
+            error
+        );
+        return Err(error);
+    }
 
     tracing::info!(
         "[CodeSession] Session {} cancelled (reason={}, had_running={})",

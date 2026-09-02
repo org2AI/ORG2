@@ -29,7 +29,8 @@ pub use read::{
     status_snapshots,
 };
 pub use resume_state::{
-    clear_cli_resume_state, get_cli_session_id_for_account, get_history_mutation,
+    clear_cli_resume_state, clear_staged_cli_session_id_for_account,
+    get_cli_session_id_for_account, get_history_mutation, stage_cli_session_id_for_account,
     update_cli_session_id, update_cli_session_id_for_account,
 };
 pub use transcript_source::{

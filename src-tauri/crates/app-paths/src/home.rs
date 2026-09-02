@@ -3,7 +3,7 @@
 //! Owns `home_dir()` plus the `ORGII_EXTERNAL_HISTORY_HOME`-aware
 //! data/config/state/XDG roots that external-history discovery probes.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// User home directory with a deterministic fallback to the system temp dir.
 pub fn home_dir() -> PathBuf {
@@ -18,6 +18,48 @@ pub fn home_dir() -> PathBuf {
 /// under a different cloud identity.
 pub fn external_history_home_dir() -> PathBuf {
     external_history_home_override().unwrap_or_else(home_dir)
+}
+
+/// User-home root where newly materialized provider-native transcripts live.
+///
+/// Production shares the ordinary external-history home so continuations are
+/// visible in the provider's native app. Tests may separate bounded discovery
+/// from publication with `ORGII_NATIVE_TRANSCRIPT_HOME`.
+pub fn native_transcript_home_dir() -> PathBuf {
+    native_transcript_home_override().unwrap_or_else(external_history_home_dir)
+}
+
+fn native_transcript_home_override() -> Option<PathBuf> {
+    std::env::var_os("ORGII_NATIVE_TRANSCRIPT_HOME")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+}
+
+pub fn native_transcript_data_dir() -> PathBuf {
+    if native_transcript_home_override().is_none() && external_history_home_override().is_none() {
+        if let Some(path) = dirs::data_dir() {
+            return path;
+        }
+    }
+    platform_data_dir(&native_transcript_home_dir())
+}
+
+pub fn native_transcript_data_local_dir() -> PathBuf {
+    if native_transcript_home_override().is_none() && external_history_home_override().is_none() {
+        if let Some(path) = dirs::data_local_dir() {
+            return path;
+        }
+    }
+    platform_data_local_dir(&native_transcript_home_dir())
+}
+
+pub fn native_transcript_config_dir() -> PathBuf {
+    if native_transcript_home_override().is_none() && external_history_home_override().is_none() {
+        if let Some(path) = dirs::config_dir() {
+            return path;
+        }
+    }
+    platform_config_dir(&native_transcript_home_dir())
 }
 
 fn external_history_home_override() -> Option<PathBuf> {
@@ -36,7 +78,10 @@ pub fn external_history_data_dir() -> PathBuf {
             return path;
         }
     }
-    let home = external_history_home_dir();
+    platform_data_dir(&external_history_home_dir())
+}
+
+fn platform_data_dir(home: &Path) -> PathBuf {
     #[cfg(target_os = "windows")]
     return home.join("AppData").join("Roaming");
     #[cfg(target_os = "macos")]
@@ -52,7 +97,10 @@ pub fn external_history_data_local_dir() -> PathBuf {
             return path;
         }
     }
-    let home = external_history_home_dir();
+    platform_data_local_dir(&external_history_home_dir())
+}
+
+fn platform_data_local_dir(home: &Path) -> PathBuf {
     #[cfg(target_os = "windows")]
     return home.join("AppData").join("Local");
     #[cfg(target_os = "macos")]
@@ -68,7 +116,10 @@ pub fn external_history_config_dir() -> PathBuf {
             return path;
         }
     }
-    let home = external_history_home_dir();
+    platform_config_dir(&external_history_home_dir())
+}
+
+fn platform_config_dir(home: &Path) -> PathBuf {
     #[cfg(target_os = "windows")]
     return home.join("AppData").join("Roaming");
     #[cfg(target_os = "macos")]
@@ -185,6 +236,46 @@ mod tests {
         assert_eq!(
             external_history_xdg_config_dir(),
             Some(PathBuf::from("/home/tester/.config")),
+        );
+    }
+
+    #[test]
+    fn native_transcript_home_defaults_to_external_history_home() {
+        let _lock = env_lock();
+        let _native = EnvVarGuard::unset("ORGII_NATIVE_TRANSCRIPT_HOME");
+        let _external = EnvVarGuard::set("ORGII_EXTERNAL_HISTORY_HOME", "/tmp/orgii-discovery");
+
+        assert_eq!(
+            native_transcript_home_dir(),
+            PathBuf::from("/tmp/orgii-discovery")
+        );
+    }
+
+    #[test]
+    fn native_transcript_home_can_be_separate_from_discovery() {
+        let _lock = env_lock();
+        let _external = EnvVarGuard::set("ORGII_EXTERNAL_HISTORY_HOME", "/tmp/orgii-discovery");
+        let _native = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", "/Users/tester");
+
+        assert_eq!(native_transcript_home_dir(), PathBuf::from("/Users/tester"));
+        assert_eq!(
+            external_history_home_dir(),
+            PathBuf::from("/tmp/orgii-discovery")
+        );
+        #[cfg(target_os = "macos")]
+        assert_eq!(
+            native_transcript_data_dir(),
+            PathBuf::from("/Users/tester/Library/Application Support")
+        );
+        #[cfg(target_os = "windows")]
+        assert_eq!(
+            native_transcript_data_dir(),
+            PathBuf::from("/Users/tester/AppData/Roaming")
+        );
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        assert_eq!(
+            native_transcript_data_dir(),
+            PathBuf::from("/Users/tester/.local/share")
         );
     }
 

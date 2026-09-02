@@ -44,9 +44,8 @@ pub struct CliLaunchProfileOverride {
     pub command_override: Option<String>,
     pub args_override: Option<Vec<String>>,
     pub env_override: Option<HashMap<String, String>>,
-    /// Experimental transport selector. Absent (default) = per-turn shell-out.
-    /// `"app-server"` on the codex profile switches managed sessions to the
-    /// long-lived `codex app-server` JSON-RPC transport.
+    /// Codex transport override. Absent uses the native app-server transport;
+    /// `"exec"` keeps the legacy per-turn shell-out as a recovery hatch.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transport: Option<String>,
 }
@@ -71,7 +70,7 @@ pub struct CliLaunchProfileView {
     pub env_overridden: bool,
     pub effective_command: Vec<String>,
     pub required_args: Vec<String>,
-    /// Experimental transport selector (see [`CliLaunchProfileOverride::transport`]).
+    /// Codex transport override (see [`CliLaunchProfileOverride::transport`]).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transport: Option<String>,
 }
@@ -82,20 +81,30 @@ pub struct ResolvedCliLaunchProfile {
     pub command: String,
     pub args: Vec<String>,
     pub env: HashMap<String, String>,
-    /// Experimental transport selector (see [`CliLaunchProfileOverride::transport`]).
+    /// Codex transport override (see [`CliLaunchProfileOverride::transport`]).
     pub transport: Option<String>,
 }
 
 /// Launch-profile `transport` value selecting the `codex app-server`
 /// JSON-RPC transport instead of the per-turn `codex exec --json` shell-out.
 pub const CLI_TRANSPORT_APP_SERVER: &str = "app-server";
+pub const CLI_TRANSPORT_EXEC: &str = "exec";
 
-/// Gate predicate for the experimental codex app-server transport: only the
-/// codex agent honors the flag, and only when the launch profile explicitly
-/// opts in. Absent flag (the default) keeps the shell-out path.
+/// Codex uses its native JSON-RPC transport by default so resume, compaction,
+/// approvals, and provider-owned thread identity share one production path.
+/// An explicit `exec` override preserves the old shell-out as a recovery hatch;
+/// unknown values fail closed to that legacy path.
 pub fn uses_codex_app_server(agent: &ModelType, profile: &ResolvedCliLaunchProfile) -> bool {
-    matches!(agent, ModelType::Codex)
-        && profile.transport.as_deref() == Some(CLI_TRANSPORT_APP_SERVER)
+    if !matches!(agent, ModelType::Codex) {
+        return false;
+    }
+    if profile.transport.as_deref() == Some(CLI_TRANSPORT_EXEC) {
+        return false;
+    }
+    matches!(
+        profile.transport.as_deref(),
+        None | Some(CLI_TRANSPORT_APP_SERVER)
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -106,7 +115,7 @@ pub struct CliLaunchProfileUpdate {
     pub command_override: Option<String>,
     pub args_override: Option<Vec<String>>,
     pub env_override: Option<HashMap<String, String>>,
-    /// Experimental transport selector. `None` (the UI never sends it)
+    /// Codex transport override. `None` (the UI never sends it)
     /// preserves any stored value so flipping args/mode via the settings UI
     /// doesn't silently clear the app-server opt-in.
     #[serde(default)]

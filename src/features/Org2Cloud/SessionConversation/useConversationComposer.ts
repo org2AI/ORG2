@@ -7,15 +7,22 @@ import {
   SubmitRetainedDeliveryError,
   SubmitValidationError,
 } from "@src/engines/ChatPanel/hooks/useInputArea/types";
-import { resolveMessageAudience } from "@src/features/TeamCollaboration/messageAudienceRouting";
 
 import { useSessionCommentsContext } from "../SessionComments/SessionCommentsContext";
+import {
+  CLOUD_COMMENT_MAX_BODY_LENGTH,
+  CLOUD_COMMENT_MAX_MENTIONED_USER_IDS,
+} from "../org2CloudCommentsClient";
 import { SessionCommentDeliveryError } from "../org2CloudSessionCommentsAtom";
 import {
   type ConversationComposerMode,
   conversationComposerModeAtomFamily,
 } from "./conversationComposerMode";
-import { resolveTeamChatMentions } from "./teamChatMentions";
+import {
+  isTeamChatBodyWithinLimit,
+  isTeamChatMentionAudienceWithinLimit,
+  resolveTeamChatMentionedUserIds,
+} from "./teamChatMentions";
 
 export function useConversationComposerMode(
   sessionId: string | null
@@ -36,8 +43,7 @@ export function useConversationTeamChatAvailable(): boolean {
  * Composer submit router. Team chat mode posts the text as a session
  * discussion message (comment wire); only explicit `@name` mentions in the
  * body notify anyone (team inbox). Prompt mode falls through to the
- * surface's own override (imported-session fork, group-chat routing) or the
- * default agent submit.
+ * surface's own Team Chat override or the default canonical Agent submit.
  */
 export function useConversationSubmitOverride(
   sessionId: string | null,
@@ -60,21 +66,29 @@ export function useConversationSubmitOverride(
       }
       const body = input.displayText.trim();
       if (!body) return true;
-      const audience = resolveMessageAudience(
-        "team_chat",
-        resolveTeamChatMentions(body, comments.mentionableMembers).map(
-          (id) => ({
-            kind: "member" as const,
-            id,
+      if (!isTeamChatBodyWithinLimit(body)) {
+        throw new SubmitValidationError(
+          t("conversation.messageTooLong", {
+            max: CLOUD_COMMENT_MAX_BODY_LENGTH,
+            defaultValue: `Team Chat messages must be ${CLOUD_COMMENT_MAX_BODY_LENGTH} characters or fewer`,
           })
-        )
+        );
+      }
+      const mentionedUserIds = resolveTeamChatMentionedUserIds(
+        body,
+        comments.mentionableMembers,
+        input.composerSnapshot,
+        comments.viewerUserId
       );
+      if (!isTeamChatMentionAudienceWithinLimit(mentionedUserIds)) {
+        throw new SubmitValidationError(
+          `@all is unavailable when it would notify more than ${CLOUD_COMMENT_MAX_MENTIONED_USER_IDS} people`
+        );
+      }
       try {
         await comments.addComment({
           body,
-          ...(audience.human.scope === "members"
-            ? { mentionedUserIds: audience.human.memberIds }
-            : {}),
+          ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
         });
       } catch (error) {
         if (error instanceof SessionCommentDeliveryError) {

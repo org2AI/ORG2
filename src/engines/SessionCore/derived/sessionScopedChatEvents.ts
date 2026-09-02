@@ -35,6 +35,7 @@ import {
 } from "@src/store/ui/messageQueueAtom";
 import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 
+import { pendingSyntheticEventAtom } from "../core/atoms/metadata";
 import { isInteractiveTool } from "../core/interactiveTools";
 import {
   hasLiveRuntimeResourceInLatestTurn,
@@ -50,6 +51,8 @@ import type { SessionEvent } from "../core/types";
 import { ensureCursorIdeEventsInStore } from "../sync/adapters/cursorIdeAdapter";
 import {
   appendLiveAssistantEvent,
+  appendPendingSyntheticUserEvent,
+  appendQueuedUserEvents,
   filterQueuedSyntheticUserEvents,
 } from "./chatEvents";
 import { areChatTranscriptsStructurallyEqual } from "./chatTranscriptStructure";
@@ -180,13 +183,22 @@ export function extractSessionChatEvents(
 function deriveFamilyChatEvents(
   snapshot: Snapshot | null,
   sessionId: string,
-  queuedMessages: readonly QueuedMessage[]
+  queuedMessages: readonly QueuedMessage[],
+  pendingSyntheticEvent: SessionEvent | null
 ): SessionEvent[] {
   const streaming = snapshot ? isSnapshotActivelyStreaming(snapshot) : false;
   return appendLiveAssistantEvent(
     derivePlanDisplayEvents(
       filterQueuedSyntheticUserEvents(
-        extractSessionChatEvents(snapshot),
+        appendQueuedUserEvents(
+          appendPendingSyntheticUserEvent(
+            extractSessionChatEvents(snapshot),
+            sessionId,
+            pendingSyntheticEvent
+          ),
+          sessionId,
+          queuedMessages
+        ),
         queuedMessages as QueuedMessage[]
       )
     ),
@@ -208,7 +220,13 @@ export const chatEventsForSessionAtomFamily = atomFamily(
     const a = atom((get) => {
       const { snapshot } = get(sessionSnapshotAtomFamily(sessionId));
       const queuedMessages = get(messageQueueAtom);
-      const next = deriveFamilyChatEvents(snapshot, sessionId, queuedMessages);
+      const pendingSyntheticEvent = get(pendingSyntheticEventAtom);
+      const next = deriveFamilyChatEvents(
+        snapshot,
+        sessionId,
+        queuedMessages,
+        pendingSyntheticEvent
+      );
       const streaming = snapshot
         ? isSnapshotActivelyStreaming(snapshot)
         : false;

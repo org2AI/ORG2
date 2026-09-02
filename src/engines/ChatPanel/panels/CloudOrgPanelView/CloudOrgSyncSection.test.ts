@@ -45,6 +45,7 @@ function status(
       orgChannelMessages: false,
       orgChannelMessagesIdempotency: false,
       conversationEvents: false,
+      conversationEventsIdempotency: false,
     },
     capabilitiesLoading: false,
     lastSync: { lastPassAtMs: null, lastSuccessAtMs: null },

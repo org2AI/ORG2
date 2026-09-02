@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { CONVERSATION_SENDER_ARG } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import type { CloudConversationEvent } from "../org2CloudConversationEventsClient";
-import { CONVERSATION_SENDER_ARG } from "./continuationEvents";
 import {
   conversationEventKey,
   mergePlaneIntoTranscript,
@@ -59,6 +59,9 @@ function row(
 }
 
 describe("conversationEventKey", () => {
+  const encoded = (value: string) =>
+    btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
   it("keys user rows on the turn intent so synthetic, backend and plane rows collapse", () => {
     const synthetic = userEvent({
       id: "user-input-1",
@@ -85,6 +88,29 @@ describe("conversationEventKey", () => {
     });
     expect(conversationEventKey(copy)).toBe("event:evt-9");
     expect(conversationEventKey(event({ id: "evt-9" }))).toBe("event:evt-9");
+  });
+
+  it("recovers canonical identity from a native Agent materialization row", () => {
+    const user = userEvent({
+      id: `imported-session-x~user-message-org2-turn-v1.${encoded("turn-9")}.${encoded("source-user-9")}.nonce`,
+      sessionId: "imported-session-x",
+      result: { message: { role: "user", content: "continue" } },
+    });
+    const assistant = event({
+      id: `imported-session-x~org2-native-v1.${encoded("source-answer-9")}.nonce`,
+      sessionId: "imported-session-x",
+    });
+    expect(conversationEventKey(user)).toBe("intent:turn-9");
+    expect(conversationEventKey(assistant)).toBe("event:source-answer-9");
+  });
+
+  it("recovers materialized turn identity through stacked import namespaces", () => {
+    const user = userEvent({
+      id: `fork-copy~import-copy~user-message-org2-turn-v1.${encoded("turn-stacked")}.${encoded("source-stacked")}.nonce`,
+      sessionId: "fork-copy",
+      result: { message: { role: "user", content: "continue again" } },
+    });
+    expect(conversationEventKey(user)).toBe("intent:turn-stacked");
   });
 });
 
@@ -118,12 +144,10 @@ describe("mergePlaneIntoTranscript", () => {
       row(1, { ...ownerUser, sessionId: "conversation" }),
       row(2, ownerReply),
     ];
-    const merged = mergePlaneIntoTranscript(
-      base,
-      rows,
-      "owner-session",
-      "owner"
-    );
+    const merged = mergePlaneIntoTranscript(base, rows, "owner-session", {
+      status: "known",
+      userId: "owner",
+    });
     expect(merged).toHaveLength(2);
     expect(merged[0]).toBe(ownerUser);
     expect(merged[1]).toBe(ownerReply);
@@ -140,7 +164,7 @@ describe("mergePlaneIntoTranscript", () => {
       [copyUser],
       rows,
       "imported-session-x",
-      "member"
+      { status: "known", userId: "member" }
     );
     expect(asMember[0].id).toBe(copyUser.id);
     expect(asMember[0].args[CONVERSATION_SENDER_ARG]).toEqual({
@@ -151,9 +175,64 @@ describe("mergePlaneIntoTranscript", () => {
       [ownerUser],
       rows,
       "owner-session",
-      "owner"
+      { status: "known", userId: "owner" }
     );
     expect(asOwner[0]).toBe(ownerUser);
+  });
+
+  it("does not stamp a local self twin while viewer auth is loading", () => {
+    const rows = [row(1, { ...ownerUser, sessionId: "conversation" })];
+
+    const loading = mergePlaneIntoTranscript(
+      [ownerUser],
+      rows,
+      "owner-session",
+      { status: "loading" }
+    );
+    const hydrated = mergePlaneIntoTranscript(
+      [ownerUser],
+      rows,
+      "owner-session",
+      { status: "known", userId: "owner" }
+    );
+
+    expect(loading[0]).toBe(ownerUser);
+    expect(hydrated[0]).toBe(ownerUser);
+    expect(loading[0].args[CONVERSATION_SENDER_ARG]).toBeUndefined();
+  });
+
+  it("preserves an existing remote stamp while viewer auth is loading", () => {
+    const remoteTwin = userEvent({
+      id: "imported-session-x~user-input-1",
+      sessionId: "imported-session-x",
+      result: { syntheticUserInput: true, turnIntentId: "tii-1" },
+      args: {
+        [CONVERSATION_SENDER_ARG]: { userId: "owner" },
+      },
+    });
+    const rows = [row(1, { ...ownerUser, sessionId: "conversation" })];
+
+    const loading = mergePlaneIntoTranscript(
+      [remoteTwin],
+      rows,
+      "imported-session-x",
+      { status: "loading" }
+    );
+    const hydrated = mergePlaneIntoTranscript(
+      [remoteTwin],
+      rows,
+      "imported-session-x",
+      { status: "known", userId: "member" }
+    );
+
+    expect(loading[0]).toBe(remoteTwin);
+    expect(loading[0].args[CONVERSATION_SENDER_ARG]).toEqual({
+      userId: "owner",
+    });
+    expect(hydrated[0].args[CONVERSATION_SENDER_ARG]).toEqual({
+      userId: "owner",
+      displayName: "Owner",
+    });
   });
 
   it("orders plane-backed turns by seq even when a sender clock is skewed", () => {
@@ -168,12 +247,10 @@ describe("mergePlaneIntoTranscript", () => {
       row(3, skewedMemberUser, { authorUserId: "member", turnId: "t-m" }),
       row(4, memberReply, { authorUserId: "member", turnId: "t-m" }),
     ];
-    const merged = mergePlaneIntoTranscript(
-      base,
-      rows,
-      "owner-session",
-      "owner"
-    );
+    const merged = mergePlaneIntoTranscript(base, rows, "owner-session", {
+      status: "known",
+      userId: "owner",
+    });
     expect(merged.map((item) => item.displayText)).toEqual([
       "hello",
       "owner reply",
@@ -201,12 +278,10 @@ describe("mergePlaneIntoTranscript", () => {
       row(3, memberUser, { authorUserId: "member" }),
       row(4, memberReply, { authorUserId: "member" }),
     ];
-    const merged = mergePlaneIntoTranscript(
-      base,
-      rows,
-      "owner-session",
-      "owner"
-    );
+    const merged = mergePlaneIntoTranscript(base, rows, "owner-session", {
+      status: "known",
+      userId: "owner",
+    });
     expect(merged.map((item) => item.displayText)).toEqual([
       "legacy",
       "hello",
@@ -215,6 +290,64 @@ describe("mergePlaneIntoTranscript", () => {
       "member reply",
       "running",
     ]);
+  });
+
+  it("matches a positional native/import echo to its plane event semantically", () => {
+    const canonical = event({
+      id: "member-answer",
+      displayText: "same source event",
+    });
+    const nativeEcho = event({
+      // Codex exposes positional ids after parsing a materialized transcript,
+      // so this intentionally cannot match the plane row by event id.
+      id: "imported-session-x~codex-asst-10",
+      sessionId: "imported-session-x",
+      displayText: "same source event",
+    });
+
+    const merged = mergePlaneIntoTranscript(
+      [nativeEcho],
+      [row(1, canonical, { authorUserId: "member" })],
+      "imported-session-x",
+      { status: "known", userId: "viewer" }
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toBe(nativeEcho);
+  });
+
+  it("matches repeated equal native messages one-to-one instead of collapsing the conversation", () => {
+    const first = event({ id: "native-a", displayText: "OK" });
+    const second = event({ id: "native-b", displayText: "OK" });
+    const planeFirst = event({ id: "plane-a", displayText: "OK" });
+    const planeSecond = event({ id: "plane-b", displayText: "OK" });
+
+    const merged = mergePlaneIntoTranscript(
+      [first, second],
+      [row(1, planeFirst), row(2, planeSecond)],
+      "owner-session",
+      { status: "known", userId: "owner" }
+    );
+
+    expect(merged).toEqual([first, second]);
+  });
+
+  it("collapses a plane row that republishes an existing source identity", () => {
+    const first = event({ id: "member-answer", displayText: "answer" });
+    const republished = event({
+      id: "org2-native-v1.bWVtYmVyLWFuc3dlcg.nonce",
+      displayText: "answer",
+    });
+
+    const merged = mergePlaneIntoTranscript(
+      [],
+      [row(1, first), row(2, republished)],
+      "owner-session",
+      { status: "known", userId: "owner" }
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].displayText).toBe("answer");
   });
 
   it("returns the base untouched without plane rows", () => {

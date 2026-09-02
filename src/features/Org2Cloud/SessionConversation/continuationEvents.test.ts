@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { CONVERSATION_SENDER_ARG } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 
 import {
-  CONVERSATION_SENDER_ARG,
   resolveConversationFamily,
   stitchConversationSegments,
 } from "./continuationEvents";

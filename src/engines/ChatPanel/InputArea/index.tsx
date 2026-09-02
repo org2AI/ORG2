@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { SessionFollowUpSuggestion } from "@src/api/services/sessionFollowUpSuggestions";
 import type { ComposerInputRef } from "@src/components/ComposerInput";
 import ComposerShell from "@src/components/ComposerShell";
+import { useConversationExecutionBinding } from "@src/engines/ChatPanel/ConversationExecutionBindingContext";
 import { useInputArea } from "@src/engines/ChatPanel/hooks/useInputArea";
 import type {
   CustomMentionOption,
@@ -166,6 +167,7 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
     slashItemCategories,
     presentation = "default",
   }) => {
+    const conversationExecutionBinding = useConversationExecutionBinding();
     const { t } = useTranslation("sessions");
 
     const { sessionId } = useSessionId({ propSessionId });
@@ -267,11 +269,20 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
       submitDisabled,
       onSubmitOverride: conversationSubmitOverride,
       customMentionOptions: mergedCustomMentionOptions,
-      enableAgentInterceptors,
+      // Team Chat is a human comment surface. It keeps shared composer
+      // validation/attachments, but Agent-only slash commands, pending
+      // questions, MCP prompts, and skill expansion must not mutate or consume
+      // the backing Agent transcript before the comment router sees the text.
+      enableAgentInterceptors: enableAgentInterceptors && !teamChatActive,
+      executionControlsEnabled: !teamChatActive,
     });
 
     const currentTextEmpty = isInputEmpty();
     const currentInputEmpty = currentTextEmpty && !hasImages;
+    // Canonical conversations own resume/retry through the canonical queue;
+    // the generic CLI Resume action would target the hidden runner directly.
+    const genericResumeAvailable =
+      canResume && !teamChatActive && conversationExecutionBinding === null;
     const stopSuppressedForEmptyInput =
       disableStopWhenEmpty && currentInputEmpty && !isWpGeneWorking;
     const voiceFeatureEnabled = useAtomValue(voiceInputEnabledAtom);
@@ -540,7 +551,7 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
                 hasImages={hasImages}
                 isHosted={isHosted}
                 canStopAgent={canStopAgent}
-                canResume={canResume}
+                canResume={genericResumeAvailable}
                 onInterrupt={interruptSession}
                 onResume={resumeSession}
                 isCursorIde={isCursorIde}
@@ -577,7 +588,7 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
                 modelPill={modelPill}
                 isHosted={isHosted}
                 canStopAgent={canStopAgent}
-                canResume={canResume}
+                canResume={genericResumeAvailable}
                 onInterrupt={interruptSession}
                 onResume={resumeSession}
                 isCursorIde={isCursorIde}

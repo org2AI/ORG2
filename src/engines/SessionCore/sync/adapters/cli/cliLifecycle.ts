@@ -43,18 +43,29 @@ async function closeObservedCliTerminalEvents(
   const displayStatus =
     status === "failed" || status === "error" ? "failed" : "completed";
   await Promise.all(
-    closableEvents.map((event) =>
-      eventStoreProxy.upsert(
+    closableEvents.map((event) => {
+      const unresolvedToolCall =
+        event.actionType === "tool_call" ||
+        Boolean(event.callId && event.functionName);
+      return eventStoreProxy.upsert(
         {
           ...event,
           displayStatus,
           activityStatus: "processed",
-          result: { ...event.result, status: displayStatus },
+          // A visible assistant stream is useful partial conversation text,
+          // so terminalize it into a portable message. A running tool call is
+          // different: no provider may receive it without a paired result.
+          // Keep it in ORG2 as interrupted diagnostics, but leave a pending
+          // result fence so native projection drops it until a real result
+          // arrives and replaces this row.
+          result: unresolvedToolCall
+            ? { ...event.result, status: "pending", interrupted: true }
+            : { ...event.result, status: displayStatus },
           isDelta: false,
         },
         sessionId
-      )
-    )
+      );
+    })
   );
 }
 
@@ -74,14 +85,16 @@ export function markCliRuntimeRunning(
 export function markObservedCliTerminalStatus(
   sessionId: string,
   status: CliSessionStatus | undefined
-): void {
-  if (!isCliTerminalStatus(status) || !isStoreInitialized()) return;
+): Promise<void> {
+  if (!isCliTerminalStatus(status) || !isStoreInitialized()) {
+    return Promise.resolve();
+  }
   getInstrumentedStore().set(setSessionRuntimeStatusAtom, {
     sessionId,
     status,
     source: "sync",
   });
-  void closeObservedCliTerminalEvents(sessionId, status).catch((error) => {
+  return closeObservedCliTerminalEvents(sessionId, status).catch((error) => {
     log.warn("[cliAdapter] failed to close terminal CLI events:", error);
   });
 }

@@ -30,7 +30,9 @@ import {
 import { cancelTurnForTimelineBoundary } from "@src/engines/SessionCore/control/sessionTimelineBoundary";
 import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import { isUserIntentSendError } from "@src/engines/SessionCore/services/userIntentDispatch";
 import { deleteSession as deleteCachedSession } from "@src/engines/SessionCore/storage/cacheAdapter";
+import { turnIntentIdOf } from "@src/engines/SessionCore/sync/utils/activityIds";
 import { createLogger } from "@src/hooks/logger";
 import {
   clearPendingPlanApproval,
@@ -44,6 +46,7 @@ import {
   isCliSession,
 } from "@src/util/session/sessionDispatch";
 
+import type { ChatHistoryProps } from "../ChatHistory.types";
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
 import { showRevertConfirm } from "../components/RevertConfirmDialog";
 
@@ -58,7 +61,9 @@ function agentMessageIdFromUserEventId(eventId: string): string | undefined {
     : undefined;
 }
 
-export function useEditUserMessage(): (
+export function useEditUserMessage(
+  onFailedUserIntentRetry?: ChatHistoryProps["onFailedUserIntentRetry"]
+): (
   chatItem: OptimizedChatItem,
   newText: string,
   imageDataUrls?: string[]
@@ -106,6 +111,65 @@ export function useEditUserMessage(): (
       if (!eventId) return;
 
       const createdAt = chatItem.event?.createdAt;
+      const failedSyntheticIntent = Boolean(
+        initiatedSessionId &&
+        chatItem.event?.displayStatus === "failed" &&
+        chatItem.event.result?.syntheticUserInput === true
+      );
+
+      // A delivery failure happened before the provider accepted this turn,
+      // so it is not a history-edit boundary. Retry through the ordinary
+      // submit/queue path and remove only the superseded failed placeholder;
+      // never truncate later turns or offer a file rewind for this case.
+      if (failedSyntheticIntent && initiatedSessionId && chatItem.event) {
+        const originalText = chatItem.event.displayText ?? "";
+        const originalTurnIntentId = turnIntentIdOf(chatItem.event);
+        const resendImages =
+          imageDataUrls && imageDataUrls.length > 0 ? imageDataUrls : undefined;
+        const projection = projectOutgoingUserMessage({
+          displayText: newText,
+          allowCanvasInterception:
+            !resendImages && !isCliSession(initiatedSessionId),
+        });
+        try {
+          const turnIntentId =
+            newText === originalText
+              ? (originalTurnIntentId ?? undefined)
+              : undefined;
+          const handled = await onFailedUserIntentRetry?.({
+            displayText: projection.displayContent,
+            agentContent: projection.agentContent,
+            imageDataUrls: resendImages,
+            turnIntentId,
+          });
+          if (!handled) {
+            await submitUserIntent({
+              sessionId: initiatedSessionId,
+              displayContent: projection.displayContent,
+              agentContent: projection.agentContent,
+              imageDataUrls: resendImages,
+              source: "dispatch",
+              turnIntentId,
+            });
+          }
+          await eventStoreProxy.removeByIdPrefix(eventId, initiatedSessionId);
+        } catch (error) {
+          // A send-stage error already produced the replacement failed row.
+          // A preparation/storage error did not, so retain the original row.
+          if (isUserIntentSendError(error)) {
+            await eventStoreProxy
+              .removeByIdPrefix(eventId, initiatedSessionId)
+              .catch(() => 0);
+          }
+          log.error(
+            "[useEditUserMessage] failed delivery retry failed:",
+            error
+          );
+          Message.error(t("errors.errorOccurred"));
+        }
+        return;
+      }
+
       let revertFiles = true;
 
       if (
@@ -249,6 +313,7 @@ export function useEditUserMessage(): (
       submitUserIntent,
       t,
       store,
+      onFailedUserIntentRetry,
     ]
   );
 }

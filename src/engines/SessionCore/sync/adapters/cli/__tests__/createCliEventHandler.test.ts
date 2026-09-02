@@ -1308,6 +1308,60 @@ describe("createCliEventHandler ingestion boundary", () => {
       });
     });
 
+    it("keeps visible assistant partial text but fences an unresolved tool on cancel", async () => {
+      handler.handleEvent(
+        activityEvent(
+          makeChunk({
+            chunk_id: "partial-answer",
+            action_type: "assistant_delta",
+            result: { content: "I inspected the router.", is_delta: true },
+          })
+        )
+      );
+      handler.handleEvent(
+        activityEvent(
+          makeChunk({
+            chunk_id: "pending-tool",
+            action_type: "tool_call_delta",
+            function: "read_file",
+            result: {
+              tool_call_id: "call-pending",
+              tool_name: "read_file",
+              arguments_delta: '{"path":"src/router.ts"}',
+            },
+          })
+        )
+      );
+      await flush();
+
+      handler.handleEvent({
+        type: "code_session.status_changed",
+        session_id: SESSION_ID,
+        status: "cancelled",
+      });
+      await flush();
+
+      expect(
+        eventsFor().find((event) => event.id === "partial-answer") ??
+          eventsFor().find((event) =>
+            String(event.id).startsWith("stream-msg-ts-")
+          )
+      ).toMatchObject({
+        displayText: "I inspected the router.",
+        displayStatus: "completed",
+        isDelta: false,
+        result: { status: "completed" },
+      });
+      expect(
+        eventsFor().find((event) => event.id === "tool-call-call-pending")
+      ).toMatchObject({
+        displayStatus: "completed",
+        isDelta: false,
+        result: { status: "pending", interrupted: true },
+      });
+      expect(callbacks.agentCompletes).toBe(1);
+    });
+
     it("force-closes still-running events when the session ends", async () => {
       await store.api.upsert(
         {

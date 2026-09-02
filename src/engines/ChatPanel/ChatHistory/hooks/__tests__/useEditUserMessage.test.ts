@@ -15,9 +15,18 @@ import {
 import type { OptimizedChatItem } from "../../chatItemPipeline/types";
 import { useEditUserMessage } from "../useEditUserMessage";
 
-const { submitUserIntentSpy, storeSessionId } = vi.hoisted(() => ({
+const {
+  checkSnapshotChangesSpy,
+  removeByIdPrefixSpy,
+  submitUserIntentSpy,
+  storeSessionId,
+  truncateBeforeIdSpy,
+} = vi.hoisted(() => ({
+  checkSnapshotChangesSpy: vi.fn(async () => false),
+  removeByIdPrefixSpy: vi.fn(async () => 1),
   submitUserIntentSpy: vi.fn(async (..._args: unknown[]) => undefined),
   storeSessionId: { current: "osagent-session-1" },
+  truncateBeforeIdSpy: vi.fn(async () => undefined),
 }));
 
 vi.mock("jotai", async (importOriginal) => ({
@@ -33,7 +42,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@src/api/tauri/agent", () => ({
-  checkSnapshotChanges: vi.fn(async () => false),
+  checkSnapshotChanges: checkSnapshotChangesSpy,
   truncateAfterMessage: vi.fn(async () => undefined),
 }));
 
@@ -67,7 +76,8 @@ vi.mock("@src/engines/SessionCore/core/atoms", () => ({
 
 vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: {
-    truncateBeforeId: vi.fn(async () => undefined),
+    removeByIdPrefix: removeByIdPrefixSpy,
+    truncateBeforeId: truncateBeforeIdSpy,
     evictSession: vi.fn(async () => undefined),
   },
 }));
@@ -143,7 +153,10 @@ describe("useEditUserMessage resend projection", () => {
   });
 
   beforeEach(() => {
+    checkSnapshotChangesSpy.mockClear();
+    removeByIdPrefixSpy.mockClear();
     submitUserIntentSpy.mockClear();
+    truncateBeforeIdSpy.mockClear();
     storeSessionId.current = "osagent-session-1";
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -214,5 +227,42 @@ describe("useEditUserMessage resend projection", () => {
     };
     expect(call.displayContent).toBe("/canvas build a timer");
     expect(call.agentContent).toBeUndefined();
+  });
+
+  it("retries a failed delivery without truncating later history", async () => {
+    const failed = {
+      event: {
+        id: "user-input-failed",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        source: "user",
+        functionName: "user_message",
+        uiCanonical: "",
+        displayText: "retry this exact request",
+        displayStatus: "failed",
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          turnIntentId: "turn-intent-failed",
+        },
+      },
+      chunk_id: "user-input-failed",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(failed, "retry this exact request");
+    });
+
+    expect(submitUserIntentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayContent: "retry this exact request",
+        turnIntentId: "turn-intent-failed",
+      })
+    );
+    expect(removeByIdPrefixSpy).toHaveBeenCalledWith(
+      "user-input-failed",
+      "osagent-session-1"
+    );
+    expect(checkSnapshotChangesSpy).not.toHaveBeenCalled();
+    expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
   });
 });

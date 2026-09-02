@@ -108,7 +108,7 @@ export function createCliEventHandler(
 
   function reconcileTerminalEventsIfNeeded(): void {
     if (!observedTerminalStatus) return;
-    markObservedCliTerminalStatus(sessionId, observedTerminalStatus);
+    void markObservedCliTerminalStatus(sessionId, observedTerminalStatus);
   }
 
   function asString(value: unknown): string | undefined {
@@ -458,9 +458,15 @@ export function createCliEventHandler(
       clearThinkingStream();
       clearToolCallDeltaBuffers();
       setStreamingMode(false);
-      markObservedCliTerminalStatus(sessionId, observedTerminalStatus);
       if (status === "cancelled") cancelled = true;
-      callbacks.onAgentComplete?.();
+      // Do not expose the runtime as switchable until visible partial message
+      // buffers and interrupted tool-call fences are durably terminalized.
+      // Otherwise a fast Stop -> runtime switch can read the old native fork
+      // before EventStore owns the interrupted suffix.
+      void markObservedCliTerminalStatus(
+        sessionId,
+        observedTerminalStatus
+      ).then(() => callbacks.onAgentComplete?.());
     }
 
     if (isSessionRuntimeExecuting(status)) {

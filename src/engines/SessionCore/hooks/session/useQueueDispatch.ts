@@ -1,7 +1,11 @@
 /**
  * useQueueDispatch Hook — the single queue dispatcher.
  *
- * SINGLETON — must be mounted exactly once (in GlobalSessionSync).
+ * WINDOW-STORE SINGLETON — mount exactly once for each Jotai/window store.
+ * The main window mounts it from GlobalSessionSync; a detached SessionWindow
+ * mounts its own instance because its durable queue is keyed by window label.
+ * Cross-window turns for the same canonical root are serialized by the
+ * injected executor's process-wide root lock.
  *
  * Drains `messageQueueAtom` strictly against the turn-lifecycle FSM
  * (`turnLifecycle.ts`). There is exactly one rule set:
@@ -30,28 +34,30 @@ import {
   type AgentExecMode,
   resolveSessionAgentExecMode,
 } from "@src/config/sessionCreatorConfig";
-import {
-  beginOptimisticTurn,
-  failOptimisticTurn,
-} from "@src/engines/SessionCore/control/optimisticTurnStatus";
 import { cancelTurnForTimelineBoundary } from "@src/engines/SessionCore/control/sessionTimelineBoundary";
-import { publishTurnIntentDispatch } from "@src/engines/SessionCore/control/turnIntentDispatchLifecycle";
 import {
   beginTurnDispatch,
+  beginTurnStopping,
+  clearTurnLifecycleSession,
   confirmTurnRunning,
+  getTurnGeneration,
   getTurnPhase,
   markTurnTerminal,
+  restoreTurnWorkingAfterInterruptFailure,
 } from "@src/engines/SessionCore/control/turnLifecycle";
-import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import {
+  QueuedConversationBusyError,
+  type QueuedConversationExecutor,
+} from "@src/engines/SessionCore/conversations/queuedConversationExecutor";
 import { queueDispatchSyncInputsAtom } from "@src/engines/SessionCore/derived/queueDispatchSyncInputsAtom";
-import { SessionService } from "@src/engines/SessionCore/services/SessionService";
-import { createSyntheticUserEvent } from "@src/engines/SessionCore/sync/adapters/shared";
+import {
+  dispatchUserIntent,
+  isUserIntentSendError,
+} from "@src/engines/SessionCore/services/userIntentDispatch";
 import { createLogger } from "@src/hooks/logger";
-import { markSessionActive } from "@src/store/session";
 import {
   closePostStopDispatchEpisodeAtom,
   lastUserMessageAtom,
-  setSessionRuntimeStatusAtom,
 } from "@src/store/session/cliSessionStatusAtom";
 import {
   type LastModelSelection,
@@ -63,13 +69,14 @@ import {
   messageQueueAtom,
   messageQueueHydratedAtom,
   queueEditingAtom,
+  queuedMessageScopeKey,
 } from "@src/store/ui/messageQueueAtom";
+import { persistDurableMessageQueue } from "@src/store/ui/messageQueueRepository";
 import { resolveModelForMessage } from "@src/util/session/resolveModelForMessage";
 import { selectionFromSession } from "@src/util/session/selectionFromSession";
 import {
   isAgentSession,
   isCliSession,
-  isCursorIdeSession,
 } from "@src/util/session/sessionDispatch";
 
 import {
@@ -83,23 +90,16 @@ import {
 
 const log = createLogger("useQueueDispatch");
 
-const MAX_SENT_QUEUE_ID_CACHE = 200;
-
-/**
- * Natural follow-ups stay visible in the queue UI for at least this long so
- * a fast turn completion does not make the queued bubble flash and vanish.
- * Explicit "now" dispatches skip this — the user just asked for it.
- */
-const MIN_QUEUE_VISIBLE_MS = 1_200;
-
-function queuedMessageAgeMs(message: QueuedMessage): number {
-  const createdAtMs = Date.parse(message.createdAt);
-  if (!Number.isFinite(createdAtMs)) return MIN_QUEUE_VISIBLE_MS;
-  return Date.now() - createdAtMs;
-}
-
 /** Re-check cadence while the backend reports the session still busy. */
 const QUEUE_BACKEND_RECHECK_MS = 3_000;
+const CANONICAL_RECOVERY_RETRY_MAX_MS = 60_000;
+
+function canonicalRecoveryDelayMs(attempt: number): number {
+  return Math.min(
+    QUEUE_BACKEND_RECHECK_MS * 2 ** Math.max(0, attempt - 1),
+    CANONICAL_RECOVERY_RETRY_MAX_MS
+  );
+}
 
 /**
  * Authoritative pre-dispatch gate for the natural FIFO drain.
@@ -132,7 +132,9 @@ async function getBackendDispatchVerdict(
   }
 }
 
-export function useQueueDispatch(): void {
+export function useQueueDispatch(
+  executeCanonicalConversation?: QueuedConversationExecutor
+): void {
   const store = useStore();
 
   useEffect(() => {
@@ -141,33 +143,130 @@ export function useQueueDispatch(): void {
   }, [store]);
 
   // ── Dispatch lock ─────────────────────────────────────────────────────────
-  // One dispatch at a time, globally. The in-flight id additionally guards
-  // the window between a successful send and the dequeue write.
+  // One dispatch at a time in this window store. The in-flight id additionally
+  // guards the window between a successful send and the dequeue write.
   const dispatchLockRef = useRef(false);
   const inFlightMessageIdRef = useRef<string | null>(null);
 
+  // A canonical root can execute in a different native Session after each
+  // runtime switch. Keep only the currently running Session id so Send Now
+  // can address the ordinary interrupt path. Busy/idle ownership remains in
+  // turnLifecycle; this transient handle is never consulted as a queue gate.
+  const canonicalRunnerByScopeRef = useRef<
+    Map<string, { generation: number; sessionId: string }>
+  >(new Map());
   // Send Now interrupt bookkeeping: one boundary interrupt per message.
   const interruptRequestedByMessageIdRef = useRef<Set<string>>(new Set());
 
-  // Already-sent ids (bounded LRU) so a stale queue snapshot can never
-  // double-send a message that already became a user turn.
-  const sentQueuedMessageIdsRef = useRef<Set<string>>(new Set());
-  const sentQueuedMessageIdOrderRef = useRef<string[]>([]);
-  const rememberSentQueueId = useCallback((messageId: string) => {
-    if (sentQueuedMessageIdsRef.current.has(messageId)) return;
-    sentQueuedMessageIdsRef.current.add(messageId);
-    sentQueuedMessageIdOrderRef.current.push(messageId);
-    while (
-      sentQueuedMessageIdOrderRef.current.length > MAX_SENT_QUEUE_ID_CACHE
-    ) {
-      const expiredId = sentQueuedMessageIdOrderRef.current.shift();
-      if (expiredId) sentQueuedMessageIdsRef.current.delete(expiredId);
-    }
-  }, []);
+  const acceptQueuedMessage = useCallback(
+    (messageId: string) => {
+      interruptRequestedByMessageIdRef.current.delete(messageId);
+      store.set(messageQueueAtom, (current) =>
+        current.filter((candidate) => candidate.id !== messageId)
+      );
+    },
+    [store]
+  );
 
-  // Pending wake-up for MIN_QUEUE_VISIBLE_MS waits.
+  const persistCanonicalDelivery = useCallback(
+    async (
+      messageId: string,
+      update: Pick<
+        QueuedMessage,
+        | "status"
+        | "runnerSessionId"
+        | "runnerEventStartIndex"
+        | "retryAt"
+        | "retryAttempt"
+      >
+    ) => {
+      store.set(messageQueueAtom, (current) =>
+        current.map((candidate) =>
+          candidate.id === messageId ? { ...candidate, ...update } : candidate
+        )
+      );
+      // This is the crash-recovery boundary: provider dispatch may proceed
+      // only after the same durable queue row knows its concrete native
+      // Session. The ordinary queue subscription remains the coalesced writer
+      // for non-critical reorder/edit mutations.
+      await persistDurableMessageQueue(store.get(messageQueueAtom));
+    },
+    [store]
+  );
+
+  const settleQueuedMessageFailure = useCallback(
+    (message: QueuedMessage, error: unknown) => {
+      // Once dispatchUserIntent has created a durable failed user row, that
+      // row is the only retry owner. Failures before that boundary keep the
+      // queue copy parked so the user's payload is never lost.
+      store.set(messageQueueAtom, (current) =>
+        isUserIntentSendError(error)
+          ? current.filter((candidate) => candidate.id !== message.id)
+          : current.map((candidate) =>
+              candidate.id === message.id
+                ? {
+                    ...candidate,
+                    status: "queued",
+                    runnerSessionId: undefined,
+                    runnerEventStartIndex: undefined,
+                    retryAt: undefined,
+                    retryAttempt: undefined,
+                    priority: "next",
+                    requiresExplicitDispatch: true,
+                  }
+                : candidate
+            )
+      );
+      interruptRequestedByMessageIdRef.current.delete(message.id);
+      const detail = error instanceof Error ? error.message : String(error);
+      Message.error({
+        content: `Failed to send message: ${detail}`,
+        duration: 5000,
+      });
+    },
+    [store]
+  );
+
+  // Pending wake-up for backend-busy retries.
   const wakeTimerRef = useRef<number | null>(null);
+  const canonicalRecoveryWakeTimerRef = useRef<number | null>(null);
+  const canonicalRecoveryWakeAtRef = useRef<number | null>(null);
   const tryDispatchNextRef = useRef<() => void>(() => {});
+  const armCanonicalRecoveryWake = useCallback(
+    function armRecoveryWake(retryAt: number) {
+      if (
+        canonicalRecoveryWakeAtRef.current !== null &&
+        canonicalRecoveryWakeAtRef.current <= retryAt
+      ) {
+        return;
+      }
+      if (canonicalRecoveryWakeTimerRef.current !== null) {
+        window.clearTimeout(canonicalRecoveryWakeTimerRef.current);
+      }
+      canonicalRecoveryWakeAtRef.current = retryAt;
+      canonicalRecoveryWakeTimerRef.current = window.setTimeout(
+        () => {
+          canonicalRecoveryWakeTimerRef.current = null;
+          canonicalRecoveryWakeAtRef.current = null;
+          tryDispatchNextRef.current();
+          const now = Date.now();
+          const nextRetryAt = store
+            .get(messageQueueAtom)
+            .reduce<number | undefined>((earliest, message) => {
+              const candidate = Date.parse(message.retryAt ?? "");
+              if (candidate <= now || !Number.isFinite(candidate))
+                return earliest;
+              return earliest === undefined || candidate < earliest
+                ? candidate
+                : earliest;
+            }, undefined);
+          if (nextRetryAt !== undefined) armRecoveryWake(nextRetryAt);
+        },
+        Math.max(0, retryAt - Date.now())
+      );
+    },
+    [store]
+  );
 
   const dispatchMessage = useCallback(
     (msg: QueuedMessage, onDone: () => void) => {
@@ -189,19 +288,6 @@ export function useQueueDispatch(): void {
         resolveSessionAgentExecMode(session?.agentExecMode);
       const { model, accountId } = resolveModelForMessage(lastModelSelection);
 
-      // Synchronous turn reserve BEFORE any await: from this instant every
-      // submit and every other dispatch pass observes the session as busy.
-      const dispatchGeneration = beginTurnDispatch(sessionId);
-      publishTurnIntentDispatch(msg.turnIntentId, {
-        sessionId,
-        generation: dispatchGeneration,
-      });
-
-      // An explicit dispatch concludes any pending stop episode.
-      if (msg.priority === "now") {
-        store.set(closePostStopDispatchEpisodeAtom, sessionId);
-      }
-
       // Capture the payload for Stop-restore before the async append.
       store.set(lastUserMessageAtom, {
         sessionId,
@@ -209,97 +295,212 @@ export function useQueueDispatch(): void {
         imageDataUrls,
       });
 
-      beginOptimisticTurn(sessionId, "queue");
-
       void (async () => {
-        let userEventId: string | null = null;
         try {
-          const userEvent = createSyntheticUserEvent(
-            sessionId,
-            displayContent,
-            {
-              imageDataUrls,
-              turnIntentId: msg.turnIntentId,
-            }
-          );
-          userEventId = userEvent.id;
-          await eventStoreProxy.append([userEvent], sessionId);
           // Pass displayContent as displayText when it differs from content
           // (i.e. skill pills were expanded) so the persisted event stores
           // the pill format and re-editing shows the pill, not the YAML.
           const displayTextForDispatch =
             content !== displayContent ? displayContent : undefined;
-          await SessionService.sendMessage({
+          await dispatchUserIntent({
             sessionId,
-            content,
-            displayText: displayTextForDispatch,
-            model,
-            accountId,
-            mode: agentExecMode,
+            visibleText: displayContent,
             imageDataUrls,
-            clientMessageId: `queued:${sessionId}:${msg.id}`,
-            turnIntentId: msg.turnIntentId,
-            turnIntentSource: msg.priority === "now" ? "force_send" : "queue",
-            directUserIntent: true,
+            runtimeStatusSource: "queue",
+            queueMessageId: msg.id,
+            send: {
+              content,
+              displayText: displayTextForDispatch,
+              model,
+              accountId,
+              mode: agentExecMode,
+              clientMessageId: `queued:${sessionId}:${msg.id}`,
+              turnIntentId: msg.turnIntentId,
+              turnIntentSource: msg.priority === "now" ? "force_send" : "queue",
+              directUserIntent: true,
+            },
           });
-          // Backend accepted the message — confirm the turn as running.
-          confirmTurnRunning(sessionId);
-          // Bump activity timestamps so the just-flushed session surfaces in
-          // "recent activity" views without waiting for the next refresh.
-          markSessionActive(sessionId);
-          rememberSentQueueId(msg.id);
-          store.set(messageQueueAtom, (prev) =>
-            prev.filter((item) => item.id !== msg.id)
-          );
+          acceptQueuedMessage(msg.id);
           onDone();
-          if (isCursorIdeSession(sessionId)) {
-            // Cursor IDE sessions have no turn lifecycle (no terminal event
-            // stream) — close the turn right after a successful handoff.
-            store.set(setSessionRuntimeStatusAtom, {
-              sessionId,
-              status: "idle",
-              source: "queue",
-            });
-            markTurnTerminal(sessionId, "completed", {
-              generation: dispatchGeneration,
-            });
-          }
         } catch (err) {
           log.error("[useQueueDispatch] dispatch failed:", err);
-          if (userEventId) {
-            try {
-              await eventStoreProxy.removeByIdPrefix(userEventId, sessionId);
-            } catch (cleanupError) {
-              log.warn(
-                "[useQueueDispatch] failed to remove optimistic user event:",
-                cleanupError
-              );
-            }
-          }
-          // IPC failed before the backend received the message: close the
-          // reserved turn and park the message so it does not retry in a
-          // tight loop — the user can fix the issue and press Send Now.
-          failOptimisticTurn(sessionId, "queue");
-          markTurnTerminal(sessionId, "failed", {
-            generation: dispatchGeneration,
-          });
-          store.set(messageQueueAtom, (prev) =>
-            prev.map((item) =>
-              item.id === msg.id
-                ? { ...item, priority: "next", requiresExplicitDispatch: true }
-                : item
-            )
-          );
+          settleQueuedMessageFailure(msg, err);
           onDone();
-          const detail = err instanceof Error ? err.message : String(err);
-          Message.error({
-            content: `Failed to send message: ${detail}`,
-            duration: 5000,
-          });
         }
       })();
     },
-    [rememberSentQueueId, store]
+    [acceptQueuedMessage, settleQueuedMessageFailure, store]
+  );
+
+  const dispatchCanonicalMessage = useCallback(
+    (msg: QueuedMessage, onDone: () => void) => {
+      if (!msg.conversationDispatch) {
+        onDone();
+        return;
+      }
+      const scopeKey = queuedMessageScopeKey(msg);
+      const dispatchGeneration = beginTurnDispatch(scopeKey);
+      // Loading and materializing a native transcript is already owned work.
+      // It can legitimately outlive the dispatching dead-man before the
+      // provider accepts the user turn, so enter the ordinary working phase.
+      confirmTurnRunning(scopeKey);
+      let accepted = false;
+      let releasedDispatchLock = false;
+      let runnerSessionId: string | null = null;
+      const releaseDispatchLock = () => {
+        if (releasedDispatchLock) return;
+        releasedDispatchLock = true;
+        onDone();
+      };
+      const rememberRunner = (sessionId: string) => {
+        if (getTurnGeneration(scopeKey) !== dispatchGeneration) return;
+        runnerSessionId = sessionId;
+        canonicalRunnerByScopeRef.current.set(scopeKey, {
+          generation: dispatchGeneration,
+          sessionId,
+        });
+      };
+
+      const execution = (async () => {
+        await persistCanonicalDelivery(msg.id, {
+          status: "preparing",
+          runnerSessionId: msg.runnerSessionId,
+          runnerEventStartIndex: msg.runnerEventStartIndex,
+          retryAt: undefined,
+          retryAttempt: msg.retryAttempt,
+        });
+        if (!executeCanonicalConversation) {
+          throw new Error("canonical conversation executor is unavailable");
+        }
+        const persistedMessage =
+          store
+            .get(messageQueueAtom)
+            .find((candidate) => candidate.id === msg.id) ?? msg;
+        return await executeCanonicalConversation(store, persistedMessage, {
+          onAccepted: async (sessionId) => {
+            if (accepted) return;
+            accepted = true;
+            rememberRunner(sessionId);
+            await persistCanonicalDelivery(msg.id, {
+              status: "accepted",
+              runnerSessionId: sessionId,
+              runnerEventStartIndex:
+                store
+                  .get(messageQueueAtom)
+                  .find((candidate) => candidate.id === msg.id)
+                  ?.runnerEventStartIndex ?? msg.runnerEventStartIndex,
+              retryAt: undefined,
+              retryAttempt: msg.retryAttempt,
+            });
+            releaseDispatchLock();
+          },
+          onRunnerReady: async (sessionId, eventStartIndex) => {
+            rememberRunner(sessionId);
+            await persistCanonicalDelivery(msg.id, {
+              status: "preparing",
+              runnerSessionId: sessionId,
+              runnerEventStartIndex: eventStartIndex,
+              retryAt: undefined,
+              retryAttempt: msg.retryAttempt,
+            });
+          },
+        });
+      })();
+
+      void execution
+        .then(
+          (result) => {
+            acceptQueuedMessage(msg.id);
+            markTurnTerminal(scopeKey, result.terminalStatus, {
+              generation: dispatchGeneration,
+            });
+          },
+          async (error: unknown) => {
+            if (error instanceof QueuedConversationBusyError) {
+              // Another window owns this root. Persist the same bounded
+              // recovery backoff as any accepted retry; a fixed 250 ms poll
+              // burned CPU for the complete duration of a long provider turn.
+              const current = store
+                .get(messageQueueAtom)
+                .find((candidate) => candidate.id === msg.id);
+              if (current) {
+                const attempt = (current.retryAttempt ?? 0) + 1;
+                await persistCanonicalDelivery(msg.id, {
+                  status: current.status,
+                  runnerSessionId: current.runnerSessionId,
+                  runnerEventStartIndex: current.runnerEventStartIndex,
+                  retryAttempt: attempt,
+                  retryAt: new Date(
+                    Date.now() + canonicalRecoveryDelayMs(attempt)
+                  ).toISOString(),
+                });
+              }
+              markTurnTerminal(scopeKey, "cancelled", {
+                generation: dispatchGeneration,
+              });
+              return;
+            }
+            if (!accepted) {
+              settleQueuedMessageFailure(msg, error);
+            } else {
+              log.error(
+                "[useQueueDispatch] canonical provider turn failed after acceptance:",
+                error
+              );
+              const current = store
+                .get(messageQueueAtom)
+                .find((candidate) => candidate.id === msg.id);
+              if (current) {
+                const attempt = (current.retryAttempt ?? 0) + 1;
+                await persistCanonicalDelivery(msg.id, {
+                  status: current.status,
+                  runnerSessionId: current.runnerSessionId,
+                  runnerEventStartIndex: current.runnerEventStartIndex,
+                  retryAttempt: attempt,
+                  retryAt: new Date(
+                    Date.now() + canonicalRecoveryDelayMs(attempt)
+                  ).toISOString(),
+                });
+              }
+            }
+            markTurnTerminal(scopeKey, "failed", {
+              generation: dispatchGeneration,
+            });
+          }
+        )
+        .finally(() => {
+          const currentRunner = canonicalRunnerByScopeRef.current.get(scopeKey);
+          if (
+            currentRunner?.generation === dispatchGeneration &&
+            currentRunner.sessionId === runnerSessionId
+          ) {
+            canonicalRunnerByScopeRef.current.delete(scopeKey);
+          }
+          // Canonical scope ids are virtual and do not participate in normal
+          // Session deletion cleanup. Drop now-idle state eagerly.
+          if (getTurnPhase(scopeKey) === "idle") {
+            clearTurnLifecycleSession(scopeKey);
+          }
+          releaseDispatchLock();
+          tryDispatchNextRef.current();
+          const retryAt = Date.parse(
+            store
+              .get(messageQueueAtom)
+              .find((candidate) => candidate.id === msg.id)?.retryAt ?? ""
+          );
+          if (Number.isFinite(retryAt)) {
+            armCanonicalRecoveryWake(retryAt);
+          }
+        });
+    },
+    [
+      acceptQueuedMessage,
+      armCanonicalRecoveryWake,
+      executeCanonicalConversation,
+      persistCanonicalDelivery,
+      settleQueuedMessageFailure,
+      store,
+    ]
   );
 
   const tryDispatchNext = useCallback(() => {
@@ -314,11 +515,26 @@ export function useQueueDispatch(): void {
     const queue = store.get(messageQueueAtom);
     if (queue.length === 0) return;
 
+    const now = Date.now();
     const candidates = queue.filter(
       (msg) =>
         msg.id !== inFlightMessageIdRef.current &&
-        !sentQueuedMessageIdsRef.current.has(msg.id)
+        (Number.isNaN(Date.parse(msg.retryAt ?? "")) ||
+          Date.parse(msg.retryAt ?? "") <= now)
     );
+    const earliestDeferredRetry = queue.reduce<number | undefined>(
+      (earliest, message) => {
+        const candidate = Date.parse(message.retryAt ?? "");
+        if (!Number.isFinite(candidate) || candidate <= now) return earliest;
+        return earliest === undefined || candidate < earliest
+          ? candidate
+          : earliest;
+      },
+      undefined
+    );
+    if (earliestDeferredRetry !== undefined) {
+      armCanonicalRecoveryWake(earliestDeferredRetry);
+    }
 
     // ── Explicit "now" dispatches take absolute precedence per session ───────
     // A blocked Send Now for session A must not freeze an idle session B. Scan
@@ -326,11 +542,18 @@ export function useQueueDispatch(): void {
     // most one interrupt for each active message while continuing the pass.
     const explicitMessages = candidates.filter((msg) => msg.priority === "now");
     for (const explicitMsg of explicitMessages) {
-      const phase = getTurnPhase(explicitMsg.sessionId);
+      const scopeKey = queuedMessageScopeKey(explicitMsg);
+      const phase = getTurnPhase(scopeKey);
       if (phase === "idle") {
+        // One shared admission/dispatch policy owns the Stop episode for both
+        // ordinary Sessions and canonical runtime continuations.
+        store.set(closePostStopDispatchEpisodeAtom, explicitMsg.sessionId);
         dispatchLockRef.current = true;
         inFlightMessageIdRef.current = explicitMsg.id;
-        dispatchMessage(explicitMsg, () => {
+        const dispatch = explicitMsg.conversationDispatch
+          ? dispatchCanonicalMessage
+          : dispatchMessage;
+        dispatch(explicitMsg, () => {
           if (inFlightMessageIdRef.current === explicitMsg.id) {
             inFlightMessageIdRef.current = null;
           }
@@ -343,17 +566,43 @@ export function useQueueDispatch(): void {
         (phase === "working" || phase === "dispatching") &&
         !interruptRequestedByMessageIdRef.current.has(explicitMsg.id)
       ) {
+        const interruptSessionId = explicitMsg.conversationDispatch
+          ? canonicalRunnerByScopeRef.current.get(scopeKey)?.sessionId
+          : explicitMsg.sessionId;
+        // The canonical root may still be preparing its native Session. Until
+        // onRunnerReady publishes an addressable Session there is nothing the
+        // ordinary timeline-boundary interrupt can target.
+        if (!interruptSessionId) continue;
         // Send Now against an active turn: interrupt it once. The provider's
         // cancelled terminal flips the FSM idle, which re-triggers this pass.
         interruptRequestedByMessageIdRef.current.add(explicitMsg.id);
-        void cancelTurnForTimelineBoundary(
-          explicitMsg.sessionId,
-          "force-send"
-        ).catch((error) => {
-          // A failed interrupt must be retryable. Keeping the id in this set
-          // would strand the message until an unrelated lifecycle signal.
-          interruptRequestedByMessageIdRef.current.delete(explicitMsg.id);
-          log.warn("[useQueueDispatch] force-send interrupt failed:", error);
+        if (explicitMsg.conversationDispatch) {
+          beginTurnStopping(scopeKey);
+        }
+        const interruptGeneration = getTurnGeneration(interruptSessionId);
+        const scopeGeneration = getTurnGeneration(scopeKey);
+        let interruptFailureHandled = false;
+        const handleInterruptFailure = (detail: string) => {
+          if (interruptFailureHandled) return;
+          interruptFailureHandled = true;
+          restoreTurnWorkingAfterInterruptFailure(interruptSessionId, {
+            generation: interruptGeneration,
+          });
+          if (scopeKey !== interruptSessionId) {
+            restoreTurnWorkingAfterInterruptFailure(scopeKey, {
+              generation: scopeGeneration,
+            });
+          }
+          settleQueuedMessageFailure(explicitMsg, new Error(detail));
+          log.warn("[useQueueDispatch] force-send interrupt failed:", detail);
+        };
+        void cancelTurnForTimelineBoundary(interruptSessionId, "force-send", {
+          queueSessionId: explicitMsg.sessionId,
+          onError: handleInterruptFailure,
+        }).catch((error) => {
+          handleInterruptFailure(
+            error instanceof Error ? error.message : String(error)
+          );
         });
       }
       // `stopping` and already-requested interrupts wait for their own
@@ -364,13 +613,18 @@ export function useQueueDispatch(): void {
     for (const msg of candidates) {
       if (msg.priority === "now") continue;
       if (msg.requiresExplicitDispatch) continue; // held by a user Stop
-      if (getTurnPhase(msg.sessionId) !== "idle") continue; // turn active
-      const remainingVisibleMs = MIN_QUEUE_VISIBLE_MS - queuedMessageAgeMs(msg);
-      if (remainingVisibleMs > 0) {
-        wakeTimerRef.current = window.setTimeout(() => {
-          wakeTimerRef.current = null;
+      const scopeKey = queuedMessageScopeKey(msg);
+      if (getTurnPhase(scopeKey) !== "idle") continue; // turn active
+      if (msg.conversationDispatch) {
+        dispatchLockRef.current = true;
+        inFlightMessageIdRef.current = msg.id;
+        dispatchCanonicalMessage(msg, () => {
+          if (inFlightMessageIdRef.current === msg.id) {
+            inFlightMessageIdRef.current = null;
+          }
+          dispatchLockRef.current = false;
           tryDispatchNextRef.current();
-        }, remainingVisibleMs);
+        });
         return;
       }
       dispatchLockRef.current = true;
@@ -433,7 +687,13 @@ export function useQueueDispatch(): void {
       });
       return;
     }
-  }, [dispatchMessage, store]);
+  }, [
+    dispatchCanonicalMessage,
+    dispatchMessage,
+    armCanonicalRecoveryWake,
+    settleQueuedMessageFailure,
+    store,
+  ]);
 
   useEffect(() => {
     tryDispatchNextRef.current = tryDispatchNext;
@@ -447,6 +707,11 @@ export function useQueueDispatch(): void {
       if (wakeTimerRef.current !== null) {
         window.clearTimeout(wakeTimerRef.current);
         wakeTimerRef.current = null;
+      }
+      if (canonicalRecoveryWakeTimerRef.current !== null) {
+        window.clearTimeout(canonicalRecoveryWakeTimerRef.current);
+        canonicalRecoveryWakeTimerRef.current = null;
+        canonicalRecoveryWakeAtRef.current = null;
       }
     };
   }, [store, tryDispatchNext]);

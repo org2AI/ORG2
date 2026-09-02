@@ -5,10 +5,14 @@ import {
   derivedSnapshotAtom,
   streamingDeltaContentAtom,
 } from "@src/engines/SessionCore/core/atoms/events";
-import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms/metadata";
+import {
+  pendingSyntheticEventAtom,
+  sessionIdAtom,
+} from "@src/engines/SessionCore/core/atoms/metadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { chatEventsAtom } from "@src/engines/SessionCore/derived/chatEvents";
 import { messagesEventsAtom } from "@src/engines/SessionCore/derived/simulatorEvents";
+import { messageQueueAtom } from "@src/store/ui/messageQueueAtom";
 
 function makeSnapshot(chatEvents: SessionEvent[] = [], streaming = true) {
   return {
@@ -72,6 +76,167 @@ afterEach(() => {
 });
 
 describe("chatEventsAtom live streaming overlay", () => {
+  it("projects a durable queued turn immediately and replaces it by intent identity", () => {
+    const store = createStore();
+    store.set(sessionIdAtom, "session-1");
+    store.set(derivedSnapshotAtom, makeSnapshot([], false));
+    store.set(messageQueueAtom, [
+      {
+        id: "queue-1",
+        turnIntentId: "turn-queued",
+        sessionId: "session-1",
+        content: "same request",
+        displayContent: "same request",
+        priority: "next",
+        status: "queued",
+        createdAt: "2026-06-06T20:00:01.000Z",
+      },
+    ]);
+
+    expect(store.get(chatEventsAtom)).toEqual([
+      expect.objectContaining({
+        id: "queued-user-turn-queued",
+        displayText: "same request",
+        displayStatus: "pending",
+        result: expect.objectContaining({
+          deliveryStatus: "pending",
+          queueMessageId: "queue-1",
+          turnIntentId: "turn-queued",
+        }),
+      }),
+    ]);
+
+    const providerRow = makeChatEvent(
+      "provider-user-turn-queued",
+      "2026-06-06T20:00:02.000Z",
+      {
+        source: "user",
+        functionName: "user",
+        displayVariant: "message",
+        displayText: "same request",
+        result: {
+          turnIntentId: "turn-queued",
+          message: { content: "same request", role: "user" },
+        },
+      }
+    );
+    store.set(derivedSnapshotAtom, makeSnapshot([providerRow], false));
+    expect(store.get(chatEventsAtom)).toEqual([providerRow]);
+  });
+
+  it("keeps the pending user row visible across a native snapshot replace", () => {
+    const store = createStore();
+    const pending = makeChatEvent(
+      "user-input-pending",
+      "2026-06-06T20:00:01.000Z",
+      {
+        source: "user",
+        functionName: "user_message",
+        uiCanonical: "",
+        actionType: "user_message",
+        displayText: "next request",
+        result: { syntheticUserInput: true, message: "next request" },
+        displayVariant: "message",
+      }
+    );
+    store.set(sessionIdAtom, "session-1");
+    store.set(pendingSyntheticEventAtom, pending);
+    store.set(derivedSnapshotAtom, makeSnapshot([], false));
+
+    expect(store.get(chatEventsAtom)).toEqual([pending]);
+
+    // A delayed native-history replacement remains visually lossless.
+    store.set(
+      derivedSnapshotAtom,
+      makeSnapshot([makeChatEvent("older", "2026-06-06T19:59:59.000Z")], false)
+    );
+    expect(store.get(chatEventsAtom).map((event) => event.id)).toEqual([
+      "older",
+      "user-input-pending",
+    ]);
+  });
+
+  it("suppresses the pending overlay after the provider's real user echo", () => {
+    const store = createStore();
+    const pending = makeChatEvent(
+      "user-input-pending",
+      "2026-06-06T20:00:01.000Z",
+      {
+        source: "user",
+        functionName: "user_message",
+        uiCanonical: "",
+        actionType: "user_message",
+        displayText: "next request",
+        result: { syntheticUserInput: true, message: "next request" },
+        displayVariant: "message",
+      }
+    );
+    const echo = makeChatEvent(
+      "provider-user-echo",
+      "2026-06-06T20:00:02.000Z",
+      {
+        source: "user",
+        functionName: "user",
+        uiCanonical: "user",
+        actionType: "user_message",
+        displayText: "next request",
+        result: { message: { content: "next request" } },
+        displayVariant: "message",
+      }
+    );
+    store.set(sessionIdAtom, "session-1");
+    store.set(pendingSyntheticEventAtom, pending);
+    store.set(derivedSnapshotAtom, makeSnapshot([echo], false));
+
+    expect(store.get(chatEventsAtom)).toEqual([echo]);
+  });
+
+  it("keeps a new intent visible when an older native turn is replayed with a newer timestamp", () => {
+    const store = createStore();
+    const pending = makeChatEvent(
+      "user-input-pending",
+      "2026-06-06T20:00:01.000Z",
+      {
+        source: "user",
+        functionName: "user_message",
+        uiCanonical: "",
+        actionType: "raw",
+        displayText: "continue exploring",
+        result: {
+          syntheticUserInput: true,
+          turnIntentId: "turn-next",
+          message: { content: "continue exploring", role: "user" },
+        },
+        displayVariant: "message",
+      }
+    );
+    const replayedOldTurn = makeChatEvent(
+      "provider-user-old",
+      "2026-06-06T20:00:02.000Z",
+      {
+        source: "user",
+        functionName: "user",
+        uiCanonical: "user",
+        actionType: "user_message",
+        displayText: "old request",
+        result: {
+          turnIntentId: "turn-old",
+          message: { content: "old request", role: "user" },
+        },
+        displayVariant: "message",
+      }
+    );
+    store.set(sessionIdAtom, "session-1");
+    store.set(pendingSyntheticEventAtom, pending);
+    store.set(derivedSnapshotAtom, makeSnapshot([replayedOldTurn], true));
+
+    expect(store.get(chatEventsAtom).map((event) => event.id)).toEqual([
+      "provider-user-old",
+      "user-input-pending",
+      "live-assistant-session-1",
+    ]);
+  });
+
   it("renders live assistant text without writing a durable EventStore event", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-06T20:00:00.000Z"));

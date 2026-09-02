@@ -11,6 +11,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { mergeInterruptedConversationProjection } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import {
@@ -71,6 +72,7 @@ function makeHarness(
         harness.loads.push(next);
         return next;
       },
+      mergeInterruptedProjection: mergeInterruptedConversationProjection,
       dispatchLoadSession: (payload) => {
         harness.dispatches.push(payload);
       },
@@ -137,6 +139,25 @@ describe("scheduleNativeTranscriptReconcile", () => {
     await vi.advanceTimersByTimeAsync(SETTLE_MS);
 
     expect(harness.dispatches).toEqual([{ sessionId, events, replace: true }]);
+  });
+
+  it("does not erase a durable interrupted suffix when the newest native fork was not flushed", async () => {
+    const sessionId = "s-interrupted-fallback";
+    registerSessionTranscriptSource(sessionId, "native");
+    const native = [makeEvent("a1", sessionId)];
+    const partial = makeEvent("a-partial", sessionId);
+    const projected = [...native, partial];
+    const harness = makeHarness(sessionId, [native, native]);
+    harness.deps.loadProjectedHistory = async () => projected;
+
+    scheduleNativeTranscriptReconcile(sessionId, harness.deps, {
+      preserveInterruptedSuffix: true,
+    });
+    await vi.advanceTimersByTimeAsync(SETTLE_MS + RETRY_MS);
+
+    expect(harness.dispatches).toEqual([
+      { sessionId, events: projected, replace: true },
+    ]);
   });
 
   it("re-dispatches on retry only when the parse grew", async () => {

@@ -56,7 +56,14 @@ export type TurnTerminalStatus = "completed" | "failed" | "cancelled";
  * distinction only matters for diagnostics.
  */
 export function toTurnTerminalStatus(status: string): TurnTerminalStatus {
-  if (status === "failed" || status === "error" || status === "timeout") {
+  if (
+    status === "failed" ||
+    status === "error" ||
+    status === "timeout" ||
+    status === "stale" ||
+    status === "coalesced" ||
+    status === "rejected"
+  ) {
     return "failed";
   }
   if (status === "cancelled" || status === "abandoned") {
@@ -222,6 +229,28 @@ export function beginTurnStopping(sessionId: string): void {
   const state = getState(sessionId);
   if (state.phase === "idle") return;
   transition(sessionId, state, "stopping");
+}
+
+/**
+ * The interrupt transport rejected before the provider accepted a Stop.
+ * Restore the same generation to provider-owned work instead of waiting for
+ * a terminal that cannot be caused by that failed interrupt. This is the
+ * inverse of `beginTurnStopping`; it never opens an idle turn and cannot
+ * revive a newer generation.
+ */
+export function restoreTurnWorkingAfterInterruptFailure(
+  sessionId: string,
+  options: { generation?: number } = {}
+): void {
+  const state = getState(sessionId);
+  if (
+    state.phase !== "stopping" ||
+    (options.generation !== undefined &&
+      options.generation !== state.generation)
+  ) {
+    return;
+  }
+  transition(sessionId, state, "working");
 }
 
 /**

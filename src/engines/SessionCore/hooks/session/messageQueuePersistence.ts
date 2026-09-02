@@ -11,6 +11,14 @@ import {
   persistDurableMessageQueue,
 } from "@src/store/ui/messageQueueRepository";
 
+function persistQueueBestEffort(store: Store): void {
+  void persistDurableMessageQueue(store.get(messageQueueAtom)).catch(
+    (error) => {
+      console.warn("[messageQueuePersistence] failed to persist queue", error);
+    }
+  );
+}
+
 const hydrationByStore = new WeakMap<Store, Promise<void>>();
 const unsubscribeByStore = new WeakMap<Store, () => void>();
 
@@ -19,16 +27,17 @@ function mergeQueues(
   live: readonly QueuedMessage[]
 ): QueuedMessage[] {
   const byIntent = new Map<string, QueuedMessage>();
-  // A persisted row may have crossed the backend-ACK/dequeue crash window. On
-  // recovery we cannot prove whether it was accepted, so never auto-replay it:
-  // keep it visible and require an explicit Send Now. Live rows created during
-  // hydration are known to belong to this renderer and therefore retain their
-  // natural dispatch policy.
+  // Legacy/plain queued rows may have crossed an old backend-ACK/dequeue crash
+  // window, so keep those parked for an explicit Send Now. Modern canonical
+  // rows persist preparing/accepted plus their runner Session and reconnect to
+  // that exact turn automatically; downgrading them would strand a live native
+  // turn and invite an unsafe replay.
   for (const message of durable) {
     byIntent.set(message.turnIntentId, {
       ...message,
-      priority: "next",
-      requiresExplicitDispatch: true,
+      ...(message.status === "queued"
+        ? { priority: "next" as const, requiresExplicitDispatch: true }
+        : {}),
     });
   }
   // Live mutations made while the async disk read was pending win.
@@ -52,10 +61,10 @@ export function hydrateMessageQueue(store: Store): Promise<void> {
     .then((durable) => {
       store.set(messageQueueAtom, (live) => mergeQueues(durable, live));
       store.set(messageQueueHydratedAtom, true);
-      void persistDurableMessageQueue(store.get(messageQueueAtom));
+      persistQueueBestEffort(store);
       if (!unsubscribeByStore.has(store)) {
         const unsubscribe = store.sub(messageQueueAtom, () => {
-          void persistDurableMessageQueue(store.get(messageQueueAtom));
+          persistQueueBestEffort(store);
         });
         unsubscribeByStore.set(store, unsubscribe);
       }

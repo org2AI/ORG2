@@ -1,193 +1,56 @@
 /**
- * Conversation turn runner — the write half of the 0024 conversation-events
- * plane (design: docs/conversation-events-plane-design-2026-08-21.md).
+ * Cloud-plane adapter for the provider-neutral local continuation core.
  *
- * When a member chats in a conversation they do not own, the turn executes
- * in a LOCAL, invisible one-shot runner session on their machine
- * (sender-runs / sender-pays) and the resulting events are pushed —
- * author-stamped — to the shared plane. No fork, no transcript copy, no new
- * sidebar entity.
- *
- * ONE-SHOT per turn: `SessionService.create` is the only dispatch primitive
- * proven headless (Routine/work-item background runs ride it), so every
- * turn gets a fresh runner with the full bounded conversation context
- * injected (the external-history handoff pattern) — never a dispatch into
- * an unmounted surface. Runner sessions are plumbing: the caller forces
- * their cloud sync OFF, and `collectConversationRunnerSessionIds` hides
- * them from My Sessions.
- *
- * Push order is Slack-shaped: the user's message row goes out FIRST (every
- * client sees it instantly), the agent tail follows under the same turnId
- * when the local run completes.
+ * Cloud stores and orders canonical events; it never executes an Agent and
+ * never receives a local credential. The current local app selects one of its
+ * own runtimes, continues a normal persisted child Session, and publishes only
+ * that turn's normalized tail back to the shared plane.
  */
-import Message from "@src/components/Message";
+import type { TurnTerminalStatus } from "@src/engines/SessionCore/control/turnLifecycle";
 import {
-  getLastTurnTerminal,
-  turnLifecycleSignalAtom,
-} from "@src/engines/SessionCore/control/turnLifecycle";
-import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+  CONVERSATION_TURN_ID_ARG,
+  type ConversationRootLocator,
+  type LocalConversationTarget,
+  continueLocalConversation,
+  recoverLocalConversationTurn,
+} from "@src/engines/SessionCore/conversations/localConversationContinuation";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { SessionService } from "@src/engines/SessionCore/services/SessionService";
 import { mintTurnIntentId } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
-import { requestForkSessionSetup } from "@src/features/TeamCollaboration/forkSession";
-import {
-  clearForkSetupMemory,
-  loadForkSetupMemory,
-  saveForkSetupMemory,
-} from "@src/features/TeamCollaboration/forkSetupMemory";
 import { createLogger } from "@src/hooks/logger";
-import i18n from "@src/i18n";
-import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
+import { conversationEventsForPush } from "../org2CloudConversationEventsClient";
 import {
-  boundConversationEventForPush,
-  pushConversationEvents,
-  pushConversationEventsChunked,
-} from "../org2CloudConversationEventsClient";
+  drainConversationTailOutbox,
+  stageConversationTail,
+} from "./conversationTailOutbox";
 
 const log = createLogger("ConversationTurnRunner");
 
-const RUNNER_REGISTRY_KEY = "orgii:conversation-runners-v1";
-const TURN_DEADLINE_MS = 15 * 60_000;
-const CONTEXT_MAX_ENTRIES = 60;
-const CONTEXT_MAX_ENTRY_CHARS = 600;
-const CONTEXT_MAX_TOTAL_CHARS = 18_000;
-
-interface RunnerRegistryEntry {
-  /** Every one-shot runner this device created for the conversation. */
-  runnerSessionIds: string[];
-  updatedAt: string;
-}
-
-type RunnerRegistry = Record<string, RunnerRegistryEntry>;
-
-function registryKey(orgId: string, rootSessionId: string): string {
-  return `${orgId}:${rootSessionId}`;
-}
-
-function readRegistry(): RunnerRegistry {
-  if (typeof localStorage === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(RUNNER_REGISTRY_KEY);
-    return raw ? (JSON.parse(raw) as RunnerRegistry) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeRegistry(registry: RunnerRegistry): void {
-  if (typeof localStorage === "undefined") return;
-  try {
-    localStorage.setItem(RUNNER_REGISTRY_KEY, JSON.stringify(registry));
-  } catch {
-    // Best-effort: losing the registry only means runners stop being hidden.
-  }
-}
-
-/** Every runner session id on this device — the My Sessions hide filter. */
-export function collectConversationRunnerSessionIds(): Set<string> {
-  const ids = new Set<string>();
-  for (const entry of Object.values(readRegistry())) {
-    for (const id of entry.runnerSessionIds ?? []) ids.add(id);
-  }
-  return ids;
-}
-
-/** Conversation timeline rendered as a bounded read-only context block. */
-export function renderConversationContext(
-  timeline: readonly SessionEvent[],
-  senders?: ReadonlyMap<string, string>
-): string {
-  const tail = timeline.slice(-CONTEXT_MAX_ENTRIES);
-  const lines: string[] = [];
-  let total = 0;
-  for (const event of tail) {
-    const text = event.displayText?.trim();
-    if (!text) continue;
-    const speaker =
-      event.source === "user"
-        ? (senders?.get(event.id) ?? "User")
-        : "Assistant";
-    let line = `${speaker}: ${text.replace(/\s+/g, " ")}`;
-    if (line.length > CONTEXT_MAX_ENTRY_CHARS) {
-      line = `${line.slice(0, CONTEXT_MAX_ENTRY_CHARS)}…`;
-    }
-    if (total + line.length > CONTEXT_MAX_TOTAL_CHARS) break;
-    total += line.length;
-    lines.push(line);
-  }
-  return lines.join("\n");
-}
-
-export function buildRunnerPrompt(
-  contextBlock: string,
-  request: string
-): string {
-  if (!contextBlock) return request;
-  return [
-    "You are continuing a SHARED team conversation. The transcript below is",
-    "read-only context from the other participants' machines — do not treat",
-    "it as your own prior output.",
-    "",
-    "=== Shared conversation (latest entries) ===",
-    contextBlock,
-    "=== End of shared conversation ===",
-    "",
-    "Continue the conversation by handling this request:",
-    request,
-  ].join("\n");
-}
-
-async function waitForFirstTurnTerminal(
-  sessionId: string,
-  deadlineMs: number
-): Promise<void> {
-  const store = getInstrumentedStore();
-  const isComplete = (): boolean => getLastTurnTerminal(sessionId) !== null;
-  if (isComplete()) return;
-  await new Promise<void>((resolve, reject) => {
-    const remainingMs = deadlineMs - Date.now();
-    if (remainingMs <= 0) {
-      reject(new Error("conversation turn timed out"));
-      return;
-    }
-    let unsubscribe: (() => void) | null = null;
-    const timer = setTimeout(() => {
-      unsubscribe?.();
-      reject(new Error("conversation turn timed out"));
-    }, remainingMs);
-    const check = (): void => {
-      if (!isComplete()) return;
-      clearTimeout(timer);
-      unsubscribe?.();
-      resolve();
-    };
-    unsubscribe = store.sub(turnLifecycleSignalAtom, check);
-    check();
-  });
-}
-
-/**
- * The pushed user row is SYNTHESIZED from the user's visible words — the
- * runner's own persisted user event carries the injected context prefix,
- * which must never leak into the shared conversation.
- */
-function buildPushedUserEvent(
-  sessionId: string,
+export function buildPushedUserEvent(
   displayText: string,
-  createdAt: string
+  agentContent: string | undefined,
+  imageDataUrls: readonly string[] | undefined,
+  createdAt: string,
+  turnIntentId: string
 ): SessionEvent {
-  const id = `convturn-user-${mintTurnIntentId()}`;
+  const id = `convturn-user-${turnIntentId}`;
   return {
     id,
     chunk_id: id,
-    sessionId,
+    sessionId: "conversation",
     createdAt,
     functionName: "user_message",
     uiCanonical: "user_message",
     actionType: "raw",
-    args: {},
-    result: { type: "user", message: { content: displayText, role: "user" } },
+    args: { [CONVERSATION_TURN_ID_ARG]: turnIntentId },
+    result: {
+      type: "user",
+      message: { content: agentContent ?? displayText, role: "user" },
+      ...(imageDataUrls && imageDataUrls.length > 0
+        ? { images: [...imageDataUrls] }
+        : {}),
+      turnIntentId,
+    },
     source: "user",
     displayText,
     displayStatus: "completed",
@@ -197,154 +60,247 @@ function buildPushedUserEvent(
   } as SessionEvent;
 }
 
-export interface RunConversationTurnParams {
-  /**
-   * Resolved before EVERY push. A turn can outlive the access token that
-   * was valid at dispatch (a 10-minute tool-heavy turn did, live), so the
-   * tail push must never reuse a token captured at the start.
-   */
+function buildPushedDispatchFailureEvent(
+  error: unknown,
+  createdAt: string,
+  turnIntentId: string
+): SessionEvent {
+  const id = `convturn-error-${turnIntentId}`;
+  const message =
+    error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : "Agent request failed";
+  return {
+    id,
+    chunk_id: id,
+    sessionId: "conversation",
+    createdAt,
+    functionName: "error",
+    uiCanonical: "error",
+    actionType: "error",
+    args: { [CONVERSATION_TURN_ID_ARG]: turnIntentId },
+    result: { error: message, success: false, turnIntentId },
+    // A system error renders through the existing AgentErrorChatItem but is
+    // deliberately absent from provider-native role/tool materialization.
+    source: "system",
+    displayText: message,
+    displayStatus: "failed",
+    displayVariant: "error",
+    activityStatus: "processed",
+    payloadRefs: [],
+  } as SessionEvent;
+}
+
+interface RunConversationTurnParams {
+  /** Resolved separately for every push; long turns may outlive a JWT. */
   getAccessToken: () => Promise<string>;
+  authIdentityKey: string;
   orgId: string;
   rootSessionId: string;
   conversationTitle: string;
   displayText: string;
   agentContent?: string;
   imageDataUrls?: string[];
-  /** Merged conversation timeline for the read-only context prefix. */
+  /** Canonical merged transcript immediately before this turn. */
   timeline: readonly SessionEvent[];
-  sourceScopeKey?: string;
-  sourceModel?: string;
+  /** Composer-selected local runtime/account/model. Never resolved by a modal. */
+  target: LocalConversationTarget;
   /**
-   * Called as soon as the one-shot runner session id is known, with the
-   * turnId the tail will be pushed under. The caller overlays the runner's
-   * LIVE events until the plane carries this turnId.
+   * A compatible local native root can be reused directly. Otherwise this
+   * device keeps its own durable execution episode for the Cloud root.
    */
-  onRunnerReady?: (runnerSessionId: string, turnId: string) => void;
-  /**
-   * Fires after push #1 (the user's message row) lands on the plane — the
-   * composer unblocks here; the agent tail streams in later under the same
-   * turnId.
-   */
-  onUserMessagePublished?: () => void;
-  /** Fires after each successful push (signal-bump hook). */
+  executionRoot?: ConversationRootLocator;
+  turnIntentId?: string;
+  recovery?: { runnerSessionId: string; eventStartIndex?: number };
+  onRunnerReady?: (
+    sessionId: string,
+    turnId: string,
+    eventStartIndex: number
+  ) => void | Promise<void>;
+  /** Local provider accepted the turn; distinct from Cloud user publication. */
+  onTurnAccepted?: (sessionId: string) => void | Promise<void>;
   onPushed?: () => void;
 }
 
-export interface RunConversationTurnResult {
+interface RunConversationTurnResult {
   runnerSessionId: string;
   pushedEventCount: number;
+  pushedAgentEventCount: number;
+  tailPublicationPending: boolean;
+  terminalStatus: TurnTerminalStatus;
+  turnIntentId: string;
 }
 
 export async function runConversationTurn(
   params: RunConversationTurnParams
 ): Promise<RunConversationTurnResult> {
-  const key = registryKey(params.orgId, params.rootSessionId);
-  const contextBlock = renderConversationContext(params.timeline);
-  const request = params.agentContent ?? params.displayText;
-  const deadlineMs = Date.now() + TURN_DEADLINE_MS;
-  const dispatchIso = new Date().toISOString();
-  const turnId = crypto.randomUUID();
+  const turnIntentId = params.turnIntentId ?? mintTurnIntentId();
+  const root =
+    params.executionRoot ??
+    ({
+      authority: "org2-cloud",
+      authorityScope: [params.orgId],
+      conversationId: params.rootSessionId,
+    } as const);
+  log.info(
+    `resolved execution for ${params.orgId}:${params.rootSessionId}; ` +
+      `selected=${params.target.cliAgentType ?? "native"}`
+  );
 
-  // The execution setup must exist BEFORE the user's words go public — a
-  // cancelled setup dialog cancels the whole send. Per-repo-scope memory
-  // keeps this silent after the first confirmation (the forkTeammateSession
-  // idiom): dialog once, remember, reuse with a toast; a failed remembered
-  // launch clears the memory and re-prompts exactly once below.
-  const remembered = loadForkSetupMemory(params.sourceScopeKey);
-  let usedRememberedSetup = Boolean(remembered);
-  let setup =
-    remembered ??
-    (await requestForkSessionSetup({
-      sourceTitle: params.conversationTitle,
-      sourceScopeKey: params.sourceScopeKey,
-      sourceModel: params.sourceModel,
-    }));
-  if (!remembered) saveForkSetupMemory(params.sourceScopeKey, setup);
-
-  await pushConversationEvents(await params.getAccessToken(), {
-    orgId: params.orgId,
-    rootSessionId: params.rootSessionId,
-    turnId,
-    events: [
-      boundConversationEventForPush(
-        buildPushedUserEvent("conversation", params.displayText, dispatchIso)
-      ),
-    ],
-  });
-  params.onPushed?.();
-  params.onUserMessagePublished?.();
-
-  const createRunner = () =>
-    SessionService.create({
-      task: buildRunnerPrompt(contextBlock, request),
-      imageDataUrls: params.imageDataUrls,
-      name: params.conversationTitle,
-      repoPath: setup.workspaceRepoPath ?? undefined,
-      model: setup.execution.model,
-      accountId: setup.execution.accountId,
-      keySource: "own_key",
-      agentDefinitionId: setup.execution.agentDefinitionId,
-      mode: "build",
-    });
-  let created;
+  // The idempotent conversation-plane push already published the user event.
+  // Native materialization may proceed without a second wire path.
+  const beforeDispatch = async () => undefined;
+  let result: Awaited<ReturnType<typeof continueLocalConversation>>;
   try {
-    created = await createRunner();
+    const continuationParams = {
+      root,
+      title: params.conversationTitle,
+      timeline: params.timeline,
+      displayText: params.displayText,
+      agentContent: params.agentContent,
+      imageDataUrls: params.imageDataUrls,
+      target: params.target,
+      turnIntentId,
+      beforeDispatch,
+      // Bind the root surface to the hidden execution immediately. The
+      // maximum prefix suppresses history overlay until materialization
+      // reports the exact native boundary through onSessionReady below.
+      onSessionPreparing: (sessionId: string) =>
+        params.onRunnerReady?.(
+          sessionId,
+          turnIntentId,
+          Number.MAX_SAFE_INTEGER
+        ),
+      onSessionReady: (sessionId: string, eventStartIndex: number) =>
+        params.onRunnerReady?.(sessionId, turnIntentId, eventStartIndex),
+      onTurnAccepted: params.onTurnAccepted,
+    };
+    const recovered = params.recovery
+      ? await recoverLocalConversationTurn({
+          ...continuationParams,
+          runnerSessionId: params.recovery.runnerSessionId,
+          eventStartIndex: params.recovery.eventStartIndex,
+        })
+      : null;
+    result = recovered ?? (await continueLocalConversation(continuationParams));
   } catch (error) {
-    if (!usedRememberedSetup) throw error;
-    // The remembered setup went stale (checkout moved, account or model
-    // removed). Drop it and fall back to the dialog once.
-    log.warn("remembered runner setup failed; re-prompting", error);
-    clearForkSetupMemory(params.sourceScopeKey);
-    setup = await requestForkSessionSetup({
-      sourceTitle: params.conversationTitle,
-      sourceScopeKey: params.sourceScopeKey,
-      sourceModel: params.sourceModel,
-    });
-    saveForkSetupMemory(params.sourceScopeKey, setup);
-    usedRememberedSetup = false;
-    created = await createRunner();
+    // The human message is already a successful Cloud-plane event. If the
+    // local runtime then fails during create/materialize/send, publish one
+    // ordinary transcript error beside it; otherwise the shared root looks
+    // permanently unanswered after its transient runner overlay disappears.
+    try {
+      const failureEvents = await conversationEventsForPush(
+        buildPushedDispatchFailureEvent(
+          error,
+          new Date().toISOString(),
+          turnIntentId
+        )
+      );
+      const stagedIds = await stageConversationTail({
+        authIdentityKey: params.authIdentityKey,
+        orgId: params.orgId,
+        rootSessionId: params.rootSessionId,
+        turnId: turnIntentId,
+        batchId: "failure",
+        events: failureEvents,
+      });
+      const drained = await drainConversationTailOutbox({
+        authIdentityKey: params.authIdentityKey,
+        getAccessToken: params.getAccessToken,
+        onPushed: () => params.onPushed?.(),
+      });
+      const unresolved = new Set([
+        ...drained.failedChunkIds,
+        ...drained.pendingChunkIds,
+      ]);
+      if (stagedIds.some((id) => unresolved.has(id))) {
+        throw new Error("Cloud did not durably publish the turn failure");
+      }
+    } catch (publishError) {
+      log.warn(
+        `failed to publish execution error for ${params.orgId}:${params.rootSessionId}`,
+        publishError
+      );
+      throw publishError;
+    }
+    throw error;
   }
-  if (usedRememberedSetup) {
-    Message.info(
-      i18n.t("navigation:collaboration.session.forkSetupReused", {
-        model: setup.execution.model ?? setup.execution.agentDefinitionId,
-      })
-    );
-  }
-  const runnerSessionId = created.sessionId;
-  const registry = readRegistry();
-  const entry = registry[key];
-  writeRegistry({
-    ...registry,
-    [key]: {
-      runnerSessionIds: [...(entry?.runnerSessionIds ?? []), runnerSessionId],
-      updatedAt: dispatchIso,
-    },
-  });
-  params.onRunnerReady?.(runnerSessionId, turnId);
-  await waitForFirstTurnTerminal(runnerSessionId, deadlineMs);
 
-  const persisted = await eventStoreProxy
-    .getPersistedEvents(runnerSessionId)
-    .catch(() => [] as SessionEvent[]);
-  // The runner's own user event carries the injected context prefix (never
-  // pushed — the clean user row already went out in push #1); the agent and
-  // tool tail is the shared payload.
-  const agentTail = persisted
-    .filter((event) => event.source !== "user")
-    .map(boundConversationEventForPush);
-
+  const terminalTail =
+    result.terminalStatus === "failed" && result.agentTail.length === 0
+      ? [
+          buildPushedDispatchFailureEvent(
+            new Error("Agent request failed"),
+            new Date().toISOString(),
+            turnIntentId
+          ),
+        ]
+      : result.agentTail;
+  const agentTail = (
+    await Promise.all(terminalTail.map(conversationEventsForPush))
+  ).flat();
+  let pushedAgentEventCount = 0;
+  let tailPublicationPending = false;
   if (agentTail.length > 0) {
-    await pushConversationEventsChunked(await params.getAccessToken(), {
+    // Staging is the crash-consistency boundary. If local durable storage
+    // fails, propagate the error so the accepted canonical queue row
+    // remains and restart recovery can re-read this exact native tail.
+    const stagedIds = await stageConversationTail({
+      authIdentityKey: params.authIdentityKey,
       orgId: params.orgId,
       rootSessionId: params.rootSessionId,
-      turnId,
+      turnId: turnIntentId,
+      batchId: "agent",
       events: agentTail,
     });
-    params.onPushed?.();
+    try {
+      const drained = await drainConversationTailOutbox({
+        authIdentityKey: params.authIdentityKey,
+        getAccessToken: params.getAccessToken,
+        onPushed: () => params.onPushed?.(),
+      });
+      const staged = new Set(stagedIds);
+      pushedAgentEventCount = drained.pushedChunks
+        .filter((chunk) => staged.has(chunk.id))
+        .reduce((total, chunk) => total + chunk.eventCount, 0);
+      const unresolved = new Set([
+        ...drained.failedChunkIds,
+        ...drained.pendingChunkIds,
+      ]);
+      tailPublicationPending = stagedIds.some((id) => unresolved.has(id));
+      if (stagedIds.some((id) => drained.failedChunkIds.includes(id))) {
+        throw new Error(
+          "Cloud permanently rejected a staged provider tail; keeping its accepted queue row for visible recovery"
+        );
+      }
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Cloud permanently rejected")
+      ) {
+        throw error;
+      }
+      // The provider turn and outbox row are both durable. Keep the episode
+      // overlaid and let ordinary outbox drain retry after connectivity or
+      // auth recovers; no provider replay is needed.
+      tailPublicationPending = true;
+      log.warn(
+        `network drain deferred for ${agentTail.length} durably staged tail event(s) for ${params.orgId}:${params.rootSessionId}`,
+        error
+      );
+    }
   }
   log.info(
-    `pushed conversation turn ${turnId}: 1 + ${agentTail.length} event(s) to ${key}`
+    `continued ${params.orgId}:${params.rootSessionId} in ${result.sessionId}; ` +
+      `pushed 1 + ${pushedAgentEventCount} event(s)` +
+      (tailPublicationPending ? "; tail pending durable retry" : "")
   );
-  return { runnerSessionId, pushedEventCount: 1 + agentTail.length };
+  return {
+    runnerSessionId: result.sessionId,
+    pushedEventCount: 1 + pushedAgentEventCount,
+    pushedAgentEventCount,
+    tailPublicationPending,
+    terminalStatus: result.terminalStatus,
+    turnIntentId,
+  };
 }

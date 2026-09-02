@@ -444,6 +444,7 @@ fn compacted_history_rows(
     let mut rows = Vec::new();
 
     for msg in compacted_messages {
+        let first_row = rows.len();
         let role = msg
             .get("role")
             .and_then(|value| value.as_str())
@@ -452,12 +453,19 @@ fn compacted_history_rows(
             "system" => {
                 let content = text_content_from_llm_message(msg);
                 if !content.trim().is_empty() {
-                    rows.push(message_row(
-                        session_id,
-                        shared::message_role::SYSTEM,
-                        content,
-                        None,
-                    ));
+                    let mut row =
+                        message_row(session_id, shared::message_role::SYSTEM, content, None);
+                    if msg
+                        .get("__orgiiNativeCompactBoundary")
+                        .and_then(|value| value.as_bool())
+                        == Some(true)
+                    {
+                        // Sentinel resolved to the first row after this
+                        // boundary by the seed/append transaction, where the
+                        // final durable sequence is known.
+                        row.compact_from_sequence = Some(-1);
+                    }
+                    rows.push(row);
                 }
             }
             "user" => {
@@ -540,6 +548,22 @@ fn compacted_history_rows(
             }
             _ => {}
         }
+        for row in &mut rows[first_row..] {
+            if let Some(id) = msg
+                .get("__orgiiNativeMessageId")
+                .and_then(|value| value.as_str())
+                .filter(|value| !value.is_empty())
+            {
+                row.id = id.to_string();
+            }
+            if let Some(created_at) = msg
+                .get("__orgiiNativeCreatedAt")
+                .and_then(|value| value.as_str())
+                .filter(|value| !value.is_empty())
+            {
+                row.created_at = created_at.to_string();
+            }
+        }
     }
 
     rows
@@ -570,6 +594,187 @@ fn message_row(
     }
 }
 
+fn history_append_constraint(message: String) -> rusqlite::Error {
+    rusqlite::Error::SqliteFailure(
+        rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
+        Some(message),
+    )
+}
+
+fn persisted_history_row_matches(
+    persisted: &shared::AgentMessageRow,
+    expected: &shared::AgentMessageRow,
+) -> bool {
+    persisted.session_id == expected.session_id
+        && persisted.role == expected.role
+        && persisted.content == expected.content
+        && persisted.tool_name == expected.tool_name
+        && persisted.tool_call_id == expected.tool_call_id
+        && persisted.tool_input == expected.tool_input
+        && persisted.tool_output == expected.tool_output
+        && persisted.model == expected.model
+        && persisted.created_at == expected.created_at
+        && persisted.images == expected.images
+        && match expected.compact_from_sequence {
+            Some(_) => {
+                persisted.compact_from_sequence == Some(persisted.sequence.saturating_add(1))
+            }
+            None => persisted.compact_from_sequence.is_none(),
+        }
+}
+
+fn persisted_history_row(
+    tx: &rusqlite::Transaction<'_>,
+    id: &str,
+) -> SqliteResult<Option<shared::AgentMessageRow>> {
+    tx.query_row(
+        "SELECT session_id, role, content, tool_name, tool_call_id,
+                tool_input, tool_output, model, sequence, created_at,
+                images, compact_from_sequence
+         FROM agent_messages WHERE id = ?1",
+        params![id],
+        |row| {
+            Ok(shared::AgentMessageRow {
+                id: id.to_string(),
+                session_id: row.get(0)?,
+                role: row.get(1)?,
+                content: row.get(2)?,
+                tool_name: row.get(3)?,
+                tool_call_id: row.get(4)?,
+                tool_input: row.get(5)?,
+                tool_output: row.get(6)?,
+                model: row.get(7)?,
+                sequence: row.get(8)?,
+                created_at: row.get(9)?,
+                images: row.get(10)?,
+                compact_from_sequence: row.get(11)?,
+                compact_tokens_before: None,
+                compact_tokens_after: None,
+            })
+        },
+    )
+    .optional()
+}
+
+fn persist_history_rows(
+    session_id: &str,
+    rows: &[shared::AgentMessageRow],
+    require_empty: bool,
+) -> SqliteResult<()> {
+    with_sessions_writer(|| -> SqliteResult<()> {
+        let mut conn = get_connection()?;
+        let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let next_sequence = if require_empty {
+            let existing: i64 = tx.query_row(
+                "SELECT COUNT(*) FROM agent_messages WHERE session_id = ?1",
+                [session_id],
+                |row| row.get(0),
+            )?;
+            if existing == 0 {
+                0
+            } else {
+                let mut exact_rows = 0usize;
+                for (offset, expected) in rows.iter().enumerate() {
+                    let Some(persisted) = persisted_history_row(&tx, &expected.id)? else {
+                        continue;
+                    };
+                    exact_rows += 1;
+                    if persisted.sequence != offset as i64
+                        || !persisted_history_row_matches(&persisted, expected)
+                    {
+                        return Err(history_append_constraint(format!(
+                            "seed_session_with_messages conflict: native row {} already exists with different content, ownership, or sequence",
+                            expected.id
+                        )));
+                    }
+                }
+                if exact_rows == rows.len() && existing as usize == rows.len() {
+                    // A previous seed committed the complete deterministic
+                    // native transcript but lost its response. The exact rows
+                    // are the durable receipt, so retry is a no-op.
+                    return tx.commit();
+                }
+                return Err(history_append_constraint(format!(
+                    "seed_session_with_messages conflict: {exact_rows} of {} expected native rows exist among {existing} session row(s); transcripts are immutable, refusing a mixed or unrelated seed",
+                    rows.len()
+                )));
+            }
+        } else {
+            let next_sequence = tx.query_row(
+                "SELECT COALESCE(MAX(sequence), -1) + 1 FROM agent_messages WHERE session_id = ?1",
+                [session_id],
+                |row| row.get(0),
+            )?;
+            let mut existing_count = 0usize;
+            let mut first_existing_sequence = None;
+            for (offset, expected) in rows.iter().enumerate() {
+                let persisted = persisted_history_row(&tx, &expected.id)?;
+                let Some(persisted) = persisted else {
+                    continue;
+                };
+                existing_count += 1;
+                let first_sequence = *first_existing_sequence.get_or_insert(persisted.sequence);
+                let expected_sequence = first_sequence.saturating_add(offset as i64);
+                if persisted.sequence != expected_sequence
+                    || !persisted_history_row_matches(&persisted, expected)
+                {
+                    return Err(history_append_constraint(format!(
+                        "append_session_with_messages conflict: native row {} already exists with different content, ownership, or sequence",
+                        expected.id
+                    )));
+                }
+            }
+            if existing_count == rows.len() {
+                // A previous attempt committed the entire deterministic
+                // suffix but lost its response. Treat the exact durable rows
+                // as the authoritative receipt and do not append them again.
+                return tx.commit();
+            }
+            if existing_count > 0 {
+                return Err(history_append_constraint(format!(
+                    "append_session_with_messages conflict: {existing_count} of {} native rows already exist; refusing a mixed suffix",
+                    rows.len()
+                )));
+            }
+            next_sequence
+        };
+
+        for (offset, row) in rows.iter().enumerate() {
+            let sequence = next_sequence + offset as i64;
+            let compact_from_sequence = row
+                .compact_from_sequence
+                .map(|_| sequence.saturating_add(1));
+            tx.execute(
+                "INSERT INTO agent_messages
+                 (id, session_id, role, content, tool_name, tool_call_id, tool_input, tool_output, model, sequence, created_at, images, compact_from_sequence)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                params![
+                    row.id,
+                    row.session_id,
+                    row.role,
+                    row.content,
+                    row.tool_name,
+                    row.tool_call_id,
+                    row.tool_input,
+                    row.tool_output,
+                    row.model,
+                    sequence,
+                    row.created_at,
+                    row.images,
+                    compact_from_sequence,
+                ],
+            )?;
+        }
+
+        let now = Utc::now().to_rfc3339();
+        tx.execute(
+            "UPDATE agent_sessions SET updated_at = ?2 WHERE session_id = ?1",
+            params![session_id, now],
+        )?;
+        tx.commit()
+    })
+}
+
 /// Replace a session's persisted transcript with a compacted LLM history view.
 ///
 /// **Seeding only.** This is the durable bootstrap used by compact-fork:
@@ -585,69 +790,24 @@ pub fn seed_session_with_messages(
     compacted_messages: &[serde_json::Value],
 ) -> SqliteResult<()> {
     let rows = compacted_history_rows(session_id, compacted_messages);
-    with_sessions_writer(|| -> SqliteResult<()> {
-        let conn = get_connection()?;
-        let now = Utc::now().to_rfc3339();
-        conn.execute_batch("BEGIN IMMEDIATE")?;
+    persist_history_rows(session_id, &rows, true)
+}
 
-        let existing: i64 = match conn.query_row(
-            "SELECT COUNT(*) FROM agent_messages WHERE session_id = ?1",
-            [session_id],
-            |row| row.get(0),
-        ) {
-            Ok(count) => count,
-            Err(err) => {
-                let _ = conn.execute_batch("ROLLBACK");
-                return Err(err);
-            }
-        };
-        if existing > 0 {
-            let _ = conn.execute_batch("ROLLBACK");
-            return Err(rusqlite::Error::SqliteFailure(
-                rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
-                Some(format!(
-                    "seed_session_with_messages refused: session {session_id} already has {existing} message row(s); transcripts are immutable — use append_compact_boundary"
-                )),
-            ));
-        }
-
-        for (sequence, row) in rows.iter().enumerate() {
-            let result = conn.execute(
-                "INSERT INTO agent_messages
-                 (id, session_id, role, content, tool_name, tool_call_id, tool_input, tool_output, model, sequence, created_at, images)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
-                params![
-                    row.id,
-                    row.session_id,
-                    row.role,
-                    row.content,
-                    row.tool_name,
-                    row.tool_call_id,
-                    row.tool_input,
-                    row.tool_output,
-                    row.model,
-                    sequence as i64,
-                    row.created_at,
-                    row.images,
-                ],
-            );
-            if let Err(err) = result {
-                let _ = conn.execute_batch("ROLLBACK");
-                return Err(err);
-            }
-        }
-
-        if let Err(err) = conn.execute(
-            "UPDATE agent_sessions SET updated_at = ?2 WHERE session_id = ?1",
-            params![session_id, now],
-        ) {
-            let _ = conn.execute_batch("ROLLBACK");
-            return Err(err);
-        }
-
-        conn.execute_batch("COMMIT")?;
-        Ok(())
-    })
+/// Atomically append structured LLM-history rows to an existing session.
+///
+/// This is the native counterpart of provider transcript growth: existing
+/// rows remain immutable and the supplied role/tool records receive the next
+/// contiguous sequence numbers. Callers must verify the semantic prefix
+/// before invoking it; this function only owns the durable append boundary.
+pub fn append_session_with_messages(
+    session_id: &str,
+    messages: &[serde_json::Value],
+) -> SqliteResult<()> {
+    if messages.is_empty() {
+        return Ok(());
+    }
+    let rows = compacted_history_rows(session_id, messages);
+    persist_history_rows(session_id, &rows, false)
 }
 
 /// Append a compact-boundary row to a session's transcript.
@@ -1161,6 +1321,228 @@ mod tests {
         assert_eq!(history[0]["content"], compacted[0]["content"]);
         assert_eq!(history[1]["content"], "recent user");
         assert_eq!(history[2]["content"], "recent assistant");
+    }
+
+    #[test]
+    fn native_materialization_preserves_portable_message_identity() {
+        let _sandbox = test_env::sandbox();
+        let session_id = "seed-native-identity-test";
+        seed_session_for_message_tests(session_id);
+        seed_session_with_messages(
+            session_id,
+            &[serde_json::json!({
+                "role": "user",
+                "content": "continue",
+                "__orgiiNativeMessageId": "org2-turn-v1.dHVybi0x.c291cmNlLTE.nonce",
+                "__orgiiNativeCreatedAt": "2026-08-29T00:00:00Z",
+            })],
+        )
+        .expect("seed native identity");
+
+        let rows = load_messages(session_id).expect("load native identity");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].id, "org2-turn-v1.dHVybi0x.c291cmNlLTE.nonce");
+        assert_eq!(rows[0].created_at, "2026-08-29T00:00:00Z");
+    }
+
+    #[test]
+    fn native_materialization_accepts_an_exact_fully_seeded_retry() {
+        let _sandbox = test_env::sandbox();
+        let session_id = "seed-native-idempotent-retry-test";
+        seed_session_for_message_tests(session_id);
+        let transcript = [serde_json::json!({
+            "role": "user",
+            "content": "continue",
+            "__orgiiNativeMessageId": "org2-native-v1.c291cmNlLTE.target",
+            "__orgiiNativeCreatedAt": "2026-08-29T00:00:00Z",
+        })];
+
+        seed_session_with_messages(session_id, &transcript).expect("seed native transcript");
+        seed_session_with_messages(session_id, &transcript).expect("retry exact native seed");
+
+        let rows = load_messages(session_id).expect("load native transcript");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].id, "org2-native-v1.c291cmNlLTE.target");
+        assert_eq!(rows[0].sequence, 0);
+    }
+
+    #[test]
+    fn native_materialization_keeps_full_rows_but_resumes_from_latest_compact_boundary() {
+        let _sandbox = test_env::sandbox();
+        let session_id = "seed-native-compact-window-test";
+        seed_session_for_message_tests(session_id);
+        seed_session_with_messages(
+            session_id,
+            &[
+                serde_json::json!({"role": "user", "content": "old user"}),
+                serde_json::json!({"role": "assistant", "content": "old answer"}),
+                serde_json::json!({
+                    "role": "system",
+                    "content": "[Conversation summary — earlier messages compacted]\n\nsummary",
+                    "__orgiiNativeCompactBoundary": true,
+                }),
+                serde_json::json!({"role": "user", "content": "recent user"}),
+            ],
+        )
+        .expect("seed native compact window");
+
+        let rows = load_messages(session_id).expect("load immutable native rows");
+        assert_eq!(rows.len(), 4, "full transcript remains durable");
+        assert_eq!(rows[2].compact_from_sequence, Some(3));
+
+        let history = load_llm_history(session_id).expect("load native compact window");
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[0]["role"], "user");
+        assert_eq!(
+            history[0]["content"],
+            "[Conversation summary — earlier messages compacted]\n\nsummary"
+        );
+        assert_eq!(history[1]["content"], "recent user");
+    }
+
+    #[test]
+    fn append_session_with_messages_preserves_native_role_and_tool_order() {
+        let _sandbox = test_env::sandbox();
+        let session_id = "append-native-history-test";
+        seed_session_for_message_tests(session_id);
+        seed_session_with_messages(
+            session_id,
+            &[serde_json::json!({"role": "user", "content": "first"})],
+        )
+        .expect("seed prefix");
+
+        append_session_with_messages(
+            session_id,
+            &[
+                serde_json::json!({"role": "assistant", "content": "answer"}),
+                serde_json::json!({
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [{
+                        "id": "call-1",
+                        "type": "function",
+                        "function": {"name": "read_file", "arguments": "{\"path\":\"README.md\"}"}
+                    }]
+                }),
+                serde_json::json!({
+                    "role": "tool",
+                    "tool_call_id": "call-1",
+                    "name": "read_file",
+                    "content": "contents"
+                }),
+            ],
+        )
+        .expect("append native suffix");
+
+        let history = load_llm_history(session_id).expect("load appended history");
+        assert_eq!(history.len(), 4);
+        assert_eq!(history[0]["content"], "first");
+        assert_eq!(history[1]["content"], "answer");
+        assert_eq!(history[2]["tool_calls"][0]["id"], "call-1");
+        assert_eq!(history[3]["tool_call_id"], "call-1");
+        let rows = load_messages(session_id).expect("load raw rows");
+        assert_eq!(
+            rows.iter().map(|row| row.sequence).collect::<Vec<_>>(),
+            vec![0, 1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn append_session_with_messages_accepts_a_fully_applied_native_suffix_once() {
+        let _sandbox = test_env::sandbox();
+        let session_id = "append-native-idempotent-suffix-test";
+        seed_session_for_message_tests(session_id);
+        let suffix = [serde_json::json!({
+            "role": "assistant",
+            "content": "answer",
+            "__orgiiNativeMessageId": "org2-native-v1.c291cmNlLTE.target",
+            "__orgiiNativeCreatedAt": "2026-08-30T00:00:00Z",
+        })];
+
+        append_session_with_messages(session_id, &suffix).expect("append native suffix");
+        append_session_with_messages(session_id, &suffix).expect("retry committed suffix");
+
+        let rows = load_messages(session_id).expect("load idempotent suffix");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].id, "org2-native-v1.c291cmNlLTE.target");
+        assert_eq!(rows[0].sequence, 0);
+    }
+
+    #[test]
+    fn append_session_with_messages_rejects_mixed_or_conflicting_native_suffixes() {
+        let _sandbox = test_env::sandbox();
+        let session_id = "append-native-conflicting-suffix-test";
+        seed_session_for_message_tests(session_id);
+        let first = serde_json::json!({
+            "role": "user",
+            "content": "first",
+            "__orgiiNativeMessageId": "org2-native-v1.Zmlyc3Q.target",
+            "__orgiiNativeCreatedAt": "2026-08-30T00:00:00Z",
+        });
+        append_session_with_messages(session_id, std::slice::from_ref(&first))
+            .expect("append first native row");
+
+        let mixed = [
+            first.clone(),
+            serde_json::json!({
+                "role": "assistant",
+                "content": "second",
+                "__orgiiNativeMessageId": "org2-native-v1.c2Vjb25k.target",
+                "__orgiiNativeCreatedAt": "2026-08-30T00:00:01Z",
+            }),
+        ];
+        assert!(append_session_with_messages(session_id, &mixed).is_err());
+
+        let conflict = [serde_json::json!({
+            "role": "user",
+            "content": "different",
+            "__orgiiNativeMessageId": "org2-native-v1.Zmlyc3Q.target",
+            "__orgiiNativeCreatedAt": "2026-08-30T00:00:00Z",
+        })];
+        assert!(append_session_with_messages(session_id, &conflict).is_err());
+        let rows = load_messages(session_id).expect("load rows after rejected suffixes");
+        assert_eq!(rows.len(), 1, "failed retries must not append partial rows");
+        assert_eq!(rows[0].content, "first");
+    }
+
+    #[test]
+    fn append_native_materialization_advances_to_compact_window_without_deleting_prefix() {
+        let _sandbox = test_env::sandbox();
+        let session_id = "append-native-compact-window-test";
+        seed_session_for_message_tests(session_id);
+        seed_session_with_messages(
+            session_id,
+            &[
+                serde_json::json!({"role": "user", "content": "old user"}),
+                serde_json::json!({"role": "assistant", "content": "old answer"}),
+            ],
+        )
+        .expect("seed native prefix");
+
+        append_session_with_messages(
+            session_id,
+            &[
+                serde_json::json!({
+                    "role": "system",
+                    "content": "[Conversation summary — earlier messages compacted]\n\nsummary",
+                    "__orgiiNativeCompactBoundary": true,
+                }),
+                serde_json::json!({"role": "user", "content": "recent user"}),
+            ],
+        )
+        .expect("append native compact window");
+
+        let rows = load_messages(session_id).expect("load immutable native rows");
+        assert_eq!(rows.len(), 4, "appending a compact window keeps the prefix");
+        assert_eq!(rows[2].compact_from_sequence, Some(3));
+
+        let history = load_llm_history(session_id).expect("load appended compact window");
+        assert_eq!(history.len(), 2);
+        assert_eq!(
+            history[0]["content"],
+            "[Conversation summary — earlier messages compacted]\n\nsummary"
+        );
+        assert_eq!(history[1]["content"], "recent user");
     }
 
     #[test]

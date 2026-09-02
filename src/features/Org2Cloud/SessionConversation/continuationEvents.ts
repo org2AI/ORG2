@@ -1,3 +1,7 @@
+import {
+  CONVERSATION_SENDER_ARG,
+  type ConversationSenderStamp,
+} from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { stripCopyEventNamespace } from "@src/features/TeamCollaboration/copyEventId";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
@@ -7,18 +11,65 @@ import {
   buildCloudSessionThreads,
 } from "../cloudSessionThreads";
 
-/** Per-event sender stamp read by UserChatItem for stitched family rows. */
-export const CONVERSATION_SENDER_ARG = "conversationSender";
-
-export interface ConversationSenderStamp {
-  userId: string;
-  displayName: string;
-}
-
 export interface ConversationFamilyMember {
   bareSessionId: string;
   row: RemoteTeammateSessionMetadata;
   isRoot: boolean;
+}
+
+const MATERIALIZED_TURN_PREFIX = "org2-turn-v1.";
+const MATERIALIZED_EVENT_PREFIX = "org2-native-v1.";
+
+interface MaterializedEventIdentity {
+  sourceEventId: string;
+  turnId?: string;
+}
+
+function decodeBase64Url(value: string): string | null {
+  try {
+    const padded = `${value.replace(/-/g, "+").replace(/_/g, "/")}${"=".repeat(
+      (4 - (value.length % 4)) % 4
+    )}`;
+    const bytes = Uint8Array.from(atob(padded), (character) =>
+      character.charCodeAt(0)
+    );
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+function materializedEventIdentity(
+  rawEventId: string
+): MaterializedEventIdentity | null {
+  const eventId = rawEventId.startsWith("user-message-")
+    ? rawEventId.slice("user-message-".length)
+    : rawEventId;
+  if (eventId.startsWith(MATERIALIZED_TURN_PREFIX)) {
+    const [turn, source] = eventId
+      .slice(MATERIALIZED_TURN_PREFIX.length)
+      .split(".", 2);
+    const turnId = decodeBase64Url(turn ?? "");
+    const sourceEventId = decodeBase64Url(source ?? "");
+    return turnId && sourceEventId ? { sourceEventId, turnId } : null;
+  }
+  if (eventId.startsWith(MATERIALIZED_EVENT_PREFIX)) {
+    const [source] = eventId
+      .slice(MATERIALIZED_EVENT_PREFIX.length)
+      .split(".", 1);
+    const sourceEventId = decodeBase64Url(source ?? "");
+    return sourceEventId ? { sourceEventId } : null;
+  }
+  return null;
+}
+
+function peelCopyEventNamespaces(event: SessionEvent): string {
+  let id = stripCopyEventNamespace(event.sessionId, event.id);
+  for (;;) {
+    const split = id.indexOf("~");
+    if (split <= 0 || id.slice(0, split).includes(":")) return id;
+    id = id.slice(split + 1);
+  }
 }
 
 /**
@@ -66,7 +117,12 @@ function stampSegmentSender(
 ): SessionEvent[] {
   const stamp: ConversationSenderStamp = {
     userId: member.row.ownerUserId,
-    displayName: member.row.ownerDisplayName,
+    ...(member.row.ownerDisplayName.trim()
+      ? { displayName: member.row.ownerDisplayName.trim() }
+      : {}),
+    ...(member.row.ownerAvatarUrl
+      ? { avatarUrl: member.row.ownerAvatarUrl }
+      : {}),
   };
   return events.map((event) =>
     event.source === "user"
@@ -84,12 +140,16 @@ function stampSegmentSender(
  * event ids carry colons, session ids never do.
  */
 export function sourceEventIdOf(event: SessionEvent): string {
-  let id = stripCopyEventNamespace(event.sessionId, event.id);
-  for (;;) {
-    const split = id.indexOf("~");
-    if (split <= 0 || id.slice(0, split).includes(":")) return id;
-    id = id.slice(split + 1);
-  }
+  const id = peelCopyEventNamespaces(event);
+  return materializedEventIdentity(id)?.sourceEventId ?? id;
+}
+
+/** Turn identity recovered from a native Agent row materialized by ORG2. */
+export function materializedConversationTurnIdOf(
+  event: SessionEvent
+): string | null {
+  const id = peelCopyEventNamespaces(event);
+  return materializedEventIdentity(id)?.turnId ?? null;
 }
 
 /**
@@ -103,7 +163,7 @@ export function sourceEventIdOf(event: SessionEvent): string {
  * streams in like any arriving message.
  *
  * Native org2 forks COPY the parent transcript into the fork (unlike
- * external-history forks, which start empty and inherit invisibly), so a
+ * external-history continuations, which start empty and inherit invisibly), so a
  * later segment can carry duplicates of everything an earlier segment
  * already rendered — with the wrong author stamped on them. Cross-segment
  * dedup by source event id keeps only the first (correctly attributed)

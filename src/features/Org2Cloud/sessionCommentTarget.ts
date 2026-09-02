@@ -8,6 +8,7 @@
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 
+import type { ConversationRootLocator } from "@src/engines/SessionCore/conversations/conversationTypes";
 import { getSessionForkedFrom } from "@src/features/TeamCollaboration/forkSession";
 import { collectScopeMatchedImportedSessionIds } from "@src/features/TeamCollaboration/importedSessionScopeMatch";
 import {
@@ -35,6 +36,23 @@ export interface SessionCommentTarget {
   orgId: string;
   /** Cloud session id (the OWNER-side bare session id). */
   sessionId: string;
+}
+
+/** Bridge a canonical Cloud root into the existing Team Chat target. */
+export function sessionCommentTargetForConversationRoot(
+  root: ConversationRootLocator | null | undefined
+): SessionCommentTarget | null {
+  if (
+    root?.authority !== "org2-cloud" ||
+    root.authorityScope.length !== 1 ||
+    !root.authorityScope[0]
+  ) {
+    return null;
+  }
+  return {
+    orgId: root.authorityScope[0],
+    sessionId: root.conversationId,
+  };
 }
 
 type CommentTargetSession = {
@@ -170,7 +188,8 @@ export function resolveSessionCommentTarget(params: {
  * non-cloud session — consumers render nothing in that case.
  */
 export function useSessionCommentTarget(
-  session: Session | null | undefined
+  session: Session | null | undefined,
+  canonicalTarget?: SessionCommentTarget | null
 ): SessionCommentTarget | null {
   const cloudOrgs = useAtomValue(org2CloudOrgsAtom);
   const tags = useAtomValue(sessionOrgTagsAtom);
@@ -194,14 +213,16 @@ export function useSessionCommentTarget(
 
   return useMemo(() => {
     const lineage = session ? getSessionForkedFrom(session) : undefined;
-    const target = resolveSessionCommentTarget({
-      session: session ? { ...session, forkedFrom: lineage } : null,
-      cloudOrgs,
-      tags,
-      preferredOrgId: selectedCloudOrg?.orgId ?? null,
-      orgRepoScopes,
-      pushedOrgIds,
-    });
+    const target =
+      canonicalTarget ??
+      resolveSessionCommentTarget({
+        session: session ? { ...session, forkedFrom: lineage } : null,
+        cloudOrgs,
+        tags,
+        preferredOrgId: selectedCloudOrg?.orgId ?? null,
+        orgRepoScopes,
+        pushedOrgIds,
+      });
     const rows = target ? remoteEntries[target.orgId]?.rows : undefined;
     const rerooted = rerootSessionCommentTarget(target, rows);
     return rerooted;
@@ -213,6 +234,7 @@ export function useSessionCommentTarget(
     orgRepoScopes,
     pushedOrgIds,
     remoteEntries,
+    canonicalTarget,
   ]);
 }
 

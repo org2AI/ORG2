@@ -6,7 +6,7 @@
  *
  * Two operating modes:
  *  - In-session (a sessionId is in scope, the typical InputArea case)
- *    — display values come from `sessionByIdAtom(sessionId)` for the
+ *    — display values come from the canonical Session row for the
  *    fields the row carries (`model`, `accountId`, `keySource`,
  *    `cliAgentType`, `tier`); display-only labels are derived from
  *    KeyVault by accountId in `resolveModelDisplaySelection`.
@@ -28,30 +28,33 @@ import {
 } from "@src/api/tauri/session";
 import { Message } from "@src/components/Message";
 import ModelSelectorPill from "@src/components/ModelSelectorPill";
+import { useConversationExecutionBinding } from "@src/engines/ChatPanel/ConversationExecutionBindingContext";
 import { useSessionId } from "@src/engines/SessionCore/hooks/session";
-import { useConversationSetupPillBinding } from "@src/features/Org2Cloud/SessionConversation/useConversationSetupPillBinding";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import { useValidatedLastPair } from "@src/hooks/models/useValidatedLastPair";
 import { useSessionModelField } from "@src/hooks/session/useSessionPatch";
+import type { AgentSelection } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette";
 import { UnifiedModelPalette } from "@src/scaffold/GlobalSpotlight/palettes/UnifiedModelPalette";
 import { UnifiedModelDropdown } from "@src/scaffold/GlobalSpotlight/palettes/UnifiedModelPalette/UnifiedModelDropdown";
+import { sessionByIdAtom } from "@src/store/session";
 import { sessionRuntimeStatusAtom } from "@src/store/session/cliSessionStatusAtom";
 import {
   type LastModelSelection,
   creatorDefaultModelSelectionAtom,
   extractModelPair,
 } from "@src/store/session/creatorDefaultModelAtom";
-import { sessionByIdAtom } from "@src/store/session/sessionAtom";
 import { modelPickerStyleAtom } from "@src/store/ui/chatPanelAtom";
 import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 import { isActiveStatus } from "@src/types/session/session";
 import { getDispatchCategory } from "@src/util/session/sessionDispatch";
 
+import ConversationRuntimePill from "./ConversationRuntimePill";
+
 // ============================================
 // Component
 // ============================================
 
-const ModelPill: React.FC = memo(() => {
+const ModelPillComponent: React.FC = () => {
   const { t } = useTranslation();
   const modelPickerStyle = useAtomValue(modelPickerStyleAtom);
   const modelSegmentRef = useRef<HTMLButtonElement>(null);
@@ -72,7 +75,7 @@ const ModelPill: React.FC = memo(() => {
   // the remembered runner setup — the pill mirrors and edits THAT record
   // instead of the imported row, whose model field is deliberately empty
   // and whose patches the next family refresh would wipe anyway.
-  const conversationBinding = useConversationSetupPillBinding(sessionId);
+  const conversationBinding = useConversationExecutionBinding();
 
   // When inside an active session, pass the session's own dispatchCategory and
   // cliAgentType to the palette so account filtering uses the correct agent
@@ -83,10 +86,14 @@ const ModelPill: React.FC = memo(() => {
     ? getDispatchCategory(sessionId)
     : undefined;
   const paletteCategoryOverride: DispatchCategory | undefined = isInSession
-    ? (session?.category ?? sessionIdCategory)
+    ? conversationBinding
+      ? conversationBinding.runtimeSelection?.category
+      : (session?.category ?? sessionIdCategory)
     : undefined;
   const paletteCliAgentTypeOverride: CliAgentType | undefined = isInSession
-    ? (session?.cliAgentType ?? undefined)
+    ? conversationBinding
+      ? conversationBinding.runtimeSelection?.cliAgentType
+      : (session?.cliAgentType ?? undefined)
     : undefined;
 
   // The display value `lastModel` is built from the session row when
@@ -134,6 +141,7 @@ const ModelPill: React.FC = memo(() => {
       provider: lastModel.provider,
       model: lastModel.model,
       selectedAccountId: lastModel.selectedAccountId,
+      cliAgentType: lastModel.cliAgentType,
       selectedSourceLabel: lastModel.selectedSourceLabel,
       selectedSourceModelType: lastModel.selectedSourceModelType,
     };
@@ -144,11 +152,10 @@ const ModelPill: React.FC = memo(() => {
       // Team-conversation composer: the pick belongs to the remembered
       // runner setup, never to the imported row (whose model field is
       // deliberately empty and whose patches a family refresh wipes).
-      // Before the first send confirms a setup there is no record to
-      // edit — the setup dialog remains the authoritative entry.
+      // Runtime has its own standard New Session picker. This picker only
+      // changes the model/account source for that selected runtime.
       if (conversationBinding) {
         conversationBinding.applyModelPick(config);
-        setCreatorDefaultModel(extractModelPair(config));
         return;
       }
       // In-session: keySource / cliAgentType / tier are session-create
@@ -249,26 +256,78 @@ const ModelPill: React.FC = memo(() => {
     [advancedConfig, handleConfigChange, lastModel]
   );
 
-  const modelPill = (
-    <ModelSelectorPill
-      ref={modelSegmentRef}
-      selection={lastModel}
-      defaultLabel={t("sessions:creator.model")}
-      active={isModelOpen}
-      className="max-w-[360px]"
-      onClick={handleOpenModelSelector}
-      onVariantApply={handleVariantApply}
-      dataTestId="chat-model-pill-model"
-      ariaLabel={t("sessions:creator.selectModel")}
-      isActiveSession={isActiveSession}
-    />
+  const handleRuntimeSelect = useCallback(
+    (selection: AgentSelection) => {
+      if (!conversationBinding?.applyRuntimePick(selection)) {
+        Message.warning(t("navigation:collaboration.forkImported.agentError"));
+      }
+    },
+    [conversationBinding, t]
   );
+
+  const pillSelection = useMemo(
+    () =>
+      conversationBinding && lastModel
+        ? { ...lastModel, cliAgentLabel: undefined }
+        : lastModel,
+    [conversationBinding, lastModel]
+  );
+
+  const conversationTargetReady =
+    !conversationBinding ||
+    (conversationBinding.readiness === "ready" &&
+      Boolean(conversationBinding.target));
+  const modelDefaultLabel =
+    conversationBinding?.readiness === "loading"
+      ? t("common:actions.loading")
+      : t("sessions:creator.model");
+  const visiblePillSelection = conversationTargetReady ? pillSelection : null;
+  const effectiveModelOpen = isModelOpen && conversationTargetReady;
+
+  const modelPill = (
+    <div
+      className="contents"
+      data-testid="chat-model-target"
+      data-account-id={visiblePillSelection?.selectedAccountId}
+      data-model-id={
+        visiblePillSelection?.model ?? visiblePillSelection?.listingModel
+      }
+    >
+      <ModelSelectorPill
+        ref={modelSegmentRef}
+        selection={visiblePillSelection}
+        defaultLabel={modelDefaultLabel}
+        active={effectiveModelOpen}
+        className="max-w-[360px]"
+        onClick={handleOpenModelSelector}
+        onVariantApply={handleVariantApply}
+        dataTestId="chat-model-pill-model"
+        ariaLabel={t("sessions:creator.selectModel")}
+        isActiveSession={isActiveSession}
+        disabled={!conversationTargetReady}
+      />
+    </div>
+  );
+
+  // A Chat Pane can open synchronously before a cloud replay's local
+  // Session row exists. Never paint the unrelated New Session defaults in
+  // that gap; the loading-source binding normally resolves in the same
+  // frame, and an unavailable source renders no false selection at all.
+  if (isInSession && !session && !conversationBinding) return null;
 
   return (
     <>
+      {conversationBinding && (
+        <ConversationRuntimePill
+          selection={conversationBinding.runtimeSelection}
+          readiness={conversationBinding.readiness}
+          allowedCliAgentTypes={conversationBinding.nativeCliTargets}
+          onSelect={handleRuntimeSelect}
+        />
+      )}
       {modelPill}
 
-      {isModelOpen &&
+      {effectiveModelOpen &&
         (modelPickerStyle === "dropdown" ? (
           <UnifiedModelDropdown
             isOpen={isModelOpen}
@@ -286,13 +345,16 @@ const ModelPill: React.FC = memo(() => {
             onClose={handleCloseSelector}
             advancedConfig={advancedConfig}
             onConfigChange={handleConfigChange}
+            agentNameOverride={conversationBinding?.runtimeSelection?.agentName}
             dispatchCategoryOverride={paletteCategoryOverride}
             cliAgentTypeOverride={paletteCliAgentTypeOverride}
           />
         ))}
     </>
   );
-});
+};
+
+const ModelPill = memo(ModelPillComponent);
 
 ModelPill.displayName = "ModelPill";
 

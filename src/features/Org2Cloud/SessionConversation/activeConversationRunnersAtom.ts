@@ -1,7 +1,8 @@
 /**
  * Live overlay registry for in-flight member turns.
  *
- * A member's send runs the turn in an invisible one-shot local runner and
+ * A member's send runs the turn in an invisible durable local execution
+ * Session and
  * only publishes the agent tail to the plane at terminal — so without this,
  * even the SENDER stares at their own message with no thinking, no tools,
  * no "Agent worked for Ns" until the whole turn lands at once.
@@ -19,19 +20,62 @@
  */
 import { atom } from "jotai";
 
+import {
+  type ConversationRootLocator,
+  conversationRootKey,
+} from "@src/engines/SessionCore/conversations/conversationTypes";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 export interface ActiveConversationRunner {
   runnerSessionId: string;
   /** The turnId the tail is pushed under — the plane-landed drop signal. */
   turnId: string;
+  /** Native-event prefix from earlier turns; never overlay it again. */
+  eventStartIndex: number;
 }
 
-/** plane rootSessionId → this device's in-flight member runners. */
+const MAX_ACTIVE_CONVERSATION_ROOTS = 32;
+const MAX_ACTIVE_RUNNERS_PER_ROOT = 8;
+
+/**
+ * The overlay is local UI state, but the plane it shadows is Cloud state.
+ * Include the endpoint/account identity as well as the canonical root so an
+ * account or endpoint switch can never expose a runner from the previous
+ * identity merely because the org/session ids happen to match.
+ */
+export function activeConversationRunnerKey(
+  authIdentityKey: string,
+  root: ConversationRootLocator
+): string {
+  return JSON.stringify([authIdentityKey, conversationRootKey(root)]);
+}
+
+/** `(auth identity, canonical root)` → this device's in-flight runners. */
 export const activeConversationRunnersAtom = atom<
   Record<string, ActiveConversationRunner[]>
 >({});
 activeConversationRunnersAtom.debugLabel = "activeConversationRunnersAtom";
+
+/** Insert one runner while bounding both a busy root and the registry itself. */
+export function upsertConversationRunner(
+  registry: Readonly<Record<string, ActiveConversationRunner[]>>,
+  key: string,
+  runner: ActiveConversationRunner
+): Record<string, ActiveConversationRunner[]> {
+  const runners = [
+    ...(registry[key] ?? []).filter(
+      (candidate) => candidate.runnerSessionId !== runner.runnerSessionId
+    ),
+    runner,
+  ].slice(-MAX_ACTIVE_RUNNERS_PER_ROOT);
+  const entries = Object.entries(registry).filter(
+    ([candidateKey]) => candidateKey !== key
+  );
+  return Object.fromEntries([
+    ...entries.slice(-(MAX_ACTIVE_CONVERSATION_ROOTS - 1)),
+    [key, runners],
+  ]);
+}
 
 /** Plane turnIds whose agent tail has landed (a non-user row is present). */
 export function collectLandedTurnIds(
@@ -50,4 +94,43 @@ export function selectActiveRunners(
   landedTurnIds: ReadonlySet<string>
 ): ActiveConversationRunner[] {
   return runners.filter((runner) => !landedTurnIds.has(runner.turnId));
+}
+
+/** Current-turn native tail only; prior turns and the injected user row stay hidden. */
+export function selectConversationRunnerTail(
+  runner: ActiveConversationRunner,
+  events: readonly SessionEvent[]
+): SessionEvent[] {
+  return events
+    .slice(Math.max(0, runner.eventStartIndex))
+    .filter((event) => event.source !== "user");
+}
+
+/** Namespace the exact current-turn tail for the canonical live overlay. */
+export function buildConversationRunnerOverlay(
+  runner: ActiveConversationRunner,
+  events: readonly SessionEvent[],
+  canonicalSessionId: string
+): SessionEvent[] {
+  return selectConversationRunnerTail(runner, events).map((event) => ({
+    ...event,
+    id: `runlive-${event.id}`,
+    chunk_id: `runlive-${event.id}`,
+    sessionId: canonicalSessionId,
+  }));
+}
+
+/** Remove one terminal runner when no plane tail can perform normal cleanup. */
+export function removeConversationRunnerByTurn(
+  registry: Readonly<Record<string, ActiveConversationRunner[]>>,
+  key: string,
+  turnId: string
+): Record<string, ActiveConversationRunner[]> {
+  const current = registry[key] ?? [];
+  const kept = current.filter((runner) => runner.turnId !== turnId);
+  if (kept.length === current.length) return registry;
+  const next = { ...registry };
+  if (kept.length === 0) delete next[key];
+  else next[key] = kept;
+  return next;
 }

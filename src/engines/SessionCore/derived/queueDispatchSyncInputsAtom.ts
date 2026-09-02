@@ -5,7 +5,6 @@ import {
   messageQueueAtom,
   messageQueueHydratedAtom,
   queueEditingAtom,
-  queueFlushRequestAtom,
 } from "@src/store/ui/messageQueueAtom";
 
 import { turnLifecycleSignalAtom } from "../control/turnLifecycle";
@@ -20,7 +19,6 @@ export interface QueueDispatchSyncInputs {
   queue: QueuedMessage[];
   hydrated: boolean;
   turnLifecycleSignal: number;
-  flushRequest: number;
   editing: boolean;
 }
 
@@ -29,7 +27,6 @@ export const queueDispatchSyncInputsAtom = atom<QueueDispatchSyncInputs>(
     queue: get(messageQueueAtom),
     hydrated: get(messageQueueHydratedAtom),
     turnLifecycleSignal: get(turnLifecycleSignalAtom),
-    flushRequest: get(queueFlushRequestAtom),
     editing: get(queueEditingAtom),
   })
 );

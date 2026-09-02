@@ -45,6 +45,7 @@ import { SESSION_TARGET_KIND } from "@src/store/session/creatorStateAtom";
 import { invokeTauri } from "@src/util/platform/tauri/init";
 
 import type { SpotlightItem } from "../../types";
+import { cliAgentCapabilityDisabled } from "./cliAgentCapability";
 import { createHumanSessionOption } from "./humanSessionOption";
 import type { AgentOption, AgentSelection } from "./types";
 
@@ -58,6 +59,7 @@ interface UseDispatchCategoryOptionsArgs {
   isOpen: boolean;
   hideOrgs: boolean;
   hideCliAgents?: boolean;
+  allowedCliAgentTypes?: readonly CliAgentType[];
   /** When true, only CLI agent entries are included (Rust-native agents and orgs are hidden). */
   cliOnly?: boolean;
   includeHumanSession?: boolean;
@@ -131,6 +133,7 @@ export function useDispatchCategoryOptions(
     isOpen,
     hideOrgs,
     hideCliAgents = false,
+    allowedCliAgentTypes,
     cliOnly = false,
     includeHumanSession = false,
     currentCategory,
@@ -255,6 +258,10 @@ export function useDispatchCategoryOptions(
       const parsed = CliAgentTypeSchema.safeParse(agent.name);
       if (!parsed.success) return [];
       const agentType = parsed.data;
+      const disabled = cliAgentCapabilityDisabled(
+        agentType,
+        allowedCliAgentTypes
+      );
       // CLI agents only show plan (subscription) accounts in the badge.
       const compatibleAccounts = getCliCompatibleAccounts(
         registry,
@@ -273,11 +280,13 @@ export function useDispatchCategoryOptions(
           isCli: true,
           isOrg: false,
           availableKeys: compatibleAccounts,
+          disabled,
+          disabledLabel: disabled ? tCommon("status.notSupported") : undefined,
           rightContent: buildCredentialBadge(compatibleAccounts),
         },
       ];
     });
-  }, [installedCliAgents, accounts, registry]);
+  }, [allowedCliAgentTypes, installedCliAgents, accounts, registry, tCommon]);
 
   const customAgentOptions = useMemo((): AgentOption[] => {
     const rustBadge = buildCredentialBadge(rustCompatibleAccounts);
@@ -472,6 +481,8 @@ export function useDispatchCategoryOptions(
               ? getCliTransportLabel(option.cliAgentType)
               : undefined,
           availableKeys: option.availableKeys,
+          disabled: option.disabled,
+          tagLabel: option.disabledLabel,
           rightContent: option.rightContent,
           testId: option.isOrg
             ? `session-creator-agent-option-org-${option.agentOrgId}`
@@ -484,6 +495,7 @@ export function useDispatchCategoryOptions(
                   : undefined,
         },
         action: () => {
+          if (option.disabled) return;
           recordRecentAgentSelection({
             category: option.category,
             targetKind: option.targetKind,

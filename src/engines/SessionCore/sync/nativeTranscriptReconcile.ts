@@ -33,6 +33,13 @@ export function isNativeTranscriptSession(sessionId: string): boolean {
 
 interface ReconcileDeps {
   loadHistory: (sessionId: string) => Promise<SessionEvent[]>;
+  /** Durable in-app projection captured before native replay replaces it. */
+  loadProjectedHistory?: (sessionId: string) => Promise<SessionEvent[]>;
+  /** Provider-portable suffix merge supplied by the conversation layer. */
+  mergeInterruptedProjection?: (
+    nativeEvents: readonly SessionEvent[],
+    projectedEvents: readonly SessionEvent[]
+  ) => SessionEvent[];
   dispatchLoadSession: (payload: {
     sessionId: string;
     events: SessionEvent[];
@@ -48,20 +55,55 @@ interface ReconcileDeps {
   isSessionLive: (sessionId: string) => boolean;
 }
 
+interface ReconcileOptions {
+  /** Preserve an accepted safe suffix after cancellation/failure. */
+  preserveInterruptedSuffix?: boolean;
+}
+
 const pendingReconciles = new Set<string>();
+
+function mergeReconcileEvents(
+  deps: ReconcileDeps,
+  nativeEvents: SessionEvent[],
+  projectedEvents: SessionEvent[]
+): SessionEvent[] {
+  if (projectedEvents.length === 0 || !deps.mergeInterruptedProjection) {
+    return nativeEvents;
+  }
+  return deps.mergeInterruptedProjection(nativeEvents, projectedEvents);
+}
 
 export function scheduleNativeTranscriptReconcile(
   sessionId: string,
-  deps: ReconcileDeps
+  deps: ReconcileDeps,
+  options: ReconcileOptions = {}
 ): void {
   if (!isNativeTranscriptSession(sessionId)) return;
   if (pendingReconciles.has(sessionId)) return;
   pendingReconciles.add(sessionId);
 
+  // Capture the durable pre-reconcile projection at most once. Completed
+  // turns need no fallback read at all; cancellation/failure is the only path
+  // where a killed CLI may not have flushed its newest native fork.
+  let projectedHistoryPromise: Promise<SessionEvent[]> | null = null;
+  const loadProjectedHistory = (): Promise<SessionEvent[]> => {
+    if (!options.preserveInterruptedSuffix || !deps.loadProjectedHistory) {
+      return Promise.resolve([]);
+    }
+    projectedHistoryPromise ??= deps
+      .loadProjectedHistory(sessionId)
+      .catch(() => []);
+    return projectedHistoryPromise;
+  };
+
   const runOnce = async (): Promise<number> => {
     if (!deps.isSessionLive(sessionId)) return -1;
-    const events = await deps.loadHistory(sessionId);
+    const [nativeEvents, projectedEvents] = await Promise.all([
+      deps.loadHistory(sessionId),
+      loadProjectedHistory(),
+    ]);
     if (!deps.isSessionLive(sessionId)) return -1;
+    const events = mergeReconcileEvents(deps, nativeEvents, projectedEvents);
     if (events.length > 0) {
       deps.dispatchLoadSession({ sessionId, events, replace: true });
     }
@@ -77,7 +119,11 @@ export function scheduleNativeTranscriptReconcile(
       // re-dispatch when the parse actually grew (no pointless flicker).
       await new Promise((resolve) => setTimeout(resolve, RECONCILE_RETRY_MS));
       if (!deps.isSessionLive(sessionId)) return;
-      const events = await deps.loadHistory(sessionId);
+      const [nativeEvents, projectedEvents] = await Promise.all([
+        deps.loadHistory(sessionId),
+        loadProjectedHistory(),
+      ]);
+      const events = mergeReconcileEvents(deps, nativeEvents, projectedEvents);
       if (
         events.length > Math.max(firstCount, 0) &&
         deps.isSessionLive(sessionId)

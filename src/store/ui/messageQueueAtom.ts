@@ -2,6 +2,9 @@ import { atom } from "jotai";
 
 import type { AgentExecMode } from "@src/config/sessionCreatorConfig";
 import { projectOutgoingUserMessage } from "@src/engines/ChatPanel/hooks/useInputArea/projectOutgoingUserMessage";
+import { conversationRootKey } from "@src/engines/SessionCore/conversations/conversationTypes";
+import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationExecutor";
+import { mintTurnIntentId } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 import { isCliSession } from "@src/util/session/sessionDispatch";
 
@@ -10,6 +13,7 @@ import { isCliSession } from "@src/util/session/sessionDispatch";
 // ============================================
 
 export type QueuedMessagePriority = "now" | "next";
+export type QueuedMessageDeliveryState = "queued" | "preparing" | "accepted";
 
 export interface QueuedMessage {
   id: string;
@@ -36,6 +40,7 @@ export interface QueuedMessage {
   content: string;
   displayContent: string;
   imageDataUrls?: string[];
+  conversationDispatch?: QueuedConversationDispatch;
   /**
    * Snapshot of model/account selection at enqueue time. Frozen here
    * so a model swap done while the queue is draining cannot retroactively
@@ -68,7 +73,19 @@ export interface QueuedMessage {
    * dispatch them.
    */
   requiresExplicitDispatch?: boolean;
-  status: "queued";
+  /**
+   * Durable delivery state for the same queue row. Canonical continuations
+   * keep the row through provider completion so a renderer restart can
+   * reconnect to the exact native turn instead of replaying it.
+   */
+  status: QueuedMessageDeliveryState;
+  /** Concrete native Session selected before provider dispatch. */
+  runnerSessionId?: string;
+  /** Verified native prefix used by the live overlay once materialized. */
+  runnerEventStartIndex?: number;
+  /** Durable recovery backoff for an accepted canonical turn. */
+  retryAt?: string;
+  retryAttempt?: number;
   createdAt: string;
 }
 
@@ -95,6 +112,12 @@ export function queuedMessageCharSize(message: QueuedMessage): number {
   );
 }
 
+export function queuedMessageScopeKey(message: QueuedMessage): string {
+  return message.conversationDispatch
+    ? `conversation:${conversationRootKey(message.conversationDispatch.root)}`
+    : message.sessionId;
+}
+
 export function queueAdmissionResult(
   current: readonly QueuedMessage[],
   message: QueuedMessage
@@ -102,8 +125,9 @@ export function queueAdmissionResult(
   const messageSize = queuedMessageCharSize(message);
   if (messageSize > MAX_QUEUED_MESSAGE_CHARS) return "message_too_large";
   if (
-    current.filter((item) => item.sessionId === message.sessionId).length >=
-    MAX_QUEUED_MESSAGES_PER_SESSION
+    current.filter(
+      (item) => queuedMessageScopeKey(item) === queuedMessageScopeKey(message)
+    ).length >= MAX_QUEUED_MESSAGES_PER_SESSION
   ) {
     return "session_limit";
   }
@@ -156,39 +180,30 @@ queueEditingAtom.debugLabel = "queueEditingAtom";
 // Write Atoms
 // ============================================
 
-/**
- * Incremented each time a message is enqueued.
- * Components can watch this to react to new enqueues without using effects.
- */
-export const enqueueCountAtom = atom(0);
-enqueueCountAtom.debugLabel = "enqueueCountAtom";
-
 export const enqueueMessageAtom = atom(
   null,
   (get, set, message: QueuedMessage): QueueAdmissionResult => {
     const current = get(messageQueueAtom);
-    // Dedupe by canonical user-intent id. Falls back to content-equality only
-    // when the caller hasn't minted an id yet (legacy migration entries).
-    const duplicate = current.some((existing) =>
-      message.turnIntentId
-        ? existing.turnIntentId === message.turnIntentId
-        : existing.sessionId === message.sessionId &&
-          existing.content === message.content &&
-          existing.displayContent === message.displayContent
+    // The submit boundary always mints this canonical identity, including for
+    // hydrated durable rows. Text is not identity: the user may intentionally
+    // send the same content more than once.
+    const duplicate = current.some(
+      (existing) => existing.turnIntentId === message.turnIntentId
     );
     if (duplicate) return "duplicate";
     const rejected = queueAdmissionResult(current, message);
     if (rejected) return rejected;
 
     set(messageQueueAtom, [...current, message]);
-    set(enqueueCountAtom, (count) => count + 1);
     return "enqueued";
   }
 );
 enqueueMessageAtom.debugLabel = "enqueueMessageAtom";
 
 export const dequeueMessageAtom = atom(null, (_get, set, messageId: string) => {
-  set(messageQueueAtom, (prev) => prev.filter((msg) => msg.id !== messageId));
+  set(messageQueueAtom, (prev) =>
+    prev.filter((msg) => msg.id !== messageId || msg.status !== "queued")
+  );
 });
 dequeueMessageAtom.debugLabel = "dequeueMessageAtom";
 
@@ -202,11 +217,28 @@ dequeueMessageAtom.debugLabel = "dequeueMessageAtom";
 export const forceSendMessageAtom = atom(
   null,
   (get, set, messageId: string) => {
-    if (!get(messageQueueAtom).some((msg) => msg.id === messageId)) return;
+    if (
+      !get(messageQueueAtom).some(
+        (msg) => msg.id === messageId && msg.status === "queued"
+      )
+    ) {
+      return;
+    }
     set(messageQueueAtom, (prev) =>
       prev.map((msg) =>
-        msg.id === messageId
-          ? { ...msg, priority: "now", requiresExplicitDispatch: false }
+        msg.id === messageId && msg.status === "queued"
+          ? {
+              ...msg,
+              // Send Now is an explicit new dispatch attempt. A recovered
+              // queued row may point at an immutable stale/coalesced/rejected
+              // backend intent; minting here prevents that terminal id from
+              // making the visible retry permanently unrunnable.
+              turnIntentId: mintTurnIntentId(),
+              priority: "now",
+              requiresExplicitDispatch: false,
+              retryAt: undefined,
+              retryAttempt: undefined,
+            }
           : msg
       )
     );
@@ -219,25 +251,56 @@ forceSendMessageAtom.debugLabel = "forceSendMessageAtom";
  * permanently skipped by the natural drain — only Send Now (or queue edit
  * actions) can dispatch them afterwards.
  */
-export const holdSessionQueueForStopAtom = atom(
+export const parkSessionQueuedMessagesAfterStopAtom = atom(
   null,
-  (_get, set, sessionId: string) => {
+  (get, set, sessionId: string) => {
+    const current = get(messageQueueAtom);
+    const conversationKeys = new Set(
+      current.flatMap((message) =>
+        message.sessionId === sessionId && message.conversationDispatch
+          ? [conversationRootKey(message.conversationDispatch.root)]
+          : []
+      )
+    );
     set(messageQueueAtom, (prev) =>
       prev.map((msg) =>
-        msg.sessionId === sessionId && !msg.requiresExplicitDispatch
+        (msg.sessionId === sessionId ||
+          (msg.conversationDispatch !== undefined &&
+            conversationKeys.has(
+              conversationRootKey(msg.conversationDispatch.root)
+            ))) &&
+        msg.status === "queued" &&
+        !msg.requiresExplicitDispatch
           ? { ...msg, requiresExplicitDispatch: true }
           : msg
       )
     );
   }
 );
-holdSessionQueueForStopAtom.debugLabel = "holdSessionQueueForStopAtom";
+parkSessionQueuedMessagesAfterStopAtom.debugLabel =
+  "parkSessionQueuedMessagesAfterStopAtom";
 
 export const clearSessionQueueAtom = atom(
   null,
-  (_get, set, sessionId: string) => {
+  (get, set, sessionId: string) => {
+    const current = get(messageQueueAtom);
+    const conversationKeys = new Set(
+      current.flatMap((message) =>
+        message.sessionId === sessionId && message.conversationDispatch
+          ? [conversationRootKey(message.conversationDispatch.root)]
+          : []
+      )
+    );
     set(messageQueueAtom, (prev) =>
-      prev.filter((msg) => msg.sessionId !== sessionId)
+      prev.filter(
+        (msg) =>
+          msg.status !== "queued" ||
+          (msg.sessionId !== sessionId &&
+            (msg.conversationDispatch === undefined ||
+              !conversationKeys.has(
+                conversationRootKey(msg.conversationDispatch.root)
+              )))
+      )
     );
   }
 );
@@ -250,7 +313,9 @@ export const clearQueuedMessagesAtom = atom(
     if (messageIds.length === 0) return;
     const ids = new Set(messageIds);
     set(messageQueueAtom, (prev) =>
-      prev.filter((message) => !ids.has(message.id))
+      prev.filter(
+        (message) => message.status !== "queued" || !ids.has(message.id)
+      )
     );
   }
 );
@@ -273,7 +338,7 @@ export const editMessageAtom = atom(
     let updated = false;
     set(messageQueueAtom, (prev) =>
       prev.map((msg) => {
-        if (msg.id !== update.messageId) return msg;
+        if (msg.id !== update.messageId || msg.status !== "queued") return msg;
         const nextImageDataUrls =
           update.imageDataUrls !== undefined
             ? update.imageDataUrls
@@ -299,6 +364,11 @@ export const editMessageAtom = atom(
         });
         const next: QueuedMessage = {
           ...msg,
+          // Saving an edit is a new logical user intent. The previous id may
+          // already be a durable stale/rejected pre-run terminal after a
+          // crash; terminal intent ids are immutable and cannot be safely
+          // resurrected with different content.
+          turnIntentId: mintTurnIntentId(),
           content: projection.agentContent ?? projection.displayContent,
           displayContent: projection.displayContent,
           ...(update.imageDataUrls !== undefined && {
@@ -310,6 +380,8 @@ export const editMessageAtom = atom(
           ...(update.agentExecMode !== undefined && {
             agentExecMode: update.agentExecMode,
           }),
+          retryAt: undefined,
+          retryAttempt: undefined,
         };
         const siblings = prev.filter((item) => item.id !== msg.id);
         if (queueAdmissionResult(siblings, next)) return msg;
@@ -321,14 +393,6 @@ export const editMessageAtom = atom(
   }
 );
 editMessageAtom.debugLabel = "editMessageAtom";
-
-/**
- * Bumped to request an immediate queue dispatch pass (e.g. "Send Now"
- * clicked, or a post-Stop explicit submit was enqueued). Watched by
- * useQueueDispatch.
- */
-export const queueFlushRequestAtom = atom(0);
-queueFlushRequestAtom.debugLabel = "queueFlushRequest";
 
 export const reorderQueueAtom = atom(
   null,
@@ -343,7 +407,9 @@ export const reorderQueueAtom = atom(
         fromIndex < 0 ||
         toIndex < 0 ||
         fromIndex >= prev.length ||
-        toIndex >= prev.length
+        toIndex >= prev.length ||
+        prev[fromIndex]?.status !== "queued" ||
+        prev[toIndex]?.status !== "queued"
       ) {
         return prev;
       }

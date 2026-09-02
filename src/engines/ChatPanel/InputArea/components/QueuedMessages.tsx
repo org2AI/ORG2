@@ -61,7 +61,11 @@ export interface QueuedMessagesProps {
 
 const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
   ({ messages, onCancel, onClear, onSendNow, onReorder, onToggle }) => {
-    const { t } = useTranslation();
+    // Bind the namespace explicitly.  The queue can render during startup
+    // before the default namespace finishes reconciling; passing a qualified
+    // key through that transient state was displayed as the raw
+    // `actions.clearAll` key in the composer.
+    const { t } = useTranslation("common");
     const setEditTarget = useSetAtom(queueEditTargetAtom);
     const editTarget = useAtomValue(queueEditTargetAtom);
 
@@ -153,10 +157,10 @@ const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
                 variant="tertiary"
                 size="mini"
                 onClick={onClear}
-                title={t("common:actions.clearAll")}
+                title={t("actions.clearAll")}
                 data-testid="queued-messages-clear-all"
               >
-                {t("common:actions.clearAll")}
+                {t("actions.clearAll")}
               </Button>
             </>
           }

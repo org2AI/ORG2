@@ -1,5 +1,9 @@
 import { type Store, load } from "@tauri-apps/plugin-store";
 
+import {
+  isConversationRootLocator,
+  isLocalConversationTarget,
+} from "@src/engines/SessionCore/conversations/conversationTypes";
 import { createLogger } from "@src/hooks/logger";
 
 import {
@@ -12,25 +16,66 @@ import {
 const log = createLogger("messageQueueRepository");
 const STORE_PATH = "chat-message-queue.json";
 const STORE_KEY_PREFIX = "queue";
+const STORE_LOCK_NAME = "orgii:chat-message-queue-store";
 
 let storePromise: Promise<Store | null> | null = null;
 let queueKeyPromise: Promise<string> | null = null;
 let writeChain: Promise<void> = Promise.resolve();
+let fallbackStoreLock: Promise<unknown> = Promise.resolve();
+
+async function withStoreLock<T>(operation: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (locks?.request) {
+    return await locks.request(
+      STORE_LOCK_NAME,
+      { mode: "exclusive" },
+      operation
+    );
+  }
+  const next = fallbackStoreLock.catch(() => undefined).then(operation);
+  fallbackStoreLock = next;
+  return await next;
+}
 
 function isQueuedMessage(value: unknown): value is QueuedMessage {
   if (!value || typeof value !== "object") return false;
   const item = value as Partial<QueuedMessage>;
+  const conversationDispatch = item.conversationDispatch;
+  const validConversationDispatch =
+    conversationDispatch === undefined ||
+    (conversationDispatch.kind === "canonical_conversation" &&
+      isConversationRootLocator(conversationDispatch.root) &&
+      isLocalConversationTarget(conversationDispatch.target) &&
+      (conversationDispatch.dispatchIdentityKey === undefined ||
+        typeof conversationDispatch.dispatchIdentityKey === "string"));
   return (
     typeof item.id === "string" &&
     typeof item.turnIntentId === "string" &&
     typeof item.sessionId === "string" &&
     typeof item.content === "string" &&
     typeof item.displayContent === "string" &&
+    validConversationDispatch &&
     (item.imageDataUrls === undefined ||
       (Array.isArray(item.imageDataUrls) &&
         item.imageDataUrls.every((image) => typeof image === "string"))) &&
     (item.priority === "now" || item.priority === "next") &&
-    item.status === "queued" &&
+    (item.status === "queued" ||
+      item.status === "preparing" ||
+      item.status === "accepted") &&
+    (item.runnerSessionId === undefined ||
+      typeof item.runnerSessionId === "string") &&
+    (item.runnerEventStartIndex === undefined ||
+      (typeof item.runnerEventStartIndex === "number" &&
+        Number.isSafeInteger(item.runnerEventStartIndex) &&
+        item.runnerEventStartIndex >= 0)) &&
+    (item.retryAt === undefined ||
+      (typeof item.retryAt === "string" &&
+        Number.isFinite(Date.parse(item.retryAt)))) &&
+    (item.retryAttempt === undefined ||
+      (typeof item.retryAttempt === "number" &&
+        Number.isSafeInteger(item.retryAttempt) &&
+        item.retryAttempt >= 0)) &&
+    (item.status !== "accepted" || typeof item.runnerSessionId === "string") &&
     typeof item.createdAt === "string" &&
     queuedMessageCharSize(item as QueuedMessage) <= MAX_QUEUED_MESSAGE_CHARS
   );
@@ -65,14 +110,22 @@ async function queueKey(): Promise<string> {
 /** Load this window's durable queue. Invalid rows are ignored, never dispatched. */
 export async function loadDurableMessageQueue(): Promise<QueuedMessage[]> {
   const store = await durableStore();
-  if (!store) return [];
+  if (!store) {
+    throw new Error("durable message queue store is unavailable");
+  }
   try {
-    const stored = await store.get<unknown>(await queueKey());
-    if (!Array.isArray(stored)) return [];
-    return boundQueuedMessages(stored.filter(isQueuedMessage));
+    return await withStoreLock(async () => {
+      await store.reload();
+      const stored = await store.get<unknown>(await queueKey());
+      if (!Array.isArray(stored)) return [];
+      return boundQueuedMessages(stored.filter(isQueuedMessage));
+    });
   } catch (error) {
     log.warn("[messageQueueRepository] failed to load queue", error);
-    return [];
+    // An unreadable snapshot is unknown, not an authoritative empty queue.
+    // Let hydration retain its live in-memory rows and avoid writing [] over
+    // a transiently unavailable durable document.
+    throw error;
   }
 }
 
@@ -96,17 +149,29 @@ export function persistDurableMessageQueue(
     })
     .then(async () => {
       const store = await durableStore();
-      if (!store) return;
-      await store.set(await queueKey(), snapshot);
-      await store.save();
+      if (!store) {
+        throw new Error("durable message queue store is unavailable");
+      }
+      await withStoreLock(async () => {
+        // Store handles are cached per webview. Reload under the cross-window
+        // lock before changing only this window's key, otherwise a stale save
+        // can erase a sibling window's durable queue.
+        await store.reload();
+        await store.set(await queueKey(), snapshot);
+        await store.save();
+      });
     });
-  return writeChain.catch((error) => {
-    log.warn("[messageQueueRepository] failed to persist queue", error);
-  });
+  // Deliberately propagate the current write failure. Provider dispatch uses
+  // this promise as its crash-consistency boundary: starting a native turn
+  // without the corresponding durable queue row would make renderer restart
+  // recovery ambiguous and can replay the same user intent. Background
+  // subscribers attach their own best-effort logging handler.
+  return writeChain;
 }
 
 export function resetMessageQueueRepositoryForTests(): void {
   storePromise = null;
   queueKeyPromise = null;
   writeChain = Promise.resolve();
+  fallbackStoreLock = Promise.resolve();
 }

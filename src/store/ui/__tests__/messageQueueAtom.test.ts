@@ -13,8 +13,8 @@ import {
   editMessageAtom,
   enqueueMessageAtom,
   forceSendMessageAtom,
-  holdSessionQueueForStopAtom,
   messageQueueAtom,
+  parkSessionQueuedMessagesAfterStopAtom,
   queueEditTargetAtom,
   queueEditingAtom,
   reorderQueueAtom,
@@ -99,8 +99,8 @@ describe("messageQueueAtom", () => {
         content: "same",
         displayContent: "same display",
       });
-      store.set(enqueueMessageAtom, msg1);
-      store.set(enqueueMessageAtom, msg2);
+      expect(store.set(enqueueMessageAtom, msg1)).toBe("enqueued");
+      expect(store.set(enqueueMessageAtom, msg2)).toBe("duplicate");
       expect(store.get(messageQueueAtom)).toEqual([msg1]);
     });
 
@@ -120,8 +120,8 @@ describe("messageQueueAtom", () => {
         content: "same",
         displayContent: "same display",
       });
-      store.set(enqueueMessageAtom, msg1);
-      store.set(enqueueMessageAtom, msg2);
+      expect(store.set(enqueueMessageAtom, msg1)).toBe("enqueued");
+      expect(store.set(enqueueMessageAtom, msg2)).toBe("enqueued");
       expect(store.get(messageQueueAtom)).toEqual([msg1, msg2]);
     });
 
@@ -254,10 +254,10 @@ describe("messageQueueAtom", () => {
   });
 
   // =============================================
-  // holdSessionQueueForStopAtom
+  // parkSessionQueuedMessagesAfterStopAtom
   // =============================================
 
-  describe("holdSessionQueueForStopAtom", () => {
+  describe("parkSessionQueuedMessagesAfterStopAtom", () => {
     it("parks every queued message of the session", () => {
       store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
       store.set(enqueueMessageAtom, makeMessage({ id: "m2" }));
@@ -266,7 +266,7 @@ describe("messageQueueAtom", () => {
         makeMessage({ id: "m3", sessionId: "session-2" })
       );
 
-      store.set(holdSessionQueueForStopAtom, "session-1");
+      store.set(parkSessionQueuedMessagesAfterStopAtom, "session-1");
 
       const queue = store.get(messageQueueAtom);
       expect(queue.find((m) => m.id === "m1")?.requiresExplicitDispatch).toBe(
@@ -282,7 +282,7 @@ describe("messageQueueAtom", () => {
 
     it("Send Now lifts the hold afterwards", () => {
       store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
-      store.set(holdSessionQueueForStopAtom, "session-1");
+      store.set(parkSessionQueuedMessagesAfterStopAtom, "session-1");
 
       store.set(forceSendMessageAtom, "m1");
 

@@ -51,6 +51,7 @@ import { PaletteBody, ShellFooterAction, SpotlightShell } from "../../shell";
 import type { PathSegment, SpotlightItem } from "../../types";
 import { useSelectorKernel } from "../core";
 import { CliAgentListFilterSwitch } from "./CliAgentListFilterSwitch";
+import { cliAgentCapabilityDisabled } from "./cliAgentCapability";
 import { createHumanSessionOption } from "./humanSessionOption";
 import type { AgentOption, DispatchCategoryPaletteProps } from "./types";
 
@@ -118,6 +119,7 @@ export const DispatchCategoryPalette: React.FC<
   currentCliAgentType,
   hideOrgs = false,
   hideCliAgents = false,
+  allowedCliAgentTypes,
   cliOnly = false,
   includeHumanSession = false,
   titleLabel,
@@ -254,6 +256,10 @@ export const DispatchCategoryPalette: React.FC<
       const parsed = CliAgentTypeSchema.safeParse(agent.name);
       if (!parsed.success) return [];
       const agentType = parsed.data;
+      const disabled = cliAgentCapabilityDisabled(
+        agentType,
+        allowedCliAgentTypes
+      );
       // CLI agents only show plan (subscription) accounts in the badge —
       // API key accounts are not relevant for the session-launch decision.
       const compatibleAccounts = getCliCompatibleAccounts(
@@ -272,11 +278,20 @@ export const DispatchCategoryPalette: React.FC<
           isBuiltIn: true,
           isCli: true,
           isOrg: false,
+          disabled,
+          disabledLabel: disabled ? tCommon("status.notSupported") : undefined,
           rightContent: buildCredentialBadge(compatibleAccounts),
         },
       ];
     });
-  }, [installedCliAgents, shouldFilterCliToGuiSupport, accounts, registry]);
+  }, [
+    allowedCliAgentTypes,
+    installedCliAgents,
+    shouldFilterCliToGuiSupport,
+    accounts,
+    registry,
+    tCommon,
+  ]);
 
   const customAgentOptions = useMemo((): AgentOption[] => {
     const rustBadge = buildCredentialBadge(rustCompatibleAccounts);
@@ -444,6 +459,8 @@ export const DispatchCategoryPalette: React.FC<
             option.isCli && option.cliAgentType
               ? getCliTransportLabel(option.cliAgentType)
               : undefined,
+          disabled: option.disabled,
+          tagLabel: option.disabledLabel,
           rightContent: option.rightContent,
           testId: option.isOrg
             ? `session-creator-agent-option-org-${option.agentOrgId}`
@@ -456,6 +473,7 @@ export const DispatchCategoryPalette: React.FC<
                   : undefined,
         },
         action: () => {
+          if (option.disabled) return;
           recordRecentAgentSelection({
             category: option.category,
             targetKind: option.targetKind,
@@ -569,7 +587,7 @@ export const DispatchCategoryPalette: React.FC<
 
   const isItemSelectable = useCallback((item: SpotlightItem) => {
     const data = item.data as Record<string, unknown> | undefined;
-    return !data?.isHeader;
+    return !data?.isHeader && !data?.disabled;
   }, []);
 
   const handleExternalKeyDown = useCallback(

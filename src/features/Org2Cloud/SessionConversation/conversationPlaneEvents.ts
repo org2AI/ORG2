@@ -1,10 +1,10 @@
-import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-
-import type { CloudConversationEvent } from "../org2CloudConversationEventsClient";
 import {
   CONVERSATION_SENDER_ARG,
   type ConversationSenderStamp,
-} from "./continuationEvents";
+} from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
+import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+
+import type { CloudConversationEvent } from "../org2CloudConversationEventsClient";
 
 const PLANE_ID_PREFIX = "convplane-";
 
@@ -23,7 +23,10 @@ export function buildConversationPlaneStreamEvents(
     const inner = row.event;
     const stamp: ConversationSenderStamp = {
       userId: row.authorUserId,
-      displayName: row.authorDisplayName?.trim() || row.authorUserId,
+      ...(row.authorDisplayName?.trim()
+        ? { displayName: row.authorDisplayName.trim() }
+        : {}),
+      ...(row.authorAvatarUrl ? { avatarUrl: row.authorAvatarUrl } : {}),
     };
     const stamped: SessionEvent = {
       ...inner,

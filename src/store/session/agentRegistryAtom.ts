@@ -17,7 +17,17 @@ export interface AgentRegistry {
   apiProviders: AvailableApiProvider[];
 }
 
+/** Initial agent discovery state. A loaded empty registry is distinct from boot. */
+export type AgentRegistryDiscoveryState =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "error";
+
 export const agentRegistryAtom = atom<AgentRegistry>({
   agents: [],
   apiProviders: [],
 });
+
+export const agentRegistryDiscoveryStateAtom =
+  atom<AgentRegistryDiscoveryState>("idle");

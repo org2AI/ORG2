@@ -19,9 +19,10 @@
  * `ChatSessionContext.Provider` + `ChatProvider` route `ChatHistory` to
  * `chatEventsForSessionAtomFamily(sessionId)` — a per-session snapshot
  * subscription that streams live without touching the global pipeline.
- * Sending goes through `SessionService.sendMessage`, which is adapter-
- * routed per session id, via the composer's `onSubmitOverride` (the
- * `ChannelComposer` call shape).
+ * Sending still goes through the ordinary user-intent submit boundary via the
+ * composer's `onSubmitOverride` (the `ChannelComposer` call shape), so queue
+ * admission and optimistic pending/sent/failed rows cannot diverge from the
+ * main chat pane.
  *
  * Two body modes, driven by `sideChatSessionIdAtom`:
  *   - session id → that session's live chat + composer;
@@ -41,7 +42,7 @@ import {
   HEADER_ICON_SIZE,
 } from "@src/config/workstation/tokens";
 import { ChatProvider } from "@src/contexts/workspace/ChatContext";
-import { SessionService } from "@src/engines/SessionCore/services/SessionService";
+import { isUserIntentSendError } from "@src/engines/SessionCore/services/userIntentDispatch";
 import { createLogger } from "@src/hooks/logger";
 import {
   BubbleChatIcon,
@@ -72,6 +73,7 @@ import ChatHistory from "../ChatHistory";
 import { ChatSessionContext } from "../ChatSessionContext";
 import InputArea from "../InputArea";
 import type { SubmitOverrideInput } from "../hooks/useInputArea/types";
+import { useUserIntentSubmit } from "../hooks/useWorkspaceChat/useUserIntentSubmit";
 import type { ChatPanelProps } from "../types";
 import { shouldShowSideChatLauncher } from "./sideChatLauncherVisibility";
 
@@ -290,6 +292,8 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
   isLive,
 }) => {
   const turnPaginationEnabled = useAtomValue(chatTurnPaginationEnabledAtom);
+  const getSessionId = useCallback(() => sessionId, [sessionId]);
+  const submitUserIntent = useUserIntentSubmit({ getSessionId });
 
   const handleSubmit = useCallback(
     async ({
@@ -300,21 +304,24 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
       const content = agentContent ?? displayText;
       if (!content.trim()) return false;
       try {
-        await SessionService.sendMessage({
+        await submitUserIntent({
           sessionId,
-          content,
-          displayText,
+          displayContent: displayText,
+          agentContent: content,
           imageDataUrls,
-          turnIntentSource: "user_submit",
-          directUserIntent: true,
+          source: "dispatch",
         });
         return true;
       } catch (error) {
         log.error(`Failed to send side-chat message to ${sessionId}:`, error);
+        // The ordinary dispatch boundary already persisted a visible failed
+        // row. Treat that submit as handled so InputArea does not restore a
+        // duplicate draft; only pre-admission failures keep the composer.
+        if (isUserIntentSendError(error)) return true;
         return false;
       }
     },
-    [sessionId]
+    [sessionId, submitUserIntent]
   );
 
   return (

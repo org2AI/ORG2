@@ -721,6 +721,7 @@ export function useOrg2CloudRealtime(): void {
         bumpOrgCommentsSignal(orgId);
         bumpChannelsVersion(orgId);
         bumpChannelMessagesVersion(orgId);
+        bumpConversationPlaneVersion(orgId);
         return;
       }
       orgFullRecoveryAtRef.current.set(orgId, Date.now());
@@ -746,6 +747,7 @@ export function useOrg2CloudRealtime(): void {
       // Messages posted/edited/deleted during the gap arrive through the
       // channel's own `p_since` delta, which already carries tombstones.
       bumpChannelMessagesVersion(orgId);
+      bumpConversationPlaneVersion(orgId);
     },
     [
       armCoarseSignalSafetyNet,
@@ -754,6 +756,7 @@ export function useOrg2CloudRealtime(): void {
       bumpActiveSessionCommentsSignal,
       bumpChannelsVersion,
       bumpChannelMessagesVersion,
+      bumpConversationPlaneVersion,
       refreshEntitlementForOrg,
     ]
   );

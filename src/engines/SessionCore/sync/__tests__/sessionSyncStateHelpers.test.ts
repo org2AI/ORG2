@@ -21,6 +21,7 @@ import { createInstrumentedStore } from "@src/util/core/state/instrumentedStore"
 
 const mocks = vi.hoisted(() => ({
   getTurnIntentDispatch: vi.fn(),
+  getTurnGeneration: vi.fn(() => 0),
 }));
 
 vi.mock("@src/engines/SessionCore/control/turnIntentDispatchLifecycle", () => ({
@@ -41,6 +42,8 @@ vi.mock("@src/store/session", () => ({
 }));
 
 vi.mock("@src/engines/SessionCore/control/turnLifecycle", () => ({
+  getLastTurnTerminal: vi.fn(() => null),
+  getTurnGeneration: mocks.getTurnGeneration,
   markTurnRunning: vi.fn(),
   markTurnTerminal: vi.fn(),
   toTurnTerminalStatus: (status: string) =>
@@ -79,6 +82,7 @@ describe("session sync state callbacks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getTurnIntentDispatch.mockReturnValue(undefined);
+    mocks.getTurnGeneration.mockReturnValue(0);
   });
 
   it("clears live streaming content before completed status can leave Stop UI stuck", () => {
@@ -163,6 +167,7 @@ describe("session sync state callbacks", () => {
       sessionId: "session-1",
       generation: 17,
     });
+    mocks.getTurnGeneration.mockReturnValue(17);
     const callbacks = createSessionEventHandlerCallbacks(
       "session-1",
       createActions(),
@@ -178,6 +183,29 @@ describe("session sync state callbacks", () => {
     expect(markTurnTerminal).toHaveBeenCalledWith("session-1", "completed", {
       generation: 17,
     });
+  });
+
+  it("rejects an attributed terminal from an older turn generation", () => {
+    mocks.getTurnIntentDispatch.mockReturnValue({
+      sessionId: "session-1",
+      generation: 16,
+    });
+    mocks.getTurnGeneration.mockReturnValue(17);
+    const actions = createActions();
+    const callbacks = createSessionEventHandlerCallbacks(
+      "session-1",
+      actions,
+      vi.fn()
+    );
+
+    callbacks.onStatusChange?.("completed", undefined, {
+      turnIntentId: "stale-intent-16",
+    });
+
+    expect(markTurnTerminal).not.toHaveBeenCalled();
+    expect(actions.setSessionRuntimeStatus).not.toHaveBeenCalled();
+    expect(actions.setPendingCancel).not.toHaveBeenCalled();
+    expect(updateSessionStatus).not.toHaveBeenCalled();
   });
 
   it("rejects a terminal intent attributed to another session", () => {

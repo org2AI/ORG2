@@ -5,6 +5,7 @@ import { cloudOrgToken } from "@src/features/TeamCollaboration/sessionOrgTagsAto
 import {
   rerootSessionCommentTarget,
   resolveSessionCommentTarget,
+  sessionCommentTargetForConversationRoot,
 } from "./sessionCommentTarget";
 
 const CLOUD_ORGS = [
@@ -20,6 +21,28 @@ const IMPORTED = {
   seq: 2,
   count: 10,
 };
+
+describe("sessionCommentTargetForConversationRoot", () => {
+  it("keeps Team Chat on the Cloud root while a native child executes", () => {
+    expect(
+      sessionCommentTargetForConversationRoot({
+        authority: "org2-cloud",
+        authorityScope: ["org-a"],
+        conversationId: "root-1",
+      })
+    ).toEqual({ orgId: "org-a", sessionId: "root-1" });
+  });
+
+  it("does not manufacture Team Chat for local conversations", () => {
+    expect(
+      sessionCommentTargetForConversationRoot({
+        authority: "local-session",
+        authorityScope: [],
+        conversationId: "local-1",
+      })
+    ).toBeNull();
+  });
+});
 
 describe("resolveSessionCommentTarget", () => {
   it("imported teammate session targets the SOURCE coordinates", () => {

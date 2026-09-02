@@ -122,16 +122,6 @@ pub fn init_pm_service_tables(conn: &Connection) -> SqliteResult<()> {
             WHERE instr(spec_json, '"type":"schedule"') > 0
                OR instr(spec_json, '"type":"one_time"') > 0;
 
-        -- Stable control-plane bridge. Legacy ids are UI identity; portable
-        -- names may change when a Routine is renamed.
-        CREATE TABLE IF NOT EXISTS pm_routine_legacy_bindings (
-            legacy_routine_id TEXT PRIMARY KEY,
-            portable_name     TEXT NOT NULL UNIQUE,
-            archived_at       INTEGER,
-            created_at        INTEGER NOT NULL,
-            updated_at        INTEGER NOT NULL
-        );
-
         -- Durable concurrency outcomes. Queued rows survive restart and are
         -- promoted idempotently once the active portable run settles.
         CREATE TABLE IF NOT EXISTS pm_routine_activation_events (

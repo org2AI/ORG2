@@ -391,7 +391,7 @@ fn legacy_definition(
 }
 
 #[test]
-fn legacy_handover_retires_unstarted_fires_and_gates_a_started_fire() {
+fn legacy_projection_ignores_unstarted_fires_and_gates_a_started_fire() {
     use crate::projects::types::{RoutineFireStatus, RoutineTrigger};
 
     let _sandbox = test_env::sandbox();
@@ -415,7 +415,7 @@ fn legacy_handover_retires_unstarted_fires_and_gates_a_started_fire() {
     let fires = crate::projects::io::list_routine_fires(&saved.id).expect("legacy history");
     assert!(fires
         .iter()
-        .any(|fire| fire.id == pending.id && fire.status == RoutineFireStatus::Skipped));
+        .any(|fire| fire.id == pending.id && fire.status == RoutineFireStatus::Pending));
     assert!(fires
         .iter()
         .any(|fire| fire.id == started.id && fire.status == RoutineFireStatus::Started));
@@ -447,7 +447,7 @@ fn legacy_handover_retires_unstarted_fires_and_gates_a_started_fire() {
 }
 
 #[test]
-fn legacy_bridge_syncs_toggle_fire_history_rename_and_delete_without_ghosts() {
+fn routine_projection_syncs_toggle_fire_history_rename_and_delete_without_ghosts() {
     use crate::projects::types::{RoutineFireStatus, RoutineTrigger};
 
     let _sandbox = test_env::sandbox();
@@ -516,28 +516,28 @@ fn legacy_bridge_syncs_toggle_fire_history_rename_and_delete_without_ghosts() {
     renamed.name = "Renamed Bridge".to_string();
     let renamed = crate::projects::io::upsert_routine(renamed).expect("rename mirror");
     let renamed_portable = legacy_bridge::sync_definition(&renamed).expect("rename portable");
-    assert_ne!(converted.name, renamed_portable.name);
+    assert_eq!(converted.name, renamed_portable.name);
     assert_eq!(
-        legacy_bridge::portable_name(&renamed.id).expect("binding"),
+        legacy_bridge::portable_name(&renamed.id).expect("projection"),
         Some(renamed_portable.name.clone())
     );
     let connection = crate::projects::io::helpers::conn().expect("conn");
-    let old_rows: i64 = connection
+    let stable_rows: i64 = connection
         .query_row(
             "SELECT COUNT(*) FROM pm_routines WHERE name = ?1",
             rusqlite::params![converted.name],
             |row| row.get(0),
         )
         .expect("old portable rows");
-    let renamed_run: String = connection
+    let stable_run: String = connection
         .query_row(
             "SELECT routine_name FROM pm_routine_runs WHERE id = ?1",
             rusqlite::params![run_id],
             |row| row.get(0),
         )
-        .expect("renamed history");
-    assert_eq!(old_rows, 0, "rename must not leave a schedulable ghost");
-    assert_eq!(renamed_run, renamed_portable.name);
+        .expect("stable history");
+    assert_eq!(stable_rows, 1, "rename reuses the execution projection");
+    assert_eq!(stable_run, renamed_portable.name);
     drop(connection);
     assert!(
         legacy_bridge::list_fires(&renamed.id)

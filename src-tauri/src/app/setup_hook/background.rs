@@ -8,6 +8,10 @@ use crate::infrastructure;
 use crate::setup::run_worktree_cleanup_loop;
 
 pub(crate) fn spawn_background_workers(app: &tauri::App) {
+    // WorkItemRun enqueue producers start below; install the skill consent
+    // resolver first so no startup schedule snapshots an unbound catalog.
+    agent_core::skills::work_run_manifest::register();
+
     // Durable WorkItemRun outbox consumer. This starts before the
     // legacy schedulers so every producer can converge on one
     // crash-safe delivery path during migration.
@@ -45,11 +49,8 @@ pub(crate) fn spawn_background_workers(app: &tauri::App) {
                     err
                 ),
             }
-            // Orgtrack migration: convert legacy RoutineDefinitions
-            // into portable pm_routines specs. Converted legacy rows
-            // are disabled in the same pass so the legacy scheduler
-            // can never double-fire them; the written report lands
-            // next to the store for the operator.
+            // Reconcile editable RoutineDefinitions into the rebuildable
+            // portable execution projection before starting its scheduler.
             match tokio::task::spawn_blocking(|| {
                 project_management::routine_service::convert::convert_all(true)
             })
@@ -77,6 +78,15 @@ pub(crate) fn spawn_background_workers(app: &tauri::App) {
                     "[routine-migration] conversion join error: {}",
                     err
                 ),
+            }
+            if let Err(err) = tokio::task::spawn_blocking(
+                project_management::org_skills::materialize_all,
+            )
+            .await
+            .map_err(|err| err.to_string())
+            .and_then(|result| result)
+            {
+                tracing::warn!("[org-skills] materialize sweep failed: {}", err);
             }
             agent_core::coordination::routine_scheduler::spawn(routine_handle);
             tracing::info!("[scheduler] Routine scheduler started");
@@ -188,6 +198,21 @@ pub(crate) fn spawn_background_workers(app: &tauri::App) {
             let _ = data_changed_handle.emit(
                 project_management::projects::events::DATA_CHANGED_EVENT,
                 serde_json::json!({ "source": "rust" }),
+            );
+        },
+    ));
+
+    let routine_changed_handle = app.handle().clone();
+    project_management::projects::events::register_routine_changed_notifier(Box::new(
+        move |event| {
+            use tauri::Emitter;
+            let _ = routine_changed_handle.emit(
+                project_management::projects::events::ROUTINE_CHANGED_EVENT,
+                serde_json::json!({
+                    "routineId": event.routine_id,
+                    "fireId": event.fire_id,
+                    "status": event.status,
+                }),
             );
         },
     ));

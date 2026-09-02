@@ -83,6 +83,7 @@ const WORK_ITEM_STATUS_VALUES = new Set<WorkItemStatus>([
   "planned",
   "in_progress",
   "in_review",
+  "blocked",
   "completed",
   "cancelled",
   "duplicate",

@@ -401,12 +401,13 @@ pub(crate) fn validate_wire_actions(
     connection: &Connection,
     org_id: &str,
     payload: &serde_json::Value,
-) -> Result<(), String> {
+) -> Result<Vec<QuickAction>, String> {
     let Some(raw) = payload.get("quickActions") else {
-        return Ok(());
+        return Ok(Vec::new());
     };
     let actions: Vec<QuickAction> =
         serde_json::from_value(raw.clone()).map_err(|err| format!("quick action wire: {err}"))?;
+    let mut owned = Vec::new();
     for action in actions {
         if action.org_id != org_id {
             return Err(org_scope_mismatch("quick_action", &action.id));
@@ -428,10 +429,11 @@ pub(crate) fn validate_wire_actions(
             .optional()
             .map_err(|err| format!("quick action watermark: {err}"))?;
         if stored_org.as_deref().is_some_and(|stored| stored != org_id) {
-            return Err(org_scope_mismatch("quick_action", &action.id));
+            continue;
         }
+        owned.push(action);
     }
-    Ok(())
+    Ok(owned)
 }
 
 pub(crate) fn apply_wire_actions(
@@ -439,28 +441,19 @@ pub(crate) fn apply_wire_actions(
     org_id: &str,
     payload: &serde_json::Value,
 ) -> Result<(), String> {
-    validate_wire_actions(connection, org_id, payload)?;
-    let Some(raw) = payload.get("quickActions") else {
-        return Ok(());
-    };
-    let actions: Vec<QuickAction> =
-        serde_json::from_value(raw.clone()).map_err(|err| format!("quick action wire: {err}"))?;
+    let actions = validate_wire_actions(connection, org_id, payload)?;
     for action in actions {
-        let local: Option<(String, i64)> = connection
+        if !target_exists(&action.target_kind, action.target_id.trim())? {
+            continue;
+        }
+        let local_updated_at: Option<i64> = connection
             .query_row(
-                "SELECT org_id, updated_at FROM pm_quick_actions WHERE id = ?1",
+                "SELECT updated_at FROM pm_quick_actions WHERE id = ?1",
                 params![action.id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
+                |row| row.get(0),
             )
             .optional()
             .map_err(|err| format!("quick action watermark: {err}"))?;
-        if !matches!(action.target_kind.as_str(), "agent" | "agent_org")
-            || action.target_id.trim().is_empty()
-            || !target_exists(&action.target_kind, action.target_id.trim())?
-        {
-            continue;
-        }
-        let local_updated_at = local.map(|(_, updated_at)| updated_at);
         if local_updated_at.is_some_and(|local| local >= action.updated_at) {
             continue;
         }

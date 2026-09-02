@@ -2,8 +2,8 @@
 //! Routine specs plus host-local execution targets.
 //!
 //! The conversion is additive: portable definitions land in
-//! `pm_routines`; legacy rows remain control-plane mirrors while the removed
-//! legacy scheduler guarantees one authoritative execution path.
+//! `pm_routines` as a rebuildable execution projection; the editable
+//! `routine_definitions` row remains the single definition source.
 //!
 //! What is expressible and what is not:
 //! - `CreateWorkItem` and `DirectSession` routines become single-step
@@ -267,8 +267,8 @@ pub fn invocation_target(
 /// Convert every legacy definition currently in the store, applying the
 /// expressible ones into `pm_routines` and reporting the rest.
 ///
-/// The legacy row remains an enabled/disabled UI mirror; only the portable
-/// scheduler executes it, so keeping the mirror active cannot double-fire.
+/// The source row stays editable while only the portable projection executes,
+/// so reconciliation cannot create a second firing path.
 pub fn convert_all(_disable_converted_legacy: bool) -> Result<ConversionReport, String> {
     let definitions = crate::projects::io::list_routines()?;
     let mut report = ConversionReport::default();

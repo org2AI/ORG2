@@ -2209,7 +2209,10 @@
     "fireHistory": "Run history",
     "noFires": "No runs yet",
     "openSession": "Open session",
-    "openWorkItem": "Open work item"
+    "openWorkItem": "Open work item",
+    "fireError": "No se pudo iniciar la rutina: {{detail}}",
+    "provider": "Proveedor",
+    "eventKind": "Evento"
   },
   "cursorPlugins": {
     "noPlugins": "No hay plugins de Cursor instalados",

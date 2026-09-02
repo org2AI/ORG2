@@ -7,8 +7,8 @@
 //!
 //! Storage: `pm_routines` (current definition + revision) and
 //! `pm_routine_runs` (immutable occurrence: revision, snapshot, hash,
-//! status projection inputs). Legacy `routine_definitions` rows remain UI
-//! control-plane mirrors; execution and automatic activation are portable.
+//! status projection inputs). `routine_definitions` is the editable source;
+//! `pm_routines` is its portable, rebuildable execution projection.
 
 pub mod convert;
 pub mod legacy_bridge;
@@ -1528,20 +1528,17 @@ pub fn active_run_id(name: &str) -> Result<Option<String>, String> {
             return Ok(Some(run_id));
         }
     }
-    // During handover a legacy fire that already launched may still be
-    // running. Keep portable Queue/Skip/Coalesce semantics aware of it so a
-    // converted Routine cannot double-start. Pending/queued legacy fires are
-    // terminalized by `legacy_bridge::sync_definition`.
+    // During upgrade a legacy fire that already launched may still be
+    // running. Keep portable Queue/Skip/Coalesce semantics aware of it so the
+    // execution projection cannot double-start that occurrence.
     use rusqlite::OptionalExtension;
     let connection = project_io::helpers::conn()?;
     let legacy_fire_id: Option<String> = connection
         .query_row(
             "SELECT fire.id
-               FROM pm_routine_legacy_bindings binding
-               JOIN routine_fires fire
-                 ON fire.routine_id = binding.legacy_routine_id
-              WHERE binding.portable_name = ?1
-                AND binding.archived_at IS NULL
+               FROM pm_routines routine
+               JOIN routine_fires fire ON fire.routine_id = routine.routine_id
+              WHERE routine.name = ?1
                 AND fire.status = 'started'
               ORDER BY fire.fired_at DESC
               LIMIT 1",

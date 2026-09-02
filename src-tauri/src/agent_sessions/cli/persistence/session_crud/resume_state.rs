@@ -26,6 +26,28 @@ fn resume_profile_key(account_id: Option<&str>) -> String {
         .to_string()
 }
 
+const SESSION_PROFILE_KEY: &str = "__session__";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeCatalogRefreshReceipt {
+    pub session_id: String,
+    pub profile_key: String,
+    pub cli_session_id: String,
+    pub requested_revision: i64,
+}
+
+impl NativeCatalogRefreshReceipt {
+    pub fn account_id(&self) -> Option<&str> {
+        (self.profile_key != SESSION_PROFILE_KEY).then_some(self.profile_key.as_str())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingNativeCatalogRefresh {
+    pub receipt: NativeCatalogRefreshReceipt,
+    pub source: String,
+}
+
 fn stage_cli_session_id_for_account_with_tx(
     tx: &rusqlite::Transaction<'_>,
     session_id: &str,
@@ -51,6 +73,16 @@ fn stage_cli_session_id_for_account_with_tx(
          VALUES (?1, ?2, ?3, ?4)
          ON CONFLICT(session_id, profile_key)
          DO UPDATE SET cli_session_id = excluded.cli_session_id,
+                       native_catalog_requested_revision = CASE
+                           WHEN code_session_cli_resume_state.cli_session_id = excluded.cli_session_id
+                           THEN code_session_cli_resume_state.native_catalog_requested_revision
+                           ELSE 0
+                       END,
+                       native_catalog_applied_revision = CASE
+                           WHEN code_session_cli_resume_state.cli_session_id = excluded.cli_session_id
+                           THEN code_session_cli_resume_state.native_catalog_applied_revision
+                           ELSE 0
+                       END,
                        updated_at = excluded.updated_at",
         params![session_id, profile_key, cli_session_id, now_iso()],
     )?;
@@ -180,6 +212,96 @@ pub fn get_cli_session_id_for_account(
         |row| row.get(0),
     )
     .optional()
+}
+
+/// Mark the exact provider-native binding as needing a catalog/index refresh.
+/// The returned generation is acknowledged only after the native App update
+/// succeeds; a newer terminal convergence makes an older worker's receipt
+/// stale instead of allowing it to clear the newer request.
+pub fn request_native_catalog_refresh(
+    session_id: &str,
+    account_id: Option<&str>,
+    cli_session_id: &str,
+) -> SqliteResult<Option<NativeCatalogRefreshReceipt>> {
+    let conn = get_connection()?;
+    let profile_key = resume_profile_key(account_id);
+    conn.query_row(
+        "UPDATE code_session_cli_resume_state
+         SET native_catalog_requested_revision = native_catalog_requested_revision + 1
+         WHERE session_id = ?1 AND profile_key = ?2 AND cli_session_id = ?3
+         RETURNING session_id, profile_key, cli_session_id,
+                   native_catalog_requested_revision",
+        params![session_id, profile_key, cli_session_id],
+        |row| {
+            Ok(NativeCatalogRefreshReceipt {
+                session_id: row.get(0)?,
+                profile_key: row.get(1)?,
+                cli_session_id: row.get(2)?,
+                requested_revision: row.get(3)?,
+            })
+        },
+    )
+    .optional()
+}
+
+/// Compare-and-set acknowledgement for one completed catalog refresh.
+/// Returning false means the binding changed, a newer generation was
+/// requested, or this receipt was already applied; in every case the caller
+/// must not overwrite the current binding's durability state.
+pub fn acknowledge_native_catalog_refresh(
+    receipt: &NativeCatalogRefreshReceipt,
+) -> SqliteResult<bool> {
+    let conn = get_connection()?;
+    let affected = conn.execute(
+        "UPDATE code_session_cli_resume_state
+         SET native_catalog_applied_revision = ?4
+         WHERE session_id = ?1
+           AND profile_key = ?2
+           AND cli_session_id = ?3
+           AND native_catalog_requested_revision = ?4
+           AND native_catalog_applied_revision < ?4",
+        params![
+            receipt.session_id,
+            receipt.profile_key,
+            receipt.cli_session_id,
+            receipt.requested_revision,
+        ],
+    )?;
+    Ok(affected > 0)
+}
+
+/// Load only dirty native-App catalog receipts. The startup repair path is
+/// intentionally bounded and never scans provider transcripts or all sessions.
+pub fn pending_native_catalog_refreshes(
+    limit: usize,
+) -> SqliteResult<Vec<PendingNativeCatalogRefresh>> {
+    let conn = get_connection()?;
+    let mut statement = conn.prepare(
+        "SELECT r.session_id, r.profile_key, r.cli_session_id,
+                r.native_catalog_requested_revision,
+                l.source
+         FROM code_session_cli_resume_state r
+         JOIN code_session_native_transcript_ids l
+           ON l.session_id = r.session_id
+          AND l.source_session_id = r.cli_session_id
+          AND l.source IN ('claude_code', 'codex_app')
+         WHERE r.native_catalog_requested_revision
+                 > r.native_catalog_applied_revision
+         ORDER BY r.updated_at ASC, r.session_id ASC, r.profile_key ASC
+         LIMIT ?1",
+    )?;
+    let rows = statement.query_map(params![i64::try_from(limit).unwrap_or(i64::MAX)], |row| {
+        Ok(PendingNativeCatalogRefresh {
+            receipt: NativeCatalogRefreshReceipt {
+                session_id: row.get(0)?,
+                profile_key: row.get(1)?,
+                cli_session_id: row.get(2)?,
+                requested_revision: row.get(3)?,
+            },
+            source: row.get(4)?,
+        })
+    })?;
+    rows.collect()
 }
 
 pub(in crate::agent_sessions::cli::persistence) fn bump_history_mutation_with_tx(

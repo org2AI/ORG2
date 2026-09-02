@@ -115,12 +115,21 @@ export function useEnsureFamilyLoaded(
       }
       const memberKey = `${authIdentityKey}:${row.orgId}:${bareSessionId}`;
       const position = `${row.eventsEpoch}:${row.eventsCount}`;
-      if (attemptedImportPositions.get(memberKey) === position) return false;
-      attemptedImportPositions.set(memberKey, position);
-      return true;
+      return attemptedImportPositions.get(memberKey) !== position;
     });
     let cancelled = false;
     let cursor = 0;
+    const activeClaims = new Map<string, string>();
+    const releaseClaim = (memberKey: string, position: string) => {
+      // Cleanup may already have released this worker's claim and a newer
+      // effect may since have claimed the same position. A late completion
+      // from the cancelled worker must not delete that newer claim.
+      if (activeClaims.get(memberKey) !== position) return;
+      activeClaims.delete(memberKey);
+      if (attemptedImportPositions.peek(memberKey) === position) {
+        attemptedImportPositions.delete(memberKey);
+      }
+    };
     const worker = async () => {
       for (;;) {
         if (cancelled) return;
@@ -131,12 +140,16 @@ export function useEnsureFamilyLoaded(
         const row = member.row;
         const memberKey = `${authIdentityKey}:${row.orgId}:${bareSessionId}`;
         const position = `${row.eventsEpoch}:${row.eventsCount}`;
+        // Claim only work this worker is about to execute. Claiming the full
+        // filtered batch up front strands entries beyond the worker limit if
+        // the active workers stop early (for example, on auth refresh failure).
+        if (attemptedImportPositions.peek(memberKey) === position) continue;
+        attemptedImportPositions.set(memberKey, position);
+        activeClaims.set(memberKey, position);
         try {
           const fresh = await ensureFreshSession(requestAuth);
           if (!fresh) {
-            if (attemptedImportPositions.peek(memberKey) === position) {
-              attemptedImportPositions.delete(memberKey);
-            }
+            releaseClaim(memberKey, position);
             failedImportRef.current = true;
             return;
           }
@@ -144,9 +157,7 @@ export function useEnsureFamilyLoaded(
             cancelled ||
             org2CloudAuthIdentityKey(fresh) !== authIdentityKey
           ) {
-            if (attemptedImportPositions.peek(memberKey) === position) {
-              attemptedImportPositions.delete(memberKey);
-            }
+            releaseClaim(memberKey, position);
             return;
           }
           commitRefreshedAuth(setAuth, requestAuth, fresh);
@@ -156,10 +167,15 @@ export function useEnsureFamilyLoaded(
             remoteSession: row,
             sourceEndpointUrl: requestAuth.supabaseUrl,
           });
-        } catch (error) {
-          if (attemptedImportPositions.peek(memberKey) === position) {
-            attemptedImportPositions.delete(memberKey);
+          if (cancelled) {
+            releaseClaim(memberKey, position);
+            return;
           }
+          // A successful position remains in attemptedImportPositions; it is
+          // the no-op guard until the owner's replay position advances.
+          activeClaims.delete(memberKey);
+        } catch (error) {
+          releaseClaim(memberKey, position);
           failedImportRef.current = true;
           log.warn(
             `background family import failed for ${bareSessionId}`,
@@ -176,6 +192,9 @@ export function useEnsureFamilyLoaded(
     );
     return () => {
       cancelled = true;
+      for (const [memberKey, position] of activeClaims) {
+        releaseClaim(memberKey, position);
+      }
     };
   }, [
     family,

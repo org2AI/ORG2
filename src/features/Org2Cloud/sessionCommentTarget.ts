@@ -44,13 +44,14 @@ export function sessionCommentTargetForConversationRoot(
 ): SessionCommentTarget | null {
   if (
     root?.authority !== "org2-cloud" ||
-    root.authorityScope.length !== 1 ||
-    !root.authorityScope[0]
+    (root.authorityScope.length !== 1 && root.authorityScope.length !== 2)
   ) {
     return null;
   }
+  const orgId = root.authorityScope.at(-1);
+  if (!orgId) return null;
   return {
-    orgId: root.authorityScope[0],
+    orgId,
     sessionId: root.conversationId,
   };
 }

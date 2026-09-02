@@ -7,58 +7,31 @@ use super::super::super::normalize::{
     normalize_codex_tool_calls, normalize_tool_name_key, normalize_web_search_args,
 };
 
-const ORGII_MATERIALIZED_RAW_NAME_PREFIX: &str = "orgii_materialized_native::";
-const ORGII_MATERIALIZED_ARGUMENT_KEY: &str = "__orgiiMaterializedNative";
-const ORGII_CANONICAL_ARGUMENT_KEY: &str = "__orgiiCanonicalArguments";
-
-pub(in crate::sources::codex::app::transcript) fn is_orgii_materialized_tool_call(
-    call: &ImportedToolCall,
-) -> bool {
-    call.raw_name
-        .starts_with(ORGII_MATERIALIZED_RAW_NAME_PREFIX)
-}
-
-pub(super) fn original_raw_tool_name(raw_name: &str) -> &str {
-    raw_name
-        .strip_prefix(ORGII_MATERIALIZED_RAW_NAME_PREFIX)
-        .unwrap_or(raw_name)
-}
-
 pub(in crate::sources::codex::app::transcript) fn pending_tool_calls_from_payload(
     payload: &Value,
     created_at: &str,
 ) -> Option<(String, Vec<ImportedToolCall>)> {
     let call_id = payload.get("call_id")?.as_str()?.to_string();
     let raw_name = payload.get("name")?.as_str()?.to_string();
-    let mut arguments = payload
+    let arguments = payload
         .get("arguments")
         .and_then(Value::as_str)
         .map(imported_history::parse_inner_json)
         .unwrap_or_else(|| json!({}));
-    let materialized_arguments = arguments
-        .as_object_mut()
-        .and_then(|object| object.remove(ORGII_MATERIALIZED_ARGUMENT_KEY))
-        .and_then(|value| value.as_bool())
-        == Some(true);
-    if materialized_arguments {
-        if let Some(canonical) = arguments
-            .as_object_mut()
-            .and_then(|object| object.remove(ORGII_CANONICAL_ARGUMENT_KEY))
-        {
-            arguments = canonical;
-        }
-    }
-    if materialized_arguments
-        || payload
-            .get("orgii_materialization")
-            .and_then(Value::as_bool)
-            == Some(true)
+    // `thread/inject_items` preserves the native response-item id supplied by
+    // the materializer. Canonical tool calls injected through that supported
+    // API must not be normalized a second time; ordinary Codex rollout tool
+    // calls have only `call_id` in the currently supported transcript schema.
+    if payload
+        .get("id")
+        .and_then(Value::as_str)
+        .is_some_and(|id| !id.trim().is_empty())
     {
         return Some((
             call_id.clone(),
             vec![ImportedToolCall {
                 call_id,
-                raw_name: format!("{ORGII_MATERIALIZED_RAW_NAME_PREFIX}{raw_name}"),
+                raw_name: raw_name.clone(),
                 canonical_name: raw_name,
                 args: arguments,
                 created_at: created_at.to_string(),

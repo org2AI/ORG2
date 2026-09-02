@@ -16,14 +16,9 @@ import {
   messageQueueAtom,
 } from "@src/store/ui/messageQueueAtom";
 
-import { syntheticSettledByScope } from "../core/atoms/actions.userMessageSync";
 import { derivedSnapshotAtom, eventsAtom } from "../core/atoms/events";
-import {
-  pendingSyntheticEventAtom,
-  sessionIdAtom,
-} from "../core/atoms/metadata";
+import { sessionIdAtom } from "../core/atoms/metadata";
 import type { Snapshot } from "../core/store/EventStoreProxy";
-import { syntheticEvictionScopeForRealUserEvents } from "../core/store/eventStoreEvents";
 import type { SessionEvent } from "../core/types";
 import { isVisibleInChat } from "../ingestion/visibilityFilters";
 import {
@@ -204,27 +199,6 @@ export function appendLiveAssistantEvent(
 }
 
 /**
- * Render the single foreground optimistic user row independently of the Rust
- * snapshot. Native transcript synchronization is allowed to replace the
- * EventStore wholesale; without this overlay the just-submitted row vanishes
- * until the replacement finishes and the provider echoes it back. The real
- * echo (same event ID or durable turn-intent ID; legacy rows fall back to
- * content/time reconciliation) suppresses the overlay, so it cannot create a
- * second visible message.
- */
-export function appendPendingSyntheticUserEvent(
-  events: SessionEvent[],
-  sessionId: string | null,
-  pending: SessionEvent | null
-): SessionEvent[] {
-  if (!sessionId || !pending || pending.sessionId !== sessionId) return events;
-  if (events.some((event) => event.id === pending.id)) return events;
-  const scope = syntheticEvictionScopeForRealUserEvents(events);
-  if (syntheticSettledByScope(pending, scope)) return events;
-  return [...events, pending];
-}
-
-/**
  * Project durable queue rows as ordinary pending user turns immediately.
  *
  * The queue remains the sole dispatch authority; this is only its transcript
@@ -274,7 +248,6 @@ export function appendQueuedUserEvents(
 export const chatEventsAtom = atom((get) => {
   const snap = get(derivedSnapshotAtom);
   const sessionId = get(sessionIdAtom);
-  const pendingSyntheticEvent = get(pendingSyntheticEventAtom);
 
   // Reset prev cache when the active session changes so the stability
   // comparison never runs across two different sessions' event arrays.
@@ -296,11 +269,7 @@ export const chatEventsAtom = atom((get) => {
 
   if (snap && "chatEvents" in snap) {
     const rawChatEvents = appendQueuedUserEvents(
-      appendPendingSyntheticUserEvent(
-        snap.chatEvents,
-        sessionId,
-        pendingSyntheticEvent
-      ),
+      snap.chatEvents,
       sessionId,
       queuedMessages
     );
@@ -367,11 +336,7 @@ export const chatEventsAtom = atom((get) => {
   // raw StreamingSnapshot without chatEvents). Filter JS-side, same as
   // messagesEventsAtom / simulatorEventsAtom do in their own fallback paths.
   const events = appendQueuedUserEvents(
-    appendPendingSyntheticUserEvent(
-      get(eventsAtom),
-      sessionId,
-      pendingSyntheticEvent
-    ),
+    get(eventsAtom),
     sessionId,
     queuedMessages
   );

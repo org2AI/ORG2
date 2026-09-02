@@ -20,6 +20,7 @@ import {
   truncateAfterMessage,
 } from "@src/api/tauri/agent";
 import Message from "@src/components/Message";
+import { useChatSessionId } from "@src/engines/ChatPanel/ChatSessionContext";
 import { projectOutgoingUserMessage } from "@src/engines/ChatPanel/hooks/useInputArea/projectOutgoingUserMessage";
 import { useUserIntentSubmit } from "@src/engines/ChatPanel/hooks/useWorkspaceChat/useUserIntentSubmit";
 import { editTruncationTimestampAtom } from "@src/engines/SessionCore";
@@ -72,9 +73,13 @@ export function useEditUserMessage(
   const setPendingPlanApprovals = useSetAtom(pendingPlanApprovalsAtom);
   const clearTodosForSession = useSetAtom(clearTodosForSessionAtom);
   const store = useStore();
+  const surfaceSessionId = useChatSessionId();
   const resolveCurrentSessionId = useCallback(
-    () => store.get(activeSessionIdAtom) ?? store.get(sessionIdAtom),
-    [store]
+    () =>
+      surfaceSessionId ??
+      store.get(activeSessionIdAtom) ??
+      store.get(sessionIdAtom),
+    [store, surfaceSessionId]
   );
   const submitUserIntent = useUserIntentSubmit({
     getSessionId: resolveCurrentSessionId,
@@ -101,6 +106,7 @@ export function useEditUserMessage(
       const initiatedSessionId = resolveCurrentSessionId();
       const isStillOnInitiatingSession = (): boolean => {
         if (!initiatedSessionId) return false;
+        if (surfaceSessionId) return surfaceSessionId === initiatedSessionId;
         const activeSessionId = store.get(activeSessionIdAtom);
         if (activeSessionId) return activeSessionId === initiatedSessionId;
         return store.get(sessionIdAtom) === initiatedSessionId;
@@ -310,6 +316,7 @@ export function useEditUserMessage(
       setPendingPlanApprovals,
       clearTodosForSession,
       resolveCurrentSessionId,
+      surfaceSessionId,
       submitUserIntent,
       t,
       store,

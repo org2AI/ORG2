@@ -35,7 +35,6 @@ import {
 } from "@src/store/ui/messageQueueAtom";
 import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 
-import { pendingSyntheticEventAtom } from "../core/atoms/metadata";
 import { isInteractiveTool } from "../core/interactiveTools";
 import {
   hasLiveRuntimeResourceInLatestTurn,
@@ -51,7 +50,6 @@ import type { SessionEvent } from "../core/types";
 import { ensureCursorIdeEventsInStore } from "../sync/adapters/cursorIdeAdapter";
 import {
   appendLiveAssistantEvent,
-  appendPendingSyntheticUserEvent,
   appendQueuedUserEvents,
   filterQueuedSyntheticUserEvents,
 } from "./chatEvents";
@@ -183,19 +181,14 @@ export function extractSessionChatEvents(
 function deriveFamilyChatEvents(
   snapshot: Snapshot | null,
   sessionId: string,
-  queuedMessages: readonly QueuedMessage[],
-  pendingSyntheticEvent: SessionEvent | null
+  queuedMessages: readonly QueuedMessage[]
 ): SessionEvent[] {
   const streaming = snapshot ? isSnapshotActivelyStreaming(snapshot) : false;
   return appendLiveAssistantEvent(
     derivePlanDisplayEvents(
       filterQueuedSyntheticUserEvents(
         appendQueuedUserEvents(
-          appendPendingSyntheticUserEvent(
-            extractSessionChatEvents(snapshot),
-            sessionId,
-            pendingSyntheticEvent
-          ),
+          extractSessionChatEvents(snapshot),
           sessionId,
           queuedMessages
         ),
@@ -220,13 +213,7 @@ export const chatEventsForSessionAtomFamily = atomFamily(
     const a = atom((get) => {
       const { snapshot } = get(sessionSnapshotAtomFamily(sessionId));
       const queuedMessages = get(messageQueueAtom);
-      const pendingSyntheticEvent = get(pendingSyntheticEventAtom);
-      const next = deriveFamilyChatEvents(
-        snapshot,
-        sessionId,
-        queuedMessages,
-        pendingSyntheticEvent
-      );
+      const next = deriveFamilyChatEvents(snapshot, sessionId, queuedMessages);
       const streaming = snapshot
         ? isSnapshotActivelyStreaming(snapshot)
         : false;

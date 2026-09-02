@@ -23,38 +23,45 @@ pub(crate) fn start_backend_services(
             tracing::info!("[Transport] Transport layer initialized");
         }
     }
-    match agent_sessions::cli::persistence::sweep_stale_sessions() {
-        Ok(orphans) if !orphans.is_empty() => {
-            tracing::info!(
-                count = orphans.len(),
-                "[CLI Sessions] swept stale sessions to failed"
-            );
-            // Kill the orphaned CLI process trees. After a backend
-            // restart (crash, quit, or dev-mode Rust recompile) the
-            // old CLI agents keep running unsupervised — the new
-            // backend has no RUNNING_SESSIONS handle, so the user's
-            // cancel button can't reach them. Resume previously did
-            // this lazily per-session; do it eagerly for all.
-            tauri::async_runtime::spawn(async move {
-                for (session_id, pid) in orphans {
-                    tracing::info!(
-                        "[CLI Sessions] terminating orphaned process tree pid={} (session {})",
-                        pid,
-                        session_id
-                    );
-                    agent_sessions::cli::session_runner::terminate_process_tree(
-                        pid,
-                        &session_id,
-                    )
-                    .await;
-                }
-            });
+    let stale_cli_processes = match agent_sessions::cli::persistence::sweep_stale_sessions() {
+        Ok(orphans) => {
+            if !orphans.is_empty() {
+                tracing::info!(
+                    count = orphans.len(),
+                    "[CLI Sessions] swept stale sessions to failed"
+                );
+            }
+            orphans
         }
-        Ok(_) => {}
         Err(err) => {
             tracing::warn!(error = %err, "[CLI Sessions] Failed to sweep stale sessions");
+            Vec::new()
         }
-    }
+    };
+    // Reuse the existing startup lifecycle: first terminate provider processes
+    // left behind by the previous backend, then make one bounded pass over
+    // durable native-App catalog receipts. There is no timer or parallel
+    // coordinator, and clean sessions are never visited.
+    tauri::async_runtime::spawn(async move {
+        for (session_id, pid) in stale_cli_processes {
+            tracing::info!(
+                "[CLI Sessions] terminating orphaned process tree pid={} (session {})",
+                pid,
+                session_id
+            );
+            agent_sessions::cli::session_runner::terminate_process_tree(pid, &session_id).await;
+        }
+        let (repaired, failed) = agent_sessions::cli::native_materializer::
+            reconcile_pending_native_catalog_refreshes_on_startup()
+            .await;
+        if repaired > 0 || failed > 0 {
+            tracing::info!(
+                repaired,
+                failed,
+                "[CLI Sessions] reconciled pending native App catalog refreshes"
+            );
+        }
+    });
 
     system_services::app_menu::setup_menu_events(app.handle());
     tracing::info!("[AppMenu] Menu event handlers registered");

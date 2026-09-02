@@ -76,7 +76,6 @@ export function useMessageDispatch() {
         visibleText,
         imageDataUrls,
         runtimeStatusSource,
-        pendingPolicy: "visible",
         beforeAppend,
         send: {
           content,

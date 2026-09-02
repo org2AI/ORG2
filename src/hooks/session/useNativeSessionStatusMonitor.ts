@@ -111,13 +111,22 @@ export function useNativeSessionStatusMonitor(options?: {
         const session = isStoreInitialized()
           ? getInstrumentedStore().get(sessionByIdAtom(sessionId))
           : undefined;
+        let lifecycleAccepted = true;
         if (completedTurn) {
-          markTurnTerminal(sessionId, "completed");
+          lifecycleAccepted = markTurnTerminal(sessionId, "completed");
         } else if (isTerminalStatus(status)) {
-          markTurnTerminal(sessionId, toTurnTerminalStatus(status));
+          lifecycleAccepted = markTurnTerminal(
+            sessionId,
+            toTurnTerminalStatus(status)
+          );
         } else if (isSessionRuntimeExecuting(status)) {
-          markTurnRunning(sessionId);
+          lifecycleAccepted = markTurnRunning(sessionId);
         }
+
+        // Finality and every presentation mirror move together. A late
+        // terminal/running event rejected by the generation-aware lifecycle
+        // must not still flip the footer, sidebar row, or notification state.
+        if (!lifecycleAccepted) return;
 
         // This Tauri event is the durable, process-wide status edge emitted
         // after Rust commits the session row. The per-session Channel normally

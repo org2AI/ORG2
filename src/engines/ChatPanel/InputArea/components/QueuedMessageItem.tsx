@@ -35,6 +35,7 @@ interface QueuedMessageItemProps {
   draggable: boolean;
   isDragging: boolean;
   isEditing: boolean;
+  isHandoff: boolean;
   onStartEdit: (msg: QueuedMessage) => void;
   onSendNow: (messageId: string) => void;
   onCancel: (messageId: string) => void;
@@ -46,6 +47,7 @@ const QueuedMessageItem: React.FC<QueuedMessageItemProps> = memo(
     draggable,
     isDragging,
     isEditing,
+    isHandoff,
     onStartEdit,
     onSendNow,
     onCancel,
@@ -54,7 +56,8 @@ const QueuedMessageItem: React.FC<QueuedMessageItemProps> = memo(
     // "now" priority = Send Now clicked; the dispatcher delivers the moment
     // the interrupted turn's terminal lands. Render as "sending now…" so the
     // user sees their click took effect during the interrupt window.
-    const isSending = msg.status !== "queued" || msg.priority === "now";
+    const isSending =
+      isHandoff || msg.status !== "queued" || msg.priority === "now";
     const { attributes, listeners, setNodeRef, transform, transition } =
       useSortable({
         id: msg.id,

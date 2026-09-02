@@ -296,7 +296,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
       Boolean(effortModelId) &&
       Boolean(variant) &&
       variantOptions.availableLevels.length > 1;
-    if (useCombinedSettingsMenu || useSliderSettingsMenu) {
+    if ((useCombinedSettingsMenu || useSliderSettingsMenu) && effortModelId) {
       return (
         <ModelSettingsMenu
           anchorRef={modelSegmentRef}

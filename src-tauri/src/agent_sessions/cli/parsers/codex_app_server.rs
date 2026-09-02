@@ -55,11 +55,14 @@
 //! profile's permission mode and surfaced as `approval_response` chunks.
 
 use std::collections::HashMap;
+use std::path::Path;
+use std::process::Stdio;
 use std::sync::{LazyLock, Mutex as StdMutex};
+use std::time::Duration;
 
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{ChildStdin, ChildStdout};
+use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 use tokio::sync::mpsc;
 
 use core_types::activity::ActivityChunk;
@@ -68,6 +71,9 @@ use super::canonicalize_cli_error_message;
 use super::normalizer::{normalize_tool_name, unwrap_codex_command};
 use super::types::{CliAgentType, TokenUsage};
 use crate::agent_sessions::cli::session_runner::launch_profiles::CliPermissionMode;
+
+mod catalog;
+pub(crate) use catalog::{archive_thread, register_thread, synchronize_thread};
 
 /// How long to keep draining after `turn/interrupt` before giving up on a
 /// graceful `turn/completed`.
@@ -143,9 +149,7 @@ pub enum GracefulInterruptOutcome {
 /// kills the process tree. A timeout is deliberately distinct from success:
 /// the runner JSONL may be syntactically valid while its current turn is only
 /// partially flushed, so callers must not publish it over the native App copy.
-pub async fn interrupt_session_gracefully(
-    session_id: &str,
-) -> GracefulInterruptOutcome {
+pub async fn interrupt_session_gracefully(session_id: &str) -> GracefulInterruptOutcome {
     let Some(tx) = interrupt_sender(session_id) else {
         return GracefulInterruptOutcome::NotRunning;
     };
@@ -158,8 +162,8 @@ pub async fn interrupt_session_gracefully(
     }
     // The transport itself drains for INTERRUPT_DRAIN_SECS. Give its task one
     // extra second to unregister after receiving turn/completed.
-    let deadline = tokio::time::Instant::now()
-        + tokio::time::Duration::from_secs(INTERRUPT_DRAIN_SECS + 1);
+    let deadline =
+        tokio::time::Instant::now() + tokio::time::Duration::from_secs(INTERRUPT_DRAIN_SECS + 1);
     while tokio::time::Instant::now() < deadline {
         if !interrupt_registered(session_id) {
             return GracefulInterruptOutcome::Completed;
@@ -892,6 +896,113 @@ async fn read_message(
             }
             Err(err) => return Err(format!("app-server read error: {}", err)),
         }
+    }
+}
+
+/// Reusable app-server RPC owner for non-turn operations such as native
+/// thread registration. It shares the exact JSON-RPC codec used by managed
+/// turns; callers no longer spawn a second blocking protocol client.
+pub(crate) struct CodexAppServerRpcClient {
+    _child: Child,
+    stdin: ChildStdin,
+    reader: BufReader<ChildStdout>,
+    buffer: String,
+    next_id: u64,
+}
+
+impl CodexAppServerRpcClient {
+    pub(crate) async fn launch(codex_home: &Path, cwd: &Path) -> Result<Self, String> {
+        std::fs::create_dir_all(codex_home).map_err(|error| {
+            format!(
+                "create Codex native profile {}: {error}",
+                codex_home.display()
+            )
+        })?;
+        let launch_profile = super::super::launch_profile_store::resolve_cli_launch_profile(
+            &key_vault::key_store::ModelType::Codex,
+        )?;
+        let mut command = Command::new(&launch_profile.command);
+        command
+            .arg("app-server")
+            .envs(launch_profile.env)
+            .env("CODEX_HOME", codex_home)
+            .current_dir(cwd)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+        let mut child = command.spawn().map_err(|error| {
+            format!(
+                "start Codex app-server {} for native profile {}: {error}",
+                launch_profile.command,
+                codex_home.display()
+            )
+        })?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| "Codex app-server stdin was not piped".to_string())?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| "Codex app-server stdout was not piped".to_string())?;
+        let mut client = Self {
+            _child: child,
+            stdin,
+            reader: BufReader::new(stdout),
+            buffer: String::new(),
+            next_id: 0,
+        };
+        client
+            .request(
+                "initialize",
+                serde_json::json!({
+                    "clientInfo": {
+                        "name": "orgii",
+                        "title": "ORGII",
+                        "version": env!("CARGO_PKG_VERSION")
+                    },
+                    "capabilities": {"experimentalApi": true}
+                }),
+                Duration::from_secs(20),
+            )
+            .await?;
+        client.notify("initialized").await?;
+        Ok(client)
+    }
+
+    pub(crate) async fn notify(&mut self, method: &str) -> Result<(), String> {
+        rpc_notify(&mut self.stdin, method).await
+    }
+
+    pub(crate) async fn request(
+        &mut self,
+        method: &str,
+        params: Value,
+        timeout: Duration,
+    ) -> Result<Value, String> {
+        self.next_id += 1;
+        let request_id = self.next_id;
+        rpc_send(&mut self.stdin, request_id, method, params).await?;
+        tokio::time::timeout(timeout, async {
+            loop {
+                let response = read_message(&mut self.reader, &mut self.buffer).await?;
+                if response.get("id").and_then(Value::as_u64) != Some(request_id)
+                    || response.get("method").is_some()
+                {
+                    continue;
+                }
+                if let Some(error) = response.get("error") {
+                    return Err(format!("Codex app-server {method} failed: {error}"));
+                }
+                return response
+                    .get("result")
+                    .cloned()
+                    .ok_or_else(|| format!("Codex app-server {method} returned no result"));
+            }
+        })
+        .await
+        .map_err(|_| format!("Codex app-server {method} reached its request deadline"))?
     }
 }
 

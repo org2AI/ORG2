@@ -15,33 +15,7 @@ import type { Session } from "@src/store/session";
 
 import { ConversationSenderMetadataProvider } from "../ConversationSenderMetadataContext";
 import { ParentAgentSenderProvider } from "../ParentAgentSenderContext";
-import UserChatItem, { isViewerOwnedFailedDiscussion } from "../UserChatItem";
-
-describe("failed Team Chat edit ownership", () => {
-  it("allows only the viewer's failed discussion row", () => {
-    expect(
-      isViewerOwnedFailedDiscussion({
-        deliveryStatus: "failed",
-        authorUserId: "viewer-user",
-        viewerUserId: "viewer-user",
-      })
-    ).toBe(true);
-    expect(
-      isViewerOwnedFailedDiscussion({
-        deliveryStatus: "failed",
-        authorUserId: "teammate-user",
-        viewerUserId: "viewer-user",
-      })
-    ).toBe(false);
-    expect(
-      isViewerOwnedFailedDiscussion({
-        deliveryStatus: "sent",
-        authorUserId: "viewer-user",
-        viewerUserId: "viewer-user",
-      })
-    ).toBe(false);
-  });
-});
+import UserChatItem from "../UserChatItem";
 
 function renderMessage(id: string): string {
   const sessionId = "agentsession-local";

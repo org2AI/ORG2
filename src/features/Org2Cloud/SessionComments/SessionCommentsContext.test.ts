@@ -3,6 +3,7 @@ import { Provider, createStore } from "jotai";
 import { act, createElement, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ComposerSnapshot } from "@src/components/ComposerInput";
 import type { SmokeRoot } from "@src/test/reactSmokeHarness";
 import { createSmokeRoot } from "@src/test/reactSmokeHarness";
 
@@ -13,6 +14,7 @@ import {
   type CloudSessionComment,
   Org2CloudCommentError,
 } from "../org2CloudCommentsClient";
+import { SessionCommentDeliveryError } from "../org2CloudSessionCommentsAtom";
 import {
   type SessionCommentsContextValue,
   SessionCommentsProvider,
@@ -125,6 +127,32 @@ describe("addCommentWithSessionAdmissionRecovery", () => {
     ).resolves.toBe(comment);
     expect(repair).toHaveBeenCalledOnce();
     expect(add).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the retained row's identity when admission repair itself fails", async () => {
+    const retained = new SessionCommentDeliveryError(
+      "local-comment-1",
+      new Org2CloudCommentError("ORG2_SESSION_NOT_FOUND", 404)
+    );
+    const add = vi.fn(async () => {
+      throw retained;
+    });
+    const repairError = new Error("sync pass rejected");
+    const repair = vi.fn(async () => {
+      throw repairError;
+    });
+
+    const rejection = await addCommentWithSessionAdmissionRecovery(
+      add,
+      repair
+    ).catch((error: unknown) => error);
+
+    expect(rejection).toBeInstanceOf(SessionCommentDeliveryError);
+    expect((rejection as SessionCommentDeliveryError).commentId).toBe(
+      "local-comment-1"
+    );
+    expect((rejection as SessionCommentDeliveryError).cause).toBe(repairError);
+    expect(add).toHaveBeenCalledOnce();
   });
 
   it("does not recreate a missing imported teammate session", async () => {
@@ -240,9 +268,26 @@ describe("SessionCommentsProvider failed Team Chat retry", () => {
       return context;
     };
 
+    const editedMentionSnapshot: ComposerSnapshot = {
+      parts: [
+        {
+          kind: "pill",
+          attrs: {
+            filePath: "member://bob",
+            fileName: "Former Bob",
+            isFolder: false,
+            iconType: "member",
+            lineStart: null,
+            lineEnd: null,
+          },
+        },
+        { kind: "text", text: " edited body" },
+      ],
+    };
     const first = getContext().retryComment(
       failedComment.id,
-      "@Bob edited body"
+      "@Former Bob edited body",
+      editedMentionSnapshot
     );
     const duplicate = getContext().retryComment(
       failedComment.id,
@@ -269,7 +314,7 @@ describe("SessionCommentsProvider failed Team Chat retry", () => {
     await Promise.all([first, duplicate]);
     expect(mocks.addComment).toHaveBeenCalledTimes(2);
     expect(mocks.addComment).toHaveBeenNthCalledWith(2, {
-      body: "@Bob edited body",
+      body: "@Former Bob edited body",
       eventId: "event-1",
       parentId: undefined,
       mentionedUserIds: ["bob"],

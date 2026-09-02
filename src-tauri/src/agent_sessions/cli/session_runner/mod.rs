@@ -42,6 +42,7 @@ pub(crate) use input_assembly::forget_session_context;
 pub use lifecycle::{
     cancel_session, cleanup_cursor_config_dir, kill_running_agent, terminate_process_tree,
 };
+pub(crate) use lifecycle::{fail_interrupted_turn, finalize_interrupted_follow_up};
 pub use proxy_release::release_proxy_token_for_session_pub;
 pub use session::run_session;
 pub(crate) use session::run_session_with_ide_context;

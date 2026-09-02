@@ -18,12 +18,14 @@ import { useEditUserMessage } from "../useEditUserMessage";
 const {
   checkSnapshotChangesSpy,
   removeByIdPrefixSpy,
+  surfaceSessionId,
   submitUserIntentSpy,
   storeSessionId,
   truncateBeforeIdSpy,
 } = vi.hoisted(() => ({
   checkSnapshotChangesSpy: vi.fn(async () => false),
   removeByIdPrefixSpy: vi.fn(async () => 1),
+  surfaceSessionId: { current: undefined as string | undefined },
   submitUserIntentSpy: vi.fn(async (..._args: unknown[]) => undefined),
   storeSessionId: { current: "osagent-session-1" },
   truncateBeforeIdSpy: vi.fn(async () => undefined),
@@ -48,6 +50,10 @@ vi.mock("@src/api/tauri/agent", () => ({
 
 vi.mock("@src/components/Message", () => ({
   default: { warning: vi.fn(), error: vi.fn(), info: vi.fn() },
+}));
+
+vi.mock("@src/engines/ChatPanel/ChatSessionContext", () => ({
+  useChatSessionId: () => surfaceSessionId.current,
 }));
 
 vi.mock(
@@ -158,6 +164,7 @@ describe("useEditUserMessage resend projection", () => {
     submitUserIntentSpy.mockClear();
     truncateBeforeIdSpy.mockClear();
     storeSessionId.current = "osagent-session-1";
+    surfaceSessionId.current = undefined;
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -264,5 +271,40 @@ describe("useEditUserMessage resend projection", () => {
     );
     expect(checkSnapshotChangesSpy).not.toHaveBeenCalled();
     expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
+  });
+
+  it("retries against the mounted SideChat session instead of global active", async () => {
+    surfaceSessionId.current = "osagent-side-chat";
+    storeSessionId.current = "osagent-main-chat";
+    act(() =>
+      root.render(
+        createElement(Harness, {
+          onReady: (fn: EditUserMessageFn) => {
+            editUserMessage = fn;
+          },
+        })
+      )
+    );
+    const failed = {
+      event: {
+        id: "side-chat-failed",
+        displayText: "retry in side chat",
+        displayStatus: "failed",
+        result: { syntheticUserInput: true, deliveryStatus: "failed" },
+      },
+      chunk_id: "side-chat-failed",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(failed, "retry in side chat");
+    });
+
+    expect(submitUserIntentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: "osagent-side-chat" })
+    );
+    expect(removeByIdPrefixSpy).toHaveBeenCalledWith(
+      "side-chat-failed",
+      "osagent-side-chat"
+    );
   });
 });

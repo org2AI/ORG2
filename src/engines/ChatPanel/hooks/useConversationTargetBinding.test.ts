@@ -19,7 +19,6 @@ describe("conversation target binding source", () => {
         } as never,
       })
     ).toMatchObject({
-      sourceTitle: "Native Claude history",
       cliAgentType: "claude_code",
       model: "claude-opus-5",
       workspaceRepoPath: "/repo",
@@ -71,7 +70,6 @@ describe("conversation target binding source", () => {
         sessionId: "windsurfapp-session-1",
       })
     ).toMatchObject({
-      sourceTitle: "Windsurf history",
       cliAgentType: undefined,
       workspaceRepoPath: null,
       initialTarget: null,

@@ -8,7 +8,7 @@ import type { LocalConversationTarget } from "@src/engines/SessionCore/conversat
 import type { Session } from "@src/store/session";
 import { toFsPluginPath } from "@src/util/file/pathUtils";
 
-export interface ExternalHistoryContinuationResolution {
+interface ExternalHistoryContinuationResolution {
   title: string;
   target: LocalConversationTarget;
 }

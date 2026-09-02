@@ -12,23 +12,14 @@ import { useTranslation } from "react-i18next";
 
 import { CHAT_BUBBLE_TOOLBAR_BUTTON_CLASS } from "@src/components/ChatBubble";
 import ClampedContent from "@src/components/ClampedContent";
+import type { ComposerSnapshot } from "@src/components/ComposerInput";
 import ExpandOverlay from "@src/components/ExpandOverlay";
-import Message from "@src/components/Message";
 import PersonAvatar from "@src/components/PersonAvatar";
 import { REPO_SETUP_PROMPT_MARKER } from "@src/config/repoSetupMarker";
 import type { OptimizedChatItem } from "@src/engines/ChatPanel/ChatHistory/chatItemPipeline/types";
 import { conversationSenderStampOf } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import { useSessionCommentsContext } from "@src/features/Org2Cloud/SessionComments/SessionCommentsContext";
 import { discussionPayloadOf } from "@src/features/Org2Cloud/SessionConversation/discussionEvents";
-import {
-  isTeamChatBodyWithinLimit,
-  isTeamChatMentionAudienceWithinLimit,
-  resolveTeamChatMentionedUserIds,
-} from "@src/features/Org2Cloud/SessionConversation/teamChatMentions";
-import {
-  CLOUD_COMMENT_MAX_BODY_LENGTH,
-  CLOUD_COMMENT_MAX_MENTIONED_USER_IDS,
-} from "@src/features/Org2Cloud/org2CloudCommentsClient";
 import {
   ClipboardCheckIcon,
   File01Icon,
@@ -40,7 +31,6 @@ import {
 } from "@src/icons";
 import { imageRefToRustPath } from "@src/util/file/imageRefs";
 
-import { useGroupChatContext } from "../ChatHistory/GroupChatView/GroupChatContext";
 import UserMessageContent, {
   type UserMessageMention,
 } from "../ChatHistory/components/UserMessageContent";
@@ -53,6 +43,7 @@ import RawPromptToggle from "./RawPromptToggle";
 import { normalizeUserMessageText } from "./normalizeUserMessageText";
 import { wasSubmittedByViewer } from "./parentAgentSender";
 import { resolveRawUserPrompt } from "./rawUserPrompt";
+import { useUserMessageDeliveryActions } from "./useUserMessageDeliveryActions";
 import { resolveUserMessageSide } from "./userMessageSide";
 
 const USER_MSG_MAX_LINES = 3;
@@ -61,18 +52,6 @@ const USER_MSG_MAX_CHARS = 120;
 const USER_MSG_CONTINUOUS_PREVIEW_HEIGHT = 10 * 24;
 const AGENT_ORG_INBOX_TRANSCRIPT_PREFIX = "Acknowledged inbox batch";
 const PLAN_APPROVED_PREFIX = "[Plan approved";
-
-export function isViewerOwnedFailedDiscussion(input: {
-  deliveryStatus: "pending" | "sent" | "failed" | null;
-  authorUserId: string | null | undefined;
-  viewerUserId: string | null | undefined;
-}): boolean {
-  return Boolean(
-    input.deliveryStatus === "failed" &&
-    input.viewerUserId &&
-    input.authorUserId === input.viewerUserId
-  );
-}
 
 // ============================================
 // Types
@@ -217,7 +196,6 @@ const UserChatItem = ({
   const messageContentRef = useRef<HTMLDivElement | null>(null);
 
   const event = chatItem.event;
-  const groupChat = useGroupChatContext();
   const senderResolution = useConversationSenderResolution(event);
   // Who wrote this turn. In a session an agent started, a `user` turn is the
   // parent's dispatch rather than the reader's own message, so the row is
@@ -230,7 +208,6 @@ const UserChatItem = ({
   const mentionableMembers = comments?.mentionableMembers;
   const discussionPayload = event ? discussionPayloadOf(event) : null;
   const mentionedUserIds = discussionPayload?.mentionedUserIds;
-  const discussionCommentId = discussionPayload?.commentId ?? null;
   const mentions: UserMessageMention[] | undefined = (() => {
     if (!mentionedUserIds?.length) return undefined;
     const resolved: UserMessageMention[] = [];
@@ -275,14 +252,9 @@ const UserChatItem = ({
     typeof activityResult?.result?.deliveryError === "string"
       ? activityResult.result.deliveryError
       : null;
-  const groupChatInboxId =
-    typeof event?.args?.groupChatInboxId === "number"
-      ? event.args.groupChatInboxId
-      : null;
-  const viewerOwnsFailedDiscussion = isViewerOwnedFailedDiscussion({
+  const deliveryActions = useUserMessageDeliveryActions({
+    event,
     deliveryStatus,
-    authorUserId: discussionPayload?.authorUserId,
-    viewerUserId: comments?.viewerUserId,
   });
 
   const fullContent = useMemo(() => {
@@ -316,22 +288,12 @@ const UserChatItem = ({
 
   // Extract images from activity result for display in chat history.
   const messageImages = isAgentOrgInboxTranscript ? undefined : activityImages;
-  const retryDelivery =
-    viewerOwnsFailedDiscussion && comments && discussionCommentId
-      ? () => {
-          void comments
-            .retryComment(discussionCommentId)
-            .catch((error) =>
-              Message.error(
-                error instanceof Error ? error.message : String(error)
-              )
-            );
-        }
-      : deliveryStatus === "failed" && groupChat && groupChatInboxId !== null
-        ? () => groupChat.retryFailedMessage(groupChatInboxId)
-        : onEditSubmit
-          ? () => onEditSubmit(editedText || fullContent, messageImages)
-          : null;
+  const retryDelivery = discussionPayload
+    ? deliveryActions.retry
+    : (deliveryActions.retry ??
+      (onEditSubmit
+        ? () => onEditSubmit(editedText || fullContent, messageImages)
+        : null));
 
   const needsTruncation = useMemo(() => {
     if (!compactPreview) return false;
@@ -385,45 +347,19 @@ const UserChatItem = ({
   }, []);
 
   const handleEditSubmitInternal = useCallback(
-    (newText: string, addedImageDataUrls?: string[]) => {
-      if (viewerOwnsFailedDiscussion && comments && discussionCommentId) {
-        if (!isTeamChatBodyWithinLimit(newText)) {
-          Message.warning(
-            `Team Chat messages must be ${CLOUD_COMMENT_MAX_BODY_LENGTH} characters or fewer`
-          );
-          return;
-        }
-        const mentionedUserIds = resolveTeamChatMentionedUserIds(
-          newText,
-          comments.mentionableMembers,
-          undefined,
-          comments.viewerUserId
-        );
-        if (!isTeamChatMentionAudienceWithinLimit(mentionedUserIds)) {
-          Message.warning(
-            `@all is unavailable when it would notify more than ${CLOUD_COMMENT_MAX_MENTIONED_USER_IDS} people`
-          );
-          return;
-        }
-        setIsEditing(false);
-        void comments
-          .retryComment(discussionCommentId, newText)
-          .catch((error) =>
-            Message.error(
-              error instanceof Error ? error.message : String(error)
-            )
-          );
+    (
+      newText: string,
+      addedImageDataUrls?: string[],
+      composerSnapshot?: ComposerSnapshot
+    ) => {
+      const retryEdit = deliveryActions.editAndRetry;
+      if (retryEdit) {
+        void retryEdit(newText, composerSnapshot).then((accepted) => {
+          if (accepted) setIsEditing(false);
+        });
         return;
       }
       setIsEditing(false);
-      if (
-        deliveryStatus === "failed" &&
-        groupChat &&
-        groupChatInboxId !== null
-      ) {
-        groupChat.retryFailedMessage(groupChatInboxId, newText);
-        return;
-      }
       const rustImages = [
         ...((editImageList && editImageList.length > 0
           ? editImageList.map(imageRefToRustPath)
@@ -432,16 +368,7 @@ const UserChatItem = ({
       ];
       onEditSubmit?.(newText, rustImages.length > 0 ? rustImages : undefined);
     },
-    [
-      comments,
-      deliveryStatus,
-      discussionCommentId,
-      editImageList,
-      groupChat,
-      groupChatInboxId,
-      onEditSubmit,
-      viewerOwnsFailedDiscussion,
-    ]
+    [deliveryActions, editImageList, onEditSubmit]
   );
 
   // Edit mode
@@ -466,13 +393,13 @@ const UserChatItem = ({
   const planApprovedEdited =
     isPlanApproved && fullContent.startsWith("[Plan approved (edited)");
   const isEditableDisplay = Boolean(
-    (onEditSubmit || viewerOwnsFailedDiscussion) &&
+    (onEditSubmit || deliveryActions.canEditFailed) &&
     deliveryStatus !== "pending" &&
     !isRepoSetup &&
     !isAgentOrgInboxTranscript &&
     !isPlanApproved &&
     (!event?.args?.["sessionDiscussion"] || deliveryStatus === "failed") &&
-    (!conversationSenderStampOf(event) || viewerOwnsFailedDiscussion)
+    (!conversationSenderStampOf(event) || deliveryActions.canEditFailed)
   );
   const hasDisplayContent = Boolean(
     fullContent.trim() ||
@@ -630,7 +557,7 @@ const UserChatItem = ({
           {(rawPrompt.trim() || isEditableDisplay || toolbarActions) && (
             <div
               className={`absolute top-1/2 flex -translate-y-1/2 items-center gap-1 group-hover/msg:opacity-100 focus-within:opacity-100 ${
-                isRawPromptOpen || viewerOwnsFailedDiscussion
+                isRawPromptOpen || deliveryActions.canEditFailed
                   ? "opacity-100"
                   : "opacity-0"
               } ${isRemoteSharedMessage ? "left-full ml-1" : "right-full mr-1"}`}

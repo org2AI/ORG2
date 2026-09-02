@@ -15,8 +15,6 @@ import {
   loadStatusAtom,
   streamingDeltaContentAtom,
 } from "@src/engines/SessionCore";
-import { mergeInterruptedConversationProjection } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
-import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import { createLogger } from "@src/hooks/logger";
 import {
   canvasPreviewAtom,
@@ -42,6 +40,7 @@ import { pendingPlanApprovalsAtom } from "@src/store/session/planApprovalAtom";
 import { wpReadOnlyAtom } from "@src/store/ui/chatPanelAtom";
 
 import "./adapters";
+import { isInterruptedCliTerminalStatus } from "./adapters/cli/cliLifecycle";
 import { useExternalHistoryAutoRefresh } from "./externalHistoryAutoRefresh";
 import { scheduleNativeTranscriptReconcile } from "./nativeTranscriptReconcile";
 import {
@@ -194,28 +193,12 @@ export function useSessionSync(
 
   const scheduleReconcile = useCallback(
     (sid: string, terminalStatus: string) => {
-      scheduleNativeTranscriptReconcile(
-        sid,
-        {
-          loadHistory: async (target) => {
-            const adapter = getAdapterForSession(target);
-            if (!adapter) return [];
-            const controller = new AbortController();
-            return adapter.loadHistory(target, controller.signal);
-          },
-          loadProjectedHistory: (target) =>
-            eventStoreProxy.getPersistedEvents(target),
-          mergeInterruptedProjection: mergeInterruptedConversationProjection,
-          dispatchLoadSession,
-          isSessionLive: (target) => liveSessionIdRef.current === target,
-        },
-        {
-          preserveInterruptedSuffix:
-            terminalStatus === "cancelled" || terminalStatus === "failed",
-        }
-      );
+      scheduleNativeTranscriptReconcile(sid, {
+        preserveInterruptedSuffix:
+          isInterruptedCliTerminalStatus(terminalStatus),
+      });
     },
-    [dispatchLoadSession]
+    []
   );
 
   const handlerActions = useMemo(

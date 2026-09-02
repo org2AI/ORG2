@@ -1,7 +1,6 @@
 import { createStore } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { pendingSyntheticEventAtom } from "@src/engines/SessionCore/core/atoms/metadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 
@@ -119,47 +118,6 @@ describe("chatEventsForSessionAtomFamily streaming stability", () => {
     expect(second.find((event) => event.id === "live-1")?.displayStatus).toBe(
       "completed"
     );
-    unsub();
-  });
-
-  it("projects the foreground pending user row outside a stale native snapshot", async () => {
-    const sessionId = "pending-visible";
-    const chatAtom = chatEventsForSessionAtomFamily(sessionId);
-    const unsub = store.sub(chatAtom, () => {});
-    await Promise.resolve();
-
-    const listener = subscribers.get(sessionId);
-    listener?.(
-      streamingSnapshot(1, [
-        chatEvent("assistant-old", "previous answer", {
-          sessionId,
-          displayStatus: "completed",
-          isDelta: false,
-        }),
-      ])
-    );
-    const pending = chatEvent("user-input-next", "continue exploring", {
-      sessionId,
-      source: "user",
-      functionName: "user_message",
-      uiCanonical: "",
-      actionType: "raw",
-      result: {
-        syntheticUserInput: true,
-        turnIntentId: "turn-next",
-        message: { content: "continue exploring", role: "user" },
-      },
-      displayStatus: "completed",
-      displayVariant: "message",
-      isDelta: false,
-    });
-    store.set(pendingSyntheticEventAtom, pending);
-
-    expect(store.get(chatAtom).map((event) => event.id)).toEqual([
-      "assistant-old",
-      "user-input-next",
-      `live-assistant-${sessionId}`,
-    ]);
     unsub();
   });
 });

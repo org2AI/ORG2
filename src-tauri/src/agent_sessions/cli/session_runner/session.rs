@@ -60,7 +60,29 @@ const CLAUDE_ACCOUNT_ENV_KEYS: &[&str] = &[
     "ANTHROPIC_DEFAULT_HAIKU_MODEL",
     "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
     "DISABLE_INTERLEAVED_THINKING",
+    "CLAUDE_CONFIG_DIR",
 ];
+
+fn merge_launch_profile_environment(
+    agent: &ModelType,
+    has_explicit_account: bool,
+    selected_environment: &mut HashMap<String, String>,
+    profile_environment: HashMap<String, String>,
+) {
+    for (key, value) in profile_environment {
+        // A stored launch profile is a runtime default, never a credential or
+        // routing authority. In particular, after selecting a Claude account,
+        // absent account-owned keys must remain absent so apply_child_environment
+        // can remove stale ambient Atlas/Anthropic routing.
+        if has_explicit_account
+            && matches!(agent, ModelType::ClaudeCode)
+            && CLAUDE_ACCOUNT_ENV_KEYS.contains(&key.as_str())
+        {
+            continue;
+        }
+        selected_environment.entry(key).or_insert(value);
+    }
+}
 
 /// How long to keep waiting for the stderr reader once the child is gone. A
 /// CLI that hands its stderr to a surviving grandchild keeps the pipe open
@@ -361,6 +383,17 @@ fn resolve_cli_effective_mode(
     }
 }
 
+fn scope_codex_transport_to_turn(
+    agent: &ModelType,
+    launch_profile: &mut super::launch_profiles::ResolvedCliLaunchProfile,
+    native_continuation_episode: bool,
+) {
+    if matches!(agent, ModelType::Codex) {
+        launch_profile.transport = native_continuation_episode
+            .then(|| super::launch_profiles::CLI_TRANSPORT_APP_SERVER.to_string());
+    }
+}
+
 /// Run a code session: spawn CLI, parse stdout, broadcast events.
 ///
 /// This is spawned as a background Tokio task.
@@ -549,7 +582,11 @@ pub(crate) async fn run_session_with_ide_context(
     // Resolved early: the codex app-server transport gate
     // changes prompt assembly (images travel as native localImage inputs)
     // as well as argv and the stdout-processing branch below.
-    let launch_profile = resolve_cli_launch_profile(&agent)?;
+    let mut launch_profile = resolve_cli_launch_profile(&agent)?;
+    // Ordinary Codex sessions keep the established `codex exec --json`
+    // transport. A canonical/native continuation episode opts into app-server
+    // for this turn only, without mutating the user's saved launch profile.
+    scope_codex_transport_to_turn(&agent, &mut launch_profile, allow_native_context_recovery);
     let use_codex_app_server =
         super::launch_profiles::uses_codex_app_server(&agent, &launch_profile);
 
@@ -718,7 +755,12 @@ pub(crate) async fn run_session_with_ide_context(
         &mut env_vars,
     );
 
-    env_vars.extend(launch_profile_env(&launch_profile));
+    merge_launch_profile_environment(
+        &agent,
+        account_id.is_some(),
+        &mut env_vars,
+        launch_profile_env(&launch_profile),
+    );
 
     // Inherited by the CLI child and, transitively, by its hook subprocesses:
     // lets live-status hook posts attribute directly to this managed session

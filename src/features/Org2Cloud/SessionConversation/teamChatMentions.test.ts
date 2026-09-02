@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildTeamChatMentionOptions,
+  hasUnsupportedTeamChatAudiencePill,
   isTeamChatBodyWithinLimit,
   isTeamChatMentionAudienceWithinLimit,
   resolveTeamChatAudienceTargets,
@@ -133,6 +134,60 @@ describe("resolveTeamChatAudienceTargets", () => {
     );
     expect(recipients).toHaveLength(51);
     expect(isTeamChatMentionAudienceWithinLimit(recipients)).toBe(false);
+  });
+
+  it("rejects structured member ids outside the current Cloud roster", () => {
+    expect(
+      resolveTeamChatMentionedUserIds("@Reviewer please review", members, {
+        parts: [
+          {
+            kind: "pill",
+            attrs: {
+              filePath: "member://agent-org-member-9",
+              fileName: "Reviewer",
+              isFolder: false,
+              iconType: "member",
+              lineStart: null,
+              lineEnd: null,
+            },
+          },
+          { kind: "text", text: " please review" },
+        ],
+      })
+    ).toEqual([]);
+  });
+
+  it("never treats Agent or Agent Org pills as Team Chat audience", () => {
+    const snapshot = {
+      parts: [
+        {
+          kind: "pill" as const,
+          attrs: {
+            filePath: "agent://reviewer",
+            fileName: "Reviewer",
+            isFolder: false,
+            iconType: "member" as const,
+            lineStart: null,
+            lineEnd: null,
+          },
+        },
+        {
+          kind: "pill" as const,
+          attrs: {
+            filePath: "agent_org://review-team",
+            fileName: "Review team",
+            isFolder: false,
+            iconType: "member" as const,
+            lineStart: null,
+            lineEnd: null,
+          },
+        },
+        { kind: "text" as const, text: " please review" },
+      ],
+    };
+
+    expect(resolveTeamChatAudienceTargets("", members, snapshot)).toEqual([]);
+    expect(hasUnsupportedTeamChatAudiencePill(snapshot)).toBe(true);
   });
 });
 

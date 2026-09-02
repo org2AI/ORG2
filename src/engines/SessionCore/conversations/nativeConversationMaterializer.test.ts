@@ -5,10 +5,12 @@ import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import {
   MAX_PORTABLE_TOOL_CALL_ID_LENGTH,
   NATIVE_SOURCE_EVENT_ID_ARG,
+  assertNativeConversationPayloadWithinBounds,
   materializeNativeConversation,
   mergeInterruptedConversationProjection,
   nativeConversationItemsArePrefix,
   nativeConversationItemsEqual,
+  projectNativeConversation,
   projectNativeConversationItems,
   supportsNativeConversationTarget,
   synchronizeNativeConversation,
@@ -155,6 +157,8 @@ describe("native conversation materialization", () => {
         kind: "tool_result",
         callId: "call-1",
         output: "",
+        isError: false,
+        interrupted: false,
       }),
       expect.objectContaining({
         kind: "message",
@@ -170,6 +174,30 @@ describe("native conversation materialization", () => {
       path: "/repo/README.md",
       nested: { second: 2, first: 1 },
     });
+  });
+
+  it("keeps native user text clean and reports unsupported authorship metadata", () => {
+    const user = message("u1", "user", "looks good");
+    user.args = {
+      conversationSender: { userId: "user-1", displayName: "Alice" },
+    };
+
+    expect(projectNativeConversation([user])).toEqual({
+      items: [expect.objectContaining({ text: "looks good" })],
+      fidelity: {
+        level: "lossy",
+        omitted: ["participant_authorship"],
+      },
+    });
+  });
+
+  it("rejects oversized native payloads before crossing the Tauri boundary", () => {
+    const items = projectNativeConversationItems([
+      message("u1", "user", "a payload that exceeds a tiny test bound"),
+    ]);
+    expect(() =>
+      assertNativeConversationPayloadWithinBounds(items, { maxBytes: 16 })
+    ).toThrow("native transcript is");
   });
 
   it("keeps pending and failed human messages visible without executing them", () => {
@@ -243,6 +271,21 @@ describe("native conversation materialization", () => {
       "interrupted-partial",
       "tool-1",
     ]);
+  });
+
+  it("preserves message ids that happen to end in a tool suffix", () => {
+    const native = [message("native-u1", "user", "first")];
+    const projected = [
+      message("projected-u1", "user", "first"),
+      message("human:call", "user", "second"),
+      message("answer:result", "assistant", "partial answer"),
+    ];
+
+    expect(
+      mergeInterruptedConversationProjection(native, projected).map(
+        (event) => event.id
+      )
+    ).toEqual(["native-u1", "human:call", "answer:result"]);
   });
 
   it("fails closed when the projected history diverged from native truth", () => {
@@ -341,12 +384,7 @@ describe("native conversation materialization", () => {
     expect(nativeConversationItemsEqual(left, right)).toBe(true);
   });
 
-  it("keeps the full canonical transcript and its native compact windows", () => {
-    const before = projectNativeConversationItems([
-      message("u1", "user", "old question"),
-      tool(),
-      message("a1", "assistant", "old answer"),
-    ]);
+  it("rebuilds the provider's effective context from its latest compact boundary", () => {
     const compacted = projectNativeConversationItems([
       message("u1", "user", "old question"),
       tool(),
@@ -361,18 +399,40 @@ describe("native conversation materialization", () => {
       message("u2", "user", "continue"),
     ]);
 
-    expect(compacted.slice(0, -1)).toEqual(before);
-    expect(compacted.at(-1)).toMatchObject({
-      kind: "compaction",
-      id: "compact-1",
-      summary: "provider summary",
-    });
+    expect(compacted).toEqual([
+      expect.objectContaining({
+        kind: "context_summary",
+        id: "compact-1",
+        summary: "provider summary",
+      }),
+    ]);
     expect(nativeConversationItemsArePrefix(compacted, withDelta)).toBe(true);
     expect(withDelta.at(-1)).toMatchObject({
       kind: "message",
       id: "u2",
       role: "user",
     });
+  });
+
+  it("preserves failed and interrupted tool-result semantics", () => {
+    const event = tool();
+    event.displayStatus = "failed";
+    event.result = {
+      observation: "partial tool output",
+      status: "interrupted",
+      interrupted: true,
+    };
+
+    expect(projectNativeConversationItems([event])).toEqual([
+      expect.objectContaining({ kind: "tool_call", callId: "call-1" }),
+      expect.objectContaining({
+        kind: "tool_result",
+        callId: "call-1",
+        output: "partial tool output",
+        isError: true,
+        interrupted: true,
+      }),
+    ]);
   });
 
   it("does not synthesize an empty provider-native compact", () => {
@@ -440,13 +500,17 @@ describe("native conversation materialization", () => {
       })
     ).resolves.toEqual({
       events: [],
-      receipt: { nativeSessionId: "", itemCount: 0 },
+      receipt: {
+        nativeSessionId: "",
+        itemCount: 0,
+        fidelity: { level: "exact", omitted: [] },
+      },
     });
     expect(mocks.invokeTauri).not.toHaveBeenCalled();
     expect(mocks.loadEvents).not.toHaveBeenCalled();
   });
 
-  it("synchronizes one complete transcript plus its verified prefix length", async () => {
+  it("lets Rust verify the authoritative native prefix before synchronizing", async () => {
     const existing = [message("u1", "user", "hello")];
     const timeline = [...existing, message("a1", "assistant", "done")];
     mocks.invokeTauri.mockResolvedValue({
@@ -462,7 +526,6 @@ describe("native conversation materialization", () => {
       synchronizeNativeConversation({
         sessionId: "cliagent-target",
         timeline,
-        existingEvents: existing,
       })
     ).resolves.toMatchObject({
       receipt: { nativeSessionId: "native-1", itemCount: 2 },
@@ -472,7 +535,6 @@ describe("native conversation materialization", () => {
       {
         sessionId: "cliagent-target",
         completeItems: projectNativeConversationItems(timeline),
-        prefixItemCount: 1,
       }
     );
   });

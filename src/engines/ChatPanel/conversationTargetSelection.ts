@@ -2,23 +2,20 @@ import {
   type CliAgentType,
   CliAgentTypeSchema,
 } from "@src/api/tauri/rpc/schemas/validation";
-import { KEY_SOURCE } from "@src/api/tauri/session";
+import { KEY_SOURCE, isHostedKey } from "@src/api/tauri/session";
 import { formatAgentType } from "@src/assets/providers";
 import type {
   ConversationRootLocator,
   ConversationSource,
   LocalConversationTarget,
 } from "@src/engines/SessionCore/conversations/conversationTypes";
+import type { SessionCommentTarget } from "@src/features/Org2Cloud/sessionCommentTarget";
+import {
+  type AgentRuntimeSelection,
+  resolveAgentRuntimeSelection,
+} from "@src/features/SessionCreator/agentRuntimeConfig";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import {
-  getCliCompatibleAccounts,
-  getRustCompatibleAccounts,
-} from "@src/hooks/models/useAgentCompatibility";
-import {
-  accountHasModel,
-  accountModelIds,
-} from "@src/hooks/models/useModelAccountLookup";
 import type { AgentDefinition } from "@src/modules/MainApp/AgentOrgs/types";
 import type { AgentSelection } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette";
 import type { AgentRegistry } from "@src/store/session/agentRegistryAtom";
@@ -26,251 +23,224 @@ import type { LastModelSelection } from "@src/store/session/creatorDefaultModelA
 import { SESSION_TARGET_KIND } from "@src/store/session/creatorStateAtom";
 
 export interface ConversationTargetBinding {
-  /** Stable typed identity shared by every native execution episode. */
   root: ConversationRootLocator;
+  cloudTarget: SessionCommentTarget | null;
   selection: LastModelSelection | null;
   runtimeSelection: AgentSelection | null;
   target: LocalConversationTarget | null;
-  /** Whether runtime/account discovery can support an executable selection. */
   readiness: ConversationTargetReadiness;
   nativeCliTargets: readonly CliAgentType[];
   applyRuntimePick: (selection: AgentSelection) => boolean;
-  applyModelPick: (config: AdvancedConfig) => boolean;
+  applyModelPick: (
+    config: AdvancedConfig,
+    pendingRuntime?: AgentSelection | null
+  ) => boolean;
 }
 
-export type ConversationTargetReadiness = "loading" | "ready" | "unavailable";
+type ConversationTargetReadiness = "loading" | "ready" | "unavailable";
 
 export function resolveConversationTargetReadiness(params: {
   accountsLoaded: boolean;
   agentDiscoverySettled: boolean;
   hasAvailableRuntime: boolean;
 }): ConversationTargetReadiness {
-  if (!params.accountsLoaded || !params.agentDiscoverySettled) {
-    return "loading";
-  }
+  if (!params.accountsLoaded || !params.agentDiscoverySettled) return "loading";
   return params.hasAvailableRuntime ? "ready" : "unavailable";
 }
 
-interface ConversationTargetPillPresentationInput {
-  target: LocalConversationTarget | null;
-  sourceCliAgentType?: string;
-  sourceAgentDefinitionId?: string;
-  sourceModel?: string;
-  accounts?: readonly KeyVaultAccount[];
-}
-
 interface DefaultConversationTargetInput {
-  /** Current picker override or latest persisted native execution target. */
   preferredTarget: LocalConversationTarget | null;
   initialTarget: LocalConversationTarget | null;
   sourceCliAgentType?: string;
-  sourceAgentDefinitionId?: string;
   sourceModel?: string;
-  /** Undefined while an imported conversation's local checkout is hydrating. */
   workspaceRepoPath: string | null | undefined;
-  accounts: readonly KeyVaultAccount[];
-  registry: AgentRegistry;
+  accounts?: readonly KeyVaultAccount[];
+  registry?: AgentRegistry;
   nativeCliTargets: readonly CliAgentType[];
 }
 
 interface RuntimeConversationTargetInput {
   selection: AgentSelection;
   current: LocalConversationTarget | null;
-  sourceModel?: string;
   workspaceRepoPath: string | null;
   preferredAccountId?: string;
   preferredModel?: string;
   accounts: readonly KeyVaultAccount[];
-  registry: AgentRegistry;
+  registry?: AgentRegistry;
   nativeCliTargets: readonly CliAgentType[];
 }
 
-function availableAccountModels(account: KeyVaultAccount): string[] {
-  return accountModelIds(account).filter((model) =>
-    accountHasModel(account, model)
-  );
-}
-
-function chooseAccountAndModel(
-  candidates: readonly KeyVaultAccount[],
-  currentAccountId: string | undefined,
-  currentModel: string | undefined,
-  preferredAccountId: string | undefined,
-  preferredModel: string | undefined
-): { accountId: string; model: string } | null {
-  const account =
-    candidates.find((candidate) => candidate.id === currentAccountId) ??
-    candidates.find((candidate) => candidate.id === preferredAccountId) ??
-    (preferredModel
-      ? candidates.find((candidate) =>
-          accountHasModel(candidate, preferredModel)
-        )
-      : undefined) ??
-    candidates[0];
-  if (!account) return null;
-  const model =
-    (currentModel && accountHasModel(account, currentModel)
-      ? currentModel
-      : undefined) ??
-    (preferredModel && accountHasModel(account, preferredModel)
-      ? preferredModel
-      : undefined) ??
-    availableAccountModels(account)[0];
-  return model ? { accountId: account.id, model } : null;
-}
-
-function isUsableTarget(
-  target: LocalConversationTarget | null,
-  accounts: readonly KeyVaultAccount[],
-  registry: AgentRegistry,
-  nativeCliTargets: readonly CliAgentType[]
-): target is LocalConversationTarget {
-  if (!target) return false;
-  const parsedCliAgentType = CliAgentTypeSchema.safeParse(target.cliAgentType);
-  if (parsedCliAgentType.success) {
-    const cliAgentType = parsedCliAgentType.data;
-    if (!nativeCliTargets.includes(cliAgentType)) return false;
-    if (!target.accountId) return cliAgentType === "claude_code";
-    const account = getCliCompatibleAccounts(registry, cliAgentType, [
-      ...accounts,
-    ]).find(
-      (candidate) =>
-        candidate.id === target.accountId &&
-        candidate.enabled &&
-        candidate.hasKey
-    );
-    return Boolean(
-      account && target.model && accountHasModel(account, target.model)
-    );
-  }
-
-  if (!target.agentDefinitionId || !target.accountId || !target.model) {
-    return false;
-  }
-  const account = getRustCompatibleAccounts(registry, [...accounts]).find(
-    (candidate) => candidate.id === target.accountId && candidate.enabled
-  );
-  return Boolean(account && accountHasModel(account, target.model));
-}
-
-function resolveCliTarget(params: {
-  cliAgentType: CliAgentType;
-  current: LocalConversationTarget | null;
-  sourceModel?: string;
+interface PickedConversationRuntimeTargetInput {
+  selection: AgentSelection;
+  config: AdvancedConfig;
   workspaceRepoPath: string | null;
   accounts: readonly KeyVaultAccount[];
-  registry: AgentRegistry;
-}): LocalConversationTarget | null {
-  const accounts = getCliCompatibleAccounts(
-    params.registry,
-    params.cliAgentType,
-    [...params.accounts]
-  ).filter((account) => account.enabled && account.hasKey);
-  const sameRuntime = params.current?.cliAgentType === params.cliAgentType;
-  const resolved = chooseAccountAndModel(
-    accounts,
-    sameRuntime ? params.current?.accountId : undefined,
-    sameRuntime ? params.current?.model : undefined,
-    undefined,
-    params.sourceModel
-  );
-  if (!resolved) {
-    if (params.cliAgentType !== "claude_code") return null;
+  registry?: AgentRegistry;
+  nativeCliTargets: readonly CliAgentType[];
+}
+
+const EMPTY_AGENT_REGISTRY: AgentRegistry = { agents: [], apiProviders: [] };
+
+function selectionForTarget(
+  target: LocalConversationTarget
+): AgentRuntimeSelection | null {
+  if (target.cliAgentType) {
+    const parsed = CliAgentTypeSchema.safeParse(target.cliAgentType);
+    return parsed.success
+      ? { category: "cli_agent", cliAgentType: parsed.data }
+      : null;
+  }
+  return target.agentDefinitionId ? { category: "rust_agent" } : null;
+}
+
+function configForTarget(
+  target: LocalConversationTarget,
+  accounts: readonly KeyVaultAccount[]
+): AdvancedConfig {
+  const account = target.accountId
+    ? accounts.find((candidate) => candidate.id === target.accountId)
+    : undefined;
+  return {
+    keySource: KEY_SOURCE.OWN,
+    cliAgentType: target.cliAgentType as CliAgentType | undefined,
+    selectedAccountId: target.accountId,
+    model: target.model,
+    agent: account?.modelType,
+    provider: account?.modelType,
+    nativeHarnessType: account?.nativeHarnessType,
+    selectedSourceLabel: account?.name,
+    selectedSourceModelType:
+      account?.modelType ??
+      (target.cliAgentType === "claude_code" ? "claude_code" : undefined),
+  };
+}
+
+function targetForResolvedConfig(
+  selection: AgentSelection | AgentRuntimeSelection,
+  config: AdvancedConfig,
+  workspaceRepoPath: string | null
+): LocalConversationTarget | null {
+  if (selection.category === "cli_agent" && selection.cliAgentType) {
+    const accountId = config.selectedAccountId?.trim();
+    const model = config.model?.trim();
+    if (!accountId) {
+      return selection.cliAgentType === "claude_code"
+        ? {
+            cliAgentType: "claude_code",
+            model: model || undefined,
+            workspaceRepoPath,
+          }
+        : null;
+    }
+    if (!model) return null;
     return {
-      cliAgentType: params.cliAgentType,
-      workspaceRepoPath: params.workspaceRepoPath,
-      model: sameRuntime ? params.current?.model : undefined,
+      cliAgentType: selection.cliAgentType,
+      accountId,
+      model,
+      workspaceRepoPath,
     };
   }
-  return {
-    cliAgentType: params.cliAgentType,
-    ...resolved,
-    workspaceRepoPath: params.workspaceRepoPath,
-  };
+  if (selection.category !== "rust_agent") return null;
+  const agentDefinitionId =
+    "agentDefinitionId" in selection ? selection.agentDefinitionId : undefined;
+  const accountId = config.selectedAccountId?.trim();
+  const model = config.model?.trim();
+  return agentDefinitionId && accountId && model
+    ? { agentDefinitionId, accountId, model, workspaceRepoPath }
+    : null;
 }
 
-function resolveAgentTarget(params: {
-  agentDefinitionId: string;
-  current: LocalConversationTarget | null;
-  sourceModel?: string;
+function resolveTargetForSelection(params: {
+  selection: AgentSelection;
+  candidates: readonly AdvancedConfig[];
   workspaceRepoPath: string | null;
-  preferredAccountId?: string;
-  preferredModel?: string;
   accounts: readonly KeyVaultAccount[];
   registry: AgentRegistry;
+  nativeCliTargets: readonly CliAgentType[];
 }): LocalConversationTarget | null {
-  const sameRuntime =
-    params.current?.agentDefinitionId === params.agentDefinitionId;
-  const resolved = chooseAccountAndModel(
-    getRustCompatibleAccounts(params.registry, [...params.accounts]).filter(
-      (account) => account.enabled && account.hasKey
-    ),
-    sameRuntime ? params.current?.accountId : undefined,
-    sameRuntime ? params.current?.model : undefined,
-    params.preferredAccountId,
-    params.preferredModel ?? params.sourceModel
-  );
-  if (!resolved) return null;
-  return {
-    agentDefinitionId: params.agentDefinitionId,
-    ...resolved,
-    workspaceRepoPath: params.workspaceRepoPath,
-  };
+  const resolution = resolveAgentRuntimeSelection({
+    selection: params.selection,
+    candidates: params.candidates,
+    accounts: params.accounts,
+    registry: params.registry,
+    allowedCliAgentTypes: params.nativeCliTargets,
+    allowHosted: false,
+    allowAmbientClaude: true,
+  });
+  return resolution.status === "ready"
+    ? targetForResolvedConfig(
+        params.selection,
+        resolution.config,
+        params.workspaceRepoPath
+      )
+    : null;
 }
 
 export function resolveDefaultConversationTarget({
   preferredTarget,
   initialTarget,
   sourceCliAgentType,
-  sourceAgentDefinitionId,
   sourceModel,
   workspaceRepoPath,
-  accounts,
-  registry,
+  accounts = [],
+  registry = EMPTY_AGENT_REGISTRY,
   nativeCliTargets,
 }: DefaultConversationTargetInput): LocalConversationTarget | null {
-  // Cold boot restores the canonical execution choice before the repository
-  // inventory finishes hydrating. `undefined` means "not resolved yet", not
-  // "run without a workspace": retain the last verified local path until the
-  // shared repo-scope resolver returns a definitive path or null.
   const resolvedWorkspaceRepoPath =
     workspaceRepoPath === undefined
       ? (preferredTarget?.workspaceRepoPath ??
         initialTarget?.workspaceRepoPath ??
         null)
       : workspaceRepoPath;
-  if (isUsableTarget(preferredTarget, accounts, registry, nativeCliTargets)) {
-    return {
-      ...preferredTarget,
+
+  for (const candidate of [preferredTarget, initialTarget]) {
+    if (!candidate) continue;
+    const runtime = selectionForTarget(candidate);
+    if (!runtime) continue;
+    const selection: AgentSelection = candidate.cliAgentType
+      ? {
+          category: "cli_agent",
+          targetKind: SESSION_TARGET_KIND.CLI_AGENT,
+          cliAgentType: runtime.cliAgentType!,
+          agentName: formatAgentType(candidate.cliAgentType),
+        }
+      : {
+          category: "rust_agent",
+          targetKind: SESSION_TARGET_KIND.AGENT,
+          agentDefinitionId: candidate.agentDefinitionId!,
+          agentName: candidate.agentDefinitionId!,
+        };
+    const resolved = resolveTargetForSelection({
+      selection,
+      candidates: [configForTarget(candidate, accounts)],
       workspaceRepoPath: resolvedWorkspaceRepoPath,
-    };
-  }
-  if (isUsableTarget(initialTarget, accounts, registry, nativeCliTargets)) {
-    return {
-      ...initialTarget,
-      workspaceRepoPath: resolvedWorkspaceRepoPath,
-    };
+      accounts,
+      registry,
+      nativeCliTargets,
+    });
+    if (resolved) return resolved;
   }
 
   const parsedSource = CliAgentTypeSchema.safeParse(sourceCliAgentType);
-  if (parsedSource.success && nativeCliTargets.includes(parsedSource.data)) {
-    return resolveCliTarget({
-      cliAgentType: parsedSource.data,
-      current: null,
-      sourceModel,
+  if (parsedSource.success) {
+    return resolveTargetForSelection({
+      selection: {
+        category: "cli_agent",
+        targetKind: SESSION_TARGET_KIND.CLI_AGENT,
+        cliAgentType: parsedSource.data,
+        agentName: formatAgentType(parsedSource.data),
+      },
+      candidates: [
+        {
+          keySource: KEY_SOURCE.OWN,
+          cliAgentType: parsedSource.data,
+          model: sourceModel,
+        },
+      ],
       workspaceRepoPath: resolvedWorkspaceRepoPath,
       accounts,
       registry,
-    });
-  }
-  if (sourceAgentDefinitionId) {
-    return resolveAgentTarget({
-      agentDefinitionId: sourceAgentDefinitionId,
-      current: null,
-      sourceModel,
-      workspaceRepoPath: resolvedWorkspaceRepoPath,
-      accounts,
-      registry,
+      nativeCliTargets,
     });
   }
   return null;
@@ -279,95 +249,70 @@ export function resolveDefaultConversationTarget({
 export function resolveConversationRuntimeTarget({
   selection,
   current,
-  sourceModel,
   workspaceRepoPath,
   preferredAccountId,
   preferredModel,
   accounts,
-  registry,
+  registry = EMPTY_AGENT_REGISTRY,
   nativeCliTargets,
 }: RuntimeConversationTargetInput): LocalConversationTarget | null {
-  let resolved: LocalConversationTarget | null = null;
-  if (selection.category === "cli_agent" && selection.cliAgentType) {
-    if (!nativeCliTargets.includes(selection.cliAgentType)) return null;
-    // Picking the Claude Code runtime means "use the signed-in local CLI".
-    // Managed Claude-compatible accounts (including Anthropic-compatible
-    // gateways such as Atlas) remain explicit model/source choices in the
-    // model picker; silently choosing the first one here makes a runtime-only
-    // switch change credentials and endpoint behind the user's back.
-    if (selection.cliAgentType === "claude_code") {
-      return {
-        cliAgentType: "claude_code",
-        workspaceRepoPath,
-      };
-    }
-    resolved = resolveCliTarget({
-      cliAgentType: selection.cliAgentType,
-      current,
-      // A runtime pick is not a source/account pick. In particular, Claude
-      // Code should auto-detect its signed-in CLI account and its default
-      // model; carrying a Codex/source model into that runtime is invalid.
-      sourceModel,
-      workspaceRepoPath,
-      accounts,
-      registry,
-    });
-  } else if (
-    selection.category === "rust_agent" &&
-    selection.agentDefinitionId
-  ) {
-    resolved = resolveAgentTarget({
-      agentDefinitionId: selection.agentDefinitionId,
-      current,
-      sourceModel,
-      workspaceRepoPath,
-      preferredAccountId,
-      preferredModel,
-      accounts,
-      registry,
+  const candidates: AdvancedConfig[] = [];
+  if (current) candidates.push(configForTarget(current, accounts));
+  if (preferredAccountId && preferredModel) {
+    candidates.push({
+      keySource: KEY_SOURCE.OWN,
+      selectedAccountId: preferredAccountId,
+      model: preferredModel,
     });
   }
-  return resolved;
+  return resolveTargetForSelection({
+    selection,
+    candidates,
+    workspaceRepoPath,
+    accounts,
+    registry,
+    nativeCliTargets,
+  });
 }
 
-export function resolveConversationTargetPillPresentation({
-  target,
-  accounts = [],
-}: ConversationTargetPillPresentationInput): Pick<
-  ConversationTargetBinding,
-  "selection"
-> {
-  // Source provenance is not an execution selection. Until discovery has
-  // produced a real target, both standard picker pills remain neutral.
-  if (!target) return { selection: null };
-  const selectedCliAgentType = target.cliAgentType;
-  const parsedCliAgentType = CliAgentTypeSchema.safeParse(selectedCliAgentType);
-  const cliAgentType = parsedCliAgentType.success
-    ? parsedCliAgentType.data
-    : undefined;
-  // An accountless Claude Code target deliberately delegates model choice to
-  // the signed-in local CLI. That is still a complete, sendable selection:
-  // render the existing native `default` model option instead of the setup
-  // placeholder. Keep the execution target model undefined so the runner
-  // omits `--model` and Claude performs its normal auto-detection.
-  const model =
-    target.model ??
-    (target.cliAgentType === "claude_code" && !target.accountId
-      ? "default"
-      : undefined);
-  const selectedAccountId = target?.accountId;
-  const selectedAccount = accounts.find(
-    (account) => account.id === selectedAccountId
-  );
+export function resolvePickedConversationRuntimeTarget({
+  selection,
+  config,
+  workspaceRepoPath,
+  accounts,
+  registry = EMPTY_AGENT_REGISTRY,
+  nativeCliTargets,
+}: PickedConversationRuntimeTargetInput): LocalConversationTarget | null {
+  if (isHostedKey(config.keySource)) return null;
+  return resolveTargetForSelection({
+    selection,
+    candidates: [config],
+    workspaceRepoPath,
+    accounts,
+    registry,
+    nativeCliTargets,
+  });
+}
+
+export function resolveConversationTargetPillPresentation(params: {
+  target: LocalConversationTarget | null;
+  accounts?: readonly KeyVaultAccount[];
+}): Pick<ConversationTargetBinding, "selection"> {
+  if (!params.target) return { selection: null };
+  const config = configForTarget(params.target, params.accounts ?? []);
   return {
     selection: {
       keySource: KEY_SOURCE.OWN,
-      model,
-      selectedAccountId,
-      cliAgentType,
-      selectedSourceLabel: selectedAccount?.name,
-      selectedSourceModelType:
-        selectedAccount?.modelType ?? (cliAgentType || undefined),
+      model:
+        config.model ??
+        (params.target.cliAgentType === "claude_code" &&
+        !params.target.accountId
+          ? "default"
+          : undefined),
+      selectedAccountId: config.selectedAccountId,
+      cliAgentType: config.cliAgentType,
+      selectedSourceLabel: config.selectedSourceLabel,
+      selectedSourceModelType: config.selectedSourceModelType,
     },
   };
 }
@@ -378,14 +323,13 @@ export function resolveConversationRuntimeSelection(params: {
   definitions: readonly AgentDefinition[];
 }): AgentSelection | null {
   if (!params.target) return null;
-  const selectedCliAgentType = params.target.cliAgentType;
-  const parsedCliAgentType = CliAgentTypeSchema.safeParse(selectedCliAgentType);
-  if (parsedCliAgentType.success) {
+  const parsed = CliAgentTypeSchema.safeParse(params.target.cliAgentType);
+  if (parsed.success) {
     return {
       category: "cli_agent",
       targetKind: SESSION_TARGET_KIND.CLI_AGENT,
-      cliAgentType: parsedCliAgentType.data,
-      agentName: formatAgentType(parsedCliAgentType.data),
+      cliAgentType: parsed.data,
+      agentName: formatAgentType(parsed.data),
     };
   }
   const agentDefinitionId = params.target.agentDefinitionId;

@@ -14,15 +14,16 @@ import {
   continueLocalConversation,
   recoverLocalConversationTurn,
 } from "@src/engines/SessionCore/conversations/localConversationContinuation";
+import {
+  QueuedConversationRecoveryBlockedError,
+  QueuedConversationRecoveryPendingError,
+  QueuedConversationTurnClosedError,
+} from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { mintTurnIntentId } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
 import { createLogger } from "@src/hooks/logger";
 
 import { conversationEventsForPush } from "../org2CloudConversationEventsClient";
-import {
-  drainConversationTailOutbox,
-  stageConversationTail,
-} from "./conversationTailOutbox";
+import { isRetryableCloudRequestError } from "../org2CloudFetchRetry";
 
 const log = createLogger("ConversationTurnRunner");
 
@@ -92,11 +93,7 @@ function buildPushedDispatchFailureEvent(
 }
 
 interface RunConversationTurnParams {
-  /** Resolved separately for every push; long turns may outlive a JWT. */
-  getAccessToken: () => Promise<string>;
-  authIdentityKey: string;
-  orgId: string;
-  rootSessionId: string;
+  root: ConversationRootLocator;
   conversationTitle: string;
   displayText: string;
   agentContent?: string;
@@ -105,13 +102,12 @@ interface RunConversationTurnParams {
   timeline: readonly SessionEvent[];
   /** Composer-selected local runtime/account/model. Never resolved by a modal. */
   target: LocalConversationTarget;
-  /**
-   * A compatible local native root can be reused directly. Otherwise this
-   * device keeps its own durable execution episode for the Cloud root.
-   */
-  executionRoot?: ConversationRootLocator;
-  turnIntentId?: string;
-  recovery?: { runnerSessionId: string; eventStartIndex?: number };
+  turnIntentId: string;
+  recovery?: {
+    runnerSessionId: string;
+    eventStartIndex?: number;
+    providerAccepted: boolean;
+  };
   onRunnerReady?: (
     sessionId: string,
     turnId: string,
@@ -119,38 +115,77 @@ interface RunConversationTurnParams {
   ) => void | Promise<void>;
   /** Local provider accepted the turn; distinct from Cloud user publication. */
   onTurnAccepted?: (sessionId: string) => void | Promise<void>;
-  onPushed?: () => void;
+  /** Idempotently publish the normalized provider tail to the Cloud plane. */
+  publishTail: (turnId: string, events: SessionEvent[]) => Promise<void>;
 }
 
 interface RunConversationTurnResult {
   runnerSessionId: string;
-  pushedEventCount: number;
-  pushedAgentEventCount: number;
-  tailPublicationPending: boolean;
   terminalStatus: TurnTerminalStatus;
+}
+
+interface CloseConversationTurnWithFailureParams {
+  rootLabel: string;
+  error: unknown;
   turnIntentId: string;
+  publishTail: (turnId: string, events: SessionEvent[]) => Promise<void>;
+}
+
+/**
+ * The one Cloud terminal-failure boundary used before and during provider
+ * execution. The event id is stable per turn, so retrying an ambiguous
+ * publication cannot create a second visible error row.
+ */
+export async function closeConversationTurnWithFailure(
+  params: CloseConversationTurnWithFailureParams
+): Promise<never> {
+  try {
+    const failureEvents = await conversationEventsForPush(
+      buildPushedDispatchFailureEvent(
+        params.error,
+        new Date().toISOString(),
+        params.turnIntentId
+      )
+    );
+    await params.publishTail(params.turnIntentId, failureEvents);
+  } catch (publishError) {
+    log.warn(
+      `failed to publish execution error for ${params.rootLabel}`,
+      publishError
+    );
+    if (
+      publishError instanceof QueuedConversationRecoveryPendingError ||
+      isRetryableCloudRequestError(publishError)
+    ) {
+      // The canonical user event already exists, so removing this execution
+      // owner on an ambiguous publication would strand a pending turn. The
+      // same idempotent terminal event is retried without running a provider.
+      throw new QueuedConversationRecoveryPendingError(
+        "conversation failure result could not be published yet"
+      );
+    }
+    // A definitive 4xx/validation rejection cannot become successful by
+    // retaining a forever-retrying owner. The failed publication was recorded
+    // in the local log and this exact durable turn is now terminal.
+  }
+  throw new QueuedConversationTurnClosedError(
+    params.error instanceof Error ? params.error.message : String(params.error)
+  );
 }
 
 export async function runConversationTurn(
   params: RunConversationTurnParams
 ): Promise<RunConversationTurnResult> {
-  const turnIntentId = params.turnIntentId ?? mintTurnIntentId();
-  const root =
-    params.executionRoot ??
-    ({
-      authority: "org2-cloud",
-      authorityScope: [params.orgId],
-      conversationId: params.rootSessionId,
-    } as const);
+  const turnIntentId = params.turnIntentId;
+  const root = params.root;
+  const rootLabel = `${root.authority}:${root.conversationId}`;
   log.info(
-    `resolved execution for ${params.orgId}:${params.rootSessionId}; ` +
+    `resolved execution for ${rootLabel}; ` +
       `selected=${params.target.cliAgentType ?? "native"}`
   );
 
-  // The idempotent conversation-plane push already published the user event.
-  // Native materialization may proceed without a second wire path.
-  const beforeDispatch = async () => undefined;
   let result: Awaited<ReturnType<typeof continueLocalConversation>>;
+  let providerAccepted = params.recovery?.providerAccepted === true;
   try {
     const continuationParams = {
       root,
@@ -161,7 +196,6 @@ export async function runConversationTurn(
       imageDataUrls: params.imageDataUrls,
       target: params.target,
       turnIntentId,
-      beforeDispatch,
       // Bind the root surface to the hidden execution immediately. The
       // maximum prefix suppresses history overlay until materialization
       // reports the exact native boundary through onSessionReady below.
@@ -173,7 +207,10 @@ export async function runConversationTurn(
         ),
       onSessionReady: (sessionId: string, eventStartIndex: number) =>
         params.onRunnerReady?.(sessionId, turnIntentId, eventStartIndex),
-      onTurnAccepted: params.onTurnAccepted,
+      onTurnAccepted: async (sessionId: string) => {
+        providerAccepted = true;
+        await params.onTurnAccepted?.(sessionId);
+      },
     };
     const recovered = params.recovery
       ? await recoverLocalConversationTurn({
@@ -182,48 +219,31 @@ export async function runConversationTurn(
           eventStartIndex: params.recovery.eventStartIndex,
         })
       : null;
+    if (!recovered && params.recovery?.providerAccepted) {
+      throw new QueuedConversationRecoveryPendingError();
+    }
     result = recovered ?? (await continueLocalConversation(continuationParams));
   } catch (error) {
+    // Discovery, materialization and accepted-turn reconciliation can fail
+    // transiently. Keep the same durable execution owner and retry it; never
+    // convert a recovery-pending verdict into a permanent Cloud error row.
+    if (error instanceof QueuedConversationRecoveryPendingError) throw error;
     // The human message is already a successful Cloud-plane event. If the
     // local runtime then fails during create/materialize/send, publish one
     // ordinary transcript error beside it; otherwise the shared root looks
     // permanently unanswered after its transient runner overlay disappears.
-    try {
-      const failureEvents = await conversationEventsForPush(
-        buildPushedDispatchFailureEvent(
-          error,
-          new Date().toISOString(),
-          turnIntentId
-        )
-      );
-      const stagedIds = await stageConversationTail({
-        authIdentityKey: params.authIdentityKey,
-        orgId: params.orgId,
-        rootSessionId: params.rootSessionId,
-        turnId: turnIntentId,
-        batchId: "failure",
-        events: failureEvents,
-      });
-      const drained = await drainConversationTailOutbox({
-        authIdentityKey: params.authIdentityKey,
-        getAccessToken: params.getAccessToken,
-        onPushed: () => params.onPushed?.(),
-      });
-      const unresolved = new Set([
-        ...drained.failedChunkIds,
-        ...drained.pendingChunkIds,
-      ]);
-      if (stagedIds.some((id) => unresolved.has(id))) {
-        throw new Error("Cloud did not durably publish the turn failure");
-      }
-    } catch (publishError) {
-      log.warn(
-        `failed to publish execution error for ${params.orgId}:${params.rootSessionId}`,
-        publishError
-      );
-      throw publishError;
+    if (
+      providerAccepted &&
+      !(error instanceof QueuedConversationRecoveryBlockedError)
+    ) {
+      throw error;
     }
-    throw error;
+    return closeConversationTurnWithFailure({
+      rootLabel,
+      error,
+      turnIntentId,
+      publishTail: params.publishTail,
+    });
   }
 
   const terminalTail =
@@ -239,68 +259,18 @@ export async function runConversationTurn(
   const agentTail = (
     await Promise.all(terminalTail.map(conversationEventsForPush))
   ).flat();
-  let pushedAgentEventCount = 0;
-  let tailPublicationPending = false;
   if (agentTail.length > 0) {
-    // Staging is the crash-consistency boundary. If local durable storage
-    // fails, propagate the error so the accepted canonical queue row
-    // remains and restart recovery can re-read this exact native tail.
-    const stagedIds = await stageConversationTail({
-      authIdentityKey: params.authIdentityKey,
-      orgId: params.orgId,
-      rootSessionId: params.rootSessionId,
-      turnId: turnIntentId,
-      batchId: "agent",
-      events: agentTail,
-    });
-    try {
-      const drained = await drainConversationTailOutbox({
-        authIdentityKey: params.authIdentityKey,
-        getAccessToken: params.getAccessToken,
-        onPushed: () => params.onPushed?.(),
-      });
-      const staged = new Set(stagedIds);
-      pushedAgentEventCount = drained.pushedChunks
-        .filter((chunk) => staged.has(chunk.id))
-        .reduce((total, chunk) => total + chunk.eventCount, 0);
-      const unresolved = new Set([
-        ...drained.failedChunkIds,
-        ...drained.pendingChunkIds,
-      ]);
-      tailPublicationPending = stagedIds.some((id) => unresolved.has(id));
-      if (stagedIds.some((id) => drained.failedChunkIds.includes(id))) {
-        throw new Error(
-          "Cloud permanently rejected a staged provider tail; keeping its accepted queue row for visible recovery"
-        );
-      }
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.startsWith("Cloud permanently rejected")
-      ) {
-        throw error;
-      }
-      // The provider turn and outbox row are both durable. Keep the episode
-      // overlaid and let ordinary outbox drain retry after connectivity or
-      // auth recovers; no provider replay is needed.
-      tailPublicationPending = true;
-      log.warn(
-        `network drain deferred for ${agentTail.length} durably staged tail event(s) for ${params.orgId}:${params.rootSessionId}`,
-        error
-      );
-    }
+    // The accepted canonical execution row remains the only crash-recovery
+    // owner until this idempotent publish succeeds. A retry reconnects to the
+    // same native turn and re-reads its tail; it never runs the provider twice.
+    await params.publishTail(turnIntentId, agentTail);
   }
   log.info(
-    `continued ${params.orgId}:${params.rootSessionId} in ${result.sessionId}; ` +
-      `pushed 1 + ${pushedAgentEventCount} event(s)` +
-      (tailPublicationPending ? "; tail pending durable retry" : "")
+    `continued ${rootLabel} in ${result.sessionId}; ` +
+      `staged ${agentTail.length} agent event(s)`
   );
   return {
     runnerSessionId: result.sessionId,
-    pushedEventCount: 1 + pushedAgentEventCount,
-    pushedAgentEventCount,
-    tailPublicationPending,
     terminalStatus: result.terminalStatus,
-    turnIntentId,
   };
 }

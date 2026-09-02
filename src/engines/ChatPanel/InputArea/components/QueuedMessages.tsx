@@ -37,6 +37,7 @@ import { HugeiconsIcon, MessageCircleMoreIcon } from "@src/icons";
 import { useWebViewSensors } from "@src/lib/dndKit";
 import {
   type QueuedMessage,
+  messageQueueHandoffIdsAtom,
   queueEditTargetAtom,
 } from "@src/store/ui/messageQueueAtom";
 
@@ -68,6 +69,7 @@ const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
     const { t } = useTranslation("common");
     const setEditTarget = useSetAtom(queueEditTargetAtom);
     const editTarget = useAtomValue(queueEditTargetAtom);
+    const handoffIds = useAtomValue(messageQueueHandoffIdsAtom);
 
     // Clear edit target if the message being edited was removed from the queue
     useEffect(() => {
@@ -189,6 +191,7 @@ const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
                   draggable={draggable}
                   isDragging={draggingId === msg.id}
                   isEditing={editTarget?.messageId === msg.id}
+                  isHandoff={Boolean(handoffIds?.has(msg.id))}
                   onStartEdit={startEdit}
                   onSendNow={onSendNow}
                   onCancel={onCancel}

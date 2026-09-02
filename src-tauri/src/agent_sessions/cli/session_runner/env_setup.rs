@@ -9,9 +9,6 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use agent_cli::session_provenance::{
-    materialize_hooks_for_isolated_profile, SessionProvenanceHookPlatform,
-};
 use key_vault::key_store::{ModelKey, ModelType};
 
 use super::super::persistence::CodeSession;
@@ -45,35 +42,6 @@ const OPENCODE_ZENMUX_MODEL_IDS: &[&str] = &[
     "z-ai/glm-4.5-air",
     "z-ai/glm-4.6",
 ];
-
-fn materialize_isolated_profile_hooks(
-    platform: SessionProvenanceHookPlatform,
-    config_or_plugin_path: &Path,
-) {
-    if let Err(err) = materialize_hooks_for_isolated_profile(platform, config_or_plugin_path) {
-        // Provenance is observational. A read-only/malformed provider config
-        // must stay visible in logs without turning an otherwise valid model
-        // launch into an outage.
-        tracing::warn!(
-            platform = ?platform,
-            path = %config_or_plugin_path.display(),
-            error = %err,
-            "[CodeSession] Failed to materialize isolated-profile hooks"
-        );
-    }
-}
-
-pub(super) fn cursor_isolated_hooks_path(profile_root: &Path) -> std::path::PathBuf {
-    profile_root.join("hooks.json")
-}
-
-pub(super) fn claude_isolated_hooks_path(profile_root: &Path) -> std::path::PathBuf {
-    profile_root.join("settings.json")
-}
-
-pub(super) fn codex_isolated_hooks_path(codex_home: &Path) -> std::path::PathBuf {
-    codex_home.join("hooks.json")
-}
 
 pub(super) fn opencode_zenmux_model_id(
     session_model: Option<&str>,
@@ -445,10 +413,6 @@ pub(super) fn setup_codex_hosted_profile(
     let codex_home = app_paths::codex_hosted_cli_profile_dir(session_id);
     agent_cli::managed_config::write_codex_hosted_profile(&codex_home, proxy_url)
         .map_err(|err| format!("Failed to setup hosted Codex profile: {err}"))?;
-    materialize_isolated_profile_hooks(
-        SessionProvenanceHookPlatform::Codex,
-        &codex_isolated_hooks_path(&codex_home),
-    );
     env_vars.insert(
         "CODEX_HOME".to_string(),
         codex_home.to_string_lossy().to_string(),
@@ -509,10 +473,6 @@ pub(super) fn configure_agent_profile(
                         tracing::warn!("[CodeSession] Failed to write cursor config: {}", err);
                     }
                 }
-                materialize_isolated_profile_hooks(
-                    SessionProvenanceHookPlatform::Cursor,
-                    &cursor_isolated_hooks_path(&orgii_dir),
-                );
             }
         }
     }
@@ -534,10 +494,6 @@ pub(super) fn configure_agent_profile(
                 let config_path = orgii_dir.to_string_lossy().to_string();
                 tracing::info!("[CodeSession] CLAUDE_CONFIG_DIR={}", config_path);
                 env_vars.insert("CLAUDE_CONFIG_DIR".to_string(), config_path);
-                materialize_isolated_profile_hooks(
-                    SessionProvenanceHookPlatform::ClaudeCode,
-                    &claude_isolated_hooks_path(&orgii_dir),
-                );
             }
         }
     }
@@ -567,10 +523,6 @@ pub(super) fn configure_agent_profile(
         } else if selected_key.model_type.is_api_key_provider() {
             clear_codex_compatible_profile(&codex_home)?;
         }
-        materialize_isolated_profile_hooks(
-            SessionProvenanceHookPlatform::Codex,
-            &codex_isolated_hooks_path(&codex_home),
-        );
     }
 
     if matches!(agent, ModelType::Codex) && session.key_source == KeySource::HostedKey {

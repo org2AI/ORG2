@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  pendingSyntheticEventAtom,
-  sessionIdAtom,
-} from "@src/engines/SessionCore/core/atoms/metadata";
+import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms/metadata";
 
 import {
-  clearParkedUserIntentEvent,
+  adoptAcceptedUserIntent,
+  appendOptimisticQueueUserDelivery,
   confirmUserIntentPreparation,
   dispatchUserIntent,
+  optimisticQueueUserEventId,
   prepareUserIntent,
+  removeOptimisticQueueUserDelivery,
+  setOptimisticQueueUserDelivery,
+  settleUserIntentLifecycle,
 } from "./userIntentDispatch";
 
 const mocks = vi.hoisted(() => {
@@ -31,6 +33,7 @@ const mocks = vi.hoisted(() => {
     store,
     append: vi.fn(),
     getPersistedEvents: vi.fn(),
+    removeByIdPrefix: vi.fn(),
     updateById: vi.fn(),
     sendMessage: vi.fn(),
     beginOptimisticTurn: vi.fn(),
@@ -49,6 +52,7 @@ vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: {
     append: mocks.append,
     getPersistedEvents: mocks.getPersistedEvents,
+    removeByIdPrefix: mocks.removeByIdPrefix,
     updateById: mocks.updateById,
   },
 }));
@@ -119,10 +123,111 @@ describe("userIntentDispatch", () => {
     mocks.beginTurnDispatch.mockReturnValue(7);
     mocks.append.mockResolvedValue(undefined);
     mocks.getPersistedEvents.mockResolvedValue([]);
+    mocks.removeByIdPrefix.mockResolvedValue(1);
     mocks.updateById.mockResolvedValue(true);
     mocks.sendMessage.mockResolvedValue(undefined);
     mocks.createSyntheticUserEvent.mockImplementation((sessionId: string) =>
       syntheticEvent(sessionId, `user-${sessionId}`)
+    );
+  });
+
+  it("keeps one queue-owned EventStore row through pending, failed, and cleanup", async () => {
+    mocks.createSyntheticUserEvent.mockImplementation(
+      (
+        sessionId: string,
+        visibleText: string,
+        options: Record<string, unknown>
+      ) => ({
+        ...syntheticEvent(sessionId, String(options.id)),
+        displayText: visibleText,
+        displayStatus:
+          options.deliveryStatus === "failed" ? "failed" : "pending",
+        result: {
+          message: { content: visibleText, role: "user" },
+          images: options.imageDataUrls,
+          turnIntentId: options.turnIntentId,
+          deliveryStatus: options.deliveryStatus,
+          deliveryError: options.deliveryError,
+          queueMessageId: options.queueMessageId,
+          syntheticUserInput: true,
+        },
+      })
+    );
+    const params = {
+      sessionId: "imported-session",
+      visibleText: "@teammate inspect this",
+      imageDataUrls: ["data:image/png;base64,a"],
+      turnIntentId: "intent-canonical",
+      queueMessageId: "queue-canonical",
+      createdAt: "2026-08-30T01:02:03.000Z",
+    };
+
+    const pending = await appendOptimisticQueueUserDelivery(params);
+    expect(pending).toMatchObject({
+      id: optimisticQueueUserEventId("queue-canonical"),
+      displayText: "@teammate inspect this",
+      result: {
+        images: ["data:image/png;base64,a"],
+        deliveryStatus: "pending",
+        turnIntentId: "intent-canonical",
+        queueMessageId: "queue-canonical",
+      },
+    });
+    expect(mocks.append).toHaveBeenCalledWith([pending], "imported-session");
+
+    await expect(
+      setOptimisticQueueUserDelivery(params, "failed", new Error("offline"))
+    ).resolves.toBe(true);
+    expect(mocks.updateById).toHaveBeenCalledWith(
+      optimisticQueueUserEventId("queue-canonical"),
+      expect.objectContaining({
+        displayStatus: "failed",
+        result: expect.objectContaining({
+          message: { content: "@teammate inspect this", role: "user" },
+          images: ["data:image/png;base64,a"],
+          deliveryStatus: "failed",
+          deliveryError: "offline",
+        }),
+      }),
+      "imported-session"
+    );
+
+    await removeOptimisticQueueUserDelivery(params);
+    expect(mocks.removeByIdPrefix).toHaveBeenCalledWith(
+      optimisticQueueUserEventId("queue-canonical"),
+      "imported-session"
+    );
+  });
+
+  it("adopts an accepted turn through the shared intent/generation mapping", () => {
+    const adopted = adoptAcceptedUserIntent({
+      sessionId: "cliagent-recovered",
+      turnIntentId: "intent-recovered",
+      runtimeStatusSource: "dispatch",
+    });
+
+    expect(adopted).toEqual({
+      sessionId: "cliagent-recovered",
+      turnIntentId: "intent-recovered",
+      generation: 7,
+      runtimeStatusSource: "dispatch",
+    });
+    expect(mocks.beginTurnDispatch).toHaveBeenCalledOnce();
+    expect(mocks.publishTurnIntentDispatch).toHaveBeenCalledWith(
+      "intent-recovered",
+      { sessionId: "cliagent-recovered", generation: 7 }
+    );
+    expect(mocks.beginOptimisticTurn).toHaveBeenCalledWith(
+      "cliagent-recovered",
+      "dispatch"
+    );
+    expect(mocks.confirmTurnRunning).toHaveBeenCalledWith("cliagent-recovered");
+
+    settleUserIntentLifecycle(adopted, "completed");
+    expect(mocks.markTurnTerminal).toHaveBeenCalledWith(
+      "cliagent-recovered",
+      "completed",
+      { generation: 7 }
     );
   });
 
@@ -202,7 +307,6 @@ describe("userIntentDispatch", () => {
         sessionId: "agentsession-1",
         visibleText: "hello",
         runtimeStatusSource: "launch",
-        pendingPolicy: "across_session_switch",
         send: {
           content: "hello",
           turnIntentId: "intent-failed",
@@ -232,11 +336,6 @@ describe("userIntentDispatch", () => {
       }),
       "agentsession-1"
     );
-    expect(mocks.atomValues.get(pendingSyntheticEventAtom)).toMatchObject({
-      id: "user-agentsession-1",
-      displayStatus: "failed",
-      result: expect.objectContaining({ deliveryStatus: "failed" }),
-    });
   });
 
   it("diagnoses a missing accepted-row projection without resending transport", async () => {
@@ -301,7 +400,6 @@ describe("userIntentDispatch", () => {
       visibleText: "hello",
       turnIntentId: "intent-prepared",
       runtimeStatusSource: "launch",
-      pendingPolicy: "across_session_switch",
     });
 
     confirmUserIntentPreparation(preparation);
@@ -323,12 +421,6 @@ describe("userIntentDispatch", () => {
     // Adoption is idempotently re-appended after transcript synchronization.
     expect(mocks.append).toHaveBeenCalledTimes(2);
     expect(mocks.confirmTurnRunning).toHaveBeenCalledTimes(2);
-    expect(mocks.atomValues.get(pendingSyntheticEventAtom)).toEqual(
-      expect.objectContaining({ id: "user-cliagent-1" })
-    );
-
-    clearParkedUserIntentEvent(preparation.userEvent.id);
-    expect(mocks.atomValues.get(pendingSyntheticEventAtom)).toBeNull();
   });
 
   it("rejects a preparation from a different concrete session", async () => {
@@ -337,7 +429,6 @@ describe("userIntentDispatch", () => {
       visibleText: "hello",
       turnIntentId: "intent-transfer",
       runtimeStatusSource: "launch",
-      pendingPolicy: "across_session_switch",
     });
     await expect(
       dispatchUserIntent({

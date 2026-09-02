@@ -87,47 +87,6 @@ fn new_id() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 
-/// A forced follow-up owns the old runner from interruption through terminal
-/// persistence. If its native partial cannot be proven publishable, fail the
-/// old turn before returning so the queue/footer never remains `Running`.
-async fn fail_interrupted_turn(session_id: &str, error: &str) -> Result<(), String> {
-    let persist_session_id = session_id.to_string();
-    let persist_error = error.to_string();
-    let active_turn_intent_id = tokio::task::spawn_blocking(move || {
-        let active = session_persistence::turn_intents::latest_for_sessions(
-            std::slice::from_ref(&persist_session_id),
-        )
-        .map_err(|err| err.to_string())?
-        .remove(&persist_session_id)
-        .filter(|intent| {
-            intent.status == session_persistence::turn_intents::TurnIntentStatus::Running
-        })
-        .map(|intent| intent.turn_intent_id);
-        persistence::update_cli_turn_lifecycle(
-            &persist_session_id,
-            SessionStatus::Failed,
-            Some(&persist_error),
-            active.as_deref().map(|turn_intent_id| {
-                (
-                    turn_intent_id,
-                    session_persistence::turn_intents::TurnIntentStatus::Failed,
-                )
-            }),
-        )
-        .map_err(|err| err.to_string())?;
-        Ok::<_, String>(active)
-    })
-    .await
-    .map_err(|err| format!("Task error: {err}"))??;
-    super::failure_broadcast::broadcast_async_run_failure(
-        session_id,
-        error,
-        active_turn_intent_id.as_deref(),
-    )
-    .await;
-    Ok(())
-}
-
 /// Mint a turn intent id for a path that has no `TurnIdentity` of its own
 /// (currently `cli_agent_resume`), so every turn is attributable.
 pub(super) fn new_turn_intent_id() -> String {
@@ -342,7 +301,7 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
     // Reject an active runner before waiting for provider identity. The
     // current finalizer owns identity and then needs the caller-held control
     // lock, so reversing that order would deadlock a duplicate start. Do not
-    // retain the global registry lock while a background catalog refresh may
+    // retain the global registry lock while a background finalizer may
     // still own identity for this one session.
     {
         let sessions = session_runner::RUNNING_SESSIONS.lock().await;
@@ -357,9 +316,8 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
     }
 
     // Freeze runtime/account/native binding through the complete background
-    // turn, including final provider-native publication. `session_patch`
-    // waits on this guard and therefore applies picker changes to the next
-    // turn instead of retargeting the active runner.
+    // turn. `session_patch` waits on this guard and therefore applies picker
+    // changes to the next turn instead of retargeting the active runner.
     let identity_guard = session_runner::session_identity_lock(&session_id)
         .await
         .lock_owned()
@@ -385,16 +343,6 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
     } else {
         None
     };
-
-    tokio::task::spawn_blocking({
-        let session_id = session_id.clone();
-        move || {
-            super::super::native_materializer::freeze_cli_native_publication_context(&session_id)
-        }
-    })
-    .await
-    .map_err(|err| format!("native publication snapshot task failed: {err}"))??;
-
     let persist_session_id = session_id.clone();
     let persist_turn_intent_id = turn_intent_id.clone();
     let persist_client_message_id = client_message_id.clone();
@@ -409,10 +357,7 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
     .await
     .map_err(|err| format!("Task error: {err}"))
     .and_then(|result| result);
-    if let Err(error) = accept_result {
-        super::super::native_materializer::clear_cli_native_publication_context(&session_id);
-        return Err(error);
-    }
+    accept_result?;
 
     // The desktop composer appends a synthetic user event before dispatch and
     // native-transcript sessions intentionally avoid echoing another chunk.
@@ -491,7 +436,6 @@ async fn run_turn(request: CliRunRequest, turn: TurnIdentity) -> Result<(), Stri
         .await
         {
             tracing::error!("[CodeSession] Session {} failed: {}", sid, e);
-            super::super::native_materializer::clear_cli_native_publication_context(&sid);
             session_runner::forget_session_context(&sid);
             session_runner::flush_cli_streams_for_session(&sid).await;
             // Best-effort: if marking the row as Failed itself fails, log
@@ -653,51 +597,35 @@ pub async fn cli_agent_message(request: CliMessageRequest) -> Result<CliRunRecei
 
     // Kill the existing agent process, Tokio task, and per-session proxy.
     tracing::info!(session_id = %session_id, "cli_agent_message: killing existing runner");
-    session_runner::kill_running_agent(&session_id).await;
+    let had_running = session_runner::kill_running_agent(&session_id).await;
     // The old runner has dropped its lifetime guard. Hold identity across
-    // partial publication and any account/model rebinding; otherwise a queued
-    // catalog refresh can read the transcript halfway through replacement.
+    // the native identity and any account/model rebinding.
     let identity_guard = session_runner::session_identity_lock(&session_id)
         .await
         .lock_owned()
         .await;
-    // The killed runner's finalize never runs (task aborted), so wake any
-    // parked approval long-poll here — otherwise it lingers until the 120s
-    // park timeout even though its process is gone.
-    super::super::hook_approvals::unregister_session(&session_id);
-    if matches!(
+    let interrupt_error = matches!(
         interrupt_outcome,
         crate::agent_sessions::cli::parsers::codex_app_server::GracefulInterruptOutcome::TimedOut
-    ) {
-        super::super::native_materializer::clear_cli_native_publication_context(&session_id);
-        let error = "Codex did not finish its native interrupted turn; the partial runner was preserved without replacing the native App transcript";
-        fail_interrupted_turn(&session_id, error).await?;
+    )
+    .then_some("Codex did not finish its native interrupted turn");
+    if had_running {
+        session_runner::finalize_interrupted_follow_up(&session_id, interrupt_error).await?;
+    } else if let Some(error) = interrupt_error {
+        session_runner::fail_interrupted_turn(&session_id, error).await?;
         return Err(error.to_string());
     }
-    if publishes_native_conversation {
-        match super::super::native_materializer::publish_cli_native_transcript_after_turn(
-            &session_id,
-        )
-        .await
-        {
-            Ok(true) => {}
-            // The provider was interrupted before it minted a native UUID.
-            // The canonical user/tool rows remain authoritative and the next
-            // episode will materialize them into the selected runtime.
-            Ok(false) => {}
-            Err(err) => {
-                let error = format!("Provider-native partial turn publication failed: {err}");
-                fail_interrupted_turn(&session_id, &error).await?;
-                return Err(error);
-            }
-        }
+    if let Some(error) = interrupt_error {
+        return Err(error.to_string());
+    }
+    // The killed runner's finalizer never runs (task aborted), so wake any
+    // parked approval long-poll here. The failed-interrupt branch delegates
+    // this side effect to the lifecycle terminal owner above.
+    if !had_running {
+        super::super::hook_approvals::unregister_session(&session_id);
     }
     tracing::info!(session_id = %session_id, "cli_agent_message: existing runner cleanup complete");
 
-    // Publish the old account's runner before changing the binding lookup.
-    // Otherwise a Codex/Claude account switch asks the publisher to resolve
-    // the old file through the new account profile and either loses the
-    // interrupted suffix or fails a valid runtime switch.
     if model.is_some() || account_id.is_some() {
         let sid = session_id.clone();
         let mdl = model.clone();

@@ -27,6 +27,7 @@ import React, {
   useState,
 } from "react";
 
+import type { ComposerSnapshot } from "@src/components/ComposerInput";
 import { COLLAB_SESSION_ACCESS_MODE } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session/sessionAtom/types";
 
@@ -67,6 +68,7 @@ import {
   type CloudSessionCommentsFetchState,
   type GroupedCommentThreads,
   OPTIMISTIC_SESSION_COMMENT_ID_PREFIX,
+  SessionCommentDeliveryError,
   groupCommentThreads,
   useSessionComments,
 } from "../org2CloudSessionCommentsAtom";
@@ -97,7 +99,7 @@ export function cloudCommentRetryAttemptKey(input: {
   ].join("\u001f");
 }
 
-export interface CloudCommentRetryCasStep {
+interface CloudCommentRetryCasStep {
   body: string;
   mentionedUserIds: string[];
   replaceExisting: boolean;
@@ -212,10 +214,21 @@ export async function addCommentWithSessionAdmissionRecovery(
   try {
     return await add();
   } catch (error) {
-    if (!repair || !isOrg2CommentErrorCode(error, "ORG2_SESSION_NOT_FOUND")) {
+    const cause =
+      error instanceof SessionCommentDeliveryError ? error.cause : error;
+    if (!repair || !isOrg2CommentErrorCode(cause, "ORG2_SESSION_NOT_FOUND")) {
       throw error;
     }
-    await repair();
+    try {
+      await repair();
+    } catch (repairError) {
+      if (error instanceof SessionCommentDeliveryError) {
+        throw new SessionCommentDeliveryError(error.commentId, repairError);
+      }
+      throw repairError;
+    }
+    // `add` carries the same optimisticId, so the replay re-sends the very
+    // row the first attempt retained instead of creating a second one.
     return add();
   }
 }
@@ -266,6 +279,8 @@ sessionCommentPresentEventIdsAtom.debugLabel =
 export interface SessionCommentsContextValue {
   target: SessionCommentTarget;
   state: CloudSessionCommentsFetchState;
+  /** Raw rows used by the shared canonical timeline assembler. */
+  comments: readonly CloudSessionComment[];
   grouped: GroupedCommentThreads;
   /**
    * Map a local (possibly fork/import-namespaced) event id to the source-plane
@@ -291,7 +306,11 @@ export interface SessionCommentsContextValue {
   refresh: () => void;
   addComment: (input: AddCommentInput) => Promise<CloudSessionComment>;
   /** Retry a visible failed Team Chat row, optionally with edited text. */
-  retryComment: (commentId: string, editedBody?: string) => Promise<void>;
+  retryComment: (
+    commentId: string,
+    editedBody?: string,
+    composerSnapshot?: ComposerSnapshot
+  ) => Promise<void>;
   /**
    * Batch follow-up (design 2026-07-11): address every unresolved thread as
    * one owner-only agent round, then post one parsed reply per thread. A
@@ -541,7 +560,11 @@ export const SessionCommentsProvider: React.FC<
   );
   const mentionableMembers = useSessionCommentMentionableMembers(target);
   const retryComment = useCallback(
-    async (commentId: string, editedBody?: string): Promise<void> => {
+    async (
+      commentId: string,
+      editedBody?: string,
+      composerSnapshot?: ComposerSnapshot
+    ): Promise<void> => {
       const failed = comments.find((comment) => comment.id === commentId);
       if (
         !target ||
@@ -579,7 +602,7 @@ export const SessionCommentsProvider: React.FC<
             : resolveTeamChatMentionedUserIds(
                 body,
                 mentionableMembers,
-                undefined,
+                composerSnapshot,
                 retryAuth.userId
               );
         if (!isTeamChatMentionAudienceWithinLimit(mentionedUserIds)) {
@@ -701,6 +724,7 @@ export const SessionCommentsProvider: React.FC<
     return {
       target,
       state,
+      comments,
       grouped,
       toSourceEventId,
       turnAnchorsVisible,
@@ -724,6 +748,7 @@ export const SessionCommentsProvider: React.FC<
   }, [
     target,
     state,
+    comments,
     grouped,
     toSourceEventId,
     turnAnchorsVisible,

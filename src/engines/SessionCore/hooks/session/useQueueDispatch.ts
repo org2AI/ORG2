@@ -36,23 +36,24 @@ import {
 } from "@src/config/sessionCreatorConfig";
 import { cancelTurnForTimelineBoundary } from "@src/engines/SessionCore/control/sessionTimelineBoundary";
 import {
-  beginTurnDispatch,
-  beginTurnStopping,
-  clearTurnLifecycleSession,
-  confirmTurnRunning,
   getTurnGeneration,
   getTurnPhase,
-  markTurnTerminal,
   restoreTurnWorkingAfterInterruptFailure,
 } from "@src/engines/SessionCore/control/turnLifecycle";
+import { conversationRootKey } from "@src/engines/SessionCore/conversations/conversationTypes";
 import {
+  QueuedConversationBlockedError,
   QueuedConversationBusyError,
-  type QueuedConversationExecutor,
-} from "@src/engines/SessionCore/conversations/queuedConversationExecutor";
+  type QueuedConversationDispatcher,
+  QueuedConversationRecoveryBlockedError,
+  QueuedConversationRecoveryPendingError,
+  QueuedConversationTurnClosedError,
+} from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import { queueDispatchSyncInputsAtom } from "@src/engines/SessionCore/derived/queueDispatchSyncInputsAtom";
 import {
   dispatchUserIntent,
   isUserIntentSendError,
+  setOptimisticQueueUserDelivery,
 } from "@src/engines/SessionCore/services/userIntentDispatch";
 import { createLogger } from "@src/hooks/logger";
 import {
@@ -65,13 +66,21 @@ import {
 } from "@src/store/session/creatorDefaultModelAtom";
 import { sessionMapAtom } from "@src/store/session/sessionAtom";
 import {
+  type ActiveMessageDelivery,
   type QueuedMessage,
+  activeMessageDeliveriesAtom,
   messageQueueAtom,
+  messageQueueHandoffIdsAtom,
   messageQueueHydratedAtom,
   queueEditingAtom,
   queuedMessageScopeKey,
 } from "@src/store/ui/messageQueueAtom";
-import { persistDurableMessageQueue } from "@src/store/ui/messageQueueRepository";
+import {
+  getMessageQueueOwnerKey,
+  isPrimaryMessageQueueOwnerKey,
+  persistDurableMessageQueue,
+  withCanonicalConversationTurnLock,
+} from "@src/store/ui/messageQueueRepository";
 import { resolveModelForMessage } from "@src/util/session/resolveModelForMessage";
 import { selectionFromSession } from "@src/util/session/selectionFromSession";
 import {
@@ -84,8 +93,15 @@ import {
   classifyBackendSessionStatus,
 } from "./backendDispatchVerdict";
 import {
+  assertDurableActiveDeliveryIsRootHead,
   disposeMessageQueuePersistence,
+  handoffQueuedMessageToActiveDelivery,
   hydrateMessageQueue,
+  refreshMessageDeliveries,
+  removeActiveMessageDelivery,
+  replaceActiveMessageDeliveryLocally,
+  returnActiveDeliveryToMessageQueue,
+  updateActiveMessageDelivery,
 } from "./messageQueuePersistence";
 
 const log = createLogger("useQueueDispatch");
@@ -93,12 +109,45 @@ const log = createLogger("useQueueDispatch");
 /** Re-check cadence while the backend reports the session still busy. */
 const QUEUE_BACKEND_RECHECK_MS = 3_000;
 const CANONICAL_RECOVERY_RETRY_MAX_MS = 60_000;
+const CANONICAL_HYDRATION_RETRY_MAX_MS = 30_000;
 
 function canonicalRecoveryDelayMs(attempt: number): number {
   return Math.min(
     QUEUE_BACKEND_RECHECK_MS * 2 ** Math.max(0, attempt - 1),
     CANONICAL_RECOVERY_RETRY_MAX_MS
   );
+}
+
+function queuedRetryFromDelivery(
+  delivery: ActiveMessageDelivery
+): QueuedMessage {
+  const {
+    originQueueKey: _originQueueKey,
+    runnerSessionId: _runnerSessionId,
+    runnerEventStartIndex: _runnerEventStartIndex,
+    retryAt: _retryAt,
+    retryAttempt: _retryAttempt,
+    ...message
+  } = delivery;
+  return {
+    ...message,
+    priority: "next",
+    requiresExplicitDispatch: true,
+    status: "queued",
+  };
+}
+
+function optimisticDeliveryProjectionParams(
+  message: QueuedMessage | ActiveMessageDelivery
+) {
+  return {
+    sessionId: message.sessionId,
+    visibleText: message.displayContent,
+    imageDataUrls: message.imageDataUrls,
+    turnIntentId: message.turnIntentId,
+    queueMessageId: message.id,
+    createdAt: message.createdAt,
+  };
 }
 
 /**
@@ -133,13 +182,88 @@ async function getBackendDispatchVerdict(
 }
 
 export function useQueueDispatch(
-  executeCanonicalConversation?: QueuedConversationExecutor
+  executeCanonicalConversation?: QueuedConversationDispatcher
 ): void {
   const store = useStore();
+  const messageQueueOwnerKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    void hydrateMessageQueue(store);
-    return () => disposeMessageQueuePersistence(store);
+    let disposed = false;
+    let hydrationRetryTimer: number | null = null;
+    let hydrationAttempt = 0;
+    const recoverDelivery = async (): Promise<void> => {
+      try {
+        messageQueueOwnerKeyRef.current = await getMessageQueueOwnerKey();
+        await hydrateMessageQueue(store);
+      } catch (error) {
+        log.error(
+          "[useQueueDispatch] delivery recovery hydration failed closed:",
+          error
+        );
+        if (!disposed) {
+          hydrationAttempt += 1;
+          const delay = Math.min(
+            QUEUE_BACKEND_RECHECK_MS * 2 ** (hydrationAttempt - 1),
+            CANONICAL_HYDRATION_RETRY_MAX_MS
+          );
+          hydrationRetryTimer = window.setTimeout(() => {
+            hydrationRetryTimer = null;
+            void recoverDelivery();
+          }, delay);
+        }
+      }
+    };
+    void recoverDelivery();
+    return () => {
+      disposed = true;
+      if (hydrationRetryTimer !== null) {
+        window.clearTimeout(hydrationRetryTimer);
+      }
+      disposeMessageQueuePersistence(store);
+    };
+  }, [store]);
+
+  useEffect(() => {
+    let refreshInFlight: Promise<void> | null = null;
+    let trailingRefresh = false;
+    const refreshDeliveryProjection = () => {
+      if (!store.get(messageQueueHydratedAtom)) return;
+      if (refreshInFlight) {
+        trailingRefresh = true;
+        return;
+      }
+      refreshInFlight = (async () => {
+        do {
+          trailingRefresh = false;
+          await refreshMessageDeliveries(store);
+        } while (trailingRefresh);
+      })()
+        .catch((error) =>
+          log.warn(
+            "[useQueueDispatch] failed to refresh delivery projection:",
+            error
+          )
+        )
+        .finally(() => {
+          refreshInFlight = null;
+        });
+    };
+    const refreshIfVisible = () => {
+      if (
+        typeof document === "undefined" ||
+        document.visibilityState === "visible"
+      ) {
+        refreshDeliveryProjection();
+      }
+    };
+    window.addEventListener("focus", refreshIfVisible);
+    window.addEventListener("online", refreshIfVisible);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      window.removeEventListener("focus", refreshIfVisible);
+      window.removeEventListener("online", refreshIfVisible);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
   }, [store]);
 
   // ── Dispatch lock ─────────────────────────────────────────────────────────
@@ -148,13 +272,6 @@ export function useQueueDispatch(
   const dispatchLockRef = useRef(false);
   const inFlightMessageIdRef = useRef<string | null>(null);
 
-  // A canonical root can execute in a different native Session after each
-  // runtime switch. Keep only the currently running Session id so Send Now
-  // can address the ordinary interrupt path. Busy/idle ownership remains in
-  // turnLifecycle; this transient handle is never consulted as a queue gate.
-  const canonicalRunnerByScopeRef = useRef<
-    Map<string, { generation: number; sessionId: string }>
-  >(new Map());
   // Send Now interrupt bookkeeping: one boundary interrupt per message.
   const interruptRequestedByMessageIdRef = useRef<Set<string>>(new Set());
 
@@ -168,54 +285,49 @@ export function useQueueDispatch(
     [store]
   );
 
-  const persistCanonicalDelivery = useCallback(
-    async (
-      messageId: string,
-      update: Pick<
-        QueuedMessage,
-        | "status"
-        | "runnerSessionId"
-        | "runnerEventStartIndex"
-        | "retryAt"
-        | "retryAttempt"
-      >
-    ) => {
-      store.set(messageQueueAtom, (current) =>
-        current.map((candidate) =>
-          candidate.id === messageId ? { ...candidate, ...update } : candidate
-        )
-      );
-      // This is the crash-recovery boundary: provider dispatch may proceed
-      // only after the same durable queue row knows its concrete native
-      // Session. The ordinary queue subscription remains the coalesced writer
-      // for non-critical reorder/edit mutations.
-      await persistDurableMessageQueue(store.get(messageQueueAtom));
-    },
-    [store]
-  );
-
   const settleQueuedMessageFailure = useCallback(
-    (message: QueuedMessage, error: unknown) => {
+    async (message: QueuedMessage, error: unknown) => {
       // Once dispatchUserIntent has created a durable failed user row, that
       // row is the only retry owner. Failures before that boundary keep the
       // queue copy parked so the user's payload is never lost.
+      let canonicalProjectionFailed = false;
+      if (message.conversationDispatch) {
+        try {
+          canonicalProjectionFailed = await setOptimisticQueueUserDelivery(
+            optimisticDeliveryProjectionParams(message),
+            "failed",
+            error
+          );
+        } catch (projectionError) {
+          log.error(
+            "[useQueueDispatch] could not fail canonical transcript row:",
+            projectionError
+          );
+        }
+      }
       store.set(messageQueueAtom, (current) =>
-        isUserIntentSendError(error)
+        isUserIntentSendError(error) || canonicalProjectionFailed
           ? current.filter((candidate) => candidate.id !== message.id)
-          : current.map((candidate) =>
-              candidate.id === message.id
-                ? {
-                    ...candidate,
-                    status: "queued",
-                    runnerSessionId: undefined,
-                    runnerEventStartIndex: undefined,
-                    retryAt: undefined,
-                    retryAttempt: undefined,
-                    priority: "next",
-                    requiresExplicitDispatch: true,
-                  }
-                : candidate
-            )
+          : current.some((candidate) => candidate.id === message.id)
+            ? current.map((candidate) =>
+                candidate.id === message.id
+                  ? {
+                      ...candidate,
+                      status: "queued",
+                      priority: "next",
+                      requiresExplicitDispatch: true,
+                    }
+                  : candidate
+              )
+            : [
+                ...current,
+                {
+                  ...message,
+                  status: "queued",
+                  priority: "next",
+                  requiresExplicitDispatch: true,
+                },
+              ]
       );
       interruptRequestedByMessageIdRef.current.delete(message.id);
       const detail = error instanceof Error ? error.message : String(error);
@@ -227,46 +339,26 @@ export function useQueueDispatch(
     [store]
   );
 
-  // Pending wake-up for backend-busy retries.
+  // One bounded wake-up owner for backend-busy and accepted-delivery retries.
   const wakeTimerRef = useRef<number | null>(null);
-  const canonicalRecoveryWakeTimerRef = useRef<number | null>(null);
-  const canonicalRecoveryWakeAtRef = useRef<number | null>(null);
+  const wakeAtRef = useRef<number | null>(null);
   const tryDispatchNextRef = useRef<() => void>(() => {});
-  const armCanonicalRecoveryWake = useCallback(
-    function armRecoveryWake(retryAt: number) {
-      if (
-        canonicalRecoveryWakeAtRef.current !== null &&
-        canonicalRecoveryWakeAtRef.current <= retryAt
-      ) {
-        return;
-      }
-      if (canonicalRecoveryWakeTimerRef.current !== null) {
-        window.clearTimeout(canonicalRecoveryWakeTimerRef.current);
-      }
-      canonicalRecoveryWakeAtRef.current = retryAt;
-      canonicalRecoveryWakeTimerRef.current = window.setTimeout(
-        () => {
-          canonicalRecoveryWakeTimerRef.current = null;
-          canonicalRecoveryWakeAtRef.current = null;
-          tryDispatchNextRef.current();
-          const now = Date.now();
-          const nextRetryAt = store
-            .get(messageQueueAtom)
-            .reduce<number | undefined>((earliest, message) => {
-              const candidate = Date.parse(message.retryAt ?? "");
-              if (candidate <= now || !Number.isFinite(candidate))
-                return earliest;
-              return earliest === undefined || candidate < earliest
-                ? candidate
-                : earliest;
-            }, undefined);
-          if (nextRetryAt !== undefined) armRecoveryWake(nextRetryAt);
-        },
-        Math.max(0, retryAt - Date.now())
-      );
-    },
-    [store]
-  );
+
+  const scheduleWakeAt = useCallback((wakeAt: number) => {
+    if (wakeAtRef.current !== null && wakeAtRef.current <= wakeAt) return;
+    if (wakeTimerRef.current !== null) {
+      window.clearTimeout(wakeTimerRef.current);
+    }
+    wakeAtRef.current = wakeAt;
+    wakeTimerRef.current = window.setTimeout(
+      () => {
+        wakeTimerRef.current = null;
+        wakeAtRef.current = null;
+        tryDispatchNextRef.current();
+      },
+      Math.max(0, wakeAt - Date.now())
+    );
+  }, []);
 
   const dispatchMessage = useCallback(
     (msg: QueuedMessage, onDone: () => void) => {
@@ -332,209 +424,370 @@ export function useQueueDispatch(
     [acceptQueuedMessage, settleQueuedMessageFailure, store]
   );
 
+  const activeDeliveryIdsRef = useRef<Set<string>>(new Set());
+
+  const retryActiveDelivery = useCallback(
+    async (delivery: ActiveMessageDelivery) => {
+      const attempt = (delivery.retryAttempt ?? 0) + 1;
+      await updateActiveMessageDelivery(store, delivery.id, {
+        retryAttempt: attempt,
+        retryAt: new Date(
+          Date.now() + canonicalRecoveryDelayMs(attempt)
+        ).toISOString(),
+      });
+    },
+    [store]
+  );
+
+  const failActiveCanonicalProjection = useCallback(
+    async (
+      delivery: ActiveMessageDelivery,
+      error: unknown,
+      removeWhenMissing = false
+    ): Promise<boolean> => {
+      let projected = false;
+      try {
+        projected = await setOptimisticQueueUserDelivery(
+          optimisticDeliveryProjectionParams(delivery),
+          "failed",
+          error
+        );
+      } catch (projectionError) {
+        log.error(
+          "[useQueueDispatch] could not fail canonical transcript row:",
+          projectionError
+        );
+      }
+      if (!projected && !removeWhenMissing) return false;
+      await removeActiveMessageDelivery(store, delivery.id);
+      return true;
+    },
+    [store]
+  );
+
+  const restoreLegacyCanonicalQueueRow = useCallback(
+    async (delivery: ActiveMessageDelivery): Promise<boolean> => {
+      try {
+        await returnActiveDeliveryToMessageQueue(
+          store,
+          delivery.id,
+          queuedRetryFromDelivery(delivery)
+        );
+        return true;
+      } catch (returnError) {
+        log.error(
+          "[useQueueDispatch] could not restore failed queue row:",
+          returnError
+        );
+        const current = store
+          .get(activeMessageDeliveriesAtom)
+          .find((candidate) => candidate.id === delivery.id);
+        if (current) await retryActiveDelivery(current);
+        return false;
+      }
+    },
+    [retryActiveDelivery, store]
+  );
+
+  const startRunnableActiveDeliveries = useCallback(() => {
+    if (!store.get(messageQueueHydratedAtom)) return;
+    if (!executeCanonicalConversation) return;
+    const now = Date.now();
+    const deliveries = store.get(activeMessageDeliveriesAtom);
+    const ownerKey = messageQueueOwnerKeyRef.current;
+    if (!ownerKey) return;
+    const claimedRoots = new Set<string>();
+    for (const delivery of deliveries) {
+      if (!activeDeliveryIdsRef.current.has(delivery.id)) continue;
+      claimedRoots.add(conversationRootKey(delivery.conversationDispatch.root));
+    }
+    const runnable = deliveries.filter((delivery) => {
+      if (activeDeliveryIdsRef.current.has(delivery.id)) return false;
+      if (
+        !isPrimaryMessageQueueOwnerKey(ownerKey) &&
+        delivery.originQueueKey !== ownerKey
+      ) {
+        return false;
+      }
+      const rootKey = conversationRootKey(delivery.conversationDispatch.root);
+      if (claimedRoots.has(rootKey)) return false;
+      // Claim the durable FIFO head before evaluating its wake condition.
+      // A blocked/backing-off head must prevent a later turn for the same
+      // canonical root from materializing against a transcript missing it.
+      claimedRoots.add(rootKey);
+      const retryAt = Date.parse(delivery.retryAt ?? "");
+      if (Number.isFinite(retryAt) && retryAt > now) return false;
+      return true;
+    });
+    const nextRetryAt = deliveries.reduce<number | undefined>(
+      (earliest, delivery) => {
+        const retryAt = Date.parse(delivery.retryAt ?? "");
+        if (!Number.isFinite(retryAt) || retryAt <= now) return earliest;
+        return earliest === undefined || retryAt < earliest
+          ? retryAt
+          : earliest;
+      },
+      undefined
+    );
+    if (nextRetryAt !== undefined) scheduleWakeAt(nextRetryAt);
+
+    for (const delivery of runnable) {
+      const deliveryId = delivery.id;
+      activeDeliveryIdsRef.current.add(deliveryId);
+      void withCanonicalConversationTurnLock(
+        delivery.conversationDispatch.root,
+        async () => {
+          // The atom only wakes the dispatcher. The durable row read under the
+          // root lock is the sole launch authority and carries the latest
+          // accepted/runner recovery metadata from every webview.
+          const currentDelivery =
+            await assertDurableActiveDeliveryIsRootHead(deliveryId);
+          let accepted = currentDelivery.status === "accepted";
+          const message = currentDelivery;
+          await executeCanonicalConversation(store, message, {
+            onRunnerReady: async (runnerSessionId, runnerEventStartIndex) => {
+              await updateActiveMessageDelivery(store, currentDelivery.id, {
+                runnerSessionId,
+                runnerEventStartIndex,
+                retryAt: undefined,
+              });
+            },
+            onAccepted: async (runnerSessionId) => {
+              accepted = true;
+              await updateActiveMessageDelivery(store, currentDelivery.id, {
+                status: "accepted",
+                runnerSessionId,
+                retryAt: undefined,
+              });
+              await setOptimisticQueueUserDelivery(
+                optimisticDeliveryProjectionParams(currentDelivery),
+                "sent"
+              ).catch((projectionError) => {
+                log.error(
+                  "[useQueueDispatch] could not accept canonical transcript row:",
+                  projectionError
+                );
+                return false;
+              });
+            },
+          })
+            .then(async () => {
+              await removeActiveMessageDelivery(store, currentDelivery.id);
+            })
+            .catch(async (error: unknown) => {
+              if (error instanceof QueuedConversationRecoveryBlockedError) {
+                // This typed verdict proves automatic recovery cannot run the
+                // provider. Retire the execution owner without synthesizing a
+                // retry of the already accepted intent; the durable provider/
+                // Cloud failure row remains the visible terminal result.
+                await removeActiveMessageDelivery(store, currentDelivery.id);
+                Message.error({ content: error.message, duration: 5000 });
+                return;
+              }
+              if (error instanceof QueuedConversationBlockedError) {
+                if (accepted) {
+                  // No adapter may demote an intent after the irreversible
+                  // provider-acceptance boundary. Treat a late identity/account
+                  // verdict as recovery work against the same native turn.
+                  const current = store
+                    .get(activeMessageDeliveriesAtom)
+                    .find((candidate) => candidate.id === currentDelivery.id);
+                  if (current) await retryActiveDelivery(current);
+                  return;
+                }
+                // Admission failed before provider acceptance. The optimistic
+                // EventStore row is already the visible retry/edit owner, so
+                // fail that exact row rather than retracting it into a card.
+                if (
+                  !(await failActiveCanonicalProjection(currentDelivery, error))
+                ) {
+                  // Compatibility for deliveries persisted before canonical
+                  // enqueue started writing EventStore rows.
+                  if (!(await restoreLegacyCanonicalQueueRow(currentDelivery)))
+                    return;
+                }
+                Message.error({
+                  content: error.message,
+                  duration: 5000,
+                });
+                return;
+              }
+              if (error instanceof QueuedConversationRecoveryPendingError) {
+                // The canonical user event or provider acceptance boundary may
+                // already be durable even when the result/tail cannot be read or
+                // published yet. Keep this execution owner in place regardless
+                // of its current phase and retry idempotent recovery only.
+                log.error(
+                  "[useQueueDispatch] canonical execution needs recovery:",
+                  error
+                );
+                const current = store
+                  .get(activeMessageDeliveriesAtom)
+                  .find((candidate) => candidate.id === currentDelivery.id);
+                if (current) await retryActiveDelivery(current);
+                return;
+              }
+              if (error instanceof QueuedConversationTurnClosedError) {
+                // The Cloud plane already contains the human row and its terminal
+                // failure result. Removing only the execution owner completes the
+                // lifecycle; requeueing would create a duplicate provider turn.
+                await failActiveCanonicalProjection(
+                  currentDelivery,
+                  error,
+                  true
+                );
+                return;
+              }
+              if (accepted) {
+                // Acceptance is an irreversible boundary: the provider may have
+                // executed tools even when recovery/tail staging later failed.
+                // Retain this durable owner and reconnect to the SAME turn after a
+                // bounded backoff. The adapter's accepted path is recovery-only;
+                // it must never fall back to a fresh provider send.
+                log.error(
+                  "[useQueueDispatch] accepted canonical execution needs recovery:",
+                  error
+                );
+                const current = store
+                  .get(activeMessageDeliveriesAtom)
+                  .find((candidate) => candidate.id === currentDelivery.id);
+                if (!current) return;
+                await retryActiveDelivery(current);
+                return;
+              }
+              if (isUserIntentSendError(error)) {
+                await failActiveCanonicalProjection(
+                  currentDelivery,
+                  error,
+                  true
+                );
+                return;
+              }
+              if (
+                !(await failActiveCanonicalProjection(currentDelivery, error))
+              ) {
+                if (!(await restoreLegacyCanonicalQueueRow(currentDelivery)))
+                  return;
+              }
+              Message.error({
+                content: `Failed to continue conversation: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
+                duration: 5000,
+              });
+            })
+            .catch((settlementError: unknown) => {
+              // A failed retry/remove/return write must not become an unhandled
+              // rejection followed by an immediate provider retry loop. Keep the
+              // durable owner projected locally with a bounded wake; focus/online
+              // reconciliation will re-read the authoritative document sooner if
+              // storage recovers.
+              log.error(
+                "[useQueueDispatch] canonical settlement persistence failed:",
+                settlementError
+              );
+              const retryAt = new Date(
+                Date.now() + QUEUE_BACKEND_RECHECK_MS
+              ).toISOString();
+              replaceActiveMessageDeliveryLocally(store, currentDelivery.id, {
+                retryAt,
+              });
+            });
+        }
+      )
+        .catch(async (lockError: unknown) => {
+          if (lockError instanceof QueuedConversationBusyError) {
+            await refreshMessageDeliveries(store);
+            const current = store
+              .get(activeMessageDeliveriesAtom)
+              .find((candidate) => candidate.id === delivery.id);
+            if (current) await retryActiveDelivery(current);
+            return;
+          }
+          log.error(
+            "[useQueueDispatch] canonical root lock/claim failed:",
+            lockError
+          );
+          const retryAt = new Date(
+            Date.now() + QUEUE_BACKEND_RECHECK_MS
+          ).toISOString();
+          replaceActiveMessageDeliveryLocally(store, delivery.id, { retryAt });
+        })
+        .finally(() => {
+          activeDeliveryIdsRef.current.delete(delivery.id);
+          tryDispatchNextRef.current();
+        });
+    }
+  }, [
+    executeCanonicalConversation,
+    failActiveCanonicalProjection,
+    restoreLegacyCanonicalQueueRow,
+    retryActiveDelivery,
+    scheduleWakeAt,
+    store,
+  ]);
+
   const dispatchCanonicalMessage = useCallback(
     (msg: QueuedMessage, onDone: () => void) => {
       if (!msg.conversationDispatch) {
         onDone();
         return;
       }
-      const scopeKey = queuedMessageScopeKey(msg);
-      const dispatchGeneration = beginTurnDispatch(scopeKey);
-      // Loading and materializing a native transcript is already owned work.
-      // It can legitimately outlive the dispatching dead-man before the
-      // provider accepts the user turn, so enter the ordinary working phase.
-      confirmTurnRunning(scopeKey);
-      let accepted = false;
-      let releasedDispatchLock = false;
-      let runnerSessionId: string | null = null;
-      const releaseDispatchLock = () => {
-        if (releasedDispatchLock) return;
-        releasedDispatchLock = true;
-        onDone();
+      const delivery: ActiveMessageDelivery = {
+        ...msg,
+        conversationDispatch: msg.conversationDispatch,
+        status: "preparing",
       };
-      const rememberRunner = (sessionId: string) => {
-        if (getTurnGeneration(scopeKey) !== dispatchGeneration) return;
-        runnerSessionId = sessionId;
-        canonicalRunnerByScopeRef.current.set(scopeKey, {
-          generation: dispatchGeneration,
-          sessionId,
-        });
-      };
-
-      const execution = (async () => {
-        await persistCanonicalDelivery(msg.id, {
-          status: "preparing",
-          runnerSessionId: msg.runnerSessionId,
-          runnerEventStartIndex: msg.runnerEventStartIndex,
-          retryAt: undefined,
-          retryAttempt: msg.retryAttempt,
-        });
-        if (!executeCanonicalConversation) {
-          throw new Error("canonical conversation executor is unavailable");
-        }
-        const persistedMessage =
-          store
-            .get(messageQueueAtom)
-            .find((candidate) => candidate.id === msg.id) ?? msg;
-        return await executeCanonicalConversation(store, persistedMessage, {
-          onAccepted: async (sessionId) => {
-            if (accepted) return;
-            accepted = true;
-            rememberRunner(sessionId);
-            await persistCanonicalDelivery(msg.id, {
-              status: "accepted",
-              runnerSessionId: sessionId,
-              runnerEventStartIndex:
-                store
-                  .get(messageQueueAtom)
-                  .find((candidate) => candidate.id === msg.id)
-                  ?.runnerEventStartIndex ?? msg.runnerEventStartIndex,
-              retryAt: undefined,
-              retryAttempt: msg.retryAttempt,
-            });
-            releaseDispatchLock();
-          },
-          onRunnerReady: async (sessionId, eventStartIndex) => {
-            rememberRunner(sessionId);
-            await persistCanonicalDelivery(msg.id, {
-              status: "preparing",
-              runnerSessionId: sessionId,
-              runnerEventStartIndex: eventStartIndex,
-              retryAt: undefined,
-              retryAttempt: msg.retryAttempt,
-            });
-          },
-        });
-      })();
-
-      void execution
-        .then(
-          (result) => {
-            acceptQueuedMessage(msg.id);
-            markTurnTerminal(scopeKey, result.terminalStatus, {
-              generation: dispatchGeneration,
-            });
-          },
-          async (error: unknown) => {
-            if (error instanceof QueuedConversationBusyError) {
-              // Another window owns this root. Persist the same bounded
-              // recovery backoff as any accepted retry; a fixed 250 ms poll
-              // burned CPU for the complete duration of a long provider turn.
-              const current = store
-                .get(messageQueueAtom)
-                .find((candidate) => candidate.id === msg.id);
-              if (current) {
-                const attempt = (current.retryAttempt ?? 0) + 1;
-                await persistCanonicalDelivery(msg.id, {
-                  status: current.status,
-                  runnerSessionId: current.runnerSessionId,
-                  runnerEventStartIndex: current.runnerEventStartIndex,
-                  retryAttempt: attempt,
-                  retryAt: new Date(
-                    Date.now() + canonicalRecoveryDelayMs(attempt)
-                  ).toISOString(),
-                });
-              }
-              markTurnTerminal(scopeKey, "cancelled", {
-                generation: dispatchGeneration,
-              });
-              return;
-            }
-            if (!accepted) {
-              settleQueuedMessageFailure(msg, error);
-            } else {
-              log.error(
-                "[useQueueDispatch] canonical provider turn failed after acceptance:",
-                error
-              );
-              const current = store
-                .get(messageQueueAtom)
-                .find((candidate) => candidate.id === msg.id);
-              if (current) {
-                const attempt = (current.retryAttempt ?? 0) + 1;
-                await persistCanonicalDelivery(msg.id, {
-                  status: current.status,
-                  runnerSessionId: current.runnerSessionId,
-                  runnerEventStartIndex: current.runnerEventStartIndex,
-                  retryAttempt: attempt,
-                  retryAt: new Date(
-                    Date.now() + canonicalRecoveryDelayMs(attempt)
-                  ).toISOString(),
-                });
-              }
-            }
-            markTurnTerminal(scopeKey, "failed", {
-              generation: dispatchGeneration,
-            });
-          }
-        )
-        .finally(() => {
-          const currentRunner = canonicalRunnerByScopeRef.current.get(scopeKey);
-          if (
-            currentRunner?.generation === dispatchGeneration &&
-            currentRunner.sessionId === runnerSessionId
-          ) {
-            canonicalRunnerByScopeRef.current.delete(scopeKey);
-          }
-          // Canonical scope ids are virtual and do not participate in normal
-          // Session deletion cleanup. Drop now-idle state eagerly.
-          if (getTurnPhase(scopeKey) === "idle") {
-            clearTurnLifecycleSession(scopeKey);
-          }
-          releaseDispatchLock();
+      store.set(messageQueueHandoffIdsAtom, (current: ReadonlySet<string>) => {
+        const next = new Set(current);
+        next.add(msg.id);
+        return next;
+      });
+      void persistDurableMessageQueue(store.get(messageQueueAtom))
+        .then(() => handoffQueuedMessageToActiveDelivery(store, delivery))
+        .then(() => {
           tryDispatchNextRef.current();
-          const retryAt = Date.parse(
-            store
-              .get(messageQueueAtom)
-              .find((candidate) => candidate.id === msg.id)?.retryAt ?? ""
+        })
+        .catch((error) => settleQueuedMessageFailure(msg, error))
+        .finally(() => {
+          store.set(
+            messageQueueHandoffIdsAtom,
+            (current: ReadonlySet<string>) => {
+              if (!current.has(msg.id)) return current;
+              const next = new Set(current);
+              next.delete(msg.id);
+              return next;
+            }
           );
-          if (Number.isFinite(retryAt)) {
-            armCanonicalRecoveryWake(retryAt);
-          }
+          onDone();
         });
     },
-    [
-      acceptQueuedMessage,
-      armCanonicalRecoveryWake,
-      executeCanonicalConversation,
-      persistCanonicalDelivery,
-      settleQueuedMessageFailure,
-      store,
-    ]
+    [settleQueuedMessageFailure, store]
   );
 
   const tryDispatchNext = useCallback(() => {
-    if (wakeTimerRef.current !== null) {
-      window.clearTimeout(wakeTimerRef.current);
-      wakeTimerRef.current = null;
-    }
-    if (dispatchLockRef.current) return;
     if (!store.get(messageQueueHydratedAtom)) return;
+    startRunnableActiveDeliveries();
+    if (dispatchLockRef.current) return;
     if (store.get(queueEditingAtom)) return;
 
     const queue = store.get(messageQueueAtom);
     if (queue.length === 0) return;
 
-    const now = Date.now();
     const candidates = queue.filter(
-      (msg) =>
-        msg.id !== inFlightMessageIdRef.current &&
-        (Number.isNaN(Date.parse(msg.retryAt ?? "")) ||
-          Date.parse(msg.retryAt ?? "") <= now)
+      (msg) => msg.id !== inFlightMessageIdRef.current
     );
-    const earliestDeferredRetry = queue.reduce<number | undefined>(
-      (earliest, message) => {
-        const candidate = Date.parse(message.retryAt ?? "");
-        if (!Number.isFinite(candidate) || candidate <= now) return earliest;
-        return earliest === undefined || candidate < earliest
-          ? candidate
-          : earliest;
-      },
-      undefined
-    );
-    if (earliestDeferredRetry !== undefined) {
-      armCanonicalRecoveryWake(earliestDeferredRetry);
-    }
+    const activeCanonicalExecution = (message: QueuedMessage) => {
+      const descriptor = message.conversationDispatch;
+      if (!descriptor) return undefined;
+      const rootKey = conversationRootKey(descriptor.root);
+      return store
+        .get(activeMessageDeliveriesAtom)
+        .find(
+          (delivery) =>
+            conversationRootKey(delivery.conversationDispatch.root) === rootKey
+        );
+    };
 
     // ── Explicit "now" dispatches take absolute precedence per session ───────
     // A blocked Send Now for session A must not freeze an idle session B. Scan
@@ -542,9 +795,19 @@ export function useQueueDispatch(
     // most one interrupt for each active message while continuing the pass.
     const explicitMessages = candidates.filter((msg) => msg.priority === "now");
     for (const explicitMsg of explicitMessages) {
-      const scopeKey = queuedMessageScopeKey(explicitMsg);
-      const phase = getTurnPhase(scopeKey);
-      if (phase === "idle") {
+      const canonicalExecution = activeCanonicalExecution(explicitMsg);
+      const canonicalRunnerSessionId = canonicalExecution?.runnerSessionId;
+      const phase = explicitMsg.conversationDispatch
+        ? canonicalRunnerSessionId
+          ? getTurnPhase(canonicalRunnerSessionId)
+          : canonicalExecution
+            ? "dispatching"
+            : getTurnPhase(explicitMsg.sessionId)
+        : getTurnPhase(queuedMessageScopeKey(explicitMsg));
+      // An execution row is the canonical root's accepted/recovery barrier.
+      // Even when its concrete runner is already terminal, the next turn must
+      // wait for tail publication and owner removal instead of racing recovery.
+      if (phase === "idle" && !canonicalExecution) {
         // One shared admission/dispatch policy owns the Stop episode for both
         // ordinary Sessions and canonical runtime continuations.
         store.set(closePostStopDispatchEpisodeAtom, explicitMsg.sessionId);
@@ -567,7 +830,9 @@ export function useQueueDispatch(
         !interruptRequestedByMessageIdRef.current.has(explicitMsg.id)
       ) {
         const interruptSessionId = explicitMsg.conversationDispatch
-          ? canonicalRunnerByScopeRef.current.get(scopeKey)?.sessionId
+          ? canonicalExecution
+            ? canonicalRunnerSessionId
+            : explicitMsg.sessionId
           : explicitMsg.sessionId;
         // The canonical root may still be preparing its native Session. Until
         // onRunnerReady publishes an addressable Session there is nothing the
@@ -576,11 +841,7 @@ export function useQueueDispatch(
         // Send Now against an active turn: interrupt it once. The provider's
         // cancelled terminal flips the FSM idle, which re-triggers this pass.
         interruptRequestedByMessageIdRef.current.add(explicitMsg.id);
-        if (explicitMsg.conversationDispatch) {
-          beginTurnStopping(scopeKey);
-        }
         const interruptGeneration = getTurnGeneration(interruptSessionId);
-        const scopeGeneration = getTurnGeneration(scopeKey);
         let interruptFailureHandled = false;
         const handleInterruptFailure = (detail: string) => {
           if (interruptFailureHandled) return;
@@ -588,11 +849,6 @@ export function useQueueDispatch(
           restoreTurnWorkingAfterInterruptFailure(interruptSessionId, {
             generation: interruptGeneration,
           });
-          if (scopeKey !== interruptSessionId) {
-            restoreTurnWorkingAfterInterruptFailure(scopeKey, {
-              generation: scopeGeneration,
-            });
-          }
           settleQueuedMessageFailure(explicitMsg, new Error(detail));
           log.warn("[useQueueDispatch] force-send interrupt failed:", detail);
         };
@@ -610,12 +866,29 @@ export function useQueueDispatch(
     }
 
     // ── Natural FIFO drain ──────────────────────────────────────────────────
+    // A held head is still the FIFO head. Only explicit Send Now may overtake
+    // it; skipping it here must not let a later natural row for the same scope
+    // dispatch against a transcript that does not contain the held intent.
+    const naturalHeadIds = new Set<string>();
+    const naturalScopes = new Set<string>();
+    for (const candidate of candidates) {
+      if (candidate.priority === "now") continue;
+      const scopeKey = queuedMessageScopeKey(candidate);
+      if (naturalScopes.has(scopeKey)) continue;
+      naturalScopes.add(scopeKey);
+      naturalHeadIds.add(candidate.id);
+    }
     for (const msg of candidates) {
       if (msg.priority === "now") continue;
+      if (!naturalHeadIds.has(msg.id)) continue;
       if (msg.requiresExplicitDispatch) continue; // held by a user Stop
-      const scopeKey = queuedMessageScopeKey(msg);
-      if (getTurnPhase(scopeKey) !== "idle") continue; // turn active
       if (msg.conversationDispatch) {
+        if (activeCanonicalExecution(msg)) continue;
+        // Before the queue owns a canonical execution, the visible/source
+        // Session may still be running its initial or preceding native turn.
+        // Reuse the ordinary concrete-session FSM gate instead of treating the
+        // absence of an execution receipt as proof that the root is idle.
+        if (getTurnPhase(msg.sessionId) !== "idle") continue;
         dispatchLockRef.current = true;
         inFlightMessageIdRef.current = msg.id;
         dispatchCanonicalMessage(msg, () => {
@@ -627,6 +900,8 @@ export function useQueueDispatch(
         });
         return;
       }
+      const scopeKey = queuedMessageScopeKey(msg);
+      if (getTurnPhase(scopeKey) !== "idle") continue; // turn active
       dispatchLockRef.current = true;
       inFlightMessageIdRef.current = msg.id;
       // Authoritative gate: the FSM can be forced idle without a real
@@ -639,12 +914,7 @@ export function useQueueDispatch(
           // re-check. Never infer idle from a failed status read.
           inFlightMessageIdRef.current = null;
           dispatchLockRef.current = false;
-          if (wakeTimerRef.current === null) {
-            wakeTimerRef.current = window.setTimeout(() => {
-              wakeTimerRef.current = null;
-              tryDispatchNextRef.current();
-            }, QUEUE_BACKEND_RECHECK_MS);
-          }
+          scheduleWakeAt(Date.now() + QUEUE_BACKEND_RECHECK_MS);
           return;
         }
         if (verdict === "dead") {
@@ -690,8 +960,9 @@ export function useQueueDispatch(
   }, [
     dispatchCanonicalMessage,
     dispatchMessage,
-    armCanonicalRecoveryWake,
+    scheduleWakeAt,
     settleQueuedMessageFailure,
+    startRunnableActiveDeliveries,
     store,
   ]);
 
@@ -707,11 +978,7 @@ export function useQueueDispatch(
       if (wakeTimerRef.current !== null) {
         window.clearTimeout(wakeTimerRef.current);
         wakeTimerRef.current = null;
-      }
-      if (canonicalRecoveryWakeTimerRef.current !== null) {
-        window.clearTimeout(canonicalRecoveryWakeTimerRef.current);
-        canonicalRecoveryWakeTimerRef.current = null;
-        canonicalRecoveryWakeAtRef.current = null;
+        wakeAtRef.current = null;
       }
     };
   }, [store, tryDispatchNext]);

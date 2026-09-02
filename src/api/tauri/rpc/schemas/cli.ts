@@ -41,7 +41,6 @@ export const CliStatusSchema = z
     status: z.string(),
     updatedAt: z.string(),
     errorMessage: z.string().nullable().optional(),
-    contextExhausted: z.boolean(),
     totalTokens: z.number().optional(),
     transcriptSource: z.string().optional(),
   })

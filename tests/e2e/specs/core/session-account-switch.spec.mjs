@@ -587,7 +587,6 @@ async function continueWith(target, marker, label) {
 function assertHistory(state, expected, label) {
   const transcript = collectStrings(state.rawEvents ?? [], []);
   collectStrings(state.chatEvents ?? [], transcript);
-  collectStrings(state.streamEvents ?? [], transcript);
   for (const text of expected) {
     if (!transcript.some((entry) => entry.includes(text))) {
       throw new Error(

@@ -124,38 +124,6 @@ describe("chatEventsAtom live streaming overlay", () => {
     expect(store.get(chatEventsAtom)).toEqual([providerRow]);
   });
 
-  it("keeps the pending user row visible across a native snapshot replace", () => {
-    const store = createStore();
-    const pending = makeChatEvent(
-      "user-input-pending",
-      "2026-06-06T20:00:01.000Z",
-      {
-        source: "user",
-        functionName: "user_message",
-        uiCanonical: "",
-        actionType: "user_message",
-        displayText: "next request",
-        result: { syntheticUserInput: true, message: "next request" },
-        displayVariant: "message",
-      }
-    );
-    store.set(sessionIdAtom, "session-1");
-    store.set(pendingSyntheticEventAtom, pending);
-    store.set(derivedSnapshotAtom, makeSnapshot([], false));
-
-    expect(store.get(chatEventsAtom)).toEqual([pending]);
-
-    // A delayed native-history replacement remains visually lossless.
-    store.set(
-      derivedSnapshotAtom,
-      makeSnapshot([makeChatEvent("older", "2026-06-06T19:59:59.000Z")], false)
-    );
-    expect(store.get(chatEventsAtom).map((event) => event.id)).toEqual([
-      "older",
-      "user-input-pending",
-    ]);
-  });
-
   it("suppresses the pending overlay after the provider's real user echo", () => {
     const store = createStore();
     const pending = makeChatEvent(
@@ -189,52 +157,6 @@ describe("chatEventsAtom live streaming overlay", () => {
     store.set(derivedSnapshotAtom, makeSnapshot([echo], false));
 
     expect(store.get(chatEventsAtom)).toEqual([echo]);
-  });
-
-  it("keeps a new intent visible when an older native turn is replayed with a newer timestamp", () => {
-    const store = createStore();
-    const pending = makeChatEvent(
-      "user-input-pending",
-      "2026-06-06T20:00:01.000Z",
-      {
-        source: "user",
-        functionName: "user_message",
-        uiCanonical: "",
-        actionType: "raw",
-        displayText: "continue exploring",
-        result: {
-          syntheticUserInput: true,
-          turnIntentId: "turn-next",
-          message: { content: "continue exploring", role: "user" },
-        },
-        displayVariant: "message",
-      }
-    );
-    const replayedOldTurn = makeChatEvent(
-      "provider-user-old",
-      "2026-06-06T20:00:02.000Z",
-      {
-        source: "user",
-        functionName: "user",
-        uiCanonical: "user",
-        actionType: "user_message",
-        displayText: "old request",
-        result: {
-          turnIntentId: "turn-old",
-          message: { content: "old request", role: "user" },
-        },
-        displayVariant: "message",
-      }
-    );
-    store.set(sessionIdAtom, "session-1");
-    store.set(pendingSyntheticEventAtom, pending);
-    store.set(derivedSnapshotAtom, makeSnapshot([replayedOldTurn], true));
-
-    expect(store.get(chatEventsAtom).map((event) => event.id)).toEqual([
-      "provider-user-old",
-      "user-input-pending",
-      "live-assistant-session-1",
-    ]);
   });
 
   it("renders live assistant text without writing a durable EventStore event", () => {

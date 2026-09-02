@@ -29,13 +29,11 @@ fn load_native_transcript_chunks(session: &CodeSession) -> Option<Vec<ActivityCh
         .account_id
         .as_deref()
         .filter(|value| !value.trim().is_empty());
-    let candidate_ids = persistence::get_cli_session_id_for_account(
-        &session.session_id,
-        account_id,
-    )
-    .ok()
-    .flatten()
-    .into_iter();
+    let candidate_ids =
+        persistence::get_cli_session_id_for_account(&session.session_id, account_id)
+            .ok()
+            .flatten()
+            .into_iter();
     let conn = database::db::get_connection().ok()?;
     for cli_session_id in candidate_ids {
         let imported_id = binding.imported_session_id(&cli_session_id);
@@ -244,11 +242,6 @@ pub async fn cli_agent_truncate_after_chunk(
         .await
         .lock_owned()
         .await;
-    // Truncation intentionally replaces the active native episode instead of
-    // publishing its interrupted suffix, so its frozen launch snapshot must
-    // not survive into the next turn.
-    super::super::native_materializer::clear_cli_native_publication_context(&session_id);
-
     // Wipe the Cursor config dir so the agent starts fresh — legacy chunk mode
     // ONLY. Under `transcript_source = 'native'` that directory IS the
     // transcript of record (hosted-key Cursor stores its chats under the

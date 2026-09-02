@@ -25,7 +25,11 @@ import { z } from "zod/v4";
 
 import { createLogger } from "@src/hooks/logger";
 
-import { ORG2_CLOUD_POSTGREST_SCHEMA, getCloudEndpoint } from "./config";
+import {
+  type CloudEndpoint,
+  ORG2_CLOUD_POSTGREST_SCHEMA,
+  getCloudEndpoint,
+} from "./config";
 import { fetchWithTransportRetry } from "./org2CloudFetchRetry";
 
 const log = createLogger("Org2CloudCommentsClient");
@@ -88,9 +92,9 @@ export function isOrg2CommentErrorCode(
 async function callCommentRpc(
   functionName: string,
   accessToken: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  endpoint: Pick<CloudEndpoint, "supabaseUrl" | "anonKey"> = getCloudEndpoint()
 ): Promise<unknown> {
-  const endpoint = getCloudEndpoint();
   const response = await fetchWithTransportRetry(
     `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`,
     {
@@ -522,9 +526,13 @@ export async function listSessionComments(
   accessToken: string,
   orgId: string,
   sessionId: string,
-  options?: { since?: string }
+  options?: {
+    since?: string;
+    endpoint?: Pick<CloudEndpoint, "supabaseUrl" | "anonKey">;
+  }
 ): Promise<SessionCommentsListing> {
-  const endpointUrl = getCloudEndpoint().supabaseUrl;
+  const endpoint = options?.endpoint ?? getCloudEndpoint();
+  const endpointUrl = endpoint.supabaseUrl;
   const since =
     options?.since !== undefined &&
     !commentsDeltaUnsupportedEndpoints.has(endpointUrl)
@@ -539,7 +547,8 @@ export async function listSessionComments(
           p_org_id: orgId,
           p_session_id: sessionId,
           p_since: since,
-        }
+        },
+        endpoint
       );
       const result = ListCommentsResultSchema.parse(payload);
       return {
@@ -558,7 +567,8 @@ export async function listSessionComments(
     {
       p_org_id: orgId,
       p_session_id: sessionId,
-    }
+    },
+    endpoint
   );
   const result = ListCommentsResultSchema.parse(payload);
   return {

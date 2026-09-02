@@ -13,14 +13,14 @@ use super::super::CodexJsonlLine;
 use super::cache::CodexTurnOffset;
 use super::collector::{CodexTranscriptCollectionMode, CodexTranscriptCollector};
 use super::messages::{
-    content_text_from_payload, materialized_user_message_chunk_from_response_message,
+    content_text_from_payload, injected_user_message_chunk_from_response_message,
     reasoning_text_from_payload, strip_ignored_embedded_images,
     user_image_data_urls_from_response_message, user_message_chunk_from_line,
 };
 use super::tool_calls::{
     attach_subagent_activity_to_pending_call, background_cell_id, background_cell_key,
-    codex_task_error_message, codex_tool_call_chunk, is_orgii_materialized_tool_call,
-    lifecycle_turn_id, output_parts_for_tool_calls, pending_custom_tool_calls_from_payload,
+    codex_task_error_message, codex_tool_call_chunk, lifecycle_turn_id,
+    output_parts_for_tool_calls, pending_custom_tool_calls_from_payload,
     pending_tool_calls_from_payload, resolve_codex_tool_outputs, wait_cell_id,
     web_search_call_from_payload, PendingBackgroundToolCall,
 };
@@ -31,6 +31,31 @@ type CodexTranscriptLoad = (
     Vec<ProjectedTurnMetadata>,
     Vec<CodexTurnOffset>,
 );
+
+#[derive(Debug)]
+struct PendingCompactionMirror {
+    window_id: Option<String>,
+}
+
+fn compacted_window_id(payload: &Value) -> Option<String> {
+    payload
+        .get("window_id")
+        .or_else(|| payload.get("first_window_id"))
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn compacted_extends_pending_window(pending: &PendingCompactionMirror, payload: &Value) -> bool {
+    let Some(previous_window_id) = payload
+        .get("previous_window_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+    else {
+        return false;
+    };
+    pending.window_id.as_deref() == Some(previous_window_id)
+}
 
 pub(super) fn parse_codex_app_from_path_with_mode<'a>(
     session_id: &'a str,
@@ -60,19 +85,16 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
     let mut pending_task_turn_offset: Option<u64> = None;
     let mut active_task_turn_id: Option<String> = None;
     let mut sequence = initial_sequence;
-    // Current Codex rollouts write a top-level `compacted` checkpoint and a
-    // nearby `event_msg/context_compacted` UI mirror. Emit one ORGII marker,
-    // while still accepting older event-only rollouts.
-    let mut pending_compacted_mirror_at: Option<String> = None;
+    // Current Codex rollouts write one or more chained top-level `compacted`
+    // window checkpoints followed immediately by an `event_msg/context_compacted`
+    // UI mirror. Track that provider-owned window chain instead of guessing
+    // identity from timestamps: two real compactions may legitimately happen
+    // within a few seconds of each other.
+    let mut pending_compacted_mirror: Option<PendingCompactionMirror> = None;
     // The model-context response item carries portable image data, while the
     // following UI projection may carry only a source-machine local path.
     // Pair them without emitting the response item as a duplicate user turn.
     let mut pending_user_image_data_urls: Vec<String> = Vec::new();
-    // ORGII materializes a portable compaction summary as a supported
-    // assistant response item immediately followed by Codex's supported
-    // `context_compaction` response item. Keep the summary out of the normal
-    // assistant transcript and fold the pair back into one compact boundary.
-    let mut pending_materialized_compaction: Option<(String, String)> = None;
 
     let mut line = String::new();
     let mut next_byte_offset = start_offset;
@@ -93,7 +115,10 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
         }
         let parsed: CodexJsonlLine = match serde_json::from_str(trimmed) {
             Ok(parsed) => parsed,
-            Err(_) => continue,
+            Err(_) => {
+                pending_compacted_mirror = None;
+                continue;
+            }
         };
         let created_at = parsed
             .timestamp
@@ -112,12 +137,9 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                 .get("message")
                 .and_then(Value::as_str)
                 .filter(|summary| !summary.trim().is_empty());
-            let belongs_to_open_window_batch =
-                pending_compacted_mirror_at
-                    .as_deref()
-                    .is_some_and(|checkpoint_created_at| {
-                        compact_markers_are_same_checkpoint(checkpoint_created_at, &created_at)
-                    });
+            let belongs_to_open_window_batch = pending_compacted_mirror
+                .as_ref()
+                .is_some_and(|pending| compacted_extends_pending_window(pending, &parsed.payload));
             if belongs_to_open_window_batch {
                 if let Some(existing) = collector
                     .current
@@ -145,20 +167,18 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                 ));
                 sequence += 1;
             }
-            pending_compacted_mirror_at = Some(created_at);
+            pending_compacted_mirror = Some(PendingCompactionMirror {
+                window_id: compacted_window_id(&parsed.payload),
+            });
             continue;
         }
         let Some(payload_type) = parsed.payload.get("type").and_then(Value::as_str) else {
+            pending_compacted_mirror = None;
             continue;
         };
 
         if payload_type == "context_compacted" {
-            if pending_compacted_mirror_at
-                .take()
-                .is_some_and(|checkpoint_created_at| {
-                    compact_markers_are_same_checkpoint(&checkpoint_created_at, &created_at)
-                })
-            {
+            if pending_compacted_mirror.take().is_some() {
                 continue;
             }
             collector.current.push(codex_context_compacted_chunk(
@@ -176,31 +196,26 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             continue;
         }
 
+        // `token_count` is the only provider-owned padding observed between a
+        // compact checkpoint and its UI mirror. Any conversational/lifecycle
+        // record closes the batch, so a later nearby compaction remains a
+        // distinct canonical boundary.
+        if payload_type != "token_count" {
+            pending_compacted_mirror = None;
+        }
+
         if payload_type == "context_compaction" {
-            let marker = parsed
-                .payload
-                .get("internal_chat_message_metadata_passthrough")
-                .and_then(|metadata| metadata.get("turn_id"))
-                .and_then(Value::as_str)
-                .filter(|turn_id| turn_id.starts_with("orgii-materialized-compaction:"));
-            let summary = marker.and_then(|marker| {
-                pending_materialized_compaction
-                    .take()
-                    .filter(|(pending_marker, _)| pending_marker == marker)
-                    .map(|(_, summary)| summary)
-            });
             let marker_id = parsed
                 .payload
                 .get("id")
                 .and_then(Value::as_str)
-                .or(marker)
                 .unwrap_or("context-compaction");
             collector.current.push(codex_context_compacted_chunk(
                 session_id,
                 sequence,
                 marker_id,
                 &created_at,
-                summary.as_deref(),
+                None,
             ));
             sequence += 1;
             continue;
@@ -285,7 +300,7 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             "message" => {
                 let role = parsed.payload.get("role").and_then(Value::as_str);
                 if role == Some("user") {
-                    if let Some(user_chunk) = materialized_user_message_chunk_from_response_message(
+                    if let Some(user_chunk) = injected_user_message_chunk_from_response_message(
                         session_id,
                         sequence,
                         &created_at,
@@ -307,16 +322,6 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                     }
                 } else if role == Some("assistant") {
                     if let Some(text) = content_text_from_payload(&parsed.payload) {
-                        if let Some(marker) = parsed
-                            .payload
-                            .get("internal_chat_message_metadata_passthrough")
-                            .and_then(|metadata| metadata.get("turn_id"))
-                            .and_then(Value::as_str)
-                            .filter(|turn_id| turn_id.starts_with("orgii-materialized-compaction:"))
-                        {
-                            pending_materialized_compaction = Some((marker.to_string(), text));
-                            continue;
-                        }
                         collector
                             .current
                             .push(imported_history::assistant_message_chunk(
@@ -373,52 +378,48 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                     if let Some((file_order, calls)) = pending_tool_calls.take(call_id) {
                         let output_value = parsed.payload.get("output");
                         let output = codex_tool_output_text(output_value);
-                        let is_orgii_materialized =
-                            calls.iter().all(is_orgii_materialized_tool_call);
-                        if !is_orgii_materialized {
-                            if let Some(cell_id) = wait_cell_id(&calls) {
-                                let cell_key = background_cell_key(cell_id);
-                                if let Some((background_order, mut background)) =
-                                    background_tool_calls.take(&cell_key)
-                                {
-                                    if let Some(next_cell_id) = background_cell_id(&output) {
-                                        background.latest_output = output;
-                                        background_tool_calls.reinsert(
-                                            background_cell_key(&next_cell_id),
-                                            background_order,
-                                            background,
-                                        );
+                        if let Some(cell_id) = wait_cell_id(&calls) {
+                            let cell_key = background_cell_key(cell_id);
+                            if let Some((background_order, mut background)) =
+                                background_tool_calls.take(&cell_key)
+                            {
+                                if let Some(next_cell_id) = background_cell_id(&output) {
+                                    background.latest_output = output;
+                                    background_tool_calls.reinsert(
+                                        background_cell_key(&next_cell_id),
+                                        background_order,
+                                        background,
+                                    );
+                                } else {
+                                    let final_output = if output.trim().is_empty() {
+                                        background.latest_output
                                     } else {
-                                        let final_output = if output.trim().is_empty() {
-                                            background.latest_output
-                                        } else {
-                                            output
-                                        };
-                                        resolve_codex_tool_outputs(
-                                            session_id,
-                                            background.calls,
-                                            background_order,
-                                            output_value,
-                                            &final_output,
-                                            &mut collector.current,
-                                            &mut sequence,
-                                            &mut background_tool_calls,
-                                        );
-                                    }
-                                    continue;
+                                        output
+                                    };
+                                    resolve_codex_tool_outputs(
+                                        session_id,
+                                        background.calls,
+                                        background_order,
+                                        output_value,
+                                        &final_output,
+                                        &mut collector.current,
+                                        &mut sequence,
+                                        &mut background_tool_calls,
+                                    );
                                 }
-                            }
-                            if let Some(cell_id) = background_cell_id(&output) {
-                                background_tool_calls.reinsert(
-                                    background_cell_key(&cell_id),
-                                    file_order,
-                                    PendingBackgroundToolCall {
-                                        calls,
-                                        latest_output: output,
-                                    },
-                                );
                                 continue;
                             }
+                        }
+                        if let Some(cell_id) = background_cell_id(&output) {
+                            background_tool_calls.reinsert(
+                                background_cell_key(&cell_id),
+                                file_order,
+                                PendingBackgroundToolCall {
+                                    calls,
+                                    latest_output: output,
+                                },
+                            );
+                            continue;
                         }
                         resolve_codex_tool_outputs(
                             session_id,
@@ -548,14 +549,4 @@ fn codex_context_compacted_chunk(
         "observation": summary.unwrap_or(""),
     });
     chunk
-}
-
-fn compact_markers_are_same_checkpoint(left: &str, right: &str) -> bool {
-    let Ok(left) = chrono::DateTime::parse_from_rfc3339(left) else {
-        return left == right;
-    };
-    let Ok(right) = chrono::DateTime::parse_from_rfc3339(right) else {
-        return false;
-    };
-    (right - left).num_seconds().abs() <= 5
 }

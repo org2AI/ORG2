@@ -15,7 +15,6 @@ import {
   useStore,
 } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
-import { useCallback } from "react";
 
 import { createLogger } from "@src/hooks/logger";
 import { BoundedMap } from "@src/util/collections/BoundedMap";
@@ -35,10 +34,14 @@ import {
 } from "../org2CloudConversationEventsClient";
 import { REALTIME_SIGNAL_COALESCE_MS } from "../org2CloudRealtimeSignalCoalescer";
 import type { SessionCommentTarget } from "../sessionCommentTarget";
-import { drainConversationTailOutbox } from "./conversationTailOutbox";
 
 const log = createLogger("ConversationPlane");
 const MAX_CONVERSATION_PLANE_ENTRIES = 64;
+const MAX_CONVERSATION_PLANE_BYTES = 128 * 1024 * 1024;
+/** A mounted conversation keeps only a renderable tail, never its full life. */
+export const MAX_CONVERSATION_PLANE_ENTRY_EVENTS = 2_000;
+export const MAX_CONVERSATION_PLANE_ENTRY_BYTES = 16 * 1024 * 1024;
+const MAX_CONVERSATION_PLANE_PULL_BYTES = 128 * 1024 * 1024;
 const MAX_CONVERSATION_PLANE_SIGNALS = 64;
 
 export type ConversationPlaneState =
@@ -56,7 +59,15 @@ export interface ConversationPlaneEntry {
   state: ConversationPlaneState;
   /** Ordered by seq asc; deduped by wire id. */
   events: CloudConversationEvent[];
+  /** First retained logical row; null when the visible window is empty. */
+  firstSeq: number | null;
+  /** True when durable Cloud history exists before `firstSeq`. */
+  hasEarlierEvents: boolean;
+  /** Timestamp of the first logical plane row, retained after tail eviction. */
+  historyStartedAt: string | null;
   lastSeq: number;
+  /** Cached payload estimate; avoids serializing every retained transcript. */
+  approximateBytes?: number;
 }
 
 export interface ConversationPlaneLocator {
@@ -72,7 +83,11 @@ function emptyEntry(locator: ConversationPlaneLocator): ConversationPlaneEntry {
     ...locator,
     state: "idle",
     events: [],
+    firstSeq: null,
+    hasEarlierEvents: false,
+    historyStartedAt: null,
     lastSeq: 0,
+    approximateBytes: 0,
   };
 }
 
@@ -108,12 +123,22 @@ interface RefreshConversationPlaneParams {
   getEntry: () => ConversationPlaneEntry | undefined;
   setEntries: SetConversationPlaneEntries;
   setAuth: SetCloudAuth;
+  /**
+   * Stable identity of a real invalidation that initiated this refresh.
+   * Concurrent readers with the same identity join one request; a newer
+   * identity arriving while it is in flight schedules exactly one trailing
+   * pull. Ordinary readers omit it and only join.
+   */
+  invalidationKey?: string;
 }
 
 interface ConversationPlaneRequestState {
   activeIdentityKey: string | null;
   epoch: number;
   inFlightByKey: Map<string, Promise<ConversationPlaneEntry>>;
+  trailingRefreshKeys: Set<string>;
+  activeInvalidationByKey: Map<string, string>;
+  trailingInvalidationByKey: Map<string, string>;
 }
 
 const requestStateByStore = new WeakMap<
@@ -128,6 +153,9 @@ function requestStateFor(store: JotaiStore): ConversationPlaneRequestState {
       activeIdentityKey: null,
       epoch: 0,
       inFlightByKey: new Map(),
+      trailingRefreshKeys: new Set(),
+      activeInvalidationByKey: new Map(),
+      trailingInvalidationByKey: new Map(),
     };
     requestStateByStore.set(store, state);
   }
@@ -153,12 +181,137 @@ function writeConversationPlaneEntry(
   key: string,
   entry: ConversationPlaneEntry
 ): ConversationPlaneEntries {
-  return boundedRecordWrite(
+  const bounded = boundedRecordWrite(
     current,
     key,
     entry,
     MAX_CONVERSATION_PLANE_ENTRIES
   );
+  const entries = Object.entries(bounded);
+  let approximateBytes = entries.reduce(
+    (total, [, value]) => total + conversationPlaneEntryBytes(value),
+    0
+  );
+  while (
+    approximateBytes > MAX_CONVERSATION_PLANE_BYTES &&
+    entries.length > 1
+  ) {
+    const oldestIndex = entries.findIndex(([candidate]) => candidate !== key);
+    if (oldestIndex < 0) break;
+    const removed = entries.splice(oldestIndex, 1)[0];
+    if (!removed) break;
+    approximateBytes -= conversationPlaneEntryBytes(removed[1]);
+  }
+  return Object.fromEntries(entries);
+}
+
+function conversationPlaneEntryBytes(entry: ConversationPlaneEntry): number {
+  return entry.approximateBytes ?? approximateEventBytes(entry.events);
+}
+
+function approximateEventBytes(
+  events: readonly CloudConversationEvent[]
+): number {
+  return events.reduce(
+    (total, event) => total + JSON.stringify(event).length * 2,
+    0
+  );
+}
+
+function appendWirePageWithinPullBound(
+  destination: CloudConversationEvent[],
+  page: readonly CloudConversationEvent[],
+  currentBytes: number
+): number {
+  const nextBytes = currentBytes + approximateEventBytes(page);
+  if (nextBytes > MAX_CONVERSATION_PLANE_PULL_BYTES) {
+    throw new Error(
+      `canonical conversation plane exceeds the ${MAX_CONVERSATION_PLANE_PULL_BYTES}-byte reconstruction bound`
+    );
+  }
+  destination.push(...page);
+  return nextBytes;
+}
+
+export interface ConversationPlaneWindow {
+  events: CloudConversationEvent[];
+  approximateBytes: number;
+  firstSeq: number | null;
+  hasEarlierEvents: boolean;
+}
+
+/**
+ * Bound the in-memory render window without moving the durable `lastSeq`
+ * cursor backwards. The Cloud plane remains the history authority; callers
+ * that need native reconstruction use `loadCompleteConversationPlaneEvents`
+ * rather than treating this UI tail as a checkpoint.
+ */
+export function boundConversationPlaneWindow(
+  events: readonly CloudConversationEvent[],
+  options: { maxEvents?: number; maxBytes?: number } = {}
+): ConversationPlaneWindow {
+  const maxEvents = options.maxEvents ?? MAX_CONVERSATION_PLANE_ENTRY_EVENTS;
+  const maxBytes = options.maxBytes ?? MAX_CONVERSATION_PLANE_ENTRY_BYTES;
+  let start = Math.max(0, events.length - Math.max(0, maxEvents));
+  let approximateBytes = approximateEventBytes(events.slice(start));
+  while (start < events.length && approximateBytes > maxBytes) {
+    approximateBytes -= approximateEventBytes([events[start]]);
+    start += 1;
+  }
+  const retained = events.slice(start);
+  return {
+    events: retained,
+    approximateBytes,
+    firstSeq: retained[0]?.seq ?? null,
+    hasEarlierEvents: start > 0,
+  };
+}
+
+function appendConversationEvents(
+  base: readonly CloudConversationEvent[],
+  incoming: readonly CloudConversationEvent[]
+): CloudConversationEvent[] {
+  if (incoming.length === 0) return [...base];
+  const incomingOrdered = incoming.every(
+    (event, index) => index === 0 || incoming[index - 1]!.seq <= event.seq
+  );
+  const baseTip = base.at(-1)?.seq ?? 0;
+  if (incomingOrdered && baseTip <= incoming[0]!.seq) {
+    return [...base, ...incoming];
+  }
+  // Defensive fallback for a server/schema regression; normal incremental
+  // pages never pay this full-history sort.
+  return [...base, ...incoming].sort((left, right) => left.seq - right.seq);
+}
+
+/** Load the exact durable plane for execution; this result is never cached. */
+export async function loadCompleteConversationPlaneEvents(
+  accessToken: string,
+  params: { orgId: string; rootSessionId: string },
+  endpoint: { supabaseUrl: string; anonKey: string }
+): Promise<CloudConversationEvent[]> {
+  let afterSeq = 0;
+  const wireEvents: CloudConversationEvent[] = [];
+  let wireBytes = 0;
+  for (;;) {
+    const page = await listConversationEvents(
+      accessToken,
+      { ...params, afterSeq },
+      endpoint
+    );
+    wireBytes = appendWirePageWithinPullBound(
+      wireEvents,
+      page.events,
+      wireBytes
+    );
+    // Quarantined rows leave no readable event but still own a seq; follow the
+    // wire cursor so one poisoned row cannot stall the pull, and stop as soon
+    // as it fails to advance.
+    const advanced = page.lastSeq > afterSeq;
+    afterSeq = Math.max(afterSeq, page.lastSeq);
+    if (!page.hasMore || !advanced) break;
+  }
+  return decodeConversationEventChunks(wireEvents);
 }
 
 function activateConversationPlaneIdentity(
@@ -171,6 +324,9 @@ function activateConversationPlaneIdentity(
   state.activeIdentityKey = authIdentityKey;
   state.epoch += 1;
   state.inFlightByKey.clear();
+  state.trailingRefreshKeys.clear();
+  state.activeInvalidationByKey.clear();
+  state.trailingInvalidationByKey.clear();
   setEntries((current) => {
     const retained = Object.fromEntries(
       Object.entries(current).filter(
@@ -218,26 +374,6 @@ function entryMatchesLocator(
   );
 }
 
-function mergePlaneEvents(
-  previous: ConversationPlaneEntry,
-  incoming: readonly CloudConversationEvent[]
-): ConversationPlaneEntry {
-  if (incoming.length === 0) {
-    return { ...previous, state: "ready" };
-  }
-  const known = new Set(previous.events.map((event) => event.id));
-  const fresh = incoming.filter((event) => !known.has(event.id));
-  const events = [...previous.events, ...fresh].sort(
-    (left, right) => left.seq - right.seq
-  );
-  return {
-    ...previous,
-    state: "ready",
-    events,
-    lastSeq: events.length > 0 ? events[events.length - 1].seq : 0,
-  };
-}
-
 /**
  * One authoritative loader shared by the mounted transcript and the submit
  * boundary. A capable backend must never race through the legacy visible-fork
@@ -265,7 +401,43 @@ export function refreshConversationPlaneEntry(
     requestState.activeIdentityKey === locator.authIdentityKey &&
     requestState.epoch === requestEpoch;
   const existing = requestState.inFlightByKey.get(key);
-  if (existing) return existing;
+  if (existing) {
+    const requestedInvalidation = params.invalidationKey;
+    const latestInvalidation =
+      requestState.trailingInvalidationByKey.get(key) ??
+      requestState.activeInvalidationByKey.get(key);
+    if (
+      requestedInvalidation === undefined ||
+      requestedInvalidation === latestInvalidation
+    ) {
+      return existing;
+    }
+    requestState.trailingRefreshKeys.add(key);
+    requestState.trailingInvalidationByKey.set(key, requestedInvalidation);
+    const runTrailingRefresh = () => {
+      if (!requestState.trailingRefreshKeys.delete(key)) return null;
+      const trailingInvalidation =
+        requestState.trailingInvalidationByKey.get(key) ??
+        requestedInvalidation;
+      requestState.trailingInvalidationByKey.delete(key);
+      return refreshConversationPlaneEntry({
+        ...params,
+        invalidationKey: trailingInvalidation,
+      });
+    };
+    return existing.then(
+      (entry) => runTrailingRefresh() ?? entry,
+      (error: unknown) => {
+        const trailing = runTrailingRefresh();
+        if (trailing) return trailing;
+        throw error;
+      }
+    );
+  }
+
+  if (params.invalidationKey !== undefined) {
+    requestState.activeInvalidationByKey.set(key, params.invalidationKey);
+  }
 
   const load = (async (): Promise<ConversationPlaneEntry> => {
     const storedBefore = params.getEntry();
@@ -292,7 +464,14 @@ export function refreshConversationPlaneEntry(
         throw new Error("cloud auth identity changed during plane refresh");
       }
       commitRefreshedAuth(params.setAuth, params.auth, fresh);
-      const probe = await getCloudCapabilitiesConfirmed(fresh.accessToken);
+      const endpoint = {
+        supabaseUrl: fresh.supabaseUrl,
+        anonKey: fresh.supabaseAnonKey,
+      };
+      const probe = await getCloudCapabilitiesConfirmed(
+        fresh.accessToken,
+        endpoint
+      );
       if (!probe.capabilities.conversationEvents) {
         if (!probe.confirmed) {
           throw new Error(
@@ -312,40 +491,56 @@ export function refreshConversationPlaneEntry(
       }
 
       const stored = params.getEntry();
-      let resolved = entryMatchesLocator(stored, locator) ? stored : before;
-      let afterSeq = resolved.lastSeq;
+      const base = entryMatchesLocator(stored, locator) ? stored : before;
+      let afterSeq = base.lastSeq;
+      const incomingWireEvents: CloudConversationEvent[] = [];
+      let incomingWireBytes = 0;
       for (;;) {
-        const page = await listConversationEvents(fresh.accessToken, {
-          orgId: params.orgId,
-          rootSessionId: params.rootSessionId,
-          afterSeq,
-        });
+        const page = await listConversationEvents(
+          fresh.accessToken,
+          {
+            orgId: params.orgId,
+            rootSessionId: params.rootSessionId,
+            afterSeq,
+          },
+          endpoint
+        );
         if (!isCurrentRequest()) {
           throw new Error("cloud auth identity changed during plane refresh");
         }
-        params.setEntries((current) => {
-          if (!isCurrentRequest()) return current;
-          const storedCurrent = current[key];
-          const previous = entryMatchesLocator(storedCurrent, locator)
-            ? storedCurrent
-            : emptyEntry(locator);
-          resolved = mergePlaneEvents(previous, page.events);
-          return writeConversationPlaneEntry(current, key, resolved);
-        });
-        if (!page.hasMore || page.events.length === 0) break;
-        afterSeq = page.events[page.events.length - 1].seq;
+        incomingWireBytes = appendWirePageWithinPullBound(
+          incomingWireEvents,
+          page.events,
+          incomingWireBytes
+        );
+        const advanced = page.lastSeq > afterSeq;
+        afterSeq = Math.max(afterSeq, page.lastSeq);
+        if (!page.hasMore || !advanced) break;
       }
-      const wireLastSeq = resolved.lastSeq;
-      const decodedEvents = await decodeConversationEventChunks(
-        resolved.events
+      const decodedIncoming =
+        await decodeConversationEventChunks(incomingWireEvents);
+      const known = new Set(base.events.map((event) => event.id));
+      const novelIncoming = decodedIncoming.filter(
+        (event) => !known.has(event.id)
       );
-      resolved = {
-        ...resolved,
-        events: decodedEvents,
-        // Chunk envelopes collapse to one logical event whose row carries the
-        // last chunk seq. Preserve the raw cursor even when no logical event
-        // was added by this refresh.
-        lastSeq: wireLastSeq,
+      const completeVisibleInput = appendConversationEvents(
+        base.events,
+        novelIncoming
+      );
+      const window = boundConversationPlaneWindow(completeVisibleInput);
+      const resolved: ConversationPlaneEntry = {
+        ...base,
+        state: "ready",
+        events: window.events,
+        firstSeq: window.firstSeq,
+        hasEarlierEvents: base.hasEarlierEvents || window.hasEarlierEvents,
+        historyStartedAt:
+          base.historyStartedAt ?? completeVisibleInput[0]?.createdAt ?? null,
+        // Chunk envelopes collapse to one logical event. Advance only after
+        // every fetched page decodes successfully, so a partial group never
+        // becomes a visible ready snapshot or consumes its retry cursor.
+        lastSeq: afterSeq,
+        approximateBytes: window.approximateBytes,
       };
       params.setEntries((current) =>
         isCurrentRequest()
@@ -373,6 +568,7 @@ export function refreshConversationPlaneEntry(
   const clearInFlight = () => {
     if (requestState.inFlightByKey.get(key) === load) {
       requestState.inFlightByKey.delete(key);
+      requestState.activeInvalidationByKey.delete(key);
     }
   };
   void load.then(clearInFlight, clearInFlight);
@@ -418,20 +614,6 @@ export function useConversationPlaneEvents(
       : emptyEntry(locator)
     : emptyEntry({ authIdentityKey: "", orgId: "", rootSessionId: "" });
 
-  const drainTailOutbox = useCallback(async () => {
-    if (!auth || !authIdentityKey) return;
-    await drainConversationTailOutbox({
-      authIdentityKey,
-      getAccessToken: async () => {
-        const fresh = await ensureFreshSession(auth);
-        if (!fresh) throw new Error("cloud auth refresh failed");
-        commitRefreshedAuth(setAuth, auth, fresh);
-        return fresh.accessToken;
-      },
-      onPushed: (orgId) => bumpConversationPlaneSignal(setSignals, orgId),
-    });
-  }, [auth, authIdentityKey, setAuth, setSignals]);
-
   useEffect(() => {
     const previousIdentity = requestStateFor(store).activeIdentityKey;
     activateConversationPlaneIdentity(store, authIdentityKey, setEntries);
@@ -446,9 +628,6 @@ export function useConversationPlaneEvents(
       : emptyEntry(locator);
     if (currentEntry.state === "unsupported") return;
     void (async () => {
-      await drainTailOutbox().catch((error: unknown) => {
-        log.warn("conversation tail outbox recovery failed", error);
-      });
       await refreshConversationPlaneEntry({
         store,
         auth,
@@ -457,6 +636,7 @@ export function useConversationPlaneEvents(
         getEntry: () => store.get(conversationPlaneAtom)[key],
         setEntries,
         setAuth,
+        invalidationKey: `signal:${signal}`,
       });
     })().catch((error: unknown) => {
       log.warn(`conversation plane fetch failed for ${key}`, error);
@@ -471,7 +651,6 @@ export function useConversationPlaneEvents(
     setEntries,
     signal,
     store,
-    drainTailOutbox,
   ]);
 
   // A short foreground switch does not release the shared Realtime socket
@@ -508,7 +687,6 @@ export function useConversationPlaneEvents(
       // distinct app switch must advance this cheap `after_seq` cursor.
       lastForegroundRecoverAtRef.current = Date.now();
       void (async () => {
-        await drainTailOutbox();
         await refreshConversationPlaneEntry({
           store,
           auth,
@@ -517,6 +695,7 @@ export function useConversationPlaneEvents(
           getEntry: () => store.get(conversationPlaneAtom)[key],
           setEntries,
           setAuth,
+          invalidationKey: `foreground:${lastForegroundRecoverAtRef.current}`,
         });
       })().catch((error: unknown) => {
         log.warn(
@@ -542,7 +721,6 @@ export function useConversationPlaneEvents(
     setAuth,
     setEntries,
     store,
-    drainTailOutbox,
   ]);
 
   return entry;

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { QueuedConversationRecoveryPendingError } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import {
@@ -9,6 +10,7 @@ import {
   conversationExecutionParentId,
   localConversationRootForSession,
   parseConversationExecutionParentId,
+  recoverLocalConversationTurn,
 } from "./localConversationContinuation";
 
 const mocks = vi.hoisted(() => ({
@@ -29,8 +31,11 @@ const mocks = vi.hoisted(() => ({
   getLatestSnapshot: vi.fn(),
   subscribeSession: vi.fn(),
   loadEvents: vi.fn(),
+  reconcileNative: vi.fn(),
+  recoverNativeAfterMismatch: vi.fn(),
   materialize: vi.fn(),
   synchronize: vi.fn(),
+  publishTurnIntentDispatch: vi.fn(),
   getTerminal: vi.fn(),
   markTerminal: vi.fn(),
   beginOptimistic: vi.fn(),
@@ -75,6 +80,10 @@ vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
 vi.mock("@src/engines/SessionCore/sync/authoritativeSessionEvents", () => ({
   loadAuthoritativeSessionEvents: mocks.loadEvents,
 }));
+vi.mock("@src/engines/SessionCore/sync/nativeTranscriptReconcile", () => ({
+  reconcileNativeTranscript: mocks.reconcileNative,
+  recoverNativeTranscriptAfterMismatch: mocks.recoverNativeAfterMismatch,
+}));
 vi.mock("./nativeConversationMaterializer", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("./nativeConversationMaterializer")
@@ -101,6 +110,9 @@ vi.mock("@src/engines/SessionCore/control/turnLifecycle", async () => {
 vi.mock("@src/engines/SessionCore/control/optimisticTurnStatus", () => ({
   beginOptimisticTurn: mocks.beginOptimistic,
   failOptimisticTurn: mocks.failOptimistic,
+}));
+vi.mock("@src/engines/SessionCore/control/turnIntentDispatchLifecycle", () => ({
+  publishTurnIntentDispatch: mocks.publishTurnIntentDispatch,
 }));
 vi.mock("@src/util/core/state/instrumentedStore", () => ({
   getInstrumentedStore: () => ({
@@ -210,6 +222,28 @@ beforeEach(() => {
     events: childEvents,
     source: "native_store",
   }));
+  mocks.reconcileNative.mockImplementation(async (sessionId: string) => {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    return mocks
+      .loadEvents(sessionId)
+      .then((result: { events: SessionEvent[] }) => result.events);
+  });
+  mocks.recoverNativeAfterMismatch.mockImplementation(
+    async (
+      sessionId: string,
+      initialEvents: SessionEvent[],
+      isRecovered: (events: readonly SessionEvent[]) => boolean
+    ) => {
+      let events = initialEvents;
+      for (let attempt = 0; attempt < 2 && !isRecovered(events); attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        events = await mocks
+          .loadEvents(sessionId)
+          .then((result: { events: SessionEvent[] }) => result.events);
+      }
+      return events;
+    }
+  );
   mocks.materialize.mockImplementation(async ({ sessionId, timeline }) => {
     childEvents = (timeline as SessionEvent[]).map((item) => ({
       ...item,
@@ -220,20 +254,16 @@ beforeEach(() => {
       receipt: { nativeSessionId: sessionId, itemCount: childEvents.length },
     };
   });
-  mocks.synchronize.mockImplementation(
-    async ({ sessionId, timeline, existingEvents }) => {
-      childEvents = [
-        ...(existingEvents as SessionEvent[]),
-        ...(timeline as SessionEvent[])
-          .slice((existingEvents as SessionEvent[]).length)
-          .map((item) => ({ ...item, sessionId })),
-      ];
-      return {
-        events: childEvents,
-        receipt: { nativeSessionId: sessionId, itemCount: childEvents.length },
-      };
-    }
-  );
+  mocks.synchronize.mockImplementation(async ({ sessionId, timeline }) => {
+    childEvents = (timeline as SessionEvent[]).map((item) => ({
+      ...item,
+      sessionId,
+    }));
+    return {
+      events: childEvents,
+      receipt: { nativeSessionId: sessionId, itemCount: childEvents.length },
+    };
+  });
   mocks.appendEvents.mockResolvedValue(undefined);
   mocks.updateEvent.mockResolvedValue(true);
   mocks.setEvents.mockResolvedValue(undefined);
@@ -245,10 +275,10 @@ beforeEach(() => {
   mocks.subscribeSession.mockReturnValue(() => undefined);
   mocks.storeGet.mockReturnValue(null);
   mocks.sendMessage.mockImplementation(
-    async ({ sessionId, displayText, turnIntentId }) => {
+    async ({ sessionId, content, turnIntentId }) => {
       childEvents = [
         ...childEvents,
-        event(`user-${turnIntentId}`, "user", displayText, {
+        event(`user-${turnIntentId}`, "user", content, {
           sessionId,
           turnId: turnIntentId,
         }),
@@ -386,6 +416,169 @@ describe("local native conversation continuation", () => {
     expect(mocks.create).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a materialized child recoverable when its runner receipt cannot persist", async () => {
+    const timeline = [event("u1", "user", "original question")];
+    const receiptFailure = new QueuedConversationRecoveryPendingError(
+      "runner receipt unavailable"
+    );
+
+    await expect(
+      continueLocalConversation({
+        root,
+        title: "Shared",
+        timeline,
+        displayText: "continue after receipt recovery",
+        target,
+        turnIntentId: "turn-runner-receipt",
+        onSessionReady: () => {
+          throw receiptFailure;
+        },
+      })
+    ).rejects.toBe(receiptFailure);
+
+    expect(mocks.materialize).toHaveBeenCalledTimes(1);
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.updateEvent).not.toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ displayStatus: "failed" }),
+      "agentsession-child"
+    );
+
+    // A restarted queue discovers the already-materialized native child by
+    // canonical parent and resumes the same turn instead of creating another.
+    mocks.invokeTauri.mockResolvedValue([
+      {
+        sessionId: "agentsession-child",
+        updatedAt: "2026-08-26T01:00:00.000Z",
+      },
+    ]);
+    mocks.getAgentSession.mockResolvedValue({
+      status: "completed",
+      updatedAt: "2026-08-26T01:00:00.000Z",
+      workspacePath: "/repo",
+      accountId: "account-1",
+      model: "model-1",
+      agentDefinitionId: "builtin:sde",
+    });
+
+    await expect(
+      continueLocalConversation({
+        root,
+        title: "Shared",
+        timeline,
+        displayText: "continue after receipt recovery",
+        target,
+        turnIntentId: "turn-runner-receipt",
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({ sessionId: "agentsession-child" })
+    );
+
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(mocks.synchronize).toHaveBeenCalledTimes(1);
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces accepted-turn receipt failures as recovery-pending", async () => {
+    const persistError = new Error("queue store locked");
+
+    await expect(
+      continueLocalConversation({
+        root,
+        title: "Shared",
+        timeline: [event("u1", "user", "original question")],
+        displayText: "run exactly once",
+        target,
+        turnIntentId: "turn-accepted-receipt",
+        onTurnAccepted: () => {
+          throw persistError;
+        },
+      })
+    ).rejects.toMatchObject({
+      name: "QueuedConversationRecoveryPendingError",
+      message: expect.stringContaining("queue store locked"),
+    });
+
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.cliWaitForTurnTerminal).not.toHaveBeenCalled();
+    expect(mocks.updateEvent).not.toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ displayStatus: "failed" }),
+      "agentsession-child"
+    );
+  });
+
+  it("adopts a durable accepted runner through the shared turn-intent lifecycle", async () => {
+    const history = [event("u1", "user", "original question")];
+    const currentUser = event("canonical-current", "user", "continue", {
+      turnId: "turn-recover-adopted",
+    });
+    childEvents = [
+      ...history.map((item) => ({ ...item, sessionId: "agentsession-child" })),
+      event("native-current", "user", "continue", {
+        sessionId: "agentsession-child",
+        turnId: "turn-recover-adopted",
+      }),
+      event("native-answer", "assistant", "recovered answer", {
+        sessionId: "agentsession-child",
+        turnId: "turn-recover-adopted",
+      }),
+    ];
+    mocks.invokeTauri.mockResolvedValue([
+      {
+        sessionId: "agentsession-child",
+        updatedAt: "2026-08-30T00:00:00.000Z",
+      },
+    ]);
+    mocks.getAgentSession.mockResolvedValue({
+      status: "completed",
+      updatedAt: "2026-08-30T00:00:00.000Z",
+      workspacePath: "/repo",
+      accountId: "account-1",
+      model: "model-1",
+      agentDefinitionId: "builtin:sde",
+    });
+    mocks.turnIntentStatus.mockResolvedValue({
+      sessionId: "agentsession-child",
+      turnIntentId: "turn-recover-adopted",
+      status: "completed",
+      updatedAt: "2026-08-30T00:00:01.000Z",
+    });
+
+    const result = await recoverLocalConversationTurn({
+      root,
+      title: "Shared",
+      timeline: [...history, currentUser],
+      displayText: "continue",
+      target,
+      turnIntentId: "turn-recover-adopted",
+      runnerSessionId: "agentsession-child",
+    });
+
+    expect(result).toMatchObject({
+      sessionId: "agentsession-child",
+      terminalStatus: "completed",
+      agentTail: [expect.objectContaining({ id: "native-answer" })],
+    });
+    expect(mocks.publishTurnIntentDispatch).toHaveBeenCalledWith(
+      "turn-recover-adopted",
+      { sessionId: "agentsession-child", generation: 3 }
+    );
+    expect(mocks.beginOptimistic).toHaveBeenCalledWith(
+      "agentsession-child",
+      "dispatch"
+    );
+    expect(mocks.markTerminal).toHaveBeenCalledWith(
+      "agentsession-child",
+      "completed",
+      { generation: 3 }
+    );
+    expect(mocks.reconcileNative).toHaveBeenCalledWith("agentsession-child", {
+      preserveInterruptedSuffix: false,
+    });
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
   it("does not open a second source lifecycle when target launch fails", async () => {
     mocks.create.mockRejectedValueOnce(new Error("OAuth refresh rejected"));
 
@@ -469,16 +662,8 @@ describe("local native conversation continuation", () => {
       ],
       "agentsession-child"
     );
-    expect(mocks.storeSet).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        sessionId: "agentsession-child",
-        displayText: "new request",
-      })
-    );
     expect(result).toMatchObject({
       sessionId: "agentsession-child",
-      created: true,
       agentTail: [expect.objectContaining({ displayText: "native answer" })],
     });
   });
@@ -542,7 +727,7 @@ describe("local native conversation continuation", () => {
     ]);
   });
 
-  it("rebuilds one replay-safe overflow and reuses it on the next small turn", async () => {
+  it("leaves context recovery to the native runtime without replaying the turn", async () => {
     const timeline = [
       event("u1", "user", "canonical question"),
       event("a1", "assistant", "canonical answer"),
@@ -561,82 +746,32 @@ describe("local native conversation continuation", () => {
       }
       return true;
     });
-    let exhaustedStatusReads = 0;
-    mocks.cliStatus.mockImplementation(async ({ sessionId }) => {
-      if (sessionId === "cliagent-exhausted") {
-        exhaustedStatusReads += 1;
-        return exhaustedStatusReads === 1
-          ? {
-              status: "completed",
-              updatedAt: "2026-08-29T00:00:00.000Z",
-              cliAgentType: "codex",
-              accountId: "codex-account",
-              model: "codex-model",
-              repoPath: "/repo",
-            }
-          : {
-              status: "failed",
-              updatedAt: "2026-08-29T00:01:00.000Z",
-              contextExhausted: true,
-            };
-      }
-      return {
-        status: "completed",
-        updatedAt: "2026-08-29T00:02:00.000Z",
-        cliAgentType: "codex",
-        accountId: "codex-account",
-        model: "codex-model",
-        repoPath: "/repo",
-      };
+    mocks.cliStatus.mockResolvedValue({
+      status: "completed",
+      updatedAt: "2026-08-29T00:00:00.000Z",
+      cliAgentType: "codex",
+      accountId: "codex-account",
+      model: "codex-model",
+      repoPath: "/repo",
     });
-    mocks.loadEvents.mockImplementation(async (sessionId) => ({
-      events: sessionId === "cliagent-exhausted" ? timeline : childEvents,
+    mocks.loadEvents.mockResolvedValue({
+      events: timeline,
       source: "native_store",
-    }));
-    mocks.create.mockImplementation(async () => {
-      children.push({
-        sessionId: "cliagent-rebuilt",
-        updatedAt: "2026-08-29T00:02:00.000Z",
-      });
-      return { sessionId: "cliagent-rebuilt" };
     });
-    mocks.getTerminal.mockImplementation((sessionId) => ({
+    mocks.getTerminal.mockReturnValue({
       generation: 3,
-      status: sessionId === "cliagent-exhausted" ? "failed" : "completed",
+      status: "failed",
       at: Date.now() + 1_000,
-    }));
+    });
     mocks.cliWaitForTurnTerminal.mockImplementation(
       async ({ sessionId, turnIntentId }) => ({
         sessionId,
         turnIntentId,
-        status: sessionId === "cliagent-exhausted" ? "failed" : "completed",
+        status: "failed",
         updatedAt: "2026-08-29T00:03:00.000Z",
       })
     );
-    mocks.sendMessage.mockImplementation(
-      async ({
-        sessionId,
-        displayText,
-        turnIntentId,
-      }: {
-        sessionId: string;
-        displayText: string;
-        turnIntentId: string;
-      }) => {
-        if (sessionId === "cliagent-exhausted") return;
-        childEvents = [
-          ...childEvents,
-          event(`user-${turnIntentId}`, "user", displayText, {
-            sessionId,
-            turnId: turnIntentId,
-          }),
-          event(`answer-${turnIntentId}`, "assistant", "rebuilt answer", {
-            sessionId,
-            turnId: turnIntentId,
-          }),
-        ];
-      }
-    );
+    mocks.sendMessage.mockResolvedValue(undefined);
 
     const result = await continueLocalConversation({
       root,
@@ -652,83 +787,25 @@ describe("local native conversation continuation", () => {
       turnIntentId: "turn-context-rollover",
     });
 
-    expect(mocks.materialize).toHaveBeenCalledWith({
-      sessionId: "cliagent-rebuilt",
-      timeline,
-    });
-    expect(mocks.sendMessage).toHaveBeenNthCalledWith(
-      1,
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: "cliagent-exhausted",
         allowNativeContextRecovery: true,
       })
     );
-    expect(mocks.sendMessage).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        sessionId: "cliagent-rebuilt",
-        allowNativeContextRecovery: true,
-      })
-    );
     expect(result).toMatchObject({
-      sessionId: "cliagent-rebuilt",
-      created: true,
-      terminalStatus: "completed",
-      agentTail: [expect.objectContaining({ displayText: "rebuilt answer" })],
+      sessionId: "cliagent-exhausted",
+      terminalStatus: "failed",
+      agentTail: [],
     });
-
-    const nextTimeline = [
-      ...timeline,
-      event("user-turn-context-rollover", "user", "retry me once", {
-        sessionId: "root",
-        turnId: "turn-context-rollover",
-      }),
-      event("answer-turn-context-rollover", "assistant", "rebuilt answer", {
-        sessionId: "root",
-        turnId: "turn-context-rollover",
-      }),
-    ];
-    const next = await continueLocalConversation({
-      root,
-      title: "Canonical rollover",
-      timeline: nextTimeline,
-      displayText: "small follow-up",
-      target: {
-        cliAgentType: "codex",
-        accountId: "codex-account",
-        model: "codex-model",
-        workspaceRepoPath: "/repo",
-      },
-      turnIntentId: "turn-after-context-rollover",
-    });
-
-    expect(next).toMatchObject({
-      sessionId: "cliagent-rebuilt",
-      created: false,
-      terminalStatus: "completed",
-    });
-    expect(mocks.create).toHaveBeenCalledTimes(1);
-    expect(mocks.sendMessage).toHaveBeenCalledTimes(3);
-    expect(mocks.sendMessage).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        sessionId: "cliagent-rebuilt",
-        displayText: "small follow-up",
-        allowNativeContextRecovery: true,
-      })
-    );
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.materialize).not.toHaveBeenCalled();
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    { kind: "assistant", contextExhausted: true },
-    { kind: "thinking", contextExhausted: true },
-    { kind: "tool", contextExhausted: true },
-    { kind: "plan", contextExhausted: true },
-    // allowNativeContextRecovery is permission, not a trigger: an unrelated
-    // provider failure never enters the canonical rebuild path.
-    { kind: "failure", contextExhausted: false },
-  ] as const)(
+  it.each(["assistant", "thinking", "tool", "plan", "failure"] as const)(
     "does not rebuild a failed attempt after $kind output",
-    async ({ kind, contextExhausted }) => {
+    async (kind) => {
       const timeline = [
         event("u1", "user", "canonical question"),
         event("a1", "assistant", "canonical answer"),
@@ -758,7 +835,6 @@ describe("local native conversation continuation", () => {
           : {
               status: "failed",
               updatedAt: "2026-08-29T00:01:00.000Z",
-              contextExhausted,
             };
       });
       mocks.loadEvents.mockImplementation(async () => ({
@@ -807,7 +883,6 @@ describe("local native conversation continuation", () => {
 
       expect(result).toMatchObject({
         sessionId: "cliagent-partial",
-        created: false,
         terminalStatus: "failed",
         agentTail: [
           expect.objectContaining({
@@ -875,26 +950,25 @@ describe("local native conversation continuation", () => {
     ]);
   });
 
-  it("publishes a provider-native suffix when the runtime strips the ORG2 turn id", async () => {
+  it("anchors a provider-native suffix on the exact normalized agent payload", async () => {
     let nativeEvents: SessionEvent[] = [];
+    const agentContent = "runtime bridge\r\n\r\nnew request";
     mocks.getLatestSnapshot.mockImplementation(() => ({
       // The rendered EventStore can remain on the pre-turn projection while
       // Codex/Claude have already flushed the completed native transcript.
       chatEvents: childEvents,
     }));
-    mocks.sendMessage.mockImplementationOnce(
-      async ({ sessionId, displayText }) => {
-        nativeEvents = [
-          ...childEvents,
-          event("native-user", "user", `runtime bridge\n\n${displayText}`, {
-            sessionId,
-          }),
-          event("native-answer", "assistant", "native suffix answer", {
-            sessionId,
-          }),
-        ];
-      }
-    );
+    mocks.sendMessage.mockImplementationOnce(async ({ sessionId, content }) => {
+      nativeEvents = [
+        ...childEvents,
+        event("native-user", "user", content.replace(/\r\n?/g, "\n"), {
+          sessionId,
+        }),
+        event("native-answer", "assistant", "native suffix answer", {
+          sessionId,
+        }),
+      ];
+    });
     mocks.loadEvents.mockImplementation(async () => ({
       events: nativeEvents.length > 0 ? nativeEvents : childEvents,
       source: "native_store",
@@ -905,6 +979,7 @@ describe("local native conversation continuation", () => {
       title: "Shared",
       timeline: [event("u1", "user", "original question")],
       displayText: "new request",
+      agentContent,
       target,
       turnIntentId: "turn-provider-native-suffix",
     });
@@ -915,35 +990,106 @@ describe("local native conversation continuation", () => {
         displayText: "native suffix answer",
       }),
     ]);
-    expect(mocks.mergeEvents).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          id: "native-user",
-          displayText: expect.stringContaining("new request"),
-          result: expect.objectContaining({
-            turnIntentId: "turn-provider-native-suffix",
-          }),
-        }),
-        expect.objectContaining({
-          id: "native-answer",
-          displayText: "native suffix answer",
-        }),
-      ],
-      "agentsession-child"
-    );
-    expect(mocks.markTerminal).toHaveBeenCalledWith(
-      "agentsession-child",
-      "completed",
-      { generation: 3 }
-    );
-    expect(mocks.setStreaming).toHaveBeenCalledWith(
-      false,
-      "agentsession-child"
-    );
+    expect(mocks.reconcileNative).toHaveBeenCalledWith("agentsession-child", {
+      preserveInterruptedSuffix: false,
+    });
+    expect(mocks.recoverNativeAfterMismatch).not.toHaveBeenCalled();
     expect(mocks.loadEvents).toHaveBeenCalledTimes(1);
   });
 
-  it("closes the current generation when only durable status observes terminal", async () => {
+  it("never treats a provider-added text prefix as the current user anchor", async () => {
+    vi.useFakeTimers();
+    try {
+      let nativeEvents: SessionEvent[] = [];
+      mocks.getLatestSnapshot.mockImplementation(() => ({
+        chatEvents: childEvents,
+      }));
+      mocks.sendMessage.mockImplementationOnce(async ({ sessionId }) => {
+        nativeEvents = [
+          ...childEvents,
+          event("wrong-native-user", "user", "provider prefix\n\nnew request", {
+            sessionId,
+          }),
+          event("wrong-native-answer", "assistant", "must not be captured", {
+            sessionId,
+          }),
+        ];
+      });
+      mocks.loadEvents.mockImplementation(async () => ({
+        events: nativeEvents.length > 0 ? nativeEvents : childEvents,
+        source: "native_store",
+      }));
+
+      const continuation = continueLocalConversation({
+        root,
+        title: "Shared",
+        timeline: [event("u1", "user", "original question")],
+        displayText: "new request",
+        target,
+        turnIntentId: "turn-exact-native-anchor",
+      });
+      const rejected = expect(continuation).rejects.toThrow(
+        "missing its native transcript anchor"
+      );
+      // Let create/materialize/send reach the transcript-settle loop before
+      // advancing its backoff timers.
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        if (mocks.sendMessage.mock.calls.length > 0) break;
+        await Promise.resolve();
+      }
+      expect(mocks.sendMessage).toHaveBeenCalledOnce();
+      await vi.runAllTimersAsync();
+      await rejected;
+      expect(mocks.recoverNativeAfterMismatch).toHaveBeenCalledOnce();
+      expect(mocks.mergeEvents).not.toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "wrong-native-answer" }),
+        ]),
+        "agentsession-child"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("uses image identity rather than empty text as an image-only fallback", async () => {
+    let nativeEvents: SessionEvent[] = [];
+    const image = "data:image/png;base64,AAAA";
+    mocks.getLatestSnapshot.mockImplementation(() => ({
+      chatEvents: childEvents,
+    }));
+    mocks.sendMessage.mockImplementationOnce(async ({ sessionId }) => {
+      const nativeUser = event("native-image-user", "user", "", { sessionId });
+      nativeUser.result = { ...nativeUser.result, images: [image] };
+      nativeEvents = [
+        ...childEvents,
+        nativeUser,
+        event("native-image-answer", "assistant", "image answer", {
+          sessionId,
+        }),
+      ];
+    });
+    mocks.loadEvents.mockImplementation(async () => ({
+      events: nativeEvents.length > 0 ? nativeEvents : childEvents,
+      source: "native_store",
+    }));
+
+    const result = await continueLocalConversation({
+      root,
+      title: "Shared",
+      timeline: [event("u1", "user", "original question")],
+      displayText: "",
+      imageDataUrls: [image],
+      target,
+      turnIntentId: "turn-image-only-anchor",
+    });
+
+    expect(result.agentTail).toEqual([
+      expect.objectContaining({ id: "native-image-answer" }),
+    ]);
+  });
+
+  it("leaves fresh terminal ownership with the lifecycle coordinator", async () => {
     mocks.getTerminal.mockReturnValue(null);
     mocks.getAgentSession.mockResolvedValue({ status: "completed" });
 
@@ -957,19 +1103,7 @@ describe("local native conversation continuation", () => {
     });
 
     expect(result.terminalStatus).toBe("completed");
-    expect(mocks.markTerminal).toHaveBeenCalledWith(
-      "agentsession-child",
-      "completed",
-      { generation: 3 }
-    );
-    expect(mocks.storeSet).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        sessionId: "agentsession-child",
-        status: "completed",
-        source: "sync",
-      })
-    );
+    expect(mocks.markTerminal).not.toHaveBeenCalled();
   });
 
   it("waits for an exact CLI turn in Rust when background timers are throttled", async () => {
@@ -1095,7 +1229,7 @@ describe("local native conversation continuation", () => {
     });
   });
 
-  it("uses the resident turn window before reading one final native transcript", async () => {
+  it("joins the single native transcript reconciler", async () => {
     mocks.getLatestSnapshot.mockImplementation(() => ({
       chatEvents: childEvents,
     }));
@@ -1112,8 +1246,10 @@ describe("local native conversation continuation", () => {
     expect(result.agentTail).toEqual([
       expect.objectContaining({ displayText: "native answer" }),
     ]);
-    expect(mocks.getLatestSnapshot).toHaveBeenCalledWith("agentsession-child");
-    expect(mocks.getStoredEvents).not.toHaveBeenCalled();
+    expect(mocks.reconcileNative).toHaveBeenCalledWith("agentsession-child", {
+      preserveInterruptedSuffix: false,
+    });
+    expect(mocks.getLatestSnapshot).not.toHaveBeenCalled();
     expect(mocks.loadEvents).toHaveBeenCalledTimes(1);
   });
 
@@ -1231,11 +1367,7 @@ describe("local native conversation continuation", () => {
       terminalStatus: "cancelled",
       agentTail: [],
     });
-    expect(mocks.markTerminal).toHaveBeenCalledWith(
-      "agentsession-child",
-      "cancelled",
-      { generation: 3 }
-    );
+    expect(mocks.markTerminal).not.toHaveBeenCalled();
   });
 
   it("rebuilds a same-provider import from canonical events", async () => {
@@ -1327,7 +1459,7 @@ describe("local native conversation continuation", () => {
       agentDefinitionId: "builtin:sde",
     });
 
-    const result = await continueLocalConversation({
+    await continueLocalConversation({
       root,
       title: "Shared",
       timeline,
@@ -1336,7 +1468,6 @@ describe("local native conversation continuation", () => {
       turnIntentId: "turn-2",
     });
 
-    expect(result.created).toBe(false);
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.materialize).not.toHaveBeenCalled();
     expect(mocks.sendMessage).toHaveBeenCalledWith(
@@ -1515,7 +1646,6 @@ describe("local native conversation continuation", () => {
 
     expect(result).toMatchObject({
       sessionId: "agentsession-existing",
-      created: false,
     });
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.sendMessage).toHaveBeenCalledWith(
@@ -1561,7 +1691,6 @@ describe("local native conversation continuation", () => {
 
     expect(result).toMatchObject({
       sessionId: "agentsession-existing",
-      created: false,
     });
     expect(mocks.create).not.toHaveBeenCalled();
   });
@@ -1598,7 +1727,6 @@ describe("local native conversation continuation", () => {
 
     expect(result).toMatchObject({
       sessionId: "agentsession-existing",
-      created: false,
     });
     expect(mocks.create).not.toHaveBeenCalled();
   });
@@ -1620,7 +1748,7 @@ describe("local native conversation continuation", () => {
     });
     const timeline = [event("new", "user", "teammate added context")];
 
-    const result = await continueLocalConversation({
+    await continueLocalConversation({
       root,
       title: "Shared",
       timeline,
@@ -1628,7 +1756,6 @@ describe("local native conversation continuation", () => {
       target,
       turnIntentId: "turn-3",
     });
-    expect(result.created).toBe(true);
     expect(mocks.materialize).toHaveBeenCalledWith({
       sessionId: "agentsession-child",
       timeline,
@@ -1656,7 +1783,7 @@ describe("local native conversation continuation", () => {
     });
     const timeline = [existing, event("a1", "assistant", "remote answer")];
 
-    const result = await continueLocalConversation({
+    await continueLocalConversation({
       root,
       title: "Shared",
       timeline,
@@ -1670,11 +1797,9 @@ describe("local native conversation continuation", () => {
       turnIntentId: "turn-native-delta",
     });
 
-    expect(result.created).toBe(false);
     expect(mocks.synchronize).toHaveBeenCalledWith({
       sessionId: "cliagent-existing",
       timeline,
-      existingEvents: [existing],
     });
     expect(mocks.mergeEvents).toHaveBeenCalledWith(
       [expect.objectContaining({ displayText: "remote answer" })],
@@ -1833,24 +1958,20 @@ describe("local native conversation continuation", () => {
         receipt: { nativeSessionId: sessionId, itemCount: materialized.length },
       };
     });
-    mocks.synchronize.mockImplementation(
-      async ({ sessionId, timeline, existingEvents }) => {
-        const synchronized = [
-          ...(existingEvents as SessionEvent[]),
-          ...(timeline as SessionEvent[])
-            .slice((existingEvents as SessionEvent[]).length)
-            .map((item) => ({ ...item, sessionId })),
-        ];
-        eventsBySession.set(sessionId, synchronized);
-        return {
-          events: synchronized,
-          receipt: {
-            nativeSessionId: sessionId,
-            itemCount: synchronized.length,
-          },
-        };
-      }
-    );
+    mocks.synchronize.mockImplementation(async ({ sessionId, timeline }) => {
+      const synchronized = (timeline as SessionEvent[]).map((item) => ({
+        ...item,
+        sessionId,
+      }));
+      eventsBySession.set(sessionId, synchronized);
+      return {
+        events: synchronized,
+        receipt: {
+          nativeSessionId: sessionId,
+          itemCount: synchronized.length,
+        },
+      };
+    });
     const sentInto: string[] = [];
     mocks.sendMessage.mockImplementation(
       async ({ sessionId, displayText, turnIntentId }) => {
@@ -1886,7 +2007,6 @@ describe("local native conversation continuation", () => {
     });
     expect(first).toMatchObject({
       sessionId: localRoot.conversationId,
-      created: false,
     });
 
     const middle = await continueLocalConversation({
@@ -1904,7 +2024,6 @@ describe("local native conversation continuation", () => {
     });
     expect(middle).toMatchObject({
       sessionId: "cliagent-codex-child",
-      created: true,
     });
 
     const last = await continueLocalConversation({
@@ -1917,7 +2036,6 @@ describe("local native conversation continuation", () => {
     });
     expect(last).toMatchObject({
       sessionId: localRoot.conversationId,
-      created: false,
     });
     expect(mocks.create).toHaveBeenCalledTimes(1);
     expect(sentInto).toEqual([

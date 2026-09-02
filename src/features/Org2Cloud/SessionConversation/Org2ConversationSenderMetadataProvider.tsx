@@ -1,14 +1,12 @@
 import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
 
-import {
-  ConversationSenderMetadataProvider,
-  useConversationViewerState,
-} from "@src/engines/ChatPanel/ChatItems/ConversationSenderMetadataContext";
+import { ConversationSenderMetadataProvider } from "@src/engines/ChatPanel/ChatItems/ConversationSenderMetadataContext";
 import type {
   ConversationSenderIdentity,
   ConversationSenderStamp,
 } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
+import { resolveConversationViewerState } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { getSessionForkedFrom } from "@src/features/TeamCollaboration/forkSession";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
@@ -63,7 +61,7 @@ function compactIdentity(
     : null;
 }
 
-export interface Org2ConversationSourceSenderInput {
+interface Org2ConversationSourceSenderInput {
   importedFrom?: SessionImportedFrom;
   forkedFrom?: SessionForkedFrom;
   rows: readonly RemoteTeammateSessionMetadata[];
@@ -152,8 +150,9 @@ function SubscribedOrg2ConversationSenderMetadataProvider({
   const remoteEntries = useAtomValue(org2CloudRemoteSessionsAtom);
   const loadingSource = useCloudSessionLoadingSource(sessionId);
   const comments = useSessionCommentsContext();
-  const viewer = useConversationViewerState(
-    auth?.userId ?? comments?.viewerUserId ?? null
+  const viewer = resolveConversationViewerState(
+    auth?.userId ?? comments?.viewerUserId ?? null,
+    true
   );
   const forkedFrom = useMemo(
     () => (session ? getSessionForkedFrom(session) : undefined),

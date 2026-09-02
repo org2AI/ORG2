@@ -1,7 +1,7 @@
 //! Codex app-server transport: long-lived JSON-RPC turn over stdio.
 //!
-//! This is the default Codex transport. A launch-profile `transport="exec"`
-//! override keeps the legacy per-turn shell-out available as a recovery hatch.
+//! Native continuation episodes opt into this transport explicitly. Ordinary
+//! Codex sessions retain the established per-turn `codex exec --json` path.
 
 use tokio::process::Child;
 

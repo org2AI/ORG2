@@ -1,8 +1,8 @@
 import { atom } from "jotai";
 
 import {
-  type QueuedMessage,
-  messageQueueAtom,
+  type MessageDeliveryRecord,
+  messageDeliveryRecordsAtom,
   messageQueueHydratedAtom,
   queueEditingAtom,
 } from "@src/store/ui/messageQueueAtom";
@@ -16,16 +16,16 @@ import { turnLifecycleSignalAtom } from "../control/turnLifecycle";
  * Jotai emits one notification per dependency batch instead of up to five.
  */
 export interface QueueDispatchSyncInputs {
-  queue: QueuedMessage[];
-  hydrated: boolean;
+  deliveries: MessageDeliveryRecord[];
+  queueHydrated: boolean;
   turnLifecycleSignal: number;
   editing: boolean;
 }
 
 export const queueDispatchSyncInputsAtom = atom<QueueDispatchSyncInputs>(
   (get) => ({
-    queue: get(messageQueueAtom),
-    hydrated: get(messageQueueHydratedAtom),
+    deliveries: get(messageDeliveryRecordsAtom),
+    queueHydrated: get(messageQueueHydratedAtom),
     turnLifecycleSignal: get(turnLifecycleSignalAtom),
     editing: get(queueEditingAtom),
   })

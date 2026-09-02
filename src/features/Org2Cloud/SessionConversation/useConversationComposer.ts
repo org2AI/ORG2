@@ -9,16 +9,14 @@ import {
 } from "@src/engines/ChatPanel/hooks/useInputArea/types";
 
 import { useSessionCommentsContext } from "../SessionComments/SessionCommentsContext";
-import {
-  CLOUD_COMMENT_MAX_BODY_LENGTH,
-  CLOUD_COMMENT_MAX_MENTIONED_USER_IDS,
-} from "../org2CloudCommentsClient";
+import { CLOUD_COMMENT_MAX_MENTIONED_USER_IDS } from "../org2CloudCommentsClient";
 import { SessionCommentDeliveryError } from "../org2CloudSessionCommentsAtom";
 import {
   type ConversationComposerMode,
   conversationComposerModeAtomFamily,
 } from "./conversationComposerMode";
 import {
+  hasUnsupportedTeamChatAudiencePill,
   isTeamChatBodyWithinLimit,
   isTeamChatMentionAudienceWithinLimit,
   resolveTeamChatMentionedUserIds,
@@ -30,7 +28,20 @@ export function useConversationComposerMode(
   const [mode, setMode] = useAtom(
     conversationComposerModeAtomFamily(sessionId ?? "")
   );
-  return [sessionId ? mode : "prompt", setMode];
+  const comments = useSessionCommentsContext();
+  const teamChatAvailable = Boolean(
+    sessionId && comments?.target && comments.viewerUserId
+  );
+  const effectiveMode = teamChatAvailable ? mode : "prompt";
+  const setEffectiveMode = useCallback(
+    (nextMode: ConversationComposerMode) => {
+      setMode(
+        nextMode === "team_chat" && !teamChatAvailable ? "prompt" : nextMode
+      );
+    },
+    [setMode, teamChatAvailable]
+  );
+  return [effectiveMode, setEffectiveMode];
 }
 
 /** True when this composer can address a cloud discussion at all. */
@@ -64,14 +75,14 @@ export function useConversationSubmitOverride(
       if (input.imageDataUrls?.length) {
         throw new SubmitValidationError(t("conversation.imagesUnsupported"));
       }
+      if (hasUnsupportedTeamChatAudiencePill(input.composerSnapshot)) {
+        throw new SubmitValidationError(t("conversation.teamChatTooltip"));
+      }
       const body = input.displayText.trim();
       if (!body) return true;
       if (!isTeamChatBodyWithinLimit(body)) {
         throw new SubmitValidationError(
-          t("conversation.messageTooLong", {
-            max: CLOUD_COMMENT_MAX_BODY_LENGTH,
-            defaultValue: `Team Chat messages must be ${CLOUD_COMMENT_MAX_BODY_LENGTH} characters or fewer`,
-          })
+          t("navigation:cloud.channels.feed.errorTooLong")
         );
       }
       const mentionedUserIds = resolveTeamChatMentionedUserIds(

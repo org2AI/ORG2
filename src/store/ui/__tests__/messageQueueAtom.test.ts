@@ -14,6 +14,7 @@ import {
   enqueueMessageAtom,
   forceSendMessageAtom,
   messageQueueAtom,
+  messageQueueHandoffIdsAtom,
   parkSessionQueuedMessagesAfterStopAtom,
   queueEditTargetAtom,
   queueEditingAtom,
@@ -165,6 +166,24 @@ describe("messageQueueAtom", () => {
   // =============================================
 
   describe("dequeueMessageAtom", () => {
+    it("freezes queue mutations while ownership is being handed off", () => {
+      const message = makeMessage({ id: "m1" });
+      store.set(enqueueMessageAtom, message);
+      store.set(messageQueueHandoffIdsAtom, new Set([message.id]));
+
+      store.set(forceSendMessageAtom, message.id);
+      expect(
+        store.set(editMessageAtom, {
+          messageId: message.id,
+          content: "edited too late",
+        })
+      ).toBe(false);
+      store.set(dequeueMessageAtom, message.id);
+      store.set(clearQueuedMessagesAtom, [message.id]);
+
+      expect(store.get(messageQueueAtom)).toEqual([message]);
+    });
+
     it("removes message by ID", () => {
       store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
       store.set(enqueueMessageAtom, makeMessage({ id: "m2" }));

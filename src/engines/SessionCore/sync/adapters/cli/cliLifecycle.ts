@@ -30,6 +30,21 @@ export function isCliTerminalStatus(
   return status !== undefined && CLI_TERMINAL_STATUSES.has(status);
 }
 
+/**
+ * True when a terminal CLI row may own provider-portable EventStore output
+ * that never reached the provider transcript. Keep this derived from the
+ * central terminal classification so continuation cannot drift into a second
+ * raw-status allowlist.
+ */
+export function isInterruptedCliTerminalStatus(
+  status: string | undefined
+): boolean {
+  if (!status || !CLI_TERMINAL_STATUSES.has(status as CliSessionStatus)) {
+    return false;
+  }
+  return cliTerminalStatus(status as CliSessionStatus) !== "completed";
+}
+
 async function closeObservedCliTerminalEvents(
   sessionId: string,
   status: CliSessionStatus
@@ -72,14 +87,15 @@ async function closeObservedCliTerminalEvents(
 export function markCliRuntimeRunning(
   sessionId: string,
   generation?: number
-): void {
-  markTurnRunning(sessionId, { generation });
-  if (!isStoreInitialized()) return;
+): boolean {
+  if (!markTurnRunning(sessionId, { generation })) return false;
+  if (!isStoreInitialized()) return true;
   getInstrumentedStore().set(setSessionRuntimeStatusAtom, {
     sessionId,
     status: "running",
     source: "sync",
   });
+  return true;
 }
 
 export function markObservedCliTerminalStatus(

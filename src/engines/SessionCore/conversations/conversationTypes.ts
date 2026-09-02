@@ -54,17 +54,19 @@ export function isLocalConversationTarget(
       target.model.length > 0
     );
   }
+  const cliAgentType = target.cliAgentType as NativeConversationCliTarget;
+  const hasAccount =
+    typeof target.accountId === "string" && target.accountId.trim().length > 0;
+  const hasModel =
+    typeof target.model === "string" && target.model.trim().length > 0;
   return (
     target.agentDefinitionId === undefined &&
     typeof target.cliAgentType === "string" &&
-    NATIVE_CONVERSATION_CLI_TARGETS.includes(
-      target.cliAgentType as NativeConversationCliTarget
-    ) &&
-    (target.accountId === undefined ||
-      (typeof target.accountId === "string" &&
-        target.accountId.trim().length > 0)) &&
-    (target.model === undefined ||
-      (typeof target.model === "string" && target.model.trim().length > 0))
+    NATIVE_CONVERSATION_CLI_TARGETS.includes(cliAgentType) &&
+    ((hasAccount && hasModel) ||
+      (cliAgentType === "claude_code" &&
+        target.accountId === undefined &&
+        (target.model === undefined || hasModel)))
   );
 }
 
@@ -106,7 +108,6 @@ export function conversationRootKey(root: ConversationRootLocator): string {
 /** Provider-neutral source metadata for one canonical conversation. */
 export interface ConversationSource {
   root: ConversationRootLocator;
-  sourceTitle: string;
   cliAgentType?: string;
   agentDefinitionId?: string;
   agentDisplayName?: string;

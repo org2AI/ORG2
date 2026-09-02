@@ -1,9 +1,8 @@
 //! Read-only status/history queries plus cancellation — `cli_agent_status`,
-//! `cli_agent_history_mutation`, `cli_agent_cancel`.
+//! `cli_agent_history_mutation`, `cli_agent_cancel`, `cli_agent_list`.
 
 use super::super::persistence::{self, CliHistoryMutation, CodeSession};
 use super::super::session_runner;
-use super::super::types::SessionStatus;
 use agent_core::state::control_flow::CancelReason;
 use serde::Serialize;
 use std::collections::HashSet;
@@ -20,38 +19,11 @@ pub struct CliAgentStatusBatchItem {
     pub turn_intent_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CliAgentStatusItem {
-    #[serde(flatten)]
-    pub session: CodeSession,
-    /// True only for a failed provider turn whose durable error is classified
-    /// by the shared runtime classifier as context exhaustion. The frontend
-    /// must not infer this recovery signal from provider prose independently.
-    pub context_exhausted: bool,
-}
-
-fn status_item(session: CodeSession) -> CliAgentStatusItem {
-    let context_exhausted = context_exhausted(session.status, session.error_message.as_deref());
-    CliAgentStatusItem {
-        session,
-        context_exhausted,
-    }
-}
-
-fn context_exhausted(status: SessionStatus, error_message: Option<&str>) -> bool {
-    matches!(status, SessionStatus::Failed)
-        && error_message.is_some_and(app_utils::runtime_errors::is_context_exhausted_message)
-}
-
-
 /// Get session status.
 #[tauri::command]
-pub async fn cli_agent_status(session_id: String) -> Result<Option<CliAgentStatusItem>, String> {
+pub async fn cli_agent_status(session_id: String) -> Result<Option<CodeSession>, String> {
     tokio::task::spawn_blocking(move || {
-        persistence::get_session(&session_id)
-            .map(|session| session.map(status_item))
-            .map_err(|e| format!("DB error: {}", e))
+        persistence::get_session(&session_id).map_err(|e| format!("DB error: {}", e))
     })
     .await
     .map_err(|e| format!("Task error: {}", e))?
@@ -109,22 +81,4 @@ pub async fn cli_agent_cancel(
     reason: Option<CancelReason>,
 ) -> Result<bool, String> {
     session_runner::cancel_session(&session_id, reason.unwrap_or_default()).await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::context_exhausted;
-    use crate::agent_sessions::cli::types::SessionStatus;
-
-    #[test]
-    fn context_recovery_signal_requires_failed_status_and_shared_classification() {
-        let exhausted = Some("Codex ran out of room in the model's context window.");
-        assert!(context_exhausted(SessionStatus::Failed, exhausted));
-        assert!(!context_exhausted(SessionStatus::Completed, exhausted));
-        assert!(!context_exhausted(
-            SessionStatus::Failed,
-            Some("connection refused")
-        ));
-    }
-
 }

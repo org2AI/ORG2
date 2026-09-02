@@ -8,9 +8,10 @@
  * The indicator stays visible until new events arrive or the session ends.
  *
  * Watchdog: if the indicator stays visible for PLANNING_WATCHDOG_MS (60s),
- * query the backend-authoritative session status. A live provider may spend
- * minutes inside one silent shell tool; channel silence alone is not proof
- * that the turn ended. Only a terminal backend status may settle the UI.
+ * we assume Rust dropped `agent:complete` (or `agent:queue_status` idle)
+ * and force `sessionRuntimeStatusAtom` to `completed` so the UI cannot stay
+ * stuck on "Planning next step..." forever. Logged as a warning because
+ * this should only fire on genuine event-loss bugs.
  *
  * Reads directly from derivedSnapshotAtom (NOT eventsAtom). During streaming,
  * Rust pushes StreamingSnapshot which has no `events` field, causing eventsAtom
@@ -49,11 +50,9 @@ import {
   sessionScopedPlanningMetaAtomFamily,
 } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 import { usePlanningIdleTiming } from "@src/engines/SessionCore/hooks/replay/planningIndicatorIdleTiming";
-import { SessionService } from "@src/engines/SessionCore/services/SessionService";
 import { msSinceSessionChannelActivity } from "@src/engines/SessionCore/sync/sessionChannelActivity";
 import { createLogger } from "@src/hooks/logger";
 import {
-  type CliSessionStatus,
   isPendingCancelAtom,
   isSessionActiveAtom,
   sessionRuntimeStatusAtom,
@@ -64,7 +63,6 @@ import {
   hasLiveSubagentJobs,
   subagentJobMapAtom,
 } from "@src/store/session/subagentJobAtom";
-import { isActiveStatus, isTerminalStatus } from "@src/types/session/session";
 
 const log = createLogger("usePlanningIndicator");
 
@@ -99,38 +97,6 @@ export function planningWatchdogDelayMs(
   if (msSinceChannelActivity === null) return null;
   if (msSinceChannelActivity >= watchdogMs) return null;
   return watchdogMs - msSinceChannelActivity;
-}
-
-/**
- * Map a backend-authoritative status to the UI action the watchdog may take.
- * `null` means the provider is still alive (or waiting for the user), so the
- * watchdog must re-arm instead of manufacturing a terminal event.
- */
-export function planningWatchdogTerminalStatus(
-  status: string
-): CliSessionStatus | null {
-  // `idle` means the backend has released this turn; `paused` likewise has no
-  // executing work for the planning footer to represent. Other active states
-  // must remain open even when their channel is temporarily silent.
-  if (status === "idle" || status === "paused") return "completed";
-  if (isActiveStatus(status)) return null;
-  // Unknown/new backend statuses are not proof of completion. Only the shared
-  // terminal vocabulary may settle the UI.
-  if (!isTerminalStatus(status)) return null;
-  if (status === "completed") return "completed";
-  if (status === "cancelled") return "cancelled";
-  if (
-    status === "failed" ||
-    status === "error" ||
-    status === "abandoned" ||
-    status === "timeout" ||
-    status === "archived"
-  ) {
-    return status;
-  }
-  // Market-only terminal values (for example `killed`) collapse to the
-  // closest local-session presentation status.
-  return "failed";
 }
 
 export interface PlanningIndicatorVisibilityInput {
@@ -316,55 +282,29 @@ export function usePlanningIndicator(
     )
       return;
     let timerId: number | null = null;
-    let disposed = false;
     const arm = (delayMs: number) => {
       timerId = window.setTimeout(() => {
-        void (async () => {
-          const rearmDelay = planningWatchdogDelayMs(
-            msSinceSessionChannelActivity(effectiveSessionId)
-          );
-          if (rearmDelay !== null) {
-            if (!disposed) arm(rearmDelay);
-            return;
-          }
-          try {
-            const backend = await SessionService.getStatus({
-              sessionId: effectiveSessionId,
-            });
-            if (disposed) return;
-            const terminal = planningWatchdogTerminalStatus(backend.status);
-            if (terminal === null) {
-              log.info(
-                `[usePlanningIndicator] watchdog: channel silent for ${PLANNING_WATCHDOG_MS}ms, ` +
-                  `but backend is ${backend.status}; keeping the turn active`
-              );
-              arm(PLANNING_WATCHDOG_MS);
-              return;
-            }
-            log.warn(
-              `[usePlanningIndicator] watchdog: channel missed terminal status; ` +
-                `backend is ${backend.status}, settling UI as ${terminal}`
-            );
-            setSessionRuntimeStatus({
-              sessionId: effectiveSessionId,
-              status: terminal,
-              source: "planning",
-            });
-          } catch (error) {
-            // A failed probe cannot prove the provider stopped. Preserve the
-            // active footer and retry instead of recreating the original lie.
-            log.warn(
-              "[usePlanningIndicator] watchdog backend probe failed; keeping the turn active",
-              error
-            );
-            if (!disposed) arm(PLANNING_WATCHDOG_MS);
-          }
-        })();
+        const rearmDelay = planningWatchdogDelayMs(
+          msSinceSessionChannelActivity(effectiveSessionId)
+        );
+        if (rearmDelay !== null) {
+          arm(rearmDelay);
+          return;
+        }
+        log.warn(
+          `[usePlanningIndicator] watchdog: planning indicator stuck for ${PLANNING_WATCHDOG_MS}ms ` +
+            "with no channel activity — forcing session status to 'completed'. This usually means " +
+            "Rust dropped agent:complete or the idle agent:queue_status frame."
+        );
+        setSessionRuntimeStatus({
+          sessionId: effectiveSessionId,
+          status: "completed",
+          source: "planning",
+        });
       }, delayMs);
     };
     arm(PLANNING_WATCHDOG_MS);
     return () => {
-      disposed = true;
       if (timerId !== null) window.clearTimeout(timerId);
     };
   }, [

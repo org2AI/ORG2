@@ -164,9 +164,7 @@ fn is_user_message(row: &IndexEventRow) -> bool {
     matches!(
         row.function_name.as_deref(),
         Some(
-            USER_MESSAGE_FUNCTION
-                | IMPORTED_USER_MESSAGE_FUNCTION
-                | CANONICAL_USER_INPUT_FUNCTION
+            USER_MESSAGE_FUNCTION | IMPORTED_USER_MESSAGE_FUNCTION | CANONICAL_USER_INPUT_FUNCTION
         )
     ) && !is_synthetic_user_input(row)
 }

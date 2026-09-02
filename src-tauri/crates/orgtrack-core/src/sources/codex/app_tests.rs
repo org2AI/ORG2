@@ -1638,7 +1638,7 @@ fn codex_desktop_exec_unwraps_web_search_query() {
 }
 
 #[test]
-fn codex_materialized_canonical_tool_args_are_not_normalized_twice() {
+fn codex_native_canonical_tool_args_are_not_normalized_twice() {
     let temp_dir = std::env::temp_dir().join(format!(
         "orgii-codex-materialized-tool-test-{}",
         std::process::id()
@@ -1655,10 +1655,10 @@ fn codex_materialized_canonical_tool_args_are_not_normalized_twice() {
     });
     let payload = json!({
         "type": "function_call",
+        "id": "tool-item-1",
         "name": "web_search",
         "arguments": canonical_args.to_string(),
         "call_id": "call_materialized_web",
-        "orgii_materialization": true,
     });
     let output = json!({
         "type": "function_call_output",

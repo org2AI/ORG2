@@ -54,7 +54,7 @@ import {
   activeChatPanelTabTypeAtom,
   openOrFocusSessionInChatPanelTabAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
-import { sessionMapAtom } from "@src/store/session";
+import { type Session, sessionMapAtom } from "@src/store/session";
 import {
   chatTurnPaginationEnabledAtom,
   chatVisibleAtom,
@@ -71,7 +71,10 @@ import { stripPillReferences } from "@src/util/session/stripPillReferences";
 
 import ChatHistory from "../ChatHistory";
 import { ChatSessionContext } from "../ChatSessionContext";
+import { ConversationExecutionBindingContext } from "../ConversationExecutionBindingContext";
 import InputArea from "../InputArea";
+import { useConversationSubmitRouter } from "../hooks/conversationSubmit/useConversationSubmitRouter";
+import { useConversationTargetBinding } from "../hooks/useConversationTargetBinding";
 import type { SubmitOverrideInput } from "../hooks/useInputArea/types";
 import { useUserIntentSubmit } from "../hooks/useWorkspaceChat/useUserIntentSubmit";
 import type { ChatPanelProps } from "../types";
@@ -257,6 +260,7 @@ const SideChatWindow: React.FC<ChatPanelSideChatProps> = ({
         <SideChatSessionBody
           key={sessionId}
           sessionId={sessionId}
+          session={session}
           isLive={isSessionInProgress(session?.status)}
         />
       ) : SessionCreatorSlot ? (
@@ -284,23 +288,27 @@ const SideChatWindow: React.FC<ChatPanelSideChatProps> = ({
 
 interface SideChatSessionBodyProps {
   sessionId: string;
+  session?: Session;
   isLive: boolean;
 }
 
 const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
   sessionId,
+  session,
   isLive,
 }) => {
   const turnPaginationEnabled = useAtomValue(chatTurnPaginationEnabledAtom);
+  const conversationTargetBinding = useConversationTargetBinding(sessionId);
   const getSessionId = useCallback(() => sessionId, [sessionId]);
   const submitUserIntent = useUserIntentSubmit({ getSessionId });
 
-  const handleSubmit = useCallback(
+  const handleSurfaceSubmit = useCallback(
     async ({
       displayText,
       agentContent,
       imageDataUrls,
     }: SubmitOverrideInput): Promise<boolean> => {
+      if (conversationTargetBinding?.root) return false;
       const content = agentContent ?? displayText;
       if (!content.trim()) return false;
       try {
@@ -321,8 +329,16 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
         return false;
       }
     },
-    [sessionId, submitUserIntent]
+    [conversationTargetBinding?.root, sessionId, submitUserIntent]
   );
+  const { submit: handleSubmit, retry: handleCanonicalConversationRetry } =
+    useConversationSubmitRouter({
+      sessionId,
+      currentSession: session,
+      root: conversationTargetBinding?.root ?? null,
+      selectedTarget: conversationTargetBinding?.target ?? null,
+      onSurfaceSubmit: handleSurfaceSubmit,
+    });
 
   return (
     <ChatSessionContext.Provider value={sessionId}>
@@ -333,20 +349,30 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
               surfaceBgClass="bg-bg-2"
               turnPaginationEnabled={turnPaginationEnabled}
               planningIndicatorScope={{ sessionId, isLive }}
+              onFailedUserIntentRetry={
+                conversationTargetBinding
+                  ? handleCanonicalConversationRetry
+                  : undefined
+              }
             />
           </div>
           <div className="shrink-0 px-1.5 pt-0.5 pb-1.5">
-            <InputArea
-              key={sessionId}
-              omitChatHeader
-              sessionId={sessionId}
-              sessionScope="none"
-              onSubmitOverride={handleSubmit}
-              disableStopWhenEmpty
-              showAgentControls={false}
-              allowFileAttachments={false}
-              enableAgentInterceptors={false}
-            />
+            <ConversationExecutionBindingContext.Provider
+              value={conversationTargetBinding}
+            >
+              <InputArea
+                key={sessionId}
+                omitChatHeader
+                sessionId={sessionId}
+                controlSessionId={sessionId}
+                sessionScope="none"
+                onSubmitOverride={handleSubmit}
+                disableStopWhenEmpty
+                showAgentControls={Boolean(conversationTargetBinding)}
+                allowFileAttachments={false}
+                enableAgentInterceptors={false}
+              />
+            </ConversationExecutionBindingContext.Provider>
           </div>
         </div>
       </ChatProvider>

@@ -2,16 +2,19 @@ import { atom, useAtomValue } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 
 import type { ConversationSource } from "@src/engines/SessionCore/conversations/conversationTypes";
+import { normalizeSourceEndpointUrl } from "@src/features/TeamCollaboration/engine/collabImportIdentity";
 import { resolveForkWorkspacePath } from "@src/features/TeamCollaboration/forkWorkspaceResolution";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import type { Repo } from "@src/store/repo";
 import type { Session } from "@src/store/session";
 import { getExternalHistoryCliAgentType } from "@src/util/session/sessionDispatch";
 
+import { org2CloudAuthAtom } from "../org2CloudAuthAtom";
 import {
   type CloudOrgRemoteSessionsEntry,
   org2CloudRemoteSessionsAtom,
 } from "../org2CloudRemoteSessionsAtom";
+import type { SessionCommentTarget } from "../sessionCommentTarget";
 import { useCloudSessionLoadingSource } from "../useCloudSessionDownloadSurface";
 
 const detachedRemoteSessionsAtom = atom<
@@ -19,27 +22,37 @@ const detachedRemoteSessionsAtom = atom<
 >({});
 
 export function conversationSourceFromCloudReplay(params: {
+  target?: SessionCommentTarget | null;
   importedFrom?: Session["importedFrom"];
   orgId?: string;
   remoteSession?: RemoteTeammateSessionMetadata;
-  sessionName?: string;
+  sourceEndpointUrl?: string;
   workspaceRepoPath: string | null;
 }): ConversationSource | undefined {
-  const orgId = params.importedFrom?.orgId ?? params.orgId;
+  const orgId =
+    params.target?.orgId ?? params.importedFrom?.orgId ?? params.orgId;
   const sourceSessionId =
+    params.target?.sessionId ??
     params.importedFrom?.sourceSessionId ??
     params.remoteSession?.sourceSessionId;
   if (!orgId || !sourceSessionId) return undefined;
+  // `useSessionCommentTarget` has already converged the family onto its live
+  // Cloud plane (including retention fallback). Never reroot that explicit
+  // authority a second time from stale lineage metadata.
   const rootId =
-    params.remoteSession?.forkedFrom?.rootSessionId ?? sourceSessionId;
+    params.target?.sessionId ??
+    params.remoteSession?.forkedFrom?.rootSessionId ??
+    sourceSessionId;
+  const endpoint =
+    params.importedFrom?.sourceEndpointUrl ?? params.sourceEndpointUrl;
   return {
     root: {
       authority: "org2-cloud",
-      authorityScope: [orgId],
+      authorityScope: endpoint
+        ? [normalizeSourceEndpointUrl(endpoint), orgId]
+        : [orgId],
       conversationId: rootId,
     },
-    sourceTitle:
-      params.sessionName ?? params.remoteSession?.title ?? "Conversation",
     cliAgentType:
       params.importedFrom?.sourceDisplay?.cliAgentType ??
       params.remoteSession?.cliAgentType ??
@@ -60,6 +73,7 @@ export function conversationSourceFromCloudReplay(params: {
 interface CloudConversationSourceInput {
   sessionId: string | null | undefined;
   session?: Session;
+  target: SessionCommentTarget | null;
   sessions: readonly Session[];
   repos: readonly Repo[];
 }
@@ -73,17 +87,25 @@ interface CloudConversationSourceResolution {
 export function useCloudConversationSource({
   sessionId,
   session,
+  target,
   sessions,
   repos,
 }: CloudConversationSourceInput): CloudConversationSourceResolution {
+  const auth = useAtomValue(org2CloudAuthAtom);
   const loadingSource = useCloudSessionLoadingSource(sessionId);
   const importedFrom = session?.importedFrom;
   const remoteEntries = useAtomValue(
-    importedFrom || loadingSource
+    target || importedFrom || loadingSource
       ? org2CloudRemoteSessionsAtom
       : detachedRemoteSessionsAtom
   );
   const importedRemoteRow = useMemo(() => {
+    if (target) {
+      const targetRow = remoteEntries[target.orgId]?.rows.find(
+        (candidate) => candidate.sourceSessionId === target.sessionId
+      );
+      if (targetRow) return targetRow;
+    }
     if (importedFrom) {
       return (
         remoteEntries[importedFrom.orgId]?.rows.find(
@@ -93,8 +115,9 @@ export function useCloudConversationSource({
       );
     }
     return loadingSource;
-  }, [importedFrom, loadingSource, remoteEntries]);
-  const importedOrgId = importedFrom?.orgId ?? loadingSource?.orgId;
+  }, [importedFrom, loadingSource, remoteEntries, target]);
+  const importedOrgId =
+    target?.orgId ?? importedFrom?.orgId ?? loadingSource?.orgId;
   const importedWorkspaceKey = importedRemoteRow
     ? `${importedOrgId ?? ""}:${importedRemoteRow.id}`
     : null;
@@ -150,20 +173,32 @@ export function useCloudConversationSource({
   const source = useMemo(
     () =>
       conversationSourceFromCloudReplay({
+        target,
         importedFrom,
         orgId: importedOrgId,
         remoteSession: importedRemoteRow,
-        sessionName: session?.name,
+        sourceEndpointUrl: auth?.supabaseUrl,
         // Imported rows may carry the owner's absolute path. Only the shared
         // repo-scope resolver may produce a workspace for this device.
-        workspaceRepoPath: importedWorkspacePath,
+        workspaceRepoPath:
+          !importedFrom && !loadingSource
+            ? (session?.repoRootPath ??
+              session?.worktreePath ??
+              session?.repoPath ??
+              null)
+            : importedWorkspacePath,
       }),
     [
       importedFrom,
+      loadingSource,
       importedOrgId,
       importedRemoteRow,
       importedWorkspacePath,
-      session?.name,
+      auth?.supabaseUrl,
+      session?.repoPath,
+      session?.repoRootPath,
+      session?.worktreePath,
+      target,
     ]
   );
 

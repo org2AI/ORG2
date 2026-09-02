@@ -11,14 +11,7 @@
 import { getSession as getAgentSession } from "@src/api/tauri/agent";
 import { rpc } from "@src/api/tauri/rpc";
 import {
-  beginOptimisticTurn,
-  failOptimisticTurn,
-} from "@src/engines/SessionCore/control/optimisticTurnStatus";
-import {
   type TurnTerminalStatus,
-  beginTurnDispatch,
-  confirmTurnRunning,
-  markTurnTerminal,
   toTurnTerminalStatus,
 } from "@src/engines/SessionCore/control/turnLifecycle";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
@@ -28,18 +21,21 @@ import {
   type UserIntentPreparation,
   UserIntentSendError,
   activateUserIntentPreparation,
-  clearParkedUserIntentEvent,
+  adoptAcceptedUserIntent,
   confirmUserIntentPreparation,
   dispatchUserIntent,
   failUserIntentPreparation,
   isUserIntentSendError,
   prepareUserIntent,
+  settleUserIntentLifecycle,
 } from "@src/engines/SessionCore/services/userIntentDispatch";
 import { loadAuthoritativeSessionEvents } from "@src/engines/SessionCore/sync/authoritativeSessionEvents";
+import {
+  reconcileNativeTranscript,
+  recoverNativeTranscriptAfterMismatch,
+} from "@src/engines/SessionCore/sync/nativeTranscriptReconcile";
 import { turnIntentIdOf } from "@src/engines/SessionCore/sync/utils/activityIds";
 import { createLogger } from "@src/hooks/logger";
-import { setSessionRuntimeStatusAtom } from "@src/store/session/cliSessionStatusAtom";
-import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 import { invokeTauri } from "@src/util/platform/tauri/init";
 import { isCliSession } from "@src/util/session/sessionDispatch";
 
@@ -51,19 +47,20 @@ import {
   materializeNativeConversation,
   nativeConversationItemsArePrefix,
   projectNativeConversationItems,
+  sourceEventIdOfNativeItem,
   supportsNativeConversationTarget,
   synchronizeNativeConversation,
 } from "./nativeConversationMaterializer";
+import {
+  QueuedConversationRecoveryBlockedError,
+  QueuedConversationRecoveryPendingError,
+} from "./queuedConversationContract";
 
 export type {
   ConversationRootLocator,
   LocalConversationTarget,
 } from "./conversationTypes";
 
-const TRANSCRIPT_SETTLE_MS = 5_000;
-const INTERRUPTED_TRANSCRIPT_SETTLE_MS = 800;
-const TRANSCRIPT_SETTLE_INITIAL_POLL_MS = 100;
-const TRANSCRIPT_SETTLE_MAX_POLL_MS = 1_000;
 const TURN_WAIT_WINDOW_MS = 60_000;
 const log = createLogger("localConversationContinuation");
 
@@ -76,12 +73,18 @@ async function notifyConversationTurnAccepted(
   try {
     await callback(sessionId);
   } catch (error) {
-    // Provider acceptance is already durable. A local receipt/bookkeeping
-    // failure must not reclassify the send as rejected or skip waiting for the
-    // real native tail; recovery can reconcile the same turnIntentId later.
     log.error(
       `[native-continuation] failed to persist acceptance receipt for ${turnIntentId}`,
       error
+    );
+    // Provider acceptance is already irreversible. The durable queue must
+    // retain this exact owner and reconnect by turnIntentId; continuing as if
+    // bookkeeping succeeded would silently strand a running native turn and
+    // make a later retry eligible to send twice.
+    throw new QueuedConversationRecoveryPendingError(
+      `provider accepted ${turnIntentId}, but its durable receipt could not be persisted: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
   }
 }
@@ -98,8 +101,6 @@ interface ContinueLocalConversationParams {
   imageDataUrls?: string[];
   target: LocalConversationTarget;
   turnIntentId: string;
-  /** Runs after the singleton queue grants this conversation its turn. */
-  beforeDispatch?: () => void | Promise<void>;
   onSessionReady?: (
     sessionId: string,
     /** Authoritative native-event prefix that predates this turn. */
@@ -135,15 +136,11 @@ interface ContinueLocalConversationAfterTimelineLoadParams extends Omit<
 
 export interface ContinueLocalConversationResult {
   sessionId: string;
-  created: boolean;
   terminalStatus: TurnTerminalStatus;
   agentTail: SessionEvent[];
 }
 
-interface RecoverLocalConversationParams extends Omit<
-  ContinueLocalConversationParams,
-  "beforeDispatch"
-> {
+interface RecoverLocalConversationParams extends ContinueLocalConversationParams {
   runnerSessionId: string;
   eventStartIndex?: number;
 }
@@ -275,7 +272,16 @@ async function listExecutionCandidates(
   // The ordinary source Session is already a fully native execution episode.
   // Include it next to provider-switch children so returning to the source
   // provider reuses its native UUID instead of creating a duplicate copy.
-  const root = await readExecutionRow(locator.conversationId).catch(() => null);
+  let root: ExecutionRow | null;
+  try {
+    root = await readExecutionRow(locator.conversationId);
+  } catch (error) {
+    throw new QueuedConversationRecoveryPendingError(
+      `source execution identity is temporarily unavailable: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
   if (!root?.updatedAt) return children;
   return [
     {
@@ -331,8 +337,7 @@ interface ExecutionRow {
 }
 
 async function readExecutionRow(
-  sessionId: string,
-  _options: { allowFailed?: boolean } = {}
+  sessionId: string
 ): Promise<ExecutionRow | null> {
   if (isCliSession(sessionId)) {
     const row = (await rpc.cli.status({ sessionId })) as Record<
@@ -376,20 +381,11 @@ async function readExecutionRow(
   };
 }
 
-async function readExecutionTarget(
-  sessionId: string
-): Promise<LocalConversationTarget | null> {
-  return (await readExecutionRow(sessionId))?.target ?? null;
-}
-
 async function candidateMatchesTarget(
   sessionId: string,
-  target: LocalConversationTarget,
-  options: { allowFailed?: boolean } = {}
+  target: LocalConversationTarget
 ): Promise<boolean> {
-  const existing = options.allowFailed
-    ? ((await readExecutionRow(sessionId, options))?.target ?? null)
-    : await readExecutionTarget(sessionId);
+  const existing = (await readExecutionRow(sessionId))?.target ?? null;
   if (!existing) {
     log.info(
       `[native-continuation] skipping ${sessionId}: execution identity is unavailable`
@@ -439,7 +435,6 @@ async function findCompatibleExecution(
   knownMatchingCandidates?: readonly ExecutionCandidate[]
 ): Promise<{
   sessionId: string;
-  updatedAt: string;
   events: SessionEvent[];
 } | null> {
   const canonicalItems = projectNativeConversationItems(timeline);
@@ -456,10 +451,13 @@ async function findCompatibleExecution(
       const loaded = await loadAuthoritativeSessionEvents(candidate.sessionId);
       const events = loaded.events;
       const executionItems = projectNativeConversationItems(events);
+      // A newly-created child may legitimately be empty if the renderer died
+      // between Session creation and native materialization. Empty is the
+      // canonical zero-length prefix: synchronizeNativeConversation rebuilds
+      // the provider transcript before sending the same durable turn intent.
       if (nativeConversationItemsArePrefix(executionItems, canonicalItems)) {
         return {
           sessionId: candidate.sessionId,
-          updatedAt: candidate.updatedAt,
           events,
         };
       }
@@ -471,11 +469,14 @@ async function findCompatibleExecution(
         }
       );
     } catch (error) {
-      // A missing/corrupt native transcript is not resumable. Try an older
-      // compatible episode before creating a fresh one.
-      log.warn(
-        `[native-continuation] skipping ${candidate.sessionId}: native transcript read failed`,
-        error
+      if (error instanceof QueuedConversationRecoveryPendingError) throw error;
+      // An unknown reader failure cannot prove that this episode is absent or
+      // divergent. Fail closed and retry instead of silently changing the
+      // provider-native UUID.
+      throw new QueuedConversationRecoveryPendingError(
+        `native transcript for ${candidate.sessionId} is temporarily unavailable: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
     }
   }
@@ -594,10 +595,6 @@ function removeKnownNativeEchoes(
   });
 }
 
-function nativeItemEventId(id: string): string {
-  return id.replace(/:(?:call|result)$/, "");
-}
-
 /**
  * Provider-native transcripts cannot be required to persist ORG2's private
  * turn-intent id. After terminal, recover the structured native suffix by
@@ -608,14 +605,18 @@ function nativeItemEventId(id: string): string {
 function sliceProviderNativeTail(
   before: readonly SessionEvent[],
   after: readonly SessionEvent[],
-  expectedUserText: string
+  turnIntentId: string,
+  expectedRequest: ProviderRequestIdentity,
+  logMismatch = true
 ): SessionEvent[] | null {
   const beforeItems = projectNativeConversationItems(before);
   const afterItems = projectNativeConversationItems(after);
   if (!nativeConversationItemsArePrefix(beforeItems, afterItems)) {
-    log.warn(
-      `[native-continuation] native semantic prefix mismatch: before=${beforeItems.length}, after=${afterItems.length}`
-    );
+    if (logMismatch) {
+      log.warn(
+        `[native-continuation] native semantic prefix mismatch: before=${beforeItems.length}, after=${afterItems.length}`
+      );
+    }
     return null;
   }
 
@@ -624,17 +625,20 @@ function sliceProviderNativeTail(
     (item) =>
       item.kind === "message" &&
       item.role === "user" &&
-      (item.text === expectedUserText || item.text.endsWith(expectedUserText))
+      (item.turnId === turnIntentId ||
+        nativeUserMessageMatchesRequest(item, expectedRequest))
   );
   if (userIndex < 0) {
-    log.warn(
-      `[native-continuation] native suffix has no matching user anchor: appended=${appendedItems.length}`
-    );
+    if (logMismatch) {
+      log.warn(
+        `[native-continuation] native suffix has no matching user anchor: appended=${appendedItems.length}`
+      );
+    }
     return null;
   }
 
   const tailEventIds = new Set(
-    appendedItems.slice(userIndex + 1).map((item) => nativeItemEventId(item.id))
+    appendedItems.slice(userIndex + 1).map(sourceEventIdOfNativeItem)
   );
   if (tailEventIds.size === 0) return [];
   const tail = after.filter(
@@ -646,437 +650,144 @@ function sliceProviderNativeTail(
   return tail;
 }
 
+function resolveSettledTail(
+  before: readonly SessionEvent[],
+  events: readonly SessionEvent[],
+  turnIntentId: string,
+  expectedRequest: ProviderRequestIdentity,
+  logMismatch: boolean
+): SessionEvent[] | null {
+  const identifiedTail = sliceTurnTail(before, events, turnIntentId);
+  if (identifiedTail && identifiedTail.length > 0) return identifiedTail;
+  return sliceProviderNativeTail(
+    before,
+    events,
+    turnIntentId,
+    expectedRequest,
+    logMismatch
+  );
+}
+
 async function loadSettledTail(
   sessionId: string,
   before: readonly SessionEvent[],
   turnIntentId: string,
-  expectedUserText: string,
-  emptyTerminalSettleMs: number | null = null
+  expectedRequest: ProviderRequestIdentity,
+  preserveInterruptedSuffix: boolean
 ): Promise<{ agentTail: SessionEvent[]; events: SessionEvent[] }> {
-  const settleDeadline = Date.now() + TRANSCRIPT_SETTLE_MS;
-  const emptyTerminalDeadline =
-    emptyTerminalSettleMs === null
-      ? null
-      : Math.min(settleDeadline, Date.now() + emptyTerminalSettleMs);
-  let checkedNativeAfterTerminal = false;
-  let fallbackDelayMs = TRANSCRIPT_SETTLE_INITIAL_POLL_MS;
-  for (;;) {
-    // The target runtime's native transcript is the source for this episode's
-    // newly produced output, but it is never the cross-runtime conversation
-    // authority. EventStore reconciles the optimistic user row with the
-    // provider user row and transfers that exact identity one-to-one
-    // (including repeated equal text). Once this tail is published it becomes
-    // part of the canonical SessionEvent log used by every later runtime.
-    // The open Session already owns a windowed JS snapshot, so inspect that
-    // reference instead of cloning the entire Rust store and reparsing the
-    // provider transcript every 100ms. A cold/non-rendered caller keeps the
-    // compatibility path.
-    const snapshot = eventStoreProxy.getLatestSessionSnapshot(sessionId);
-    const identifiedEvents = snapshot
-      ? snapshot.chatEvents
-      : await eventStoreProxy.getEvents(sessionId).catch(() => []);
-    const tail = sliceTurnTail(before, identifiedEvents, turnIntentId);
-    if (tail && tail.length > 0) {
-      // Read the target-native transcript exactly once after the enriched
-      // anchor settles. This captures the episode tail and refreshes native
-      // app metadata; publishing that tail promotes it into canonical events.
-      const { events } = await loadAuthoritativeSessionEvents(sessionId);
-      return { agentTail: tail, events };
-    }
-    if (snapshot && !checkedNativeAfterTerminal) {
-      checkedNativeAfterTerminal = true;
-      log.info(
-        `[native-continuation] reading terminal provider transcript for ${sessionId}`
-      );
-      const { events } = await loadAuthoritativeSessionEvents(sessionId);
-      const nativeTail = sliceProviderNativeTail(
-        before,
-        events,
-        expectedUserText
-      );
-      if (nativeTail && nativeTail.length > 0) {
-        return { agentTail: nativeTail, events };
-      }
-    }
-    if (!snapshot) {
-      // Background/non-rendered continuations may have no JS snapshot. Their
-      // provider reader can carry the intent marker itself, so retain the
-      // established full-read fallback for that uncommon path.
-      const { events } = await loadAuthoritativeSessionEvents(sessionId);
-      const authoritativeTail = sliceTurnTail(before, events, turnIntentId);
-      if (authoritativeTail && authoritativeTail.length > 0) {
-        return { agentTail: authoritativeTail, events };
-      }
-      const nativeTail = sliceProviderNativeTail(
-        before,
-        events,
-        expectedUserText
-      );
-      if (nativeTail && nativeTail.length > 0) {
-        return { agentTail: nativeTail, events };
-      }
-    }
-    if (emptyTerminalDeadline !== null && Date.now() >= emptyTerminalDeadline) {
-      // A cancelled or failed durable terminal is a valid conversation
-      // boundary even when the provider produced no portable assistant/tool
-      // suffix. The accepted user row remains canonical; callers publish the
-      // terminal status/error without retrying the provider turn.
-      const { events } = await loadAuthoritativeSessionEvents(sessionId);
-      return { agentTail: [], events };
-    }
-    if (Date.now() >= settleDeadline) {
-      // Some non-rendered adapters can carry ORG2 identity themselves even
-      // when EventStore has no resident snapshot. Preserve that fail-safe
-      // without putting a full provider parse in the active polling loop.
-      const { events } = await loadAuthoritativeSessionEvents(sessionId);
-      const authoritativeTail = sliceTurnTail(before, events, turnIntentId);
-      if (authoritativeTail && authoritativeTail.length > 0) {
-        return { agentTail: authoritativeTail, events };
-      }
-      const nativeTail = sliceProviderNativeTail(
-        before,
-        events,
-        expectedUserText
-      );
-      if (nativeTail && nativeTail.length > 0) {
-        return { agentTail: nativeTail, events };
-      }
-      if (emptyTerminalDeadline !== null) return { agentTail: [], events };
-      throw new Error(
-        `conversation turn ${turnIntentId} is missing its native transcript anchor`
-      );
-    }
-    // The EventStore already owns the session change channel. Wake as soon as
-    // it publishes the terminal suffix; the exponentially backed-off timer is
-    // only for providers whose native file flush is not accompanied by a
-    // snapshot push. This keeps a hidden large Session from cloning/parsing
-    // its complete transcript fifty times during the five-second settle
-    // window.
-    await new Promise<void>((resolve) => {
-      let settled = false;
-      const subscription: { dispose?: () => void } = {};
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        subscription.dispose?.();
-        resolve();
-      };
-      const timer = setTimeout(finish, fallbackDelayMs);
-      subscription.dispose = eventStoreProxy.subscribeSession(
-        sessionId,
-        finish
-      );
-      if (settled) subscription.dispose();
-    });
-    fallbackDelayMs = Math.min(
-      fallbackDelayMs * 2,
-      TRANSCRIPT_SETTLE_MAX_POLL_MS
-    );
-  }
-}
-
-function eventContent(event: SessionEvent): string {
-  const result = event.result as Record<string, unknown> | undefined;
-  const message = result?.message as Record<string, unknown> | undefined;
-  for (const candidate of [
-    message?.content,
-    result?.content,
-    result?.observation,
-    result?.output,
-    event.displayText,
-  ]) {
-    if (typeof candidate === "string") return candidate;
-  }
-  return "";
-}
-
-function findAttemptUserIndex(
-  events: readonly SessionEvent[],
-  turnIntentId: string,
-  expectedUserText: string
-): number {
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    const event = events[index];
-    if (event?.source !== "user") continue;
-    if (eventTurnId(event) === turnIntentId) return index;
-    const text = eventContent(event);
-    if (
-      expectedUserText.length > 0 &&
-      (text === expectedUserText || text.endsWith(expectedUserText))
-    ) {
-      return index;
-    }
-  }
-  return -1;
-}
-
-/**
- * Recover the provider-owned user row for the completed attempt.
- *
- * The optimistic row makes submission immediate, but a native transcript
- * reconcile is free to replace that projection while the provider is still
- * flushing.  Publishing only the assistant/tool suffix then leaves a
- * completed turn with no user row once the optimistic overlay is released.
- * Carry the logical turn identity onto the native user echo and merge it with
- * the suffix as one EventStore update; EventStore's transcript reconciler
- * atomically replaces the matching optimistic placeholder.
- */
-function providerUserEchoForAttempt(
-  events: readonly SessionEvent[],
-  turnIntentId: string,
-  expectedUserText: string
-): SessionEvent | null {
-  const userIndex = findAttemptUserIndex(
+  const reconcileOptions = {
+    preserveInterruptedSuffix,
+  };
+  let events = await reconcileNativeTranscript(sessionId, reconcileOptions);
+  let agentTail = resolveSettledTail(
+    before,
     events,
     turnIntentId,
-    expectedUserText
+    expectedRequest,
+    false
   );
-  if (userIndex < 0) return null;
-  const user = events[userIndex];
-  if (!user || user.source !== "user") return null;
-  return {
-    ...user,
-    result: {
-      ...(user.result ?? {}),
-      turnIntentId,
-    },
-  };
+  if (agentTail) return { agentTail, events };
+  if (preserveInterruptedSuffix) return { agentTail: [], events };
+
+  // Backend terminal publication normally makes the first read complete.
+  // Retry only after this concrete semantic mismatch, never as a fixed delay
+  // in every queued turn's critical path.
+  events = await recoverNativeTranscriptAfterMismatch(
+    sessionId,
+    events,
+    (candidate) =>
+      resolveSettledTail(
+        before,
+        candidate,
+        turnIntentId,
+        expectedRequest,
+        false
+      ) !== null,
+    reconcileOptions
+  );
+  agentTail = resolveSettledTail(
+    before,
+    events,
+    turnIntentId,
+    expectedRequest,
+    true
+  );
+  if (agentTail) return { agentTail, events };
+  throw new Error(
+    `conversation turn ${turnIntentId} is missing its native transcript anchor`
+  );
 }
 
-/**
- * Isolate events emitted after this exact user attempt. A provider may omit
- * ORG2's private turn id, so the fallback anchors on the last matching native
- * user message. Returning null means the boundary cannot be proven and must
- * fail closed: an unproven attempt is never replayed into another episode.
- */
-function sliceAttemptEvents(
-  before: readonly SessionEvent[],
-  after: readonly SessionEvent[],
-  turnIntentId: string,
-  expectedUserText: string
-): SessionEvent[] | null {
-  if (sameEventPrefix(before, after)) {
-    const appended = after.slice(before.length);
-    const anchor = findAttemptUserIndex(
-      appended,
-      turnIntentId,
-      expectedUserText
-    );
-    if (anchor >= 0) return appended.slice(anchor + 1);
-    // Some providers reject an oversized request before persisting its user
-    // row. The unchanged prefix (plus possible lifecycle/error rows) is still
-    // an exact attempt boundary, and the safety classifier below inspects all
-    // appended rows before allowing a rebuild.
-    if (!appended.some((event) => event.source === "user")) return appended;
-    return null;
-  }
-
-  // Native compact/rollover may replace the provider file with a new thread,
-  // so its historical ids are no longer an EventStore prefix. The retried
-  // native user row remains the only safe boundary in that representation.
-  const anchor = findAttemptUserIndex(after, turnIntentId, expectedUserText);
-  return anchor >= 0 ? after.slice(anchor + 1) : null;
+interface ProviderRequestIdentity {
+  text: string;
+  images: readonly string[];
 }
 
-function isReplayUnsafeAttemptEvent(event: SessionEvent): boolean {
-  // Match the runtime's replay-safety contract at the canonical EventStore
-  // boundary. Deltas count: once any assistant/reasoning/tool/plan output was
-  // visible or a tool began, replaying the user request could duplicate work.
-  if (event.source !== "assistant") return false;
+function normalizeProviderRequestText(value: string): string {
+  // Native stores can normalize platform line endings while preserving the
+  // message byte-for-byte otherwise. Do not trim or use suffix matching:
+  // whitespace and provider context wrappers are part of the real payload.
+  return value.replace(/\r\n?/g, "\n");
+}
+
+function sameProviderImages(
+  left: readonly string[],
+  right: readonly string[]
+): boolean {
   return (
-    Boolean(event.callId) ||
-    event.displayVariant === "message" ||
-    event.displayVariant === "thinking" ||
-    event.displayVariant === "tool_call" ||
-    event.displayVariant === "plan" ||
-    event.displayVariant === "approval" ||
-    event.displayVariant === "summary"
+    left.length === right.length &&
+    left.every((item, index) => item === right[index])
   );
 }
 
-async function isReplaySafeContextExhaustion(params: {
-  sessionId: string;
-  terminalStatus: TurnTerminalStatus;
-  before: readonly SessionEvent[];
-  turnIntentId: string;
-  displayText: string;
-}): Promise<boolean> {
-  if (params.terminalStatus !== "failed" || !isCliSession(params.sessionId)) {
-    return false;
-  }
-  const row = await rpc.cli
-    .status({ sessionId: params.sessionId })
-    .catch(() => null);
-  // This durable bit is produced only by the shared runtime error classifier;
-  // frontend prose matching is deliberately not a recovery authority.
-  if (row?.contextExhausted !== true) return false;
-
-  const snapshot = eventStoreProxy.getLatestSessionSnapshot(params.sessionId);
-  const projectedEvents = snapshot
-    ? snapshot.chatEvents
-    : await eventStoreProxy.getEvents(params.sessionId).catch(() => []);
-  if (projectedEvents.length > 0) {
-    const projectedAttempt = sliceAttemptEvents(
-      params.before,
-      projectedEvents,
-      params.turnIntentId,
-      params.displayText
-    );
-    if (
-      projectedAttempt === null ||
-      projectedAttempt.some(isReplayUnsafeAttemptEvent)
-    ) {
-      return false;
-    }
-  }
-
-  // EventStore can be absent in a hidden/background continuation. The target
-  // provider's native transcript is therefore required as the second,
-  // authoritative replay-safety proof. If it cannot be read or bounded, do
-  // not create another episode.
-  const nativeEvents = await loadAuthoritativeSessionEvents(params.sessionId)
-    .then(({ events }) => events)
-    .catch(() => null);
-  if (!nativeEvents) return false;
-  const nativeAttempt = sliceAttemptEvents(
-    params.before,
-    nativeEvents,
-    params.turnIntentId,
-    params.displayText
-  );
+function nativeUserMessageMatchesRequest(
+  item: {
+    text: string;
+    images: readonly string[];
+  },
+  expected: ProviderRequestIdentity
+): boolean {
   return (
-    nativeAttempt !== null && !nativeAttempt.some(isReplayUnsafeAttemptEvent)
+    normalizeProviderRequestText(item.text) ===
+      normalizeProviderRequestText(expected.text) &&
+    sameProviderImages(item.images, expected.images)
   );
 }
 
 async function finishConversationTurn(params: {
   sessionId: string;
-  target: LocalConversationTarget;
   before: readonly SessionEvent[];
   turnIntentId: string;
-  userEventId?: string;
-  displayText: string;
+  providerRequest: ProviderRequestIdentity;
   generation: number;
+  /** Recovery created this frontend lifecycle after provider acceptance. */
+  settleAdoptedLifecycle?: boolean;
 }): Promise<
-  Pick<ContinueLocalConversationResult, "terminalStatus" | "agentTail"> & {
-    replaySafeContextExhaustion: boolean;
-  }
+  Pick<ContinueLocalConversationResult, "terminalStatus" | "agentTail">
 > {
   const terminalStatus = await waitForTurnTerminal(
     params.sessionId,
     params.turnIntentId
   );
-  // The durable provider terminal is also a hard EventStore streaming fence.
-  // CLI adapters normally clear streaming first, but their event callback is
-  // intentionally fire-and-forget; a fast terminal poll can therefore finish
-  // this continuation while the last StreamingSnapshot still advertises an
-  // active stream. That leaves a zero-width live-assistant row in the
-  // canonical transcript and makes the completed composer look half-running.
-  // Await the idempotent fence here before reading/publishing the native tail.
-  await eventStoreProxy
-    .setStreaming(false, params.sessionId)
-    .catch((error) =>
-      log.warn(
-        `[native-continuation] failed to close EventStore streaming for ${params.sessionId}`,
-        error
-      )
-    );
-  const replaySafeContextExhaustion = await isReplaySafeContextExhaustion({
-    sessionId: params.sessionId,
-    terminalStatus,
-    before: params.before,
-    turnIntentId: params.turnIntentId,
-    displayText: params.displayText,
-  });
-  // The failed provider episode is not the retry authority. Its accepted user
-  // row remains visible in that episode, while the canonical pre-turn log is
-  // rematerialized into a fresh native episode below.
-  if (replaySafeContextExhaustion) {
-    markTurnTerminal(params.sessionId, terminalStatus, {
-      generation: params.generation,
-    });
-    return {
-      terminalStatus,
-      agentTail: [],
-      replaySafeContextExhaustion: true,
-    };
-  }
-  // Durable provider completion is the user-facing turn boundary. Publishing
-  // it must not wait for a second full parse of a very large native history:
-  // that reconciliation can take tens of seconds even though Codex/Claude
-  // already wrote task_complete and the final assistant row is resident in
-  // EventStore. Keeping the optimistic runtime mirror at `running` during
-  // that read leaves Stop/planning chrome active, prevents the completed tail
-  // from collapsing, and makes the final answer look missing.
-  //
-  // The existing durable message queue and canonical-root lock still own
-  // reconciliation, so a follow-up submitted now is parked behind this exact
-  // tail read rather than racing it.
-  markTurnTerminal(params.sessionId, terminalStatus, {
-    generation: params.generation,
-  });
-  getInstrumentedStore().set(setSessionRuntimeStatusAtom, {
-    sessionId: params.sessionId,
-    status:
-      terminalStatus === "completed"
-        ? "completed"
-        : terminalStatus === "cancelled"
-          ? "cancelled"
-          : "failed",
-    source: "sync",
-  });
+  // Keep the exact turn generation active until its authoritative tail is in
+  // EventStore. Releasing the FSM at the durable provider terminal would let
+  // the ordinary Session queue inject a follow-up against a stale transcript.
   const settled = await loadSettledTail(
     params.sessionId,
     params.before,
     params.turnIntentId,
-    params.displayText,
-    terminalStatus === "cancelled"
-      ? INTERRUPTED_TRANSCRIPT_SETTLE_MS
-      : terminalStatus === "failed"
-        ? TRANSCRIPT_SETTLE_MS
-        : null
+    params.providerRequest,
+    terminalStatus === "cancelled" || terminalStatus === "failed"
   );
-  // Native CLI history is the episode's execution record, but reading it is
-  // side-effect free. Publish the verified provider user echo together with
-  // its assistant/tool suffix so the visible Session advances immediately.
-  // EventStore transfers the optimistic row's durable identity onto the
-  // native user event and removes exactly that placeholder. This also closes
-  // the race where native reconcile replaces the projection before terminal:
-  // publishing only the suffix used to render the answer without its prompt.
-  const providerUserEcho = providerUserEchoForAttempt(
-    settled.events,
-    params.turnIntentId,
-    params.displayText
-  );
-  const completedTurnEvents = providerUserEcho
-    ? [providerUserEcho, ...settled.agentTail]
-    : settled.agentTail;
-  if (completedTurnEvents.length > 0) {
-    await eventStoreProxy.mergeEvents(completedTurnEvents, params.sessionId);
-  }
-  // A fire-and-forget adapter callback that was already queued when the first
-  // fence ran may publish one last streaming snapshot while native history is
-  // being verified. Converge again after the authoritative tail merge.
-  await eventStoreProxy
-    .setStreaming(false, params.sessionId)
-    .catch((error) =>
-      log.warn(
-        `[native-continuation] failed to converge EventStore terminal state for ${params.sessionId}`,
-        error
-      )
-    );
-  // Release the cross-session overlay only after the authoritative user row
-  // has been merged. If the provider file is still one flush behind, keep the
-  // optimistic row parked; the normal transcript reconciliation will settle
-  // it when the user echo arrives instead of making the message disappear.
-  if (params.userEventId && providerUserEcho) {
-    clearParkedUserIntentEvent(params.userEventId);
+  // Fresh sends are closed only by the CLI/Agent lifecycle coordinator.
+  // Crash recovery created a synthetic frontend lifecycle after the original
+  // terminal event, so it alone closes that adopted generation here.
+  if (params.settleAdoptedLifecycle) {
+    settleUserIntentLifecycle(params, terminalStatus);
   }
   return {
     terminalStatus,
     agentTail: settled.agentTail,
-    replaySafeContextExhaustion: false,
   };
 }
 
@@ -1086,8 +797,7 @@ async function prepareConversationTurn(
     ContinueLocalConversationParams,
     "displayText" | "imageDataUrls" | "turnIntentId"
   >,
-  runtimeStatusSource: UserIntentPreparation["runtimeStatusSource"],
-  pendingPolicy: UserIntentPreparation["pendingPolicy"]
+  runtimeStatusSource: UserIntentPreparation["runtimeStatusSource"]
 ): Promise<ConversationTurnPreparation> {
   return prepareUserIntent({
     sessionId,
@@ -1095,7 +805,6 @@ async function prepareConversationTurn(
     imageDataUrls: params.imageDataUrls,
     turnIntentId: params.turnIntentId,
     runtimeStatusSource,
-    pendingPolicy,
   });
 }
 
@@ -1105,7 +814,6 @@ async function dispatchConversationMessage(
   options: {
     allowNativeContextRecovery: boolean;
     runtimeStatusSource: UserIntentPreparation["runtimeStatusSource"];
-    pendingPolicy: UserIntentPreparation["pendingPolicy"];
     preparation?: ConversationTurnPreparation;
   }
 ): ReturnType<typeof dispatchUserIntent> {
@@ -1114,7 +822,6 @@ async function dispatchConversationMessage(
     visibleText: params.displayText,
     imageDataUrls: params.imageDataUrls,
     runtimeStatusSource: options.runtimeStatusSource,
-    pendingPolicy: options.pendingPolicy,
     preparation: options.preparation,
     send: {
       content: params.agentContent ?? params.displayText,
@@ -1165,7 +872,6 @@ async function materializeCreatedConversation(
 
 interface CreatedConversationOptions {
   loadTimeline: () => Promise<readonly SessionEvent[]>;
-  pendingPolicy: UserIntentPreparation["pendingPolicy"];
   onSessionCreated?: (sessionId: string) => void | Promise<void>;
 }
 
@@ -1186,8 +892,7 @@ async function runCreatedConversationTurn(
     preparation = await prepareConversationTurn(
       created.sessionId,
       params,
-      "launch",
-      options.pendingPolicy
+      "launch"
     );
     // Native transcript conversion can take materially longer than provider
     // startup. Promote preparation out of the dispatch dead-man while keeping
@@ -1223,13 +928,17 @@ async function runCreatedConversationTurn(
         // provider-native compact/rollover may recover a target-window limit.
         allowNativeContextRecovery: true,
         runtimeStatusSource: "launch",
-        pendingPolicy: options.pendingPolicy,
         preparation,
       }
     );
     preparation = dispatched.preparation;
   } catch (error) {
+    log.error(
+      `[localConversationContinuation] launch turn failed for ${created.sessionId}:`,
+      error
+    );
     if (preparation) {
+      if (error instanceof QueuedConversationRecoveryPendingError) throw error;
       await failUserIntentPreparation(preparation, error).catch(
         () => undefined
       );
@@ -1255,16 +964,16 @@ async function runCreatedConversationTurn(
 
   const finished = await finishConversationTurn({
     sessionId: created.sessionId,
-    target: params.target,
     before: materialized.events,
     turnIntentId: params.turnIntentId,
-    userEventId: preparation.userEvent.id,
-    displayText: params.displayText,
+    providerRequest: {
+      text: params.agentContent ?? params.displayText,
+      images: params.imageDataUrls ?? [],
+    },
     generation: preparation.generation,
   });
   return {
     sessionId: created.sessionId,
-    created: true,
     terminalStatus: finished.terminalStatus,
     agentTail: finished.agentTail,
   };
@@ -1286,7 +995,6 @@ async function continueLocalConversationAtQueueHead(
   // Publishing the canonical user turn is independent of local execution
   // discovery. Cloud/root surfaces can render it while a native episode is
   // still being verified or materialized.
-  await effectiveParams.beforeDispatch?.();
   const compatible = await findCompatibleExecution(
     effectiveParams.root,
     effectiveParams.target,
@@ -1297,8 +1005,7 @@ async function continueLocalConversationAtQueueHead(
     const preparation = await prepareConversationTurn(
       compatible.sessionId,
       effectiveParams,
-      "dispatch",
-      "visible"
+      "dispatch"
     );
     // Synchronizing a large canonical delta is part of the accepted user
     // intent, not a pre-submit loading screen. Use the same optimistic row,
@@ -1313,7 +1020,6 @@ async function continueLocalConversationAtQueueHead(
       const synchronized = await synchronizeNativeConversation({
         sessionId: compatible.sessionId,
         timeline: effectiveParams.timeline,
-        existingEvents: compatible.events,
       });
       compatible.events = synchronized.events;
       if (effectiveParams.target.cliAgentType) {
@@ -1343,11 +1049,11 @@ async function continueLocalConversationAtQueueHead(
           // remains the fallback when native recovery itself fails.
           allowNativeContextRecovery: true,
           runtimeStatusSource: "dispatch",
-          pendingPolicy: "visible",
           preparation,
         }
       );
     } catch (error) {
+      if (error instanceof QueuedConversationRecoveryPendingError) throw error;
       await failUserIntentPreparation(preparation, error).catch(
         () => undefined
       );
@@ -1362,23 +1068,16 @@ async function continueLocalConversationAtQueueHead(
     );
     const finished = await finishConversationTurn({
       sessionId: compatible.sessionId,
-      target: effectiveParams.target,
       before: compatible.events,
       turnIntentId: effectiveParams.turnIntentId,
-      userEventId: dispatched.userEvent.id,
-      displayText: effectiveParams.displayText,
+      providerRequest: {
+        text: effectiveParams.agentContent ?? effectiveParams.displayText,
+        images: effectiveParams.imageDataUrls ?? [],
+      },
       generation: dispatched.preparation.generation,
     });
-    if (finished.replaySafeContextExhaustion) {
-      return runCreatedConversationTurn(effectiveParams, {
-        loadTimeline: async () => effectiveParams.timeline,
-        pendingPolicy: "visible",
-        onSessionCreated: effectiveParams.onSessionPreparing,
-      });
-    }
     return {
       sessionId: compatible.sessionId,
-      created: false,
       terminalStatus: finished.terminalStatus,
       agentTail: finished.agentTail,
     };
@@ -1386,7 +1085,6 @@ async function continueLocalConversationAtQueueHead(
 
   return runCreatedConversationTurn(effectiveParams, {
     loadTimeline: async () => effectiveParams.timeline,
-    pendingPolicy: "visible",
     onSessionCreated: effectiveParams.onSessionPreparing,
   });
 }
@@ -1418,7 +1116,7 @@ export async function recoverLocalConversationTurn(
   });
   if (!durableIntent || durableIntent.status === "optimistic") return null;
   if (["stale", "coalesced", "rejected"].includes(durableIntent.status)) {
-    throw new Error(
+    throw new QueuedConversationRecoveryBlockedError(
       `conversation turn was retired before provider execution (${durableIntent.status}); edit or retry it as a new intent`
     );
   }
@@ -1432,11 +1130,9 @@ export async function recoverLocalConversationTurn(
       params.root.conversationId === params.runnerSessionId);
   if (
     !belongsToRoot ||
-    !(await candidateMatchesTarget(params.runnerSessionId, params.target, {
-      allowFailed: true,
-    }))
+    !(await candidateMatchesTarget(params.runnerSessionId, params.target))
   ) {
-    throw new Error(
+    throw new QueuedConversationRecoveryBlockedError(
       "durable conversation runner no longer belongs to this root/target"
     );
   }
@@ -1450,14 +1146,16 @@ export async function recoverLocalConversationTurn(
   const canonicalItems = projectNativeConversationItems(timeline);
   const executionItems = projectNativeConversationItems(events);
   if (!nativeConversationItemsArePrefix(canonicalItems, executionItems)) {
-    throw new Error(
+    throw new QueuedConversationRecoveryBlockedError(
       "accepted conversation runner diverged from the canonical transcript"
     );
   }
 
-  const generation = beginTurnDispatch(params.runnerSessionId);
-  confirmTurnRunning(params.runnerSessionId);
-  beginOptimisticTurn(params.runnerSessionId, "dispatch");
+  const adopted = adoptAcceptedUserIntent({
+    sessionId: params.runnerSessionId,
+    turnIntentId: params.turnIntentId,
+    runtimeStatusSource: "dispatch",
+  });
   try {
     await params.onSessionPreparing?.(params.runnerSessionId);
     await params.onSessionReady?.(
@@ -1471,22 +1169,25 @@ export async function recoverLocalConversationTurn(
     );
     const finished = await finishConversationTurn({
       sessionId: params.runnerSessionId,
-      target: params.target,
       before: timeline,
       turnIntentId: params.turnIntentId,
-      displayText: params.displayText,
-      generation,
+      providerRequest: {
+        text: params.agentContent ?? params.displayText,
+        images: params.imageDataUrls ?? [],
+      },
+      generation: adopted.generation,
+      settleAdoptedLifecycle: true,
     });
     return {
       sessionId: params.runnerSessionId,
-      created: false,
       terminalStatus: finished.terminalStatus,
       agentTail: finished.agentTail,
     };
   } catch (error) {
-    failOptimisticTurn(params.runnerSessionId, "dispatch");
-    markTurnTerminal(params.runnerSessionId, "failed", { generation });
-    throw error;
+    if (error instanceof QueuedConversationRecoveryPendingError) throw error;
+    throw new QueuedConversationRecoveryPendingError(
+      error instanceof Error ? error.message : String(error)
+    );
   }
 }
 
@@ -1507,10 +1208,7 @@ export async function continueLocalConversationAfterTimelineLoad(
   params: ContinueLocalConversationAfterTimelineLoadParams
 ): Promise<ContinueLocalConversationResult> {
   assertSupportedConversationTarget(params.target);
-  // Publish the canonical user intent before native-history I/O. Cloud roots
-  // can render it immediately; local/imported roots retain their durable queue
-  // card until the concrete execution accepts it.
-  await params.beforeDispatch?.();
+  const { loadTimeline, ...continuationParams } = params;
   const candidates = await listExecutionCandidates(params.root);
   const matchingCandidates: ExecutionCandidate[] = [];
   for (const candidate of candidates) {
@@ -1522,18 +1220,14 @@ export async function continueLocalConversationAfterTimelineLoad(
     // No native episode could possibly be reused. Create the ordinary Session
     // before parsing a potentially large imported transcript so its pending
     // row, footer and follow-up queue appear through the existing UI path.
-    return runCreatedConversationTurn(
-      { ...params, beforeDispatch: undefined },
-      {
-        loadTimeline: params.loadTimeline,
-        pendingPolicy: "across_session_switch",
-        onSessionCreated: params.onSessionPreparing,
-      }
-    );
+    return runCreatedConversationTurn(continuationParams, {
+      loadTimeline,
+      onSessionCreated: params.onSessionPreparing,
+    });
   }
-  const timeline = await params.loadTimeline();
+  const timeline = await loadTimeline();
   return continueLocalConversationAtQueueHead(
-    { ...params, beforeDispatch: undefined, timeline },
+    { ...continuationParams, timeline },
     matchingCandidates
   );
 }

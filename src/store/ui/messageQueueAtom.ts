@@ -3,7 +3,12 @@ import { atom } from "jotai";
 import type { AgentExecMode } from "@src/config/sessionCreatorConfig";
 import { projectOutgoingUserMessage } from "@src/engines/ChatPanel/hooks/useInputArea/projectOutgoingUserMessage";
 import { conversationRootKey } from "@src/engines/SessionCore/conversations/conversationTypes";
-import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationExecutor";
+import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import {
+  MAX_QUEUED_CONVERSATION_MESSAGE_CHARS,
+  MAX_QUEUED_CONVERSATION_MESSAGE_CHARS_TOTAL,
+  queuedConversationMessageCharSize,
+} from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import { mintTurnIntentId } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 import { isCliSession } from "@src/util/session/sessionDispatch";
@@ -13,7 +18,8 @@ import { isCliSession } from "@src/util/session/sessionDispatch";
 // ============================================
 
 export type QueuedMessagePriority = "now" | "next";
-export type QueuedMessageDeliveryState = "queued" | "preparing" | "accepted";
+export type QueuedMessageDeliveryState = "queued";
+export type ActiveMessageDeliveryState = "preparing" | "accepted";
 
 export interface QueuedMessage {
   id: string;
@@ -73,26 +79,52 @@ export interface QueuedMessage {
    * dispatch them.
    */
   requiresExplicitDispatch?: boolean;
-  /**
-   * Durable delivery state for the same queue row. Canonical continuations
-   * keep the row through provider completion so a renderer restart can
-   * reconnect to the exact native turn instead of replaying it.
-   */
+  /** UI queue rows are pending sends. Canonical work keeps this identity and
+   * advances the same durable record to `preparing`/`accepted`. */
   status: QueuedMessageDeliveryState;
-  /** Concrete native Session selected before provider dispatch. */
+  createdAt: string;
+}
+
+/**
+ * The same durable delivery after its canonical-conversation queue claim.
+ *
+ * This is deliberately a flat extension of the queued row. Keeping the
+ * original payload (including model/account/mode snapshots) makes a failed
+ * pre-accept handoff reversible without reconstructing a lossy second job.
+ */
+export interface ActiveMessageDelivery extends Omit<
+  QueuedMessage,
+  "conversationDispatch" | "requiresExplicitDispatch" | "status"
+> {
+  conversationDispatch: QueuedConversationDispatch;
+  /** Window-local queue partition that originally admitted this delivery. */
+  originQueueKey?: string;
+  status: ActiveMessageDeliveryState;
   runnerSessionId?: string;
-  /** Verified native prefix used by the live overlay once materialized. */
   runnerEventStartIndex?: number;
-  /** Durable recovery backoff for an accepted canonical turn. */
   retryAt?: string;
   retryAttempt?: number;
-  createdAt: string;
+}
+
+export type MessageDeliveryRecord = QueuedMessage | ActiveMessageDelivery;
+
+export function isQueuedMessageDelivery(
+  record: MessageDeliveryRecord
+): record is QueuedMessage {
+  return record.status === "queued";
+}
+
+export function isActiveMessageDelivery(
+  record: MessageDeliveryRecord
+): record is ActiveMessageDelivery {
+  return record.status === "preparing" || record.status === "accepted";
 }
 
 export const MAX_QUEUED_MESSAGES = 100;
 export const MAX_QUEUED_MESSAGES_PER_SESSION = 25;
-export const MAX_QUEUED_MESSAGE_CHARS = 8 * 1024 * 1024;
-export const MAX_QUEUED_MESSAGE_CHARS_TOTAL = 32 * 1024 * 1024;
+export const MAX_QUEUED_MESSAGE_CHARS = MAX_QUEUED_CONVERSATION_MESSAGE_CHARS;
+export const MAX_QUEUED_MESSAGE_CHARS_TOTAL =
+  MAX_QUEUED_CONVERSATION_MESSAGE_CHARS_TOTAL;
 
 export type QueueAdmissionResult =
   | "enqueued"
@@ -102,14 +134,7 @@ export type QueueAdmissionResult =
   | "queue_limit";
 
 export function queuedMessageCharSize(message: QueuedMessage): number {
-  return (
-    message.content.length +
-    message.displayContent.length +
-    (message.imageDataUrls ?? []).reduce(
-      (total, image) => total + image.length,
-      0
-    )
-  );
+  return queuedConversationMessageCharSize(message);
 }
 
 export function queuedMessageScopeKey(message: QueuedMessage): string {
@@ -151,11 +176,51 @@ export function boundQueuedMessages(
 }
 
 // ============================================
-// Core Atom — THE single queue
+// Core Atom — THE single durable delivery registry
 // ============================================
 
-export const messageQueueAtom = atom<QueuedMessage[]>([]);
+export const messageDeliveryRecordsAtom = atom<MessageDeliveryRecord[]>([]);
+messageDeliveryRecordsAtom.debugLabel = "messageDeliveryRecordsAtom";
+
+type MessageQueueUpdate =
+  | QueuedMessage[]
+  | ((current: QueuedMessage[]) => QueuedMessage[]);
+
+/**
+ * Writable UI projection of the one delivery registry.
+ *
+ * Existing queue controls continue to see only pending rows, while writes
+ * preserve accepted/preparing owners held by the same backing atom.
+ */
+export const messageQueueAtom = atom(
+  (get) => get(messageDeliveryRecordsAtom).filter(isQueuedMessageDelivery),
+  (get, set, update: MessageQueueUpdate) => {
+    const records = get(messageDeliveryRecordsAtom);
+    const queue = records.filter(isQueuedMessageDelivery);
+    const nextQueue = typeof update === "function" ? update(queue) : update;
+    set(messageDeliveryRecordsAtom, [
+      ...nextQueue,
+      ...records.filter(isActiveMessageDelivery),
+    ]);
+  }
+);
 messageQueueAtom.debugLabel = "messageQueueAtom";
+
+/** Active canonical turns used by recovery and the live runner overlay. */
+export const activeMessageDeliveriesAtom = atom((get) =>
+  get(messageDeliveryRecordsAtom).filter(isActiveMessageDelivery)
+);
+activeMessageDeliveriesAtom.debugLabel = "activeMessageDeliveriesAtom";
+
+/**
+ * Short-lived UI freeze while one durable delivery record changes from
+ * `queued` to `preparing`. It prevents edit/delete races during the async
+ * store transaction; it is not another delivery owner.
+ */
+export const messageQueueHandoffIdsAtom = atom<ReadonlySet<string>>(
+  new Set<string>()
+);
+messageQueueHandoffIdsAtom.debugLabel = "messageQueueHandoffIdsAtom";
 
 /** True once the durable queue snapshot has been merged into this Jotai store. */
 export const messageQueueHydratedAtom = atom(false);
@@ -188,7 +253,9 @@ export const enqueueMessageAtom = atom(
     // hydrated durable rows. Text is not identity: the user may intentionally
     // send the same content more than once.
     const duplicate = current.some(
-      (existing) => existing.turnIntentId === message.turnIntentId
+      (existing) =>
+        existing.id === message.id ||
+        existing.turnIntentId === message.turnIntentId
     );
     if (duplicate) return "duplicate";
     const rejected = queueAdmissionResult(current, message);
@@ -200,7 +267,8 @@ export const enqueueMessageAtom = atom(
 );
 enqueueMessageAtom.debugLabel = "enqueueMessageAtom";
 
-export const dequeueMessageAtom = atom(null, (_get, set, messageId: string) => {
+export const dequeueMessageAtom = atom(null, (get, set, messageId: string) => {
+  if (get(messageQueueHandoffIdsAtom).has(messageId)) return;
   set(messageQueueAtom, (prev) =>
     prev.filter((msg) => msg.id !== messageId || msg.status !== "queued")
   );
@@ -217,6 +285,7 @@ dequeueMessageAtom.debugLabel = "dequeueMessageAtom";
 export const forceSendMessageAtom = atom(
   null,
   (get, set, messageId: string) => {
+    if (get(messageQueueHandoffIdsAtom).has(messageId)) return;
     if (
       !get(messageQueueAtom).some(
         (msg) => msg.id === messageId && msg.status === "queued"
@@ -236,8 +305,6 @@ export const forceSendMessageAtom = atom(
               turnIntentId: mintTurnIntentId(),
               priority: "now",
               requiresExplicitDispatch: false,
-              retryAt: undefined,
-              retryAttempt: undefined,
             }
           : msg
       )
@@ -254,6 +321,7 @@ forceSendMessageAtom.debugLabel = "forceSendMessageAtom";
 export const parkSessionQueuedMessagesAfterStopAtom = atom(
   null,
   (get, set, sessionId: string) => {
+    const handoffIds = get(messageQueueHandoffIdsAtom);
     const current = get(messageQueueAtom);
     const conversationKeys = new Set(
       current.flatMap((message) =>
@@ -264,6 +332,7 @@ export const parkSessionQueuedMessagesAfterStopAtom = atom(
     );
     set(messageQueueAtom, (prev) =>
       prev.map((msg) =>
+        !handoffIds.has(msg.id) &&
         (msg.sessionId === sessionId ||
           (msg.conversationDispatch !== undefined &&
             conversationKeys.has(
@@ -294,6 +363,7 @@ export const clearSessionQueueAtom = atom(
     set(messageQueueAtom, (prev) =>
       prev.filter(
         (msg) =>
+          get(messageQueueHandoffIdsAtom).has(msg.id) ||
           msg.status !== "queued" ||
           (msg.sessionId !== sessionId &&
             (msg.conversationDispatch === undefined ||
@@ -309,12 +379,16 @@ clearSessionQueueAtom.debugLabel = "clearSessionQueueAtom";
 /** Remove an exact visible queue projection without touching other Sessions. */
 export const clearQueuedMessagesAtom = atom(
   null,
-  (_get, set, messageIds: readonly string[]) => {
+  (get, set, messageIds: readonly string[]) => {
     if (messageIds.length === 0) return;
     const ids = new Set(messageIds);
+    const handoffIds = get(messageQueueHandoffIdsAtom);
     set(messageQueueAtom, (prev) =>
       prev.filter(
-        (message) => message.status !== "queued" || !ids.has(message.id)
+        (message) =>
+          handoffIds.has(message.id) ||
+          message.status !== "queued" ||
+          !ids.has(message.id)
       )
     );
   }
@@ -324,7 +398,7 @@ clearQueuedMessagesAtom.debugLabel = "clearQueuedMessagesAtom";
 export const editMessageAtom = atom(
   null,
   (
-    _get,
+    get,
     set,
     update: {
       messageId: string;
@@ -335,6 +409,7 @@ export const editMessageAtom = atom(
       agentExecMode?: AgentExecMode;
     }
   ) => {
+    if (get(messageQueueHandoffIdsAtom).has(update.messageId)) return false;
     let updated = false;
     set(messageQueueAtom, (prev) =>
       prev.map((msg) => {
@@ -380,8 +455,6 @@ export const editMessageAtom = atom(
           ...(update.agentExecMode !== undefined && {
             agentExecMode: update.agentExecMode,
           }),
-          retryAt: undefined,
-          retryAttempt: undefined,
         };
         const siblings = prev.filter((item) => item.id !== msg.id);
         if (queueAdmissionResult(siblings, next)) return msg;
@@ -397,10 +470,11 @@ editMessageAtom.debugLabel = "editMessageAtom";
 export const reorderQueueAtom = atom(
   null,
   (
-    _get,
+    get,
     set,
     { fromIndex, toIndex }: { fromIndex: number; toIndex: number }
   ) => {
+    const handoffIds = get(messageQueueHandoffIdsAtom);
     set(messageQueueAtom, (prev) => {
       if (
         fromIndex === toIndex ||
@@ -409,7 +483,9 @@ export const reorderQueueAtom = atom(
         fromIndex >= prev.length ||
         toIndex >= prev.length ||
         prev[fromIndex]?.status !== "queued" ||
-        prev[toIndex]?.status !== "queued"
+        prev[toIndex]?.status !== "queued" ||
+        handoffIds.has(prev[fromIndex].id) ||
+        handoffIds.has(prev[toIndex].id)
       ) {
         return prev;
       }

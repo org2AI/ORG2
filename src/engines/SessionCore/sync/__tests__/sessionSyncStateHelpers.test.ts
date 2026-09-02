@@ -44,8 +44,8 @@ vi.mock("@src/store/session", () => ({
 vi.mock("@src/engines/SessionCore/control/turnLifecycle", () => ({
   getLastTurnTerminal: vi.fn(() => null),
   getTurnGeneration: mocks.getTurnGeneration,
-  markTurnRunning: vi.fn(),
-  markTurnTerminal: vi.fn(),
+  markTurnRunning: vi.fn(() => true),
+  markTurnTerminal: vi.fn(() => true),
   toTurnTerminalStatus: (status: string) =>
     status === "failed" || status === "error" || status === "timeout"
       ? "failed"
@@ -208,6 +208,23 @@ describe("session sync state callbacks", () => {
     expect(updateSessionStatus).not.toHaveBeenCalled();
   });
 
+  it("does not update presentation when the lifecycle rejects a terminal", () => {
+    vi.mocked(markTurnTerminal).mockReturnValueOnce(false);
+    const actions = createActions();
+    const callbacks = createSessionEventHandlerCallbacks(
+      "session-1",
+      actions,
+      vi.fn()
+    );
+
+    callbacks.onStatusChange?.("completed");
+
+    expect(actions.setSessionRuntimeStatus).not.toHaveBeenCalled();
+    expect(actions.setPendingCancel).not.toHaveBeenCalled();
+    expect(eventStoreProxy.unpinSession).not.toHaveBeenCalled();
+    expect(updateSessionStatus).not.toHaveBeenCalled();
+  });
+
   it("rejects a terminal intent attributed to another session", () => {
     mocks.getTurnIntentDispatch.mockReturnValue({
       sessionId: "session-other",
@@ -282,6 +299,22 @@ describe("session sync state callbacks", () => {
     expect(markTurnRunning).toHaveBeenCalledTimes(2);
     expect(markTurnRunning).toHaveBeenNthCalledWith(1, "session-1");
     expect(markTurnRunning).toHaveBeenNthCalledWith(2, "session-1");
+  });
+
+  it("does not update presentation when the lifecycle rejects running", () => {
+    vi.mocked(markTurnRunning).mockReturnValueOnce(false);
+    const actions = createActions();
+    const callbacks = createSessionEventHandlerCallbacks(
+      "session-1",
+      actions,
+      vi.fn()
+    );
+
+    callbacks.onStatusChange?.("running");
+
+    expect(actions.setSessionRuntimeStatus).not.toHaveBeenCalled();
+    expect(eventStoreProxy.pinSession).not.toHaveBeenCalled();
+    expect(actions.dismissCanvasAtNewTurn).not.toHaveBeenCalled();
   });
 
   it("calls dismissCanvasAtNewTurn with the session id when status is 'running'", () => {

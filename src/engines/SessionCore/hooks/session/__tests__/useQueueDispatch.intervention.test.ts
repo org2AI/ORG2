@@ -3,16 +3,27 @@ import { Provider, createStore } from "jotai";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { turnLifecycleSignalAtom } from "@src/engines/SessionCore/control/turnLifecycle";
+import {
+  QueuedConversationBlockedError,
+  QueuedConversationRecoveryPendingError,
+} from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import { UserIntentSendError } from "@src/engines/SessionCore/services/userIntentDispatch";
 import {
+  type ActiveMessageDelivery,
   type QueuedMessage,
+  activeMessageDeliveriesAtom,
+  isActiveMessageDelivery,
+  messageDeliveryRecordsAtom,
   messageQueueAtom,
+  messageQueueHydratedAtom,
 } from "@src/store/ui/messageQueueAtom";
 import { type SmokeRoot, createSmokeRoot } from "@src/test/reactSmokeHarness";
 
 import { useQueueDispatch } from "../useQueueDispatch";
 
 const SESSION_ID = "agent-builtin:sde-queued-worker";
+type JotaiStore = ReturnType<typeof createStore>;
 
 const mocks = vi.hoisted(() => ({
   append: vi.fn(),
@@ -20,18 +31,20 @@ const mocks = vi.hoisted(() => ({
   beginTurnDispatch: vi.fn(),
   beginTurnStopping: vi.fn(),
   cancelTurn: vi.fn(),
+  canonicalUpdateFailure: false,
   clearTurnLifecycleSession: vi.fn(),
   dispatchCanonicalConversation: vi.fn(),
   confirmTurnRunning: vi.fn(),
   failOptimisticTurn: vi.fn(),
   getSession: vi.fn(),
+  getPersistedEvents: vi.fn(),
   getTurnGeneration: vi.fn(),
   getTurnPhase: vi.fn(),
   markSessionActive: vi.fn(),
   markTurnTerminal: vi.fn(),
   messageError: vi.fn(),
   messageWarning: vi.fn(),
-  loadDurableMessageQueue: vi.fn(),
+  loadDurableMessageDeliveries: vi.fn(),
   persistDurableMessageQueue: vi.fn(),
   restoreTurnWorkingAfterInterruptFailure: vi.fn(),
   sendMessage: vi.fn(),
@@ -77,17 +90,131 @@ vi.mock("@src/engines/SessionCore/control/turnLifecycle", async () => {
 vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: {
     append: mocks.append,
+    getPersistedEvents: mocks.getPersistedEvents,
     updateById: mocks.updateById,
   },
 }));
+
+vi.mock(
+  "@src/engines/SessionCore/hooks/session/messageQueuePersistence",
+  () => {
+    let currentStore: JotaiStore | null = null;
+    return {
+      hydrateMessageQueue: async (store: JotaiStore) => {
+        currentStore = store;
+        const snapshot = await mocks.loadDurableMessageDeliveries();
+        const activeIntents = new Set(
+          snapshot.active.map(
+            (delivery: ActiveMessageDelivery) => delivery.turnIntentId
+          )
+        );
+        const queueByIntent = new Map<string, QueuedMessage>();
+        for (const message of snapshot.queue as QueuedMessage[]) {
+          queueByIntent.set(message.turnIntentId, message);
+        }
+        for (const message of store.get(messageQueueAtom)) {
+          queueByIntent.set(message.turnIntentId, message);
+        }
+        store.set(messageDeliveryRecordsAtom, [
+          ...[...queueByIntent.values()].filter(
+            (message) => !activeIntents.has(message.turnIntentId)
+          ),
+          ...snapshot.active,
+        ]);
+        await mocks.persistDurableMessageQueue(store.get(messageQueueAtom));
+        store.set(messageQueueHydratedAtom, true);
+      },
+      disposeMessageQueuePersistence: () => undefined,
+      refreshMessageDeliveries: async () => undefined,
+      assertDurableActiveDeliveryIsRootHead: async (id: string) => {
+        const owner = currentStore
+          ?.get(activeMessageDeliveriesAtom)
+          .find((candidate) => candidate.id === id);
+        if (!owner) throw new Error("missing active delivery owner");
+        return owner;
+      },
+      handoffQueuedMessageToActiveDelivery: async (
+        targetStore: JotaiStore,
+        delivery: ActiveMessageDelivery
+      ) => {
+        currentStore = targetStore;
+        targetStore.set(messageDeliveryRecordsAtom, (current) => [
+          ...current.filter(
+            (record) =>
+              record.id !== delivery.id &&
+              record.turnIntentId !== delivery.turnIntentId
+          ),
+          delivery,
+        ]);
+      },
+      returnActiveDeliveryToMessageQueue: async (
+        targetStore: JotaiStore,
+        id: string,
+        message: QueuedMessage
+      ) => {
+        targetStore.set(messageDeliveryRecordsAtom, (current) => [
+          ...current.filter(
+            (record) => record.id !== id && record.id !== message.id
+          ),
+          message,
+        ]);
+      },
+      updateActiveMessageDelivery: async (
+        targetStore: JotaiStore,
+        id: string,
+        update: Partial<ActiveMessageDelivery>
+      ) => {
+        if (mocks.canonicalUpdateFailure) {
+          throw new Error("durable execution store unavailable");
+        }
+        let updated: ActiveMessageDelivery | null = null;
+        targetStore.set(messageDeliveryRecordsAtom, (current) =>
+          current.map((record) => {
+            if (!isActiveMessageDelivery(record) || record.id !== id) {
+              return record;
+            }
+            updated = { ...record, ...update };
+            return updated;
+          })
+        );
+        return updated;
+      },
+      removeActiveMessageDelivery: async (
+        targetStore: JotaiStore,
+        id: string
+      ) => {
+        targetStore.set(messageDeliveryRecordsAtom, (current) =>
+          current.filter((record) => record.id !== id)
+        );
+      },
+      replaceActiveMessageDeliveryLocally: (
+        targetStore: JotaiStore,
+        id: string,
+        update: Partial<ActiveMessageDelivery>
+      ) => {
+        targetStore.set(messageDeliveryRecordsAtom, (current) =>
+          current.map((record) =>
+            isActiveMessageDelivery(record) && record.id === id
+              ? { ...record, ...update }
+              : record
+          )
+        );
+      },
+    };
+  }
+);
 
 vi.mock("@src/engines/SessionCore/services/SessionService", () => ({
   SessionService: { sendMessage: mocks.sendMessage },
 }));
 
 vi.mock("@src/engines/SessionCore/sync/adapters/shared/eventFactories", () => ({
-  createSyntheticUserEvent: (sessionId: string) => ({
-    id: "synthetic-user-event",
+  createSyntheticUserEvent: (
+    sessionId: string,
+    content: string,
+    options?: Record<string, unknown>
+  ) => ({
+    id: options?.id ?? "synthetic-user-event",
     chunk_id: null,
     sessionId,
     createdAt: "2026-07-18T00:00:00.000Z",
@@ -96,9 +223,18 @@ vi.mock("@src/engines/SessionCore/sync/adapters/shared/eventFactories", () => ({
     actionType: "raw",
     source: "user",
     args: {},
-    result: { syntheticUserInput: true, deliveryStatus: "pending" },
-    displayText: "queued worker follow-up",
-    displayStatus: "pending",
+    result: {
+      syntheticUserInput: true,
+      message: { content, role: "user" },
+      ...(options ?? {}),
+    },
+    displayText: content,
+    displayStatus:
+      options?.deliveryStatus === "failed"
+        ? "failed"
+        : options?.deliveryStatus === "pending"
+          ? "pending"
+          : "completed",
     displayVariant: "message",
     activityStatus: "agent",
     isDelta: false,
@@ -119,8 +255,13 @@ vi.mock("@src/store/session", () => ({
 }));
 
 vi.mock("@src/store/ui/messageQueueRepository", () => ({
-  loadDurableMessageQueue: mocks.loadDurableMessageQueue,
+  getMessageQueueOwnerKey: async () => "queue:main",
+  isPrimaryMessageQueueOwnerKey: (key: string) => key === "queue:main",
   persistDurableMessageQueue: mocks.persistDurableMessageQueue,
+  withCanonicalConversationTurnLock: async (
+    _root: unknown,
+    run: () => Promise<unknown>
+  ) => await run(),
 }));
 
 vi.mock("@src/util/platform/tauri/init", () => ({
@@ -235,6 +376,7 @@ describe("useQueueDispatch Agent Org intervention", () => {
   let store: ReturnType<typeof createStore>;
 
   beforeEach(() => {
+    mocks.canonicalUpdateFailure = false;
     mocks.append.mockReset().mockResolvedValue(undefined);
     mocks.beginOptimisticTurn.mockReset();
     mocks.beginTurnDispatch.mockReset().mockReturnValue(11);
@@ -250,18 +392,22 @@ describe("useQueueDispatch Agent Org intervention", () => {
     mocks.confirmTurnRunning.mockReset();
     mocks.failOptimisticTurn.mockReset();
     mocks.getSession.mockReset().mockResolvedValue(null);
+    mocks.getPersistedEvents.mockReset().mockResolvedValue([]);
     mocks.getTurnGeneration.mockReset().mockReturnValue(11);
     mocks.getTurnPhase.mockReset().mockReturnValue("idle");
     mocks.markSessionActive.mockReset();
     mocks.markTurnTerminal.mockReset();
     mocks.messageError.mockReset();
     mocks.messageWarning.mockReset();
-    mocks.loadDurableMessageQueue.mockReset().mockResolvedValue([]);
+    mocks.loadDurableMessageDeliveries
+      .mockReset()
+      .mockResolvedValue({ queue: [], active: [] });
     mocks.persistDurableMessageQueue.mockReset().mockResolvedValue(undefined);
     mocks.restoreTurnWorkingAfterInterruptFailure.mockReset();
     mocks.sendMessage.mockReset().mockResolvedValue(undefined);
     mocks.updateById.mockReset().mockResolvedValue(true);
     store = createStore();
+    store.set(messageDeliveryRecordsAtom, []);
     root = createSmokeRoot();
   });
 
@@ -299,6 +445,65 @@ describe("useQueueDispatch Agent Org intervention", () => {
       mocks.sendMessage.mock.invocationCallOrder[0]
     );
     await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
+  });
+
+  it("keeps ordinary queue delivery closed when durable recovery is unavailable", async () => {
+    const timeout = vi
+      .spyOn(window, "setTimeout")
+      .mockImplementation(() => 1 as never);
+    mocks.loadDurableMessageDeliveries.mockRejectedValueOnce(
+      new Error("delivery store unavailable")
+    );
+
+    await mountWithQueuedMessage();
+
+    await vi.waitFor(() =>
+      expect(mocks.loadDurableMessageDeliveries).toHaveBeenCalled()
+    );
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(store.get(messageQueueAtom)).toEqual([makeQueuedMessage()]);
+    timeout.mockRestore();
+  });
+
+  it("keeps queued delivery closed when the durable snapshot cannot be read", async () => {
+    const timeout = vi
+      .spyOn(window, "setTimeout")
+      .mockImplementation(() => 1 as never);
+    mocks.loadDurableMessageDeliveries.mockRejectedValue(
+      new Error("delivery store unavailable")
+    );
+
+    await mountWithQueuedMessage();
+    await vi.waitFor(() =>
+      expect(mocks.loadDurableMessageDeliveries).toHaveBeenCalled()
+    );
+
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(store.get(messageQueueAtom)).toEqual([makeQueuedMessage()]);
+    timeout.mockRestore();
+  });
+
+  it("retries canonical hydration after a transient startup failure", async () => {
+    let retry: (() => void) | undefined;
+    const timeout = vi
+      .spyOn(window, "setTimeout")
+      .mockImplementation((handler: TimerHandler) => {
+        retry = handler as () => void;
+        return 1 as never;
+      });
+    mocks.loadDurableMessageDeliveries
+      .mockRejectedValueOnce(new Error("store warming up"))
+      .mockResolvedValueOnce({ queue: [], active: [] });
+
+    await mountWithMessages([makeCanonicalMessage("canonical-cold-store")]);
+    await vi.waitFor(() => expect(retry).toBeTypeOf("function"));
+    expect(mocks.dispatchCanonicalConversation).not.toHaveBeenCalled();
+
+    retry?.();
+    await vi.waitFor(() =>
+      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce()
+    );
+    timeout.mockRestore();
   });
 
   it("does not let a blocked Send Now freeze another idle session", async () => {
@@ -373,7 +578,7 @@ describe("useQueueDispatch Agent Org intervention", () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
 
-  it("drains canonical rows through the singleton headless dispatcher", async () => {
+  it("reconciles a canonical optimistic row in place after provider acceptance", async () => {
     installLifecycleSimulation();
     const canonical = makeCanonicalMessage("canonical-user-event");
 
@@ -384,10 +589,150 @@ describe("useQueueDispatch Agent Org intervention", () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     expect(mocks.append).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
-    expect(mocks.updateById).not.toHaveBeenCalled();
+    expect(mocks.updateById).toHaveBeenCalledWith(
+      "queued-user:canonical-user-event:",
+      expect.objectContaining({
+        displayStatus: "completed",
+        result: expect.objectContaining({
+          deliveryStatus: "sent",
+          queueMessageId: "canonical-user-event",
+          turnIntentId: "turn-intent-canonical-user-event",
+        }),
+      }),
+      SESSION_ID
+    );
   });
 
-  it("propagates the provider terminal instead of manufacturing completion", async () => {
+  it("waits for the concrete source turn before handing off a canonical row", async () => {
+    let sourcePhase = "working";
+    mocks.getTurnPhase.mockImplementation((sessionId: string) =>
+      sessionId === SESSION_ID ? sourcePhase : "idle"
+    );
+    const canonical = makeCanonicalMessage("canonical-behind-source-turn");
+
+    await mountWithMessages([canonical]);
+    await vi.waitFor(() =>
+      expect(mocks.persistDurableMessageQueue).toHaveBeenCalled()
+    );
+    expect(mocks.dispatchCanonicalConversation).not.toHaveBeenCalled();
+    expect(store.get(messageQueueAtom)).toEqual([canonical]);
+
+    sourcePhase = "idle";
+    store.set(turnLifecycleSignalAtom, (value) => value + 1);
+
+    await vi.waitFor(() =>
+      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce()
+    );
+    await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
+  });
+
+  it("interrupts the concrete source for canonical Send Now before handoff", async () => {
+    mocks.getTurnPhase.mockImplementation((sessionId: string) =>
+      sessionId === SESSION_ID ? "working" : "idle"
+    );
+    const canonical = {
+      ...makeCanonicalMessage("canonical-source-send-now"),
+      priority: "now" as const,
+    };
+
+    await mountWithMessages([canonical]);
+
+    await vi.waitFor(() =>
+      expect(mocks.cancelTurn).toHaveBeenCalledWith(
+        SESSION_ID,
+        "force-send",
+        expect.objectContaining({ onError: expect.any(Function) })
+      )
+    );
+    expect(mocks.dispatchCanonicalConversation).not.toHaveBeenCalled();
+  });
+
+  it("does not bypass a held natural FIFO head in the same scope", async () => {
+    const held = {
+      ...makeQueuedMessage(),
+      id: "held-head",
+      turnIntentId: "intent-held-head",
+      priority: "next" as const,
+      requiresExplicitDispatch: true,
+    };
+    const blockedSibling = {
+      ...makeQueuedMessage(),
+      id: "blocked-sibling",
+      turnIntentId: "intent-blocked-sibling",
+      priority: "next" as const,
+    };
+    const independent = {
+      ...makeQueuedMessage(),
+      id: "independent-head",
+      turnIntentId: "intent-independent-head",
+      sessionId: "agent-builtin:sde-independent",
+      priority: "next" as const,
+    };
+
+    await mountWithMessages([held, blockedSibling, independent]);
+
+    await vi.waitFor(() =>
+      expect(mocks.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: independent.sessionId })
+      )
+    );
+    expect(mocks.sendMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ turnIntentId: blockedSibling.turnIntentId })
+    );
+    await vi.waitFor(() =>
+      expect(store.get(messageQueueAtom)).toEqual([held, blockedSibling])
+    );
+  });
+
+  it("recovers an accepted canonical execution before deleting its pending queue twin", async () => {
+    installLifecycleSimulation();
+    let finishPersistence!: () => void;
+    const persistenceGate = new Promise<void>((resolve) => {
+      finishPersistence = resolve;
+    });
+    let finishRecovery!: () => void;
+    const recoveryTerminal = new Promise<void>((resolve) => {
+      finishRecovery = resolve;
+    });
+    const queuedTwin = makeCanonicalMessage("canonical-cold-start");
+    const recovered: ActiveMessageDelivery = {
+      ...queuedTwin,
+      conversationDispatch: queuedTwin.conversationDispatch!,
+      status: "accepted",
+      runnerSessionId: "runner-cold-start",
+    };
+    mocks.loadDurableMessageDeliveries.mockResolvedValueOnce({
+      queue: [queuedTwin],
+      active: [recovered],
+    });
+    mocks.persistDurableMessageQueue.mockReturnValue(persistenceGate);
+    mocks.dispatchCanonicalConversation.mockImplementationOnce(async () => {
+      await recoveryTerminal;
+      return { terminalStatus: "completed" };
+    });
+
+    await mountWithMessages([]);
+
+    await vi.waitFor(() =>
+      expect(mocks.persistDurableMessageQueue).toHaveBeenCalledWith([])
+    );
+    expect(mocks.dispatchCanonicalConversation).not.toHaveBeenCalled();
+    finishPersistence();
+    await vi.waitFor(() =>
+      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce()
+    );
+    await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
+    expect(
+      mocks.dispatchCanonicalConversation.mock.calls[0]?.[1]
+    ).toMatchObject({
+      id: queuedTwin.id,
+      status: "accepted",
+      runnerSessionId: "runner-cold-start",
+    });
+    finishRecovery();
+  });
+
+  it("does not manufacture a virtual-root Session terminal", async () => {
     mocks.dispatchCanonicalConversation.mockImplementationOnce(
       async (_store, message, callbacks) => {
         await callbacks.onAccepted(message.sessionId);
@@ -398,12 +743,9 @@ describe("useQueueDispatch Agent Org intervention", () => {
     await mountWithMessages([makeCanonicalMessage("canonical-cancelled")]);
 
     await vi.waitFor(() =>
-      expect(mocks.markTurnTerminal).toHaveBeenCalledWith(
-        expect.stringContaining("root-1"),
-        "cancelled",
-        expect.objectContaining({ generation: 11 })
-      )
+      expect(store.get(activeMessageDeliveriesAtom)).toEqual([])
     );
+    expect(mocks.markTurnTerminal).not.toHaveBeenCalled();
   });
 
   it("transfers a prepared canonical failure from the queue card to its failed bubble", async () => {
@@ -414,14 +756,98 @@ describe("useQueueDispatch Agent Org intervention", () => {
     await mountWithMessages([makeCanonicalMessage("canonical-failed")]);
 
     await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
-    expect(mocks.messageError).toHaveBeenCalledWith(
+    expect(mocks.updateById).toHaveBeenCalledWith(
+      "queued-user:canonical-failed:",
       expect.objectContaining({
-        content: expect.stringContaining("native launch failed"),
-      })
+        displayStatus: "failed",
+        result: expect.objectContaining({
+          deliveryStatus: "failed",
+          deliveryError: "native launch failed",
+        }),
+      }),
+      SESSION_ID
     );
+    expect(mocks.messageError).not.toHaveBeenCalled();
+  });
+
+  it("retains an accepted canonical owner for recovery without immediately resending", async () => {
+    mocks.dispatchCanonicalConversation.mockImplementationOnce(
+      async (_store, message, callbacks) => {
+        await callbacks.onAccepted(`runner-${message.id}`);
+        throw new UserIntentSendError(
+          "native send failed",
+          "native-user-event"
+        );
+      }
+    );
+
+    await mountWithMessages([
+      makeCanonicalMessage("canonical-accepted-failed"),
+    ]);
+
+    await vi.waitFor(() =>
+      expect(store.get(activeMessageDeliveriesAtom)).toEqual([
+        expect.objectContaining({
+          id: "canonical-accepted-failed",
+          status: "accepted",
+          runnerSessionId: "runner-canonical-accepted-failed",
+          retryAttempt: 1,
+          retryAt: expect.any(String),
+        }),
+      ])
+    );
+    expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce();
+    expect(mocks.getPersistedEvents).not.toHaveBeenCalled();
+    expect(mocks.messageError).not.toHaveBeenCalled();
+  });
+
+  it("keeps an admission-blocked execution as the same failed transcript row", async () => {
+    mocks.dispatchCanonicalConversation.mockRejectedValueOnce(
+      new QueuedConversationBlockedError("switch Cloud account")
+    );
+
+    await mountWithMessages([makeCanonicalMessage("canonical-blocked")]);
+    await vi.waitFor(() =>
+      expect(mocks.updateById).toHaveBeenCalledWith(
+        "queued-user:canonical-blocked:",
+        expect.objectContaining({
+          displayStatus: "failed",
+          result: expect.objectContaining({
+            deliveryStatus: "failed",
+            deliveryError: "switch Cloud account",
+          }),
+        }),
+        SESSION_ID
+      )
+    );
+    expect(store.get(messageQueueAtom)).toEqual([]);
+    expect(store.get(activeMessageDeliveriesAtom)).toEqual([]);
+    expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce();
+  });
+
+  it("never returns an accepted execution when a late identity check blocks", async () => {
+    mocks.dispatchCanonicalConversation.mockImplementationOnce(
+      async (_store, message, callbacks) => {
+        await callbacks.onAccepted(`runner-${message.id}`);
+        throw new QueuedConversationBlockedError("account changed late");
+      }
+    );
+
+    await mountWithMessages([makeCanonicalMessage("canonical-late-blocked")]);
+    await vi.waitFor(() =>
+      expect(store.get(activeMessageDeliveriesAtom)).toEqual([
+        expect.objectContaining({
+          id: "canonical-late-blocked",
+          status: "accepted",
+          retryAttempt: 1,
+        }),
+      ])
+    );
+    expect(store.get(messageQueueAtom)).toEqual([]);
   });
 
   it("retains a canonical queue card when no optimistic row was stored", async () => {
+    mocks.updateById.mockResolvedValueOnce(false);
     mocks.dispatchCanonicalConversation.mockRejectedValueOnce(
       new Error("native preparation failed")
     );
@@ -439,7 +865,47 @@ describe("useQueueDispatch Agent Org intervention", () => {
     );
   });
 
-  it("serializes two canonical turns for one root through turnLifecycle", async () => {
+  it("retains a preparing execution when canonical result publication is pending", async () => {
+    mocks.dispatchCanonicalConversation.mockRejectedValueOnce(
+      new QueuedConversationRecoveryPendingError("cloud offline")
+    );
+    const message = makeCanonicalMessage("canonical-result-pending");
+
+    await mountWithMessages([message]);
+
+    await vi.waitFor(() =>
+      expect(store.get(activeMessageDeliveriesAtom)).toEqual([
+        expect.objectContaining({
+          id: message.id,
+          status: "preparing",
+          retryAttempt: 1,
+        }),
+      ])
+    );
+    expect(store.get(messageQueueAtom)).toEqual([]);
+  });
+
+  it("backs off locally when recovery metadata cannot be persisted", async () => {
+    mocks.dispatchCanonicalConversation.mockRejectedValueOnce(
+      new QueuedConversationRecoveryPendingError("cloud offline")
+    );
+    mocks.canonicalUpdateFailure = true;
+    const message = makeCanonicalMessage("canonical-store-offline");
+
+    await mountWithMessages([message]);
+
+    await vi.waitFor(() =>
+      expect(store.get(activeMessageDeliveriesAtom)).toEqual([
+        expect.objectContaining({
+          id: message.id,
+          retryAt: expect.any(String),
+        }),
+      ])
+    );
+    expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce();
+  });
+
+  it("serializes two canonical turns for one root through the execution owner", async () => {
     installLifecycleSimulation();
     let releaseFirst!: () => void;
     const firstTerminal = new Promise<void>((resolve) => {
@@ -466,12 +932,14 @@ describe("useQueueDispatch Agent Org intervention", () => {
     expect(mocks.dispatchCanonicalConversation.mock.calls[0]?.[1].id).toBe(
       "canonical-first"
     );
-    expect(store.get(messageQueueAtom)).toEqual([
+    expect(store.get(activeMessageDeliveriesAtom)).toEqual([
       expect.objectContaining({
         id: "canonical-first",
         status: "accepted",
         runnerSessionId: "runner-canonical-first",
       }),
+    ]);
+    expect(store.get(messageQueueAtom)).toEqual([
       expect.objectContaining({ id: "canonical-second", status: "queued" }),
     ]);
 
@@ -485,7 +953,7 @@ describe("useQueueDispatch Agent Org intervention", () => {
     await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
   });
 
-  it("admits another canonical root after the first provider accepts", async () => {
+  it("runs independent canonical roots concurrently", async () => {
     installLifecycleSimulation();
     let acceptFirst!: () => void;
     const firstAcceptance = new Promise<void>((resolve) => {
@@ -507,23 +975,13 @@ describe("useQueueDispatch Agent Org intervention", () => {
     ]);
 
     await vi.waitFor(() =>
-      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(1)
-    );
-    expect(mocks.dispatchCanonicalConversation.mock.calls[0]?.[1].id).toBe(
-      "root-a"
-    );
-    expect(store.get(messageQueueAtom).map((message) => message.id)).toEqual([
-      "root-a",
-      "root-b",
-    ]);
-    acceptFirst();
-    await vi.waitFor(() =>
       expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(2)
     );
-    expect(mocks.dispatchCanonicalConversation.mock.calls[1]?.[1].id).toBe(
-      "root-b"
+    expect(store.get(messageQueueAtom)).toEqual([]);
+    acceptFirst();
+    await vi.waitFor(() =>
+      expect(store.get(activeMessageDeliveriesAtom)).toEqual([])
     );
-    await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
   });
 
   it("routes canonical Send Now through the active native runner", async () => {
@@ -535,9 +993,12 @@ describe("useQueueDispatch Agent Org intervention", () => {
     mocks.dispatchCanonicalConversation.mockImplementation(
       async (_store, message, callbacks) => {
         const runnerId = `runner-${message.id}`;
+        mocks.beginTurnDispatch(runnerId);
+        mocks.confirmTurnRunning(runnerId);
         await callbacks.onRunnerReady?.(runnerId, 0);
         await callbacks.onAccepted(runnerId);
         if (message.id === "canonical-running") await firstTerminal;
+        mocks.markTurnTerminal(runnerId);
         return { terminalStatus: "completed" };
       }
     );
@@ -560,6 +1021,48 @@ describe("useQueueDispatch Agent Org intervention", () => {
       )
     );
     expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(1);
+    releaseFirst();
+    await vi.waitFor(() =>
+      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(2)
+    );
+  });
+
+  it("keeps a terminal canonical execution as a barrier without cancelling it", async () => {
+    installLifecycleSimulation();
+    let releaseFirst!: () => void;
+    const firstSettlement = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    mocks.dispatchCanonicalConversation.mockImplementation(
+      async (_store, message, callbacks) => {
+        const runnerId = `runner-${message.id}`;
+        await callbacks.onRunnerReady?.(runnerId, 0);
+        await callbacks.onAccepted(runnerId);
+        if (message.id === "canonical-terminal-owner") {
+          await firstSettlement;
+        }
+        return { terminalStatus: "completed" };
+      }
+    );
+    const forceSend = {
+      ...makeCanonicalMessage("canonical-after-terminal-owner"),
+      priority: "now" as const,
+    };
+
+    await mountWithMessages([makeCanonicalMessage("canonical-terminal-owner")]);
+    await vi.waitFor(() =>
+      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(1)
+    );
+    store.set(messageQueueAtom, (current) => [...current, forceSend]);
+
+    await vi.waitFor(() =>
+      expect(mocks.getTurnPhase).toHaveBeenCalledWith(
+        "runner-canonical-terminal-owner"
+      )
+    );
+    expect(mocks.cancelTurn).not.toHaveBeenCalled();
+    expect(store.get(messageQueueAtom)).toContainEqual(forceSend);
+
     releaseFirst();
     await vi.waitFor(() =>
       expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(2)

@@ -14,8 +14,8 @@ describe("queueDispatchSyncInputsAtom", () => {
     store.set(turnLifecycleSignalAtom, 7);
 
     expect(store.get(queueDispatchSyncInputsAtom)).toMatchObject({
-      queue: [],
-      hydrated: true,
+      deliveries: [],
+      queueHydrated: true,
       turnLifecycleSignal: 7,
       editing: false,
     });

@@ -260,20 +260,10 @@ fn update_platform(
         _ => {}
     }
     let path = platform.config_path();
-    update_json_platform_at_path(platform, &path, enabled, live_status, executable)
-}
-
-fn update_json_platform_at_path(
-    platform: SessionProvenanceHookPlatform,
-    path: &Path,
-    enabled: bool,
-    live_status: bool,
-    executable: &Path,
-) -> Result<(), String> {
     if !enabled && !path.exists() {
         return Ok(());
     }
-    let mut config = read_config(path)?;
+    let mut config = read_config(&path)?;
     let original_config = config.clone();
     let (unix_command, windows_command) = hook_commands(executable, platform.source_arg());
     match platform {
@@ -368,49 +358,7 @@ fn update_json_platform_at_path(
     if config == original_config {
         Ok(())
     } else {
-        write_config(path, &config)
-    }
-}
-
-/// Materialize only ORGII-managed provenance hooks inside an isolated CLI
-/// profile. Managed Cursor/Claude/Codex sessions override their normal config
-/// roots; without this projection the globally enabled hooks are invisible to
-/// the child.
-///
-/// `config_path` is the provider's config JSON. Existing user settings are
-/// preserved by the same merge functions used by the global installer.
-pub fn materialize_hooks_for_isolated_profile(
-    platform: SessionProvenanceHookPlatform,
-    config_path: &Path,
-) -> Result<(), String> {
-    let _guard = operation_guard()?;
-    let preferences = read_preferences().unwrap_or_else(|err| {
-        tracing::warn!(
-            error = %err,
-            "[SessionProvenance] Unreadable preferences while projecting isolated profile; using defaults"
-        );
-        HookPreferences::default()
-    });
-    let enabled = preferences.effective_enabled(platform);
-    let executable = std::env::current_exe()
-        .map_err(|err| format!("Failed to locate ORG2 executable: {err}"))?;
-    match platform {
-        SessionProvenanceHookPlatform::ClaudeCode
-        | SessionProvenanceHookPlatform::Codex
-        | SessionProvenanceHookPlatform::Cursor
-        | SessionProvenanceHookPlatform::QwenCode
-        | SessionProvenanceHookPlatform::FactoryDroid
-        | SessionProvenanceHookPlatform::Trae
-        | SessionProvenanceHookPlatform::Windsurf => update_json_platform_at_path(
-            platform,
-            config_path,
-            enabled,
-            preferences.live_status_enabled,
-            &executable,
-        ),
-        _ => Err(format!(
-            "{platform:?} isolated-profile projection is not a supported JSON target"
-        )),
+        write_config(&path, &config)
     }
 }
 

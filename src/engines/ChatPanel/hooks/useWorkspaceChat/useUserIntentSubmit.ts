@@ -11,20 +11,20 @@ import { useCallback, useEffect } from "react";
 
 import type { AgentExecMode } from "@src/config/sessionCreatorConfig";
 import { resolveSessionAgentExecMode } from "@src/config/sessionCreatorConfig";
-import {
-  admitUserIntentToMessageQueue,
-  isExplicitPostStopSubmit,
-} from "@src/engines/SessionCore/control/messageQueueAdmission";
 import { getTurnPhase } from "@src/engines/SessionCore/control/turnLifecycle";
 import { mintTurnIntentId } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
 import {
   type SessionRuntimeStatusSource,
   isSessionActiveAtom,
   lastUserMessageAtom,
+  postStopDispatchSessionsAtom,
 } from "@src/store/session/cliSessionStatusAtom";
 import { creatorDefaultModelSelectionAtom } from "@src/store/session/creatorDefaultModelAtom";
 import { sessionMapAtom } from "@src/store/session/sessionAtom";
-import { messageQueueAtom } from "@src/store/ui/messageQueueAtom";
+import {
+  enqueueMessageAtom,
+  messageQueueAtom,
+} from "@src/store/ui/messageQueueAtom";
 import { selectionFromSession } from "@src/util/session/selectionFromSession";
 
 import {
@@ -139,11 +139,9 @@ export function useUserIntentSubmit({
             imageDataUrls,
           })
         : false;
-      const explicitPostStopSubmit = isExplicitPostStopSubmit(
-        store,
-        sessionId,
-        restoredStopDraftSubmit
-      );
+      const explicitPostStopSubmit =
+        restoredStopDraftSubmit ||
+        store.get(postStopDispatchSessionsAtom)[sessionId] === true;
 
       if (
         dedupeDirectSubmit &&
@@ -177,21 +175,18 @@ export function useUserIntentSubmit({
           session?.agentExecMode
         );
 
-        const queueResult = admitUserIntentToMessageQueue({
-          store,
-          explicitPostStopSubmit,
-          message: {
-            id: `queued-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            turnIntentId,
-            sessionId,
-            content: contentForAgent,
-            displayContent,
-            imageDataUrls,
-            modelSelection: snapshotSelection ?? undefined,
-            agentExecMode: snapshotMode,
-            status: "queued",
-            createdAt: new Date().toISOString(),
-          },
+        const queueResult = store.set(enqueueMessageAtom, {
+          id: `queued-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          turnIntentId,
+          sessionId,
+          content: contentForAgent,
+          displayContent,
+          imageDataUrls,
+          modelSelection: snapshotSelection ?? undefined,
+          agentExecMode: snapshotMode,
+          priority: explicitPostStopSubmit ? "now" : "next",
+          status: "queued",
+          createdAt: new Date().toISOString(),
         });
         if (queueResult !== "enqueued" && queueResult !== "duplicate") {
           throw new Error(

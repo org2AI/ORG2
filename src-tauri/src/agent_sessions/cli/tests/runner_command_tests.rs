@@ -5,7 +5,7 @@ use super::command::{
 use super::input_assembly::CliTurnEnvelope;
 use super::launch_profiles::{
     bare_command_for_agent, default_args_for_mode, default_env_for_mode, defaults_for_agent,
-    CliPermissionMode, ResolvedCliLaunchProfile, CLI_TRANSPORT_EXEC,
+    CliPermissionMode, ResolvedCliLaunchProfile,
 };
 use key_vault::key_store::ModelType;
 use std::path::Path;
@@ -78,11 +78,7 @@ fn build_command_from_options(options: TestCommandBuildOptions<'_>) -> Vec<Strin
             .to_string(),
         args: default_args_for_mode(defaults, CliPermissionMode::FullPermission),
         env: default_env_for_mode(defaults, CliPermissionMode::FullPermission),
-        // These table-style command tests pin the legacy argv builder. Codex
-        // production now defaults to app-server; its default/native argv has
-        // dedicated tests below.
-        transport: matches!(options.agent, ModelType::Codex)
-            .then(|| CLI_TRANSPORT_EXEC.to_string()),
+        transport: None,
     };
     let turn = options.provider_context.map_or_else(
         || CliTurnEnvelope::new(options.task),
@@ -584,21 +580,18 @@ fn app_server_profile(agent: &ModelType, transport: Option<&str>) -> ResolvedCli
 }
 
 #[test]
-fn uses_codex_app_server_defaults_codex_to_native_transport() {
+fn uses_codex_app_server_requires_codex_and_explicit_flag() {
     use super::launch_profiles::uses_codex_app_server;
 
-    // Codex defaults to its native app-server transport.
+    // Ordinary Codex turns retain the per-turn shell-out path.
     let default_profile = app_server_profile(&ModelType::Codex, None);
-    assert!(uses_codex_app_server(&ModelType::Codex, &default_profile));
+    assert!(!uses_codex_app_server(&ModelType::Codex, &default_profile));
 
     // Explicit opt-in flips the codex profile only.
     let opted_in = app_server_profile(&ModelType::Codex, Some("app-server"));
     assert!(uses_codex_app_server(&ModelType::Codex, &opted_in));
 
-    // Explicit legacy escape hatch and unknown values stay off app-server.
-    let exec = app_server_profile(&ModelType::Codex, Some("exec"));
-    assert!(!uses_codex_app_server(&ModelType::Codex, &exec));
-
+    // Unknown transport values stay off app-server.
     let unknown = app_server_profile(&ModelType::Codex, Some("websocket"));
     assert!(!uses_codex_app_server(&ModelType::Codex, &unknown));
 
@@ -632,7 +625,7 @@ fn build_codex_app_server_argv_is_bare_subcommand() {
 }
 
 #[test]
-fn build_codex_default_profile_uses_app_server_argv() {
+fn build_codex_default_profile_uses_exec_argv() {
     let profile = app_server_profile(&ModelType::Codex, None);
     let turn = CliTurnEnvelope::new("native task travels over JSON-RPC");
     let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
@@ -651,10 +644,10 @@ fn build_codex_default_profile_uses_app_server_argv() {
     });
 
     assert_eq!(command_name(&cmd[0]), "codex");
-    assert_eq!(cmd[1], "app-server");
+    assert_eq!(cmd[1], "exec");
     assert!(cmd.contains(&"model_reasoning_effort=\"high\"".to_string()));
-    assert!(!cmd.iter().any(|part| part.contains("native task")));
-    assert!(!cmd.contains(&"thread-123".to_string()));
+    assert!(cmd.iter().any(|part| part.contains("native task")));
+    assert!(cmd.contains(&"thread-123".to_string()));
 }
 
 #[test]

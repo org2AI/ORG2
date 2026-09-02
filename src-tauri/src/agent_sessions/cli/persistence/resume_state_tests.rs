@@ -523,3 +523,78 @@ fn late_resume_id_write_after_delete_does_not_create_orphan_state() {
         None
     );
 }
+
+#[test]
+fn native_catalog_receipt_uses_revision_cas_and_pending_only_reads() {
+    let _sandbox = test_env::sandbox();
+    let dirty_session_id = "cli-native-catalog-dirty";
+    let clean_session_id = "cli-native-catalog-clean";
+    create_test_session(dirty_session_id, "account-a");
+    create_test_session(clean_session_id, "account-a");
+    update_cli_session_id_for_account(dirty_session_id, Some("account-a"), "native-dirty")
+        .expect("publish dirty binding");
+    update_cli_session_id_for_account(clean_session_id, Some("account-a"), "native-clean")
+        .expect("publish clean binding");
+
+    let first = request_native_catalog_refresh(dirty_session_id, Some("account-a"), "native-dirty")
+        .expect("request first catalog revision")
+        .expect("binding still exists");
+    let second =
+        request_native_catalog_refresh(dirty_session_id, Some("account-a"), "native-dirty")
+            .expect("request second catalog revision")
+            .expect("binding still exists");
+    assert_eq!(first.requested_revision, 1);
+    assert_eq!(second.requested_revision, 2);
+
+    assert!(
+        !acknowledge_native_catalog_refresh(&first).expect("reject stale catalog receipt"),
+        "an older worker must not clear a newer terminal request"
+    );
+    let pending = pending_native_catalog_refreshes(8).expect("load dirty receipts");
+    assert_eq!(
+        pending.len(),
+        1,
+        "clean bindings must not enter startup repair"
+    );
+    assert_eq!(pending[0].receipt, second);
+    assert_eq!(pending[0].source, "claude_code");
+
+    assert!(acknowledge_native_catalog_refresh(&second).expect("ack current revision"));
+    assert!(pending_native_catalog_refreshes(8)
+        .expect("reload dirty receipts")
+        .is_empty());
+    assert!(
+        !acknowledge_native_catalog_refresh(&second).expect("repeat acknowledgement"),
+        "acknowledgement is idempotent"
+    );
+}
+
+#[test]
+fn replacing_native_binding_resets_catalog_revisions() {
+    let _sandbox = test_env::sandbox();
+    let session_id = "cli-native-catalog-binding-replaced";
+    create_test_session(session_id, "account-a");
+    update_cli_session_id_for_account(session_id, Some("account-a"), "native-old")
+        .expect("publish old binding");
+    request_native_catalog_refresh(session_id, Some("account-a"), "native-old")
+        .expect("request old binding refresh")
+        .expect("old binding exists");
+
+    update_cli_session_id_for_account(session_id, Some("account-a"), "native-new")
+        .expect("replace native binding");
+    assert!(pending_native_catalog_refreshes(8)
+        .expect("load pending after binding replacement")
+        .is_empty());
+    assert!(
+        request_native_catalog_refresh(session_id, Some("account-a"), "native-old")
+            .expect("request stale native id")
+            .is_none()
+    );
+    assert_eq!(
+        request_native_catalog_refresh(session_id, Some("account-a"), "native-new")
+            .expect("request new native id")
+            .expect("new binding exists")
+            .requested_revision,
+        1
+    );
+}

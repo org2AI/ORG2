@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   planningWatchdogDelayMs,
-  planningWatchdogTerminalStatus,
   shouldShowPlanningIndicator,
 } from "../usePlanningIndicator";
 
@@ -133,25 +132,5 @@ describe("planningWatchdogDelayMs", () => {
   it("clamps negative recency (clock skew) to a full window", () => {
     // msSinceSessionChannelActivity floors at 0, but guard the policy too.
     expect(planningWatchdogDelayMs(0, WATCHDOG)).toBe(WATCHDOG);
-  });
-});
-
-describe("planningWatchdogTerminalStatus", () => {
-  it("never closes a provider that is still doing silent work", () => {
-    expect(planningWatchdogTerminalStatus("running")).toBeNull();
-    expect(planningWatchdogTerminalStatus("installing")).toBeNull();
-    expect(planningWatchdogTerminalStatus("waiting_for_user")).toBeNull();
-    expect(planningWatchdogTerminalStatus("pending")).toBeNull();
-    expect(planningWatchdogTerminalStatus("unknown-new-status")).toBeNull();
-  });
-
-  it("preserves failure/cancellation and normalizes other terminal states", () => {
-    expect(planningWatchdogTerminalStatus("failed")).toBe("failed");
-    expect(planningWatchdogTerminalStatus("cancelled")).toBe("cancelled");
-    expect(planningWatchdogTerminalStatus("timeout")).toBe("timeout");
-    expect(planningWatchdogTerminalStatus("killed")).toBe("failed");
-    expect(planningWatchdogTerminalStatus("completed")).toBe("completed");
-    expect(planningWatchdogTerminalStatus("idle")).toBe("completed");
-    expect(planningWatchdogTerminalStatus("paused")).toBe("completed");
   });
 });

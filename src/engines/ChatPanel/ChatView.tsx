@@ -22,7 +22,7 @@
  * - Session tab bar / header
  * - Session creator (shown when no session)
  */
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import React, {
   memo,
@@ -37,7 +37,6 @@ import { useShowInteractArea } from "@src/contexts/workspace/ChatContext";
 import { derivePlanApprovalViewState } from "@src/engines/SessionCore/derived/planDisplayEvents";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 import { useTodoSync } from "@src/engines/SessionCore/hooks/session/useTodoSync";
-import { sessionCommentTargetForConversationRoot } from "@src/features/Org2Cloud/sessionCommentTarget";
 import { useCloudSessionHasDownloadSurface } from "@src/features/Org2Cloud/useCloudSessionDownloadSurface";
 import { useFileReviewSync } from "@src/hooks/fileReview";
 import { usePendingPlanApproval } from "@src/hooks/session/usePendingPlanApproval";
@@ -48,10 +47,6 @@ import {
   sessionRuntimeStatusAtom,
   streamRetryStatusAtom,
 } from "@src/store/session/cliSessionStatusAtom";
-import {
-  clearSessionContinuationAtom,
-  sessionContinuationNoticesAtom,
-} from "@src/store/session/sessionTabPlacementAtom";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {
@@ -68,6 +63,7 @@ import { ChatViewLiveRegion } from "./ChatViewLiveRegion";
 import { ChatViewPostHistoryOverlays } from "./ChatViewPostHistoryOverlays";
 import type { ChatViewProps } from "./ChatViewTypes";
 import { ConversationExecutionBindingContext } from "./ConversationExecutionBindingContext";
+import { resolveConversationRunnerBindings } from "./ConversationStreamProvider";
 import { useComposerSections } from "./InputArea/hooks/useComposerSections";
 import {
   shouldShowExternalHistoryContinuationComposer,
@@ -103,7 +99,6 @@ const ChatView: React.FC<ChatViewProps> = memo(
     readOnly = false,
     secondary = false,
     chromeTopInset = 0,
-    onSessionContinuation,
   }) => {
     const rootRef = useRef<HTMLDivElement>(null);
     const inputBoxRef = useRef<HTMLDivElement>(null);
@@ -126,30 +121,6 @@ const ChatView: React.FC<ChatViewProps> = memo(
     useTodoSync(isReadOnlySurface ? undefined : sessionId);
     useFileReviewSync(sessionId, !isReadOnlySurface && !secondary);
     const currentSession = useAtomValue(sessionByIdAtom(sessionId));
-    const continuationNoticeAtom = useMemo(
-      () =>
-        selectAtom(
-          sessionContinuationNoticesAtom,
-          (notices) => notices[sessionId] ?? null,
-          Object.is
-        ),
-      [sessionId]
-    );
-    const continuationNotice = useAtomValue(continuationNoticeAtom);
-    const clearSessionContinuation = useSetAtom(clearSessionContinuationAtom);
-    useEffect(() => {
-      if (!continuationNotice || !onSessionContinuation) return;
-      clearSessionContinuation({
-        sourceSessionId: sessionId,
-        sessionId: continuationNotice.sessionId,
-      });
-      onSessionContinuation(continuationNotice);
-    }, [
-      clearSessionContinuation,
-      continuationNotice,
-      onSessionContinuation,
-      sessionId,
-    ]);
     const conversationTargetBinding = useConversationTargetBinding(sessionId);
     const hydratedSessionIdsRef = useRef(new Set<string>());
     useEffect(() => {
@@ -529,13 +500,8 @@ const ChatView: React.FC<ChatViewProps> = memo(
       (isExternalHistorySession(sessionId)
         ? ({ session_id: sessionId } as Session)
         : null);
-    const commentsTargetOverride = useMemo(
-      () =>
-        sessionCommentTargetForConversationRoot(
-          conversationTargetBinding?.root
-        ),
-      [conversationTargetBinding?.root]
-    );
+    const commentsTargetOverride =
+      conversationTargetBinding?.cloudTarget ?? null;
 
     return (
       <ChatSessionContext.Provider value={chatHistorySessionId}>
@@ -549,72 +515,83 @@ const ChatView: React.FC<ChatViewProps> = memo(
           conversationOverrideEvents={
             groupChatViewActive ? groupChatMergedEvents : undefined
           }
-          transcript={
-            <>
-              <div
-                ref={handlePinnedHeaderHostRef}
-                className={
-                  turnPaginationEnabled || groupChatViewActive
-                    ? "flex shrink-0 flex-col"
-                    : "absolute inset-x-0 top-0 z-40 flex flex-col"
-                }
-                style={
-                  chromeTopInset > 0
-                    ? turnPaginationEnabled || groupChatViewActive
-                      ? { paddingTop: chromeTopInset }
-                      : { top: chromeTopInset }
-                    : undefined
-                }
-                data-chat-pinned-header-portal-host
-              />
-              <div className="min-h-0 max-w-full min-w-0 flex-1 overflow-hidden">
-                <ChatViewHistorySurface
-                  sessionId={sessionId}
-                  groupChatViewActive={groupChatViewActive}
-                  groupChatAgents={groupChatAgents}
-                  pipelineSessionId={pipelineSessionId}
-                  handleGroupChatTapEvents={handleGroupChatTapEvents}
-                  retryFailedGroupChatMessage={retryFailedGroupChatMessage}
-                  agentMessageClampEligible={agentMessageClampEligible}
-                  surfaceBgClass={surfaceBgClass}
-                  position={position}
-                  currentAgentOrgMember={currentAgentOrgMember}
-                  agentOrgRunView={agentOrgRunView}
-                  agentOrgRunViewError={agentOrgRunViewError}
-                  refreshAgentOrgRunView={refreshAgentOrgRunView}
-                  handleAgentOrgMemberSessionJump={
-                    handleAgentOrgMemberSessionJump
+        >
+          {(activeRunnerSessionId) => {
+            const runnerBindings = resolveConversationRunnerBindings(
+              sessionId,
+              activeRunnerSessionId
+            );
+            return (
+              <>
+                <div
+                  ref={handlePinnedHeaderHostRef}
+                  className={
+                    turnPaginationEnabled || groupChatViewActive
+                      ? "flex shrink-0 flex-col"
+                      : "absolute inset-x-0 top-0 z-40 flex flex-col"
                   }
-                  handleScrollNavChange={handleScrollNavChange}
-                  followAgentNav={followAgentNav}
-                  browserAddToConversationNav={browserAddToConversationNav}
-                  displayMode={displayMode}
-                  turnPaginationEnabled={turnPaginationEnabled}
-                  paginationTrailingSlot={groupChatHistoryAction}
-                  pinnedHeaderHost={pinnedHeaderHost}
-                  chromeTopInset={chromeTopInset}
-                  historyBottomInset={historyBottomInset}
-                  groupChatViewAvailable={groupChatViewAvailable}
-                  handleGroupChatViewToggle={handleGroupChatViewToggle}
-                  isReadOnlySurface={isReadOnlySurface}
-                  onFailedUserIntentRetry={handleCanonicalConversationRetry}
+                  style={
+                    chromeTopInset > 0
+                      ? turnPaginationEnabled || groupChatViewActive
+                        ? { paddingTop: chromeTopInset }
+                        : { top: chromeTopInset }
+                      : undefined
+                  }
+                  data-chat-pinned-header-portal-host
                 />
-              </div>
-              <ChatViewPostHistoryOverlays
-                composerVisible={showMainComposer}
-                externalScrollToBottomButton={externalScrollToBottomButton}
-                isImportedHistory={isImportedHistory}
-              />
-            </>
-          }
-          composer={
-            <ConversationExecutionBindingContext.Provider
-              value={conversationTargetBinding}
-            >
-              <ChatViewComposerSection {...composerSectionProps} />
-            </ConversationExecutionBindingContext.Provider>
-          }
-        />
+                <div className="min-h-0 max-w-full min-w-0 flex-1 overflow-hidden">
+                  <ChatViewHistorySurface
+                    sessionId={runnerBindings.sourceSessionId}
+                    groupChatViewActive={groupChatViewActive}
+                    groupChatAgents={groupChatAgents}
+                    pipelineSessionId={pipelineSessionId}
+                    handleGroupChatTapEvents={handleGroupChatTapEvents}
+                    retryFailedGroupChatMessage={retryFailedGroupChatMessage}
+                    agentMessageClampEligible={agentMessageClampEligible}
+                    surfaceBgClass={surfaceBgClass}
+                    position={position}
+                    currentAgentOrgMember={currentAgentOrgMember}
+                    agentOrgRunView={agentOrgRunView}
+                    agentOrgRunViewError={agentOrgRunViewError}
+                    refreshAgentOrgRunView={refreshAgentOrgRunView}
+                    handleAgentOrgMemberSessionJump={
+                      handleAgentOrgMemberSessionJump
+                    }
+                    handleScrollNavChange={handleScrollNavChange}
+                    followAgentNav={followAgentNav}
+                    browserAddToConversationNav={browserAddToConversationNav}
+                    displayMode={displayMode}
+                    turnPaginationEnabled={turnPaginationEnabled}
+                    paginationTrailingSlot={groupChatHistoryAction}
+                    pinnedHeaderHost={pinnedHeaderHost}
+                    chromeTopInset={chromeTopInset}
+                    historyBottomInset={historyBottomInset}
+                    groupChatViewAvailable={groupChatViewAvailable}
+                    handleGroupChatViewToggle={handleGroupChatViewToggle}
+                    isReadOnlySurface={isReadOnlySurface}
+                    onFailedUserIntentRetry={handleCanonicalConversationRetry}
+                    planningIndicatorScope={
+                      runnerBindings.planningIndicatorScope
+                    }
+                  />
+                </div>
+                <ChatViewPostHistoryOverlays
+                  composerVisible={showMainComposer}
+                  externalScrollToBottomButton={externalScrollToBottomButton}
+                  isImportedHistory={isImportedHistory}
+                />
+                <ConversationExecutionBindingContext.Provider
+                  value={conversationTargetBinding}
+                >
+                  <ChatViewComposerSection
+                    {...composerSectionProps}
+                    controlSessionId={runnerBindings.controlSessionId}
+                  />
+                </ConversationExecutionBindingContext.Provider>
+              </>
+            );
+          }}
+        </ChatViewLiveRegion>
       </ChatSessionContext.Provider>
     );
   }

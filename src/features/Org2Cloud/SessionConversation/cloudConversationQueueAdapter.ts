@@ -250,6 +250,9 @@ export async function dispatchQueuedCloudConversation(
       getEntry: () => store.get(conversationPlaneAtom)[key],
       setEntries: (update) => store.set(conversationPlaneAtom, update),
       setAuth: (update) => store.set(org2CloudAuthAtom, update),
+      invalidationKey: `signal:${
+        store.get(conversationPlaneSignalAtom)[orgId] ?? 0
+      }`,
     });
     if (plane.state !== "ready") {
       throw new Org2CloudConversationError(

@@ -13,14 +13,11 @@ import {
 } from "@src/engines/SessionCore/control/optimisticTurnStatus";
 import { publishTurnIntentDispatch } from "@src/engines/SessionCore/control/turnIntentDispatchLifecycle";
 import {
+  type TurnTerminalStatus,
   beginTurnDispatch,
   confirmTurnRunning,
   markTurnTerminal,
 } from "@src/engines/SessionCore/control/turnLifecycle";
-import {
-  pendingSyntheticEventAtom,
-  sessionIdAtom,
-} from "@src/engines/SessionCore/core/atoms/metadata";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { SessionService } from "@src/engines/SessionCore/services/SessionService";
@@ -37,11 +34,7 @@ import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 
 const log = createLogger("UserIntentDispatch");
-
-export type UserIntentPendingPolicy =
-  | "none"
-  | "visible"
-  | "across_session_switch";
+const OPTIMISTIC_QUEUE_USER_EVENT_ID_PREFIX = "queued-user:";
 
 export interface UserIntentPreparation {
   sessionId: string;
@@ -49,7 +42,18 @@ export interface UserIntentPreparation {
   generation: number;
   turnIntentId: string;
   runtimeStatusSource: SessionRuntimeStatusSource;
-  pendingPolicy: UserIntentPendingPolicy;
+}
+
+/**
+ * Lifecycle handle for a provider turn that was already accepted before this
+ * renderer attached to it. Unlike UserIntentPreparation it owns no synthetic
+ * user row: the durable provider/canonical transcript already owns that row.
+ */
+export interface AdoptedUserIntent {
+  sessionId: string;
+  generation: number;
+  turnIntentId: string;
+  runtimeStatusSource: SessionRuntimeStatusSource;
 }
 
 interface PrepareUserIntentParams {
@@ -58,11 +62,19 @@ interface PrepareUserIntentParams {
   imageDataUrls?: string[];
   turnIntentId: string;
   runtimeStatusSource?: SessionRuntimeStatusSource;
-  pendingPolicy?: UserIntentPendingPolicy;
   /** Preserve the durable queue identity on a newly created optimistic row. */
   queueMessageId?: string;
   /** Runs after the synchronous lifecycle reserve and before EventStore I/O. */
   beforeAppend?: () => void | Promise<void>;
+}
+
+export interface OptimisticUserDeliveryProjectionParams {
+  sessionId: string;
+  visibleText: string;
+  imageDataUrls?: string[];
+  turnIntentId: string;
+  queueMessageId: string;
+  createdAt?: string;
 }
 
 type UserIntentSendParams = Omit<
@@ -121,20 +133,6 @@ const preparationStates = new WeakMap<
   UserIntentPreparationState
 >();
 
-function parkUserIntentEvent(
-  event: SessionEvent,
-  policy: UserIntentPendingPolicy
-): void {
-  if (policy === "none") return;
-  const store = getInstrumentedStore();
-  if (
-    policy === "across_session_switch" ||
-    store.get(sessionIdAtom) === event.sessionId
-  ) {
-    store.set(pendingSyntheticEventAtom, event);
-  }
-}
-
 function deliveryEvent(
   event: SessionEvent,
   status: "pending" | "sent" | "failed",
@@ -164,6 +162,91 @@ function deliveryEvent(
   };
 }
 
+/**
+ * Stable EventStore identity for the queue-owned optimistic transcript row.
+ *
+ * The queue id, rather than message text or turn id, distinguishes a retry
+ * from the failed row it supersedes. The turn id still reconciles this row
+ * with the provider/native echo once that authoritative event arrives.
+ */
+export function optimisticQueueUserEventId(queueMessageId: string): string {
+  // The terminal delimiter makes removeByIdPrefix an exact lookup for this
+  // queue row: another queue id cannot extend this complete prefix.
+  return `${OPTIMISTIC_QUEUE_USER_EVENT_ID_PREFIX}${queueMessageId}:`;
+}
+
+/** Whether an EventStore row is owned by the canonical queue projection. */
+export function isOptimisticQueueUserEventId(eventId: string): boolean {
+  return (
+    eventId.startsWith(OPTIMISTIC_QUEUE_USER_EVENT_ID_PREFIX) &&
+    eventId.endsWith(":")
+  );
+}
+
+function optimisticQueueUserEvent(
+  params: OptimisticUserDeliveryProjectionParams,
+  status: "pending" | "sent" | "failed",
+  error?: unknown
+): SessionEvent {
+  const reason =
+    status === "failed"
+      ? error instanceof Error
+        ? error.message
+        : error == null
+          ? "Failed to send message"
+          : String(error)
+      : undefined;
+  return createSyntheticUserEvent(params.sessionId, params.visibleText, {
+    id: optimisticQueueUserEventId(params.queueMessageId),
+    createdAt: params.createdAt,
+    imageDataUrls: params.imageDataUrls,
+    turnIntentId: params.turnIntentId,
+    deliveryStatus: status,
+    deliveryError: reason,
+    queueMessageId: params.queueMessageId,
+  });
+}
+
+/**
+ * Persist the canonical queue's visible user row before handing the turn to
+ * any provider/materializer. This is an EventStore projection only; the
+ * existing durable message queue remains the sole dispatch authority.
+ */
+export async function appendOptimisticQueueUserDelivery(
+  params: OptimisticUserDeliveryProjectionParams
+): Promise<SessionEvent> {
+  const event = optimisticQueueUserEvent(params, "pending");
+  await eventStoreProxy.append([event], params.sessionId);
+  return event;
+}
+
+/** Patch the exact queue-owned EventStore row in place. */
+export async function setOptimisticQueueUserDelivery(
+  params: OptimisticUserDeliveryProjectionParams,
+  status: "pending" | "sent" | "failed",
+  error?: unknown
+): Promise<boolean> {
+  const event = optimisticQueueUserEvent(params, status, error);
+  return eventStoreProxy.updateById(
+    event.id,
+    { displayStatus: event.displayStatus, result: event.result },
+    params.sessionId
+  );
+}
+
+/** Remove only an admission attempt that never entered the durable queue. */
+export async function removeOptimisticQueueUserDelivery(
+  params: Pick<
+    OptimisticUserDeliveryProjectionParams,
+    "sessionId" | "queueMessageId"
+  >
+): Promise<void> {
+  await eventStoreProxy.removeByIdPrefix(
+    optimisticQueueUserEventId(params.queueMessageId),
+    params.sessionId
+  );
+}
+
 async function setUserIntentDelivery(
   preparation: UserIntentPreparation,
   status: "pending" | "sent" | "failed",
@@ -171,7 +254,6 @@ async function setUserIntentDelivery(
 ): Promise<void> {
   const next = deliveryEvent(preparation.userEvent, status, error);
   preparation.userEvent = next;
-  parkUserIntentEvent(next, preparation.pendingPolicy);
   const updated = await eventStoreProxy.updateById(
     next.id,
     { displayStatus: next.displayStatus, result: next.result },
@@ -184,14 +266,6 @@ async function setUserIntentDelivery(
   }
 }
 
-export function clearParkedUserIntentEvent(userEventId: string): void {
-  const store = getInstrumentedStore();
-  const pending = store.get(pendingSyntheticEventAtom);
-  if (pending?.id === userEventId) {
-    store.set(pendingSyntheticEventAtom, null);
-  }
-}
-
 /**
  * Reserve a turn and persist its canonical optimistic user row before any
  * slower transcript preparation. The returned value is dispatched in that
@@ -201,7 +275,6 @@ export async function prepareUserIntent(
   params: PrepareUserIntentParams
 ): Promise<UserIntentPreparation> {
   const runtimeStatusSource = params.runtimeStatusSource ?? "dispatch";
-  const pendingPolicy = params.pendingPolicy ?? "none";
   const generation = beginTurnDispatch(params.sessionId);
   publishTurnIntentDispatch(params.turnIntentId, {
     sessionId: params.sessionId,
@@ -218,7 +291,6 @@ export async function prepareUserIntent(
       deliveryStatus: "pending",
       queueMessageId: params.queueMessageId,
     });
-    parkUserIntentEvent(userEvent, pendingPolicy);
     await eventStoreProxy.append([userEvent], params.sessionId);
     const preparation = {
       sessionId: params.sessionId,
@@ -226,7 +298,6 @@ export async function prepareUserIntent(
       generation,
       turnIntentId: params.turnIntentId,
       runtimeStatusSource,
-      pendingPolicy,
     };
     preparationStates.set(preparation, "prepared");
     return preparation;
@@ -235,7 +306,6 @@ export async function prepareUserIntent(
     markTurnTerminal(params.sessionId, "failed", { generation });
     if (userEvent) {
       const failed = deliveryEvent(userEvent, "failed", error);
-      parkUserIntentEvent(failed, pendingPolicy);
       await eventStoreProxy
         .updateById(
           failed.id,
@@ -246,6 +316,48 @@ export async function prepareUserIntent(
     }
     throw error;
   }
+}
+
+/**
+ * Reconnect the ordinary user-intent lifecycle to an already accepted native
+ * turn. Keeping this beside prepareUserIntent is important: both fresh sends
+ * and crash recovery must publish the same turnIntentId -> generation mapping
+ * consumed by the CLI/Agent lifecycle coordinators.
+ */
+export function adoptAcceptedUserIntent(params: {
+  sessionId: string;
+  turnIntentId: string;
+  runtimeStatusSource?: SessionRuntimeStatusSource;
+}): AdoptedUserIntent {
+  const runtimeStatusSource = params.runtimeStatusSource ?? "dispatch";
+  const generation = beginTurnDispatch(params.sessionId);
+  publishTurnIntentDispatch(params.turnIntentId, {
+    sessionId: params.sessionId,
+    generation,
+  });
+  beginOptimisticTurn(params.sessionId, runtimeStatusSource);
+  confirmTurnRunning(params.sessionId);
+  return {
+    sessionId: params.sessionId,
+    generation,
+    turnIntentId: params.turnIntentId,
+    runtimeStatusSource,
+  };
+}
+
+/**
+ * Close the exact lifecycle generation after its authoritative native tail
+ * has settled. Provider adapters normally report this first; recovery calls
+ * this idempotently because the original terminal event may predate renderer
+ * attachment.
+ */
+export function settleUserIntentLifecycle(
+  intent: Pick<AdoptedUserIntent, "sessionId" | "generation">,
+  status: TurnTerminalStatus
+): boolean {
+  return markTurnTerminal(intent.sessionId, status, {
+    generation: intent.generation,
+  });
 }
 
 /** Keep a long pre-dispatch materialization outside the dispatch dead-man. */
@@ -293,7 +405,6 @@ async function resolveUserIntentPreparation(
       imageDataUrls: params.imageDataUrls,
       turnIntentId: params.send.turnIntentId,
       runtimeStatusSource: params.runtimeStatusSource,
-      pendingPolicy: params.pendingPolicy,
       beforeAppend: params.beforeAppend,
       queueMessageId: params.queueMessageId,
     });
@@ -314,7 +425,6 @@ async function resolveUserIntentPreparation(
   }
   // Native materialization may replace EventStore between preparation and
   // dispatch. Append is ID-deduped, so restore the exact same optimistic row.
-  parkUserIntentEvent(existing.userEvent, existing.pendingPolicy);
   try {
     await eventStoreProxy.append([existing.userEvent], params.sessionId);
     return existing;

@@ -50,9 +50,9 @@ fn preserves_app_server_injected_user_rows_without_ui_mirrors() {
     ));
     std::fs::create_dir_all(&temp_dir).expect("create temp dir");
     let path = temp_dir.join("rollout-injected-user.jsonl");
-    let content = r#"{"timestamp":"2026-08-30T01:00:00Z","type":"response_item","payload":{"type":"message","id":"user-1","role":"user","content":[{"type":"input_text","text":"first"},{"type":"input_image","image_url":"data:image/png;base64,QUJD"}],"internal_chat_message_metadata_passthrough":{"turn_id":"orgii-materialization-user-1"}}}
+    let content = r#"{"timestamp":"2026-08-30T01:00:00Z","type":"response_item","payload":{"type":"message","id":"user-1","role":"user","content":[{"type":"input_text","text":"first"},{"type":"input_image","image_url":"data:image/png;base64,QUJD"}]}}
 {"timestamp":"2026-08-30T01:00:01Z","type":"response_item","payload":{"type":"message","id":"assistant-1","role":"assistant","content":[{"type":"output_text","text":"answer"}]}}
-{"timestamp":"2026-08-30T01:00:02Z","type":"response_item","payload":{"type":"message","id":"user-2","role":"user","content":[{"type":"input_text","text":"second"}],"internal_chat_message_metadata_passthrough":{"turn_id":"orgii-materialization-user-2"}}}"#;
+{"timestamp":"2026-08-30T01:00:02Z","type":"response_item","payload":{"type":"message","id":"user-2","role":"user","content":[{"type":"input_text","text":"second"}]}}"#;
     std::fs::write(&path, format!("{content}\n")).expect("write fixture");
 
     let chunks = load_codex_app_from_path("codexapp-injected-user", &path)
@@ -72,41 +72,6 @@ fn preserves_app_server_injected_user_rows_without_ui_mirrors() {
             .count(),
         1
     );
-
-    std::fs::remove_file(&path).expect("remove fixture");
-    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
-}
-
-#[test]
-fn preserves_app_server_injected_canonical_tool_arguments_without_renormalizing() {
-    let temp_dir = std::env::temp_dir().join(format!(
-        "orgii-codex-injected-tool-test-{}",
-        std::process::id()
-    ));
-    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
-    let path = temp_dir.join("rollout-injected-tool.jsonl");
-    let content = r#"{"timestamp":"2026-08-30T01:00:00Z","type":"response_item","payload":{"type":"function_call","name":"grep","arguments":"{\"action\":\"grep\",\"command\":\"rg needle .\",\"cwd\":\"/repo\",\"pattern\":\"needle\",\"payload\":{\"cmd\":\"rg needle .\"},\"__orgiiMaterializedNative\":true}","call_id":"call-1","internal_chat_message_metadata_passthrough":{"turn_id":"auto-compact-0"}}}
-{"timestamp":"2026-08-30T01:00:01Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call-1","output":"match"}}"#;
-    std::fs::write(&path, format!("{content}\n")).expect("write fixture");
-
-    let chunks = load_codex_app_from_path("codexapp-injected-tool", &path)
-        .expect("parse app-server injected transcript");
-    let tool = chunks
-        .iter()
-        .find(|chunk| chunk.action_type == "tool_call")
-        .expect("tool call");
-    assert_eq!(tool.result["call_id"], "call-1");
-    assert_eq!(
-        tool.args,
-        serde_json::json!({
-            "action": "grep",
-            "command": "rg needle .",
-            "cwd": "/repo",
-            "pattern": "needle",
-            "payload": {"cmd": "rg needle ."}
-        })
-    );
-    assert_eq!(tool.result["output"], "match");
 
     std::fs::remove_file(&path).expect("remove fixture");
     std::fs::remove_dir(&temp_dir).expect("remove temp dir");
@@ -152,7 +117,7 @@ fn native_compaction_is_one_system_marker_not_replacement_user_history() {
     std::fs::create_dir_all(&temp_dir).expect("create temp dir");
     let path = temp_dir.join("rollout-compact.jsonl");
     let content = r#"{"timestamp":"2026-08-29T07:00:00Z","type":"event_msg","payload":{"type":"user_message","message":"inspect the repo","images":[],"local_images":[]}}
-{"timestamp":"2026-08-29T07:00:01Z","type":"response_item","payload":{"type":"function_call","name":"read_file","arguments":"{\"path\":\"/repo/README.md\"}","call_id":"call_before_compact","orgii_materialization":true}}
+{"timestamp":"2026-08-29T07:00:01Z","type":"response_item","payload":{"type":"function_call","name":"read_file","arguments":"{\"path\":\"/repo/README.md\"}","call_id":"call_before_compact"}}
 {"timestamp":"2026-08-29T07:00:02Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_before_compact","output":"contents"}}
 {"timestamp":"2026-08-29T07:00:03Z","type":"event_msg","payload":{"type":"agent_message","message":"done"}}
 {"timestamp":"2026-08-29T07:00:04Z","type":"compacted","payload":{"message":"Native Codex summary","replacement_history":[{"item":{"type":"message","role":"user","content":[{"type":"input_text","text":"replacement history copy"}]}},{"item":{"type":"compaction","encrypted_content":"opaque-provider-state"}}],"window_number":2,"first_window_id":"window-1","previous_window_id":"window-1","window_id":"window-2"}}
@@ -202,39 +167,6 @@ fn native_compaction_is_one_system_marker_not_replacement_user_history() {
 }
 
 #[test]
-fn materialized_context_compaction_pair_round_trips_as_one_canonical_boundary() {
-    let temp_dir = std::env::temp_dir().join(format!(
-        "orgii-codex-materialized-compact-test-{}",
-        std::process::id()
-    ));
-    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
-    let path = temp_dir.join("rollout-materialized-compact.jsonl");
-    let content = r#"{"timestamp":"2026-08-31T00:00:00Z","type":"response_item","payload":{"type":"message","id":"compact-1-summary","role":"assistant","content":[{"type":"output_text","text":"Portable compact summary"}],"internal_chat_message_metadata_passthrough":{"turn_id":"orgii-materialized-compaction:compact-1"}}}
-{"timestamp":"2026-08-31T00:00:00Z","type":"response_item","payload":{"type":"context_compaction","id":"compact-1","encrypted_content":null,"internal_chat_message_metadata_passthrough":{"turn_id":"orgii-materialized-compaction:compact-1"}}}
-"#;
-    std::fs::write(&path, content).expect("write fixture");
-
-    let chunks = load_codex_app_from_path("codexapp-materialized-compact", &path)
-        .expect("parse materialized compact transcript");
-    let compact_markers = chunks
-        .iter()
-        .filter(|chunk| chunk.function == "context_compacted")
-        .collect::<Vec<_>>();
-    assert_eq!(compact_markers.len(), 1);
-    assert_eq!(
-        compact_markers[0].result["observation"].as_str(),
-        Some("Portable compact summary")
-    );
-    assert!(!chunks.iter().any(|chunk| {
-        chunk.function == "assistant"
-            && chunk.result["content"].as_str() == Some("Portable compact summary")
-    }));
-
-    std::fs::remove_file(&path).expect("remove fixture");
-    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
-}
-
-#[test]
 fn adjacent_native_compaction_windows_form_one_logical_boundary() {
     let temp_dir = std::env::temp_dir().join(format!(
         "orgii-codex-native-compact-windows-test-{}",
@@ -244,8 +176,8 @@ fn adjacent_native_compaction_windows_form_one_logical_boundary() {
     let path = temp_dir.join("rollout-compact-windows.jsonl");
     let content = r#"{"timestamp":"2026-08-29T07:00:00.000Z","type":"event_msg","payload":{"type":"user_message","message":"inspect","images":[],"local_images":[]}}
 {"timestamp":"2026-08-29T07:00:04.000Z","type":"compacted","payload":{"message":"","window_number":152,"window_id":"window-152","replacement_history":[]}}
-{"timestamp":"2026-08-29T07:00:04.020Z","type":"compacted","payload":{"message":"","window_number":153,"window_id":"window-153","replacement_history":[]}}
-{"timestamp":"2026-08-29T07:00:04.040Z","type":"compacted","payload":{"message":"final summary","window_number":154,"window_id":"window-154","replacement_history":[]}}
+{"timestamp":"2026-08-29T07:00:04.020Z","type":"compacted","payload":{"message":"","window_number":153,"previous_window_id":"window-152","window_id":"window-153","replacement_history":[]}}
+{"timestamp":"2026-08-29T07:00:04.040Z","type":"compacted","payload":{"message":"final summary","window_number":154,"previous_window_id":"window-153","window_id":"window-154","replacement_history":[]}}
 {"timestamp":"2026-08-29T07:00:04.050Z","type":"event_msg","payload":{"type":"context_compacted"}}
 {"timestamp":"2026-08-29T07:00:05.000Z","type":"event_msg","payload":{"type":"user_message","message":"continue","images":[],"local_images":[]}}
 "#;
@@ -263,6 +195,41 @@ fn adjacent_native_compaction_windows_form_one_logical_boundary() {
         Some("final summary")
     );
     assert!(compact_markers[0].chunk_id.contains("window-154"));
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn nearby_distinct_native_compactions_are_not_merged() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-codex-distinct-native-compacts-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("rollout-distinct-compacts.jsonl");
+    let content = r#"{"timestamp":"2026-08-29T07:00:00.000Z","type":"event_msg","payload":{"type":"user_message","message":"inspect","images":[],"local_images":[]}}
+{"timestamp":"2026-08-29T07:00:01.000Z","type":"compacted","payload":{"message":"first summary","window_number":2,"previous_window_id":"window-1","window_id":"window-2","replacement_history":[]}}
+{"timestamp":"2026-08-29T07:00:01.010Z","type":"event_msg","payload":{"type":"context_compacted"}}
+{"timestamp":"2026-08-29T07:00:02.000Z","type":"compacted","payload":{"message":"second summary","window_number":3,"previous_window_id":"window-2","window_id":"window-3","replacement_history":[]}}
+{"timestamp":"2026-08-29T07:00:02.010Z","type":"event_msg","payload":{"type":"context_compacted"}}"#;
+    std::fs::write(&path, format!("{content}\n")).expect("write fixture");
+
+    let chunks = load_codex_app_from_path("codexapp-distinct-native-compacts", &path)
+        .expect("parse distinct nearby native compactions");
+    let compact_markers = chunks
+        .iter()
+        .filter(|chunk| chunk.function == "context_compacted")
+        .collect::<Vec<_>>();
+    assert_eq!(compact_markers.len(), 2);
+    assert_eq!(
+        compact_markers[0].result["observation"].as_str(),
+        Some("first summary")
+    );
+    assert_eq!(
+        compact_markers[1].result["observation"].as_str(),
+        Some("second summary")
+    );
 
     std::fs::remove_file(&path).expect("remove fixture");
     std::fs::remove_dir(&temp_dir).expect("remove temp dir");

@@ -11,11 +11,8 @@ mod exec_results;
 mod normalization;
 
 use exec_results::{append_incremental_output, codex_exec_results, CodexExecResult};
-use normalization::original_raw_tool_name;
 pub(crate) use normalization::pending_custom_tool_calls_from_payload;
-pub(super) use normalization::{
-    is_orgii_materialized_tool_call, pending_tool_calls_from_payload, web_search_call_from_payload,
-};
+pub(super) use normalization::{pending_tool_calls_from_payload, web_search_call_from_payload};
 
 pub(super) struct PendingBackgroundToolCall {
     pub(super) calls: Vec<ImportedToolCall>,
@@ -109,22 +106,6 @@ pub(super) fn resolve_codex_tool_outputs(
     sequence: &mut usize,
     background_tool_calls: &mut imported_history::PendingCallMap<PendingBackgroundToolCall>,
 ) {
-    // ORGII materializes canonical tool calls into Codex records solely so the
-    // native runtime can resume them. Their outputs are application data, not
-    // Codex Desktop exec envelopes. Parsing an arbitrary JSON result that
-    // happens to contain `session_id` as a background-shell receipt drops the
-    // call from the reconstructed transcript, so preserve these records as-is.
-    if calls.iter().all(is_orgii_materialized_tool_call) {
-        emit_codex_call_group(
-            transcript_session_id,
-            calls,
-            fallback_output,
-            None,
-            chunks,
-            sequence,
-        );
-        return;
-    }
     let mut results = codex_exec_results(output_value);
     if results.len() == calls.len() {
         for (call, result) in calls.into_iter().zip(results.drain(..)) {
@@ -350,12 +331,6 @@ pub(super) fn codex_tool_call_chunk(
 ) -> ActivityChunk {
     let mut chunk =
         imported_history::tool_call_chunk(session_id, CODEX_PROVIDER_SLUG, sequence, call, output);
-    if let Some(result) = chunk.result.as_object_mut() {
-        result.insert(
-            "raw_tool_name".to_string(),
-            Value::String(original_raw_tool_name(&call.raw_name).to_string()),
-        );
-    }
     if call.canonical_name == imported_history::FUNCTION_CODE_SEARCH {
         if let Some(result) = chunk.result.as_object_mut() {
             result.insert("content".to_string(), Value::String(output.to_string()));

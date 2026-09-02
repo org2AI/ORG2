@@ -240,14 +240,23 @@ export function applyPostLoadResult(
     // values outside the union (and the CLI-only `installing`) reach sidebar
     // grouping, Kanban lanes and every terminal-status predicate.
     const runStatus = toCliSessionStatus(postResult.runStatus);
-    actions.setSessionRuntimeStatus(runStatus);
     if (TERMINAL_HANDLER_STATUSES.has(postResult.runStatus)) {
-      markTurnTerminal(sessionId, toTurnTerminalStatus(postResult.runStatus));
+      const accepted = markTurnTerminal(
+        sessionId,
+        toTurnTerminalStatus(postResult.runStatus),
+        {
+          generation: options.acceptTerminalForUnchangedGeneration
+            ? options.lifecycleSnapshot?.generation
+            : undefined,
+        }
+      );
+      if (!accepted) return;
     } else if (RUNNING_HANDLER_STATUSES.has(postResult.runStatus)) {
       // Restored a session whose turn is still in flight — open the turn so
       // queueing decisions see it as active until the provider terminal lands.
-      markTurnRunning(sessionId);
+      if (!markTurnRunning(sessionId)) return;
     }
+    actions.setSessionRuntimeStatus(runStatus);
     updateSessionStatus(sessionId, toSessionListStatus(runStatus));
   }
   if (postResult.runError !== undefined) {
@@ -337,25 +346,31 @@ export function createSessionEventHandlerCallbacks(
       // the runtime atom and the session-list row below are both written from
       // a validated value rather than an `as` cast.
       const cliStatus = toCliSessionStatus(status);
+      let lifecycleAccepted = true;
+      if (TERMINAL_HANDLER_STATUSES.has(status)) {
+        // Turn finality has exactly one ingestion point: a terminal status
+        // here. Intermediate signals already returned above.
+        lifecycleAccepted = markTurnTerminal(
+          sessionId,
+          toTurnTerminalStatus(meta?.turnStatus ?? status),
+          { generation: terminalDispatch?.generation }
+        );
+      } else if (isSessionRuntimeExecuting(status)) {
+        lifecycleAccepted = markTurnRunning(sessionId);
+      }
+      if (!lifecycleAccepted) return;
+
       actions.setSessionRuntimeStatus(cliStatus);
       if (status === "failed" && errorMessage) {
         actions.setSessionRuntimeError(errorMessage);
       }
       if (TERMINAL_HANDLER_STATUSES.has(status)) {
-        // Turn finality has exactly one ingestion point: a terminal status
-        // here. Intermediate signals already returned above.
-        markTurnTerminal(
-          sessionId,
-          toTurnTerminalStatus(meta?.turnStatus ?? status),
-          { generation: terminalDispatch?.generation }
-        );
         actions.setPendingCancel(false);
         eventStoreProxy.unpinSession(sessionId);
         updateSessionStatus(sessionId, toSessionListStatus(cliStatus));
         actions.scheduleNativeTranscriptReconcile?.(sessionId, status);
       }
       if (isSessionRuntimeExecuting(status)) {
-        markTurnRunning(sessionId);
         actions.setSessionRuntimeError(null);
         eventStoreProxy.pinSession(sessionId);
         actions.setSessionRolledBack(false);

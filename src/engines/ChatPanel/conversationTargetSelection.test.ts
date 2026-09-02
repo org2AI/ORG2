@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
+import type { AgentRegistry } from "@src/store/session/agentRegistryAtom";
 
 import {
   resolveConversationRuntimeSelection,
@@ -8,11 +9,12 @@ import {
   resolveConversationTargetPillPresentation,
   resolveConversationTargetReadiness,
   resolveDefaultConversationTarget,
+  resolvePickedConversationRuntimeTarget,
 } from "./conversationTargetSelection";
 
 function account(
   id: string,
-  modelType: "claude_code" | "codex" | "cursor_cli",
+  modelType: "claude_code" | "codex",
   model: string
 ): KeyVaultAccount {
   return {
@@ -23,7 +25,7 @@ function account(
     name: id,
     status: "ready",
     hasKey: true,
-    hasApiKey: modelType === "cursor_cli",
+    hasApiKey: false,
     hasSessionToken: true,
     canLaunchCli: true,
     enabled: true,
@@ -36,74 +38,20 @@ const registry = {
   agents: [
     {
       name: "claude_code",
-      compatibleApiProviders: [],
+      compatibleApiProviders: ["anthropic_api"],
+      supportsRustAgents: false,
     },
-    { name: "codex", compatibleApiProviders: [] },
-    { name: "cursor_cli", compatibleApiProviders: [] },
+    {
+      name: "codex",
+      compatibleApiProviders: ["openai_compatible"],
+      supportsRustAgents: true,
+    },
   ],
   apiProviders: [],
-} as never;
+} as unknown as AgentRegistry;
 
 describe("canonical conversation target selection", () => {
-  it("resolves a standard New Session runtime selection without a custom runtime list", () => {
-    expect(
-      resolveConversationRuntimeTarget({
-        selection: {
-          category: "cli_agent",
-          targetKind: "cli_agent",
-          cliAgentType: "codex",
-          agentName: "Codex",
-        },
-        current: {
-          workspaceRepoPath: "/repo",
-          cliAgentType: "claude_code",
-          model: "opus",
-        },
-        sourceModel: "claude-opus-5",
-        workspaceRepoPath: "/repo",
-        accounts: [account("codex-local", "codex", "gpt-5.6-sol")],
-        registry,
-        nativeCliTargets: ["claude_code", "codex"],
-      })
-    ).toEqual({
-      cliAgentType: "codex",
-      accountId: "codex-local",
-      model: "gpt-5.6-sol",
-      workspaceRepoPath: "/repo",
-    });
-  });
-
-  it("switches to an installed Cursor CLI account without a setup dialog", () => {
-    expect(
-      resolveConversationRuntimeTarget({
-        selection: {
-          category: "cli_agent",
-          targetKind: "cli_agent",
-          cliAgentType: "cursor_cli",
-          agentName: "Cursor CLI",
-        },
-        current: {
-          cliAgentType: "codex",
-          accountId: "codex-local",
-          model: "gpt-5.6-sol",
-          workspaceRepoPath: "/repo",
-        },
-        sourceModel: "gpt-5.6-sol",
-        workspaceRepoPath: "/repo",
-        accounts: [account("cursor-local", "cursor_cli", "composer-1")],
-        registry,
-        nativeCliTargets: ["claude_code", "codex", "cursor_cli"],
-      })
-    ).toEqual({
-      cliAgentType: "cursor_cli",
-      accountId: "cursor-local",
-      model: "composer-1",
-      workspaceRepoPath: "/repo",
-    });
-  });
-
   it("uses the selected Rust agent's existing preferred account and model", () => {
-    const rustAccount = account("rust-account", "codex", "gpt-5.6-sol");
     expect(
       resolveConversationRuntimeTarget({
         selection: {
@@ -113,25 +61,11 @@ describe("canonical conversation target selection", () => {
           agentName: "SDE Agent",
         },
         current: null,
-        sourceModel: "gpt-5.6-sol",
         workspaceRepoPath: "/repo",
         preferredAccountId: "rust-account",
         preferredModel: "gpt-5.6-sol",
-        accounts: [rustAccount],
-        registry: {
-          agents: [
-            {
-              name: "claude_code",
-              compatibleApiProviders: [],
-            },
-            {
-              name: "codex",
-              compatibleApiProviders: [],
-              supportsRustAgents: true,
-            },
-          ],
-          apiProviders: [],
-        } as never,
+        accounts: [account("rust-account", "codex", "gpt-5.6-sol")],
+        registry,
         nativeCliTargets: ["claude_code", "codex"],
       })
     ).toEqual({
@@ -159,7 +93,6 @@ describe("canonical conversation target selection", () => {
             authorityScope: [],
             conversationId: "native-source",
           },
-          sourceTitle: "Native source",
           cliAgentType: "claude_code",
           model: "claude-opus-5",
           initialTarget: null,
@@ -181,8 +114,6 @@ describe("canonical conversation target selection", () => {
     expect(
       resolveConversationTargetPillPresentation({
         target,
-        sourceCliAgentType: "claude_code",
-        sourceModel: "claude-opus-5",
         accounts: [account("rust-account", "codex", "gpt-5.6-sol")],
       })
     ).toMatchObject({
@@ -194,13 +125,13 @@ describe("canonical conversation target selection", () => {
     });
   });
 
-  it("resolves a same-provider target from healthy local accounts without a modal", () => {
+  it("does not infer a Codex account from source model provenance", () => {
     expect(
       resolveDefaultConversationTarget({
         preferredTarget: null,
         initialTarget: null,
-        sourceCliAgentType: "claude_code",
-        sourceModel: "claude-opus-5",
+        sourceCliAgentType: "codex",
+        sourceModel: "gpt-5.6-sol",
         workspaceRepoPath: "/repo",
         accounts: [
           account("codex-local", "codex", "gpt-5.6-sol"),
@@ -209,44 +140,43 @@ describe("canonical conversation target selection", () => {
         registry,
         nativeCliTargets: ["claude_code", "codex"],
       })
-    ).toEqual({
-      cliAgentType: "claude_code",
-      accountId: "claude-local",
-      model: "claude-opus-5",
-      workspaceRepoPath: "/repo",
-    });
+    ).toBeNull();
   });
 
-  it("uses the signed-in local Claude CLI for a runtime-only switch", () => {
+  it("commits a pending Codex pick only after source and model are complete", () => {
+    const selection = {
+      category: "cli_agent",
+      targetKind: "cli_agent",
+      cliAgentType: "codex",
+      agentName: "Codex",
+    } as const;
+    const input = {
+      selection,
+      workspaceRepoPath: "/repo",
+      accounts: [account("openai-1", "codex", "gpt-5.6-sol")],
+      registry,
+      nativeCliTargets: ["claude_code", "codex"] as const,
+    };
     expect(
-      resolveConversationRuntimeTarget({
-        selection: {
-          category: "cli_agent",
-          targetKind: "cli_agent",
-          cliAgentType: "claude_code",
-          agentName: "Claude Code",
-        },
-        current: {
+      resolvePickedConversationRuntimeTarget({
+        ...input,
+        config: { keySource: "own_key", cliAgentType: "codex" },
+      })
+    ).toBeNull();
+    expect(
+      resolvePickedConversationRuntimeTarget({
+        ...input,
+        config: {
+          keySource: "own_key",
           cliAgentType: "codex",
-          accountId: "codex-local",
+          selectedAccountId: "openai-1",
           model: "gpt-5.6-sol",
-          workspaceRepoPath: "/repo",
         },
-        sourceModel: "gpt-5.6-sol",
-        workspaceRepoPath: "/repo",
-        accounts: [
-          {
-            ...account("stale-oauth", "claude_code", "claude-fable-5"),
-            status: "error",
-            healthStatus: "invalid",
-          },
-          account("healthy-claude", "claude_code", "claude-opus-5"),
-        ],
-        registry,
-        nativeCliTargets: ["claude_code", "codex"],
       })
     ).toEqual({
-      cliAgentType: "claude_code",
+      cliAgentType: "codex",
+      accountId: "openai-1",
+      model: "gpt-5.6-sol",
       workspaceRepoPath: "/repo",
     });
   });
@@ -318,37 +248,10 @@ describe("canonical conversation target selection", () => {
     });
   });
 
-  it("ignores a stale remembered account and falls back without a dialog", () => {
-    expect(
-      resolveDefaultConversationTarget({
-        preferredTarget: {
-          cliAgentType: "claude_code",
-          accountId: "deleted-account",
-          model: "claude-opus-5",
-          workspaceRepoPath: "/old-repo",
-        },
-        initialTarget: null,
-        sourceCliAgentType: "claude_code",
-        sourceModel: "claude-opus-5",
-        workspaceRepoPath: "/repo",
-        accounts: [account("claude-local", "claude_code", "claude-opus-5")],
-        registry,
-        nativeCliTargets: ["claude_code", "codex"],
-      })
-    ).toEqual({
-      cliAgentType: "claude_code",
-      accountId: "claude-local",
-      model: "claude-opus-5",
-      workspaceRepoPath: "/repo",
-    });
-  });
-
   it("does not present source provenance as a selected execution target", () => {
     expect(
       resolveConversationTargetPillPresentation({
         target: null,
-        sourceCliAgentType: "codex",
-        sourceModel: "gpt-5.6-sol",
       })
     ).toEqual({ selection: null });
 
@@ -361,7 +264,6 @@ describe("canonical conversation target selection", () => {
             authorityScope: [],
             conversationId: "codex-source",
           },
-          sourceTitle: "Codex source",
           cliAgentType: "codex",
           model: "gpt-5.6-sol",
           initialTarget: null,
@@ -403,27 +305,6 @@ describe("canonical conversation target selection", () => {
     ).toBe("ready");
   });
 
-  it("shows the confirmed provider-native continuation target", () => {
-    expect(
-      resolveConversationTargetPillPresentation({
-        target: {
-          cliAgentType: "claude_code",
-          accountId: "claude-local",
-          model: "claude-opus-5",
-          workspaceRepoPath: "/repo",
-        },
-        sourceCliAgentType: "codex",
-        sourceModel: "gpt-5.6-sol",
-      })
-    ).toMatchObject({
-      selection: {
-        model: "claude-opus-5",
-        selectedAccountId: "claude-local",
-        cliAgentType: "claude_code",
-      },
-    });
-  });
-
   it("shows Claude's native Default model for an ambient runtime switch", () => {
     expect(
       resolveConversationTargetPillPresentation({
@@ -431,8 +312,6 @@ describe("canonical conversation target selection", () => {
           cliAgentType: "claude_code",
           workspaceRepoPath: "/repo",
         },
-        sourceCliAgentType: "codex",
-        sourceModel: "gpt-5.5-medium",
       })
     ).toEqual({
       selection: {
@@ -442,46 +321,6 @@ describe("canonical conversation target selection", () => {
         cliAgentType: "claude_code",
         selectedSourceLabel: undefined,
         selectedSourceModelType: "claude_code",
-      },
-    });
-  });
-
-  it("keeps a persisted local child account and provider visible", () => {
-    expect(
-      resolveConversationTargetPillPresentation({
-        target: {
-          cliAgentType: "codex",
-          accountId: "openai-local",
-          model: "gpt-5.5",
-          workspaceRepoPath: "/repo",
-        },
-        sourceCliAgentType: "codex",
-      })
-    ).toMatchObject({
-      selection: {
-        model: "gpt-5.5",
-        selectedAccountId: "openai-local",
-        cliAgentType: "codex",
-      },
-    });
-  });
-
-  it("keeps a remembered ORG2 target above a Codex source", () => {
-    expect(
-      resolveConversationTargetPillPresentation({
-        target: {
-          agentDefinitionId: "builtin:sde",
-          accountId: "openai",
-          model: "gpt-5.6-luna",
-          workspaceRepoPath: "/repo",
-        },
-        sourceCliAgentType: "codex",
-        sourceModel: "gpt-5.6-sol",
-      })
-    ).toMatchObject({
-      selection: {
-        model: "gpt-5.6-luna",
-        cliAgentType: undefined,
       },
     });
   });

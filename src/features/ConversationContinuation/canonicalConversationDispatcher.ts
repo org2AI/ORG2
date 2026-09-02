@@ -1,11 +1,11 @@
 import type { Store } from "jotai/vanilla/store";
 
 import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHistory";
-import { loadCanonicalConversationEvents } from "@src/engines/SessionCore/conversations/canonicalConversationEvents";
 import {
   continueLocalConversationAfterTimelineLoad,
   recoverLocalConversationTurn,
 } from "@src/engines/SessionCore/conversations/localConversationContinuation";
+import { loadLocalCanonicalConversationTimeline } from "@src/engines/SessionCore/conversations/localConversationExecutionTail";
 import type {
   QueuedConversationDispatcher,
   QueuedConversationExecutionMessage,
@@ -78,8 +78,10 @@ async function dispatchQueuedLocalConversation(
   const continuationParams = {
     root,
     title,
-    loadTimeline: async () =>
-      (await loadCanonicalConversationEvents(message.sessionId)).events,
+    // Local/imported roots accumulate durable provider-native execution
+    // episodes. Read the verified child suffixes as part of the same canonical
+    // timeline instead of repeatedly rebuilding from the original source only.
+    loadTimeline: () => loadLocalCanonicalConversationTimeline(root),
     displayText: message.displayContent,
     agentContent: message.content,
     imageDataUrls: message.imageDataUrls,

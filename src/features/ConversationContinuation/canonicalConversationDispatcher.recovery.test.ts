@@ -17,8 +17,8 @@ vi.mock("@src/api/tauri/externalHistory", () => ({
   getImportedHistorySourceBySessionId: vi.fn(() => undefined),
 }));
 vi.mock(
-  "@src/engines/SessionCore/conversations/canonicalConversationEvents",
-  () => ({ loadCanonicalConversationEvents: mocks.loadTimeline })
+  "@src/engines/SessionCore/conversations/localConversationExecutionTail",
+  () => ({ loadLocalCanonicalConversationTimeline: mocks.loadTimeline })
 );
 vi.mock(
   "@src/engines/SessionCore/conversations/localConversationContinuation",
@@ -68,6 +68,22 @@ function message(): QueuedConversationExecutionMessage {
 }
 
 describe("queued local conversation runner recovery", () => {
+  it("loads the verified root plus execution-child timeline at queue head", async () => {
+    const canonicalTimeline = [{ id: "root" }, { id: "claude-tail" }];
+    mocks.loadTimeline.mockResolvedValueOnce(canonicalTimeline);
+    mocks.continueLocal.mockImplementationOnce(async (params) => {
+      expect(await params.loadTimeline()).toBe(canonicalTimeline);
+    });
+
+    await dispatchQueuedCanonicalConversation(createStore(), message(), {
+      onAccepted: vi.fn(),
+    });
+
+    expect(mocks.loadTimeline).toHaveBeenCalledWith(
+      message().conversationDispatch?.root
+    );
+  });
+
   it("keeps recovery pending when a native child's durable runner receipt fails", async () => {
     mocks.order.length = 0;
     mocks.continueLocal.mockImplementation(async (params) => {

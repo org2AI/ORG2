@@ -38,19 +38,33 @@ type NativeConversationItem =
       callId: string;
       name: string;
       output: string;
+      isError: boolean;
+      interrupted: boolean;
       createdAt: string;
     }
   | {
-      kind: "compaction";
+      kind: "context_summary";
       id: string;
       summary: string;
       createdAt: string;
     };
 
-interface NativeMaterializationReceipt {
+interface NativeMaterializationWireReceipt {
   nativeSessionId: string;
   itemCount: number;
 }
+
+export type NativeConversationFidelity =
+  | { level: "exact"; omitted: [] }
+  | { level: "lossy"; omitted: ["participant_authorship"] };
+
+export interface NativeMaterializationReceipt extends NativeMaterializationWireReceipt {
+  /** Content is native; unsupported structured metadata is reported, never injected. */
+  fidelity: NativeConversationFidelity;
+}
+
+export const MAX_NATIVE_CONVERSATION_ITEMS = 100_000;
+export const MAX_NATIVE_CONVERSATION_SERIALIZED_BYTES = 64 * 1024 * 1024;
 
 /** OpenAI's strictest current tool-call identifier envelope. */
 export const MAX_PORTABLE_TOOL_CALL_ID_LENGTH = 64;
@@ -93,19 +107,6 @@ function eventText(event: SessionEvent): string {
     if (typeof candidate === "string") return candidate;
   }
   return "";
-}
-
-/**
- * Provider message schemas have one undifferentiated `user` role and no
- * portable participant/name field. Preserve multi-human Team Chat semantics
- * inside each native user message (never as one transcript prompt) while the
- * canonical SessionEvent keeps the original body and structured sender stamp.
- */
-function providerNativeMessageText(event: SessionEvent, text: string): string {
-  if (event.source !== "user") return text;
-  const sender = conversationSenderStampOf(event);
-  if (!sender) return text;
-  return `<org2-participant>${JSON.stringify(sender)}</org2-participant>\n${text}`;
 }
 
 function eventImages(event: SessionEvent): string[] {
@@ -187,10 +188,35 @@ function hasToolResult(event: SessionEvent): boolean {
   );
 }
 
+function toolResultFlags(event: SessionEvent): {
+  isError: boolean;
+  interrupted: boolean;
+} {
+  const result = event.result as Record<string, unknown> | undefined;
+  const status =
+    typeof result?.status === "string" ? result.status.toLowerCase() : "";
+  const displayStatus = event.displayStatus?.toLowerCase() ?? "";
+  const interrupted =
+    result?.interrupted === true ||
+    status === "interrupted" ||
+    displayStatus === "interrupted" ||
+    displayStatus === "cancelled";
+  return {
+    interrupted,
+    isError:
+      interrupted ||
+      result?.isError === true ||
+      result?.is_error === true ||
+      ["error", "failed", "cancelled"].includes(status) ||
+      ["error", "failed", "cancelled"].includes(displayStatus),
+  };
+}
+
 /**
- * Lossless portable conversation plane. It preserves roles and tool pairing;
- * it never renders history into a prompt. Provider-private reasoning and
- * system policy are intentionally outside the portable contract.
+ * Provider-native conversation content. It preserves roles and tool pairing;
+ * it never renders history into a prompt. Provider-private reasoning, system
+ * policy and unsupported participant metadata are outside the item contract;
+ * callers that need the fidelity result use `projectNativeConversation`.
  */
 export function projectNativeConversationItems(
   events: readonly SessionEvent[]
@@ -211,19 +237,20 @@ export function projectNativeConversationItems(
       event.actionType === "context_compacted" ||
       event.functionName === "context_compacted"
     ) {
-      const summary = eventText(event).trim();
-      // Some providers emit window/checkpoint markers without a transferable
-      // summary. They remain useful ORG2 timeline annotations, but projecting
-      // one as a native compact with an empty replacement history destroys the
-      // target provider's effective context. In that case rebuild the complete
-      // structured role/tool list and let the target manage its own context.
-      if (!summary) continue;
-      items.push({
-        kind: "compaction",
-        id: nativeSourceEventId(event),
-        summary,
-        createdAt: event.createdAt,
-      });
+      const summary = eventText(event);
+      if (summary.trim().length > 0) {
+        // The full canonical log remains intact for ORG2 history, but the
+        // provider's effective context is its latest native summary plus the
+        // structured suffix. Rebuild that message list instead of feeding the
+        // superseded prefix back until every runtime compacts again.
+        items.length = 0;
+        items.push({
+          kind: "context_summary",
+          id: nativeSourceEventId(event),
+          summary,
+          createdAt: event.createdAt,
+        });
+      }
       continue;
     }
     if (
@@ -272,19 +299,25 @@ export function projectNativeConversationItems(
         createdAt: event.createdAt,
       });
       if (hasToolResult(event)) {
+        const { isError, interrupted } = toolResultFlags(event);
         items.push({
           kind: "tool_result",
           id: `${nativeSourceEventId(event)}:result`,
           callId,
           name,
           output: eventText(event),
+          isError,
+          interrupted,
           createdAt: event.createdAt,
         });
       }
       continue;
     }
     if (event.source !== "user" && event.source !== "assistant") continue;
-    const text = providerNativeMessageText(event, eventText(event));
+    // A provider without structured participant metadata receives the exact
+    // human body. Never smuggle ORG2 markup into visible native user text;
+    // `projectNativeConversation` reports that authorship loss explicitly.
+    const text = eventText(event);
     const images = eventImages(event);
     if (!text && images.length === 0) continue;
     const turnId =
@@ -302,8 +335,68 @@ export function projectNativeConversationItems(
   return items;
 }
 
-function sourceEventIdOfNativeItem(item: NativeConversationItem): string {
-  return item.id.replace(/:(?:call|result)$/, "");
+export function projectNativeConversation(events: readonly SessionEvent[]): {
+  items: NativeConversationItem[];
+  fidelity: NativeConversationFidelity;
+} {
+  const items = projectNativeConversationItems(events);
+  const projectedUserIds = new Set(
+    items.flatMap((item) =>
+      item.kind === "message" && item.role === "user" ? [item.id] : []
+    )
+  );
+  const losesAuthorship = events.some(
+    (event) =>
+      event.source === "user" &&
+      projectedUserIds.has(nativeSourceEventId(event)) &&
+      conversationSenderStampOf(event) !== null
+  );
+  return {
+    items,
+    fidelity: losesAuthorship
+      ? { level: "lossy", omitted: ["participant_authorship"] }
+      : { level: "exact", omitted: [] },
+  };
+}
+
+/** Mirror Rust's ingress cap before Tauri deserializes a potentially huge Vec. */
+export function assertNativeConversationPayloadWithinBounds(
+  items: readonly NativeConversationItem[],
+  limits: { maxItems?: number; maxBytes?: number } = {}
+): number {
+  const maxItems = limits.maxItems ?? MAX_NATIVE_CONVERSATION_ITEMS;
+  const maxBytes = limits.maxBytes ?? MAX_NATIVE_CONVERSATION_SERIALIZED_BYTES;
+  if (items.length > maxItems) {
+    throw new Error(
+      `native transcript has ${items.length} items; limit is ${maxItems}`
+    );
+  }
+  let bytes = 2; // JSON array brackets.
+  const encoder = new TextEncoder();
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    // Rust reserializes serde-defaulted fields while validating. Measure that
+    // canonical shape so the TS preflight cannot pass a near-limit payload
+    // that Rust rejects only after allocating/deserializing the full Vec.
+    const validatedShape =
+      item.kind === "message" ? { ...item, turnId: item.turnId ?? null } : item;
+    bytes += encoder.encode(JSON.stringify(validatedShape)).length;
+    if (index > 0) bytes += 1; // JSON array comma.
+    if (bytes > maxBytes) {
+      throw new Error(
+        `native transcript is ${bytes} bytes; limit is ${maxBytes}`
+      );
+    }
+  }
+  return bytes;
+}
+
+export function sourceEventIdOfNativeItem(
+  item: NativeConversationItem
+): string {
+  return item.kind === "message"
+    ? item.id
+    : item.id.replace(/:(?:call|result)$/, "");
 }
 
 /**
@@ -351,8 +444,15 @@ function semanticItem(item: NativeConversationItem): unknown {
         canonicalJson(JSON.parse(item.arguments) as unknown),
       ];
     case "tool_result":
-      return [item.kind, item.callId, item.name, item.output];
-    case "compaction":
+      return [
+        item.kind,
+        item.callId,
+        item.name,
+        item.output,
+        item.isError,
+        item.interrupted,
+      ];
+    case "context_summary":
       return [item.kind, item.summary];
   }
 }
@@ -381,8 +481,8 @@ function nativeItemShape(item: NativeConversationItem | undefined): string {
       return `tool_call:${item.name}:call=${item.callId}:arguments=${item.arguments.length}`;
     case "tool_result":
       return `tool_result:${item.name}:call=${item.callId}:output=${item.output.length}`;
-    case "compaction":
-      return `compaction:summary=${item.summary.length}`;
+    case "context_summary":
+      return `context_summary:text=${item.summary.length}`;
   }
 }
 
@@ -465,7 +565,7 @@ export async function materializeNativeConversation(params: {
   sessionId: string;
   timeline: readonly SessionEvent[];
 }): Promise<{ events: SessionEvent[]; receipt: NativeMaterializationReceipt }> {
-  const items = projectNativeConversationItems(params.timeline);
+  const { items, fidelity } = projectNativeConversation(params.timeline);
   if (params.timeline.length > 0 && items.length === 0) {
     throw new Error(
       "conversation has no portable native role/tool transcript to materialize"
@@ -476,13 +576,15 @@ export async function materializeNativeConversation(params: {
   if (items.length === 0) {
     return {
       events: [],
-      receipt: { nativeSessionId: "", itemCount: 0 },
+      receipt: { nativeSessionId: "", itemCount: 0, fidelity },
     };
   }
-  const receipt = await invokeTauri<NativeMaterializationReceipt>(
+  assertNativeConversationPayloadWithinBounds(items);
+  const wireReceipt = await invokeTauri<NativeMaterializationWireReceipt>(
     "materialize_native_conversation",
     { sessionId: params.sessionId, items }
   );
+  const receipt: NativeMaterializationReceipt = { ...wireReceipt, fidelity };
   try {
     if (receipt.itemCount !== items.length) {
       throw new Error(
@@ -495,12 +597,6 @@ export async function materializeNativeConversation(params: {
       throw new Error(
         `native transcript round-trip verification failed; the target session was not started (${nativeConversationMismatch(items, roundTripped)})`
       );
-    }
-    if (isCliSession(params.sessionId) && receipt.nativeSessionId) {
-      await invokeTauri("commit_native_conversation_materialization", {
-        sessionId: params.sessionId,
-        nativeSessionId: receipt.nativeSessionId,
-      });
     }
     return { events, receipt };
   } catch (error) {
@@ -524,32 +620,19 @@ export async function materializeNativeConversation(params: {
 export async function synchronizeNativeConversation(params: {
   sessionId: string;
   timeline: readonly SessionEvent[];
-  existingEvents: readonly SessionEvent[];
 }): Promise<{ events: SessionEvent[]; receipt: NativeMaterializationReceipt }> {
-  const complete = projectNativeConversationItems(params.timeline);
-  const existing = projectNativeConversationItems(params.existingEvents);
-  if (!nativeConversationItemsArePrefix(existing, complete)) {
-    throw new Error(
-      "native transcript is not a semantic prefix of the canonical conversation"
-    );
-  }
-  if (existing.length === complete.length) {
-    return {
-      events: [...params.existingEvents],
-      receipt: {
-        nativeSessionId: params.sessionId,
-        itemCount: complete.length,
-      },
-    };
-  }
-  const receipt = await invokeTauri<NativeMaterializationReceipt>(
+  const { items: complete, fidelity } = projectNativeConversation(
+    params.timeline
+  );
+  assertNativeConversationPayloadWithinBounds(complete);
+  const wireReceipt = await invokeTauri<NativeMaterializationWireReceipt>(
     "synchronize_native_conversation",
     {
       sessionId: params.sessionId,
       completeItems: complete,
-      prefixItemCount: existing.length,
     }
   );
+  const receipt: NativeMaterializationReceipt = { ...wireReceipt, fidelity };
   if (receipt.itemCount !== complete.length) {
     throw new Error(
       `native synchronizer wrote ${receipt.itemCount} of ${complete.length} items`
@@ -565,12 +648,6 @@ export async function synchronizeNativeConversation(params: {
     throw new Error(
       `native transcript synchronization round-trip verification failed (${nativeConversationMismatch(complete, projectNativeConversationItems(events))})`
     );
-  }
-  if (isCliSession(params.sessionId) && receipt.nativeSessionId) {
-    await invokeTauri("commit_native_conversation_materialization", {
-      sessionId: params.sessionId,
-      nativeSessionId: receipt.nativeSessionId,
-    });
   }
   return { events, receipt };
 }

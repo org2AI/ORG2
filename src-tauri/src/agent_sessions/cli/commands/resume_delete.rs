@@ -88,23 +88,11 @@ pub async fn cli_agent_resume(session_id: String) -> Result<(), String> {
     integrations::proxy::server::stop_session_proxy(&session_id).await;
 
     // Resume participates in the same provider-identity boundary as a normal
-    // turn. This keeps catalog work and runtime/account patches away from the
-    // bound native UUID until terminal publication has completed.
+    // turn so runtime/account patches cannot retarget the active UUID.
     let identity_guard = session_runner::session_identity_lock(&session_id)
         .await
         .lock_owned()
         .await;
-    tokio::task::spawn_blocking({
-        let session_id = session_id.clone();
-        move || {
-            super::super::native_materializer::freeze_cli_native_publication_context(
-                &session_id,
-            )
-        }
-    })
-    .await
-    .map_err(|err| format!("native publication snapshot task failed: {err}"))??;
-
     // Accept the resumed turn exactly like the create path: session + intent go
     // Running together and the frontend gets a `running` event carrying the
     // intent, so the terminal event below can be attributed to this turn.
@@ -118,10 +106,7 @@ pub async fn cli_agent_resume(session_id: String) -> Result<(), String> {
     .await
     .map_err(|err| format!("Task error: {err}"))
     .and_then(|result| result);
-    if let Err(error) = accept_result {
-        super::super::native_materializer::clear_cli_native_publication_context(&session_id);
-        return Err(error);
-    }
+    accept_result?;
     let mut running_msg = serde_json::json!({
         "type": "code_session.status_changed",
         "session_id": session_id,
@@ -148,7 +133,6 @@ pub async fn cli_agent_resume(session_id: String) -> Result<(), String> {
         .await
         {
             tracing::error!("[CodeSession] Resume of {} failed: {}", sid, e);
-            super::super::native_materializer::clear_cli_native_publication_context(&sid);
             // Same fail-loud principle as the create path above: log the
             // persistence failure so a stuck Running row is traceable.
             let failed_sid = sid.clone();
@@ -197,9 +181,6 @@ pub async fn cli_agent_resume(session_id: String) -> Result<(), String> {
         if let Some(existing) = sessions.get(&session_id) {
             if !existing.is_finished() {
                 handle.abort();
-                super::super::native_materializer::clear_cli_native_publication_context(
-                    &session_id,
-                );
                 return Err(format!(
                     "Session {} already has a running agent. Cancel it first.",
                     session_id
@@ -227,7 +208,6 @@ pub async fn cli_agent_delete(session_id: String) -> Result<bool, String> {
         .await
         .lock_owned()
         .await;
-    super::super::native_materializer::clear_cli_native_publication_context(&session_id);
 
     // Release proxy token BEFORE deleting the DB row — after deletion,
     // release_proxy_token_for_session can't find the session to read the token.

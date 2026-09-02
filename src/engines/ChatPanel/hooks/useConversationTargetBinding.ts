@@ -1,6 +1,6 @@
 /** React binding from a canonical conversation to the standard creator controls. */
-import { useAtomValue } from "jotai";
-import { useCallback, useMemo, useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHistory";
 import type { CliAgentType } from "@src/api/tauri/rpc/schemas/validation";
@@ -12,6 +12,7 @@ import {
   resolveConversationTargetPillPresentation,
   resolveConversationTargetReadiness,
   resolveDefaultConversationTarget,
+  resolvePickedConversationRuntimeTarget,
 } from "@src/engines/ChatPanel/conversationTargetSelection";
 import {
   type ConversationRootLocator,
@@ -26,6 +27,10 @@ import {
   parseConversationExecutionParentId,
 } from "@src/engines/SessionCore/conversations/localConversationContinuation";
 import { useCloudConversationSource } from "@src/features/Org2Cloud/SessionConversation/useCloudConversationSource";
+import {
+  sessionCommentTargetForConversationRoot,
+  useSessionCommentTarget,
+} from "@src/features/Org2Cloud/sessionCommentTarget";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import {
   getRustCompatibleAccounts,
@@ -40,6 +45,11 @@ import {
   sessionByIdAtom,
   sessionsAtom,
 } from "@src/store/session/sessionAtom/atoms";
+import {
+  conversationTargetOverridesAtom,
+  reconcileConversationTargetOverrideAtom,
+  setConversationTargetOverrideAtom,
+} from "@src/store/ui/conversationTargetAtom";
 
 /**
  * Project any imported provider history onto the same canonical conversation
@@ -74,8 +84,6 @@ export function conversationSourceFromImportedHistory(params: {
 
   return {
     root,
-    sourceTitle:
-      params.session?.name ?? `${externalSource.displayName} history`,
     cliAgentType: compatibleSourceCliAgentType,
     model: params.session?.model,
     initialTarget: null,
@@ -188,27 +196,53 @@ export function useConversationTargetBinding(
     () => [...builtInAgents, ...customAgents],
     [builtInAgents, customAgents]
   );
+  const externalSource = useMemo(
+    () => conversationSourceFromImportedHistory({ sessionId, session }),
+    [session, sessionId]
+  );
+  const commentTargetSession = useMemo(
+    () =>
+      session ??
+      (externalSource && sessionId
+        ? ({ session_id: sessionId } as Session)
+        : null),
+    [externalSource, session, sessionId]
+  );
+  const encodedCloudTarget = useMemo(
+    () =>
+      commentTargetSession
+        ? sessionCommentTargetForConversationRoot(
+            conversationRootForSession(commentTargetSession)
+          )
+        : null,
+    [commentTargetSession]
+  );
+  const cloudTarget = useSessionCommentTarget(
+    commentTargetSession,
+    encodedCloudTarget
+  );
   const cloudSource = useCloudConversationSource({
     sessionId,
     session,
+    target: cloudTarget,
     sessions,
     repos,
   });
-  const [pickerOverride, setPickerOverride] = useState<{
-    rootKey: string;
-    target: LocalConversationTarget;
-  } | null>(null);
+  const pickerOverrides = useAtomValue(conversationTargetOverridesAtom);
+  const setPickerOverride = useSetAtom(setConversationTargetOverrideAtom);
+  const reconcilePickerOverride = useSetAtom(
+    reconcileConversationTargetOverrideAtom
+  );
 
   const source = useMemo<ConversationSource | undefined>(() => {
-    const externalSource = conversationSourceFromImportedHistory({
-      sessionId,
-      session,
-    });
-    if (externalSource) return externalSource;
-
+    // Cloud sharing is the conversation authority from every viewpoint. An
+    // owner row, an imported replay, and a native child must therefore choose
+    // the same root before considering provider-local history provenance.
     if (cloudSource.source) {
       return cloudSource.source;
     }
+
+    if (externalSource) return externalSource;
 
     if (!session) return undefined;
 
@@ -220,7 +254,6 @@ export function useConversationTargetBinding(
       ) ?? session;
     return {
       root,
-      sourceTitle: rootSession.name ?? session.name ?? "Conversation",
       cliAgentType: session.cliAgentType ?? rootSession.cliAgentType,
       agentDefinitionId:
         session.agentDefinitionId ?? rootSession.agentDefinitionId,
@@ -233,7 +266,7 @@ export function useConversationTargetBinding(
         rootSession
       ),
     };
-  }, [cloudSource.source, session, sessionId, sessions]);
+  }, [cloudSource.source, externalSource, session, sessions]);
 
   const sourceRootKey = source ? conversationRootKey(source.root) : null;
   const persistedExecution = useMemo(
@@ -247,10 +280,16 @@ export function useConversationTargetBinding(
         : null,
     [persistedExecution]
   );
+  useEffect(() => {
+    if (!sourceRootKey) return;
+    reconcilePickerOverride({
+      rootKey: sourceRootKey,
+      persistedTarget,
+    });
+  }, [persistedTarget, reconcilePickerOverride, sourceRootKey]);
   const preferredTarget =
-    pickerOverride?.rootKey === sourceRootKey
-      ? pickerOverride.target
-      : persistedTarget;
+    (sourceRootKey ? pickerOverrides.get(sourceRootKey) : undefined) ??
+    persistedTarget;
 
   const agentDiscoverySettled =
     discoveryState === "ready" ||
@@ -277,7 +316,6 @@ export function useConversationTargetBinding(
       preferredTarget,
       initialTarget: source.initialTarget,
       sourceCliAgentType: source.cliAgentType,
-      sourceAgentDefinitionId: source.agentDefinitionId,
       sourceModel: source.model,
       workspaceRepoPath: cloudSource.workspacePending
         ? undefined
@@ -291,8 +329,8 @@ export function useConversationTargetBinding(
     cloudSource.workspacePending,
     inventoryLoading,
     nativeCliTargets,
-    registry,
     preferredTarget,
+    registry,
     source,
   ]);
 
@@ -315,9 +353,6 @@ export function useConversationTargetBinding(
     if (!source || readiness !== "ready" || !target) return null;
     return resolveConversationTargetPillPresentation({
       target,
-      sourceCliAgentType: source.cliAgentType,
-      sourceAgentDefinitionId: source.agentDefinitionId,
-      sourceModel: source.model,
       accounts,
     });
   }, [accounts, readiness, source, target]);
@@ -335,52 +370,44 @@ export function useConversationTargetBinding(
   );
 
   const applyModelPick = useCallback(
-    (config: AdvancedConfig): boolean => {
-      if (
-        readiness !== "ready" ||
-        isHostedKey(config.keySource) ||
-        !source ||
-        !target
-      ) {
+    (
+      config: AdvancedConfig,
+      pendingRuntime?: AgentSelection | null
+    ): boolean => {
+      if (readiness !== "ready" || isHostedKey(config.keySource) || !source) {
         return false;
       }
-      // A source row always supplies selectedAccountId. An accountless Claude
-      // selection is therefore an explicit return to the signed-in native CLI
-      // and must clear the previous Atlas/managed endpoint instead of `??`
-      // inheriting it. Variant-only changes keep the current source.
-      const accountId =
-        config.selectedAccountId ??
-        (config.model !== undefined ? target.accountId : undefined);
-      const model = config.model;
-      let nextTarget: LocalConversationTarget;
-      if (target.cliAgentType) {
-        const ambientClaude =
-          target.cliAgentType === "claude_code" && !accountId;
-        if ((!accountId || !model) && !ambientClaude) return false;
-        nextTarget = {
-          cliAgentType: target.cliAgentType,
-          accountId: ambientClaude ? undefined : accountId,
-          model,
-          workspaceRepoPath: target.workspaceRepoPath,
-        };
-      } else {
-        if (!target.agentDefinitionId || !accountId || !model) {
-          return false;
-        }
-        nextTarget = {
-          agentDefinitionId: target.agentDefinitionId,
-          accountId,
-          model,
-          workspaceRepoPath: target.workspaceRepoPath,
-        };
-      }
+      const selectedRuntime = pendingRuntime ?? runtimeSelection;
+      if (!selectedRuntime) return false;
+      const nextTarget = resolvePickedConversationRuntimeTarget({
+        selection: selectedRuntime,
+        config: {
+          ...config,
+          cliAgentType: selectedRuntime.cliAgentType,
+        },
+        workspaceRepoPath:
+          target?.workspaceRepoPath ?? source.workspaceRepoPath,
+        accounts,
+        registry,
+        nativeCliTargets,
+      });
+      if (!nextTarget) return false;
       setPickerOverride({
         rootKey: conversationRootKey(source.root),
         target: nextTarget,
       });
       return true;
     },
-    [readiness, source, target]
+    [
+      accounts,
+      nativeCliTargets,
+      readiness,
+      registry,
+      runtimeSelection,
+      setPickerOverride,
+      source,
+      target,
+    ]
   );
 
   const applyRuntimePick = useCallback(
@@ -394,7 +421,6 @@ export function useConversationTargetBinding(
       const next = resolveConversationRuntimeTarget({
         selection,
         current: target,
-        sourceModel: source.model,
         workspaceRepoPath:
           target?.workspaceRepoPath ?? source.workspaceRepoPath,
         preferredAccountId: definition?.selectedAccountId,
@@ -411,11 +437,12 @@ export function useConversationTargetBinding(
       return true;
     },
     [
-      accounts,
       definitions,
+      accounts,
       nativeCliTargets,
       readiness,
       registry,
+      setPickerOverride,
       source,
       target,
     ]
@@ -426,6 +453,7 @@ export function useConversationTargetBinding(
       source
         ? {
             root: source.root,
+            cloudTarget,
             selection: presentation?.selection ?? null,
             runtimeSelection,
             target,
@@ -438,6 +466,7 @@ export function useConversationTargetBinding(
     [
       applyModelPick,
       applyRuntimePick,
+      cloudTarget,
       nativeCliTargets,
       presentation,
       readiness,

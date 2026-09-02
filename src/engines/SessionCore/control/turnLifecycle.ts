@@ -194,19 +194,21 @@ export function beginTurnDispatch(sessionId: string): number {
 export function markTurnRunning(
   sessionId: string,
   options: { generation?: number } = {}
-): void {
+): boolean {
   const state = getState(sessionId);
   if (
     options.generation !== undefined &&
     options.generation !== state.generation
   ) {
-    return;
+    return false;
   }
-  if (state.phase === "working" || state.phase === "stopping") return;
+  if (state.phase === "working") return true;
+  if (state.phase === "stopping") return false;
   if (state.phase === "idle") {
     state.generation += 1;
   }
   transition(sessionId, state, "working");
+  return true;
 }
 
 /**
@@ -265,20 +267,20 @@ export function markTurnTerminal(
   sessionId: string,
   status: TurnTerminalStatus,
   options: { generation?: number } = {}
-): void {
+): boolean {
   const state = getState(sessionId);
   if (
     options.generation !== undefined &&
     options.generation !== state.generation
   ) {
-    return;
+    return false;
   }
   if (state.phase === "dispatching" && options.generation === undefined) {
     log.warn(
       `[turnLifecycle] discarding unattributed "${status}" terminal for ` +
         `session ${sessionId} while dispatching (generation ${state.generation})`
     );
-    return;
+    return false;
   }
   state.lastTerminal = {
     generation: state.generation,
@@ -290,6 +292,7 @@ export function markTurnTerminal(
   } else {
     bumpSignal();
   }
+  return true;
 }
 
 /**

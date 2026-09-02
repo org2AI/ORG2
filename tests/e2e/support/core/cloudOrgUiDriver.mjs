@@ -434,7 +434,7 @@ export async function openCreateOrgFormFromSidebar() {
     "sidebar add-org action"
   );
   await waitForRendered(
-    '[data-testid="create-collab-org-body"]',
+    '[data-testid="collab-org-form"]',
     "create org form"
   );
 }

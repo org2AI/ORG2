@@ -2,7 +2,6 @@
 
 const { spawn, spawnSync } = require("child_process");
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 
 const { createInstanceProfile } = require("./instance-profile.cjs");
@@ -28,14 +27,15 @@ const appPath = path.resolve(
 );
 const dataHome = path.resolve(optionValue("--data-home") ?? profile.dataHome);
 const externalHistoryHome = path.join(dataHome, "external-history-home");
-// Keep discovery isolated between ORG2 identities, but publish newly-created
-// provider-native conversations to the profile read by the real Codex/Claude
-// apps. Tests remain isolated because their launchers do not set this override.
-const nativeTranscriptHome = path.resolve(
+// Publishing into a real provider profile is an explicit opt-in. Independent
+// dev/E2E instances otherwise keep both discovery and materialization inside
+// their isolated data home and cannot mutate one another's native catalogs.
+const nativeTranscriptHomeOption =
   optionValue("--native-transcript-home") ??
-    process.env.ORGII_NATIVE_TRANSCRIPT_HOME ??
-    os.homedir()
-);
+  process.env.ORGII_NATIVE_TRANSCRIPT_HOME;
+const nativeTranscriptHome = nativeTranscriptHomeOption
+  ? path.resolve(nativeTranscriptHomeOption)
+  : null;
 
 if (!fs.existsSync(appPath)) {
   console.error(`Instance app not found: ${appPath}`);
@@ -43,12 +43,16 @@ if (!fs.existsSync(appPath)) {
 }
 fs.mkdirSync(dataHome, { recursive: true });
 fs.mkdirSync(externalHistoryHome, { recursive: true });
-fs.mkdirSync(nativeTranscriptHome, { recursive: true });
+if (nativeTranscriptHome) {
+  fs.mkdirSync(nativeTranscriptHome, { recursive: true });
+}
 
 const instanceEnv = {
   ORGII_HOME: dataHome,
   ORGII_EXTERNAL_HISTORY_HOME: externalHistoryHome,
-  ORGII_NATIVE_TRANSCRIPT_HOME: nativeTranscriptHome,
+  ...(nativeTranscriptHome
+    ? { ORGII_NATIVE_TRANSCRIPT_HOME: nativeTranscriptHome }
+    : {}),
   ORGII_IDE_SERVER_PORT: String(profile.ideServerPort),
   ORGII_CLI_PROXY_PORT: String(profile.cliProxyPort),
   ORGII_DEEP_LINK_SCHEME: profile.authDeepLinkScheme,
@@ -67,7 +71,7 @@ if (process.platform === "win32") {
     `[instance ${profile.id}] started ${appPath}\n` +
       `  ORGII_HOME=${dataHome}\n` +
       `  External history home=${externalHistoryHome}\n` +
-      `  Native transcript home=${nativeTranscriptHome}\n` +
+      `  Native transcript home=${nativeTranscriptHome ?? "isolated"}\n` +
       `  IDE server=${profile.ideServerPort}, CLI proxy=${profile.cliProxyPort}`
   );
   process.exit(0);
@@ -85,6 +89,6 @@ console.log(
   `[instance ${profile.id}] opened ${appPath}\n` +
     `  ORGII_HOME=${dataHome}\n` +
     `  External history home=${externalHistoryHome}\n` +
-    `  Native transcript home=${nativeTranscriptHome}\n` +
+    `  Native transcript home=${nativeTranscriptHome ?? "isolated"}\n` +
     `  IDE server=${profile.ideServerPort}, CLI proxy=${profile.cliProxyPort}`
 );

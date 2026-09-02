@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useRef,
-  useSyncExternalStore,
-} from "react";
+import { createContext, useContext } from "react";
 
 import {
   CONVERSATION_VIEWER_SIGNED_OUT,
@@ -14,11 +8,10 @@ import {
   type ConversationViewerState,
   conversationSenderStampOf,
   resolveConversationSenderRelationship,
-  resolveConversationViewerState,
 } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
-export interface ConversationSenderMetadataContextValue {
+interface ConversationSenderMetadataContextValue {
   viewer: ConversationViewerState;
   /**
    * Enrich a validated event stamp or provide source-owner presentation for
@@ -40,28 +33,6 @@ export const ConversationSenderMetadataProvider =
 export interface ConversationSenderResolution {
   identity: ConversationSenderIdentity | null;
   relationship: ConversationSenderRelationship;
-}
-
-/**
- * Keep the provider's first null distinct from a confirmed logout. A known
- * identity wins immediately (including the synchronous atomWithStorage path),
- * while a genuinely empty first paint settles to `signed_out` after mount.
- */
-export function useConversationViewerState(
-  viewerUserId: string | null | undefined
-): ConversationViewerState {
-  const hydrationCompleteRef = useRef(false);
-  const subscribe = useCallback((onStoreChange: () => void) => {
-    hydrationCompleteRef.current = true;
-    onStoreChange();
-    return () => {};
-  }, []);
-  const hydrationComplete = useSyncExternalStore(
-    subscribe,
-    () => hydrationCompleteRef.current,
-    () => false
-  );
-  return resolveConversationViewerState(viewerUserId, hydrationComplete);
 }
 
 /** Resolve one row without importing any transport/account implementation. */

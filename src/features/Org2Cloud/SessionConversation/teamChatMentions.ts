@@ -165,19 +165,33 @@ function targetFromPill(
 ): MessageAudienceTarget | null {
   if (part.attrs.iconType !== "member") return null;
   if (part.attrs.filePath === "audience://all") return { kind: "all" };
-  const match = part.attrs.filePath.match(
-    /^(member|agent|agent_org):\/\/(.+)$/
-  );
+  const match = part.attrs.filePath.match(/^member:\/\/(.+)$/);
   if (!match) return null;
   try {
-    const id = decodeURIComponent(match[2]).trim();
+    const id = decodeURIComponent(match[1]).trim();
     if (!id) return null;
-    if (match[1] === "member") return { kind: "member", id };
-    if (match[1] === "agent") return { kind: "agent", id };
-    return { kind: "agent_org", id };
+    return { kind: "member", id };
   } catch {
     return null;
   }
+}
+
+/**
+ * Agent and Agent Org pills can remain in the editor when its mode changes.
+ * They are a different address space from Cloud members, so Team Chat must
+ * reject the snapshot explicitly instead of displaying a pill that silently
+ * resolves to no human recipient.
+ */
+export function hasUnsupportedTeamChatAudiencePill(
+  snapshot?: ComposerSnapshot
+): boolean {
+  return Boolean(
+    snapshot?.parts.some(
+      (part) =>
+        part.kind === "pill" &&
+        /^(agent|agent_org):\/\//.test(part.attrs.filePath)
+    )
+  );
 }
 
 function uniqueTargets(
@@ -242,5 +256,9 @@ export function resolveTeamChatMentionedUserIds(
       ),
     ];
   }
-  return audience.human.scope === "members" ? audience.human.memberIds : [];
+  if (audience.human.scope !== "members") return [];
+  const rosterMemberIds = new Set(members.map((member) => member.userId));
+  return audience.human.memberIds.filter(
+    (id) => id !== viewerUserId && rosterMemberIds.has(id)
+  );
 }

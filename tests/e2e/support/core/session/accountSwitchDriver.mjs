@@ -776,7 +776,7 @@ export async function waitForComposerIdle(label, expectedAssistantText = null) {
       }
       const expectedReplyReady =
         expectedAssistantText === null ||
-        (chat.streamEvents ?? chat.chatEvents).some(
+        chat.chatEvents.some(
           (event) =>
             event.source === "assistant" &&
             event.displayVariant === "message" &&

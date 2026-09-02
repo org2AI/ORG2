@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { projectNativeConversationItems } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
+import {
+  QueuedConversationRecoveryPendingError,
+  QueuedConversationTurnClosedError,
+} from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import { Org2CloudConversationError } from "@src/features/Org2Cloud/org2CloudConversationEventsClient";
 
 import {
   buildPushedUserEvent,
@@ -9,10 +14,6 @@ import {
 
 const mocks = vi.hoisted(() => ({
   continueLocalConversation: vi.fn(),
-  pushConversationEvents: vi.fn(),
-  pushConversationEventsChunked: vi.fn(),
-  stageConversationTail: vi.fn(),
-  drainConversationTailOutbox: vi.fn(),
 }));
 
 vi.mock(
@@ -23,37 +24,12 @@ vi.mock(
   })
 );
 
-vi.mock("../org2CloudConversationEventsClient", async (importOriginal) => ({
-  ...(await importOriginal()),
-  boundConversationEventForPush: (event: unknown) => event,
-  pushConversationEvents: mocks.pushConversationEvents,
-  pushConversationEventsChunked: mocks.pushConversationEventsChunked,
-}));
-
-vi.mock("./conversationTailOutbox", () => ({
-  stageConversationTail: mocks.stageConversationTail,
-  drainConversationTailOutbox: mocks.drainConversationTailOutbox,
-}));
-
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.pushConversationEvents.mockResolvedValue({ firstSeq: 1, lastSeq: 1 });
-  mocks.pushConversationEventsChunked.mockResolvedValue({
-    firstSeq: 2,
-    lastSeq: 2,
-  });
-  mocks.stageConversationTail.mockResolvedValue(["staged-tail"]);
-  mocks.drainConversationTailOutbox.mockResolvedValue({
-    pushedChunks: [{ id: "staged-tail", eventCount: 1 }],
-    failedChunkIds: [],
-    pendingChunkIds: [],
-  });
   mocks.continueLocalConversation.mockImplementation(async (params) => {
-    await params.beforeDispatch?.();
     params.onSessionReady?.("cliagent-owner", 3);
     return {
       sessionId: "cliagent-owner",
-      created: false,
       terminalStatus: "completed",
       agentTail: [],
     };
@@ -85,23 +61,23 @@ describe("buildPushedUserEvent", () => {
 describe("runConversationTurn", () => {
   it("binds a fresh hidden runner during preparation, then exposes its exact native prefix", async () => {
     const onRunnerReady = vi.fn();
+    const publishTail = vi.fn();
     mocks.continueLocalConversation.mockImplementationOnce(async (params) => {
-      await params.beforeDispatch?.();
       await params.onSessionPreparing?.("cliagent-fresh");
       await params.onSessionReady?.("cliagent-fresh", 7);
       return {
         sessionId: "cliagent-fresh",
-        created: true,
         terminalStatus: "completed",
         agentTail: [],
       };
     });
 
     const result = await runConversationTurn({
-      getAccessToken: async () => "token",
-      authIdentityKey: "user-1",
-      orgId: "org-1",
-      rootSessionId: "shared-root",
+      root: {
+        authority: "org2-cloud",
+        authorityScope: ["https://cloud.example", "org-1"],
+        conversationId: "shared-root",
+      },
       conversationTitle: "Shared conversation",
       displayText: "continue",
       timeline: [],
@@ -112,6 +88,7 @@ describe("runConversationTurn", () => {
       },
       turnIntentId: "turn-fresh",
       onRunnerReady,
+      publishTail,
     });
 
     expect(onRunnerReady.mock.calls).toEqual([
@@ -121,7 +98,6 @@ describe("runConversationTurn", () => {
     expect(result).toEqual(
       expect.objectContaining({
         terminalStatus: "completed",
-        pushedAgentEventCount: 0,
       })
     );
   });
@@ -134,10 +110,7 @@ describe("runConversationTurn", () => {
     } as const;
 
     await runConversationTurn({
-      getAccessToken: async () => "token",
-      authIdentityKey: "user-1",
-      orgId: "org-1",
-      rootSessionId: "shared-root",
+      root: executionRoot,
       conversationTitle: "Shared conversation",
       displayText: "continue",
       timeline: [],
@@ -146,29 +119,29 @@ describe("runConversationTurn", () => {
         accountId: "acct-codex",
         model: "gpt-5.6-sol",
       },
-      executionRoot,
       turnIntentId: "turn-owner",
+      publishTail: vi.fn(),
     });
 
     expect(mocks.continueLocalConversation).toHaveBeenCalledWith(
       expect.objectContaining({ root: executionRoot })
     );
-    expect(mocks.stageConversationTail).not.toHaveBeenCalled();
   });
 
   it("publishes a non-portable transcript error when execution fails after the user row", async () => {
     const failure = new Error("native materialization failed");
-    mocks.continueLocalConversation.mockImplementationOnce(async (params) => {
-      await params.beforeDispatch?.();
+    const publishTail = vi.fn().mockResolvedValue(undefined);
+    mocks.continueLocalConversation.mockImplementationOnce(async () => {
       throw failure;
     });
 
     await expect(
       runConversationTurn({
-        getAccessToken: async () => "token",
-        authIdentityKey: "user-1",
-        orgId: "org-1",
-        rootSessionId: "shared-root",
+        root: {
+          authority: "org2-cloud",
+          authorityScope: ["https://cloud.example", "org-1"],
+          conversationId: "shared-root",
+        },
         conversationTitle: "Shared conversation",
         displayText: "continue",
         timeline: [],
@@ -178,26 +151,115 @@ describe("runConversationTurn", () => {
           model: "gpt-5.6-sol",
         },
         turnIntentId: "turn-failed",
+        publishTail,
       })
-    ).rejects.toBe(failure);
+    ).rejects.toBeInstanceOf(QueuedConversationTurnClosedError);
 
-    expect(mocks.stageConversationTail).toHaveBeenCalledOnce();
-    const failurePush = mocks.stageConversationTail.mock.calls[0]?.[0];
-    expect(failurePush).toEqual(
+    expect(publishTail).toHaveBeenCalledOnce();
+    const [failureTurnId, failureEvents] = publishTail.mock.calls[0] ?? [];
+    expect(failureTurnId).toBe("turn-failed");
+    expect(failureEvents).toEqual([
       expect.objectContaining({
-        turnId: "turn-failed",
-        events: [
-          expect.objectContaining({
-            source: "system",
-            displayVariant: "error",
-            displayStatus: "failed",
-            result: expect.objectContaining({
-              error: "native materialization failed",
-            }),
-          }),
-        ],
-      })
+        source: "system",
+        displayVariant: "error",
+        displayStatus: "failed",
+        result: expect.objectContaining({
+          error: "native materialization failed",
+        }),
+      }),
+    ]);
+    expect(projectNativeConversationItems(failureEvents)).toEqual([]);
+  });
+
+  it("retains recovery ownership when a pre-accept failure cannot publish", async () => {
+    mocks.continueLocalConversation.mockRejectedValueOnce(
+      new Error("native materialization failed")
     );
-    expect(projectNativeConversationItems(failurePush.events)).toEqual([]);
+
+    await expect(
+      runConversationTurn({
+        root: {
+          authority: "org2-cloud",
+          authorityScope: ["https://cloud.example", "org-1"],
+          conversationId: "shared-root",
+        },
+        conversationTitle: "Shared conversation",
+        displayText: "continue",
+        timeline: [],
+        target: {
+          cliAgentType: "codex",
+          accountId: "acct-codex",
+          model: "gpt-5.6-sol",
+        },
+        turnIntentId: "turn-publish-retry",
+        publishTail: vi
+          .fn()
+          .mockRejectedValue(
+            new Org2CloudConversationError("temporary upstream failure", 503)
+          ),
+      })
+    ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
+  });
+
+  it("closes a failed turn after one definitive 4xx terminal-publication rejection", async () => {
+    mocks.continueLocalConversation.mockRejectedValueOnce(
+      new Error("native materialization failed")
+    );
+    const publishTail = vi
+      .fn()
+      .mockRejectedValue(new Org2CloudConversationError("ORG2_FORBIDDEN", 403));
+
+    await expect(
+      runConversationTurn({
+        root: {
+          authority: "org2-cloud",
+          authorityScope: ["https://cloud.example", "org-1"],
+          conversationId: "shared-root",
+        },
+        conversationTitle: "Shared conversation",
+        displayText: "continue",
+        timeline: [],
+        target: {
+          cliAgentType: "codex",
+          accountId: "acct-codex",
+          model: "gpt-5.6-sol",
+        },
+        turnIntentId: "turn-terminal-4xx",
+        publishTail,
+      })
+    ).rejects.toBeInstanceOf(QueuedConversationTurnClosedError);
+
+    expect(publishTail).toHaveBeenCalledOnce();
+    expect(mocks.continueLocalConversation).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a transient local continuation failure retryable without publishing a terminal", async () => {
+    const publishTail = vi.fn();
+    const pending = new QueuedConversationRecoveryPendingError(
+      "native transcript is still settling"
+    );
+    mocks.continueLocalConversation.mockRejectedValueOnce(pending);
+
+    await expect(
+      runConversationTurn({
+        root: {
+          authority: "org2-cloud",
+          authorityScope: ["https://cloud.example", "org-1"],
+          conversationId: "shared-root",
+        },
+        conversationTitle: "Shared conversation",
+        displayText: "continue",
+        timeline: [],
+        target: {
+          cliAgentType: "codex",
+          accountId: "acct-codex",
+          model: "gpt-5.6-sol",
+        },
+        turnIntentId: "turn-transient",
+        publishTail,
+      })
+    ).rejects.toBe(pending);
+
+    expect(publishTail).not.toHaveBeenCalled();
   });
 });

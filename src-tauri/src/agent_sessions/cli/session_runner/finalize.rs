@@ -17,7 +17,7 @@ use key_vault::key_store::{ModelType, KEY_SERVICE};
 
 use super::super::parsers::{canonicalize_cli_error_message, is_codex_fallback_metadata_notice};
 use super::super::persistence::{self, CodeSession};
-use super::super::types::{KeySource, SessionStatus};
+use super::super::types::SessionStatus;
 use super::cursor_usage::fetch_cursor_usage_for_session;
 use super::helpers::{clear_live_status, flush_and_broadcast};
 use super::oauth_setup::is_cli_oauth_failure_message;
@@ -385,59 +385,30 @@ pub(super) async fn finalize_session_run(
     } else {
         None
     };
-
-    // Provider-native publication is part of the durable turn boundary, not a
-    // best-effort metadata side effect. Serialize it with follow-ups and finish
-    // it before any terminal lifecycle, WorkItem receipt, member-availability,
-    // or terminal broadcast can advertise a result that the native App cannot
-    // resume. The runner transcript remains in place when publication fails so
-    // a later recovery can retry the copy.
-    let publishes_native_conversation = session.key_source == KeySource::OwnKey
-        && matches!(agent, ModelType::Codex | ModelType::ClaudeCode);
-    let native_control_lock = if publishes_native_conversation {
-        Some(super::helpers::session_control_lock(session_id).await)
-    } else {
-        None
-    };
-    let native_control_guard = match native_control_lock.as_ref() {
-        Some(lock) => Some(lock.lock().await),
-        None => None,
-    };
-
-    // Flush pending assistant/tool deltas into the authoritative CLI store
-    // before materializing that store into the provider-native transcript.
+    // Native providers write the selected profile directly. Flushing final
+    // deltas is the only terminal persistence boundary.
     flush_and_broadcast(session_id).await;
-    let native_publication_error = if publishes_native_conversation {
-        match super::super::native_materializer::publish_cli_native_transcript_after_turn(
+
+    // Converge the provider-written file before publishing the terminal
+    // lifecycle. Consumers may start the next runtime as soon as that durable
+    // status is visible, so the exact native transcript/alias must already be
+    // authoritative. Only the best-effort App catalog refresh is deferred.
+    if let Err(error) =
+        super::super::native_materializer::converge_bound_native_transcript_and_schedule_catalog(
             session_id,
         )
         .await
-        {
-            Ok(true) => None,
-            Ok(false) if raw_final_status == SessionStatus::Completed => Some(
-                "Provider-native transcript publication failed: a completed turn has no native transcript"
-                    .to_string(),
-            ),
-            Ok(false) => None,
-            Err(err) => Some(format!(
-                "Provider-native transcript publication failed: {err}"
-            )),
-        }
-    } else {
-        None
-    };
-    if let Some(publication_error) = native_publication_error.as_ref() {
+    {
+        let convergence_error =
+            format!("Provider-native transcript could not be finalized safely: {error}");
         tracing::error!(
             session_id,
-            error = %publication_error,
-            "failed to publish provider-native conversation at terminal boundary"
+            error = %error,
+            "failing terminal lifecycle because provider-native transcript did not converge"
         );
         raw_final_status = SessionStatus::Failed;
         final_status = SessionStatus::Failed;
-        error_message = Some(match error_message.take() {
-            Some(existing) => format!("{existing}\n{publication_error}"),
-            None => publication_error.clone(),
-        });
+        error_message = Some(convergence_error);
     }
 
     if raw_final_status == SessionStatus::Failed {
@@ -603,7 +574,6 @@ pub(super) async fn finalize_session_run(
         status_msg["turn_intent_id"] = serde_json::Value::String(turn_intent_id.to_string());
     }
     websocket_handler::broadcast(status_msg.to_string());
-    drop(native_control_guard);
 
     // The generic terminal status preserves the existing lifecycle contract,
     // but it is not a replay-readiness barrier: Cursor may commit the provider

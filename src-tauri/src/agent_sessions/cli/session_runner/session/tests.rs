@@ -1,6 +1,5 @@
 use super::super::env_setup::{
-    atlascloud_model_id, claude_isolated_hooks_path, clear_codex_compatible_profile,
-    codex_isolated_hooks_path, codex_needs_compatible_profile, cursor_isolated_hooks_path,
+    atlascloud_model_id, clear_codex_compatible_profile, codex_needs_compatible_profile,
     opencode_zenmux_model_id, resolve_orgtrack_product_mode, setup_codex_compatible_profile,
     setup_codex_hosted_profile, setup_opencode_atlascloud_profile, setup_opencode_zenmux_profile,
     validate_codex_own_key_provider,
@@ -18,6 +17,39 @@ use key_vault::key_store::{AuthMethod, ModelKey};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
+
+#[test]
+fn codex_app_server_is_scoped_to_native_continuation_episode() {
+    let profile = || super::super::launch_profiles::ResolvedCliLaunchProfile {
+        permission_mode: super::super::launch_profiles::CliPermissionMode::Manual,
+        command: "codex".to_string(),
+        args: vec!["exec".to_string()],
+        env: HashMap::new(),
+        // Even a stale persisted opt-in must not change an ordinary turn.
+        transport: Some(super::super::launch_profiles::CLI_TRANSPORT_APP_SERVER.to_string()),
+    };
+
+    let mut ordinary = profile();
+    scope_codex_transport_to_turn(&ModelType::Codex, &mut ordinary, false);
+    assert!(!super::super::launch_profiles::uses_codex_app_server(
+        &ModelType::Codex,
+        &ordinary
+    ));
+
+    let mut continuation = profile();
+    scope_codex_transport_to_turn(&ModelType::Codex, &mut continuation, true);
+    assert!(super::super::launch_profiles::uses_codex_app_server(
+        &ModelType::Codex,
+        &continuation
+    ));
+
+    let mut claude = profile();
+    scope_codex_transport_to_turn(&ModelType::ClaudeCode, &mut claude, true);
+    assert_eq!(
+        claude.transport.as_deref(),
+        Some(super::super::launch_profiles::CLI_TRANSPORT_APP_SERVER)
+    );
+}
 
 #[test]
 fn command_logging_redacts_mcp_config_values() {
@@ -74,14 +106,6 @@ fn stderr_redaction_covers_resolved_environment_secrets() {
     assert!(!redacted.contains("arbitrary-token-value"));
     assert!(!redacted.contains("sk-abcdefghijklmnopqrstuvwxyz"));
     assert!(redacted.contains("[REDACTED_SECRET]"));
-}
-
-#[test]
-fn isolated_provider_hook_paths_match_each_config_root_contract() {
-    let root = Path::new("/isolated/profile");
-    assert_eq!(cursor_isolated_hooks_path(root), root.join("hooks.json"));
-    assert_eq!(claude_isolated_hooks_path(root), root.join("settings.json"));
-    assert_eq!(codex_isolated_hooks_path(root), root.join("hooks.json"));
 }
 
 #[test]
@@ -932,6 +956,49 @@ fn explicit_claude_account_clears_inherited_routing_not_owned_by_source() {
     assert_eq!(
         explicit.get("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"),
         Some(&None)
+    );
+}
+
+#[test]
+fn explicit_claude_account_wins_over_stale_launch_profile_routing() {
+    let mut selected = HashMap::from([
+        (
+            "ANTHROPIC_AUTH_TOKEN".to_string(),
+            "anthropic-1-oauth".to_string(),
+        ),
+        (
+            "CLAUDE_CONFIG_DIR".to_string(),
+            "/accounts/anthropic-1".to_string(),
+        ),
+    ]);
+    let stale_profile = HashMap::from([
+        (
+            "ANTHROPIC_BASE_URL".to_string(),
+            "https://api.atlascloud.ai".to_string(),
+        ),
+        ("ANTHROPIC_MODEL".to_string(), "zai-org/glm-5.2".to_string()),
+        (
+            "ANTHROPIC_AUTH_TOKEN".to_string(),
+            "stale-atlas-token".to_string(),
+        ),
+        ("PATH".to_string(), "/custom/bin".to_string()),
+    ]);
+
+    merge_launch_profile_environment(&ModelType::ClaudeCode, true, &mut selected, stale_profile);
+
+    assert_eq!(
+        selected.get("ANTHROPIC_AUTH_TOKEN").map(String::as_str),
+        Some("anthropic-1-oauth")
+    );
+    assert_eq!(
+        selected.get("CLAUDE_CONFIG_DIR").map(String::as_str),
+        Some("/accounts/anthropic-1")
+    );
+    assert!(!selected.contains_key("ANTHROPIC_BASE_URL"));
+    assert!(!selected.contains_key("ANTHROPIC_MODEL"));
+    assert_eq!(
+        selected.get("PATH").map(String::as_str),
+        Some("/custom/bin")
     );
 }
 

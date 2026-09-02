@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import {
   getApiAccount,
+  js,
   selectPreferredModel,
 } from "../../support/core/agentOrgUiDriver.mjs";
 import {
@@ -1293,7 +1294,7 @@ describe("Cloud collaboration with two independent rendered app instances", func
       await browser.waitUntil(
         async () =>
           execJS(
-            `return document.querySelectorAll('[data-testid="cloud-org-member-row"]').length >= 2;`
+            `return Boolean(document.querySelector('[data-testid="cloud-org-member-row"][data-member-id=${JSON.stringify(teammate.userId)}]'));`
           ),
         {
           timeout: CLOUD_FETCH_TIMEOUT_MS,
@@ -2493,10 +2494,14 @@ describe("Cloud collaboration with two independent rendered app instances", func
       return true;
     `);
     if (!typedAt) throw new Error("primary Team Chat editor rejected @");
-    await clickRendered(
-      `[data-testid="agent-org-mention-option"][data-mention-id="${teammate.userId}"]`,
-      "primary choose teammate mention pill"
-    );
+    const mentionOptionSelector = `[data-testid="agent-org-mention-option"][data-mention-id="${teammate.userId}"]`;
+    await waitForRendered(mentionOptionSelector, "primary teammate mention option");
+    const mentionPicked = await execJS(js.visibleClick(mentionOptionSelector));
+    if (mentionPicked !== "clicked") {
+      throw new Error(
+        `primary choose teammate mention pill failed: ${mentionPicked}`
+      );
+    }
     const appended = await execJS(`
       const editor = Array.from(document.querySelectorAll(${JSON.stringify(editorSelector)}))
         .filter((element) => element.isContentEditable && element.getClientRects().length > 0)
@@ -2556,7 +2561,6 @@ describe("Cloud collaboration with two independent rendered app instances", func
     }
     if (
       !failedState ||
-      !failedState.observed.includes("pending") ||
       !failedState.observed.includes("failed") ||
       failedState.composerText.includes(TEAM_CHAT_MENTION_BODY) ||
       !failedState.failedText.includes(TEAM_CHAT_MENTION_BODY) ||

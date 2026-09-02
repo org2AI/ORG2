@@ -27,7 +27,7 @@ interface UseConversationSubmitRouterOptions {
   onSurfaceSubmit: (input: SubmitOverrideInput) => Promise<boolean>;
 }
 
-export interface CanonicalConversationRetryInput extends SubmitOverrideInput {
+interface CanonicalConversationRetryInput extends SubmitOverrideInput {
   turnIntentId?: string;
 }
 
@@ -50,6 +50,15 @@ export function canonicalConversationTargetOrThrow(
   if (!target) {
     throw new SubmitValidationError(
       "Select an available runtime before continuing this conversation"
+    );
+  }
+  if (
+    target.cliAgentType &&
+    (target.cliAgentType !== "claude_code" || target.accountId) &&
+    (!target.accountId || !target.model)
+  ) {
+    throw new SubmitValidationError(
+      "Select a model and source before continuing this conversation"
     );
   }
   return target;

@@ -1,4 +1,5 @@
 use core_types::activity::ActivityChunk;
+use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::sources::imported_history::{self, strip_orgii_exec_mode_bridge};
@@ -37,19 +38,44 @@ pub(crate) fn strip_ignored_embedded_images(line: &mut String) {
 }
 
 fn preserves_user_embedded_images(line: &str) -> bool {
-    let Some(image_offset) = line.find(CODEX_EMBEDDED_IMAGE_MARKER) else {
+    if !line.contains(CODEX_EMBEDDED_IMAGE_MARKER) {
+        return false;
+    }
+
+    #[derive(Deserialize)]
+    struct Envelope<'a> {
+        #[serde(borrow)]
+        payload: Option<Payload<'a>>,
+    }
+
+    #[derive(Deserialize)]
+    struct Payload<'a> {
+        #[serde(rename = "type", borrow)]
+        kind: Option<&'a str>,
+        #[serde(borrow)]
+        role: Option<&'a str>,
+        #[serde(borrow)]
+        item: Option<Item<'a>>,
+    }
+
+    #[derive(Deserialize)]
+    struct Item<'a> {
+        #[serde(rename = "type", borrow)]
+        kind: Option<&'a str>,
+    }
+
+    let Ok(envelope) = serde_json::from_str::<Envelope<'_>>(line) else {
         return false;
     };
-    let before_image = &line[..image_offset];
-    let Some(payload_offset) = before_image.find("\"payload\":{") else {
+    let Some(payload) = envelope.payload else {
         return false;
     };
-    let payload = &before_image[payload_offset..];
-    (payload.starts_with("\"payload\":{\"type\":\"message\"")
-        && payload.contains("\"role\":\"user\",\"content\":"))
-        || payload.starts_with("\"payload\":{\"type\":\"user_message\"")
-        || (payload.starts_with("\"payload\":{\"type\":\"item_completed\"")
-            && payload.contains("\"item\":{\"type\":\"UserMessage\""))
+    match payload.kind {
+        Some("message") => payload.role == Some("user"),
+        Some("user_message") => true,
+        Some("item_completed") => payload.item.and_then(|item| item.kind) == Some("UserMessage"),
+        _ => false,
+    }
 }
 
 #[cfg(test)]
@@ -59,6 +85,13 @@ mod embedded_image_tests {
     #[test]
     fn preserves_user_image_data_for_native_transfer() {
         let mut line = r#"{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"inspect"},{"type":"input_image","image_url":"data:image/png;base64,USER"}]}}"#.to_string();
+        strip_ignored_embedded_images(&mut line);
+        assert!(line.contains("data:image/png;base64,USER"));
+    }
+
+    #[test]
+    fn preserves_reordered_user_image_envelope_for_native_transfer() {
+        let mut line = r#"{"payload":{"content":[{"image_url":"data:image/png;base64,USER","type":"input_image"}],"role":"user","type":"message"},"type":"response_item"}"#.to_string();
         strip_ignored_embedded_images(&mut line);
         assert!(line.contains("data:image/png;base64,USER"));
     }
@@ -141,21 +174,20 @@ pub(super) fn user_image_data_urls_from_response_message(payload: &Value) -> Vec
 
 /// User rows injected through Codex app-server's supported
 /// `thread/inject_items` API have no later `event_msg/UserMessage` mirror.
-/// ORGII stamps their public passthrough turn id while materializing so they
-/// can be projected as real user turns without mistaking Codex's user-role
-/// system/context prefix messages for human input.
-pub(super) fn materialized_user_message_chunk_from_response_message(
+/// Injected response items carry Codex's native stable `id`; the user-role
+/// system/context prefix rows do not. Use that provider-owned distinction
+/// instead of adding ORG2-only metadata to the transcript.
+pub(super) fn injected_user_message_chunk_from_response_message(
     session_id: &str,
     sequence: usize,
     created_at: &str,
     payload: &Value,
 ) -> Option<ActivityChunk> {
-    let materialized = payload
-        .get("internal_chat_message_metadata_passthrough")
-        .and_then(|metadata| metadata.get("turn_id"))
+    let has_native_item_id = payload
+        .get("id")
         .and_then(Value::as_str)
-        .is_some_and(|turn_id| turn_id.starts_with("orgii-materialization-"));
-    if !materialized
+        .is_some_and(|id| !id.trim().is_empty());
+    if !has_native_item_id
         || payload.get("type").and_then(Value::as_str) != Some("message")
         || payload.get("role").and_then(Value::as_str) != Some("user")
     {

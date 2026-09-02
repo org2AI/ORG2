@@ -24,6 +24,11 @@ export type {
   WorkItemReadBucket,
   WorkItemsReadOptions,
 } from "./client";
+export {
+  propertyDefinitionsCacheKey,
+  quickActionsCacheKey,
+  statusDefinitionsCacheKey,
+} from "./client";
 export type {
   AdapterAuthMethod,
   AdapterDescriptor,
@@ -41,10 +46,17 @@ export {
   enrichedWorkItemToUI,
   projectDataToUI,
   standaloneWorkItemDataToEnriched,
+  uiWorkItemToFrontmatter,
+  workItemCommentToEntry,
   workItemDataToUI,
 } from "./adapters";
 
 export { invalidateCache as invalidateProjectCache } from "./cache";
+export {
+  REVISION_CONFLICT_CODE,
+  parseRevisionConflict,
+} from "./revisionConflict";
+export type { RevisionConflictDetails } from "./revisionConflict";
 
 export const projectApi = {
   // Init
@@ -100,6 +112,8 @@ export const projectApi = {
   retryLatestWorkItemRun: client.retryLatestWorkItemRun,
   previewDiscussionTrigger: client.previewDiscussionTrigger,
   postDiscussionComment: client.postDiscussionComment,
+  editDiscussionComment: client.editDiscussionComment,
+  deleteDiscussionComment: client.deleteDiscussionComment,
   resolveDiscussionThread: client.resolveDiscussionThread,
   reopenDiscussionThread: client.reopenDiscussionThread,
   listWorkItemSubscriptions: client.listWorkItemSubscriptions,
@@ -109,6 +123,8 @@ export const projectApi = {
   upsertPropertyDefinition: client.upsertPropertyDefinition,
   archivePropertyDefinition: client.archivePropertyDefinition,
   listWorkItemPropertyValues: client.listWorkItemPropertyValues,
+  listScopePropertyValues: client.listScopePropertyValues,
+  batchSetWorkItemPropertyValue: client.batchSetWorkItemPropertyValue,
   setWorkItemPropertyValue: client.setWorkItemPropertyValue,
   updateStandaloneWorkItemPartial: client.updateStandaloneWorkItemPartial,
   transitionWorkItemHandoff: client.transitionWorkItemHandoff,
@@ -136,6 +152,19 @@ export const projectApi = {
   // Batch
   batchDeleteWorkItems: client.batchDeleteWorkItems,
   batchUpdateWorkItems: client.batchUpdateWorkItems,
+  // Quick actions
+  listQuickActions: client.listQuickActions,
+  upsertQuickAction: client.upsertQuickAction,
+  archiveQuickAction: client.archiveQuickAction,
+  invokeQuickAction: client.invokeQuickAction,
+  // Saved views
+  listSavedViews: client.listSavedViews,
+  upsertSavedView: client.upsertSavedView,
+  archiveSavedView: client.archiveSavedView,
+  // Custom statuses
+  listStatusDefinitions: client.listStatusDefinitions,
+  upsertStatusDefinition: client.upsertStatusDefinition,
+  setStatusDefinitionArchived: client.setStatusDefinitionArchived,
   // Assets
   saveAsset: client.saveAsset,
   deleteAsset: client.deleteAsset,

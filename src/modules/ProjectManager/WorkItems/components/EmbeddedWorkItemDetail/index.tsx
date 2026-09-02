@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback } from "react";
+import React, { Suspense, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { WorkstationTabHeaderHost } from "@src/hooks/tabHost/useWorkstationTabHeader";
@@ -41,6 +41,7 @@ interface EmbeddedWorkItemDetailProps {
   onRegisterActions?: (actions: WorkItemDetailActions) => void;
   repoPath: string | null;
   projectSlug: string | null;
+  orgId: string;
   shortId: string | null;
   onRefreshWorkItem: () => Promise<void>;
   onOpenSession?: (sessionId: string, title?: string) => void;
@@ -71,6 +72,7 @@ const EmbeddedWorkItemDetail: React.FC<EmbeddedWorkItemDetailProps> = ({
   onRegisterActions,
   repoPath,
   projectSlug,
+  orgId,
   shortId,
   onRefreshWorkItem,
   onOpenSession,
@@ -91,6 +93,12 @@ const EmbeddedWorkItemDetail: React.FC<EmbeddedWorkItemDetailProps> = ({
     },
     [onUpdateWorkItem, workItem]
   );
+
+  useEffect(() => {
+    if (workItem?.name !== undefined) {
+      onWorkItemNameUpdated?.(workItem.name);
+    }
+  }, [onWorkItemNameUpdated, workItem?.name]);
 
   if (!workItem) {
     return (
@@ -134,6 +142,7 @@ const EmbeddedWorkItemDetail: React.FC<EmbeddedWorkItemDetailProps> = ({
         onRegisterActions={onRegisterActions}
         repoPath={repoPath}
         projectSlug={projectSlug}
+        orgId={orgId}
         shortId={shortId}
         onRefreshWorkItem={onRefreshWorkItem}
         onOpenSession={onOpenSession}

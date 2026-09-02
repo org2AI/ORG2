@@ -115,6 +115,127 @@ fn append_collab_row(
     Ok(())
 }
 
+/// Return whether one exact collaboration field path still has a local write
+/// that must win over an incoming collaboration snapshot.
+pub(crate) fn has_pending_collab_field_path(
+    conn: &Connection,
+    org_id: &str,
+    field_path: &str,
+    error_context: &'static str,
+) -> Result<bool, String> {
+    conn.query_row(
+        "SELECT 1 FROM outbox_entries
+          WHERE org_id = ?1
+            AND status IN ('pending', 'in_flight')
+            AND instr(',' || coalesce(field_path, '') || ',', ',' || ?2 || ',') > 0
+          LIMIT 1",
+        params![org_id, field_path],
+        |_| Ok(true),
+    )
+    .optional()
+    .map(|found| found.unwrap_or(false))
+    .map_err(|err| format!("{error_context}: {err}"))
+}
+
+#[derive(Clone, Copy)]
+enum OrgCatalogKind {
+    PropertyDefinition,
+    StatusDefinition,
+    SavedView,
+    QuickAction,
+    OrgSkill,
+}
+
+impl OrgCatalogKind {
+    fn field_path(self, entity_id: &str) -> String {
+        let prefix = match self {
+            Self::PropertyDefinition => "propertyDefinitions",
+            Self::StatusDefinition => "statusDefinitions",
+            Self::SavedView => "savedViews",
+            Self::QuickAction => "quickActions",
+            Self::OrgSkill => "orgSkills",
+        };
+        format!("{prefix}.{entity_id}")
+    }
+
+    fn anchor_label(self) -> &'static str {
+        match self {
+            Self::PropertyDefinition => "property definition",
+            Self::StatusDefinition => "status definition",
+            Self::SavedView => "saved view",
+            Self::QuickAction => "quick action",
+            Self::OrgSkill => "org skill",
+        }
+    }
+}
+
+/// Enqueue one existing org entity as the carrier for an org-wide catalog
+/// mutation. Project rows are preferred; an org-scoped standalone Work Item
+/// is the fallback. If the org has no entity yet, the first future entity
+/// write carries the catalog in its full snapshot.
+fn record_org_catalog_touch(
+    conn: &Connection,
+    org_id: &str,
+    catalog: OrgCatalogKind,
+    entity_id: &str,
+) -> Result<(), String> {
+    if !is_collab_org(conn, org_id)? {
+        return Ok(());
+    }
+    let anchor_label = catalog.anchor_label();
+    let project_anchor: Option<(EntityType, String, String)> = conn
+        .query_row(
+            "SELECT 'project', id, slug
+               FROM projects
+              WHERE org_id = ?1
+              ORDER BY updated_at DESC, id ASC
+              LIMIT 1",
+            params![org_id],
+            |row| {
+                Ok((
+                    EntityType::Project,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|err| format!("DB error ({anchor_label} project anchor): {err}"))?;
+    let anchor = match project_anchor {
+        Some(anchor) => Some(anchor),
+        None => conn
+            .query_row(
+                "SELECT 'work_item', id, ''
+                   FROM workitems
+                  WHERE org_id = ?1 AND project_id IS NULL AND deleted_at IS NULL
+                  ORDER BY updated_at DESC, id ASC
+                  LIMIT 1",
+                params![org_id],
+                |row| {
+                    Ok((
+                        EntityType::WorkItem,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                },
+            )
+            .optional()
+            .map_err(|err| format!("DB error ({anchor_label} Work Item anchor): {err}"))?,
+    };
+    let Some((entity_type, anchor_id, project_slug)) = anchor else {
+        return Ok(());
+    };
+    append_collab_row(
+        conn,
+        org_id,
+        &project_slug,
+        entity_type,
+        &anchor_id,
+        OutboxOp::Update,
+        Some(&catalog.field_path(entity_id)),
+    )
+}
+
 /// Hook for the atomic work-item update path (called from
 /// [`crate::sync::io::record_local_update`] when the project has no
 /// adapter binding). No-op unless the project's org is collab-synced.
@@ -184,60 +305,53 @@ pub(crate) fn record_property_definitions_touch(
     org_id: &str,
     property_id: &str,
 ) -> Result<(), String> {
-    if !is_collab_org(conn, org_id)? {
-        return Ok(());
-    }
-    let project_anchor: Option<(EntityType, String, String)> = conn
-        .query_row(
-            "SELECT 'project', id, slug
-               FROM projects
-              WHERE org_id = ?1
-              ORDER BY updated_at DESC, id ASC
-              LIMIT 1",
-            params![org_id],
-            |row| {
-                Ok((
-                    EntityType::Project,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            },
-        )
-        .optional()
-        .map_err(|err| format!("DB error (property definition project anchor): {err}"))?;
-    let anchor = match project_anchor {
-        Some(anchor) => Some(anchor),
-        None => conn
-            .query_row(
-                "SELECT 'work_item', id, ''
-                   FROM workitems
-                  WHERE org_id = ?1 AND project_id IS NULL AND deleted_at IS NULL
-                  ORDER BY updated_at DESC, id ASC
-                  LIMIT 1",
-                params![org_id],
-                |row| {
-                    Ok((
-                        EntityType::WorkItem,
-                        row.get::<_, String>(1)?,
-                        row.get::<_, String>(2)?,
-                    ))
-                },
-            )
-            .optional()
-            .map_err(|err| format!("DB error (property definition Work Item anchor): {err}"))?,
-    };
-    let Some((entity_type, entity_id, project_slug)) = anchor else {
-        return Ok(());
-    };
-    append_collab_row(
+    record_org_catalog_touch(
         conn,
         org_id,
-        &project_slug,
-        entity_type,
-        &entity_id,
-        OutboxOp::Update,
-        Some(&format!("propertyDefinitions.{property_id}")),
+        OrgCatalogKind::PropertyDefinition,
+        property_id,
     )
+}
+
+/// Enqueue one existing org entity as the carrier for org-wide custom
+/// status definitions — same anchor selection as
+/// [`record_property_definitions_touch`].
+pub(crate) fn record_status_definitions_touch(
+    conn: &Connection,
+    org_id: &str,
+    status_id: &str,
+) -> Result<(), String> {
+    record_org_catalog_touch(conn, org_id, OrgCatalogKind::StatusDefinition, status_id)
+}
+
+/// Enqueue one existing org entity as the carrier for org-wide saved
+/// views — same anchor selection as [`record_property_definitions_touch`].
+pub(crate) fn record_saved_views_touch(
+    conn: &Connection,
+    org_id: &str,
+    view_id: &str,
+) -> Result<(), String> {
+    record_org_catalog_touch(conn, org_id, OrgCatalogKind::SavedView, view_id)
+}
+
+/// Enqueue one existing org entity as the carrier for org-wide quick
+/// actions — same anchor selection as [`record_property_definitions_touch`].
+pub(crate) fn record_quick_actions_touch(
+    conn: &Connection,
+    org_id: &str,
+    action_id: &str,
+) -> Result<(), String> {
+    record_org_catalog_touch(conn, org_id, OrgCatalogKind::QuickAction, action_id)
+}
+
+/// Enqueue one existing org entity as the carrier for org-shared skills —
+/// same anchor selection as [`record_property_definitions_touch`].
+pub(crate) fn record_org_skills_touch(
+    conn: &Connection,
+    org_id: &str,
+    skill_id: &str,
+) -> Result<(), String> {
+    record_org_catalog_touch(conn, org_id, OrgCatalogKind::OrgSkill, skill_id)
 }
 
 /// Hook for full work-item writes (create / delete / restore / full
@@ -497,6 +611,21 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
     // once per non-empty bounded drain instead of once per Work Item.
     let property_definitions =
         crate::work_item_features::properties::export_definitions(&conn, org_id)?;
+    let status_definitions =
+        crate::work_item_features::statuses::export_definitions(&conn, org_id)?;
+    let saved_views = crate::work_item_features::saved_views::export_views(&conn, org_id)?;
+    let quick_actions = crate::work_item_features::quick_actions::export_actions(&conn, org_id)?;
+    // Shared skills can be two orders of magnitude larger than the other
+    // org-wide definitions, so they only ride pushes their own touch
+    // enqueued instead of every entity snapshot.
+    let needs_org_skills = groups
+        .values()
+        .any(|(_, paths)| paths.iter().any(|path| path.starts_with("orgSkills.")));
+    let org_skills = if needs_org_skills {
+        Some(crate::org_skills::export_skills(&conn, org_id)?)
+    } else {
+        None
+    };
 
     // Claim everything we're about to hand out.
     for (ids, _) in groups.values() {
@@ -527,6 +656,10 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
                 entry_ids,
                 field_paths,
                 &property_definitions,
+                &status_definitions,
+                &saved_views,
+                &quick_actions,
+                org_skills.as_deref(),
             )?,
             "work_item" => hydrate_work_item(
                 &conn,
@@ -535,6 +668,10 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
                 entry_ids,
                 field_paths,
                 &property_definitions,
+                &status_definitions,
+                &saved_views,
+                &quick_actions,
+                org_skills.as_deref(),
             )?,
             other => {
                 let message = format!("unsupported collab entity_type: {other}");
@@ -553,6 +690,23 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
     Ok(items)
 }
 
+/// Shared skills only ride pushes whose field paths asked for them; a
+/// `None` keeps the key off the wire so pullers skip the apply entirely.
+fn attach_org_skills(payload: Value, org_skills: Option<&[crate::org_skills::OrgSkill]>) -> Value {
+    let Some(org_skills) = org_skills else {
+        return payload;
+    };
+    let Value::Object(mut map) = payload else {
+        return payload;
+    };
+    map.insert(
+        "orgSkills".to_string(),
+        serde_json::to_value(org_skills).unwrap_or(Value::Null),
+    );
+    Value::Object(map)
+}
+
+#[allow(clippy::too_many_arguments)]
 fn hydrate_project(
     conn: &Connection,
     org_id: &str,
@@ -560,6 +714,10 @@ fn hydrate_project(
     entry_ids: Vec<i64>,
     field_paths: Vec<String>,
     property_definitions: &[crate::work_item_features::PropertyDefinition],
+    status_definitions: &[crate::work_item_features::StatusDefinition],
+    saved_views: &[crate::work_item_features::SavedView],
+    quick_actions: &[crate::work_item_features::QuickAction],
+    org_skills: Option<&[crate::org_skills::OrgSkill]>,
 ) -> Result<CollabPushItem, String> {
     let row = conn
         .query_row(
@@ -641,7 +799,11 @@ fn hydrate_project(
         "createdAt": to_iso8601(created_at),
         "updatedAt": to_iso8601(updated_at),
         "propertyDefinitions": property_definitions,
+        "statusDefinitions": status_definitions,
+        "savedViews": saved_views,
+        "quickActions": quick_actions,
     });
+    let payload = attach_org_skills(payload, org_skills);
 
     Ok(CollabPushItem {
         entry_ids,
@@ -666,6 +828,7 @@ fn read_project_remote_version(conn: &Connection, project_id: &str) -> Result<Op
     .map_err(|err| format!("DB error (project remote version): {}", err))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn hydrate_work_item(
     conn: &Connection,
     org_id: &str,
@@ -673,6 +836,10 @@ fn hydrate_work_item(
     entry_ids: Vec<i64>,
     field_paths: Vec<String>,
     property_definitions: &[crate::work_item_features::PropertyDefinition],
+    status_definitions: &[crate::work_item_features::StatusDefinition],
+    saved_views: &[crate::work_item_features::SavedView],
+    quick_actions: &[crate::work_item_features::QuickAction],
+    org_skills: Option<&[crate::org_skills::OrgSkill]>,
 ) -> Result<CollabPushItem, String> {
     let base_version: Option<i64> = conn
         .query_row(
@@ -707,6 +874,29 @@ fn hydrate_work_item(
             } else {
                 Vec::new()
             };
+            let carried_status_definitions: &[crate::work_item_features::StatusDefinition] =
+                if project_slug.is_none() {
+                    status_definitions
+                } else {
+                    &[]
+                };
+            let carried_saved_views: &[crate::work_item_features::SavedView] =
+                if project_slug.is_none() {
+                    saved_views
+                } else {
+                    &[]
+                };
+            let carried_quick_actions: &[crate::work_item_features::QuickAction] =
+                if project_slug.is_none() {
+                    quick_actions
+                } else {
+                    &[]
+                };
+            let carried_org_skills = if project_slug.is_none() {
+                org_skills
+            } else {
+                None
+            };
             let property_snapshot =
                 crate::work_item_features::properties::export_work_item_snapshot(
                     conn,
@@ -732,6 +922,10 @@ fn hydrate_work_item(
                     &data.body,
                     &field_revisions,
                     &property_snapshot,
+                    carried_status_definitions,
+                    carried_saved_views,
+                    carried_quick_actions,
+                    carried_org_skills,
                 )),
             )
         }
@@ -753,11 +947,16 @@ fn hydrate_work_item(
 /// server's `orgii_upsert_work_item` column extraction exactly; the
 /// long tail rides in the same object and round-trips through
 /// [`apply_work_item`]'s typed deserialization.
+#[allow(clippy::too_many_arguments)]
 fn work_item_wire(
     frontmatter: &WorkItemFrontmatter,
     body: &str,
     field_revisions: &std::collections::HashMap<String, crate::projects::io::FieldRevision>,
     property_snapshot: &crate::work_item_features::TypedPropertyWireSnapshot,
+    status_definitions: &[crate::work_item_features::StatusDefinition],
+    saved_views: &[crate::work_item_features::SavedView],
+    quick_actions: &[crate::work_item_features::QuickAction],
+    org_skills: Option<&[crate::org_skills::OrgSkill]>,
 ) -> Value {
     fn to_value<T: Serialize>(value: &T) -> Value {
         serde_json::to_value(value).unwrap_or(Value::Null)
@@ -768,7 +967,7 @@ fn work_item_wire(
         .iter()
         .map(|(name, rev)| (name.clone(), json!(rev.mtime)))
         .collect();
-    json!({
+    let payload = json!({
         "_fieldRevisions": field_mtimes,
         "id": frontmatter.id,
         "projectId": frontmatter.project,
@@ -802,8 +1001,12 @@ fn work_item_wire(
         "closeOut": to_value(&frontmatter.close_out),
         "workProducts": to_value(&frontmatter.work_products),
         "propertyDefinitions": to_value(&property_snapshot.definitions),
+        "statusDefinitions": to_value(&status_definitions),
+        "savedViews": to_value(&saved_views),
+        "quickActions": to_value(&quick_actions),
         "propertyValues": to_value(&property_snapshot.values),
-    })
+    });
+    attach_org_skills(payload, org_skills)
 }
 
 // ============================================================================

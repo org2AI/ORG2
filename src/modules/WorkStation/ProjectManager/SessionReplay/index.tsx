@@ -437,6 +437,7 @@ function ProjectReplayContent({ view }: { view: ProjectReplayView }) {
             >
               {group.workItems.map((workItem) => (
                 <WorkItemRow
+                  statusOrgId={null}
                   key={workItem.session_id}
                   workItem={workItem}
                   isSelected={workItem.session_id === selectedWorkItemId}

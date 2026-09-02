@@ -25,6 +25,7 @@ export {
   useProjectDataChangedListener,
   useProjectDataChanged,
   projectDataChangedSignalAtom,
+  projectRosterChangedSignalAtom,
   type ProjectDataChange,
 } from "./useProjectDataChanged";
 

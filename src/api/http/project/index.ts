@@ -39,6 +39,18 @@ export type {
   SyncStatusReport,
 } from "./sync";
 export { OAUTH_FLOW_KIND, projectSyncApi } from "./sync";
+export {
+  PROJECT_ROSTER_CHANGED_EVENT,
+  PROJECT_STATUS_DEFINITIONS_CHANGED_EVENT,
+  emitProjectRosterChanged,
+  emitProjectStatusDefinitionsChanged,
+  notifyProjectRosterChanged,
+  notifyProjectStatusDefinitionsChanged,
+} from "./events";
+export type {
+  ProjectRosterChangedPayload,
+  ProjectStatusDefinitionsChangedPayload,
+} from "./events";
 
 export {
   buildLabelMap,

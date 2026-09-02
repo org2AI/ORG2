@@ -22,6 +22,11 @@ use crate::sync::types::{EntityType, OutboxOp, OutboxStatus};
 /// In-flight rows older than this are considered orphaned by a dead TS
 /// session and are demoted back to pending at the next drain.
 const STALE_IN_FLIGHT_MS: i64 = 5 * 60 * 1000;
+/// Local-only durable owner for org catalog mutations. It is rebound to a
+/// real project/work-item carrier at drain time and is never sent as a wire
+/// entity kind.
+const KIND_ORG_CATALOG: &str = "org_catalog";
+const ORG_CATALOG_REHOME_FIELD: &str = "orgCatalog.__rehome__";
 
 // ============================================================================
 // Gates
@@ -72,6 +77,26 @@ fn append_collab_row(
     op: OutboxOp,
     field_path: Option<&str>,
 ) -> Result<(), String> {
+    append_collab_row_raw(
+        conn,
+        org_id,
+        project_slug,
+        entity_type.as_db_str(),
+        entity_id,
+        op,
+        field_path,
+    )
+}
+
+fn append_collab_row_raw(
+    conn: &Connection,
+    org_id: &str,
+    project_slug: &str,
+    entity_type: &str,
+    entity_id: &str,
+    op: OutboxOp,
+    field_path: Option<&str>,
+) -> Result<(), String> {
     let duplicate: Option<i64> = conn
         .query_row(
             "SELECT id FROM outbox_entries
@@ -81,7 +106,7 @@ fn append_collab_row(
               LIMIT 1",
             params![
                 org_id,
-                entity_type.as_db_str(),
+                entity_type,
                 entity_id,
                 op.as_db_str(),
                 OutboxStatus::Pending.as_db_str(),
@@ -101,7 +126,7 @@ fn append_collab_row(
          VALUES (?1, ?2, ?3, ?4, ?5, '{}', ?6, 0, ?7, ?8)",
         params![
             project_slug,
-            entity_type.as_db_str(),
+            entity_type,
             entity_id,
             op.as_db_str(),
             field_path,
@@ -157,22 +182,11 @@ impl OrgCatalogKind {
         };
         format!("{prefix}.{entity_id}")
     }
-
-    fn anchor_label(self) -> &'static str {
-        match self {
-            Self::PropertyDefinition => "property definition",
-            Self::StatusDefinition => "status definition",
-            Self::SavedView => "saved view",
-            Self::QuickAction => "quick action",
-            Self::OrgSkill => "org skill",
-        }
-    }
 }
 
-/// Enqueue one existing org entity as the carrier for an org-wide catalog
-/// mutation. Project rows are preferred; an org-scoped standalone Work Item
-/// is the fallback. If the org has no entity yet, the first future entity
-/// write carries the catalog in its full snapshot.
+/// Persist an org-wide catalog mutation independently from today's carrier.
+/// The drain binds it to a current project (preferred) or standalone Work
+/// Item; if neither exists, the row remains pending until one is created.
 fn record_org_catalog_touch(
     conn: &Connection,
     org_id: &str,
@@ -182,57 +196,26 @@ fn record_org_catalog_touch(
     if !is_collab_org(conn, org_id)? {
         return Ok(());
     }
-    let anchor_label = catalog.anchor_label();
-    let project_anchor: Option<(EntityType, String, String)> = conn
-        .query_row(
-            "SELECT 'project', id, slug
-               FROM projects
-              WHERE org_id = ?1
-              ORDER BY updated_at DESC, id ASC
-              LIMIT 1",
-            params![org_id],
-            |row| {
-                Ok((
-                    EntityType::Project,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            },
-        )
-        .optional()
-        .map_err(|err| format!("DB error ({anchor_label} project anchor): {err}"))?;
-    let anchor = match project_anchor {
-        Some(anchor) => Some(anchor),
-        None => conn
-            .query_row(
-                "SELECT 'work_item', id, ''
-                   FROM workitems
-                  WHERE org_id = ?1 AND project_id IS NULL AND deleted_at IS NULL
-                  ORDER BY updated_at DESC, id ASC
-                  LIMIT 1",
-                params![org_id],
-                |row| {
-                    Ok((
-                        EntityType::WorkItem,
-                        row.get::<_, String>(1)?,
-                        row.get::<_, String>(2)?,
-                    ))
-                },
-            )
-            .optional()
-            .map_err(|err| format!("DB error ({anchor_label} Work Item anchor): {err}"))?,
-    };
-    let Some((entity_type, anchor_id, project_slug)) = anchor else {
-        return Ok(());
-    };
-    append_collab_row(
+    append_collab_row_raw(
         conn,
         org_id,
-        &project_slug,
-        entity_type,
-        &anchor_id,
+        "",
+        KIND_ORG_CATALOG,
+        org_id,
         OutboxOp::Update,
         Some(&catalog.field_path(entity_id)),
+    )
+}
+
+fn record_org_catalog_rehome(conn: &Connection, org_id: &str) -> Result<(), String> {
+    append_collab_row_raw(
+        conn,
+        org_id,
+        "",
+        KIND_ORG_CATALOG,
+        org_id,
+        OutboxOp::Update,
+        Some(ORG_CATALOG_REHOME_FIELD),
     )
 }
 
@@ -296,10 +279,8 @@ pub(crate) fn record_work_item_payload_touch_in_connection(
     )
 }
 
-/// Enqueue one existing org entity as the carrier for org-wide typed-property
-/// definitions. Project rows are preferred; an org-scoped standalone Work
-/// Item is the fallback. If the org has no entity yet, the first future entity
-/// write will carry the definitions in its full snapshot.
+/// Persist an org-wide typed-property definition touch. The drain chooses a
+/// supported carrier without coupling durability to one current entity.
 pub(crate) fn record_property_definitions_touch(
     conn: &Connection,
     org_id: &str,
@@ -313,9 +294,7 @@ pub(crate) fn record_property_definitions_touch(
     )
 }
 
-/// Enqueue one existing org entity as the carrier for org-wide custom
-/// status definitions — same anchor selection as
-/// [`record_property_definitions_touch`].
+/// Persist an org-wide custom-status definition touch.
 pub(crate) fn record_status_definitions_touch(
     conn: &Connection,
     org_id: &str,
@@ -324,8 +303,7 @@ pub(crate) fn record_status_definitions_touch(
     record_org_catalog_touch(conn, org_id, OrgCatalogKind::StatusDefinition, status_id)
 }
 
-/// Enqueue one existing org entity as the carrier for org-wide saved
-/// views — same anchor selection as [`record_property_definitions_touch`].
+/// Persist an org-wide saved-view touch.
 pub(crate) fn record_saved_views_touch(
     conn: &Connection,
     org_id: &str,
@@ -334,8 +312,7 @@ pub(crate) fn record_saved_views_touch(
     record_org_catalog_touch(conn, org_id, OrgCatalogKind::SavedView, view_id)
 }
 
-/// Enqueue one existing org entity as the carrier for org-wide quick
-/// actions — same anchor selection as [`record_property_definitions_touch`].
+/// Persist an org-wide quick-action touch.
 pub(crate) fn record_quick_actions_touch(
     conn: &Connection,
     org_id: &str,
@@ -344,8 +321,7 @@ pub(crate) fn record_quick_actions_touch(
     record_org_catalog_touch(conn, org_id, OrgCatalogKind::QuickAction, action_id)
 }
 
-/// Enqueue one existing org entity as the carrier for org-shared skills —
-/// same anchor selection as [`record_property_definitions_touch`].
+/// Persist an org-wide shared-skill touch.
 pub(crate) fn record_org_skills_touch(
     conn: &Connection,
     org_id: &str,
@@ -363,12 +339,15 @@ pub fn record_work_item_write(
     work_item_id: &str,
     deleted: bool,
 ) -> Result<(), String> {
-    let conn = io::conn()?;
+    let mut conn = io::conn()?;
     if !is_collab_org(&conn, org_id)? {
         return Ok(());
     }
+    let tx = conn
+        .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+        .map_err(|err| format!("DB error (collab work item write tx): {err}"))?;
     append_collab_row(
-        &conn,
+        &tx,
         org_id,
         project_slug.unwrap_or(""),
         EntityType::WorkItem,
@@ -379,7 +358,12 @@ pub fn record_work_item_write(
             OutboxOp::Update
         },
         None,
-    )
+    )?;
+    if deleted {
+        record_org_catalog_rehome(&tx, org_id)?;
+    }
+    tx.commit()
+        .map_err(|err| format!("DB error (collab work item write commit): {err}"))
 }
 
 /// Hook for work-item partial updates that only touched payload-tail
@@ -398,19 +382,27 @@ pub fn record_project_write(
     project_slug: &str,
     op: OutboxOp,
 ) -> Result<(), String> {
-    let conn = io::conn()?;
+    let mut conn = io::conn()?;
     if !is_collab_org(&conn, org_id)? {
         return Ok(());
     }
+    let tx = conn
+        .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+        .map_err(|err| format!("DB error (collab project write tx): {err}"))?;
     append_collab_row(
-        &conn,
+        &tx,
         org_id,
         project_slug,
         EntityType::Project,
         project_id,
         op,
         None,
-    )
+    )?;
+    if op == OutboxOp::Delete {
+        record_org_catalog_rehome(&tx, org_id)?;
+    }
+    tx.commit()
+        .map_err(|err| format!("DB error (collab project write commit): {err}"))
 }
 
 /// Enqueue the replication handoff for an atomic project organization move.
@@ -499,9 +491,20 @@ pub fn outbox_pending_ids(org_id: &str) -> Result<Vec<CollabPendingEntity>, Stri
             },
         )
         .map_err(|err| format!("DB error (query pending ids): {}", err))?;
+    let catalog_carrier = org_catalog_carrier(&conn, org_id)?;
     let mut entities = Vec::new();
     for entry in rows {
-        entities.push(entry.map_err(|err| format!("DB error (collect pending ids): {}", err))?);
+        let mut entity = entry.map_err(|err| format!("DB error (collect pending ids): {}", err))?;
+        if entity.kind == KIND_ORG_CATALOG {
+            let Some((kind, entity_id)) = &catalog_carrier else {
+                continue;
+            };
+            entity.kind.clone_from(kind);
+            entity.entity_id.clone_from(entity_id);
+        }
+        if !entities.contains(&entity) {
+            entities.push(entity);
+        }
     }
     Ok(entities)
 }
@@ -509,6 +512,37 @@ pub fn outbox_pending_ids(org_id: &str) -> Result<Vec<CollabPendingEntity>, Stri
 // ============================================================================
 // Drain
 // ============================================================================
+
+fn org_catalog_carrier(
+    conn: &Connection,
+    org_id: &str,
+) -> Result<Option<(String, String)>, String> {
+    let project: Option<String> = conn
+        .query_row(
+            "SELECT id FROM projects
+              WHERE org_id = ?1
+              ORDER BY updated_at DESC, id ASC
+              LIMIT 1",
+            params![org_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|err| format!("DB error (org catalog project carrier): {err}"))?;
+    if let Some(id) = project {
+        return Ok(Some((KIND_PROJECT.to_string(), id)));
+    }
+    conn.query_row(
+        "SELECT id FROM workitems
+          WHERE org_id = ?1 AND project_id IS NULL AND deleted_at IS NULL
+          ORDER BY updated_at DESC, id ASC
+          LIMIT 1",
+        params![org_id],
+        |row| row.get::<_, String>(0),
+    )
+    .optional()
+    .map(|id| id.map(|id| (KIND_WORK_ITEM.to_string(), id)))
+    .map_err(|err| format!("DB error (org catalog Work Item carrier): {err}"))
+}
 
 /// One coalesced push unit handed to the TS ProjectSyncChannel.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -532,6 +566,13 @@ pub struct CollabPushItem {
     pub field_paths: Vec<String>,
 }
 
+#[derive(Default)]
+struct DrainGroup {
+    entry_ids: Vec<i64>,
+    field_paths: Vec<String>,
+    catalog_entry_ids: Vec<i64>,
+}
+
 /// Claim up to `max` pending bridge rows for `org_id` (oldest first),
 /// coalesced per entity and hydrated from current local state. Claimed
 /// rows go `in_flight`; a dead TS session's claims are recovered here
@@ -543,6 +584,7 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
         return Ok(Vec::new());
     }
     let now = now_ms();
+    let catalog_carrier = org_catalog_carrier(&conn, org_id)?;
 
     conn.execute(
         "UPDATE outbox_entries
@@ -563,13 +605,21 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
             "SELECT id, entity_type, entity_id, field_path FROM outbox_entries
               WHERE org_id = ?1 AND status = ?2
                 AND (last_attempted_at IS NULL OR last_attempted_at <= ?3)
+                AND (?4 OR entity_type != ?5)
               ORDER BY created_at ASC, id ASC
-              LIMIT ?4",
+              LIMIT ?6",
         )
         .map_err(|err| format!("DB error (prepare drain): {}", err))?;
     let rows = stmt
         .query_map(
-            params![org_id, OutboxStatus::Pending.as_db_str(), now, max as i64],
+            params![
+                org_id,
+                OutboxStatus::Pending.as_db_str(),
+                now,
+                catalog_carrier.is_some(),
+                KIND_ORG_CATALOG,
+                max as i64
+            ],
             |row| {
                 Ok((
                     row.get::<_, i64>(0)?,
@@ -583,20 +633,30 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
 
     // Coalesce per (entity_type, entity_id), preserving first-seen order.
     let mut order: Vec<(String, String)> = Vec::new();
-    let mut groups: HashMap<(String, String), (Vec<i64>, Vec<String>)> = HashMap::new();
+    let mut groups: HashMap<(String, String), DrainGroup> = HashMap::new();
     for entry in rows {
         let (id, entity_type, entity_id, field_path) =
             entry.map_err(|err| format!("DB error (collect drain): {}", err))?;
-        let key = (entity_type, entity_id);
+        let is_catalog = entity_type == KIND_ORG_CATALOG;
+        let key = if is_catalog {
+            catalog_carrier
+                .clone()
+                .expect("catalog rows are selected only with a carrier")
+        } else {
+            (entity_type, entity_id)
+        };
         let slot = groups.entry(key.clone()).or_insert_with(|| {
             order.push(key.clone());
-            (Vec::new(), Vec::new())
+            DrainGroup::default()
         });
-        slot.0.push(id);
+        slot.entry_ids.push(id);
+        if is_catalog {
+            slot.catalog_entry_ids.push(id);
+        }
         if let Some(paths) = field_path {
             for path in paths.split(',').filter(|path| !path.is_empty()) {
-                if !slot.1.iter().any(|existing| existing == path) {
-                    slot.1.push(path.to_string());
+                if !slot.field_paths.iter().any(|existing| existing == path) {
+                    slot.field_paths.push(path.to_string());
                 }
             }
         }
@@ -607,8 +667,9 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
         return Ok(Vec::new());
     }
 
-    // Org-wide definitions are shared by every entity snapshot. Load them
-    // once per non-empty bounded drain instead of once per Work Item.
+    // Load each org catalog once per non-empty bounded drain; hydration keeps
+    // it off ordinary entity payloads unless this is an initial snapshot or a
+    // durable catalog touch was folded into that carrier.
     let property_definitions =
         crate::work_item_features::properties::export_definitions(&conn, org_id)?;
     let status_definitions =
@@ -618,9 +679,12 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
     // Shared skills can be two orders of magnitude larger than the other
     // org-wide definitions, so they only ride pushes their own touch
     // enqueued instead of every entity snapshot.
-    let needs_org_skills = groups
-        .values()
-        .any(|(_, paths)| paths.iter().any(|path| path.starts_with("orgSkills.")));
+    let needs_org_skills = groups.values().any(|group| {
+        group
+            .field_paths
+            .iter()
+            .any(|path| path.starts_with("orgSkills.") || path == ORG_CATALOG_REHOME_FIELD)
+    });
     let org_skills = if needs_org_skills {
         Some(crate::org_skills::export_skills(&conn, org_id)?)
     } else {
@@ -628,8 +692,8 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
     };
 
     // Claim everything we're about to hand out.
-    for (ids, _) in groups.values() {
-        for id in ids {
+    for group in groups.values() {
+        for id in &group.entry_ids {
             conn.execute(
                 "UPDATE outbox_entries SET status = ?1, last_attempted_at = ?2
                   WHERE id = ?3 AND status = ?4",
@@ -646,9 +710,13 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
 
     let mut items = Vec::with_capacity(order.len());
     for key in order {
-        let (entry_ids, field_paths) = groups.remove(&key).unwrap_or_default();
+        let DrainGroup {
+            entry_ids,
+            field_paths,
+            catalog_entry_ids,
+        } = groups.remove(&key).unwrap_or_default();
         let (entity_type, entity_id) = key;
-        let item = match entity_type.as_str() {
+        let mut item = match entity_type.as_str() {
             "project" => hydrate_project(
                 &conn,
                 org_id,
@@ -685,24 +753,69 @@ pub fn drain_outbox(org_id: &str, max: u32) -> Result<Vec<CollabPushItem>, Strin
                 continue;
             }
         };
+        if item.op == OP_DELETE && !catalog_entry_ids.is_empty() {
+            for id in &catalog_entry_ids {
+                conn.execute(
+                    "UPDATE outbox_entries
+                        SET status = ?1, last_attempted_at = NULL
+                      WHERE id = ?2",
+                    params![OutboxStatus::Pending.as_db_str(), id],
+                )
+                .map_err(|err| format!("DB error (restore unbound catalog row): {err}"))?;
+            }
+            item.entry_ids.retain(|id| !catalog_entry_ids.contains(id));
+            if item.entry_ids.is_empty() {
+                continue;
+            }
+        }
         items.push(item);
     }
     Ok(items)
 }
 
-/// Shared skills only ride pushes whose field paths asked for them; a
-/// `None` keeps the key off the wire so pullers skip the apply entirely.
-fn attach_org_skills(payload: Value, org_skills: Option<&[crate::org_skills::OrgSkill]>) -> Value {
-    let Some(org_skills) = org_skills else {
-        return payload;
-    };
+#[allow(clippy::too_many_arguments)]
+fn attach_org_catalogs(
+    payload: Value,
+    initial_snapshot: bool,
+    field_paths: &[String],
+    property_definitions: &[crate::work_item_features::PropertyDefinition],
+    status_definitions: &[crate::work_item_features::StatusDefinition],
+    saved_views: &[crate::work_item_features::SavedView],
+    quick_actions: &[crate::work_item_features::QuickAction],
+    org_skills: Option<&[crate::org_skills::OrgSkill]>,
+) -> Value {
     let Value::Object(mut map) = payload else {
         return payload;
     };
-    map.insert(
-        "orgSkills".to_string(),
-        serde_json::to_value(org_skills).unwrap_or(Value::Null),
-    );
+    let rehome_all = field_paths
+        .iter()
+        .any(|path| path == ORG_CATALOG_REHOME_FIELD);
+    let requested = |prefix: &str| {
+        rehome_all
+            || field_paths.iter().any(|path| {
+                path.starts_with(prefix) && path.as_bytes().get(prefix.len()) == Some(&b'.')
+            })
+    };
+    if initial_snapshot || requested("propertyDefinitions") {
+        map.insert(
+            "propertyDefinitions".to_string(),
+            json!(property_definitions),
+        );
+    }
+    if initial_snapshot || requested("statusDefinitions") {
+        map.insert("statusDefinitions".to_string(), json!(status_definitions));
+    }
+    if initial_snapshot || requested("savedViews") {
+        map.insert("savedViews".to_string(), json!(saved_views));
+    }
+    if initial_snapshot || requested("quickActions") {
+        map.insert("quickActions".to_string(), json!(quick_actions));
+    }
+    if requested("orgSkills") {
+        if let Some(org_skills) = org_skills {
+            map.insert("orgSkills".to_string(), json!(org_skills));
+        }
+    }
     Value::Object(map)
 }
 
@@ -798,12 +911,17 @@ fn hydrate_project(
         "workItemPrefix": prefix,
         "createdAt": to_iso8601(created_at),
         "updatedAt": to_iso8601(updated_at),
-        "propertyDefinitions": property_definitions,
-        "statusDefinitions": status_definitions,
-        "savedViews": saved_views,
-        "quickActions": quick_actions,
     });
-    let payload = attach_org_skills(payload, org_skills);
+    let payload = attach_org_catalogs(
+        payload,
+        base_version.is_none(),
+        &field_paths,
+        property_definitions,
+        status_definitions,
+        saved_views,
+        quick_actions,
+        org_skills,
+    );
 
     Ok(CollabPushItem {
         entry_ids,
@@ -866,43 +984,12 @@ fn hydrate_work_item(
                 )
                 .optional()
                 .map_err(|err| format!("DB error (work item slug): {err}"))?;
-            // Project-scoped definitions ride on project rows, which the
-            // puller applies first. Standalone items have no project carrier,
-            // so their full snapshot includes the org definitions.
-            let definitions = if project_slug.is_none() {
-                property_definitions.to_vec()
-            } else {
-                Vec::new()
-            };
-            let carried_status_definitions: &[crate::work_item_features::StatusDefinition] =
-                if project_slug.is_none() {
-                    status_definitions
-                } else {
-                    &[]
-                };
-            let carried_saved_views: &[crate::work_item_features::SavedView] =
-                if project_slug.is_none() {
-                    saved_views
-                } else {
-                    &[]
-                };
-            let carried_quick_actions: &[crate::work_item_features::QuickAction] =
-                if project_slug.is_none() {
-                    quick_actions
-                } else {
-                    &[]
-                };
-            let carried_org_skills = if project_slug.is_none() {
-                org_skills
-            } else {
-                None
-            };
             let property_snapshot =
                 crate::work_item_features::properties::export_work_item_snapshot(
                     conn,
                     org_id,
                     work_item_id,
-                    definitions,
+                    Vec::new(),
                 )?;
             // Per-field revision times ride the wire so the puller can merge
             // per field instead of against our whole-row updatedAt (which
@@ -915,19 +1002,23 @@ fn hydrate_work_item(
                     .unwrap_or_default(),
                 None => Default::default(),
             };
-            (
-                OP_UPSERT.to_string(),
-                Some(work_item_wire(
-                    &data.frontmatter,
-                    &data.body,
-                    &field_revisions,
-                    &property_snapshot,
-                    carried_status_definitions,
-                    carried_saved_views,
-                    carried_quick_actions,
-                    carried_org_skills,
-                )),
-            )
+            let payload = work_item_wire(
+                &data.frontmatter,
+                &data.body,
+                &field_revisions,
+                &property_snapshot,
+            );
+            let payload = attach_org_catalogs(
+                payload,
+                base_version.is_none() && project_slug.is_none(),
+                &field_paths,
+                property_definitions,
+                status_definitions,
+                saved_views,
+                quick_actions,
+                org_skills,
+            );
+            (OP_UPSERT.to_string(), Some(payload))
         }
     };
 
@@ -947,16 +1038,11 @@ fn hydrate_work_item(
 /// server's `orgii_upsert_work_item` column extraction exactly; the
 /// long tail rides in the same object and round-trips through
 /// [`apply_work_item`]'s typed deserialization.
-#[allow(clippy::too_many_arguments)]
 fn work_item_wire(
     frontmatter: &WorkItemFrontmatter,
     body: &str,
     field_revisions: &std::collections::HashMap<String, crate::projects::io::FieldRevision>,
     property_snapshot: &crate::work_item_features::TypedPropertyWireSnapshot,
-    status_definitions: &[crate::work_item_features::StatusDefinition],
-    saved_views: &[crate::work_item_features::SavedView],
-    quick_actions: &[crate::work_item_features::QuickAction],
-    org_skills: Option<&[crate::org_skills::OrgSkill]>,
 ) -> Value {
     fn to_value<T: Serialize>(value: &T) -> Value {
         serde_json::to_value(value).unwrap_or(Value::Null)
@@ -967,7 +1053,7 @@ fn work_item_wire(
         .iter()
         .map(|(name, rev)| (name.clone(), json!(rev.mtime)))
         .collect();
-    let payload = json!({
+    json!({
         "_fieldRevisions": field_mtimes,
         "id": frontmatter.id,
         "projectId": frontmatter.project,
@@ -1000,13 +1086,8 @@ fn work_item_wire(
         "executionLock": to_value(&frontmatter.execution_lock),
         "closeOut": to_value(&frontmatter.close_out),
         "workProducts": to_value(&frontmatter.work_products),
-        "propertyDefinitions": to_value(&property_snapshot.definitions),
-        "statusDefinitions": to_value(&status_definitions),
-        "savedViews": to_value(&saved_views),
-        "quickActions": to_value(&quick_actions),
         "propertyValues": to_value(&property_snapshot.values),
-    });
-    attach_org_skills(payload, org_skills)
+    })
 }
 
 // ============================================================================

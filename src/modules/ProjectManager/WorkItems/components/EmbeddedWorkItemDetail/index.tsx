@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback, useEffect } from "react";
+import React, { Suspense, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { WorkstationTabHeaderHost } from "@src/hooks/tabHost/useWorkstationTabHeader";
@@ -93,12 +93,6 @@ const EmbeddedWorkItemDetail: React.FC<EmbeddedWorkItemDetailProps> = ({
     },
     [onUpdateWorkItem, workItem]
   );
-
-  useEffect(() => {
-    if (workItem?.name !== undefined) {
-      onWorkItemNameUpdated?.(workItem.name);
-    }
-  }, [onWorkItemNameUpdated, workItem?.name]);
 
   if (!workItem) {
     return (

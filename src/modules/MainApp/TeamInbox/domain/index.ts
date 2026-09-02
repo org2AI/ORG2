@@ -5,6 +5,7 @@ export {
   filterItemKind,
   filterTeamInboxItems,
   getTeamInboxItemKey,
+  isWorkItemEvent,
   loadStateForPage,
   searchTeamInboxItems,
   selectTeamInboxItems,
@@ -18,6 +19,7 @@ export {
   isGitHubIssueStatus,
   parseGitHubIssueNumber,
   workItemPriorityLabelKey,
+  workItemEventLabelKey,
   workItemStatusLabelKey,
 } from "./labels";
 export { toWireCursorItemId } from "./cursor";
@@ -37,6 +39,7 @@ export type {
   TeamInboxHandoffMember,
   TeamInboxProjectHandoffDestination,
   TeamInboxItem,
+  TeamInboxItemSource,
   TeamInboxIssue,
   TeamInboxIssueCode,
   TeamInboxNavigationIntent,
@@ -44,6 +47,9 @@ export type {
   TeamInboxSessionDropInput,
   TeamInboxSessionHandoffDraft,
   TeamInboxTarget,
+  TeamInboxNotificationKind,
+  WorkItemInboxItem,
+  WorkItemUpdateItem,
   WorkItemTarget,
   WorkItemCommentTarget,
 } from "./types";

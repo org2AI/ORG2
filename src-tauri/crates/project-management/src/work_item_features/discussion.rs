@@ -109,30 +109,84 @@ impl RouteDecision {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum MentionAudience<'a> {
-    Unaddressed,
-    Humans,
+    Assigned,
+    NoAgent { human_addressed: bool },
     Agent { id: &'a str },
     AgentOrg { id: &'a str },
 }
 
-/// Classify identity-stable mentions before applying Work Item fallback rules.
-/// Explicit Agent targets win mixed audiences; otherwise any member or `@all`
-/// target makes this a human conversation and suppresses the assigned Agent.
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ConfiguredAgentAudience {
+    None,
+    Assigned,
+    Explicit,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MessageAudiencePolicy {
+    default_agent_mode: ConfiguredAgentAudience,
+    human_agent_mode: ConfiguredAgentAudience,
+    explicit_agent_mode: ConfiguredAgentAudience,
+    explicit_agent_wins: bool,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct MessageAudiencePolicies {
+    work_item_comment: MessageAudiencePolicy,
+}
+
+fn work_item_audience_policy() -> &'static MessageAudiencePolicy {
+    static POLICIES: std::sync::OnceLock<MessageAudiencePolicies> = std::sync::OnceLock::new();
+    &POLICIES
+        .get_or_init(|| {
+            serde_json::from_str(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../../src/features/TeamCollaboration/messageAudienceRouting.policy.json"
+            )))
+            .expect("checked-in message audience policy must be valid")
+        })
+        .work_item_comment
+}
+
+fn configured_mention_audience<'a>(
+    mode: ConfiguredAgentAudience,
+    explicit_agent: Option<MentionAudience<'a>>,
+    human_addressed: bool,
+) -> MentionAudience<'a> {
+    match mode {
+        ConfiguredAgentAudience::None => MentionAudience::NoAgent { human_addressed },
+        ConfiguredAgentAudience::Assigned => MentionAudience::Assigned,
+        ConfiguredAgentAudience::Explicit => explicit_agent
+            .expect("explicit Agent audience mode requires an Agent or Agent Org target"),
+    }
+}
+
+/// Classify identity-stable mentions with the shared audience policy before
+/// applying Work Item fallback rules. Identity parsing remains local; target
+/// precedence and Agent execution modes come from the cross-surface contract.
 pub(super) fn mention_audience(mentions: &[MentionTarget]) -> MentionAudience<'_> {
-    if let Some(agent) = mentions.iter().find_map(|mention| match mention {
+    let policy = work_item_audience_policy();
+    let explicit_agent = mentions.iter().find_map(|mention| match mention {
         MentionTarget::Agent { id } => Some(MentionAudience::Agent { id }),
         MentionTarget::AgentOrg { id } => Some(MentionAudience::AgentOrg { id }),
         MentionTarget::Member { .. } | MentionTarget::All => None,
-    }) {
-        return agent;
-    }
-    if mentions
+    });
+    let human_addressed = mentions
         .iter()
-        .any(|mention| matches!(mention, MentionTarget::Member { .. } | MentionTarget::All))
-    {
-        MentionAudience::Humans
+        .any(|mention| matches!(mention, MentionTarget::Member { .. } | MentionTarget::All));
+    if explicit_agent.is_some() && policy.explicit_agent_wins {
+        return configured_mention_audience(
+            policy.explicit_agent_mode,
+            explicit_agent,
+            human_addressed,
+        );
+    }
+    if human_addressed {
+        configured_mention_audience(policy.human_agent_mode, explicit_agent, true)
     } else {
-        MentionAudience::Unaddressed
+        configured_mention_audience(policy.default_agent_mode, explicit_agent, false)
     }
 }
 
@@ -144,8 +198,13 @@ fn mention_audience_route(
 ) -> Option<RouteDecision> {
     let config = orchestrator_config(extras);
     let matches_config = match mention_audience(mentions) {
-        MentionAudience::Unaddressed => return None,
-        MentionAudience::Humans => return Some(RouteDecision::silent("member_addressed")),
+        MentionAudience::Assigned => return None,
+        MentionAudience::NoAgent {
+            human_addressed: true,
+        } => return Some(RouteDecision::silent("member_addressed")),
+        MentionAudience::NoAgent {
+            human_addressed: false,
+        } => return Some(RouteDecision::silent("audience_none")),
         MentionAudience::Agent { id } => {
             config
                 .as_ref()

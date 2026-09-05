@@ -9,10 +9,12 @@ use std::io::Write;
 use core_types::activity::ActivityChunk;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use uuid::Uuid;
 
 pub(super) const MAX_ITEMS: usize = 100_000;
 const MAX_SERIALIZED_BYTES: usize = 64 * 1024 * 1024;
 const MAX_PORTABLE_TOOL_CALL_ID_LENGTH: usize = 64;
+const PORTABLE_TOOL_CALL_NAMESPACE: Uuid = Uuid::from_u128(0x9e7db8a394bf5c589416a244ba6e30d3);
 
 fn is_portable_tool_call_id(value: &str) -> bool {
     !value.is_empty()
@@ -20,6 +22,18 @@ fn is_portable_tool_call_id(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+}
+
+fn portable_tool_call_id(value: &str) -> String {
+    let value = value.trim();
+    if is_portable_tool_call_id(value) {
+        return value.to_string();
+    }
+
+    format!(
+        "call_{}",
+        Uuid::new_v5(&PORTABLE_TOOL_CALL_NAMESPACE, value.as_bytes()).simple()
+    )
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -224,6 +238,18 @@ fn chunk_text(chunk: &ActivityChunk) -> String {
         .unwrap_or_default()
 }
 
+fn transferable_tool_args(chunk: &ActivityChunk) -> Value {
+    let mut args = chunk.args.clone();
+    if let Some(object) = args.as_object_mut() {
+        object.retain(|key, _| {
+            key != "conversationTurnId"
+                && key != "conversationSender"
+                && !key.starts_with("__orgii")
+        });
+    }
+    args
+}
+
 fn agent_message_images(message: &Value) -> Vec<String> {
     message
         .get("content")
@@ -301,43 +327,51 @@ pub(super) fn native_items_from_chunks(chunks: &[ActivityChunk]) -> Vec<NativeCo
                 // the canonical projection drops it, so reading the provider
                 // store back must drop it too instead of inventing a result
                 // the provider never wrote.
-                let unresolved = chunk
+                let status_is_pending = chunk
                     .result
                     .get("status")
                     .and_then(Value::as_str)
-                    .is_some_and(|status| matches!(status, "pending" | "running"))
-                    || chunk.result.get("interrupted").and_then(Value::as_bool) == Some(true);
-                if unresolved {
+                    .is_some_and(|status| matches!(status, "pending" | "running"));
+                let interrupted =
+                    chunk.result.get("interrupted").and_then(Value::as_bool) == Some(true);
+                let output = chunk_text(chunk);
+                // A call with no provider result cannot cross a runtime
+                // boundary. If Stop already observed durable output, however,
+                // carry an honest interrupted result: both native writers can
+                // encode it as failure (Claude is_error / Codex exit 130).
+                if (status_is_pending || interrupted) && (!interrupted || output.is_empty()) {
                     continue;
                 }
                 let is_error = chunk.result.get("is_error").and_then(Value::as_bool) == Some(true)
                     || chunk.result.get("success").and_then(Value::as_bool) == Some(false)
+                    || interrupted
                     || chunk
                         .result
                         .get("status")
                         .and_then(Value::as_str)
                         .is_some_and(|status| matches!(status, "failed" | "error" | "cancelled"));
-                let call_id = chunk
+                let raw_call_id = chunk
                     .result
                     .get("call_id")
                     .and_then(Value::as_str)
-                    .unwrap_or(&chunk.chunk_id)
-                    .to_string();
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or(&chunk.chunk_id);
+                let call_id = portable_tool_call_id(raw_call_id);
                 let name = chunk.function.clone();
                 items.push(NativeConversationItem::ToolCall {
                     id: format!("{}:call", chunk.chunk_id),
                     call_id: call_id.clone(),
                     name: name.clone(),
-                    arguments: chunk.args.to_string(),
+                    arguments: transferable_tool_args(chunk).to_string(),
                     created_at: chunk.created_at.clone(),
                 });
                 items.push(NativeConversationItem::ToolResult {
                     id: format!("{}:result", chunk.chunk_id),
                     call_id,
                     name,
-                    output: chunk_text(chunk),
+                    output,
                     is_error,
-                    interrupted: false,
+                    interrupted,
                     created_at: chunk.created_at.clone(),
                 });
             }
@@ -381,7 +415,9 @@ pub(super) fn native_items_from_agent_history(history: &[Value]) -> Vec<NativeCo
                         .flatten()
                         .enumerate()
                     {
-                        let call_id = tool.get("id").and_then(Value::as_str).unwrap_or_default();
+                        let call_id = portable_tool_call_id(
+                            tool.get("id").and_then(Value::as_str).unwrap_or_default(),
+                        );
                         let function = tool.get("function").unwrap_or(tool);
                         let name = function
                             .get("name")
@@ -393,7 +429,7 @@ pub(super) fn native_items_from_agent_history(history: &[Value]) -> Vec<NativeCo
                             .unwrap_or("{}");
                         items.push(NativeConversationItem::ToolCall {
                             id: format!("agent-history-{index}-tool-{tool_index}"),
-                            call_id: call_id.to_string(),
+                            call_id,
                             name: name.to_string(),
                             arguments: arguments.to_string(),
                             created_at: created_at.clone(),
@@ -402,13 +438,15 @@ pub(super) fn native_items_from_agent_history(history: &[Value]) -> Vec<NativeCo
                 }
             }
             "tool" => {
-                let call_id = message
-                    .get("tool_call_id")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
+                let call_id = portable_tool_call_id(
+                    message
+                        .get("tool_call_id")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default(),
+                );
                 items.push(NativeConversationItem::ToolResult {
                     id: format!("agent-history-{index}-result"),
-                    call_id: call_id.to_string(),
+                    call_id,
                     name: message
                         .get("name")
                         .and_then(Value::as_str)
@@ -507,5 +545,132 @@ pub(super) fn native_item_semantically_equal(
             },
         ) => left_summary == right_summary,
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn provider_tool_ids_use_the_portable_conversation_identity() {
+        let raw_call_id = "call_ZQuKyGuKN6l4aFX6Kg6trDeR:part-0";
+        let expected = "call_0b3a8cc5654a5208989d80ed5659c267";
+        let mut chunk = ActivityChunk::new("source", "tool_call", "read_file");
+        chunk.chunk_id = format!("codex-tool-7-{raw_call_id}");
+        chunk.args = json!({"path": "CLAUDE.md"});
+        chunk.result = json!({
+            "call_id": raw_call_id,
+            "output": "contents",
+            "status": "completed",
+            "success": true
+        });
+
+        let chunk_items = native_items_from_chunks(&[chunk]);
+        assert!(matches!(
+            chunk_items.as_slice(),
+            [
+                NativeConversationItem::ToolCall { call_id, .. },
+                NativeConversationItem::ToolResult {
+                    call_id: result_call_id,
+                    ..
+                }
+            ] if call_id == expected && result_call_id == expected
+        ));
+
+        let history_items = native_items_from_agent_history(&[
+            json!({
+                "role": "assistant",
+                "tool_calls": [{
+                    "id": raw_call_id,
+                    "function": {"name": "read_file", "arguments": "{\"path\":\"CLAUDE.md\"}"}
+                }]
+            }),
+            json!({
+                "role": "tool",
+                "tool_call_id": raw_call_id,
+                "name": "read_file",
+                "content": "contents"
+            }),
+        ]);
+        assert!(matches!(
+            history_items.as_slice(),
+            [
+                NativeConversationItem::ToolCall { call_id, .. },
+                NativeConversationItem::ToolResult {
+                    call_id: result_call_id,
+                    ..
+                }
+            ] if call_id == expected && result_call_id == expected
+        ));
+
+        assert_eq!(
+            portable_tool_call_id("call_already_portable"),
+            "call_already_portable"
+        );
+    }
+
+    #[test]
+    fn interrupted_tool_output_is_portable_but_an_empty_dangling_call_is_not() {
+        let interrupted = |output: &str| {
+            let mut chunk = ActivityChunk::new("source", "tool_call", "run_command_line");
+            chunk.chunk_id = "interrupted-command".to_string();
+            chunk.args = json!({"command": "pnpm test"});
+            chunk.result = json!({
+                "call_id": "call_interrupted",
+                "status": "pending",
+                "success": false,
+                "interrupted": true,
+                "output": output,
+                "observation": output
+            });
+            chunk
+        };
+
+        let partial = native_items_from_chunks(&[interrupted("Tests 12 passed\n")]);
+        assert!(matches!(
+            partial.as_slice(),
+            [
+                NativeConversationItem::ToolCall { call_id, .. },
+                NativeConversationItem::ToolResult {
+                    call_id: result_call_id,
+                    output,
+                    is_error: true,
+                    interrupted: true,
+                    ..
+                }
+            ] if call_id == "call_interrupted"
+                && result_call_id == "call_interrupted"
+                && output == "Tests 12 passed\n"
+        ));
+
+        assert!(native_items_from_chunks(&[interrupted("")]).is_empty());
+    }
+
+    #[test]
+    fn transport_metadata_is_not_part_of_portable_tool_arguments() {
+        let mut chunk = ActivityChunk::new("source", "tool_call", "read_file");
+        chunk.chunk_id = "materialized-tool".to_string();
+        chunk.args = json!({
+            "path": "README.md",
+            "conversationTurnId": "turn-1",
+            "conversationSender": {"memberId": "member-1"},
+            "__orgiiSourceEventId": "orgii_evt_source"
+        });
+        chunk.result = json!({
+            "call_id": "call_read",
+            "output": "contents",
+            "status": "completed",
+            "success": true
+        });
+
+        let items = native_items_from_chunks(&[chunk]);
+        assert!(matches!(
+            items.first(),
+            Some(NativeConversationItem::ToolCall { arguments, .. })
+                if serde_json::from_str::<Value>(arguments).ok()
+                    == Some(json!({"path": "README.md"}))
+        ));
     }
 }

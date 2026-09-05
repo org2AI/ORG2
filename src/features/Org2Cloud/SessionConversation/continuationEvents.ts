@@ -2,6 +2,7 @@ import {
   CONVERSATION_SENDER_ARG,
   type ConversationSenderStamp,
 } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
+import { scopedNativeSourceEventIdOf } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { stripCopyEventNamespace } from "@src/features/TeamCollaboration/copyEventId";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
@@ -140,8 +141,37 @@ function stampSegmentSender(
  * event ids carry colons, session ids never do.
  */
 export function sourceEventIdOf(event: SessionEvent): string {
+  // Native materialization can renumber the provider row while preserving the
+  // original globally scoped event identity in metadata. This is the same
+  // source identity used by the native projection and therefore must win over
+  // the local row id when family/plane segments fold copied prefixes. Raw
+  // provider-local values are intentionally ignored by the helper.
+  const nativeSourceId = scopedNativeSourceEventIdOf(event);
+  if (nativeSourceId) return nativeSourceId;
   const id = peelCopyEventNamespaces(event);
   return materializedEventIdentity(id)?.sourceEventId ?? id;
+}
+
+/**
+ * Keep the first row for each exact canonical source identity.
+ *
+ * This deliberately does not compare content, timestamps, roles or tool
+ * payloads. Two otherwise identical rows with different source identities are
+ * distinct conversation events; only a replay carrying the same durable
+ * source id is a copy.
+ */
+export function collapseConversationSourceCopies(
+  events: readonly SessionEvent[],
+  seenSourceIds: Set<string> = new Set()
+): SessionEvent[] {
+  const fresh: SessionEvent[] = [];
+  for (const event of events) {
+    const sourceId = sourceEventIdOf(event);
+    if (seenSourceIds.has(sourceId)) continue;
+    seenSourceIds.add(sourceId);
+    fresh.push(event);
+  }
+  return fresh;
 }
 
 /** Turn identity recovered from a native Agent row materialized by ORG2. */
@@ -182,10 +212,9 @@ export function stitchConversationSegments(
     events: readonly SessionEvent[],
     member: ConversationFamilyMember
   ) => {
-    const fresh = events.filter(
-      (event) => !seenSourceIds.has(sourceEventIdOf(event))
-    );
-    for (const event of fresh) seenSourceIds.add(sourceEventIdOf(event));
+    // Update the shared Set while walking: one native segment can itself
+    // contain the original materialized row plus a provider-renumbered replay.
+    const fresh = collapseConversationSourceCopies(events, seenSourceIds);
     stitched.push(...stampSegmentSender(fresh, member));
   };
   for (const member of family) {

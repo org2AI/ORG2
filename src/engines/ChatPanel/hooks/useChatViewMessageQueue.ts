@@ -1,12 +1,12 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useMemo } from "react";
 
 import type { ConversationRootLocator } from "@src/engines/SessionCore/conversations/conversationTypes";
 import { conversationRootKey } from "@src/engines/SessionCore/conversations/conversationTypes";
+import { cancelQueuedMessageDeliveries } from "@src/engines/SessionCore/hooks/session/messageQueuePersistence";
+import { createLogger } from "@src/hooks/logger";
 import {
   type QueuedMessage,
-  clearQueuedMessagesAtom,
-  dequeueMessageAtom,
   editMessageAtom,
   forceSendMessageAtom,
   messageQueueAtom,
@@ -14,6 +14,8 @@ import {
 } from "@src/store/ui/messageQueueAtom";
 
 import { useQueueEditMode } from "../InputArea/hooks/useQueueEditMode";
+
+const log = createLogger("ChatViewMessageQueue");
 
 /** Keeps queue filtering and global-index reordering consistent for ChatView. */
 export function queuedMessageBelongsToConversationView(
@@ -47,6 +49,7 @@ export function useChatViewMessageQueue({
   queueSessionId: string | null;
   conversationRoot: ConversationRootLocator | null;
 }) {
+  const store = useStore();
   const messageQueue = useAtomValue(messageQueueAtom);
   const sessionMessageQueue = useMemo(
     () =>
@@ -56,6 +59,10 @@ export function useChatViewMessageQueue({
           // cards. Their user row and ordinary planning/working footer already
           // render in the transcript once dispatch begins.
           message.status === "queued" &&
+          // A pre-acceptance failure whose EventStore commit could not finish
+          // remains in the durable registry as the retry owner. It is rendered
+          // as a failed transcript bubble, not as a second queued footer card.
+          !message.deliveryError &&
           queuedMessageBelongsToConversationView(message, {
             pipelineSessionId,
             queueSessionId,
@@ -64,12 +71,22 @@ export function useChatViewMessageQueue({
       ),
     [conversationRoot, messageQueue, pipelineSessionId, queueSessionId]
   );
-  const cancelQueuedMessage = useSetAtom(dequeueMessageAtom);
-  const clearQueuedMessages = useSetAtom(clearQueuedMessagesAtom);
   const editQueuedMessage = useSetAtom(editMessageAtom);
   const reorderQueue = useSetAtom(reorderQueueAtom);
   const forceSendQueuedMessage = useSetAtom(forceSendMessageAtom);
   const queueTailKey = sessionMessageQueue.at(-1)?.turnIntentId ?? null;
+
+  const cancelQueuedMessage = useCallback(
+    (messageId: string) => {
+      void cancelQueuedMessageDeliveries(store, [messageId]).catch((error) =>
+        log.error(
+          "[useChatViewMessageQueue] failed to cancel queued message",
+          error
+        )
+      );
+    },
+    [store]
+  );
 
   const handleSendNow = useCallback(
     (messageId: string) => {
@@ -104,8 +121,16 @@ export function useChatViewMessageQueue({
   );
 
   const handleClearSessionQueue = useCallback(() => {
-    clearQueuedMessages(sessionMessageQueue.map((message) => message.id));
-  }, [clearQueuedMessages, sessionMessageQueue]);
+    void cancelQueuedMessageDeliveries(
+      store,
+      sessionMessageQueue.map((message) => message.id)
+    ).catch((error) =>
+      log.error(
+        "[useChatViewMessageQueue] failed to clear queued messages",
+        error
+      )
+    );
+  }, [sessionMessageQueue, store]);
 
   const queueEditProps = useQueueEditMode({
     onCommit: handleCommitQueueEdit,

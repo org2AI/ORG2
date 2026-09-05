@@ -381,46 +381,6 @@ fn ensure_native_catalog_revision_columns(conn: &Connection) -> SqliteResult<()>
     Ok(())
 }
 
-#[cfg(test)]
-mod native_catalog_revision_migration_tests {
-    use super::*;
-
-    #[test]
-    fn upgrades_legacy_resume_state_idempotently() {
-        let conn = Connection::open_in_memory().expect("open legacy database");
-        init_cli_agent_tables(&conn).expect("prime surrounding CLI schema");
-        conn.execute_batch(
-            "DROP TABLE code_session_cli_resume_state;
-             CREATE TABLE code_session_cli_resume_state (
-                session_id TEXT NOT NULL,
-                profile_key TEXT NOT NULL,
-                cli_session_id TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                PRIMARY KEY (session_id, profile_key)
-             );
-             INSERT INTO code_session_cli_resume_state
-                (session_id, profile_key, cli_session_id, updated_at)
-             VALUES ('session-1', 'account-1', 'native-1', '2026-09-04T00:00:00Z');",
-        )
-        .expect("create legacy resume-state schema");
-
-        init_cli_agent_tables(&conn).expect("upgrade legacy schema");
-        init_cli_agent_tables(&conn).expect("repeat upgrade");
-
-        let revisions = conn
-            .query_row(
-                "SELECT native_catalog_requested_revision,
-                        native_catalog_applied_revision
-                 FROM code_session_cli_resume_state
-                 WHERE session_id = 'session-1' AND profile_key = 'account-1'",
-                [],
-                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
-            )
-            .expect("read migrated binding");
-        assert_eq!(revisions, (0, 0));
-    }
-}
-
 /// One-time migration: remove `<ide_context>...</ide_context>` blocks from stored
 /// user input and user_message chunks so they don't appear in chat history UI.
 fn migrate_strip_ide_context(conn: &Connection) {
@@ -487,4 +447,44 @@ fn migrate_strip_ide_context(conn: &Connection) {
         rusqlite::params![MARKER, chrono::Utc::now().to_rfc3339()],
     )
     .ok();
+}
+
+#[cfg(test)]
+mod native_catalog_revision_migration_tests {
+    use super::*;
+
+    #[test]
+    fn upgrades_legacy_resume_state_idempotently() {
+        let conn = Connection::open_in_memory().expect("open legacy database");
+        init_cli_agent_tables(&conn).expect("prime surrounding CLI schema");
+        conn.execute_batch(
+            "DROP TABLE code_session_cli_resume_state;
+             CREATE TABLE code_session_cli_resume_state (
+                session_id TEXT NOT NULL,
+                profile_key TEXT NOT NULL,
+                cli_session_id TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (session_id, profile_key)
+             );
+             INSERT INTO code_session_cli_resume_state
+                (session_id, profile_key, cli_session_id, updated_at)
+             VALUES ('session-1', 'account-1', 'native-1', '2026-09-04T00:00:00Z');",
+        )
+        .expect("create legacy resume-state schema");
+
+        init_cli_agent_tables(&conn).expect("upgrade legacy schema");
+        init_cli_agent_tables(&conn).expect("repeat upgrade");
+
+        let revisions = conn
+            .query_row(
+                "SELECT native_catalog_requested_revision,
+                        native_catalog_applied_revision
+                 FROM code_session_cli_resume_state
+                 WHERE session_id = 'session-1' AND profile_key = 'account-1'",
+                [],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+            )
+            .expect("read migrated binding");
+        assert_eq!(revisions, (0, 0));
+    }
 }

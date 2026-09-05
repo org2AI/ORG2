@@ -118,6 +118,7 @@ const CommentMentionDetail: React.FC<CommentMentionDetailProps> = ({
                   })
                 : onNavigate({
                     kind: "open_session_comment",
+                    ...(item.target.orgId ? { orgId: item.target.orgId } : {}),
                     sessionId: item.target.sessionId,
                     commentId: item.target.commentId,
                     threadId: item.target.threadId,

@@ -4,6 +4,7 @@ import { cloudOrgToken } from "@src/features/TeamCollaboration/sessionOrgTagsAto
 
 import {
   rerootSessionCommentTarget,
+  resolvePendingCloudConversationTarget,
   resolveSessionCommentTarget,
   sessionCommentTargetForConversationRoot,
 } from "./sessionCommentTarget";
@@ -21,6 +22,28 @@ const IMPORTED = {
   seq: 2,
   count: 10,
 };
+
+describe("pending Cloud conversation authority", () => {
+  it("retains a tagged Cloud root before the membership roster loads", () => {
+    expect(
+      resolvePendingCloudConversationTarget({
+        session: { session_id: "sess-1" },
+        tags: { "sess-1": [cloudOrgToken("org-a")] },
+        preferredOrgId: null,
+      })
+    ).toEqual({ orgId: "org-a", sessionId: "sess-1" });
+  });
+
+  it("does not manufacture Cloud authority for a plain local session", () => {
+    expect(
+      resolvePendingCloudConversationTarget({
+        session: { session_id: "sess-1" },
+        tags: {},
+        preferredOrgId: null,
+      })
+    ).toBeNull();
+  });
+});
 
 describe("sessionCommentTargetForConversationRoot", () => {
   it("keeps Team Chat on the Cloud root while a native child executes", () => {

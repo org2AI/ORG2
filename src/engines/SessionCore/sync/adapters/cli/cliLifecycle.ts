@@ -4,6 +4,7 @@ import {
 } from "@src/engines/SessionCore/control/turnLifecycle";
 import { isTurnBlockingRuntimeEvent } from "@src/engines/SessionCore/core/runningEventGate";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { createLogger } from "@src/hooks/logger";
 import { setSessionRuntimeStatusAtom } from "@src/store/session/cliSessionStatusAtom";
 import type { CliSessionStatus } from "@src/types/session/session";
@@ -25,9 +26,12 @@ const CLI_TERMINAL_STATUSES = new Set<CliSessionStatus>([
 ]);
 
 export function isCliTerminalStatus(
-  status: CliSessionStatus | undefined
+  status: string | undefined
 ): status is CliSessionStatus {
-  return status !== undefined && CLI_TERMINAL_STATUSES.has(status);
+  return (
+    status !== undefined &&
+    CLI_TERMINAL_STATUSES.has(status as CliSessionStatus)
+  );
 }
 
 /**
@@ -45,7 +49,16 @@ export function isInterruptedCliTerminalStatus(
   return cliTerminalStatus(status as CliSessionStatus) !== "completed";
 }
 
-async function closeObservedCliTerminalEvents(
+function durableInterruptedToolOutput(event: SessionEvent): string | null {
+  for (const candidate of [event.result?.output, event.result?.observation]) {
+    if (typeof candidate === "string" && candidate.length > 0) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+export async function closeObservedCliTerminalEvents(
   sessionId: string,
   status: CliSessionStatus
 ): Promise<void> {
@@ -62,6 +75,8 @@ async function closeObservedCliTerminalEvents(
       const unresolvedToolCall =
         event.actionType === "tool_call" ||
         Boolean(event.callId && event.functionName);
+      const interruptedToolHasOutput =
+        unresolvedToolCall && durableInterruptedToolOutput(event) !== null;
       return eventStoreProxy.upsert(
         {
           ...event,
@@ -71,10 +86,17 @@ async function closeObservedCliTerminalEvents(
           // so terminalize it into a portable message. A running tool call is
           // different: no provider may receive it without a paired result.
           // Keep it in ORG2 as interrupted diagnostics, but leave a pending
-          // result fence so native projection drops it until a real result
-          // arrives and replaces this row.
+          // result fence when it has no output, so native projection drops it
+          // until a real result arrives and replaces this row. Output already
+          // observed before Stop is durable conversation state: close that
+          // pair as an interrupted result so another runtime receives it as a
+          // provider-native error result instead of silently losing stdout.
           result: unresolvedToolCall
-            ? { ...event.result, status: "pending", interrupted: true }
+            ? {
+                ...event.result,
+                status: interruptedToolHasOutput ? "interrupted" : "pending",
+                interrupted: true,
+              }
             : { ...event.result, status: displayStatus },
           isDelta: false,
         },
@@ -98,20 +120,22 @@ export function markCliRuntimeRunning(
   return true;
 }
 
-export function markObservedCliTerminalStatus(
+export async function markObservedCliTerminalStatus(
   sessionId: string,
   status: CliSessionStatus | undefined
 ): Promise<void> {
   if (!isCliTerminalStatus(status) || !isStoreInitialized()) {
-    return Promise.resolve();
+    return;
   }
+  await closeObservedCliTerminalEvents(sessionId, status).catch((error) => {
+    log.warn("[cliAdapter] failed to close terminal CLI events:", error);
+  });
+  // Runtime/model switching is exposed by this terminal mirror. Publish it
+  // only after every visible partial row crossed the EventStore barrier.
   getInstrumentedStore().set(setSessionRuntimeStatusAtom, {
     sessionId,
     status,
     source: "sync",
-  });
-  return closeObservedCliTerminalEvents(sessionId, status).catch((error) => {
-    log.warn("[cliAdapter] failed to close terminal CLI events:", error);
   });
 }
 

@@ -24,7 +24,7 @@ use super::tool_calls::{
     pending_tool_calls_from_payload, resolve_codex_tool_outputs, wait_cell_id,
     web_search_call_from_payload, PendingBackgroundToolCall,
 };
-use super::CODEX_PROVIDER_SLUG;
+use super::{CODEX_PROVIDER_SLUG, NATIVE_SOURCE_EVENT_ID_ARG};
 
 type CodexTranscriptLoad = (
     Vec<ActivityChunk>,
@@ -35,6 +35,34 @@ type CodexTranscriptLoad = (
 #[derive(Debug)]
 struct PendingCompactionMirror {
     window_id: Option<String>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AssistantMirrorKind {
+    EventMessage,
+    ResponseItem,
+}
+
+struct PendingAssistantMirror {
+    kind: AssistantMirrorKind,
+    message: String,
+}
+
+fn attach_native_source_event_id(chunk: &mut ActivityChunk, payload: &Value) {
+    let Some(source_event_id) = payload
+        .get("id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+    else {
+        return;
+    };
+    let Some(args) = chunk.args.as_object_mut() else {
+        return;
+    };
+    args.insert(
+        NATIVE_SOURCE_EVENT_ID_ARG.to_string(),
+        Value::String(source_event_id.to_string()),
+    );
 }
 
 fn compacted_window_id(payload: &Value) -> Option<String> {
@@ -55,6 +83,25 @@ fn compacted_extends_pending_window(pending: &PendingCompactionMirror, payload: 
         return false;
     };
     pending.window_id.as_deref() == Some(previous_window_id)
+}
+
+fn should_emit_assistant_mirror(
+    pending: &mut Option<PendingAssistantMirror>,
+    kind: AssistantMirrorKind,
+    message: &str,
+) -> bool {
+    let is_mirror = pending
+        .as_ref()
+        .is_some_and(|previous| previous.kind != kind && previous.message == message);
+    if is_mirror {
+        *pending = None;
+        return false;
+    }
+    *pending = Some(PendingAssistantMirror {
+        kind,
+        message: message.to_string(),
+    });
+    true
 }
 
 pub(super) fn parse_codex_app_from_path_with_mode<'a>(
@@ -91,6 +138,11 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
     // identity from timestamps: two real compactions may legitimately happen
     // within a few seconds of each other.
     let mut pending_compacted_mirror: Option<PendingCompactionMirror> = None;
+    // Codex writes one assistant message twice: once as model-context
+    // `response_item/message` and once as visible `event_msg/agent_message`.
+    // Either representation can be first and their timestamps can differ by
+    // a millisecond, so pair only consecutive cross-representation records.
+    let mut pending_assistant_mirror: Option<PendingAssistantMirror> = None;
     // The model-context response item carries portable image data, while the
     // following UI projection may carry only a source-machine local path.
     // Pair them without emitting the response item as a duplicate user turn.
@@ -117,6 +169,7 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             Ok(parsed) => parsed,
             Err(_) => {
                 pending_compacted_mirror = None;
+                pending_assistant_mirror = None;
                 continue;
             }
         };
@@ -126,6 +179,7 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             .map(imported_history::normalize_created_at)
             .unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
         if parsed.line_type == "compacted" {
+            pending_assistant_mirror = None;
             let marker_id = parsed
                 .payload
                 .get("window_id")
@@ -174,8 +228,16 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
         }
         let Some(payload_type) = parsed.payload.get("type").and_then(Value::as_str) else {
             pending_compacted_mirror = None;
+            pending_assistant_mirror = None;
             continue;
         };
+
+        let is_assistant_mirror_record = payload_type == "agent_message"
+            || (payload_type == "message"
+                && parsed.payload.get("role").and_then(Value::as_str) == Some("assistant"));
+        if !is_assistant_mirror_record {
+            pending_assistant_mirror = None;
+        }
 
         if payload_type == "context_compacted" {
             if pending_compacted_mirror.take().is_some() {
@@ -272,18 +334,14 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                     // Synthesized/native Codex rollouts carry both the
                     // response_item (model context) and event_msg (visible
                     // thread mirror). They describe one assistant message,
-                    // not two conversation turns.
-                    let duplicate_context_item = collector.current.last().is_some_and(|chunk| {
-                        chunk.function == imported_history::FUNCTION_ASSISTANT
-                            && chunk.created_at == created_at
-                            && chunk
-                                .result
-                                .get("observation")
-                                .or_else(|| chunk.result.get("content"))
-                                .and_then(Value::as_str)
-                                == Some(message)
-                    });
-                    if !duplicate_context_item {
+                    // not two conversation turns. Either representation can
+                    // be written first, so both branches use the same mirror
+                    // predicate.
+                    if should_emit_assistant_mirror(
+                        &mut pending_assistant_mirror,
+                        AssistantMirrorKind::EventMessage,
+                        message,
+                    ) {
                         collector
                             .current
                             .push(imported_history::assistant_message_chunk(
@@ -300,12 +358,13 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             "message" => {
                 let role = parsed.payload.get("role").and_then(Value::as_str);
                 if role == Some("user") {
-                    if let Some(user_chunk) = injected_user_message_chunk_from_response_message(
+                    if let Some(mut user_chunk) = injected_user_message_chunk_from_response_message(
                         session_id,
                         sequence,
                         &created_at,
                         &parsed.payload,
                     ) {
+                        attach_native_source_event_id(&mut user_chunk, &parsed.payload);
                         let user_sequence = sequence;
                         sequence += 1;
                         if collector.start_turn(user_chunk) {
@@ -322,16 +381,22 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                     }
                 } else if role == Some("assistant") {
                     if let Some(text) = content_text_from_payload(&parsed.payload) {
-                        collector
-                            .current
-                            .push(imported_history::assistant_message_chunk(
+                        if should_emit_assistant_mirror(
+                            &mut pending_assistant_mirror,
+                            AssistantMirrorKind::ResponseItem,
+                            &text,
+                        ) {
+                            let mut chunk = imported_history::assistant_message_chunk(
                                 session_id,
                                 CODEX_PROVIDER_SLUG,
                                 sequence,
                                 &created_at,
                                 &text,
-                            ));
-                        sequence += 1;
+                            );
+                            attach_native_source_event_id(&mut chunk, &parsed.payload);
+                            collector.current.push(chunk);
+                            sequence += 1;
+                        }
                     }
                 }
             }
@@ -523,6 +588,13 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             );
             interrupted.result["output"] = Value::String(output.clone());
             interrupted.result["observation"] = Value::String(output.clone());
+            if !output.is_empty() {
+                // This is no longer a grammar-dangling call: Codex exposed
+                // durable stdout before the process was interrupted. Pair it
+                // with an explicit interrupted result during cross-runtime
+                // materialization instead of dropping already-visible work.
+                interrupted.result["status"] = Value::String("interrupted".to_string());
+            }
             collector.current.push(interrupted);
             sequence += 1;
         }

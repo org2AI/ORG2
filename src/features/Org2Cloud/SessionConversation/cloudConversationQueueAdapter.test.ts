@@ -77,6 +77,12 @@ const AUTH = {
   expiresAt: 4_000_000_000,
 };
 
+const REFRESHED_AUTH = {
+  ...AUTH,
+  accessToken: "access-after-plane-refresh",
+  refreshToken: "refresh-after-plane-refresh",
+};
+
 const ROOT = {
   authority: "org2-cloud" as const,
   authorityScope: ["https://cloud.example", "org-1"],
@@ -122,6 +128,7 @@ beforeEach(() => {
     localSessionId: "imported-fork",
     updated: true,
   });
+  mocks.refreshPlane.mockResolvedValue({ state: "ready", events: [] });
   mocks.loadCanonical.mockImplementation(async (sessionId: string) => ({
     source: "native_store",
     events:
@@ -167,11 +174,79 @@ beforeEach(() => {
   }));
 });
 
+function readyStore() {
+  const store = createStore();
+  store.set(org2CloudAuthAtom, AUTH);
+  store.set(org2CloudRemoteSessionsAtom, {
+    "org-1": {
+      identityKey: "https://cloud.example|user-1",
+      state: "ready",
+      fetchedAt: 1,
+      rows: [
+        {
+          id: "row-root",
+          orgId: "org-1",
+          ownerMemberId: "member-1",
+          ownerUserId: "user-1",
+          ownerDisplayName: "Owner",
+          ownerIdentityKind: "human",
+          sourceSessionId: "shared-root",
+          title: "Root",
+          eventsEpoch: 1,
+          eventsFrozenSeq: 0,
+          eventsCount: 0,
+          eventsTailHash: "root-tail",
+        },
+      ],
+    },
+  });
+  return store;
+}
+
 describe("dispatchQueuedCloudConversation failure classification", () => {
+  it("uses auth committed by the plane refresh for every later Cloud read", async () => {
+    const store = readyStore();
+    mocks.refreshPlane.mockImplementationOnce(async ({ setAuth }) => {
+      setAuth(REFRESHED_AUTH);
+      return { state: "ready", events: [] };
+    });
+    mocks.runConversationTurn.mockResolvedValueOnce({
+      runnerSessionId: "runner",
+      terminalStatus: "completed",
+    });
+
+    await dispatchQueuedCloudConversation(store, MESSAGE, ROOT, {
+      onAccepted: vi.fn(),
+    });
+
+    expect(mocks.listComments).toHaveBeenCalledWith(
+      REFRESHED_AUTH.accessToken,
+      "org-1",
+      "shared-root",
+      {
+        endpoint: {
+          supabaseUrl: REFRESHED_AUTH.supabaseUrl,
+          anonKey: REFRESHED_AUTH.supabaseAnonKey,
+        },
+      }
+    );
+    expect(mocks.buildFetchClient).toHaveBeenCalledWith(
+      REFRESHED_AUTH.accessToken,
+      expect.objectContaining({ anonKey: REFRESHED_AUTH.supabaseAnonKey })
+    );
+    expect(mocks.pushEvents).toHaveBeenCalledWith(
+      REFRESHED_AUTH.accessToken,
+      expect.objectContaining({ turnId: "turn-1" }),
+      expect.objectContaining({
+        supabaseUrl: REFRESHED_AUTH.supabaseUrl,
+        anonKey: REFRESHED_AUTH.supabaseAnonKey,
+      })
+    );
+  });
+
   it("publishes one terminal event and closes after a definitive post-admission 4xx", async () => {
-    const store = createStore();
-    store.set(org2CloudAuthAtom, AUTH);
-    mocks.refreshPlane.mockRejectedValueOnce(
+    const store = readyStore();
+    mocks.runConversationTurn.mockRejectedValueOnce(
       new Org2CloudConversationError("ORG2_FORBIDDEN", 403)
     );
 
@@ -193,13 +268,12 @@ describe("dispatchQueuedCloudConversation failure classification", () => {
         ],
       })
     );
-    expect(mocks.runConversationTurn).not.toHaveBeenCalled();
+    expect(mocks.runConversationTurn).toHaveBeenCalledOnce();
   });
 
   it("retains recovery ownership after a retryable post-admission 5xx", async () => {
-    const store = createStore();
-    store.set(org2CloudAuthAtom, AUTH);
-    mocks.refreshPlane.mockRejectedValueOnce(
+    const store = readyStore();
+    mocks.runConversationTurn.mockRejectedValueOnce(
       new Org2CloudConversationError("temporary upstream failure", 503)
     );
 
@@ -210,7 +284,38 @@ describe("dispatchQueuedCloudConversation failure classification", () => {
     ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
 
     expect(mocks.pushEvents).toHaveBeenCalledOnce();
-    expect(mocks.runConversationTurn).not.toHaveBeenCalled();
+    expect(mocks.runConversationTurn).toHaveBeenCalledOnce();
+  });
+
+  it("leaves an already-bound native suffix to accepted-turn recovery", async () => {
+    const store = readyStore();
+    mocks.runConversationTurn.mockResolvedValueOnce({
+      runnerSessionId: "runner-accepted",
+      terminalStatus: "completed",
+    });
+
+    await dispatchQueuedCloudConversation(
+      store,
+      {
+        ...MESSAGE,
+        status: "accepted",
+        runnerSessionId: "runner-accepted",
+        runnerEventStartIndex: 42,
+      },
+      ROOT,
+      { onAccepted: vi.fn() }
+    );
+
+    expect(mocks.pushEvents).toHaveBeenCalledOnce();
+    expect(mocks.runConversationTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recovery: {
+          runnerSessionId: "runner-accepted",
+          eventStartIndex: 42,
+          providerAccepted: true,
+        },
+      })
+    );
   });
 
   it("imports every available family member before executing the canonical timeline", async () => {

@@ -3,12 +3,12 @@ import { selectAtom } from "jotai/utils";
 import React, {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import { loadCanonicalConversationEvents } from "@src/engines/SessionCore/conversations/canonicalConversationEvents";
 import { resolveConversationViewerState } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import {
   type ConversationRootLocator,
@@ -16,14 +16,18 @@ import {
 } from "@src/engines/SessionCore/conversations/conversationTypes";
 import {
   type LocalExecutionChild,
+  type LocalExecutionSegment,
   loadLocalExecutionChildEvents,
   loadLocalExecutionChildren,
+  mergeVerifiedLocalExecutionTimeline,
   projectVerifiedLocalExecutionTail,
   suppressLandedQueuedUserRows,
 } from "@src/engines/SessionCore/conversations/localConversationExecutionTail";
 import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms/metadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import { derivePlanDisplayEvents } from "@src/engines/SessionCore/derived/planDisplayEvents";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
+import { isVisibleInChat } from "@src/engines/SessionCore/ingestion/visibilityFilters";
 import { useSessionCommentsContext } from "@src/features/Org2Cloud/SessionComments/SessionCommentsContext";
 import {
   assembleCanonicalConversationTimeline,
@@ -70,10 +74,8 @@ import {
 } from "./hooks/useConversationTargetBinding";
 
 const EMPTY_DISCUSSION_COMMENTS = [] as const;
-const EMPTY_HYDRATED_LOCAL_CHILD_EVENTS: ReadonlyMap<
-  string,
-  readonly SessionEvent[]
-> = new Map();
+const EMPTY_LOCAL_CHILD_EVENTS: ReadonlyMap<string, readonly SessionEvent[]> =
+  new Map();
 const log = createLogger("ConversationStreamProvider");
 
 interface ConversationDeliveryScope {
@@ -119,34 +121,227 @@ export function conversationActiveDeliveriesAtom(
   );
 }
 
-export function retainHydratedLocalChildEvents(
-  events: ReadonlyMap<string, readonly SessionEvent[]>,
-  childIds: ReadonlySet<string>
-): ReadonlyMap<string, readonly SessionEvent[]> {
-  if ([...events.keys()].every((childId) => childIds.has(childId))) {
-    return events;
-  }
-  return new Map([...events].filter(([childId]) => childIds.has(childId)));
+export function selectLocalExecutionChildEvents(
+  liveEvents: readonly SessionEvent[] | undefined,
+  hydratedEvents: readonly SessionEvent[] | undefined
+): readonly SessionEvent[] {
+  // A live atom is already chat-projected, so it cannot verify the complete
+  // provider-native prefix. Keep the authoritative snapshot as the history
+  // owner; the existing runner overlay owns only the in-flight turn.
+  return hydratedEvents ?? liveEvents ?? [];
 }
 
-export interface HydratedLocalChildState {
-  rootKey: string | null;
+type LocalChildHydrationEntry = readonly [
+  childSessionId: string,
+  events: readonly SessionEvent[] | undefined,
+];
+
+/** Failed first reads stay absent so a live projection remains usable and retryable. */
+export function hydratedLocalChildEventMap(
+  entries: readonly LocalChildHydrationEntry[]
+): ReadonlyMap<string, readonly SessionEvent[]> {
+  return new Map(
+    entries.filter(
+      (entry): entry is readonly [string, readonly SessionEvent[]] =>
+        entry[1] !== undefined
+    )
+  );
+}
+
+interface LatestHydrationRequest<T> {
+  generation: number;
+  value: T;
+}
+
+interface LocalExecutionHydrationCoordinator<TRequest> {
+  request: (request: TRequest) => void;
+  invalidate: () => void;
+  activate: () => void;
+  deactivate: () => void;
+}
+
+/**
+ * Runs at most one native-history hydration at a time and coalesces bursts to
+ * the newest request. Generation checks prevent an old root from committing.
+ */
+export function createLocalExecutionHydrationCoordinator<TRequest, TResult>(
+  hydrate: (request: TRequest) => Promise<TResult>,
+  onCurrent: (result: TResult, request: TRequest) => void,
+  onError: (error: unknown, request: TRequest) => void
+): LocalExecutionHydrationCoordinator<TRequest> {
+  let generation = 0;
+  let active = true;
+  let running = false;
+  let pending: LatestHydrationRequest<TRequest> | null = null;
+
+  const drain = async () => {
+    while (active && pending) {
+      const current = pending;
+      pending = null;
+      try {
+        const result = await hydrate(current.value);
+        if (active && current.generation === generation) {
+          onCurrent(result, current.value);
+        }
+      } catch (error) {
+        if (active && current.generation === generation) {
+          onError(error, current.value);
+        }
+      }
+    }
+    running = false;
+    // No await occurs between the loop condition and this assignment, but keep
+    // the restart guard explicit so future scheduling changes cannot lose work.
+    if (active && pending) start();
+  };
+  const start = () => {
+    if (!active || running || !pending) return;
+    running = true;
+    void drain();
+  };
+
+  return {
+    request(request) {
+      generation += 1;
+      pending = { generation, value: request };
+      start();
+    },
+    invalidate() {
+      generation += 1;
+      pending = null;
+    },
+    activate() {
+      active = true;
+      start();
+    },
+    deactivate() {
+      active = false;
+      generation += 1;
+      pending = null;
+    },
+  };
+}
+
+interface LocalExecutionHydrationRequest {
+  root: ConversationRootLocator;
+  rootKey: string;
+  sessionId: string;
+}
+
+interface LocalExecutionHydrationSnapshot {
+  rootKey: string;
+  authoritativeRootEvents: readonly SessionEvent[];
+  children: LocalExecutionChild[];
   events: ReadonlyMap<string, readonly SessionEvent[]>;
 }
 
-export function reconcileHydratedLocalChildState(
-  previous: HydratedLocalChildState,
-  rootKey: string | null,
-  childIds: ReadonlySet<string>
-): HydratedLocalChildState {
-  const events =
-    previous.rootKey === rootKey
-      ? retainHydratedLocalChildEvents(previous.events, childIds)
-      : EMPTY_HYDRATED_LOCAL_CHILD_EVENTS;
-  if (previous.rootKey === rootKey && previous.events === events) {
-    return previous;
-  }
-  return { rootKey, events };
+async function hydrateLocalExecutionSnapshot(
+  request: LocalExecutionHydrationRequest,
+  previous: LocalExecutionHydrationSnapshot | null
+): Promise<LocalExecutionHydrationSnapshot> {
+  const [authoritativeRoot, children] = await Promise.all([
+    loadCanonicalConversationEvents(request.root.conversationId),
+    loadLocalExecutionChildren(request.root),
+  ]);
+  const visibleChildren = children.filter(
+    (child) => child.session_id !== request.sessionId
+  );
+  const previousChildren = new Map(
+    previous?.rootKey === request.rootKey
+      ? previous.children.map((child) => [child.session_id, child] as const)
+      : []
+  );
+  const entries = await Promise.all(
+    visibleChildren.map(async (child): Promise<LocalChildHydrationEntry> => {
+      const previousChild = previousChildren.get(child.session_id);
+      const previousEvents =
+        previous?.rootKey === request.rootKey
+          ? previous.events.get(child.session_id)
+          : undefined;
+      if (
+        previousChild &&
+        previousEvents !== undefined &&
+        previousChild.updated_at === child.updated_at
+      ) {
+        return [child.session_id, previousEvents];
+      }
+      try {
+        return [
+          child.session_id,
+          await loadLocalExecutionChildEvents(child.session_id),
+        ];
+      } catch (error) {
+        log.warn(
+          `execution child ${child.session_id} could not be hydrated`,
+          error
+        );
+        // A missing or changed child must not cache [] or retain an older
+        // authoritative snapshot: either would hide a newer live projection.
+        return [child.session_id, undefined];
+      }
+    })
+  );
+  return {
+    rootKey: request.rootKey,
+    authoritativeRootEvents: authoritativeRoot.events,
+    children: visibleChildren,
+    events: hydratedLocalChildEventMap(entries),
+  };
+}
+
+interface ConversationActiveRunner {
+  runnerSessionId: string;
+  turnId: string;
+  eventStartIndex: number;
+}
+
+export function selectConversationActiveRunners(
+  deliveries: readonly ActiveMessageDelivery[],
+  scope: ConversationDeliveryScope & { landedTurnIds: ReadonlySet<string> }
+): ConversationActiveRunner[] {
+  return deliveries.flatMap((delivery) => {
+    const descriptor = delivery.conversationDispatch;
+    const rootKey = conversationRootKey(descriptor.root);
+    const isLocal = Boolean(
+      scope.localRootKey && rootKey === scope.localRootKey
+    );
+    const isCloud = Boolean(
+      scope.cloudRootKey &&
+      scope.cloudIdentityKey &&
+      rootKey === scope.cloudRootKey &&
+      descriptor.dispatchIdentityKey === scope.cloudIdentityKey
+    );
+    if (
+      (!isLocal && !isCloud) ||
+      (isCloud && scope.landedTurnIds.has(delivery.turnIntentId)) ||
+      !delivery.runnerSessionId ||
+      delivery.runnerEventStartIndex === undefined
+    ) {
+      return [];
+    }
+    return [
+      {
+        runnerSessionId: delivery.runnerSessionId,
+        turnId: delivery.turnIntentId,
+        eventStartIndex: delivery.runnerEventStartIndex,
+      },
+    ];
+  });
+}
+
+/** Verify against raw native history, then run the ordinary chat projection. */
+export function projectVisibleLocalExecutionTail(
+  authoritativeRootEvents: readonly SessionEvent[],
+  segments: readonly LocalExecutionSegment[],
+  canonicalSessionId: string
+): SessionEvent[] {
+  return derivePlanDisplayEvents(
+    projectVerifiedLocalExecutionTail(
+      authoritativeRootEvents,
+      segments,
+      canonicalSessionId
+    ).filter(isVisibleInChat)
+  );
 }
 
 interface ConversationStreamProviderProps {
@@ -402,6 +597,10 @@ export function ConversationStreamProvider({
     return root && root.conversationId === sessionId ? root : null;
   }, [currentSession, overrideEvents, sessionId, target]);
   const localRootKey = localRoot ? conversationRootKey(localRoot) : null;
+  const localRootRef = useRef(localRoot);
+  useEffect(() => {
+    localRootRef.current = localRoot;
+  }, [localRoot]);
   const scopedActiveDeliveriesAtom = useMemo(
     () =>
       conversationActiveDeliveriesAtom({
@@ -417,27 +616,19 @@ export function ConversationStreamProvider({
     [plane.events]
   );
   const activeRunners = useMemo(() => {
-    if (!runnerRegistryKey || !authIdentityKey) return [];
-    return activeDeliveries.flatMap((delivery) => {
-      const descriptor = delivery.conversationDispatch;
-      if (
-        descriptor.dispatchIdentityKey !== authIdentityKey ||
-        conversationRootKey(descriptor.root) !== runnerRegistryKey ||
-        !delivery.runnerSessionId ||
-        delivery.runnerEventStartIndex === undefined ||
-        landedTurnIds.has(delivery.turnIntentId)
-      ) {
-        return [];
-      }
-      return [
-        {
-          runnerSessionId: delivery.runnerSessionId,
-          turnId: delivery.turnIntentId,
-          eventStartIndex: delivery.runnerEventStartIndex,
-        },
-      ];
+    return selectConversationActiveRunners(activeDeliveries, {
+      cloudRootKey: runnerRegistryKey,
+      cloudIdentityKey: authIdentityKey,
+      localRootKey,
+      landedTurnIds,
     });
-  }, [activeDeliveries, authIdentityKey, landedTurnIds, runnerRegistryKey]);
+  }, [
+    activeDeliveries,
+    authIdentityKey,
+    landedTurnIds,
+    localRootKey,
+    runnerRegistryKey,
+  ]);
   const activeRunnerIds = useMemo(
     () => new Set(activeRunners.map((runner) => runner.runnerSessionId)),
     [activeRunners]
@@ -459,26 +650,55 @@ export function ConversationStreamProvider({
         : 0,
     [activeDeliveries, localRootKey]
   );
-  const [loadedLocalChildren, setLoadedLocalChildren] = useState<{
-    rootKey: string;
-    children: LocalExecutionChild[];
-  } | null>(null);
+  const [loadedLocalChildren, setLoadedLocalChildren] =
+    useState<LocalExecutionHydrationSnapshot | null>(null);
+  const loadedLocalChildrenRef = useRef(loadedLocalChildren);
+  const localHydrationCoordinatorRef =
+    useRef<LocalExecutionHydrationCoordinator<LocalExecutionHydrationRequest> | null>(
+      null
+    );
   useEffect(() => {
-    if (!localRoot || !localRootKey) return;
-    let disposed = false;
-    void loadLocalExecutionChildren(localRoot)
-      .then((children) => {
-        if (disposed) return;
-        setLoadedLocalChildren({
-          rootKey: localRootKey,
-          children: children.filter((child) => child.session_id !== sessionId),
+    const coordinator = createLocalExecutionHydrationCoordinator<
+      LocalExecutionHydrationRequest,
+      LocalExecutionHydrationSnapshot
+    >(
+      (request) =>
+        hydrateLocalExecutionSnapshot(request, loadedLocalChildrenRef.current),
+      (next) => {
+        loadedLocalChildrenRef.current = next;
+        setLoadedLocalChildren(next);
+      },
+      (error, request) => {
+        log.warn("local execution hydration could not load children", {
+          sessionId: request.sessionId,
+          localRootKey: request.rootKey,
+          error,
         });
-      })
-      .catch(() => undefined);
+      }
+    );
+    localHydrationCoordinatorRef.current = coordinator;
+    coordinator.activate();
     return () => {
-      disposed = true;
+      coordinator.deactivate();
+      if (localHydrationCoordinatorRef.current === coordinator) {
+        localHydrationCoordinatorRef.current = null;
+      }
     };
-  }, [localRoot, localRootDeliveryCount, localRootKey, sessionId]);
+  }, []);
+  useEffect(() => {
+    const coordinator = localHydrationCoordinatorRef.current;
+    if (!coordinator) return;
+    const root = localRootRef.current;
+    if (!root || !localRootKey) {
+      coordinator.invalidate();
+      return;
+    }
+    coordinator.request({
+      root,
+      rootKey: localRootKey,
+      sessionId,
+    });
+  }, [localRootDeliveryCount, localRootKey, sessionId]);
   const localChildren = useMemo(
     () =>
       localRootKey && loadedLocalChildren?.rootKey === localRootKey
@@ -486,128 +706,48 @@ export function ConversationStreamProvider({
         : [],
     [loadedLocalChildren, localRootKey]
   );
-  const localActiveRunnerSessionId = useMemo(() => {
-    if (!localRootKey) return null;
-    const runners = activeDeliveries.flatMap((delivery) =>
-      conversationRootKey(delivery.conversationDispatch.root) ===
-        localRootKey && delivery.runnerSessionId
-        ? [delivery.runnerSessionId]
-        : []
-    );
-    return runners.length > 0 ? runners[runners.length - 1] : null;
-  }, [activeDeliveries, localRootKey]);
-  const hydratingLocalChildrenRef = useRef<Set<string>>(new Set());
-  const localChildIds = useMemo(
-    () => new Set(localChildren.map((child) => child.session_id)),
-    [localChildren]
-  );
-  const localHydrationScopeRef = useRef<{
-    rootKey: string | null;
-    childIds: ReadonlySet<string>;
-  }>({ rootKey: null, childIds: new Set() });
-  useLayoutEffect(() => {
-    localHydrationScopeRef.current = {
-      rootKey: localRootKey,
-      childIds: localChildIds,
-    };
-    return () => {
-      localHydrationScopeRef.current = {
-        rootKey: null,
-        childIds: new Set(),
-      };
-    };
-  }, [localChildIds, localRootKey]);
-  const [hydratedLocalChildState, setHydratedLocalChildState] =
-    useState<HydratedLocalChildState>(() => ({
-      rootKey: null,
-      events: EMPTY_HYDRATED_LOCAL_CHILD_EVENTS,
-    }));
-  const reconciledHydratedLocalChildState = reconcileHydratedLocalChildState(
-    hydratedLocalChildState,
-    localRootKey,
-    localChildIds
-  );
-  if (reconciledHydratedLocalChildState !== hydratedLocalChildState) {
-    setHydratedLocalChildState(reconciledHydratedLocalChildState);
-  }
-  const hydratedLocalChildEvents = reconciledHydratedLocalChildState.events;
-  useLayoutEffect(() => {
-    const allowedHydrationKeys = new Set(
-      [...localChildIds].map((childId) => `${localRootKey ?? ""}\0${childId}`)
-    );
-    for (const hydrationKey of hydratingLocalChildrenRef.current) {
-      if (!allowedHydrationKeys.has(hydrationKey)) {
-        hydratingLocalChildrenRef.current.delete(hydrationKey);
-      }
-    }
-  }, [localChildIds, localRootKey]);
-  useEffect(() => {
-    if (!localRootKey) return;
-    for (const child of localChildren) {
-      const hydrationKey = `${localRootKey}\0${child.session_id}`;
-      if (
-        child.session_id === localActiveRunnerSessionId ||
-        hydratingLocalChildrenRef.current.has(hydrationKey) ||
-        hydratedLocalChildEvents.has(child.session_id) ||
-        (eventsByBareId.get(child.session_id)?.length ?? 0) > 0
-      ) {
-        continue;
-      }
-      hydratingLocalChildrenRef.current.add(hydrationKey);
-      void loadLocalExecutionChildEvents(child.session_id)
-        .then((events) => {
-          const scope = localHydrationScopeRef.current;
-          if (
-            scope.rootKey !== localRootKey ||
-            !scope.childIds.has(child.session_id)
-          ) {
-            return;
-          }
-          setHydratedLocalChildState((previous) => {
-            if (previous.rootKey !== localRootKey) return previous;
-            const next = new Map(previous.events);
-            next.set(child.session_id, events);
-            return { rootKey: localRootKey, events: next };
-          });
-        })
-        .catch((error: unknown) => {
-          log.warn(
-            `execution child ${child.session_id} could not be hydrated`,
-            error
-          );
-        })
-        .finally(() => {
-          hydratingLocalChildrenRef.current.delete(hydrationKey);
-        });
-    }
-  }, [
-    eventsByBareId,
-    hydratedLocalChildEvents,
-    localActiveRunnerSessionId,
-    localChildren,
-    localRootKey,
-  ]);
-  const localTails = useMemo(() => {
-    if (!localRootKey) return [];
-    return projectVerifiedLocalExecutionTail(
-      chatEvents,
+  const hydratedLocalChildEvents =
+    localRootKey && loadedLocalChildren?.rootKey === localRootKey
+      ? loadedLocalChildren.events
+      : EMPTY_LOCAL_CHILD_EVENTS;
+  const authoritativeLocalRootEvents =
+    localRootKey && loadedLocalChildren?.rootKey === localRootKey
+      ? loadedLocalChildren.authoritativeRootEvents
+      : null;
+  const localExecutionSegments = useMemo<LocalExecutionSegment[]>(
+    () =>
       localChildren.map((child) => {
         const liveEvents = eventsByBareId.get(child.session_id);
         return {
           child,
-          events:
-            liveEvents && liveEvents.length > 0
-              ? liveEvents
-              : (hydratedLocalChildEvents.get(child.session_id) ?? []),
+          events: selectLocalExecutionChildEvents(
+            liveEvents,
+            hydratedLocalChildEvents.get(child.session_id)
+          ),
         };
       }),
+    [eventsByBareId, hydratedLocalChildEvents, localChildren]
+  );
+  const localCanonicalExecutionTimeline = useMemo(
+    () =>
+      authoritativeLocalRootEvents
+        ? mergeVerifiedLocalExecutionTimeline(
+            authoritativeLocalRootEvents,
+            localExecutionSegments
+          )
+        : [],
+    [authoritativeLocalRootEvents, localExecutionSegments]
+  );
+  const localTails = useMemo(() => {
+    if (!localRootKey || !authoritativeLocalRootEvents) return [];
+    return projectVisibleLocalExecutionTail(
+      authoritativeLocalRootEvents,
+      localExecutionSegments,
       sessionId
     );
   }, [
-    chatEvents,
-    eventsByBareId,
-    hydratedLocalChildEvents,
-    localChildren,
+    authoritativeLocalRootEvents,
+    localExecutionSegments,
     localRootKey,
     sessionId,
   ]);
@@ -620,7 +760,12 @@ export function ConversationStreamProvider({
         (candidate) => candidate.runnerSessionId === runnerSessionId
       );
       if (!runner) return;
-      const overlay = buildConversationRunnerOverlay(runner, events, sessionId);
+      const overlay = buildConversationRunnerOverlay(
+        runner,
+        events,
+        sessionId,
+        localCanonicalExecutionTimeline
+      );
       setRunnerOverlayById((previous) => {
         if (
           conversationRunnerOverlaysEqual(
@@ -640,7 +785,7 @@ export function ConversationStreamProvider({
         return next;
       });
     },
-    [activeRunnerIds, activeRunners, sessionId]
+    [activeRunnerIds, activeRunners, localCanonicalExecutionTimeline, sessionId]
   );
   const handleRunnerUnmount = useCallback((runnerSessionId: string) => {
     setRunnerOverlayById((previous) => {
@@ -705,7 +850,6 @@ export function ConversationStreamProvider({
     activeRunners,
     runnerOverlayById,
   ]);
-
   return (
     <>
       {localChildren.map((child) => (
@@ -736,7 +880,7 @@ export function ConversationStreamProvider({
         />
       ))}
       <ChatHistoryOverrideContext.Provider value={value}>
-        {children(activeRunnerSessionId ?? localActiveRunnerSessionId)}
+        {children(activeRunnerSessionId)}
       </ChatHistoryOverrideContext.Provider>
     </>
   );

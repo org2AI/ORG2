@@ -200,6 +200,53 @@ describe("canonical conversation target selection", () => {
     });
   });
 
+  it("switches directly to native Claude Default and clears provider overrides", () => {
+    const selection = {
+      category: "cli_agent",
+      targetKind: "cli_agent",
+      cliAgentType: "claude_code",
+      agentName: "Claude Code",
+    } as const;
+
+    expect(
+      resolveConversationRuntimeTarget({
+        selection,
+        current: {
+          cliAgentType: "codex",
+          accountId: "openai-1",
+          model: "gpt-5.6-sol",
+          workspaceRepoPath: "/repo",
+        },
+        workspaceRepoPath: "/repo",
+        accounts: [account("openai-1", "codex", "gpt-5.6-sol")],
+        registry,
+        nativeCliTargets: ["claude_code", "codex"],
+      })
+    ).toEqual({
+      cliAgentType: "claude_code",
+      workspaceRepoPath: "/repo",
+    });
+
+    expect(
+      resolveConversationRuntimeTarget({
+        selection,
+        current: {
+          cliAgentType: "claude_code",
+          accountId: "atlas-1",
+          model: "zai-org/glm-5.2",
+          workspaceRepoPath: "/repo",
+        },
+        workspaceRepoPath: "/repo",
+        accounts: [account("atlas-1", "claude_code", "zai-org/glm-5.2")],
+        registry,
+        nativeCliTargets: ["claude_code", "codex"],
+      })
+    ).toEqual({
+      cliAgentType: "claude_code",
+      workspaceRepoPath: "/repo",
+    });
+  });
+
   it("keeps an explicit composer provider switch", () => {
     expect(
       resolveDefaultConversationTarget({

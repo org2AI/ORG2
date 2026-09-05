@@ -5,7 +5,10 @@ import {
   type ConversationRootLocator,
   conversationRootKey,
 } from "@src/engines/SessionCore/conversations/conversationTypes";
+import { NATIVE_SOURCE_EVENT_ID_ARG } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import { isVisibleInChat } from "@src/engines/SessionCore/ingestion/visibilityFilters";
+import { buildConversationRunnerOverlay } from "@src/features/Org2Cloud/SessionConversation/conversationRunnerOverlay";
 import {
   type ActiveMessageDelivery,
   messageDeliveryRecordsAtom,
@@ -13,10 +16,46 @@ import {
 
 import {
   conversationActiveDeliveriesAtom,
-  reconcileHydratedLocalChildState,
+  createLocalExecutionHydrationCoordinator,
+  hydratedLocalChildEventMap,
+  projectVisibleLocalExecutionTail,
   resolveConversationRunnerBindings,
-  retainHydratedLocalChildEvents,
+  selectConversationActiveRunners,
+  selectLocalExecutionChildEvents,
 } from "./ConversationStreamProvider";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((fulfill) => {
+    resolve = fulfill;
+  });
+  return { promise, resolve };
+}
+
+function messageEvent(
+  id: string,
+  source: "user" | "assistant",
+  displayText: string,
+  createdAt: string
+): SessionEvent {
+  return {
+    id,
+    chunk_id: id,
+    sessionId: "root",
+    createdAt,
+    functionName: source === "user" ? "user_message" : "assistant_message",
+    uiCanonical: source === "user" ? "user" : "assistant_message",
+    actionType: source === "user" ? "raw" : "assistant",
+    args: {},
+    result: { content: displayText },
+    source,
+    displayText,
+    displayStatus: "completed",
+    displayVariant: "message",
+    activityStatus: "agent",
+    payloadRefs: [],
+  } as SessionEvent;
+}
 
 function root(conversationId: string): ConversationRootLocator {
   return {
@@ -126,39 +165,187 @@ describe("conversation delivery lifecycle scoping", () => {
 });
 
 describe("local execution-child hydration lifecycle", () => {
-  const childAEvents = [{ id: "event-a" }] as unknown as SessionEvent[];
-  const childBEvents = [{ id: "event-b" }] as unknown as SessionEvent[];
-
-  it("prunes children that no longer belong to the current root", () => {
-    const previous = new Map<string, readonly SessionEvent[]>([
-      ["child-a", childAEvents],
-      ["child-b", childBEvents],
+  it("does not cache a failed child read or let stale hydration hide live events", () => {
+    const live = [
+      { id: "live-after-failed-read" },
+    ] as unknown as SessionEvent[];
+    const authoritative = [
+      { id: "authoritative" },
+    ] as unknown as SessionEvent[];
+    const hydrated = hydratedLocalChildEventMap([
+      ["failed-child", undefined],
+      ["loaded-child", authoritative],
     ]);
 
-    const retained = retainHydratedLocalChildEvents(
-      previous,
-      new Set(["child-b"])
+    expect(hydrated.has("failed-child")).toBe(false);
+    expect(
+      selectLocalExecutionChildEvents(live, hydrated.get("failed-child"))
+    ).toBe(live);
+    expect(hydrated.get("loaded-child")).toBe(authoritative);
+  });
+
+  it("single-flights hydration bursts and commits only the latest generation", async () => {
+    const first = deferred<string>();
+    const second = deferred<string>();
+    const loads: string[] = [];
+    const commits: Array<[string, string]> = [];
+    const coordinator = createLocalExecutionHydrationCoordinator(
+      async (request: string) => {
+        loads.push(request);
+        return loads.length === 1 ? first.promise : second.promise;
+      },
+      (result, request) => commits.push([result, request]),
+      () => undefined
     );
-    expect([...retained]).toEqual([["child-b", childBEvents]]);
-    expect(retainHydratedLocalChildEvents(retained, new Set(["child-b"]))).toBe(
-      retained
+
+    coordinator.request("old-root");
+    coordinator.request("latest-root");
+    expect(loads).toEqual(["old-root"]);
+
+    first.resolve("stale-result");
+    await first.promise;
+    await vi.waitFor(() => {
+      expect(loads).toEqual(["old-root", "latest-root"]);
+    });
+    expect(commits).toEqual([]);
+
+    second.resolve("latest-result");
+    await second.promise;
+    await vi.waitFor(() => {
+      expect(commits).toEqual([["latest-result", "latest-root"]]);
+    });
+  });
+
+  it("keeps authoritative history while an active filtered stream feeds the existing overlay", () => {
+    const filteredLive = [
+      { id: "current-user-only" },
+    ] as unknown as SessionEvent[];
+    const authoritative = [
+      { id: "historical-user" },
+      { id: "historical-structural-event" },
+      { id: "historical-assistant" },
+    ] as unknown as SessionEvent[];
+
+    expect(selectLocalExecutionChildEvents(filteredLive, authoritative)).toBe(
+      authoritative
     );
   });
 
-  it("clears retained events on a root switch even if a child id is reused", () => {
-    const previous = {
-      rootKey: "root-a",
-      events: new Map<string, readonly SessionEvent[]>([
-        ["child-a", childAEvents],
-      ]),
+  it("routes a local active turn through the same runner overlay as Cloud", () => {
+    const delivery = {
+      ...activeDelivery("local-turn", "local-root"),
+      runnerSessionId: "claude-child",
+      // Raw provider history contains many rows hidden from chat projection.
+      runnerEventStartIndex: 36,
+    };
+    const [runner] = selectConversationActiveRunners([delivery], {
+      cloudRootKey: null,
+      cloudIdentityKey: null,
+      localRootKey: conversationRootKey(root("local-root")),
+      landedTurnIds: new Set(),
+    });
+    const historical = messageEvent(
+      "historical",
+      "assistant",
+      "old answer",
+      "2026-09-05T00:00:00Z"
+    );
+    const currentUser = messageEvent(
+      "current-user",
+      "user",
+      "continue",
+      "2026-09-05T00:01:00Z"
+    );
+    const currentAssistant = messageEvent(
+      "current-assistant",
+      "assistant",
+      "working",
+      "2026-09-05T00:01:01Z"
+    );
+
+    expect(runner).toEqual({
+      runnerSessionId: "claude-child",
+      turnId: "turn-local-turn",
+      eventStartIndex: 36,
+    });
+    if (!runner) throw new Error("expected local active runner");
+    expect(
+      buildConversationRunnerOverlay(
+        runner,
+        [
+          historical,
+          {
+            ...currentUser,
+            result: {
+              ...currentUser.result,
+              turnIntentId: "turn-local-turn",
+            },
+          },
+          {
+            ...historical,
+            id: "materialized-historical",
+            chunk_id: "materialized-historical",
+            args: { [NATIVE_SOURCE_EVENT_ID_ARG]: historical.id },
+          },
+          currentAssistant,
+        ],
+        "local-root",
+        [historical]
+      ).map((event) => [event.id, event.displayText])
+    ).toEqual([["runlive-current-assistant", "working"]]);
+  });
+
+  it("falls back across the active/idle boundary when only one projection exists", () => {
+    const events = [{ id: "available" }] as unknown as SessionEvent[];
+
+    expect(selectLocalExecutionChildEvents(undefined, events)).toBe(events);
+    expect(selectLocalExecutionChildEvents(events, undefined)).toBe(events);
+  });
+
+  it("verifies a child against raw native history before applying chat visibility", () => {
+    const rawRoot = [
+      messageEvent("root-user", "user", "inspect", "2026-09-05T00:00:00Z"),
+      // Normal chat projection hides this structural native message, but it
+      // still participates in the provider transcript prefix.
+      messageEvent("root-hidden", "assistant", "   ", "2026-09-05T00:00:01Z"),
+      messageEvent("root-answer", "assistant", "done", "2026-09-05T00:00:02Z"),
+    ];
+    const suffix = [
+      messageEvent("child-user", "user", "continue", "2026-09-05T00:01:00Z"),
+      messageEvent(
+        "child-answer",
+        "assistant",
+        "continued",
+        "2026-09-05T00:01:01Z"
+      ),
+    ];
+    const childEvents = [
+      ...rawRoot.map((event) => ({
+        ...event,
+        id: `child-${event.id}`,
+        chunk_id: `child-${event.id}`,
+      })),
+      ...suffix,
+    ];
+    const child = {
+      session_id: "claude-child",
+      created_at: "2026-09-05T00:01:00Z",
     };
 
-    const next = reconcileHydratedLocalChildState(
-      previous,
-      "root-b",
-      new Set(["child-a"])
-    );
-    expect(next.rootKey).toBe("root-b");
-    expect(next.events.size).toBe(0);
+    expect(rawRoot.filter(isVisibleInChat)).toHaveLength(2);
+    expect(
+      projectVisibleLocalExecutionTail(
+        rawRoot.filter(isVisibleInChat),
+        [{ child, events: childEvents }],
+        "root"
+      )
+    ).toEqual([]);
+    expect(
+      projectVisibleLocalExecutionTail(
+        rawRoot,
+        [{ child, events: childEvents }],
+        "root"
+      ).map((event) => event.displayText)
+    ).toEqual(["continue", "continued"]);
   });
 });

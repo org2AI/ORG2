@@ -53,7 +53,28 @@ pub async fn es_remove_by_id_prefix(
     prefix: String,
 ) -> Result<usize, String> {
     let sid = state.resolve_session_id(session_id)?;
-    let removed = state.with_store_mut(&sid, |store| store.remove_by_id_prefix(&prefix));
+    let removed_ids = state
+        .with_store_opt(&sid, |store| {
+            store
+                .events()
+                .iter()
+                .filter(|event| event.id.starts_with(&prefix))
+                .map(|event| event.id.clone())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if !removed_ids.is_empty() {
+        let persist_sid = sid.clone();
+        let persisted_ids = removed_ids.clone();
+        tokio::task::spawn_blocking(move || {
+            session_persistence::delete_events_by_ids(&persist_sid, &persisted_ids)
+                .map(|_| ())
+                .map_err(|err| err.to_string())
+        })
+        .await
+        .map_err(|err| format!("es_remove_by_id_prefix worker failed: {err}"))??;
+    }
+    let removed = state.with_store_mut(&sid, |store| store.remove_by_ids(&removed_ids));
     if removed > 0 {
         schedule_notify(&app, &state, &sid);
     }

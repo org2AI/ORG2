@@ -46,7 +46,9 @@ import type {
 import {
   materializeNativeConversation,
   nativeConversationItemsArePrefix,
+  nativeSourceEventId,
   projectNativeConversationItems,
+  removeKnownNativeConversationEchoes,
   sourceEventIdOfNativeItem,
   supportsNativeConversationTarget,
   synchronizeNativeConversation,
@@ -220,12 +222,16 @@ export function parseConversationExecutionParentId(
  */
 export function localConversationRootForSession(
   sessionId: string,
-  cliAgentType: string | null | undefined,
+  _cliAgentType: string | null | undefined,
   agentDefinitionId?: string | null
 ): ConversationRootLocator | null {
-  if (isCliSession(sessionId)) {
-    if (!cliAgentType) return null;
-  } else if (!agentDefinitionId) {
+  // The session-id namespace already proves that this is a readable native
+  // CLI conversation. Sidebar/lightweight rows can hydrate before their
+  // `cliAgentType`; requiring that presentation metadata here made the
+  // continuation binding disappear and left only the unrelated global model
+  // picker. Target resolution remains strict and asks the user to choose a
+  // runtime until the missing metadata arrives.
+  if (!isCliSession(sessionId) && !agentDefinitionId) {
     return null;
   }
   return {
@@ -235,7 +241,7 @@ export function localConversationRootForSession(
   };
 }
 
-function eventTurnId(event: SessionEvent): string | null {
+export function conversationTurnIdOf(event: SessionEvent): string | null {
   const turnIntentId = turnIntentIdOf(event);
   if (turnIntentId) return turnIntentId;
   const value = event.args?.[CONVERSATION_TURN_ID_ARG];
@@ -440,45 +446,51 @@ async function findCompatibleExecution(
   const canonicalItems = projectNativeConversationItems(timeline);
   const availableCandidates =
     knownMatchingCandidates ?? (await listExecutionCandidates(locator));
-  for (const candidate of availableCandidates) {
-    if (
-      !knownMatchingCandidates &&
-      !(await candidateMatchesTarget(candidate.sessionId, target))
-    ) {
-      continue;
+  // Only the most recently active episode can be the writable frontier. A
+  // same-runtime episode below it is historical after a provider switch; even
+  // when its old transcript is a prefix of the current canonical timeline,
+  // reviving it would fork from behind the intervening provider-native turn.
+  // Returning null creates a fresh target-native child from the complete
+  // canonical role/tool timeline through the ordinary materializer.
+  const candidate = availableCandidates[0];
+  if (!candidate) return null;
+  if (
+    !knownMatchingCandidates &&
+    !(await candidateMatchesTarget(candidate.sessionId, target))
+  ) {
+    return null;
+  }
+  try {
+    const loaded = await loadAuthoritativeSessionEvents(candidate.sessionId);
+    const events = loaded.events;
+    const executionItems = projectNativeConversationItems(events);
+    // A newly-created child may legitimately be empty if the renderer died
+    // between Session creation and native materialization. Empty is the
+    // canonical zero-length prefix: synchronizeNativeConversation rebuilds
+    // the provider transcript before sending the same durable turn intent.
+    if (nativeConversationItemsArePrefix(executionItems, canonicalItems)) {
+      return {
+        sessionId: candidate.sessionId,
+        events,
+      };
     }
-    try {
-      const loaded = await loadAuthoritativeSessionEvents(candidate.sessionId);
-      const events = loaded.events;
-      const executionItems = projectNativeConversationItems(events);
-      // A newly-created child may legitimately be empty if the renderer died
-      // between Session creation and native materialization. Empty is the
-      // canonical zero-length prefix: synchronizeNativeConversation rebuilds
-      // the provider transcript before sending the same durable turn intent.
-      if (nativeConversationItemsArePrefix(executionItems, canonicalItems)) {
-        return {
-          sessionId: candidate.sessionId,
-          events,
-        };
+    log.info(
+      `[native-continuation] skipping ${candidate.sessionId}: native transcript is not a canonical prefix`,
+      {
+        nativeItems: executionItems.length,
+        canonicalItems: canonicalItems.length,
       }
-      log.info(
-        `[native-continuation] skipping ${candidate.sessionId}: native transcript is not a canonical prefix`,
-        {
-          nativeItems: executionItems.length,
-          canonicalItems: canonicalItems.length,
-        }
-      );
-    } catch (error) {
-      if (error instanceof QueuedConversationRecoveryPendingError) throw error;
-      // An unknown reader failure cannot prove that this episode is absent or
-      // divergent. Fail closed and retry instead of silently changing the
-      // provider-native UUID.
-      throw new QueuedConversationRecoveryPendingError(
-        `native transcript for ${candidate.sessionId} is temporarily unavailable: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    }
+    );
+  } catch (error) {
+    if (error instanceof QueuedConversationRecoveryPendingError) throw error;
+    // An unknown reader failure cannot prove that this episode is absent or
+    // divergent. Fail closed and retry instead of silently changing the
+    // provider-native UUID.
+    throw new QueuedConversationRecoveryPendingError(
+      `native transcript for ${candidate.sessionId} is temporarily unavailable: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
   }
   return null;
 }
@@ -557,42 +569,23 @@ function sliceTurnTail(
   if (sameEventPrefix(before, after)) {
     appended = after.slice(before.length);
     const anchor = appended.findIndex(
-      (event) => event.source === "user" && eventTurnId(event) === turnIntentId
+      (event) =>
+        event.source === "user" && conversationTurnIdOf(event) === turnIntentId
     );
     if (anchor < 0) return null;
     appended = appended.slice(anchor + 1);
   } else {
     const anchor = after.findIndex(
-      (event) => event.source === "user" && eventTurnId(event) === turnIntentId
+      (event) =>
+        event.source === "user" && conversationTurnIdOf(event) === turnIntentId
     );
     if (anchor < 0) return null;
     appended = after.slice(anchor + 1);
   }
-  return removeKnownNativeEchoes(
+  return removeKnownNativeConversationEchoes(
     before,
     appended.filter((event) => event.source !== "user")
   );
-}
-
-/**
- * EventStore can briefly contain a provider-native echo of a synchronized
- * prefix after the new user anchor. Never republish an item whose portable
- * native identity was already present before this turn.
- */
-function removeKnownNativeEchoes(
-  before: readonly SessionEvent[],
-  candidates: readonly SessionEvent[]
-): SessionEvent[] {
-  const seen = new Set(
-    projectNativeConversationItems(before).map((item) => item.id)
-  );
-  return candidates.filter((event) => {
-    const items = projectNativeConversationItems([event]);
-    if (items.length === 0) return true;
-    const isKnown = items.every((item) => seen.has(item.id));
-    for (const item of items) seen.add(item.id);
-    return !isKnown;
-  });
 }
 
 /**
@@ -642,7 +635,8 @@ function sliceProviderNativeTail(
   );
   if (tailEventIds.size === 0) return [];
   const tail = after.filter(
-    (event) => event.source !== "user" && tailEventIds.has(event.id)
+    (event) =>
+      event.source !== "user" && tailEventIds.has(nativeSourceEventId(event))
   );
   log.info(
     `[native-continuation] recovered provider-native tail: items=${tailEventIds.size}, events=${tail.length}`
@@ -901,7 +895,7 @@ async function runCreatedConversationTurn(
     await options.onSessionCreated?.(created.sessionId);
     activateUserIntentPreparation(preparation);
     const timeline = (await options.loadTimeline()).filter(
-      (event) => eventTurnId(event) !== params.turnIntentId
+      (event) => conversationTurnIdOf(event) !== params.turnIntentId
     );
     materialized = await materializeCreatedConversation(created.sessionId, {
       timeline,
@@ -989,7 +983,7 @@ async function continueLocalConversationAtQueueHead(
   const effectiveParams = {
     ...params,
     timeline: params.timeline.filter(
-      (event) => eventTurnId(event) !== params.turnIntentId
+      (event) => conversationTurnIdOf(event) !== params.turnIntentId
     ),
   };
   // Publishing the canonical user turn is independent of local execution
@@ -1054,6 +1048,10 @@ async function continueLocalConversationAtQueueHead(
       );
     } catch (error) {
       if (error instanceof QueuedConversationRecoveryPendingError) throw error;
+      log.error(
+        `[localConversationContinuation] resume turn failed for ${compatible.sessionId}:`,
+        error
+      );
       await failUserIntentPreparation(preparation, error).catch(
         () => undefined
       );
@@ -1138,7 +1136,7 @@ export async function recoverLocalConversationTurn(
   }
 
   const timeline = params.timeline.filter(
-    (event) => eventTurnId(event) !== params.turnIntentId
+    (event) => conversationTurnIdOf(event) !== params.turnIntentId
   );
   const { events } = await loadAuthoritativeSessionEvents(
     params.runnerSessionId
@@ -1210,13 +1208,11 @@ export async function continueLocalConversationAfterTimelineLoad(
   assertSupportedConversationTarget(params.target);
   const { loadTimeline, ...continuationParams } = params;
   const candidates = await listExecutionCandidates(params.root);
-  const matchingCandidates: ExecutionCandidate[] = [];
-  for (const candidate of candidates) {
-    if (await candidateMatchesTarget(candidate.sessionId, params.target)) {
-      matchingCandidates.push(candidate);
-    }
-  }
-  if (matchingCandidates.length === 0) {
+  const frontier = candidates[0];
+  if (
+    !frontier ||
+    !(await candidateMatchesTarget(frontier.sessionId, params.target))
+  ) {
     // No native episode could possibly be reused. Create the ordinary Session
     // before parsing a potentially large imported transcript so its pending
     // row, footer and follow-up queue appear through the existing UI path.
@@ -1228,6 +1224,6 @@ export async function continueLocalConversationAfterTimelineLoad(
   const timeline = await loadTimeline();
   return continueLocalConversationAtQueueHead(
     { ...continuationParams, timeline },
-    matchingCandidates
+    [frontier]
   );
 }

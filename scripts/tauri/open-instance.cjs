@@ -2,6 +2,7 @@
 
 const { spawn, spawnSync } = require("child_process");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const { createInstanceProfile } = require("./instance-profile.cjs");
@@ -36,6 +37,29 @@ const nativeTranscriptHomeOption =
 const nativeTranscriptHome = nativeTranscriptHomeOption
   ? path.resolve(nativeTranscriptHomeOption)
   : null;
+const requiresOfficialNativeHome =
+  process.env.E2E_NATIVE_PROVIDER_SWITCH_LIVE === "1";
+const officialNativeHome = path.resolve(
+  process.env.E2E_NATIVE_PROVIDER_SWITCH_OFFICIAL_HOME ?? os.homedir()
+);
+
+if (requiresOfficialNativeHome && !nativeTranscriptHome) {
+  console.error(
+    "E2E_NATIVE_PROVIDER_SWITCH_LIVE=1 requires --native-transcript-home " +
+      "(or ORGII_NATIVE_TRANSCRIPT_HOME) so provider App proof cannot publish " +
+      "into the disposable external-history home."
+  );
+  process.exit(1);
+}
+if (
+  requiresOfficialNativeHome &&
+  nativeTranscriptHome !== officialNativeHome
+) {
+  console.error(
+    `Native provider App proof requires ${officialNativeHome}, got ${nativeTranscriptHome}.`
+  );
+  process.exit(1);
+}
 
 if (!fs.existsSync(appPath)) {
   console.error(`Instance app not found: ${appPath}`);

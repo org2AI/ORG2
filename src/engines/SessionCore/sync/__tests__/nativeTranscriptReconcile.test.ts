@@ -14,10 +14,24 @@ const mocks = vi.hoisted(() => ({
   set: vi.fn(),
   setStreaming: vi.fn(),
   cliStatus: vi.fn(),
+  closeTerminalEvents: vi.fn(),
 }));
 
 vi.mock("@src/api/tauri/rpc", () => ({
   rpc: { cli: { status: mocks.cliStatus } },
+}));
+
+vi.mock("../adapters/cli/cliLifecycle", () => ({
+  closeObservedCliTerminalEvents: mocks.closeTerminalEvents,
+  isCliTerminalStatus: (status: string | undefined) =>
+    [
+      "completed",
+      "failed",
+      "error",
+      "cancelled",
+      "abandoned",
+      "timeout",
+    ].includes(status ?? ""),
 }));
 
 vi.mock("../authoritativeSessionEvents", () => ({
@@ -63,6 +77,7 @@ describe("single-owner native transcript reconcile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.cliStatus.mockResolvedValue({ transcriptSource: "native" });
+    mocks.closeTerminalEvents.mockResolvedValue(undefined);
     mocks.getPersisted.mockResolvedValue([]);
     mocks.set.mockResolvedValue(undefined);
     mocks.setStreaming.mockResolvedValue(undefined);
@@ -151,6 +166,10 @@ describe("single-owner native transcript reconcile", () => {
     const sessionId = "reconcile-interrupted";
     const native = [makeEvent("native", sessionId)];
     const partial = makeEvent("partial", sessionId);
+    mocks.cliStatus.mockResolvedValue({
+      transcriptSource: "native",
+      status: "cancelled",
+    });
     historySequence([native]);
     mocks.getPersisted.mockResolvedValue([...native, partial]);
 
@@ -162,6 +181,42 @@ describe("single-owner native transcript reconcile", () => {
     await expect(first).resolves.toEqual([...native, partial]);
     expect(mocks.getPersisted).toHaveBeenCalledWith(sessionId);
     expect(mocks.set).toHaveBeenCalledWith([...native, partial], sessionId);
+    expect(mocks.closeTerminalEvents).toHaveBeenCalledWith(
+      sessionId,
+      "cancelled"
+    );
+    expect(mocks.closeTerminalEvents.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getPersisted.mock.invocationCallOrder[0]
+    );
+  });
+
+  it("keeps a durable failed user delivery across terminal native reconcile", async () => {
+    const sessionId = "reconcile-failed-delivery";
+    const native = [makeEvent("native", sessionId)];
+    const failed = {
+      ...makeEvent("queued-user:q1:", sessionId),
+      functionName: "user_message",
+      actionType: "raw",
+      source: "user",
+      displayText: "retry me",
+      displayStatus: "failed",
+      result: {
+        syntheticUserInput: true,
+        deliveryStatus: "failed",
+        deliveryError: "provider unavailable",
+        turnIntentId: "turn-failed",
+        message: { role: "user", content: "retry me" },
+      },
+    } as SessionEvent;
+    historySequence([native]);
+    mocks.getPersisted.mockResolvedValue([failed]);
+
+    await expect(
+      reconcileNativeTranscript(sessionId, {
+        preserveInterruptedSuffix: true,
+      })
+    ).resolves.toEqual([...native, failed]);
+    expect(mocks.set).toHaveBeenCalledWith([...native, failed], sessionId);
   });
 
   it("releases a failed job so a later terminal can retry", async () => {

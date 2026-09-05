@@ -27,11 +27,23 @@ import {
   parseConversationExecutionParentId,
 } from "@src/engines/SessionCore/conversations/localConversationContinuation";
 import { useCloudConversationSource } from "@src/features/Org2Cloud/SessionConversation/useCloudConversationSource";
+import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import {
+  org2CloudOrgsLoadedAtom,
+  sidebarActiveCloudOrgIdAtom,
+} from "@src/features/Org2Cloud/org2CloudOrgsAtom";
+import {
+  org2CloudPushCursorsAtom,
+  org2CloudPushedMetadataAtom,
+} from "@src/features/Org2Cloud/org2CloudSyncAtoms";
+import {
+  pushedCloudOrgIdsForSession,
+  resolvePendingCloudConversationTarget,
   sessionCommentTargetForConversationRoot,
   useSessionCommentTarget,
 } from "@src/features/Org2Cloud/sessionCommentTarget";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
+import { sessionOrgTagsAtom } from "@src/features/TeamCollaboration/sessionOrgTagsAtom";
 import {
   getRustCompatibleAccounts,
   useAgentCompatibility,
@@ -40,6 +52,7 @@ import { useModelAccountLookup } from "@src/hooks/models/useModelAccountLookup";
 import { useAgentDefinitions } from "@src/modules/MainApp/AgentOrgs/hooks/useAgentDefinitions";
 import type { AgentSelection } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette";
 import { reposAtom } from "@src/store/repo";
+import type { AgentRegistry } from "@src/store/session/agentRegistryAtom";
 import type { Session } from "@src/store/session/sessionAtom";
 import {
   sessionByIdAtom,
@@ -93,6 +106,20 @@ export function conversationSourceFromImportedHistory(params: {
       params.session?.repoPath ??
       null,
   };
+}
+
+export function resolveNativeConversationCliTargets(
+  agents: AgentRegistry["agents"],
+  discoverySettled: boolean
+): CliAgentType[] {
+  if (!discoverySettled) return [];
+  const supported = [...NATIVE_CONVERSATION_CLI_TARGETS] as CliAgentType[];
+  // Continuations launch through the native shell-out adapters. GUI launch
+  // capability is unrelated and would incorrectly hide a working ambient
+  // Claude installation whose discovery row reports supportsGui=false.
+  return supported.filter((runtime) =>
+    agents.some((agent) => agent.name === runtime && agent.installed)
+  );
 }
 
 /** Recover the target persisted by the newest native execution episode. */
@@ -189,6 +216,12 @@ export function useConversationTargetBinding(
   const session = useAtomValue(sessionByIdAtom(sessionId ?? ""));
   const sessions = useAtomValue(sessionsAtom);
   const repos = useAtomValue(reposAtom);
+  const cloudAuth = useAtomValue(org2CloudAuthAtom);
+  const cloudOrgsLoaded = useAtomValue(org2CloudOrgsLoadedAtom);
+  const sessionOrgTags = useAtomValue(sessionOrgTagsAtom);
+  const selectedCloudOrg = useAtomValue(sidebarActiveCloudOrgIdAtom);
+  const pushCursors = useAtomValue(org2CloudPushCursorsAtom);
+  const pushedMetadata = useAtomValue(org2CloudPushedMetadataAtom);
   const { accounts, hasLoaded: accountsLoaded } = useModelAccountLookup();
   const { registry, discoveryState } = useAgentCompatibility();
   const { builtInAgents, agents: customAgents } = useAgentDefinitions();
@@ -221,10 +254,35 @@ export function useConversationTargetBinding(
     commentTargetSession,
     encodedCloudTarget
   );
+  const pendingCloudTarget = useMemo(() => {
+    if (cloudTarget || !cloudAuth || cloudOrgsLoaded || !commentTargetSession) {
+      return null;
+    }
+    return resolvePendingCloudConversationTarget({
+      session: commentTargetSession,
+      tags: sessionOrgTags,
+      preferredOrgId: selectedCloudOrg,
+      pushedOrgIds: pushedCloudOrgIdsForSession(
+        commentTargetSession.session_id,
+        pushCursors,
+        pushedMetadata
+      ),
+    });
+  }, [
+    cloudAuth,
+    cloudOrgsLoaded,
+    cloudTarget,
+    commentTargetSession,
+    pushCursors,
+    pushedMetadata,
+    selectedCloudOrg,
+    sessionOrgTags,
+  ]);
+  const executionCloudTarget = cloudTarget ?? pendingCloudTarget;
   const cloudSource = useCloudConversationSource({
     sessionId,
     session,
-    target: cloudTarget,
+    target: executionCloudTarget,
     sessions,
     repos,
   });
@@ -300,13 +358,9 @@ export function useConversationTargetBinding(
   const inventoryLoading = !accountsLoaded || !agentDiscoverySettled;
 
   const nativeCliTargets = useMemo(() => {
-    if (!agentDiscoverySettled) return [];
-    const supported = [...NATIVE_CONVERSATION_CLI_TARGETS] as CliAgentType[];
-    return supported.filter((runtime) =>
-      registry.agents.some(
-        (agent) =>
-          agent.name === runtime && agent.installed && agent.supportsGui
-      )
+    return resolveNativeConversationCliTargets(
+      registry.agents,
+      agentDiscoverySettled
     );
   }, [agentDiscoverySettled, registry.agents]);
 
@@ -343,11 +397,12 @@ export function useConversationTargetBinding(
         )),
     [accounts, definitions.length, nativeCliTargets.length, registry]
   );
-  const readiness = resolveConversationTargetReadiness({
+  const resolvedReadiness = resolveConversationTargetReadiness({
     accountsLoaded,
     agentDiscoverySettled,
     hasAvailableRuntime,
   });
+  const readiness = pendingCloudTarget ? "loading" : resolvedReadiness;
 
   const presentation = useMemo(() => {
     if (!source || readiness !== "ready" || !target) return null;

@@ -5,6 +5,7 @@
  * stitch/plane/discussion merge.
  */
 import type { ConversationViewerState } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
+import { nativeSourceEventId } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import type { CloudSessionComment } from "../org2CloudCommentsClient";
@@ -12,6 +13,7 @@ import type { CloudConversationEvent } from "../org2CloudConversationEventsClien
 import { groupCommentThreads } from "../org2CloudSessionCommentsAtom";
 import {
   type ConversationFamilyMember,
+  collapseConversationSourceCopies,
   sourceEventIdOf,
   stitchConversationSegments,
 } from "./continuationEvents";
@@ -87,7 +89,7 @@ export function assembleCanonicalConversationTimeline(
         input.anchorEvents,
         input.eventsByBareSessionId ?? new Map()
       )
-    : [...input.anchorEvents];
+    : collapseConversationSourceCopies(input.anchorEvents);
   const transcript =
     input.planeEvents.length > 0
       ? mergePlaneIntoTranscript(
@@ -118,9 +120,28 @@ export function assembleCanonicalConversationTimeline(
     input.streamSessionId,
     bySourceId
   );
-  return discussion.length > 0
-    ? mergeConversationEvents(transcript, discussion)
-    : transcript;
+  if (discussion.length === 0) return transcript;
+
+  // A prior native continuation can already contain the provider echo of a
+  // Team Chat row. Cloud comments remain the authoritative representation
+  // because they retain authorship, mentions and thread metadata; remove the
+  // native echo before interleaving that same comment again. Earlier
+  // family/plane collapse cannot own this invariant because discussion is
+  // appended only here. Pending/failed optimistic comments are deliberately
+  // excluded: they are not provider history yet and must not displace the
+  // last delivered native row.
+  const deliveredDiscussionIds = new Set(
+    discussion
+      .filter(
+        (event) =>
+          event.source === "user" && event.displayStatus === "completed"
+      )
+      .map(nativeSourceEventId)
+  );
+  const withoutNativeDiscussionEchoes = transcript.filter(
+    (event) => !deliveredDiscussionIds.has(nativeSourceEventId(event))
+  );
+  return mergeConversationEvents(withoutNativeDiscussionEchoes, discussion);
 }
 
 export class CanonicalConversationFamilyUnavailableError extends Error {

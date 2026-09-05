@@ -1,22 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ActiveMessageDelivery, QueuedMessage } from "./messageQueueAtom";
+import type { ActiveMessageDelivery, QueuedMessage } from "../messageQueueAtom";
 import {
   assertDurableActiveDeliveryIsRootHead,
+  findDurableMessageDeliveryOwnerIds,
   handoffDurableMessageDelivery,
   loadDurableMessageDeliveries,
   loadDurableMessageQueue,
   persistDurableMessageQueue,
   removeDurableActiveMessageDelivery,
+  removeDurableQueuedMessageDeliveries,
   resetMessageQueueRepositoryForTests,
   returnDurableMessageDeliveryToQueue,
   updateDurableActiveMessageDelivery,
-} from "./messageQueueRepository";
+} from "../messageQueueRepository";
 
 const mocks = vi.hoisted(() => ({
   values: new Map<string, unknown>(),
   delete: vi.fn(),
   keys: vi.fn(),
+  reload: vi.fn(),
   save: vi.fn(),
 }));
 
@@ -26,7 +29,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 
 vi.mock("@tauri-apps/plugin-store", () => ({
   load: async () => ({
-    reload: async () => undefined,
+    reload: mocks.reload,
     get: async (key: string) => mocks.values.get(key),
     set: async (key: string, value: unknown) => mocks.values.set(key, value),
     delete: mocks.delete,
@@ -104,8 +107,32 @@ describe("message queue repository", () => {
     mocks.keys
       .mockReset()
       .mockImplementation(async () => [...mocks.values.keys()]);
+    mocks.reload.mockReset();
     mocks.save.mockReset();
     resetMessageQueueRepositoryForTests();
+  });
+
+  it("initializes a missing first-run store before reading deliveries", async () => {
+    mocks.reload.mockRejectedValueOnce(
+      new Error("No such file or directory (os error 2)")
+    );
+
+    await expect(loadDurableMessageDeliveries()).resolves.toEqual({
+      queue: [],
+      active: [],
+    });
+
+    expect(mocks.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not overwrite a store when reload fails for another reason", async () => {
+    mocks.reload.mockRejectedValueOnce(new Error("permission denied"));
+
+    await expect(loadDurableMessageDeliveries()).rejects.toThrow(
+      "permission denied"
+    );
+
+    expect(mocks.save).not.toHaveBeenCalled();
   });
 
   it("migrates every legacy window queue into the unified registry", async () => {
@@ -207,6 +234,58 @@ describe("message queue repository", () => {
       activeDelivery("running"),
       durableMessage("fresh-main"),
     ]);
+  });
+
+  it("cancels only exact queued owners from this window", async () => {
+    const otherWindow = {
+      ...message("other-window"),
+      originQueueKey: "queue:aux",
+    };
+    const active = activeDelivery("already-preparing", {
+      status: "preparing",
+      runnerSessionId: undefined,
+    });
+    mocks.values.set("deliveries", [
+      durableMessage("cancel"),
+      durableMessage("keep"),
+      otherWindow,
+      active,
+    ]);
+
+    await expect(
+      removeDurableQueuedMessageDeliveries([
+        { id: "cancel", turnIntentId: "turn-cancel" },
+        { id: "keep", turnIntentId: "wrong-intent" },
+        {
+          id: "already-preparing",
+          turnIntentId: "turn-already-preparing",
+        },
+        { id: "other-window", turnIntentId: "turn-other-window" },
+      ])
+    ).resolves.toEqual([message("cancel")]);
+
+    expect(mocks.values.get("deliveries")).toEqual([
+      durableMessage("keep"),
+      otherWindow,
+      active,
+    ]);
+  });
+
+  it("finds queued and active owners across every window partition", async () => {
+    mocks.values.set("deliveries", [
+      durableMessage("main"),
+      { ...message("other-window"), originQueueKey: "queue:aux" },
+      activeDelivery("active"),
+    ]);
+
+    await expect(
+      findDurableMessageDeliveryOwnerIds([
+        "main",
+        "other-window",
+        "active",
+        "orphan",
+      ])
+    ).resolves.toEqual(new Set(["main", "other-window", "active"]));
   });
 
   it("atomically hands off, updates, and removes one delivery record", async () => {

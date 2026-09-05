@@ -141,7 +141,11 @@ describe("userIntentDispatch", () => {
         ...syntheticEvent(sessionId, String(options.id)),
         displayText: visibleText,
         displayStatus:
-          options.deliveryStatus === "failed" ? "failed" : "pending",
+          options.deliveryStatus === "failed"
+            ? "failed"
+            : options.deliveryStatus === "sent"
+              ? "completed"
+              : "pending",
         result: {
           message: { content: visibleText, role: "user" },
           images: options.imageDataUrls,
@@ -187,6 +191,48 @@ describe("userIntentDispatch", () => {
           images: ["data:image/png;base64,a"],
           deliveryStatus: "failed",
           deliveryError: "offline",
+        }),
+      }),
+      "imported-session"
+    );
+
+    await expect(
+      setOptimisticQueueUserDelivery(
+        { ...params, turnIntentId: "intent-retry" },
+        "pending"
+      )
+    ).resolves.toBe(true);
+    await expect(
+      setOptimisticQueueUserDelivery(
+        { ...params, turnIntentId: "intent-retry" },
+        "sent"
+      )
+    ).resolves.toBe(true);
+    expect(mocks.append).toHaveBeenCalledTimes(1);
+    expect(mocks.updateById).toHaveBeenNthCalledWith(
+      2,
+      optimisticQueueUserEventId("queue-canonical"),
+      expect.objectContaining({
+        displayText: "@teammate inspect this",
+        displayStatus: "pending",
+        result: expect.objectContaining({
+          images: ["data:image/png;base64,a"],
+          deliveryStatus: "pending",
+          turnIntentId: "intent-retry",
+        }),
+      }),
+      "imported-session"
+    );
+    expect(mocks.updateById).toHaveBeenNthCalledWith(
+      3,
+      optimisticQueueUserEventId("queue-canonical"),
+      expect.objectContaining({
+        displayText: "@teammate inspect this",
+        displayStatus: "completed",
+        result: expect.objectContaining({
+          images: ["data:image/png;base64,a"],
+          deliveryStatus: "sent",
+          turnIntentId: "intent-retry",
         }),
       }),
       "imported-session"

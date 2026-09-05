@@ -197,6 +197,7 @@ export function toTeamInboxNavigationIntent(
   if (item.target.kind === "session_comment") {
     return {
       kind: "open_session_comment",
+      ...(item.target.orgId ? { orgId: item.target.orgId } : {}),
       sessionId: item.target.sessionId,
       commentId: item.target.commentId,
       threadId: item.target.threadId,

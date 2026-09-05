@@ -7,9 +7,9 @@ import { invokeTauri } from "@src/util/platform/tauri/init";
 import type { ConversationRootLocator } from "./conversationTypes";
 import { conversationExecutionParentId } from "./localConversationContinuation";
 import {
-  NATIVE_SOURCE_EVENT_ID_ARG,
   nativeConversationEventSemanticKey,
-  nativeConversationItemsArePrefix,
+  nativeConversationItemsAreProviderPortablePrefix,
+  nativeSourceEventId,
   projectNativeConversationItems,
   sourceEventIdOfNativeItem,
 } from "./nativeConversationMaterializer";
@@ -19,6 +19,8 @@ export const LOCAL_EXECUTION_TAIL_EVENT_PREFIX = "runlanded-";
 export interface LocalExecutionChild {
   session_id: string;
   created_at: string;
+  /** Existing session catalog revision; used to refresh a reused native child. */
+  updated_at?: string;
 }
 
 export interface LocalExecutionSegment {
@@ -26,9 +28,28 @@ export interface LocalExecutionSegment {
   events: readonly SessionEvent[];
 }
 
+export interface LocalCanonicalConversationSnapshot {
+  events: SessionEvent[];
+  /**
+   * Stable catalog frontier covered by `events`. `null` means a child changed
+   * while the snapshot was being read, so callers must not cache it as clean.
+   */
+  childRevision: string | null;
+}
+
+interface LocalExecutionChildRow {
+  sessionId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export function resolveLocalExecutionChildren(
   children: readonly { sessionId: string }[],
-  createdAtBySessionId: ReadonlyMap<string, string | undefined>
+  createdAtBySessionId: ReadonlyMap<string, string | undefined>,
+  updatedAtBySessionId: ReadonlyMap<
+    string,
+    string | undefined
+  > = createdAtBySessionId
 ): LocalExecutionChild[] {
   const resolved: LocalExecutionChild[] = [];
   const seen = new Set<string>();
@@ -36,7 +57,11 @@ export function resolveLocalExecutionChildren(
     const createdAt = createdAtBySessionId.get(child.sessionId);
     if (!child.sessionId || !createdAt || seen.has(child.sessionId)) continue;
     seen.add(child.sessionId);
-    resolved.push({ session_id: child.sessionId, created_at: createdAt });
+    resolved.push({
+      session_id: child.sessionId,
+      created_at: createdAt,
+      updated_at: updatedAtBySessionId.get(child.sessionId) ?? createdAt,
+    });
   }
   return resolved.sort((left, right) =>
     left.created_at.localeCompare(right.created_at)
@@ -50,31 +75,54 @@ export async function loadLocalExecutionChildren(
   // catalogs into one authoritative row shape. Use its creation timestamp
   // directly; probing every provider adapter here both duplicated that owner
   // and could silently drop a valid child while an adapter was still waking.
-  const children = await invokeTauri<
-    { sessionId: string; createdAt?: string }[]
-  >("es_get_child_sessions", {
-    parentSessionId: conversationExecutionParentId(root),
-  });
+  const children = await invokeTauri<LocalExecutionChildRow[]>(
+    "es_get_child_sessions",
+    {
+      parentSessionId: conversationExecutionParentId(root),
+    }
+  );
   return resolveLocalExecutionChildren(
     children,
-    new Map(children.map((child) => [child.sessionId, child.createdAt]))
+    new Map(children.map((child) => [child.sessionId, child.createdAt])),
+    new Map(
+      children.map((child) => [
+        child.sessionId,
+        child.updatedAt ?? child.createdAt,
+      ])
+    )
   );
 }
 
-function nativeSourceEventId(event: SessionEvent): string {
-  const sourceId = event.args?.[NATIVE_SOURCE_EVENT_ID_ARG];
-  return typeof sourceId === "string" && sourceId.length > 0
-    ? sourceId
-    : event.id;
+function localExecutionChildrenRevision(
+  children: readonly LocalExecutionChild[]
+): string {
+  return JSON.stringify(
+    children.map((child) => [
+      child.session_id,
+      child.created_at,
+      child.updated_at ?? child.created_at,
+    ])
+  );
 }
 
-function nativeItemSuffixEvents(
+export async function loadLocalExecutionChildrenRevision(
+  root: ConversationRootLocator
+): Promise<string> {
+  return localExecutionChildrenRevision(await loadLocalExecutionChildren(root));
+}
+
+export function verifiedNativeConversationSuffixEvents(
   canonicalEvents: readonly SessionEvent[],
   childEvents: readonly SessionEvent[]
 ): SessionEvent[] | null {
   const canonicalItems = projectNativeConversationItems(canonicalEvents);
   const childItems = projectNativeConversationItems(childEvents);
-  if (!nativeConversationItemsArePrefix(canonicalItems, childItems)) {
+  if (
+    !nativeConversationItemsAreProviderPortablePrefix(
+      canonicalItems,
+      childItems
+    )
+  ) {
     return null;
   }
   const suffixSourceIds = new Set(
@@ -107,7 +155,12 @@ function nativeCompactedSuffixEvents(
     const beforeCompactItems = projectNativeConversationItems(
       childEvents.slice(0, compactIndex)
     );
-    if (!nativeConversationItemsArePrefix(canonicalItems, beforeCompactItems)) {
+    if (
+      !nativeConversationItemsAreProviderPortablePrefix(
+        canonicalItems,
+        beforeCompactItems
+      )
+    ) {
       continue;
     }
     const preCompactSuffixIds = new Set(
@@ -126,6 +179,16 @@ function nativeCompactedSuffixEvents(
   return null;
 }
 
+function verifiedSegmentSuffixEvents(
+  canonicalEvents: readonly SessionEvent[],
+  childEvents: readonly SessionEvent[]
+): SessionEvent[] | null {
+  return (
+    verifiedNativeConversationSuffixEvents(canonicalEvents, childEvents) ??
+    nativeCompactedSuffixEvents(canonicalEvents, childEvents)
+  );
+}
+
 /**
  * Fold local execution episodes into one provider-portable conversation.
  *
@@ -142,9 +205,7 @@ export function mergeVerifiedLocalExecutionTimeline(
 ): SessionEvent[] {
   let canonical = [...rootEvents];
   for (const { events } of segments) {
-    const suffix =
-      nativeItemSuffixEvents(canonical, events) ??
-      nativeCompactedSuffixEvents(canonical, events);
+    const suffix = verifiedSegmentSuffixEvents(canonical, events);
     if (!suffix || suffix.length === 0) continue;
     canonical = [...canonical, ...suffix];
   }
@@ -152,9 +213,9 @@ export function mergeVerifiedLocalExecutionTimeline(
 }
 
 /** One durable loader shared by local/imported execution and the visible UI. */
-export async function loadLocalCanonicalConversationTimeline(
+export async function loadLocalCanonicalConversationSnapshot(
   root: ConversationRootLocator
-): Promise<SessionEvent[]> {
+): Promise<LocalCanonicalConversationSnapshot> {
   const [{ events: rootEvents }, children] = await Promise.all([
     loadCanonicalConversationEvents(root.conversationId),
     loadLocalExecutionChildren(root),
@@ -165,7 +226,19 @@ export async function loadLocalCanonicalConversationTimeline(
       events: await loadLocalExecutionChildEvents(child.session_id),
     }))
   );
-  return mergeVerifiedLocalExecutionTimeline(rootEvents, segments);
+  const revisionAtRead = localExecutionChildrenRevision(children);
+  const revisionAfterRead = await loadLocalExecutionChildrenRevision(root);
+  return {
+    events: mergeVerifiedLocalExecutionTimeline(rootEvents, segments),
+    childRevision: revisionAtRead === revisionAfterRead ? revisionAtRead : null,
+  };
+}
+
+/** One durable loader shared by local/imported execution and cloud replay. */
+export async function loadLocalCanonicalConversationTimeline(
+  root: ConversationRootLocator
+): Promise<SessionEvent[]> {
+  return (await loadLocalCanonicalConversationSnapshot(root)).events;
 }
 
 /** Namespace only the verified child suffix for rendering on the root stream. */
@@ -174,8 +247,19 @@ export function projectVerifiedLocalExecutionTail(
   segments: readonly LocalExecutionSegment[],
   canonicalSessionId: string
 ): SessionEvent[] {
-  return mergeVerifiedLocalExecutionTimeline(rootEvents, segments)
-    .slice(rootEvents.length)
+  // Queue-owned rows make a user submission visible on the root immediately,
+  // but they are not part of that root provider's native transcript. A reused
+  // child can already contain earlier execution turns before the newest
+  // optimistic row, so treating the row as a native-root item makes the real
+  // child look divergent (root + newest user vs root + prior turns + newest
+  // user) and rejects its entire suffix. Verify from the provider-native root;
+  // `suppressLandedQueuedUserRows` replaces each matching optimistic bubble
+  // with the landed child user row after projection.
+  const nativeRootEvents = rootEvents.filter(
+    (event) => !isOptimisticQueueUserEventId(event.id)
+  );
+  return mergeVerifiedLocalExecutionTimeline(nativeRootEvents, segments)
+    .slice(nativeRootEvents.length)
     .map((event) => ({
       ...event,
       id: `${LOCAL_EXECUTION_TAIL_EVENT_PREFIX}${event.id}`,

@@ -234,7 +234,8 @@ export function appendQueuedUserEvents(
         createdAt: message.createdAt,
         imageDataUrls: message.imageDataUrls,
         turnIntentId: message.turnIntentId,
-        deliveryStatus: "pending",
+        deliveryStatus: message.deliveryError ? "failed" : "pending",
+        deliveryError: message.deliveryError,
         queueMessageId: message.id,
       }
     );

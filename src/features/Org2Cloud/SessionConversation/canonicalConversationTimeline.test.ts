@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { CONVERSATION_SENDER_ARG } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
+import {
+  NATIVE_SOURCE_EVENT_ID_ARG,
+  projectNativeConversationItems,
+} from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 
@@ -178,6 +182,43 @@ describe("canonical conversation timeline", () => {
     ).toHaveLength(1);
   });
 
+  it("collapses exact global source copies on the family-less execution path", async () => {
+    const repeatedSourceId = "orgii_evt_0c2481a309205d2abd70fd14234cf0f5";
+    const original = {
+      ...event("codex-asst-97", "assistant", "2026-08-20T09:00:00Z"),
+      sessionId: "native-codex",
+      args: { [NATIVE_SOURCE_EVENT_ID_ARG]: repeatedSourceId },
+      displayText: "same answer",
+    };
+    const replay = {
+      ...event("claude-renumbered-14", "assistant", "2026-08-20T09:00:00Z"),
+      sessionId: "native-claude",
+      args: { [NATIVE_SOURCE_EVENT_ID_ARG]: repeatedSourceId },
+      displayText: "same answer",
+    };
+    const distinct = {
+      ...event("claude-new-15", "assistant", "2026-08-20T09:01:00Z"),
+      sessionId: "native-claude",
+      args: {
+        [NATIVE_SOURCE_EVENT_ID_ARG]:
+          "orgii_evt_11111111111111111111111111111111",
+      },
+      // Identical content must not cause semantic deduplication.
+      displayText: "same answer",
+    };
+
+    const timeline = await loadCanonicalConversationTimeline({
+      ...common,
+      family: null,
+      planeEvents: [],
+      comments: [],
+      loadMemberEvents: async () => [original, replay, distinct],
+    });
+
+    expect(timeline).toEqual([original, distinct]);
+    expect(projectNativeConversationItems(timeline)).toHaveLength(2);
+  });
+
   it("keeps Team Chat as a portable user row with sender metadata", () => {
     const timeline = assembleCanonicalConversationTimeline({
       ...common,
@@ -193,6 +234,56 @@ describe("canonical conversation timeline", () => {
     expect(discussion).toMatchObject({
       source: "user",
       displayText: "team context",
+      args: {
+        [CONVERSATION_SENDER_ARG]: {
+          userId: "carol",
+          displayName: "Carol",
+        },
+        sessionDiscussion: {
+          mentionedUserIds: ["bob"],
+        },
+      },
+    });
+  });
+
+  it("replaces a provider-native Team Chat echo with the Cloud discussion row", () => {
+    const initial = assembleCanonicalConversationTimeline({
+      ...common,
+      family: null,
+      planeEvents: [],
+      anchorEvents: [],
+    });
+    const [nativeDiscussion] = projectNativeConversationItems(initial);
+    if (!nativeDiscussion)
+      throw new Error("discussion fixture did not project");
+    const nativeEcho = {
+      ...event(
+        "codex-user-echo",
+        "user",
+        "2026-08-20T10:03:00Z",
+        "provider-turn"
+      ),
+      sessionId: "native-codex",
+      args: { [NATIVE_SOURCE_EVENT_ID_ARG]: nativeDiscussion.id },
+      displayText: "team context",
+      result: {
+        type: "user",
+        message: { role: "user", content: "team context" },
+        turnIntentId: "provider-turn",
+      },
+    } as SessionEvent;
+
+    const timeline = assembleCanonicalConversationTimeline({
+      ...common,
+      family: null,
+      planeEvents: [],
+      anchorEvents: [nativeEcho],
+    });
+
+    expect(projectNativeConversationItems(timeline)).toHaveLength(1);
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]).toMatchObject({
+      id: "session-discussion-comment-1",
       args: {
         [CONVERSATION_SENDER_ARG]: {
           userId: "carol",

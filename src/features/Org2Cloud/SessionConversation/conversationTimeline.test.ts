@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { CONVERSATION_SENDER_ARG } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
+import {
+  NATIVE_SOURCE_EVENT_ID_ARG,
+  projectNativeConversationItems,
+} from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import type { CloudConversationEvent } from "../org2CloudConversationEventsClient";
@@ -348,6 +352,79 @@ describe("mergePlaneIntoTranscript", () => {
 
     expect(merged).toHaveLength(1);
     expect(merged[0].displayText).toBe("answer");
+  });
+
+  it("collapses a global native source copy even when user turn intents differ", () => {
+    const sourceId = "orgii_evt_0c2481a309205d2abd70fd14234cf0f5";
+    const nativeUser = userEvent({
+      id: "codex-user-97",
+      args: { [NATIVE_SOURCE_EVENT_ID_ARG]: sourceId },
+      result: {
+        turnIntentId: "native-intent",
+        message: { role: "user", content: "retry me" },
+      },
+      displayText: "retry me",
+    });
+    const planeUser = userEvent({
+      id: "claude-user-14",
+      sessionId: "conversation",
+      args: { [NATIVE_SOURCE_EVENT_ID_ARG]: sourceId },
+      result: {
+        turnIntentId: "plane-intent",
+        message: { role: "user", content: "retry me" },
+      },
+      displayText: "retry me",
+    });
+    const sameTextDifferentSource = userEvent({
+      id: "claude-user-15",
+      sessionId: "conversation",
+      args: {
+        [NATIVE_SOURCE_EVENT_ID_ARG]:
+          "orgii_evt_11111111111111111111111111111111",
+      },
+      result: {
+        turnIntentId: "distinct-intent",
+        message: { role: "user", content: "retry me" },
+      },
+      displayText: "retry me",
+    });
+    const failed = userEvent({
+      id: "failed-user",
+      args: {
+        [NATIVE_SOURCE_EVENT_ID_ARG]:
+          "orgii_evt_22222222222222222222222222222222",
+      },
+      result: {
+        turnIntentId: "failed-intent",
+        deliveryStatus: "failed",
+        message: { role: "user", content: "failed retry" },
+      },
+      displayStatus: "failed",
+      displayText: "failed retry",
+    });
+
+    const merged = mergePlaneIntoTranscript(
+      [nativeUser, failed],
+      [
+        row(1, planeUser, { turnId: "plane-intent" }),
+        row(2, sameTextDifferentSource, { turnId: "distinct-intent" }),
+      ],
+      "owner-session",
+      { status: "known", userId: "owner" }
+    );
+
+    expect(
+      merged.filter(
+        (item) => item.args[NATIVE_SOURCE_EVENT_ID_ARG] === sourceId
+      )
+    ).toEqual([nativeUser]);
+    expect(
+      merged.filter((item) => item.displayText === "retry me")
+    ).toHaveLength(2);
+    expect(merged).toContain(failed);
+    expect(
+      projectNativeConversationItems(merged).map((item) => item.id)
+    ).toEqual([sourceId, "orgii_evt_11111111111111111111111111111111"]);
   });
 
   it("returns the base untouched without plane rows", () => {

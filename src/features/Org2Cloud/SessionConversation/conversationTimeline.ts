@@ -21,6 +21,7 @@ import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import type { CloudConversationEvent } from "../org2CloudConversationEventsClient";
 import {
+  collapseConversationSourceCopies,
   materializedConversationTurnIdOf,
   sourceEventIdOf,
 } from "./continuationEvents";
@@ -166,5 +167,11 @@ export function mergePlaneIntoTranscript(
     merged.push(planeItems[cursor].event);
     cursor += 1;
   }
-  return merged;
+  // User rows normally match by turn intent so optimistic/backend/plane
+  // lifecycle copies retain one visible bubble. A native replay can preserve
+  // the same globally scoped source event under a different turn intent,
+  // though; in that case intent matching alone admits the same canonical item
+  // twice. The source boundary is the final idempotency owner. It compares no
+  // content, so genuinely repeated messages with distinct source ids survive.
+  return collapseConversationSourceCopies(merged);
 }

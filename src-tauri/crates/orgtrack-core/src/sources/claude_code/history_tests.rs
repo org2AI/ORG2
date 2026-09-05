@@ -80,6 +80,35 @@ fn parses_claude_jsonl_into_replay_chunks() {
 }
 
 #[test]
+fn normalizes_claude_read_tool_to_the_shared_storage_identity() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-claude-read-tool-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("claude-read.jsonl");
+    let content = r#"{"type":"assistant","sessionId":"abc","timestamp":"2026-09-04T19:14:56Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_read","name":"Read","input":{"file_path":"/tmp/CLAUDE.md","limit":10}}]}}
+{"type":"user","sessionId":"abc","timestamp":"2026-09-04T19:14:57Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_read","content":"contents"}]}}"#;
+    std::fs::write(&path, content).expect("write fixture");
+
+    let chunks = load_claude_code_history_from_path("claudecodeapp-read", &path)
+        .expect("parse read tool transcript");
+    let tool = chunks
+        .iter()
+        .find(|chunk| chunk.action_type == imported_history::ACTION_TYPE_TOOL_CALL)
+        .expect("read tool call");
+
+    assert_eq!(tool.function, imported_history::FUNCTION_READ_FILE);
+    assert_eq!(tool.result["raw_tool_name"], "Read");
+    assert_eq!(tool.result["call_id"], "toolu_read");
+    assert_eq!(tool.args["file_path"], "/tmp/CLAUDE.md");
+    assert_eq!(tool.args["limit"], 10);
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
 fn marks_an_unresolved_claude_tool_as_interrupted_not_completed() {
     let temp_dir = std::env::temp_dir().join(format!(
         "orgii-claude-interrupted-tool-test-{}",

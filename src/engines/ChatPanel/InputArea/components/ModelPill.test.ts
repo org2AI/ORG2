@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 
-import ModelPill from "../ModelPill";
+import ModelPill from "./ModelPill";
 
 const fixture = vi.hoisted(() => ({
   sessionId: "session-1",

@@ -559,7 +559,15 @@ describe("useQueueDispatch Agent Org intervention", () => {
       )
     );
 
-    await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
+    await vi.waitFor(() =>
+      expect(store.get(messageQueueAtom)).toEqual([
+        expect.objectContaining({
+          id: "queued-intervention-1",
+          requiresExplicitDispatch: true,
+          deliveryError: "backend send unavailable",
+        }),
+      ])
+    );
   });
 
   it("retains the queue card when the optimistic row could not be stored", async () => {
@@ -755,7 +763,15 @@ describe("useQueueDispatch Agent Org intervention", () => {
 
     await mountWithMessages([makeCanonicalMessage("canonical-failed")]);
 
-    await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
+    await vi.waitFor(() =>
+      expect(store.get(messageQueueAtom)).toEqual([
+        expect.objectContaining({
+          id: "canonical-failed",
+          requiresExplicitDispatch: true,
+          deliveryError: "native launch failed",
+        }),
+      ])
+    );
     expect(mocks.updateById).toHaveBeenCalledWith(
       "queued-user:canonical-failed:",
       expect.objectContaining({
@@ -820,7 +836,13 @@ describe("useQueueDispatch Agent Org intervention", () => {
         SESSION_ID
       )
     );
-    expect(store.get(messageQueueAtom)).toEqual([]);
+    expect(store.get(messageQueueAtom)).toEqual([
+      expect.objectContaining({
+        id: "canonical-blocked",
+        requiresExplicitDispatch: true,
+        deliveryError: "switch Cloud account",
+      }),
+    ]);
     expect(store.get(activeMessageDeliveriesAtom)).toEqual([]);
     expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce();
   });
@@ -863,6 +885,34 @@ describe("useQueueDispatch Agent Org intervention", () => {
         }),
       ])
     );
+  });
+
+  it("retains a canonical queue card when the failed projection cannot be persisted", async () => {
+    mocks.updateById.mockRejectedValueOnce(
+      new Error("failed delivery persistence unavailable")
+    );
+    mocks.dispatchCanonicalConversation.mockRejectedValueOnce(
+      new UserIntentSendError("native launch failed", "native-user-event")
+    );
+    const message = makeCanonicalMessage("canonical-failed-persistence");
+
+    await mountWithMessages([message]);
+
+    await vi.waitFor(() =>
+      expect(store.get(messageQueueAtom)).toEqual([
+        expect.objectContaining({
+          id: message.id,
+          requiresExplicitDispatch: true,
+          deliveryError: "native launch failed",
+        }),
+      ])
+    );
+    expect(store.get(activeMessageDeliveriesAtom)).toEqual([]);
+    expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce();
+
+    store.set(turnLifecycleSignalAtom, (value) => value + 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce();
   });
 
   it("retains a preparing execution when canonical result publication is pending", async () => {
@@ -949,6 +999,42 @@ describe("useQueueDispatch Agent Org intervention", () => {
     );
     expect(mocks.dispatchCanonicalConversation.mock.calls[1]?.[1].id).toBe(
       "canonical-second"
+    );
+    await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
+  });
+
+  it("drains a canonical follow-up enqueued while the first turn is active", async () => {
+    installLifecycleSimulation();
+    let releaseFirst!: () => void;
+    const firstTerminal = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    mocks.dispatchCanonicalConversation.mockImplementation(
+      async (_store, message, callbacks) => {
+        const runnerId = `runner-${message.id}`;
+        await callbacks.onRunnerReady?.(runnerId, 0);
+        await callbacks.onAccepted(runnerId);
+        if (message.id === "canonical-active") await firstTerminal;
+        return { terminalStatus: "completed" };
+      }
+    );
+
+    await mountWithMessages([makeCanonicalMessage("canonical-active")]);
+    await vi.waitFor(() =>
+      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(1)
+    );
+
+    const followUp = makeCanonicalMessage("canonical-during-active");
+    store.set(messageQueueAtom, (current) => [...current, followUp]);
+    expect(store.get(messageQueueAtom)).toContainEqual(followUp);
+    expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(1);
+
+    releaseFirst();
+    await vi.waitFor(() =>
+      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(2)
+    );
+    expect(mocks.dispatchCanonicalConversation.mock.calls[1]?.[1].id).toBe(
+      "canonical-during-active"
     );
     await vi.waitFor(() => expect(store.get(messageQueueAtom)).toEqual([]));
   });

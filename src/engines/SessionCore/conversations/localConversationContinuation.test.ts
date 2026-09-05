@@ -336,6 +336,17 @@ describe("local native conversation continuation", () => {
     });
     expect(
       localConversationRootForSession(
+        "cliagent-lightweight-row",
+        undefined,
+        undefined
+      )
+    ).toEqual({
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "cliagent-lightweight-row",
+    });
+    expect(
+      localConversationRootForSession(
         "sdeagent-local-native",
         undefined,
         "builtin:sde"
@@ -1844,6 +1855,83 @@ describe("local native conversation continuation", () => {
     );
   });
 
+  it("materializes a fresh Codex frontier after a Codex to Claude to Codex switch", async () => {
+    const localRoot = {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "cliagent-stale-codex-root",
+    } as const;
+    const parentSessionId = conversationExecutionParentId(localRoot);
+    const canonical = [
+      event("codex-u1", "user", "start in Codex", {
+        sessionId: localRoot.conversationId,
+      }),
+      event("codex-a1", "assistant", "Codex answer", {
+        sessionId: localRoot.conversationId,
+      }),
+      event("claude-u2", "user", "continue in Claude", {
+        sessionId: "cliagent-current-claude",
+      }),
+      event("claude-a2", "assistant", "Claude answer", {
+        sessionId: "cliagent-current-claude",
+      }),
+    ];
+    mocks.invokeTauri.mockImplementation(async (command, args) => {
+      expect(command).toBe("es_get_child_sessions");
+      expect(args).toEqual({ parentSessionId });
+      return [
+        {
+          sessionId: "cliagent-current-claude",
+          updatedAt: "2026-09-05T08:40:00.000Z",
+        },
+      ];
+    });
+    mocks.cliStatus.mockImplementation(async ({ sessionId }) => ({
+      status: "completed",
+      updatedAt:
+        sessionId === "cliagent-current-claude"
+          ? "2026-09-05T08:40:00.000Z"
+          : "2026-09-05T08:00:00.000Z",
+      cliAgentType:
+        sessionId === "cliagent-current-claude" ? "claude_code" : "codex",
+      accountId:
+        sessionId === "cliagent-current-claude"
+          ? "claude-account"
+          : "codex-account",
+      model:
+        sessionId === "cliagent-current-claude"
+          ? "claude-model"
+          : "codex-model",
+      repoPath: "/repo",
+    }));
+    mocks.create.mockResolvedValueOnce({
+      sessionId: "cliagent-fresh-codex",
+    });
+
+    const result = await continueLocalConversationAfterTimelineLoad({
+      root: localRoot,
+      title: "Runtime round trip",
+      loadTimeline: async () => canonical,
+      displayText: "return to Codex",
+      target: {
+        cliAgentType: "codex",
+        accountId: "codex-account",
+        model: "codex-model",
+        workspaceRepoPath: "/repo",
+      },
+      turnIntentId: "codex-return",
+    });
+
+    expect(result).toMatchObject({ sessionId: "cliagent-fresh-codex" });
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(mocks.materialize).toHaveBeenCalledWith({
+      sessionId: "cliagent-fresh-codex",
+      timeline: canonical,
+    });
+    expect(mocks.synchronize).not.toHaveBeenCalled();
+    expect(mocks.loadEvents).not.toHaveBeenCalledWith(localRoot.conversationId);
+  });
+
   it("marks a fresh native episode failed when its first resume send is rejected", async () => {
     mocks.sendMessage.mockRejectedValueOnce(
       new Error("provider rejected native id")
@@ -1891,7 +1979,7 @@ describe("local native conversation continuation", () => {
     ).rejects.toThrow("cannot materialize");
   });
 
-  it("reuses the original Claude root across a Claude to Codex to Claude round trip", async () => {
+  it("materializes a fresh Claude frontier after a Claude to Codex to Claude round trip", async () => {
     const localRoot = {
       authority: "local-session",
       authorityScope: [],
@@ -1929,7 +2017,7 @@ describe("local native conversation continuation", () => {
       }
       return {
         status: "completed",
-        updatedAt: "2026-08-28T02:00:00.000Z",
+        updatedAt: "2026-08-28T04:00:00.000Z",
         cliAgentType: "codex",
         accountId: "codex-account",
         model: "codex-model",
@@ -1940,12 +2028,19 @@ describe("local native conversation continuation", () => {
       events: eventsBySession.get(sessionId) ?? [],
       source: "native_store",
     }));
+    let creationCount = 0;
     mocks.create.mockImplementation(async () => {
+      creationCount += 1;
+      const sessionId =
+        creationCount === 1 ? "cliagent-codex-child" : "cliagent-claude-return";
       children.push({
-        sessionId: "cliagent-codex-child",
-        updatedAt: "2026-08-28T02:00:00.000Z",
+        sessionId,
+        updatedAt:
+          creationCount === 1
+            ? "2026-08-28T04:00:00.000Z"
+            : "2026-08-28T05:00:00.000Z",
       });
-      return { sessionId: "cliagent-codex-child" };
+      return { sessionId };
     });
     mocks.materialize.mockImplementation(async ({ sessionId, timeline }) => {
       const materialized = (timeline as SessionEvent[]).map((item) => ({
@@ -2035,15 +2130,15 @@ describe("local native conversation continuation", () => {
       turnIntentId: "cc-return",
     });
     expect(last).toMatchObject({
-      sessionId: localRoot.conversationId,
+      sessionId: "cliagent-claude-return",
     });
-    expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(mocks.create).toHaveBeenCalledTimes(2);
     expect(sentInto).toEqual([
       localRoot.conversationId,
       "cliagent-codex-child",
-      localRoot.conversationId,
+      "cliagent-claude-return",
     ]);
-    expect(eventsBySession.get(localRoot.conversationId)).toEqual(
+    expect(eventsBySession.get("cliagent-claude-return")).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ displayText: "Codex middle turn" }),
       ])

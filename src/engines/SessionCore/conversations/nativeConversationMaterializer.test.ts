@@ -9,9 +9,11 @@ import {
   materializeNativeConversation,
   mergeInterruptedConversationProjection,
   nativeConversationItemsArePrefix,
+  nativeConversationItemsAreProviderPortablePrefix,
   nativeConversationItemsEqual,
   projectNativeConversation,
   projectNativeConversationItems,
+  removeKnownNativeConversationEchoes,
   supportsNativeConversationTarget,
   synchronizeNativeConversation,
 } from "./nativeConversationMaterializer";
@@ -114,22 +116,22 @@ describe("native conversation materialization", () => {
   it("carries canonical event and turn identity through a rendered projection", () => {
     const user = message("convplane-row-1", "user", "continue");
     user.args = {
-      [NATIVE_SOURCE_EVENT_ID_ARG]: "source-user-1",
+      [NATIVE_SOURCE_EVENT_ID_ARG]: "orgii_evt_source_user_1",
       conversationTurnId: "turn-1",
     };
     const assistant = message("convplane-row-2", "assistant", "done");
     assistant.args = {
-      [NATIVE_SOURCE_EVENT_ID_ARG]: "source-assistant-1",
+      [NATIVE_SOURCE_EVENT_ID_ARG]: "orgii_evt_source_assistant_1",
     };
 
     expect(projectNativeConversationItems([user, assistant])).toEqual([
       expect.objectContaining({
-        id: "source-user-1",
+        id: "orgii_evt_source_user_1",
         role: "user",
         turnId: "turn-1",
       }),
       expect.objectContaining({
-        id: "source-assistant-1",
+        id: "orgii_evt_source_assistant_1",
         role: "assistant",
       }),
     ]);
@@ -211,7 +213,10 @@ describe("native conversation materialization", () => {
     sent.result = { ...sent.result, deliveryStatus: "sent" };
 
     expect(projectNativeConversationItems([pending, failed, sent])).toEqual([
-      expect.objectContaining({ id: "sent", text: "accepted message" }),
+      expect.objectContaining({
+        id: expect.stringMatching(/^orgii_evt_[a-f0-9]{32}$/),
+        text: "accepted message",
+      }),
     ]);
   });
 
@@ -236,10 +241,10 @@ describe("native conversation materialization", () => {
     const items = projectNativeConversationItems(events);
 
     expect(items.map((item) => item.id)).toEqual([
-      "u1",
-      "a-partial",
-      "tool-completed:call",
-      "tool-completed:result",
+      expect.stringMatching(/^orgii_evt_[a-f0-9]{32}$/),
+      expect.stringMatching(/^orgii_evt_[a-f0-9]{32}$/),
+      expect.stringMatching(/^orgii_evt_[a-f0-9]{32}:call$/),
+      expect.stringMatching(/^orgii_evt_[a-f0-9]{32}:result$/),
     ]);
   });
 
@@ -324,7 +329,7 @@ describe("native conversation materialization", () => {
 
     expect(projectNativeConversationItems([accepted, persisted])).toEqual([
       expect.objectContaining({
-        id: "user-message-turn-message-id",
+        id: expect.stringMatching(/^orgii_evt_[a-f0-9]{32}$/),
         kind: "message",
         role: "user",
         text: "one prompt",
@@ -374,6 +379,47 @@ describe("native conversation materialization", () => {
     expect((items[0] as { callId: string }).callId).not.toContain(":");
   });
 
+  it("compares cross-provider tool ids by pairing topology", () => {
+    const first = tool();
+    const second = {
+      ...tool(),
+      id: "tool-2",
+      chunk_id: "tool-2",
+      callId: "call-2",
+      args: { path: "/repo/package.json" },
+      result: { status: "completed", output: "package contents" },
+    } as SessionEvent;
+    const expected = projectNativeConversationItems([first, second]);
+    const rewritten = structuredClone(expected);
+    for (const item of rewritten) {
+      if (item.kind !== "tool_call" && item.kind !== "tool_result") continue;
+      item.callId = item.callId === "call-1" ? "claude-a" : "claude-b";
+    }
+
+    expect(nativeConversationItemsArePrefix(expected, rewritten)).toBe(false);
+    expect(
+      nativeConversationItemsAreProviderPortablePrefix(expected, rewritten)
+    ).toBe(true);
+
+    const orphanResult = structuredClone(rewritten);
+    if (orphanResult[1]?.kind === "tool_result") {
+      orphanResult[1].callId = "orphan-result";
+    }
+    expect(
+      nativeConversationItemsAreProviderPortablePrefix(expected, orphanResult)
+    ).toBe(false);
+
+    const collapsedCalls = structuredClone(rewritten);
+    for (const item of collapsedCalls.slice(2)) {
+      if (item.kind === "tool_call" || item.kind === "tool_result") {
+        item.callId = "claude-a";
+      }
+    }
+    expect(
+      nativeConversationItemsAreProviderPortablePrefix(expected, collapsedCalls)
+    ).toBe(false);
+  });
+
   it("compares JSON tool arguments semantically rather than by object key order", () => {
     const left = projectNativeConversationItems([tool()]);
     const right = structuredClone(left);
@@ -402,14 +448,13 @@ describe("native conversation materialization", () => {
     expect(compacted).toEqual([
       expect.objectContaining({
         kind: "context_summary",
-        id: "compact-1",
+        id: expect.stringMatching(/^orgii_evt_[a-f0-9]{32}$/),
         summary: "provider summary",
       }),
     ]);
     expect(nativeConversationItemsArePrefix(compacted, withDelta)).toBe(true);
     expect(withDelta.at(-1)).toMatchObject({
       kind: "message",
-      id: "u2",
       role: "user",
     });
   });
@@ -449,9 +494,112 @@ describe("native conversation materialization", () => {
         message("a1", "assistant", "old answer"),
       ])
     ).toEqual([
-      expect.objectContaining({ kind: "message", id: "u1" }),
-      expect.objectContaining({ kind: "message", id: "a1" }),
+      expect.objectContaining({ kind: "message", role: "user" }),
+      expect.objectContaining({ kind: "message", role: "assistant" }),
     ]);
+  });
+
+  it("scopes provider-local ids once and preserves the scoped identity", () => {
+    const first = message("codex-asst-7", "assistant", "first session");
+    first.sessionId = "native-session-a";
+    const second = message("codex-asst-7", "assistant", "second session");
+    second.sessionId = "native-session-b";
+
+    const [firstItem, secondItem] = projectNativeConversationItems([
+      first,
+      second,
+    ]);
+    expect(firstItem?.id).toMatch(/^orgii_evt_[a-f0-9]{32}$/);
+    expect(secondItem?.id).toMatch(/^orgii_evt_[a-f0-9]{32}$/);
+    expect(firstItem?.id).not.toBe(secondItem?.id);
+
+    const copied = message(
+      "provider-renumbered-1",
+      "assistant",
+      "first session"
+    );
+    copied.sessionId = "native-session-c";
+    copied.args = { [NATIVE_SOURCE_EVENT_ID_ARG]: firstItem?.id };
+    expect(projectNativeConversationItems([copied])[0]?.id).toBe(firstItem?.id);
+
+    const legacyCopy = message(
+      "provider-renumbered-legacy",
+      "assistant",
+      "legacy materialization"
+    );
+    legacyCopy.sessionId = "native-session-d";
+    legacyCopy.args = { [NATIVE_SOURCE_EVENT_ID_ARG]: "codex-asst-7" };
+    const legacyItem = projectNativeConversationItems([legacyCopy])[0];
+    expect(legacyItem?.id).toMatch(/^orgii_evt_[a-f0-9]{32}$/);
+    expect(legacyItem?.id).not.toBe("codex-asst-7");
+
+    const collidingProviderRow = message(
+      "provider-renumbered-other",
+      "assistant",
+      "another native session"
+    );
+    collidingProviderRow.sessionId = "native-session-e";
+    collidingProviderRow.args = {
+      [NATIVE_SOURCE_EVENT_ID_ARG]: "codex-asst-7",
+    };
+    const collidingItem = projectNativeConversationItems([
+      collidingProviderRow,
+    ])[0];
+    expect(collidingItem?.id).toMatch(/^orgii_evt_[a-f0-9]{32}$/);
+    expect(collidingItem?.id).not.toBe(legacyItem?.id);
+  });
+
+  it("does not trust a raw preserved id that collides inside one native session", () => {
+    const replayed = message(
+      "codex-asst-92",
+      "assistant",
+      "materialized earlier answer"
+    );
+    replayed.sessionId = "native-session-a";
+    replayed.args = { [NATIVE_SOURCE_EVENT_ID_ARG]: "codex-asst-97" };
+
+    const genuine = message(
+      "codex-asst-97",
+      "assistant",
+      "genuine later answer"
+    );
+    genuine.sessionId = "native-session-a";
+    genuine.args = { [NATIVE_SOURCE_EVENT_ID_ARG]: "codex-asst-97" };
+
+    const [replayedItem, genuineItem] = projectNativeConversationItems([
+      replayed,
+      genuine,
+    ]);
+    expect(replayedItem?.id).toMatch(/^orgii_evt_[a-f0-9]{32}$/);
+    expect(genuineItem?.id).toMatch(/^orgii_evt_[a-f0-9]{32}$/);
+    expect(replayedItem?.id).not.toBe(genuineItem?.id);
+  });
+
+  it("collapses persisted copies that already share a global native id", () => {
+    const globalId = "orgii_evt_0c2481a309205d2abd70fd14234c10f5";
+    const original = message("codex-asst-92", "assistant", "answer");
+    original.sessionId = "native-session-a";
+    original.args = { [NATIVE_SOURCE_EVENT_ID_ARG]: globalId };
+
+    const planeCopy = message("convplane-row-97", "assistant", "answer");
+    planeCopy.sessionId = "canonical-stream";
+    planeCopy.args = { [NATIVE_SOURCE_EVENT_ID_ARG]: globalId };
+
+    expect(projectNativeConversationItems([original, planeCopy])).toEqual([
+      expect.objectContaining({ id: globalId, text: "answer" }),
+    ]);
+  });
+
+  it("keeps a genuine repeated item after the copied-prefix window closes", () => {
+    const historical = message("historical", "assistant", "same answer");
+    const novel = message("novel", "assistant", "new answer");
+    const repeated = message("repeated", "assistant", "same answer");
+
+    expect(
+      removeKnownNativeConversationEchoes([historical], [novel, repeated]).map(
+        (event) => event.id
+      )
+    ).toEqual(["novel", "repeated"]);
   });
 
   it("supports native Agent plus verified Claude and Codex writers", () => {

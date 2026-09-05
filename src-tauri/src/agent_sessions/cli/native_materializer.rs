@@ -36,6 +36,9 @@ use super::persistence;
 
 const CODEX_NATIVE_PATH_CACHE_MAX_ENTRIES: usize = 512;
 const CLAUDE_PROJECT_INDEX_VERSION: u64 = 1;
+const CLAUDE_DESKTOP_ACCOUNT_SCAN_LIMIT: usize = 64;
+const CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT: usize = 2_048;
+const CLAUDE_DESKTOP_METADATA_SCAN_LIMIT: usize = 10_000;
 // Codex stores rollouts in a date-sharded directory tree. Resolving the same
 // native UUID by walking that tree on every turn makes a long-running session
 // progressively more expensive even though its path is immutable. Cache only
@@ -1138,6 +1141,326 @@ fn remove_claude_project_index_entry(cwd: &Path, native_id: &str) -> Result<(), 
     Ok(())
 }
 
+/// Claude Desktop keeps a small discovery row for every Claude Code session
+/// it exposes in the Code tab. The row points at the real CLI UUID; it is not
+/// a transcript copy. Keep this projection beside the provider-owned JSONL
+/// catalog so Desktop can discover materialized sessions without fabricating
+/// another conversation history.
+fn claude_desktop_sessions_root() -> PathBuf {
+    let home = app_paths::native_transcript_home_dir();
+    #[cfg(target_os = "windows")]
+    let data_dir = home.join("AppData").join("Roaming");
+    #[cfg(target_os = "macos")]
+    let data_dir = home.join("Library").join("Application Support");
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let data_dir = home.join(".config");
+    data_dir.join("Claude").join("claude-code-sessions")
+}
+
+fn claude_desktop_active_account_id(sessions_root: &Path) -> Option<String> {
+    let config_path = sessions_root.parent()?.join("config.json");
+    let config = serde_json::from_slice::<Value>(&fs::read(config_path).ok()?).ok()?;
+    let account_id = config["lastKnownAccountUuid"].as_str()?;
+    Uuid::parse_str(account_id).ok()?;
+    Some(account_id.to_string())
+}
+
+/// Read at most `budget` directory entries. The budget counts failed and
+/// non-directory entries too, so a noisy provider-owned catalog cannot turn
+/// discovery into an unbounded scan. Sort the accepted prefix so its later
+/// processing is deterministic.
+fn bounded_directory_paths(root: &Path, budget: &mut usize) -> Vec<PathBuf> {
+    if *budget == 0 {
+        return Vec::new();
+    }
+    let Ok(entries) = fs::read_dir(root) else {
+        return Vec::new();
+    };
+    let mut paths = Vec::new();
+    for entry in entries {
+        if *budget == 0 {
+            break;
+        }
+        *budget -= 1;
+        if let Ok(entry) = entry {
+            paths.push(entry.path());
+        }
+    }
+    paths.sort();
+    paths
+}
+
+fn claude_desktop_session_path(
+    sessions_root: &Path,
+    cwd: &Path,
+    native_id: &str,
+) -> Option<PathBuf> {
+    let mut account_budget = CLAUDE_DESKTOP_ACCOUNT_SCAN_LIMIT;
+    let account_dirs = bounded_directory_paths(sessions_root, &mut account_budget)
+        .into_iter()
+        .filter(|path| path.is_dir())
+        .collect::<Vec<_>>();
+    let expected_filename = format!("local_{native_id}.json");
+
+    // An existing UUID remains owned by the account that first registered it,
+    // even after the user switches Claude Desktop accounts. Search every
+    // account before deciding where a new discovery row should be placed.
+    let mut project_budget = CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT;
+    let mut metadata_budget = CLAUDE_DESKTOP_METADATA_SCAN_LIMIT;
+    'account_scan: for account_dir in &account_dirs {
+        for project_dir in bounded_directory_paths(account_dir, &mut project_budget)
+            .into_iter()
+            .filter(|path| path.is_dir())
+        {
+            let exact_path = project_dir.join(&expected_filename);
+            if exact_path.is_file() {
+                let is_same_session = fs::read(&exact_path)
+                    .ok()
+                    .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok())
+                    .and_then(|value| value["cliSessionId"].as_str().map(str::to_string))
+                    .as_deref()
+                    == Some(native_id);
+                if is_same_session {
+                    return Some(exact_path);
+                }
+            }
+            for path in bounded_directory_paths(&project_dir, &mut metadata_budget) {
+                if path.extension().and_then(|value| value.to_str()) != Some("json") {
+                    continue;
+                }
+                let Some(value) = fs::read(&path)
+                    .ok()
+                    .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok())
+                else {
+                    continue;
+                };
+                if value["cliSessionId"].as_str() == Some(native_id) {
+                    return Some(path);
+                }
+            }
+            if metadata_budget == 0 {
+                break 'account_scan;
+            }
+        }
+        if project_budget == 0 {
+            break;
+        }
+    }
+
+    // A brand-new row must be registered under the currently active Desktop
+    // account. Never silently place it into an arbitrary inactive account.
+    let active_account_dir = sessions_root.join(claude_desktop_active_account_id(sessions_root)?);
+    if !active_account_dir.is_dir() {
+        return None;
+    }
+    let mut matching_project: Option<(i64, PathBuf)> = None;
+    let mut project_budget = CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT;
+    let mut metadata_budget = CLAUDE_DESKTOP_METADATA_SCAN_LIMIT;
+    for project_dir in bounded_directory_paths(&active_account_dir, &mut project_budget)
+        .into_iter()
+        .filter(|path| path.is_dir())
+    {
+        for path in bounded_directory_paths(&project_dir, &mut metadata_budget) {
+            if path.extension().and_then(|value| value.to_str()) != Some("json") {
+                continue;
+            }
+            let Some(value) = fs::read(&path)
+                .ok()
+                .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok())
+            else {
+                continue;
+            };
+            let matches_cwd = ["cwd", "originCwd"].into_iter().any(|field| {
+                value[field]
+                    .as_str()
+                    .is_some_and(|value| paths_match(Path::new(value), cwd))
+            });
+            if !matches_cwd {
+                continue;
+            }
+            let activity = value["lastActivityAt"]
+                .as_i64()
+                .or_else(|| value["createdAt"].as_i64())
+                .unwrap_or_default();
+            if matching_project
+                .as_ref()
+                .is_none_or(|(best_activity, _)| activity > *best_activity)
+            {
+                matching_project = Some((activity, project_dir.clone()));
+            }
+        }
+        if metadata_budget == 0 {
+            break;
+        }
+    }
+    matching_project.map(|(_, path)| path.join(expected_filename))
+}
+
+fn assistant_turn_count(items: &[NativeConversationItem]) -> usize {
+    items
+        .iter()
+        .filter(|item| {
+            matches!(item, NativeConversationItem::Message { role, .. } if role == "assistant")
+        })
+        .count()
+}
+
+#[cfg(test)]
+fn publish_claude_desktop_session(
+    session: &persistence::CodeSession,
+    cwd: &Path,
+    native_id: &str,
+    native_path: &Path,
+    items: &[NativeConversationItem],
+) -> Result<Option<PathBuf>, String> {
+    if !native_path.is_file() {
+        return Err(format!(
+            "refusing to publish Claude Desktop metadata without transcript {}",
+            native_path.display()
+        ));
+    }
+    let sessions_root = claude_desktop_sessions_root();
+    if !sessions_root.is_dir() {
+        return Ok(None);
+    }
+    let Some(path) = claude_desktop_session_path(&sessions_root, cwd, native_id) else {
+        // Account/project UUIDs belong to Desktop. A machine with no existing
+        // matching project must use Claude's own import flow instead of ORG2
+        // inventing identifiers that the App has never registered.
+        return Ok(None);
+    };
+    publish_claude_desktop_session_at_path(session, cwd, native_id, native_path, items, path)
+}
+
+fn publish_claude_desktop_session_at_path(
+    session: &persistence::CodeSession,
+    cwd: &Path,
+    native_id: &str,
+    native_path: &Path,
+    items: &[NativeConversationItem],
+    path: PathBuf,
+) -> Result<Option<PathBuf>, String> {
+    let _guard = lock_claude_project_index(&path)?;
+    let previous = match fs::read(&path) {
+        Ok(raw) => Some(serde_json::from_slice::<Value>(&raw).map_err(|error| {
+            format!(
+                "decode existing Claude Desktop metadata {}: {error}",
+                path.display()
+            )
+        })?),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => {
+            return Err(format!(
+                "read Claude Desktop metadata {}: {error}",
+                path.display()
+            ))
+        }
+    };
+    let mut metadata = previous.clone().unwrap_or_else(|| json!({}));
+    let object = metadata.as_object_mut().ok_or_else(|| {
+        format!(
+            "Claude Desktop metadata is not an object: {}",
+            path.display()
+        )
+    })?;
+    let (file_mtime, _) = transcript_modified_metadata(native_path)?;
+    let title = if session.name.trim().is_empty() {
+        first_user_title(items)
+    } else {
+        session.name.trim().chars().take(120).collect()
+    };
+    let is_new = previous.is_none();
+    object
+        .entry("sessionId".to_string())
+        .or_insert_with(|| json!(format!("local_{native_id}")));
+    object.insert("cliSessionId".to_string(), json!(native_id));
+    object.insert("cwd".to_string(), json!(cwd));
+    object
+        .entry("originCwd".to_string())
+        .or_insert_with(|| json!(cwd));
+    object
+        .entry("createdAt".to_string())
+        .or_insert_with(|| json!(file_mtime));
+    object
+        .entry("lastFocusedAt".to_string())
+        .or_insert_with(|| json!(file_mtime));
+    object.insert("lastActivityAt".to_string(), json!(file_mtime));
+    object.insert("title".to_string(), json!(title));
+    object
+        .entry("titleSource".to_string())
+        .or_insert_with(|| json!("orgii"));
+    object
+        .entry("permissionMode".to_string())
+        .or_insert_with(|| json!("default"));
+    object
+        .entry("isArchived".to_string())
+        .or_insert_with(|| json!(false));
+    object
+        .entry("remoteMcpServersConfig".to_string())
+        .or_insert_with(|| json!([]));
+    object.insert(
+        "completedTurns".to_string(),
+        json!(assistant_turn_count(items)),
+    );
+    object
+        .entry("alwaysAllowedReasons".to_string())
+        .or_insert_with(|| json!([]));
+    object
+        .entry("sessionPermissionUpdates".to_string())
+        .or_insert_with(|| json!([]));
+    object
+        .entry("classifierSummaryEnabled".to_string())
+        .or_insert_with(|| json!(true));
+    if let Some(model) = session
+        .model
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        object.insert("model".to_string(), json!(model));
+    }
+    if is_new {
+        object.insert("orgiiMaterialization".to_string(), json!(true));
+    }
+    atomic_json(&path, &metadata)?;
+    let published: Value = serde_json::from_slice(
+        &fs::read(&path).map_err(|error| format!("read back Claude Desktop metadata: {error}"))?,
+    )
+    .map_err(|error| format!("decode published Claude Desktop metadata: {error}"))?;
+    if published["cliSessionId"].as_str() != Some(native_id)
+        || published["sessionId"].as_str().is_none()
+        || !published["completedTurns"].is_number()
+        || !["cwd", "originCwd"].into_iter().any(|field| {
+            published[field]
+                .as_str()
+                .is_some_and(|value| paths_match(Path::new(value), cwd))
+        })
+    {
+        return Err(format!(
+            "Claude Desktop metadata read-back rejected {}",
+            path.display()
+        ));
+    }
+    Ok(Some(path))
+}
+
+fn remove_orgii_claude_desktop_session(cwd: &Path, native_id: &str) -> Result<(), String> {
+    let sessions_root = claude_desktop_sessions_root();
+    let Some(path) = claude_desktop_session_path(&sessions_root, cwd, native_id) else {
+        return Ok(());
+    };
+    let _guard = lock_claude_project_index(&path)?;
+    let metadata = fs::read(&path)
+        .ok()
+        .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok());
+    if metadata.as_ref().is_some_and(|value| {
+        value["cliSessionId"].as_str() == Some(native_id)
+            && value["orgiiMaterialization"].as_bool() == Some(true)
+    }) {
+        remove_file_if_present(&path)?;
+    }
+    Ok(())
+}
+
 /// Refresh the native Claude App catalog from metadata written by the actual
 /// Claude process in its isolated account profile. This path reads two small
 /// index files and transcript stat metadata only; it never reparses a large
@@ -1683,11 +2006,21 @@ fn provider_canonical_cwd(cwd: PathBuf) -> PathBuf {
 }
 
 fn execution_cwd(session: &persistence::CodeSession) -> Result<PathBuf, String> {
+    // Keep this selection identical to the CLI runner. A removed session
+    // worktree is no longer an executable workspace: the runner falls back
+    // to repo_path, and Claude keys its native store by that effective cwd.
+    // Materializing under the stale worktree key would therefore publish a
+    // valid UUID that `claude --resume` cannot find from the runner's cwd.
     let value = session
         .worktree_path
         .as_deref()
-        .or(session.repo_path.as_deref())
-        .filter(|value| !value.trim().is_empty());
+        .filter(|value| !value.trim().is_empty() && Path::new(value).is_dir())
+        .or_else(|| {
+            session
+                .repo_path
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+        });
     let cwd = match value {
         Some(value) => PathBuf::from(value),
         None => std::env::current_dir().map_err(|err| format!("resolve execution cwd: {err}"))?,
@@ -1699,7 +2032,7 @@ fn execution_cwd(session: &persistence::CodeSession) -> Result<PathBuf, String> 
     // our reader, but `claude --resume` searches `projects/-private-tmp-...`
     // and rejects the freshly materialized UUID.  Use the same identity the
     // child process observes, while retaining the configured path for a
-    // not-yet-created workspace so materialization still fails/rolls back at
+    // not-yet-created repository so materialization still fails/rolls back at
     // the normal launch boundary.
     Ok(provider_canonical_cwd(cwd))
 }
@@ -1807,6 +2140,10 @@ fn discard_cli_materialization(session_id: &str, native_id: &str) -> Result<bool
         }
         "claude_code" => {
             let _transcript_guard = lock_claude_transcript(&paths.native_path)?;
+            // Remove ORG2's discovery projection before the transcript so a
+            // partial rollback cannot leave a visible Desktop row whose CLI
+            // UUID no longer exists on disk.
+            remove_orgii_claude_desktop_session(&cwd, native_id)?;
             let runner_removed = remove_file_if_present(&paths.runner_path)?;
             let native_removed = remove_file_if_present(&paths.native_path)?;
             remove_claude_project_index_entry(&cwd, native_id)?;
@@ -2273,6 +2610,7 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
             runner_path,
             branch,
         } => {
+            let mut parsed_items = None;
             if !refresh_claude_project_index_from_provider(
                 &cwd,
                 &native_id,
@@ -2287,11 +2625,45 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
                     &session_id,
                     &native_path,
                 )?;
-                publish_claude_project_index(
+                let items = native_items_from_chunks(&chunks);
+                publish_claude_project_index(&cwd, &native_id, &items, branch.as_deref())?;
+                parsed_items = Some(items);
+            }
+
+            // Claude Desktop does not watch Claude Code's sessions-index.json.
+            // Its Code tab discovers the provider JSONL through this separate
+            // metadata row. Publish it from the same deferred owner and only
+            // into an existing provider-registered account/project directory.
+            let desktop_root = claude_desktop_sessions_root();
+            let desktop_path = desktop_root
+                .is_dir()
+                .then(|| claude_desktop_session_path(&desktop_root, &cwd, &native_id))
+                .flatten();
+            if let Some(desktop_path) = desktop_path {
+                let items = match parsed_items {
+                    Some(items) => items,
+                    None => {
+                        let chunks = orgtrack_core::sources::claude_code::history::load_claude_code_history_from_path(
+                            &session_id,
+                            &native_path,
+                        )?;
+                        native_items_from_chunks(&chunks)
+                    }
+                };
+                let session = persistence::get_session(&session_id)
+                    .map_err(|error| {
+                        format!("load CLI session {session_id} for Claude Desktop catalog: {error}")
+                    })?
+                    .ok_or_else(|| {
+                        format!("CLI session {session_id} disappeared before Claude Desktop catalog refresh")
+                    })?;
+                publish_claude_desktop_session_at_path(
+                    &session,
                     &cwd,
                     &native_id,
-                    &native_items_from_chunks(&chunks),
-                    branch.as_deref(),
+                    &native_path,
+                    &items,
+                    desktop_path,
                 )?;
             }
             receipt
@@ -2675,6 +3047,7 @@ pub async fn discard_native_conversation_materialization(
 mod tests {
     use super::*;
     use crate::test_utils::test_env;
+    use std::ffi::OsString;
     use std::sync::atomic::{AtomicBool, Ordering};
 
     #[cfg(unix)]
@@ -2683,6 +3056,28 @@ mod tests {
     const CLAUDE_INDEX_LOCK_CHILD_READY: &str = "ORGII_TEST_CLAUDE_INDEX_LOCK_CHILD_READY";
     #[cfg(unix)]
     const CLAUDE_INDEX_LOCK_CHILD_ACTION: &str = "ORGII_TEST_CLAUDE_INDEX_LOCK_CHILD_ACTION";
+
+    struct EnvVarGuard {
+        key: &'static str,
+        previous: Option<OsString>,
+    }
+
+    impl EnvVarGuard {
+        fn set(key: &'static str, value: &Path) -> Self {
+            let previous = std::env::var_os(key);
+            std::env::set_var(key, value);
+            Self { key, previous }
+        }
+    }
+
+    impl Drop for EnvVarGuard {
+        fn drop(&mut self) {
+            match self.previous.take() {
+                Some(value) => std::env::set_var(self.key, value),
+                None => std::env::remove_var(self.key),
+            }
+        }
+    }
 
     fn message(id: &str, role: &str, text: &str) -> NativeConversationItem {
         NativeConversationItem::Message {
@@ -2779,9 +3174,7 @@ mod tests {
             "status": "pending",
             "interrupted": true,
             "success": false,
-            "call_id": "call_partial",
-            "output": "first 20 lines",
-            "observation": "first 20 lines"
+            "call_id": "call_partial"
         });
 
         assert!(native_items_from_chunks(&[chunk]).is_empty());
@@ -3456,6 +3849,91 @@ mod tests {
     }
 
     #[test]
+    fn claude_desktop_directory_scan_has_a_hard_entry_budget() {
+        let sandbox = test_env::sandbox();
+        let root = sandbox.path().join("claude-desktop-catalog");
+        fs::create_dir_all(root.join("a-directory")).expect("create first catalog directory");
+        fs::create_dir_all(root.join("b-directory")).expect("create second catalog directory");
+        fs::write(root.join("c-row.json"), b"{}").expect("create first catalog row");
+        fs::write(root.join("d-row.json"), b"{}").expect("create second catalog row");
+
+        let mut budget = 2;
+        let paths = bounded_directory_paths(&root, &mut budget);
+        assert_eq!(paths.len(), 2);
+        assert_eq!(budget, 0);
+        assert!(bounded_directory_paths(&root, &mut budget).is_empty());
+    }
+
+    #[test]
+    fn claude_desktop_uuid_lookup_crosses_accounts_but_new_rows_use_active_account() {
+        let sandbox = test_env::sandbox();
+        let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
+        let cwd = sandbox.path().join("shared-worktree");
+        fs::create_dir_all(&cwd).expect("create shared Claude workspace");
+
+        let sessions_root = claude_desktop_sessions_root();
+        let inactive_project = sessions_root
+            .join("11111111-1111-4111-8111-111111111111")
+            .join("22222222-2222-4222-8222-222222222222");
+        let active_project = sessions_root
+            .join("33333333-3333-4333-8333-333333333333")
+            .join("44444444-4444-4444-8444-444444444444");
+        fs::create_dir_all(&inactive_project).expect("create inactive account project");
+        fs::create_dir_all(&active_project).expect("create active account project");
+        fs::write(
+            sessions_root
+                .parent()
+                .expect("Claude data directory")
+                .join("config.json"),
+            serde_json::to_vec(&json!({
+                "lastKnownAccountUuid": "33333333-3333-4333-8333-333333333333"
+            }))
+            .expect("encode active account config"),
+        )
+        .expect("write active account config");
+
+        let existing_native_id = "55555555-5555-4555-8555-555555555555";
+        let existing_path = inactive_project.join(format!("local_{existing_native_id}.json"));
+        fs::write(
+            &existing_path,
+            serde_json::to_vec(&json!({
+                "sessionId": format!("local_{existing_native_id}"),
+                "cliSessionId": existing_native_id,
+                "cwd": cwd,
+                "createdAt": 1,
+                "lastActivityAt": 1
+            }))
+            .expect("encode inactive account row"),
+        )
+        .expect("write inactive account row");
+        fs::write(
+            active_project.join("local-active-seed.json"),
+            serde_json::to_vec(&json!({
+                "sessionId": "local-active-seed",
+                "cliSessionId": "active-seed",
+                "cwd": cwd,
+                "createdAt": 2,
+                "lastActivityAt": 2
+            }))
+            .expect("encode active account seed"),
+        )
+        .expect("write active account seed");
+
+        assert_eq!(
+            claude_desktop_session_path(&sessions_root, &cwd, existing_native_id),
+            Some(existing_path),
+            "an existing UUID must remain in its original account"
+        );
+
+        let new_native_id = "66666666-6666-4666-8666-666666666666";
+        assert_eq!(
+            claude_desktop_session_path(&sessions_root, &cwd, new_native_id),
+            Some(active_project.join(format!("local_{new_native_id}.json"))),
+            "a new row must be placed under the active account"
+        );
+    }
+
+    #[test]
     fn finalizer_publication_promotes_fresh_claude_session_and_catalog() {
         let sandbox = test_env::sandbox();
         let session_id = "cliagent-finalizer-publish";
@@ -3484,6 +3962,35 @@ mod tests {
         .expect("serialize Claude transcript");
         fs::write(&paths.runner_path, &payload).expect("write isolated provider transcript");
 
+        let desktop_root = claude_desktop_sessions_root();
+        let desktop_project = desktop_root
+            .join("11111111-1111-4111-8111-111111111111")
+            .join("22222222-2222-4222-8222-222222222222");
+        fs::create_dir_all(&desktop_project).expect("create provider-owned Desktop project");
+        fs::write(
+            desktop_root
+                .parent()
+                .expect("Claude data directory")
+                .join("config.json"),
+            serde_json::to_vec(&json!({
+                "lastKnownAccountUuid": "11111111-1111-4111-8111-111111111111"
+            }))
+            .expect("encode Desktop config"),
+        )
+        .expect("write Desktop config");
+        fs::write(
+            desktop_project.join("local-existing.json"),
+            serde_json::to_vec(&json!({
+                "sessionId": "local-existing",
+                "cliSessionId": "existing",
+                "cwd": cwd,
+                "createdAt": 1,
+                "lastActivityAt": 1
+            }))
+            .expect("encode existing Desktop row"),
+        )
+        .expect("seed provider-owned Desktop project row");
+
         assert!(publish_bound_native_transcript(session_id).expect("publish native transcript"));
         assert_eq!(
             fs::read(&paths.native_path).expect("read native App transcript"),
@@ -3500,6 +4007,134 @@ mod tests {
         .expect("read Claude project index");
         assert!(index.contains(native_id));
         assert!(index.contains("visible in Claude"));
+        let desktop_row: Value = serde_json::from_slice(
+            &fs::read(desktop_project.join(format!("local_{native_id}.json")))
+                .expect("read Claude Desktop discovery row"),
+        )
+        .expect("decode Claude Desktop discovery row");
+        assert_eq!(desktop_row["sessionId"], format!("local_{native_id}"));
+        assert_eq!(desktop_row["cliSessionId"], native_id);
+        assert!(paths_match(
+            Path::new(desktop_row["cwd"].as_str().expect("Desktop cwd")),
+            &cwd
+        ));
+        assert_eq!(desktop_row["completedTurns"], 0);
+        assert_eq!(desktop_row["orgiiMaterialization"], true);
+
+        assert!(discard_cli_materialization(session_id, native_id)
+            .expect("discard materialized Claude transcript"));
+        assert!(
+            !desktop_project
+                .join(format!("local_{native_id}.json"))
+                .exists(),
+            "rollback must not leave a Desktop row pointing at a removed JSONL"
+        );
+    }
+
+    #[test]
+    fn explicit_native_home_survives_discovery_home_cleanup() {
+        let sandbox = test_env::sandbox();
+        let discovery_home = sandbox.path().join("disposable-discovery-home");
+        let official_home = sandbox.path().join("official-provider-home");
+        let cwd = sandbox.path().join("durable-native-worktree");
+        fs::create_dir_all(&discovery_home).expect("create isolated discovery home");
+        fs::create_dir_all(&official_home).expect("create official provider home");
+        fs::create_dir_all(&cwd).expect("create Claude workspace");
+        let _external_history = EnvVarGuard::set("ORGII_EXTERNAL_HISTORY_HOME", &discovery_home);
+        let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", &official_home);
+        let native_id = "34343434-5656-4787-8989-abababababab";
+        let items = vec![
+            message("durable-user", "user", "survive discovery cleanup"),
+            message("durable-assistant", "assistant", "still openable"),
+        ];
+        let paths = claude_native_paths(None, &cwd, native_id);
+        let records = claude_records_with_resume_checkpoint(native_id, &cwd, &items)
+            .expect("render Claude transcript");
+
+        let desktop_root = claude_desktop_sessions_root();
+        let desktop_project = desktop_root
+            .join("33333333-3333-4333-8333-333333333333")
+            .join("44444444-4444-4444-8444-444444444444");
+        fs::create_dir_all(&desktop_project).expect("create official Desktop project");
+        fs::write(
+            desktop_root
+                .parent()
+                .expect("Claude data directory")
+                .join("config.json"),
+            serde_json::to_vec(&json!({
+                "lastKnownAccountUuid": "33333333-3333-4333-8333-333333333333"
+            }))
+            .expect("encode official Desktop config"),
+        )
+        .expect("write official Desktop config");
+        fs::write(
+            desktop_project.join("local-existing.json"),
+            serde_json::to_vec(&json!({
+                "sessionId": "local-existing",
+                "cliSessionId": "existing",
+                "cwd": cwd,
+                "createdAt": 1,
+                "lastActivityAt": 1
+            }))
+            .expect("encode official Desktop seed"),
+        )
+        .expect("seed official Desktop project");
+        let session_id = "cliagent-durable-native-desktop-proof";
+        create_native_claude_session(session_id, "anthropic-durable-proof", &cwd);
+        let session = persistence::get_session(session_id)
+            .expect("load durable Desktop proof session")
+            .expect("durable Desktop proof session exists");
+
+        write_native_store_jsonl(&paths, &records).expect("publish official Claude transcript");
+        publish_claude_project_index(&cwd, native_id, &items, Some("feature/native-proof"))
+            .expect("publish official Claude project index");
+        publish_claude_desktop_session(&session, &cwd, native_id, &paths.native_path, &items)
+            .expect("publish official Claude Desktop metadata")
+            .expect("matching provider-owned Desktop project");
+        fs::remove_dir_all(&discovery_home).expect("delete isolated discovery home");
+
+        assert!(paths.native_path.starts_with(&official_home));
+        assert!(paths.native_path.is_file());
+        let parsed =
+            orgtrack_core::sources::claude_code::history::load_claude_code_history_from_path(
+                "claudecodeapp-durable-proof",
+                &paths.native_path,
+            )
+            .expect("open published Claude transcript after discovery cleanup");
+        assert!(parsed.iter().any(|chunk| {
+            chunk.function == "assistant" && chunk.result.to_string().contains("still openable")
+        }));
+
+        let index_path = paths
+            .native_path
+            .parent()
+            .expect("Claude project directory")
+            .join("sessions-index.json");
+        let index: Value = serde_json::from_slice(
+            &fs::read(&index_path).expect("read durable Claude project index"),
+        )
+        .expect("decode durable Claude project index");
+        let entry = index["entries"]
+            .as_array()
+            .expect("Claude project index entries")
+            .iter()
+            .find(|entry| entry["sessionId"].as_str() == Some(native_id))
+            .expect("durable Claude project index entry");
+        assert_eq!(entry["fullPath"], json!(paths.native_path));
+        assert!(Path::new(entry["fullPath"].as_str().expect("indexed path")).is_file());
+        assert_eq!(entry["workspacePath"], json!(cwd));
+        let desktop_row = desktop_project.join(format!("local_{native_id}.json"));
+        assert!(desktop_row.starts_with(&official_home));
+        let desktop_row: Value = serde_json::from_slice(
+            &fs::read(desktop_row).expect("read durable Claude Desktop metadata"),
+        )
+        .expect("decode durable Claude Desktop metadata");
+        assert_eq!(desktop_row["cliSessionId"], native_id);
+        assert!(paths_match(
+            Path::new(desktop_row["cwd"].as_str().expect("Desktop cwd")),
+            &cwd
+        ));
+        assert_eq!(desktop_row["completedTurns"], 1);
     }
 
     #[test]
@@ -3821,6 +4456,82 @@ mod tests {
                 .as_deref(),
             Some(receipt.native_session_id.as_str())
         );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn synchronize_rebuilds_claude_binding_when_recorded_worktree_was_removed() {
+        let sandbox = test_env::sandbox();
+        let session_id = "cliagent-native-sync-removed-worktree";
+        let account_id = "anthropic-native-removed-worktree";
+        let repo_path = sandbox.path().join("repo");
+        let removed_worktree = sandbox.path().join("removed-worktree");
+        fs::create_dir_all(&repo_path).expect("create fallback repository");
+        create_native_claude_session(session_id, account_id, &repo_path);
+        persistence::update_worktree_info(
+            session_id,
+            removed_worktree
+                .to_str()
+                .expect("removed worktree path is utf-8"),
+            "agent/removed-worktree",
+            "develop",
+        )
+        .expect("record removed worktree");
+
+        let stale_native_id = "03b9bc8b-1111-4222-8333-bbbbbbbbbbbb";
+        let complete_items = vec![
+            message("user-1", "user", "Inspect the repository"),
+            tool_call("call_1", "read_file", r#"{"path":"README.md"}"#),
+            tool_result("call_1", "read_file", "repository read", false, false),
+            message("assistant-1", "assistant", "Inspection complete"),
+        ];
+        let stale_paths = claude_native_paths(Some(account_id), &removed_worktree, stale_native_id);
+        write_native_store_jsonl(
+            &stale_paths,
+            &claude_records_with_resume_checkpoint(
+                stale_native_id,
+                &removed_worktree,
+                &complete_items,
+            )
+            .expect("render stale-worktree transcript"),
+        )
+        .expect("publish stale-worktree transcript");
+        persistence::update_cli_session_id_for_account(
+            session_id,
+            Some(account_id),
+            stale_native_id,
+        )
+        .expect("record stale-worktree binding");
+
+        let receipt = synchronize_native_conversation_with_owner(
+            None,
+            session_id.to_string(),
+            complete_items.clone(),
+        )
+        .await
+        .expect("rebuild under the runner's fallback cwd");
+
+        assert_ne!(receipt.native_session_id, stale_native_id);
+        assert_eq!(receipt.item_count, complete_items.len());
+        assert_eq!(
+            persistence::get_cli_session_id_for_account(session_id, Some(account_id))
+                .expect("read repaired binding")
+                .as_deref(),
+            Some(receipt.native_session_id.as_str())
+        );
+        let repaired_paths = claude_native_paths(
+            Some(account_id),
+            &provider_canonical_cwd(repo_path),
+            &receipt.native_session_id,
+        );
+        assert!(repaired_paths.native_path.is_file());
+        assert!(repaired_paths.runner_path.is_file());
+        let authoritative =
+            authoritative_native_items(session_id).expect("round-trip rebuilt transcript");
+        assert_eq!(authoritative.len(), complete_items.len());
+        assert!(authoritative
+            .iter()
+            .zip(&complete_items)
+            .all(|(native, canonical)| native_item_semantically_equal(native, canonical)));
     }
 
     #[tokio::test(flavor = "current_thread")]

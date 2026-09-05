@@ -32,6 +32,7 @@ import {
   selectCloudOrgScopeFromSidebar,
   setCloudSessionModeViaDialog,
   setCloudSessionVisibilityViaDialog,
+  startDelayedCloudFailureEndpoint,
   typeRendered,
   unwrap,
   waitForApp,
@@ -1731,6 +1732,16 @@ describe("Cloud collaboration with two independent rendered app instances", func
       );
     }
 
+    // Fresh streamed imports intentionally defer the derived Session Blame
+    // index so the first open does not synchronously reload a large replay.
+    // Reopening the same production Cloud row is the supported no-op refresh:
+    // it sees the durable cursor/history and fills the deferred local index.
+    await clickRenderedOn(
+      second.client,
+      remoteRowSelector,
+      "secondary refresh imported replay for Session Blame"
+    );
+
     // Full-replay authorization is also the authorization boundary for Team
     // Session Blame. The imported transcript must be projected locally with
     // the owner's identity; no second cloud provenance database is involved.
@@ -1900,6 +1911,28 @@ describe("Cloud collaboration with two independent rendered app instances", func
     // Presence is a separate, ephemeral plane: the teammate must see the
     // owner viewing the same cloud session, lose the chip when the owner
     // leaves, and regain it when the owner re-opens the session.
+    // Realtime presence is intentionally scoped to the actively selected
+    // Cloud org. Make that product precondition explicit for the owner before
+    // asserting that the teammate can see the owner's viewing lease.
+    await selectCloudOrgScopeFromSidebar(teamOrgId);
+    await browser.waitUntil(
+      async () => {
+        const presence = unwrap(
+          await invokeE2E("cloudInspectPresence"),
+          "inspect owner presence after selecting the team scope"
+        );
+        return (
+          presence.activeSessionId === sessionId &&
+          presence.outbound?.[teamOrgId]?.viewingSessionId === sessionId
+        );
+      },
+      {
+        timeout: CLOUD_FETCH_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg:
+          "owner never advertised the source session after entering the team scope",
+      }
+    );
     const ownerViewerChip = '[data-testid="session-viewers-indicator"]';
     try {
       await waitForRenderedOn(
@@ -2480,7 +2513,8 @@ describe("Cloud collaboration with two independent rendered app instances", func
       }
     );
 
-    const editorSelector = '[data-testid="chat-input"] [contenteditable="true"]';
+    const editorSelector =
+      '[data-testid="chat-input"] [contenteditable="true"]';
     await waitForRendered(editorSelector, "primary Team Chat editor");
     const typedAt = await execJS(`
       const editors = Array.from(document.querySelectorAll(${JSON.stringify(editorSelector)}))
@@ -2495,7 +2529,10 @@ describe("Cloud collaboration with two independent rendered app instances", func
     `);
     if (!typedAt) throw new Error("primary Team Chat editor rejected @");
     const mentionOptionSelector = `[data-testid="agent-org-mention-option"][data-mention-id="${teammate.userId}"]`;
-    await waitForRendered(mentionOptionSelector, "primary teammate mention option");
+    await waitForRendered(
+      mentionOptionSelector,
+      "primary teammate mention option"
+    );
     const mentionPicked = await execJS(js.visibleClick(mentionOptionSelector));
     if (mentionPicked !== "clicked") {
       throw new Error(
@@ -2513,7 +2550,9 @@ describe("Cloud collaboration with two independent rendered app instances", func
       return true;
     `);
     if (!appended) {
-      throw new Error("Team Chat mention pill was not preserved while appending body");
+      throw new Error(
+        "Team Chat mention pill was not preserved while appending body"
+      );
     }
 
     await execJS(`
@@ -2533,34 +2572,46 @@ describe("Cloud collaboration with two independent rendered app instances", func
       return true;
     `);
     let failedState = null;
-    await applyCloudEndpointOverride(UNREACHABLE_CLOUD_ENDPOINT);
+    const delayedFailure = await startDelayedCloudFailureEndpoint();
+    await applyCloudEndpointOverride(delayedFailure.endpoint);
     try {
       await clickRendered(
         '[data-testid="chat-send-button"]',
         "primary send offline Team Chat mention"
       );
-      await waitForRendered(
-        '[data-testid="chat-message-delivery-failed"]',
-        "failed Team Chat delivery row",
-        CLOUD_FETCH_TIMEOUT_MS
+      await browser.waitUntil(
+        async () =>
+          execJS(`
+            const group = Array.from(document.querySelectorAll('[data-chat-group-index]'))
+              .find((candidate) => (candidate.textContent ?? '').includes(${JSON.stringify(TEAM_CHAT_MENTION_BODY)}));
+            return Boolean(group?.querySelector('[data-testid="chat-message-delivery-failed"]'));
+          `),
+        {
+          timeout: CLOUD_FETCH_TIMEOUT_MS,
+          interval: 250,
+          timeoutMsg: "the failed Team Chat delivery row never rendered",
+        }
       );
       failedState = await execJS(`
         const editor = Array.from(document.querySelectorAll(${JSON.stringify(editorSelector)}))
           .filter((element) => element.getClientRects().length > 0)
           .at(-1);
+        const group = Array.from(document.querySelectorAll('[data-chat-group-index]'))
+          .find((candidate) => (candidate.textContent ?? '').includes(${JSON.stringify(TEAM_CHAT_MENTION_BODY)}));
         return {
           observed: window.__e2eTeamChatDeliveryStates ?? [],
           composerText: editor?.textContent ?? '',
-          failedText: document.querySelector('[data-testid="chat-message-delivery-failed"]')
-            ?.closest('[data-chat-group-index]')?.textContent ?? document.body.textContent ?? '',
-          retryPresent: Boolean(document.querySelector('[data-testid="chat-message-delivery-retry"]')),
+          failedText: group?.textContent ?? '',
+          retryPresent: Boolean(group?.querySelector('[data-testid="chat-message-delivery-retry"]')),
         };
       `);
     } finally {
       await applyCloudEndpointOverride(env);
+      await delayedFailure.close();
     }
     if (
       !failedState ||
+      !failedState.observed.includes("pending") ||
       !failedState.observed.includes("failed") ||
       failedState.composerText.includes(TEAM_CHAT_MENTION_BODY) ||
       !failedState.failedText.includes(TEAM_CHAT_MENTION_BODY) ||
@@ -2571,31 +2622,61 @@ describe("Cloud collaboration with two independent rendered app instances", func
       );
     }
 
-    await clickRendered(
-      '[data-testid="chat-message-delivery-retry"]',
-      "retry failed Team Chat mention"
-    );
-    await waitForGone(
-      '[data-testid="chat-message-delivery-failed"]',
-      "failed Team Chat status after retry",
-      CLOUD_FETCH_TIMEOUT_MS
-    );
     await browser.waitUntil(
       async () =>
         execJS(`
-          const transcript = document.querySelector('[data-testid="chat-message-list"]');
-          return Boolean(
-            transcript?.textContent?.includes(${JSON.stringify(TEAM_CHAT_MENTION_BODY)}) &&
-            !transcript.querySelector('[data-testid="chat-message-delivery-pending"]') &&
-            !transcript.querySelector('[data-testid="chat-message-delivery-failed"]')
-          );
+          const group = Array.from(document.querySelectorAll('[data-chat-group-index]'))
+            .find((candidate) => (candidate.textContent ?? '').includes(${JSON.stringify(TEAM_CHAT_MENTION_BODY)}));
+          const button = group?.querySelector('[data-testid="chat-message-delivery-retry"]');
+          if (!button || button.getClientRects().length === 0) return false;
+          button.click();
+          return true;
         `),
       {
         timeout: CLOUD_FETCH_TIMEOUT_MS,
-        interval: 250,
-        timeoutMsg: "retried Team Chat message never became sent",
+        interval: 100,
+        timeoutMsg: "failed Team Chat retry action was not clickable",
       }
     );
+    try {
+      await browser.waitUntil(
+        async () =>
+          execJS(`
+            const group = Array.from(document.querySelectorAll('[data-chat-group-index]'))
+              .find((candidate) => (candidate.textContent ?? '').includes(${JSON.stringify(TEAM_CHAT_MENTION_BODY)}));
+            return Boolean(
+              group &&
+              !group.querySelector('[data-testid="chat-message-delivery-pending"]') &&
+              !group.querySelector('[data-testid="chat-message-delivery-failed"]')
+            );
+          `),
+        {
+          timeout: CLOUD_FETCH_TIMEOUT_MS,
+          interval: 250,
+          timeoutMsg: "retried Team Chat message never became sent",
+        }
+      );
+    } catch (error) {
+      const [row, debug] = await Promise.all([
+        execJS(`
+          const group = Array.from(document.querySelectorAll('[data-chat-group-index]'))
+            .find((candidate) => (candidate.textContent ?? '').includes(${JSON.stringify(TEAM_CHAT_MENTION_BODY)}));
+          const failed = group?.querySelector('[data-testid="chat-message-delivery-failed"]');
+          return {
+            text: group?.textContent ?? '',
+            failedTitle: failed?.getAttribute('title') ?? null,
+            failedLabel: failed?.getAttribute('aria-label') ?? null,
+            pending: Boolean(group?.querySelector('[data-testid="chat-message-delivery-pending"]')),
+          };
+        `),
+        invokeE2E("cloudInspectDebugState", { sessionId }),
+      ]);
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)}\n` +
+          `target row: ${JSON.stringify(row)}\n` +
+          `comment debug: ${JSON.stringify(debug?.debug ?? debug)}`
+      );
+    }
     await execJS(`
       window.__e2eTeamChatDeliveryObserver?.disconnect?.();
       delete window.__e2eTeamChatDeliveryObserver;
@@ -2612,8 +2693,11 @@ describe("Cloud collaboration with two independent rendered app instances", func
         executeOn(
           second.client,
           `
-            return Array.from(document.querySelectorAll('[data-testid="team-inbox-row"]'))
-              .some((row) => (row.textContent ?? '').includes(arguments[0]));
+            const row = Array.from(document.querySelectorAll('[data-testid="team-inbox-row"]'))
+              .find((candidate) => (candidate.textContent ?? '').includes(arguments[0]));
+            if (!row) return false;
+            row.setAttribute('data-e2e-team-chat-inbox', 'true');
+            return true;
           `,
           [TEAM_CHAT_MENTION_BODY]
         ),
@@ -2624,6 +2708,95 @@ describe("Cloud collaboration with two independent rendered app instances", func
           "Team Chat @mention never reached the teammate's rendered Inbox",
       }
     );
+
+    // A row in the Inbox is not sufficient evidence: open its production
+    // detail surface, then follow the real "Open in New Tab" navigation into
+    // the locally materialized replay. This catches source-id/local-id routing
+    // mistakes that otherwise leave a bright Inbox row pointing at a missing
+    // provider-native history.
+    await clickRenderedOn(
+      second.client,
+      '[data-e2e-team-chat-inbox="true"]',
+      "secondary open Team Chat mention detail"
+    );
+    await waitForRenderedOn(
+      second.client,
+      '[data-testid="team-inbox-mention-thread"]',
+      "secondary Team Chat mention detail",
+      CLOUD_FETCH_TIMEOUT_MS
+    );
+    const renderedMentionDetail = await executeOn(
+      second.client,
+      `
+        const detail = document.querySelector('[data-testid="team-inbox-mention-thread"]');
+        const open = document.querySelector('[data-testid="team-inbox-open-source"]');
+        return {
+          body: detail?.textContent ?? '',
+          openLabel: open?.getAttribute('aria-label') ?? open?.getAttribute('title') ?? '',
+        };
+      `
+    );
+    if (
+      !renderedMentionDetail.body.includes(TEAM_CHAT_MENTION_BODY) ||
+      !/open in new tab/i.test(renderedMentionDetail.openLabel)
+    ) {
+      throw new Error(
+        `Team Chat Inbox detail did not expose the received comment and Open in New Tab action: ${JSON.stringify(renderedMentionDetail)}`
+      );
+    }
+
+    await clickRenderedOn(
+      second.client,
+      '[data-testid="team-inbox-open-source"]',
+      "secondary open Team Chat source in new tab"
+    );
+    await second.client.waitUntil(
+      async () => {
+        const state = unwrapOn(
+          await invokeOn(second.client, "inspectChatState"),
+          "secondary source opened from Team Chat Inbox"
+        );
+        const transcript = await executeOn(
+          second.client,
+          `return document.querySelector('[data-testid="chat-message-list"]')?.textContent ?? '';`
+        );
+        return (
+          state.activeSessionId === secondaryImportedSessionId &&
+          transcript.includes("Inherited answer 2") &&
+          transcript.includes(TEAM_CHAT_MENTION_BODY)
+        );
+      },
+      {
+        timeout: CLOUD_FETCH_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg:
+          "Open in New Tab did not restore the imported replay with its source history and Team Chat comment",
+      }
+    );
+    const openedSource = await executeOn(
+      second.client,
+      `
+        const body = document.body?.innerText ?? '';
+        const transcript = document.querySelector('[data-testid="chat-message-list"]');
+        return {
+          activeSessionTab: Boolean(document.querySelector(
+            '[data-session-tab-drop-target="chat-panel"] [role="tab"][aria-selected="true"]'
+          )),
+          transcript: transcript?.textContent ?? '',
+          nativeHistoryError: /provider-native transcript[^\\n]*not found|native history[^\\n]*not found|history file[^\\n]*not found/i.exec(body)?.[0] ?? null,
+        };
+      `
+    );
+    if (
+      !openedSource.activeSessionTab ||
+      !openedSource.transcript.includes("Inherited answer 2") ||
+      !openedSource.transcript.includes(TEAM_CHAT_MENTION_BODY) ||
+      openedSource.nativeHistoryError
+    ) {
+      throw new Error(
+        `Team Chat Inbox source did not open as a complete local replay: ${JSON.stringify(openedSource)}`
+      );
+    }
   });
 
   it("D. syncs comment CRUD/status, intercepts send into a same-remote fork, and revokes directed access live", async function () {

@@ -624,6 +624,10 @@ const UserChatItem = ({
                     title={deliveryError ?? undefined}
                   >
                     {t("chat.failedToSendMessage")}
+                    {deliveryError &&
+                    deliveryError !== t("chat.failedToSendMessage")
+                      ? `: ${deliveryError}`
+                      : null}
                   </span>
                   {retryDelivery && (
                     <button

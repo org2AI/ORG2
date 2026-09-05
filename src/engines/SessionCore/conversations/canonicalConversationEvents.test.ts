@@ -83,4 +83,47 @@ describe("loadCanonicalConversationEvents", () => {
       expect(mocks.mergeInterrupted).not.toHaveBeenCalled();
     }
   );
+
+  it.each(["failed", "error", "timeout", "cancelled", "abandoned"])(
+    "recovers the durable partial projection when native history is unavailable for %s sessions",
+    async (status) => {
+      const nativeError = new Error("native transcript unavailable");
+      mocks.loadAuthoritative.mockRejectedValue(nativeError);
+      mocks.cliStatus.mockResolvedValue({ status });
+
+      await expect(
+        loadCanonicalConversationEvents("cliagent-test")
+      ).resolves.toEqual({ events: merged, source: "cli_history" });
+      expect(mocks.getPersistedEvents).toHaveBeenCalledWith("cliagent-test");
+      expect(mocks.mergeInterrupted).toHaveBeenCalledWith([], projected);
+    }
+  );
+
+  it.each(["completed", "archived", "running", "unknown"])(
+    "fails closed when native history is unavailable for %s sessions",
+    async (status) => {
+      const nativeError = new Error("native transcript unavailable");
+      mocks.loadAuthoritative.mockRejectedValue(nativeError);
+      mocks.cliStatus.mockResolvedValue({ status });
+
+      await expect(
+        loadCanonicalConversationEvents("cliagent-test")
+      ).rejects.toBe(nativeError);
+      expect(mocks.getPersistedEvents).not.toHaveBeenCalled();
+      expect(mocks.mergeInterrupted).not.toHaveBeenCalled();
+    }
+  );
+
+  it("fails closed when the EventStore fallback is unavailable", async () => {
+    const nativeError = new Error("native transcript unavailable");
+    const eventStoreError = new Error("EventStore unavailable");
+    mocks.loadAuthoritative.mockRejectedValue(nativeError);
+    mocks.cliStatus.mockResolvedValue({ status: "failed" });
+    mocks.getPersistedEvents.mockRejectedValue(eventStoreError);
+
+    await expect(loadCanonicalConversationEvents("cliagent-test")).rejects.toBe(
+      eventStoreError
+    );
+    expect(mocks.mergeInterrupted).not.toHaveBeenCalled();
+  });
 });

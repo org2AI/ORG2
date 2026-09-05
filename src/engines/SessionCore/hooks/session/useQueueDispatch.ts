@@ -119,7 +119,8 @@ function canonicalRecoveryDelayMs(attempt: number): number {
 }
 
 function queuedRetryFromDelivery(
-  delivery: ActiveMessageDelivery
+  delivery: ActiveMessageDelivery,
+  error?: unknown
 ): QueuedMessage {
   const {
     originQueueKey: _originQueueKey,
@@ -134,6 +135,11 @@ function queuedRetryFromDelivery(
     priority: "next",
     requiresExplicitDispatch: true,
     status: "queued",
+    ...(error
+      ? {
+          deliveryError: error instanceof Error ? error.message : String(error),
+        }
+      : {}),
   };
 }
 
@@ -287,13 +293,13 @@ export function useQueueDispatch(
 
   const settleQueuedMessageFailure = useCallback(
     async (message: QueuedMessage, error: unknown) => {
-      // Once dispatchUserIntent has created a durable failed user row, that
-      // row is the only retry owner. Failures before that boundary keep the
-      // queue copy parked so the user's payload is never lost.
-      let canonicalProjectionFailed = false;
+      // The durable delivery record remains the retry/edit owner until an
+      // accepted send retires it. EventStore is only its transcript
+      // projection; transferring ownership to that cache made failed rows
+      // disappear after a restart or imported-history refresh.
       if (message.conversationDispatch) {
         try {
-          canonicalProjectionFailed = await setOptimisticQueueUserDelivery(
+          await setOptimisticQueueUserDelivery(
             optimisticDeliveryProjectionParams(message),
             "failed",
             error
@@ -305,32 +311,32 @@ export function useQueueDispatch(
           );
         }
       }
+      const detail = error instanceof Error ? error.message : String(error);
       store.set(messageQueueAtom, (current) =>
-        isUserIntentSendError(error) || canonicalProjectionFailed
-          ? current.filter((candidate) => candidate.id !== message.id)
-          : current.some((candidate) => candidate.id === message.id)
-            ? current.map((candidate) =>
-                candidate.id === message.id
-                  ? {
-                      ...candidate,
-                      status: "queued",
-                      priority: "next",
-                      requiresExplicitDispatch: true,
-                    }
-                  : candidate
-              )
-            : [
-                ...current,
-                {
-                  ...message,
-                  status: "queued",
-                  priority: "next",
-                  requiresExplicitDispatch: true,
-                },
-              ]
+        current.some((candidate) => candidate.id === message.id)
+          ? current.map((candidate) =>
+              candidate.id === message.id
+                ? {
+                    ...candidate,
+                    status: "queued",
+                    priority: "next",
+                    requiresExplicitDispatch: true,
+                    deliveryError: detail,
+                  }
+                : candidate
+            )
+          : [
+              ...current,
+              {
+                ...message,
+                status: "queued",
+                priority: "next",
+                requiresExplicitDispatch: true,
+                deliveryError: detail,
+              },
+            ]
       );
       interruptRequestedByMessageIdRef.current.delete(message.id);
-      const detail = error instanceof Error ? error.message : String(error);
       Message.error({
         content: `Failed to send message: ${detail}`,
         duration: 5000,
@@ -439,11 +445,10 @@ export function useQueueDispatch(
     [store]
   );
 
-  const failActiveCanonicalProjection = useCallback(
+  const projectActiveCanonicalFailure = useCallback(
     async (
       delivery: ActiveMessageDelivery,
-      error: unknown,
-      removeWhenMissing = false
+      error: unknown
     ): Promise<boolean> => {
       let projected = false;
       try {
@@ -457,21 +462,23 @@ export function useQueueDispatch(
           "[useQueueDispatch] could not fail canonical transcript row:",
           projectionError
         );
+        return false;
       }
-      if (!projected && !removeWhenMissing) return false;
-      await removeActiveMessageDelivery(store, delivery.id);
-      return true;
+      return projected;
     },
-    [store]
+    []
   );
 
-  const restoreLegacyCanonicalQueueRow = useCallback(
-    async (delivery: ActiveMessageDelivery): Promise<boolean> => {
+  const returnFailedCanonicalDeliveryToQueue = useCallback(
+    async (
+      delivery: ActiveMessageDelivery,
+      error?: unknown
+    ): Promise<boolean> => {
       try {
         await returnActiveDeliveryToMessageQueue(
           store,
           delivery.id,
-          queuedRetryFromDelivery(delivery)
+          queuedRetryFromDelivery(delivery, error)
         );
         return true;
       } catch (returnError) {
@@ -599,13 +606,19 @@ export function useQueueDispatch(
                 // EventStore row is already the visible retry/edit owner, so
                 // fail that exact row rather than retracting it into a card.
                 if (
-                  !(await failActiveCanonicalProjection(currentDelivery, error))
+                  !(await projectActiveCanonicalFailure(currentDelivery, error))
                 ) {
-                  // Compatibility for deliveries persisted before canonical
-                  // enqueue started writing EventStore rows.
-                  if (!(await restoreLegacyCanonicalQueueRow(currentDelivery)))
-                    return;
+                  log.warn(
+                    "[useQueueDispatch] failed transcript projection will be restored from delivery owner"
+                  );
                 }
+                if (
+                  !(await returnFailedCanonicalDeliveryToQueue(
+                    currentDelivery,
+                    error
+                  ))
+                )
+                  return;
                 Message.error({
                   content: error.message,
                   duration: 5000,
@@ -631,11 +644,8 @@ export function useQueueDispatch(
                 // The Cloud plane already contains the human row and its terminal
                 // failure result. Removing only the execution owner completes the
                 // lifecycle; requeueing would create a duplicate provider turn.
-                await failActiveCanonicalProjection(
-                  currentDelivery,
-                  error,
-                  true
-                );
+                await projectActiveCanonicalFailure(currentDelivery, error);
+                await removeActiveMessageDelivery(store, currentDelivery.id);
                 return;
               }
               if (accepted) {
@@ -656,19 +666,31 @@ export function useQueueDispatch(
                 return;
               }
               if (isUserIntentSendError(error)) {
-                await failActiveCanonicalProjection(
+                if (
+                  !(await projectActiveCanonicalFailure(currentDelivery, error))
+                )
+                  log.warn(
+                    "[useQueueDispatch] failed transcript projection will be restored from delivery owner"
+                  );
+                await returnFailedCanonicalDeliveryToQueue(
                   currentDelivery,
-                  error,
-                  true
+                  error
                 );
                 return;
               }
               if (
-                !(await failActiveCanonicalProjection(currentDelivery, error))
-              ) {
-                if (!(await restoreLegacyCanonicalQueueRow(currentDelivery)))
-                  return;
-              }
+                !(await projectActiveCanonicalFailure(currentDelivery, error))
+              )
+                log.warn(
+                  "[useQueueDispatch] failed transcript projection will be restored from delivery owner"
+                );
+              if (
+                !(await returnFailedCanonicalDeliveryToQueue(
+                  currentDelivery,
+                  error
+                ))
+              )
+                return;
               Message.error({
                 content: `Failed to continue conversation: ${
                   error instanceof Error ? error.message : String(error)
@@ -720,8 +742,8 @@ export function useQueueDispatch(
     }
   }, [
     executeCanonicalConversation,
-    failActiveCanonicalProjection,
-    restoreLegacyCanonicalQueueRow,
+    projectActiveCanonicalFailure,
+    returnFailedCanonicalDeliveryToQueue,
     retryActiveDelivery,
     scheduleWakeAt,
     store,

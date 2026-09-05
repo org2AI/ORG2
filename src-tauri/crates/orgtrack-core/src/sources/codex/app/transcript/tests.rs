@@ -64,14 +64,15 @@ fn preserves_app_server_injected_user_rows_without_ui_mirrors() {
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].result["message"]["content"], "first");
     assert_eq!(users[0].result["images"][0], "data:image/png;base64,QUJD");
+    assert_eq!(users[0].args["__orgiiSourceEventId"], "user-1");
     assert_eq!(users[1].result["message"]["content"], "second");
-    assert_eq!(
-        chunks
-            .iter()
-            .filter(|chunk| chunk.function == "assistant")
-            .count(),
-        1
-    );
+    assert_eq!(users[1].args["__orgiiSourceEventId"], "user-2");
+    let assistants = chunks
+        .iter()
+        .filter(|chunk| chunk.function == "assistant")
+        .collect::<Vec<_>>();
+    assert_eq!(assistants.len(), 1);
+    assert_eq!(assistants[0].args["__orgiiSourceEventId"], "assistant-1");
 
     std::fs::remove_file(&path).expect("remove fixture");
     std::fs::remove_dir(&temp_dir).expect("remove temp dir");

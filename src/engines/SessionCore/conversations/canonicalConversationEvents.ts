@@ -22,7 +22,25 @@ export async function loadCanonicalConversationEvents(
   sessionId: string,
   signal: AbortSignal = new AbortController().signal
 ): Promise<AuthoritativeSessionEvents> {
-  const authoritative = await loadAuthoritativeSessionEvents(sessionId, signal);
+  let authoritative: AuthoritativeSessionEvents;
+  try {
+    authoritative = await loadAuthoritativeSessionEvents(sessionId, signal);
+  } catch (error) {
+    if (!isCliSession(sessionId) || signal.aborted) throw error;
+
+    const status = await rpc.cli.status({ sessionId }).catch(() => null);
+    if (!isInterruptedCliTerminalStatus(status?.status)) throw error;
+
+    // A killed CLI can leave its accepted user message and completed tool
+    // output in EventStore without ever flushing a readable native file.
+    // Recover only that existing portable projection; live/completed Sessions
+    // still require the provider-native transcript above.
+    const projected = await eventStoreProxy.getPersistedEvents(sessionId);
+    return {
+      events: mergeInterruptedConversationProjection([], projected),
+      source: "cli_history",
+    };
+  }
   if (!isCliSession(sessionId) || signal.aborted) return authoritative;
   // Completed native turns have already flushed their provider transcript and
   // should stay on the cheap native-only path, especially for large Sessions.

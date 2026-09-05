@@ -229,7 +229,15 @@ export async function setOptimisticQueueUserDelivery(
   const event = optimisticQueueUserEvent(params, status, error);
   return eventStoreProxy.updateById(
     event.id,
-    { displayStatus: event.displayStatus, result: event.result },
+    {
+      // Retry/edit-resend keeps the stable queue-owned row id. Patch the
+      // complete user-facing payload as well as its delivery state so the same
+      // bubble can move failed -> pending -> sent without an append/remove
+      // cycle or stale text/attachments.
+      displayText: event.displayText,
+      displayStatus: event.displayStatus,
+      result: event.result,
+    },
     params.sessionId
   );
 }
@@ -386,12 +394,15 @@ export async function failUserIntentPreparation(
   error: unknown
 ): Promise<void> {
   if (preparationStates.get(preparation) !== "prepared") return;
-  preparationStates.set(preparation, "failed");
   failOptimisticTurn(preparation.sessionId, preparation.runtimeStatusSource);
   markTurnTerminal(preparation.sessionId, "failed", {
     generation: preparation.generation,
   });
   await setUserIntentDelivery(preparation, "failed", error);
+  // Do not retire the preparation until the failed row crossed its durable
+  // EventStore barrier. A transient SQLite failure must remain retryable by
+  // the caller instead of converting a memory-only bubble into the sole owner.
+  preparationStates.set(preparation, "failed");
 }
 
 async function resolveUserIntentPreparation(

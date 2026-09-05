@@ -5,7 +5,7 @@ import {
   conversationTargetOverridesAtom,
   reconcileConversationTargetOverrideAtom,
   setConversationTargetOverrideAtom,
-} from "./conversationTargetAtom";
+} from "../conversationTargetAtom";
 
 describe("conversation target override lifecycle", () => {
   it("rejects incomplete cross-runtime targets at the persistence boundary", () => {

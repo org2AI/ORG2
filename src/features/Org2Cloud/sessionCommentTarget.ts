@@ -38,6 +38,59 @@ export interface SessionCommentTarget {
   sessionId: string;
 }
 
+export function pushedCloudOrgIdsForSession(
+  sessionId: string,
+  pushCursors: Readonly<Record<string, unknown>>,
+  pushedMetadata: Readonly<Record<string, unknown>>
+): string[] {
+  const suffix = `:${sessionId}`;
+  return [...Object.keys(pushCursors), ...Object.keys(pushedMetadata)].flatMap(
+    (key) => (key.endsWith(suffix) ? [key.slice(0, -suffix.length)] : [])
+  );
+}
+
+/**
+ * Preserve a durable Cloud authority while the membership roster hydrates.
+ * This does not grant access or enable Team Chat; it only prevents an Agent
+ * send from being misclassified as a local continuation during cold start.
+ */
+export function resolvePendingCloudConversationTarget(params: {
+  session: CommentTargetSession | null | undefined;
+  tags: SessionOrgTags;
+  preferredOrgId: string | null;
+  pushedOrgIds?: readonly string[];
+}): SessionCommentTarget | null {
+  const { session, tags, preferredOrgId, pushedOrgIds = [] } = params;
+  if (!session) return null;
+  if (session.importedFrom) {
+    return {
+      orgId: session.importedFrom.orgId,
+      sessionId: session.importedFrom.sourceSessionId,
+    };
+  }
+  if (session.forkedFrom) {
+    return {
+      orgId: session.forkedFrom.orgId,
+      sessionId: session.forkedFrom.sourceSessionId,
+    };
+  }
+  const ownedCloudOrgId = session.orgId
+    ? parseCloudOrgSelectorValue(session.orgId)
+    : null;
+  const candidates = [
+    ...(ownedCloudOrgId ? [ownedCloudOrgId] : []),
+    ...cloudOrgIdsForSession(tags, session.session_id),
+    ...pushedOrgIds,
+  ].filter(
+    (orgId, index, all) => Boolean(orgId) && all.indexOf(orgId) === index
+  );
+  const orgId =
+    preferredOrgId && candidates.includes(preferredOrgId)
+      ? preferredOrgId
+      : candidates[0];
+  return orgId ? { orgId, sessionId: session.session_id } : null;
+}
+
 /** Bridge a canonical Cloud root into the existing Team Chat target. */
 export function sessionCommentTargetForConversationRoot(
   root: ConversationRootLocator | null | undefined
@@ -201,12 +254,10 @@ export function useSessionCommentTarget(
 
   const pushedOrgIds = useMemo(() => {
     if (!session) return [];
-    const suffix = `:${session.session_id}`;
-    return [
-      ...Object.keys(pushCursors),
-      ...Object.keys(pushedMetadata),
-    ].flatMap((key) =>
-      key.endsWith(suffix) ? [key.slice(0, -suffix.length)] : []
+    return pushedCloudOrgIdsForSession(
+      session.session_id,
+      pushCursors,
+      pushedMetadata
     );
   }, [session, pushCursors, pushedMetadata]);
 

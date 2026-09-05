@@ -311,6 +311,35 @@ describe("UserChatItem raw prompt affordance", () => {
   });
 });
 
+describe("UserChatItem delivery failure", () => {
+  it("renders the underlying provider error beside the failed message", () => {
+    const event = makeSessionEvent({
+      id: "user-message-failed",
+      sessionId: "agentsession-local",
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayText: "Continue this conversation",
+      displayVariant: "message",
+      displayStatus: "failed",
+      result: {
+        deliveryStatus: "failed",
+        deliveryError:
+          "provider-native transcript is not a semantic prefix of the canonical conversation",
+      },
+    });
+
+    const markup = renderToStaticMarkup(
+      createElement(UserChatItem, { chatItem: makeChatItem(event) })
+    );
+
+    expect(markup).toContain('data-testid="chat-message-delivery-failed"');
+    expect(markup).toContain(
+      "provider-native transcript is not a semantic prefix of the canonical conversation"
+    );
+  });
+});
+
 describe("UserChatItem parent-agent attribution", () => {
   const parentSession = {
     session_id: "agentsession-root",

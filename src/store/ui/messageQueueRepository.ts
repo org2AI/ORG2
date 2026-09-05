@@ -27,6 +27,14 @@ const STORE_LOCK_NAME = "orgii:chat-message-queue-store";
 const CONVERSATION_TURN_LOCK_PREFIX = "orgii:canonical-conversation:";
 const MAX_ACTIVE_DELIVERIES = 100;
 
+function isMissingStoreFileError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("No such file or directory") ||
+    message.includes("os error 2")
+  );
+}
+
 let storePromise: Promise<Store | null> | null = null;
 let queueKeyPromise: Promise<string> | null = null;
 let mutationChain: Promise<unknown> = Promise.resolve();
@@ -63,6 +71,8 @@ function isQueuedMessage(value: unknown): value is QueuedMessage {
     (item.imageDataUrls === undefined ||
       (Array.isArray(item.imageDataUrls) &&
         item.imageDataUrls.every((image) => typeof image === "string"))) &&
+    (item.deliveryError === undefined ||
+      typeof item.deliveryError === "string") &&
     (item.priority === "now" || item.priority === "next") &&
     item.status === "queued" &&
     typeof item.createdAt === "string" &&
@@ -132,6 +142,8 @@ function isActiveDelivery(value: unknown): value is ActiveMessageDelivery {
         Number.isSafeInteger(candidate.runnerEventStartIndex) &&
         candidate.runnerEventStartIndex >= 0)) &&
     typeof candidate.createdAt === "string" &&
+    (candidate.deliveryError === undefined ||
+      typeof candidate.deliveryError === "string") &&
     (retryAt === undefined || typeof retryAt === "string") &&
     (retryAttempt === undefined ||
       (typeof retryAttempt === "number" &&
@@ -275,7 +287,15 @@ export async function withMessageQueueStoreTransaction<T>(
     throw new Error("durable message queue store is unavailable");
   }
   return await withStoreLock(async () => {
-    await store.reload();
+    try {
+      await store.reload();
+    } catch (error) {
+      if (!isMissingStoreFileError(error)) throw error;
+      // Store.load() supplies the empty in-memory defaults when its file does
+      // not exist, but reload() reports ENOENT. Persist that initial snapshot
+      // once so the normal reload-before-transaction contract can begin.
+      await store.save();
+    }
     return await operation(store, await queueKey());
   });
 }
@@ -406,6 +426,63 @@ export function persistDurableMessageQueue(
       validatedDurableMessageDeliveries([...otherRecords, ...currentQueue])
     );
     await store.save();
+  });
+}
+
+export interface QueuedMessageCancellationIdentity {
+  id: string;
+  turnIntentId: string;
+}
+
+/** Return which queue ids still have any durable queued/active owner. */
+export function findDurableMessageDeliveryOwnerIds(
+  messageIds: readonly string[]
+): Promise<Set<string>> {
+  const requested = new Set(messageIds);
+  if (requested.size === 0) return Promise.resolve(new Set());
+  return withMessageQueueStoreTransaction(async (store) => {
+    const records = await readDeliveriesLocked(store);
+    return new Set(
+      records
+        .filter((record) => requested.has(record.id))
+        .map((record) => record.id)
+    );
+  });
+}
+
+/**
+ * Remove exact queued owners from this window's durable partition.
+ *
+ * This is intentionally narrower than replacing the queue snapshot: a row
+ * that has already moved to `preparing`/`accepted`, or belongs to another
+ * window, is no longer cancellable by a stale queue card and must survive.
+ */
+export function removeDurableQueuedMessageDeliveries(
+  identities: readonly QueuedMessageCancellationIdentity[]
+): Promise<QueuedMessage[]> {
+  const keys = new Set(
+    identities.map(({ id, turnIntentId }) => `${id}\0${turnIntentId}`)
+  );
+  if (keys.size === 0) return Promise.resolve([]);
+
+  return serializeMessageQueueStoreMutation(async (store, windowQueueKey) => {
+    const records = await readDeliveriesLocked(store);
+    const removed: QueuedMessage[] = [];
+    const next = records.filter((record) => {
+      const matches =
+        record.status === "queued" &&
+        record.originQueueKey === windowQueueKey &&
+        keys.has(`${record.id}\0${record.turnIntentId}`);
+      if (matches) removed.push(toQueuedMessage(record));
+      return !matches;
+    });
+    if (removed.length === 0) return removed;
+    await store.set(
+      DELIVERY_RECORDS_KEY,
+      validatedDurableMessageDeliveries(next)
+    );
+    await store.save();
+    return removed;
   });
 }
 

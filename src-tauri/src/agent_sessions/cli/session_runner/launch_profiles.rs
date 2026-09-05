@@ -44,8 +44,9 @@ pub struct CliLaunchProfileOverride {
     pub command_override: Option<String>,
     pub args_override: Option<Vec<String>>,
     pub env_override: Option<HashMap<String, String>>,
-    /// Experimental transport selector. Absent (default) keeps the ordinary
-    /// per-turn shell-out; native continuation episodes opt in explicitly.
+    /// Experimental transport selector. Absent (default) = per-turn shell-out.
+    /// `"app-server"` on the codex profile switches managed sessions to the
+    /// long-lived `codex app-server` JSON-RPC transport.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transport: Option<String>,
 }
@@ -89,9 +90,9 @@ pub struct ResolvedCliLaunchProfile {
 /// JSON-RPC transport instead of the per-turn `codex exec --json` shell-out.
 pub const CLI_TRANSPORT_APP_SERVER: &str = "app-server";
 
-/// Only an explicitly selected Codex app-server profile uses JSON-RPC. The
-/// ordinary Codex path remains `codex exec --json`; native continuation marks
-/// its one episode explicit before command construction.
+/// Gate predicate for the experimental codex app-server transport: only the
+/// codex agent honors the flag, and only when the launch profile explicitly
+/// opts in. Absent flag (the default) keeps the shell-out path.
 pub fn uses_codex_app_server(agent: &ModelType, profile: &ResolvedCliLaunchProfile) -> bool {
     matches!(agent, ModelType::Codex)
         && profile.transport.as_deref() == Some(CLI_TRANSPORT_APP_SERVER)

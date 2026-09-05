@@ -13,8 +13,13 @@ import { rpc } from "@src/api/tauri/rpc";
 import { mergeInterruptedConversationProjection } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import {
+  closeObservedCliTerminalEvents,
+  isCliTerminalStatus,
+} from "@src/engines/SessionCore/sync/adapters/cli/cliLifecycle";
 
 import { loadAuthoritativeSessionEvents } from "./authoritativeSessionEvents";
+import { mergeFailedUserDeliveryProjection } from "./sessionSyncUtils";
 
 const MISMATCH_RECOVERY_DELAYS_MS = [250, 750] as const;
 
@@ -43,9 +48,11 @@ function mergeProjection(
   nativeEvents: readonly SessionEvent[],
   projectedEvents: readonly SessionEvent[]
 ): SessionEvent[] {
-  return projectedEvents.length > 0
-    ? mergeInterruptedConversationProjection(nativeEvents, projectedEvents)
-    : [...nativeEvents];
+  const interrupted =
+    projectedEvents.length > 0
+      ? mergeInterruptedConversationProjection(nativeEvents, projectedEvents)
+      : [...nativeEvents];
+  return mergeFailedUserDeliveryProjection(interrupted, projectedEvents);
 }
 
 async function publishNativeProjection(
@@ -67,10 +74,18 @@ async function runReconcile(
   // `code_sessions.transcript_source` is the authority. Hidden/background
   // continuations may never mount a CLI adapter, so an in-memory UI registry
   // cannot decide whether provider-native reconciliation is required.
-  if (!(await hasDurableNativeTranscript(sessionId))) {
+  const session = await rpc.cli.status({ sessionId });
+  if (session?.transcriptSource !== "native") {
     return loadAuthoritativeSessionEvents(sessionId).then(
       ({ events }) => events
     );
+  }
+  if (job.preserveInterruptedSuffix && isCliTerminalStatus(session.status)) {
+    // The durable turn-intent terminal can wake a background continuation
+    // before the mounted CLI handler finishes closing its visible partial
+    // rows. Join the same EventStore barrier here so reconciliation never
+    // snapshots a still-delta assistant message or a still-running tool.
+    await closeObservedCliTerminalEvents(sessionId, session.status);
   }
   // The backend converges the provider transcript before broadcasting the
   // terminal lifecycle. One authoritative read is therefore the normal path.

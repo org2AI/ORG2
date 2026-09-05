@@ -547,7 +547,7 @@ fn infer_display_text(
     }
 }
 
-fn is_raw_user_message(result: &serde_json::Value) -> bool {
+pub(crate) fn is_raw_user_message(result: &serde_json::Value) -> bool {
     let Some(obj) = result.as_object() else {
         return false;
     };
@@ -568,7 +568,7 @@ fn is_raw_user_message(result: &serde_json::Value) -> bool {
         .is_none_or(|role| role == "user")
 }
 
-fn raw_message_text(result: &serde_json::Value) -> Option<String> {
+pub(crate) fn raw_message_text(result: &serde_json::Value) -> Option<String> {
     if !is_raw_user_message(result) {
         return None;
     }

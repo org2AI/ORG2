@@ -9,6 +9,7 @@ mod reader;
 mod tool_calls;
 
 const CODEX_PROVIDER_SLUG: &str = "codex";
+const NATIVE_SOURCE_EVENT_ID_ARG: &str = "__orgiiSourceEventId";
 
 pub use reader::{
     load_codex_app_from_path, load_codex_app_initial_window_from_path,

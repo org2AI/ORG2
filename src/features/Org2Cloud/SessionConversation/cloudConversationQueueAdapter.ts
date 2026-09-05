@@ -2,7 +2,10 @@ import type { Store } from "jotai/vanilla/store";
 
 import { loadCanonicalConversationEvents } from "@src/engines/SessionCore/conversations/canonicalConversationEvents";
 import type { ConversationRootLocator } from "@src/engines/SessionCore/conversations/conversationTypes";
-import { localConversationRootForSession } from "@src/engines/SessionCore/conversations/localConversationContinuation";
+import {
+  conversationTurnIdOf,
+  localConversationRootForSession,
+} from "@src/engines/SessionCore/conversations/localConversationContinuation";
 import type {
   QueuedConversationDispatchCallbacks,
   QueuedConversationExecutionMessage,
@@ -178,10 +181,8 @@ export async function dispatchQueuedCloudConversation(
     );
   }
 
-  // Admission becomes visible on the canonical plane before any expensive
-  // local history scan, comment merge, candidate probe, or materialization.
-  // The push is idempotent by turn id, so a crash/retry preserves one pending
-  // human row while the durable execution owner continues from this point.
+  // Build the canonical user payload once. It is admitted to the shared plane
+  // before the local provider turn starts; retries reuse the stable turn id.
   const userEvents = await conversationEventsForPush(
     buildPushedUserEvent(
       message.displayContent,
@@ -215,28 +216,12 @@ export async function dispatchQueuedCloudConversation(
       orgId
     );
   };
-  try {
-    // Crossing into this RPC can be irreversible when its response is lost:
-    // Cloud may already contain the idempotent human row. Ambiguous failures
-    // keep the same turn owner; a definitive 4xx remains editable because it
-    // proves that this write did not commit.
-    await pushConversationEventsChunked(
-      auth.accessToken,
-      {
-        orgId,
-        rootSessionId,
-        turnId: message.turnIntentId,
-        events: userEvents,
-      },
-      endpoint
-    );
-    userEventPublished = true;
-    requireBoundAuth();
-    bumpConversationPlaneSignal(
-      (update) => store.set(conversationPlaneSignalAtom, update),
-      orgId
-    );
 
+  const loadTimeline = async (): Promise<{
+    sourceSession: Session | undefined;
+    sessions: Session[];
+    timeline: SessionEvent[];
+  }> => {
     const key = conversationPlaneKey({
       authIdentityKey,
       orgId,
@@ -259,27 +244,20 @@ export async function dispatchQueuedCloudConversation(
         "ORG2_VALIDATION: canonical conversation plane is unavailable"
       );
     }
-    requireBoundAuth();
+    // The plane loader may refresh and commit a newer access token. Every
+    // subsequent read in this attempt must use that same current auth snapshot
+    // rather than the token captured before the plane refresh.
+    const currentAuth = requireBoundAuth();
+    const currentEndpoint = {
+      supabaseUrl: currentAuth.supabaseUrl,
+      anonKey: currentAuth.supabaseAnonKey,
+    };
     const planeEvents = plane.hasEarlierEvents
-      ? await (() => {
-          const currentAuth = store.get(org2CloudAuthAtom);
-          if (
-            !currentAuth ||
-            org2CloudAuthIdentityKey(currentAuth) !== authIdentityKey
-          ) {
-            throw new Error(
-              "cloud auth identity changed before canonical history load"
-            );
-          }
-          return loadCompleteConversationPlaneEvents(
-            currentAuth.accessToken,
-            { orgId, rootSessionId },
-            {
-              supabaseUrl: currentAuth.supabaseUrl,
-              anonKey: currentAuth.supabaseAnonKey,
-            }
-          );
-        })()
+      ? await loadCompleteConversationPlaneEvents(
+          currentAuth.accessToken,
+          { orgId, rootSessionId },
+          currentEndpoint
+        )
       : plane.events;
     requireBoundAuth();
 
@@ -304,15 +282,15 @@ export async function dispatchQueuedCloudConversation(
       );
     }
     const listing = await listSessionComments(
-      auth.accessToken,
+      currentAuth.accessToken,
       orgId,
       rootSessionId,
-      { endpoint }
+      { endpoint: currentEndpoint }
     );
     requireBoundAuth();
-    const fetchClient = buildCloudSessionFetchClient(auth.accessToken, {
-      ...endpointForOrigin(auth.supabaseUrl),
-      anonKey: auth.supabaseAnonKey,
+    const fetchClient = buildCloudSessionFetchClient(currentAuth.accessToken, {
+      ...endpointForOrigin(currentAuth.supabaseUrl),
+      anonKey: currentAuth.supabaseAnonKey,
     });
     const loadMemberEvents = async (
       bareSessionId: string,
@@ -321,7 +299,12 @@ export async function dispatchQueuedCloudConversation(
       const row = member?.row ?? rootRow;
       const local =
         sessions.find((session) => session.session_id === bareSessionId) ??
-        findImportedSession(sessions, orgId, bareSessionId, auth.supabaseUrl);
+        findImportedSession(
+          sessions,
+          orgId,
+          bareSessionId,
+          currentAuth.supabaseUrl
+        );
       // External native histories are intentionally absent from sessionsAtom
       // but remain readable by their canonical id.
       let localSessionId =
@@ -340,36 +323,39 @@ export async function dispatchQueuedCloudConversation(
           client: fetchClient,
           orgId,
           remoteSession: row,
-          sourceEndpointUrl: auth.supabaseUrl,
+          sourceEndpointUrl: currentAuth.supabaseUrl,
         });
         localSessionId = imported?.localSessionId;
       }
       if (!localSessionId) return null;
       return (await loadCanonicalConversationEvents(localSessionId)).events;
     };
-    let timeline: SessionEvent[];
     try {
-      timeline = await loadCanonicalConversationTimeline({
-        family,
-        anchorBareSessionId: rootSessionId,
-        planeEvents,
-        planeHistoryStartedAt: plane.historyStartedAt,
-        comments: listing.comments,
-        streamSessionId: message.sessionId,
-        viewer: { status: "known", userId: auth.userId },
-        loadMemberEvents,
-      });
+      return {
+        sourceSession,
+        sessions,
+        timeline: await loadCanonicalConversationTimeline({
+          family,
+          anchorBareSessionId: rootSessionId,
+          planeEvents,
+          planeHistoryStartedAt: plane.historyStartedAt,
+          comments: listing.comments,
+          streamSessionId: message.sessionId,
+          viewer: { status: "known", userId: currentAuth.userId },
+          loadMemberEvents,
+        }),
+      };
     } catch (error) {
       if (error instanceof CanonicalConversationFamilyUnavailableError) {
         throw new QueuedConversationRecoveryPendingError(error.message);
       }
       throw error;
     }
-    // A crash after the user-event push but before native-runner persistence leaves
-    // this same durable queue row retryable. Its user event is now in the plane,
-    // but it must not be materialized into the prefix AND sent again. Exclude the
-    // current turn from the canonical prefix on every attempt; the native send
-    // remains the one user-message append for this provider episode.
+  };
+  try {
+    const loaded = await loadTimeline();
+    const sourceSession = loaded.sourceSession;
+    const sessions = loaded.sessions;
     const executionRoot =
       sourceSession &&
       !sourceSession.importedFrom &&
@@ -380,6 +366,44 @@ export async function dispatchQueuedCloudConversation(
             sourceSession.agentDefinitionId
           ) ?? undefined)
         : undefined;
+
+    // A retry may already have admitted this exact user row. It is never part
+    // of the provider prefix: the selected runtime receives it exactly once
+    // through the ordinary dispatch path below.
+    const preTurnTimeline = loaded.timeline.filter(
+      (event) => conversationTurnIdOf(event) !== message.turnIntentId
+    );
+    // Native/App-origin history is published by the existing full-replay
+    // owner before Cloud authority is admitted. This turn adapter owns only
+    // the new plane user row and its provider tail; appending old local child
+    // history here would create a second writer and place it at today's plane
+    // sequence rather than its original transcript position.
+    const timeline = preTurnTimeline;
+
+    // Crossing into this RPC can be irreversible when its response is lost:
+    // Cloud may already contain the idempotent human row. Ambiguous failures
+    // keep the same turn owner; a definitive 4xx remains editable because it
+    // proves that this write did not commit.
+    const admissionAuth = requireBoundAuth();
+    await pushConversationEventsChunked(
+      admissionAuth.accessToken,
+      {
+        orgId,
+        rootSessionId,
+        turnId: message.turnIntentId,
+        events: userEvents,
+      },
+      {
+        supabaseUrl: admissionAuth.supabaseUrl,
+        anonKey: admissionAuth.supabaseAnonKey,
+      }
+    );
+    userEventPublished = true;
+    requireBoundAuth();
+    bumpConversationPlaneSignal(
+      (update) => store.set(conversationPlaneSignalAtom, update),
+      orgId
+    );
 
     let accepted = false;
     const accept = async (sessionId: string) => {

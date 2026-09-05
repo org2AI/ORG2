@@ -8,13 +8,16 @@ import {
   activeMessageDeliveriesAtom,
   messageDeliveryRecordsAtom,
   messageQueueAtom,
+  messageQueueHandoffIdsAtom,
   messageQueueHydratedAtom,
 } from "@src/store/ui/messageQueueAtom";
 
 import {
+  cancelQueuedMessageDeliveries,
   flushMessageQueuePersistence,
   handoffQueuedMessageToActiveDelivery,
   hydrateMessageQueue,
+  reconcileOrphanedOptimisticQueueProjections,
   refreshMessageDeliveries,
   returnActiveDeliveryToMessageQueue,
 } from "../messageQueuePersistence";
@@ -24,6 +27,12 @@ const mocks = vi.hoisted(() => ({
   persist: vi.fn(),
   handoff: vi.fn(),
   returnToQueue: vi.fn(),
+  cancelQueued: vi.fn(),
+  removeOptimistic: vi.fn(),
+  findOwners: vi.fn(),
+  getEvents: vi.fn(),
+  updateById: vi.fn(),
+  subscribe: vi.fn(),
 }));
 
 vi.mock("@src/store/ui/messageQueueRepository", () => ({
@@ -31,6 +40,26 @@ vi.mock("@src/store/ui/messageQueueRepository", () => ({
   persistDurableMessageQueue: mocks.persist,
   handoffDurableMessageDelivery: mocks.handoff,
   returnDurableMessageDeliveryToQueue: mocks.returnToQueue,
+  removeDurableQueuedMessageDeliveries: mocks.cancelQueued,
+  findDurableMessageDeliveryOwnerIds: mocks.findOwners,
+}));
+
+vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
+  eventStoreProxy: {
+    getEvents: mocks.getEvents,
+    updateById: mocks.updateById,
+    subscribe: mocks.subscribe,
+  },
+  isStreamingSnapshot: (snapshot: { streaming?: boolean }) =>
+    snapshot.streaming === true,
+}));
+
+vi.mock("@src/engines/SessionCore/services/userIntentDispatch", () => ({
+  isOptimisticQueueUserEventId: (eventId: string) =>
+    eventId.startsWith("queued-user:") && eventId.endsWith(":"),
+  optimisticQueueUserEventId: (queueMessageId: string) =>
+    `queued-user:${queueMessageId}:`,
+  removeOptimisticQueueUserDelivery: mocks.removeOptimistic,
 }));
 
 function message(
@@ -82,6 +111,12 @@ describe("messageQueuePersistence", () => {
     mocks.persist.mockReset().mockResolvedValue(undefined);
     mocks.handoff.mockReset();
     mocks.returnToQueue.mockReset();
+    mocks.cancelQueued.mockReset().mockResolvedValue([]);
+    mocks.removeOptimistic.mockReset().mockResolvedValue(undefined);
+    mocks.findOwners.mockReset().mockResolvedValue(new Set());
+    mocks.getEvents.mockReset().mockResolvedValue([]);
+    mocks.updateById.mockReset().mockResolvedValue(true);
+    mocks.subscribe.mockReset().mockReturnValue(vi.fn());
   });
 
   it("hydrates before opening the dispatch gate", async () => {
@@ -100,6 +135,149 @@ describe("messageQueuePersistence", () => {
     expect(store.get(messageQueueAtom)).toEqual([recovered]);
     expect(store.get(messageQueueHydratedAtom)).toBe(true);
     expect(mocks.persist).toHaveBeenCalledWith([recovered]);
+  });
+
+  it("fails an ownerless pending projection in place after owner hydration", async () => {
+    const orphan = {
+      id: "queued-user:legacy-orphan:",
+      sessionId: "session-orphan",
+      source: "user",
+      displayText: "@VantaNode inspect this",
+      displayStatus: "pending",
+      result: {
+        syntheticUserInput: true,
+        deliveryStatus: "pending",
+        queueMessageId: "legacy-orphan",
+        turnIntentId: "intent-legacy-orphan",
+        message: { role: "user", content: "@VantaNode inspect this" },
+        images: ["data:image/png;base64,keep"],
+        mentions: [{ id: "vanta", label: "VantaNode" }],
+      },
+    };
+    mocks.getEvents.mockResolvedValue([orphan]);
+
+    await reconcileOrphanedOptimisticQueueProjections("session-orphan");
+
+    expect(mocks.findOwners).toHaveBeenCalledWith(["legacy-orphan"]);
+    expect(mocks.removeOptimistic).not.toHaveBeenCalled();
+    expect(mocks.updateById).toHaveBeenCalledWith(
+      "queued-user:legacy-orphan:",
+      {
+        displayStatus: "failed",
+        result: expect.objectContaining({
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          deliveryError: expect.stringContaining(
+            "pending delivery could not be recovered"
+          ),
+          turnIntentId: "intent-legacy-orphan",
+          message: { role: "user", content: "@VantaNode inspect this" },
+          images: ["data:image/png;base64,keep"],
+          mentions: [{ id: "vanta", label: "VantaNode" }],
+        }),
+      },
+      "session-orphan"
+    );
+    const patch = mocks.updateById.mock.calls[0]?.[1] as {
+      result: Record<string, unknown>;
+    };
+    expect(patch.result).not.toHaveProperty("queueMessageId");
+  });
+
+  it("retries reconciliation when queue hydration precedes EventStore hydration", async () => {
+    const orphan = {
+      id: "queued-user:late-orphan:",
+      sessionId: "session-late",
+      source: "user",
+      displayStatus: "pending",
+      result: {
+        syntheticUserInput: true,
+        deliveryStatus: "pending",
+        queueMessageId: "late-orphan",
+      },
+    };
+    const store = createStore();
+    await hydrateMessageQueue(store);
+    expect(mocks.getEvents).not.toHaveBeenCalled();
+
+    mocks.getEvents.mockResolvedValue([orphan]);
+    const inspectSnapshot = mocks.subscribe.mock.calls.at(-1)?.[0] as (
+      snapshot: { chatEvents: (typeof orphan)[]; eventCount: number },
+      sessionId: string
+    ) => void;
+    inspectSnapshot({ chatEvents: [orphan], eventCount: 1 }, "session-late");
+
+    await vi.waitFor(() =>
+      expect(mocks.updateById).toHaveBeenCalledWith(
+        "queued-user:late-orphan:",
+        expect.objectContaining({ displayStatus: "failed" }),
+        "session-late"
+      )
+    );
+  });
+
+  it("preserves pending rows with any durable owner and accepted provider rows", async () => {
+    const owned = {
+      id: "queued-user:owned:",
+      sessionId: "session-owned",
+      source: "user",
+      displayStatus: "pending",
+      result: {
+        syntheticUserInput: true,
+        deliveryStatus: "pending",
+        queueMessageId: "owned",
+      },
+    };
+    const sent = {
+      ...owned,
+      id: "queued-user:sent:",
+      displayStatus: "completed",
+      result: {
+        ...owned.result,
+        deliveryStatus: "sent",
+        queueMessageId: "sent",
+      },
+    };
+    const providerOwned = {
+      ...owned,
+      id: "provider-user-row",
+      result: { message: { role: "user", content: "keep me" } },
+    };
+    mocks.getEvents.mockResolvedValue([owned, sent, providerOwned]);
+    mocks.findOwners.mockResolvedValue(new Set(["owned"]));
+
+    await reconcileOrphanedOptimisticQueueProjections("session-owned");
+
+    expect(mocks.findOwners).toHaveBeenCalledWith(["owned"]);
+    expect(mocks.removeOptimistic).not.toHaveBeenCalled();
+    expect(mocks.updateById).not.toHaveBeenCalled();
+  });
+
+  it("preserves a row accepted while durable ownership is being checked", async () => {
+    const pending = {
+      id: "queued-user:accepting:",
+      sessionId: "session-accepting",
+      source: "user",
+      displayStatus: "pending",
+      result: {
+        syntheticUserInput: true,
+        deliveryStatus: "pending",
+        queueMessageId: "accepting",
+      },
+    };
+    const sent = {
+      ...pending,
+      displayStatus: "completed",
+      result: { ...pending.result, deliveryStatus: "sent" },
+    };
+    mocks.getEvents
+      .mockResolvedValueOnce([pending])
+      .mockResolvedValueOnce([sent]);
+
+    await reconcileOrphanedOptimisticQueueProjections("session-accepting");
+
+    expect(mocks.findOwners).toHaveBeenCalledWith(["accepting"]);
+    expect(mocks.updateById).not.toHaveBeenCalled();
   });
 
   it("deduplicates by turn intent and lets live mutations win hydration races", async () => {
@@ -216,6 +394,90 @@ describe("messageQueuePersistence", () => {
     store.set(messageQueueAtom, [next]);
     expect(store.get(messageQueueAtom)).toEqual([next]);
     expect(store.get(activeMessageDeliveriesAtom)).toEqual([active]);
+  });
+
+  it("cancels the durable queued owner and its exact optimistic projection", async () => {
+    const queued = message("cancel", { sessionId: "native-session" });
+    const sibling = message("keep");
+    const active = activeDelivery("active");
+    mocks.cancelQueued.mockResolvedValue([queued]);
+    const store = createStore();
+    store.set(messageDeliveryRecordsAtom, [queued, sibling, active]);
+
+    await cancelQueuedMessageDeliveries(store, [queued.id]);
+
+    expect(mocks.cancelQueued).toHaveBeenCalledWith([
+      { id: queued.id, turnIntentId: queued.turnIntentId },
+    ]);
+    expect(mocks.removeOptimistic).toHaveBeenCalledWith({
+      sessionId: "native-session",
+      queueMessageId: queued.id,
+    });
+    expect(store.get(messageQueueAtom)).toEqual([sibling]);
+    expect(store.get(activeMessageDeliveriesAtom)).toEqual([active]);
+    expect(store.get(messageQueueHandoffIdsAtom)).toEqual(new Set());
+  });
+
+  it("does not cancel a queue row while its ownership handoff is frozen", async () => {
+    const frozen = message("frozen");
+    const cancellable = message("cancellable");
+    mocks.cancelQueued.mockResolvedValue([cancellable]);
+    const store = createStore();
+    store.set(messageQueueAtom, [frozen, cancellable]);
+    store.set(messageQueueHandoffIdsAtom, new Set([frozen.id]));
+
+    await cancelQueuedMessageDeliveries(store, [frozen.id, cancellable.id]);
+
+    expect(mocks.cancelQueued).toHaveBeenCalledWith([
+      { id: cancellable.id, turnIntentId: cancellable.turnIntentId },
+    ]);
+    expect(store.get(messageQueueAtom)).toEqual([frozen]);
+    expect(store.get(messageQueueHandoffIdsAtom)).toEqual(new Set([frozen.id]));
+  });
+
+  it("preserves a concurrent enqueue while cancellation is pending", async () => {
+    const cancelled = message("cancelled");
+    const concurrent = message("concurrent");
+    let release!: () => void;
+    mocks.cancelQueued.mockImplementation(
+      () =>
+        new Promise<QueuedMessage[]>((resolve) => {
+          release = () => resolve([cancelled]);
+        })
+    );
+    const store = createStore();
+    store.set(messageQueueAtom, [cancelled]);
+
+    const cancellation = cancelQueuedMessageDeliveries(store, [cancelled.id]);
+    await vi.waitFor(() => expect(mocks.cancelQueued).toHaveBeenCalledOnce());
+    store.set(messageQueueAtom, (current) => [...current, concurrent]);
+    release();
+    await cancellation;
+
+    expect(store.get(messageQueueAtom)).toEqual([concurrent]);
+  });
+
+  it("restores only the owner whose optimistic projection could not be removed", async () => {
+    const cancelled = message("cancelled");
+    const retained = message("retained");
+    mocks.cancelQueued.mockResolvedValue([cancelled, retained]);
+    mocks.removeOptimistic.mockImplementation(
+      async ({ queueMessageId }: { queueMessageId: string }) => {
+        if (queueMessageId === retained.id) throw new Error("event store busy");
+      }
+    );
+    const store = createStore();
+    store.set(messageQueueAtom, [cancelled, retained]);
+
+    await expect(
+      cancelQueuedMessageDeliveries(store, [cancelled.id, retained.id])
+    ).rejects.toThrow(
+      "failed to remove 1 optimistic queued message projection"
+    );
+
+    expect(mocks.persist).toHaveBeenCalledWith([retained]);
+    expect(store.get(messageQueueAtom)).toEqual([retained]);
+    expect(store.get(messageQueueHandoffIdsAtom)).toEqual(new Set());
   });
 
   it("publishes the durable active snapshot after a queue handoff", async () => {

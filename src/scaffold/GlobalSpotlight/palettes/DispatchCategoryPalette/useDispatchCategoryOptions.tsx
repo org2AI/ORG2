@@ -82,9 +82,12 @@ interface UseDispatchCategoryOptionsResult {
 }
 
 function buildCredentialBadge(
-  compatibleAccounts: KeyVaultAccount[]
+  compatibleAccounts: KeyVaultAccount[],
+  hasAmbientRuntime = false
 ): React.ReactNode {
-  const totalCount = compatibleAccounts.length;
+  const totalCount = hasAmbientRuntime
+    ? Math.max(1, compatibleAccounts.length)
+    : compatibleAccounts.length;
   const dotColor = totalCount > 0 ? "bg-success-6" : "bg-danger-6";
   const textColor = totalCount > 0 ? "text-text-2" : "text-text-3";
 
@@ -282,7 +285,10 @@ export function useDispatchCategoryOptions(
           availableKeys: compatibleAccounts,
           disabled,
           disabledLabel: disabled ? tCommon("status.notSupported") : undefined,
-          rightContent: buildCredentialBadge(compatibleAccounts),
+          rightContent: buildCredentialBadge(
+            compatibleAccounts,
+            agentType === "claude_code"
+          ),
         },
       ];
     });

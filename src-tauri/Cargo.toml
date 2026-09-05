@@ -201,7 +201,7 @@ tauri-plugin-notification = "2"
 tauri-plugin-webdriver-automation = { version = "0.1", optional = true }
 portable-pty = "0.9"
 tokio = { workspace = true }
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "v5"] }
 flate2 = "1"
 tar = "0.4"
 plist = "1"

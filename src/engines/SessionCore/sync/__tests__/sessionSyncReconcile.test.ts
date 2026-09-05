@@ -7,9 +7,10 @@
  * matter are (a) a stale session must never win, and (b) a native-transcript
  * session must never merge a replay next to live in-memory turn events.
  *
- * Only the timer (`waitForReconcileDelay`) and the Rust event store are mocked.
- * `sessionSyncUtils`' hydration helpers, the durable transcript-source result,
- * status narrowing and the Jotai session store all run for real.
+ * Only the timer (`waitForReconcileDelay`), the Rust event store, and the
+ * failed-delivery cache lookup are mocked. `sessionSyncUtils`' hydration
+ * helpers, the durable transcript-source result, status narrowing and the
+ * Jotai session store all run for real.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -66,6 +67,22 @@ const store = vi.hoisted(() => {
 vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: store.api,
 }));
+
+vi.mock(
+  "@src/engines/SessionCore/storage/cacheAdapter",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@src/engines/SessionCore/storage/cacheAdapter")
+      >();
+    return {
+      ...actual,
+      // These reconciliation fixtures exercise provider history. They have no
+      // synthetic failed-send sidecar in SQLite.
+      getSessionMetadata: vi.fn(async () => null),
+    };
+  }
+);
 
 const timer = vi.hoisted(() => ({ delays: [] as number[] }));
 

@@ -17,16 +17,32 @@ import { useEditUserMessage } from "../useEditUserMessage";
 
 const {
   checkSnapshotChangesSpy,
+  durableHydrationRows,
+  flushMessageQueueSpy,
+  hydrateMessageQueueSpy,
+  messageQueueHydrated,
+  queuedDeliveries,
   removeByIdPrefixSpy,
+  updateByIdSpy,
+  storeSetSpy,
   surfaceSessionId,
   submitUserIntentSpy,
+  refreshMessageDeliveriesSpy,
   storeSessionId,
   truncateBeforeIdSpy,
 } = vi.hoisted(() => ({
   checkSnapshotChangesSpy: vi.fn(async () => false),
+  durableHydrationRows: { current: [] as Array<Record<string, unknown>> },
+  flushMessageQueueSpy: vi.fn(async () => undefined),
+  hydrateMessageQueueSpy: vi.fn(async () => undefined),
+  messageQueueHydrated: { current: true },
+  queuedDeliveries: { current: [] as Array<Record<string, unknown>> },
   removeByIdPrefixSpy: vi.fn(async () => 1),
+  updateByIdSpy: vi.fn(async () => true),
+  storeSetSpy: vi.fn((_atom: unknown, _update: unknown) => true),
   surfaceSessionId: { current: undefined as string | undefined },
   submitUserIntentSpy: vi.fn(async (..._args: unknown[]) => undefined),
+  refreshMessageDeliveriesSpy: vi.fn(async () => undefined),
   storeSessionId: { current: "osagent-session-1" },
   truncateBeforeIdSpy: vi.fn(async () => undefined),
 }));
@@ -34,7 +50,15 @@ const {
 vi.mock("jotai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("jotai")>()),
   useSetAtom: () => vi.fn(),
-  useStore: () => ({ get: () => storeSessionId.current }),
+  useStore: () => ({
+    get: (atom: { debugLabel?: string }) =>
+      atom.debugLabel === "messageQueueAtom"
+        ? queuedDeliveries.current
+        : atom.debugLabel === "messageQueueHydratedAtom"
+          ? messageQueueHydrated.current
+          : storeSessionId.current,
+    set: storeSetSpy,
+  }),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -83,10 +107,20 @@ vi.mock("@src/engines/SessionCore/core/atoms", () => ({
 vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: {
     removeByIdPrefix: removeByIdPrefixSpy,
+    updateById: updateByIdSpy,
     truncateBeforeId: truncateBeforeIdSpy,
     evictSession: vi.fn(async () => undefined),
   },
 }));
+
+vi.mock(
+  "@src/engines/SessionCore/hooks/session/messageQueuePersistence",
+  () => ({
+    flushMessageQueuePersistence: flushMessageQueueSpy,
+    hydrateMessageQueue: hydrateMessageQueueSpy,
+    refreshMessageDeliveries: refreshMessageDeliveriesSpy,
+  })
+);
 
 vi.mock("@src/engines/SessionCore/storage/cacheAdapter", () => ({
   deleteSession: vi.fn(async () => undefined),
@@ -160,8 +194,20 @@ describe("useEditUserMessage resend projection", () => {
 
   beforeEach(() => {
     checkSnapshotChangesSpy.mockClear();
+    durableHydrationRows.current = [];
+    flushMessageQueueSpy.mockClear();
+    hydrateMessageQueueSpy.mockClear();
+    hydrateMessageQueueSpy.mockImplementation(async () => {
+      queuedDeliveries.current = [...durableHydrationRows.current];
+      messageQueueHydrated.current = true;
+    });
+    messageQueueHydrated.current = true;
+    queuedDeliveries.current = [];
     removeByIdPrefixSpy.mockClear();
+    updateByIdSpy.mockClear();
+    storeSetSpy.mockClear();
     submitUserIntentSpy.mockClear();
+    refreshMessageDeliveriesSpy.mockClear();
     truncateBeforeIdSpy.mockClear();
     storeSessionId.current = "osagent-session-1";
     surfaceSessionId.current = undefined;
@@ -271,6 +317,267 @@ describe("useEditUserMessage resend projection", () => {
     );
     expect(checkSnapshotChangesSpy).not.toHaveBeenCalled();
     expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
+  });
+
+  it("retries a reconciled orphan through the current submit path", async () => {
+    const failed = {
+      event: {
+        id: "queued-user:legacy-orphan:",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        source: "user",
+        functionName: "user_message",
+        uiCanonical: "",
+        displayText: "@VantaNode inspect this",
+        displayStatus: "failed",
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          deliveryError:
+            "This message was not sent because its pending delivery could not be recovered. Retry to send it again.",
+          turnIntentId: "turn-intent-orphan",
+          message: {
+            role: "user",
+            content: "@VantaNode inspect this",
+          },
+          images: ["data:image/png;base64,keep"],
+          mentions: [{ id: "vanta", label: "VantaNode" }],
+        },
+      },
+      chunk_id: "queued-user:legacy-orphan:",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(failed, "@VantaNode inspect this", [
+        "data:image/png;base64,keep",
+      ]);
+    });
+
+    expect(refreshMessageDeliveriesSpy).not.toHaveBeenCalled();
+    expect(submitUserIntentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "osagent-session-1",
+        displayContent: "@VantaNode inspect this",
+        imageDataUrls: ["data:image/png;base64,keep"],
+        turnIntentId: "turn-intent-orphan",
+      })
+    );
+    expect(removeByIdPrefixSpy).toHaveBeenCalledWith(
+      "queued-user:legacy-orphan:",
+      "osagent-session-1"
+    );
+    expect(storeSetSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
+      expect.anything()
+    );
+  });
+
+  it("retries a hydrated failed queue row in place without losing attachments", async () => {
+    queuedDeliveries.current = [
+      {
+        id: "queue-failed",
+        turnIntentId: "turn-intent-failed",
+        sessionId: "osagent-session-1",
+        content: "retry this exact request",
+        displayContent: "retry this exact request",
+        imageDataUrls: ["data:image/png;base64,keep"],
+        priority: "next",
+        status: "queued",
+        requiresExplicitDispatch: true,
+        deliveryError: "provider unavailable",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    const failed = {
+      event: {
+        id: "queued-user-turn-intent-failed",
+        displayText: "retry this exact request",
+        displayStatus: "failed",
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          queueMessageId: "queue-failed",
+          turnIntentId: "turn-intent-failed",
+        },
+      },
+      chunk_id: "queued-user-turn-intent-failed",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(failed, "retry this exact request");
+    });
+
+    expect(updateByIdSpy).toHaveBeenCalledWith(
+      "queued-user:queue-failed:",
+      expect.objectContaining({
+        displayText: "retry this exact request",
+        displayStatus: "pending",
+        result: expect.objectContaining({
+          images: ["data:image/png;base64,keep"],
+          turnIntentId: expect.not.stringMatching("turn-intent-failed"),
+          deliveryStatus: "pending",
+          queueMessageId: "queue-failed",
+        }),
+      }),
+      "osagent-session-1"
+    );
+    expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+    expect(storeSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
+      "queue-failed"
+    );
+  });
+
+  it("hydrates a cold failed owner and patches its runner row from the root surface", async () => {
+    messageQueueHydrated.current = false;
+    durableHydrationRows.current = [
+      {
+        id: "queue-cold",
+        turnIntentId: "turn-intent-cold",
+        // The canonical root is mounted, but the queue projection belongs to
+        // the concrete local execution Session selected at admission.
+        sessionId: "cliagent-runner-child",
+        content: "cold retry",
+        displayContent: "cold retry",
+        priority: "next",
+        status: "queued",
+        requiresExplicitDispatch: true,
+        deliveryError: "database is locked",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    const failed = {
+      event: {
+        id: "queued-user:queue-cold:",
+        sessionId: "cliagent-runner-child",
+        displayText: "cold retry",
+        displayStatus: "failed",
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          queueMessageId: "queue-cold",
+          turnIntentId: "turn-intent-cold",
+        },
+      },
+      chunk_id: "queued-user:queue-cold:",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(failed, "cold retry");
+    });
+
+    expect(hydrateMessageQueueSpy).toHaveBeenCalledOnce();
+    expect(refreshMessageDeliveriesSpy).not.toHaveBeenCalled();
+    expect(updateByIdSpy).toHaveBeenCalledWith(
+      "queued-user:queue-cold:",
+      expect.objectContaining({
+        displayText: "cold retry",
+        displayStatus: "pending",
+      }),
+      "cliagent-runner-child"
+    );
+    expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+    expect(submitUserIntentSpy).not.toHaveBeenCalled();
+  });
+
+  it("never deletes a queue-owned bubble while its cold owner is unavailable", async () => {
+    messageQueueHydrated.current = false;
+    const failed = {
+      event: {
+        id: "queued-user:queue-missing:",
+        displayText: "keep this failed row",
+        displayStatus: "failed",
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          queueMessageId: "queue-missing",
+          turnIntentId: "turn-intent-missing",
+        },
+      },
+      chunk_id: "queued-user:queue-missing:",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(failed, "keep this failed row");
+    });
+
+    expect(hydrateMessageQueueSpy).toHaveBeenCalledOnce();
+    expect(refreshMessageDeliveriesSpy).toHaveBeenCalledOnce();
+    expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+    expect(submitUserIntentSpy).not.toHaveBeenCalled();
+    expect(updateByIdSpy).not.toHaveBeenCalled();
+  });
+
+  it("edits a hydrated failed queue row and patches its existing bubble", async () => {
+    queuedDeliveries.current = [
+      {
+        id: "queue-failed",
+        turnIntentId: "turn-intent-failed",
+        sessionId: "osagent-session-1",
+        content: "retry this exact request",
+        displayContent: "retry this exact request",
+        imageDataUrls: ["data:image/png;base64,old"],
+        priority: "next",
+        status: "queued",
+        requiresExplicitDispatch: true,
+        deliveryError: "provider unavailable",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    const failed = {
+      event: {
+        id: "queued-user-turn-intent-failed",
+        displayText: "retry this exact request",
+        displayStatus: "failed",
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          queueMessageId: "queue-failed",
+          turnIntentId: "turn-intent-failed",
+        },
+      },
+      chunk_id: "queued-user-turn-intent-failed",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(failed, "@VantaNode inspect the retry", [
+        "data:image/png;base64,new",
+      ]);
+    });
+
+    expect(storeSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ debugLabel: "editMessageAtom" }),
+      expect.objectContaining({
+        messageId: "queue-failed",
+        content: "@VantaNode inspect the retry",
+        imageDataUrls: ["data:image/png;base64,new"],
+        turnIntentId: expect.any(String),
+      })
+    );
+    expect(flushMessageQueueSpy).toHaveBeenCalledOnce();
+    expect(updateByIdSpy).toHaveBeenCalledWith(
+      "queued-user:queue-failed:",
+      expect.objectContaining({
+        displayText: "@VantaNode inspect the retry",
+        displayStatus: "pending",
+        result: expect.objectContaining({
+          message: {
+            role: "user",
+            content: "@VantaNode inspect the retry",
+          },
+          images: ["data:image/png;base64,new"],
+          turnIntentId: expect.any(String),
+          deliveryStatus: "pending",
+          queueMessageId: "queue-failed",
+        }),
+      }),
+      "osagent-session-1"
+    );
+    expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+    expect(storeSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
+      "queue-failed"
+    );
+    expect(submitUserIntentSpy).not.toHaveBeenCalled();
   });
 
   it("retries against the mounted SideChat session instead of global active", async () => {

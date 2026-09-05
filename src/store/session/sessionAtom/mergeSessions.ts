@@ -43,7 +43,7 @@ export function loadSessionsCacheSignature(
  * The flat-list roster intentionally excludes imported replay copies (their
  * display entry is the Team Conversations row), but the LOCAL row still owns
  * the open surface's identity — importedFrom drives the comments target,
- * canonical continuation routing, and sender attribution. A wholesale roster
+ * fork-before-send routing, and sender attribution. A wholesale roster
  * replace must therefore carry resident import copies over instead of
  * evicting them mid-view; explicit removal stays the only way they leave.
  */

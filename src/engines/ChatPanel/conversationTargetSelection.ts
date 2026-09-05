@@ -256,6 +256,21 @@ export function resolveConversationRuntimeTarget({
   registry = EMPTY_AGENT_REGISTRY,
   nativeCliTargets,
 }: RuntimeConversationTargetInput): LocalConversationTarget | null {
+  // The Claude runtime row represents Claude Code's native ambient profile.
+  // Selecting it is also the explicit way back from an account/model
+  // override (for example Atlas), so do not carry those provider fields into
+  // the new target. Model/source picks can still opt into an override after
+  // the runtime itself has committed.
+  if (
+    selection.category === "cli_agent" &&
+    selection.cliAgentType === "claude_code" &&
+    nativeCliTargets.includes("claude_code")
+  ) {
+    return {
+      cliAgentType: "claude_code",
+      workspaceRepoPath,
+    };
+  }
   const candidates: AdvancedConfig[] = [];
   if (current) candidates.push(configForTarget(current, accounts));
   if (preferredAccountId && preferredModel) {

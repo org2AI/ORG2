@@ -82,6 +82,13 @@ export interface QueuedMessage {
   /** UI queue rows are pending sends. Canonical work keeps this identity and
    * advances the same durable record to `preparing`/`accepted`. */
   status: QueuedMessageDeliveryState;
+  /**
+   * Last pre-acceptance delivery failure when the failed EventStore
+   * projection could not be durably committed. The queue remains the
+   * recovery owner, but transcript projection renders this held row as
+   * failed instead of pending. An explicit retry/edit clears it.
+   */
+  deliveryError?: string;
   createdAt: string;
 }
 
@@ -300,11 +307,15 @@ export const forceSendMessageAtom = atom(
               ...msg,
               // Send Now is an explicit new dispatch attempt. A recovered
               // queued row may point at an immutable stale/coalesced/rejected
-              // backend intent; minting here prevents that terminal id from
-              // making the visible retry permanently unrunnable.
-              turnIntentId: mintTurnIntentId(),
+              // backend intent; mint once for that failed row. An edit has
+              // already minted and persisted its replacement intent, while an
+              // ordinary parked unsent row must retain its original intent.
+              turnIntentId: msg.deliveryError
+                ? mintTurnIntentId()
+                : msg.turnIntentId,
               priority: "now",
               requiresExplicitDispatch: false,
+              deliveryError: undefined,
             }
           : msg
       )
@@ -407,6 +418,8 @@ export const editMessageAtom = atom(
       imageDataUrls?: string[];
       modelSelection?: LastModelSelection;
       agentExecMode?: AgentExecMode;
+      /** Caller-owned retry intent when its EventStore projection must match. */
+      turnIntentId?: string;
     }
   ) => {
     if (get(messageQueueHandoffIdsAtom).has(update.messageId)) return false;
@@ -443,7 +456,7 @@ export const editMessageAtom = atom(
           // already be a durable stale/rejected pre-run terminal after a
           // crash; terminal intent ids are immutable and cannot be safely
           // resurrected with different content.
-          turnIntentId: mintTurnIntentId(),
+          turnIntentId: update.turnIntentId ?? mintTurnIntentId(),
           content: projection.agentContent ?? projection.displayContent,
           displayContent: projection.displayContent,
           ...(update.imageDataUrls !== undefined && {
@@ -455,6 +468,7 @@ export const editMessageAtom = atom(
           ...(update.agentExecMode !== undefined && {
             agentExecMode: update.agentExecMode,
           }),
+          deliveryError: undefined,
         };
         const siblings = prev.filter((item) => item.id !== msg.id);
         if (queueAdmissionResult(siblings, next)) return msg;

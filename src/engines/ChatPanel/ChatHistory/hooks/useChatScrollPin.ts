@@ -42,6 +42,51 @@ export interface UseChatScrollPinReturn {
   programmaticScrollAtRef: MutableRefObject<number>;
 }
 
+function isScrollbarPointerDown(
+  event: PointerEvent,
+  element: HTMLElement
+): boolean {
+  if (event.button !== 0) return false;
+  const rect = element.getBoundingClientRect();
+  const nativeScrollbarWidth = Math.max(
+    0,
+    element.offsetWidth - element.clientWidth
+  );
+  const hitWidth = Math.max(12, nativeScrollbarWidth);
+  return event.clientX >= rect.right - hitWidth;
+}
+
+const KEYBOARD_SCROLL_KEYS = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "PageUp",
+  "PageDown",
+  "Home",
+  "End",
+  " ",
+  "Spacebar",
+]);
+
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest(
+      "input, textarea, select, [contenteditable='true'], [role='textbox']"
+    ) !== null
+  );
+}
+
+function isKeyboardScrollIntent(event: KeyboardEvent): boolean {
+  return (
+    !event.defaultPrevented &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !isEditableKeyboardTarget(event.target) &&
+    KEYBOARD_SCROLL_KEYS.has(event.key)
+  );
+}
+
 /**
  * Manages three scroll-pin behaviours for ChatHistory:
  *
@@ -50,10 +95,10 @@ export interface UseChatScrollPinReturn {
  * 2. Pin the latest user-message group to the viewport top when a new
  *    group is added. Re-fires as the temporary footer
  *    reserve grows so the first scroll lands at the correct offset.
- * 3. Breaks pin intent on user-initiated scroll. Distinguishes programmatic
- *    scrolls (ignored) from user scrolls (releases pin) via a time window.
- *    The listener is mounted once and reads live state via refs — it is NOT
- *    re-registered on every new message, eliminating monitoring gaps.
+ * 3. Breaks pin intent on explicit user scroll input. A plain `scroll` event
+ *    is deliberately insufficient: virtualizer remeasurement and projection
+ *    replacement also emit trusted scroll events, and treating those as user
+ *    intent strands a streaming conversation at the top.
  */
 export function useChatScrollPin({
   activeId,
@@ -168,34 +213,39 @@ export function useChatScrollPin({
     scheduleFollowToEnd,
   ]);
 
-  // Effect 3: break pin intent on user-initiated scroll.
-  //
-  // Mounted once per scroller element change — intentionally does NOT
-  // depend on totalFlatItems or sessionLoadStatus. Those changes used to
-  // force a remove+re-add cycle that created a short window where user
-  // scrolls went undetected. Live values are accessed via refs instead.
+  // Effect 3: break follow/pin intent only on explicit user input. Layout and
+  // TanStack Virtual corrections use the same native `scroll` event as a
+  // wheel gesture, so listening to `scroll` itself cannot distinguish intent.
   useEffect(() => {
-    const el = virtuosoScrollerRef.current;
+    const el = virtuosoScrollerRef.current ?? staticScrollerRef?.current;
     if (!el) return;
-    const PROGRAMMATIC_WINDOW_MS = 250;
-    const handleScroll = (): void => {
-      const now = performance.now();
-      const elapsed = now - programmaticScrollAtRef.current;
-      if (elapsed < PROGRAMMATIC_WINDOW_MS) return;
-      effectiveManualScrollAtRef.current = now;
+    const markManualScroll = (): void => {
+      effectiveManualScrollAtRef.current = performance.now();
       if (!pinLastGroupRef.current) return;
       pinLastGroupRef.current = false;
       onPinToTopChangeRef.current?.(false);
     };
-    el.addEventListener("scroll", handleScroll, { passive: true });
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (isScrollbarPointerDown(event, el)) markManualScroll();
+    };
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (isKeyboardScrollIntent(event)) markManualScroll();
+    };
+    el.addEventListener("wheel", markManualScroll, { passive: true });
+    el.addEventListener("touchmove", markManualScroll, { passive: true });
+    el.addEventListener("pointerdown", handlePointerDown);
+    el.addEventListener("keydown", handleKeyDown);
     return () => {
-      el.removeEventListener("scroll", handleScroll);
+      el.removeEventListener("wheel", markManualScroll);
+      el.removeEventListener("touchmove", markManualScroll);
+      el.removeEventListener("pointerdown", handlePointerDown);
+      el.removeEventListener("keydown", handleKeyDown);
     };
   }, [
     virtuosoScrollerRef,
     pinLastGroupRef,
-    programmaticScrollAtRef,
     effectiveManualScrollAtRef,
+    staticScrollerRef,
   ]);
 
   return { scrollToEnd, programmaticScrollAtRef };

@@ -1,5 +1,18 @@
 import type { Store } from "jotai/vanilla/store";
 
+import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms/metadata";
+import {
+  type Snapshot,
+  eventStoreProxy,
+  isStreamingSnapshot,
+} from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import {
+  isOptimisticQueueUserEventId,
+  optimisticQueueUserEventId,
+  removeOptimisticQueueUserDelivery,
+} from "@src/engines/SessionCore/services/userIntentDispatch";
+import { createLogger } from "@src/hooks/logger";
 import {
   type ActiveMessageDelivery,
   type MessageDeliveryRecord,
@@ -15,15 +28,22 @@ import {
 import {
   type ActiveMessageDeliveryUpdate,
   assertDurableActiveDeliveryIsRootHead,
+  findDurableMessageDeliveryOwnerIds,
   handoffDurableMessageDelivery,
   loadDurableMessageDeliveries,
   persistDurableMessageQueue,
   removeDurableActiveMessageDelivery,
+  removeDurableQueuedMessageDeliveries,
   returnDurableMessageDeliveryToQueue,
   updateDurableActiveMessageDelivery,
 } from "@src/store/ui/messageQueueRepository";
 
+const log = createLogger("MessageQueuePersistence");
 const MUTATION_CHANNEL_NAME = "orgii:message-deliveries";
+const MAX_RECONCILED_ORPHAN_SESSIONS = 100;
+const ORPHAN_SCAN_TAIL_SIZE = 25;
+const ORPHANED_QUEUE_DELIVERY_ERROR =
+  "This message was not sent because its pending delivery could not be recovered. Retry to send it again.";
 
 const queueRevisionByStore = new WeakMap<Store, number>();
 const queuePersistByStore = new WeakMap<Store, Promise<void>>();
@@ -32,6 +52,12 @@ const hydrationByStore = new WeakMap<Store, Promise<void>>();
 const unsubscribeByStore = new WeakMap<Store, () => void>();
 const mutationGenerationByStore = new WeakMap<Store, number>();
 const externalRefreshByStore = new WeakMap<Store, Promise<void>>();
+const orphanReconciliationUnsubscribeByStore = new WeakMap<Store, () => void>();
+const reconciledOrphanSessionsByStore = new WeakMap<Store, Set<string>>();
+const orphanReconciliationInFlightByStore = new WeakMap<
+  Store,
+  Map<string, Promise<void>>
+>();
 const hydratedStores = new Set<Store>();
 let mutationChannel: BroadcastChannel | null = null;
 
@@ -163,6 +189,143 @@ function broadcastMutation(): void {
   ensureMutationChannel()?.postMessage({ type: "changed" });
 }
 
+function pendingQueueMessageId(event: SessionEvent): string | null {
+  const queueMessageId = event.result?.queueMessageId;
+  if (
+    event.source !== "user" ||
+    event.displayStatus !== "pending" ||
+    event.result?.deliveryStatus !== "pending" ||
+    event.result?.syntheticUserInput !== true ||
+    typeof queueMessageId !== "string" ||
+    !isOptimisticQueueUserEventId(event.id) ||
+    event.id !== optimisticQueueUserEventId(queueMessageId)
+  ) {
+    return null;
+  }
+  return queueMessageId;
+}
+
+function rememberReconciledSession(store: Store, sessionId: string): void {
+  const sessions = reconciledOrphanSessionsByStore.get(store) ?? new Set();
+  sessions.delete(sessionId);
+  sessions.add(sessionId);
+  while (sessions.size > MAX_RECONCILED_ORPHAN_SESSIONS) {
+    const oldest = sessions.values().next().value as string | undefined;
+    if (!oldest) break;
+    sessions.delete(oldest);
+  }
+  reconciledOrphanSessionsByStore.set(store, sessions);
+}
+
+/**
+ * Fail legacy pending queue projections that have no execution owner.
+ *
+ * The durable registry is read after the EventStore candidate snapshot, so a
+ * correctly admitted message (owner committed before projection append) can
+ * never be classified as an orphan. A second EventStore read rejects a row
+ * that became sent/failed while the owner was settling. The visible user row
+ * remains intact; only its stale queue ownership claim is removed so Retry
+ * can re-enter the canonical submit path.
+ */
+export async function reconcileOrphanedOptimisticQueueProjections(
+  sessionId: string
+): Promise<boolean> {
+  const events = await eventStoreProxy.getEvents(sessionId);
+  if (events.length === 0) return false;
+  const candidateIds = events
+    .map(pendingQueueMessageId)
+    .filter((id): id is string => Boolean(id));
+  if (candidateIds.length === 0) return true;
+
+  const ownerIds = await findDurableMessageDeliveryOwnerIds(candidateIds);
+  const orphanIds = new Set(candidateIds.filter((id) => !ownerIds.has(id)));
+  if (orphanIds.size === 0) return true;
+
+  // Re-read after the durable lookup. Provider acceptance patches pending to
+  // sent before retiring its active owner; never delete that accepted row on
+  // the basis of the earlier snapshot.
+  const currentOrphans = (await eventStoreProxy.getEvents(sessionId)).filter(
+    (event) => {
+      const queueMessageId = pendingQueueMessageId(event);
+      return Boolean(queueMessageId && orphanIds.has(queueMessageId));
+    }
+  );
+  await Promise.all(
+    currentOrphans.map(async (event) => {
+      const result = {
+        ...event.result,
+        deliveryStatus: "failed",
+        deliveryError: ORPHANED_QUEUE_DELIVERY_ERROR,
+      };
+      // A queueMessageId is a strong durable-ownership claim in Retry. The
+      // owner is proven absent, so retaining it would make Retry fail closed
+      // forever instead of using the ordinary submit/queue boundary.
+      Reflect.deleteProperty(result, "queueMessageId");
+      const updated = await eventStoreProxy.updateById(
+        event.id,
+        { displayStatus: "failed", result },
+        sessionId
+      );
+      if (!updated) {
+        throw new Error(
+          `orphaned queue projection ${event.id} is no longer available`
+        );
+      }
+    })
+  );
+  return true;
+}
+
+function reconcileOrphanSessionOnce(
+  store: Store,
+  sessionId: string
+): Promise<void> {
+  if (reconciledOrphanSessionsByStore.get(store)?.has(sessionId)) {
+    return Promise.resolve();
+  }
+  const inFlight = orphanReconciliationInFlightByStore.get(store) ?? new Map();
+  const existing = inFlight.get(sessionId);
+  if (existing) return existing;
+  orphanReconciliationInFlightByStore.set(store, inFlight);
+  const reconciliation = reconcileOrphanedOptimisticQueueProjections(sessionId)
+    .then((inspected) => {
+      if (inspected) rememberReconciledSession(store, sessionId);
+    })
+    .finally(() => inFlight.delete(sessionId));
+  inFlight.set(sessionId, reconciliation);
+  return reconciliation;
+}
+
+function installOrphanProjectionReconciliation(store: Store): void {
+  if (orphanReconciliationUnsubscribeByStore.has(store)) return;
+  const inspectSnapshot = (snapshot: Snapshot, sessionId: string) => {
+    if (!store.get(messageQueueHydratedAtom)) return;
+    if (reconciledOrphanSessionsByStore.get(store)?.has(sessionId)) return;
+    if (!isStreamingSnapshot(snapshot) && snapshot.eventCount > 0) {
+      void reconcileOrphanSessionOnce(store, sessionId).catch((error) =>
+        log.warn(
+          "[messageQueuePersistence] orphan projection reconciliation failed",
+          { sessionId, error }
+        )
+      );
+      return;
+    }
+    const tail = snapshot.chatEvents.slice(-ORPHAN_SCAN_TAIL_SIZE);
+    const hasCandidate = tail.some((event) => pendingQueueMessageId(event));
+    if (!hasCandidate) return;
+    void reconcileOrphanSessionOnce(store, sessionId).catch((error) =>
+      log.warn(
+        "[messageQueuePersistence] orphan projection reconciliation failed",
+        { sessionId, error }
+      )
+    );
+  };
+  orphanReconciliationUnsubscribeByStore.set(
+    store,
+    eventStoreProxy.subscribe(inspectSnapshot)
+  );
+}
+
 function hydrateMessageQueueFromSnapshot(
   store: Store,
   durable: readonly QueuedMessage[],
@@ -194,6 +357,17 @@ export function hydrateMessageQueue(store: Store): Promise<void> {
       hydrateMessageQueueFromSnapshot(store, snapshot.queue, snapshot.active);
       await persistQueueBestEffort(store);
       store.set(messageQueueHydratedAtom, true);
+      installOrphanProjectionReconciliation(store);
+      const activeSessionId = store.get(sessionIdAtom);
+      if (activeSessionId) {
+        await reconcileOrphanSessionOnce(store, activeSessionId).catch(
+          (error) =>
+            log.warn(
+              "[messageQueuePersistence] initial orphan projection reconciliation failed",
+              { sessionId: activeSessionId, error }
+            )
+        );
+      }
     } catch (error) {
       store.set(messageQueueHydratedAtom, false);
       hydrationByStore.delete(store);
@@ -214,6 +388,107 @@ export async function refreshMessageDeliveries(store: Store): Promise<void> {
     if (revision !== (queueRevisionByStore.get(store) ?? 0)) continue;
     publishRecords(store, snapshot.queue, snapshot.active);
     return;
+  }
+}
+
+/**
+ * Cancel exact, still-queued deliveries and their optimistic EventStore rows.
+ *
+ * The handoff set is the existing queue mutation freeze. Holding it across
+ * both durable stores prevents the dispatcher, edit, cancel, and reorder
+ * paths from racing this ownership transition. Rows that have already moved
+ * to `preparing`/`accepted` are rejected by the repository and remain intact.
+ */
+export async function cancelQueuedMessageDeliveries(
+  store: Store,
+  messageIds: readonly string[]
+): Promise<void> {
+  if (messageIds.length === 0) return;
+  const requestedIds = new Set(messageIds);
+  const alreadyFrozen = store.get(messageQueueHandoffIdsAtom);
+  const candidates = store
+    .get(messageQueueAtom)
+    .filter(
+      (message) =>
+        requestedIds.has(message.id) && !alreadyFrozen.has(message.id)
+    );
+  if (candidates.length === 0) return;
+
+  const candidateIds = new Set(candidates.map((message) => message.id));
+  store.set(messageQueueHandoffIdsAtom, (current) => {
+    const next = new Set(current);
+    for (const id of candidateIds) next.add(id);
+    return next;
+  });
+
+  try {
+    const removed = await removeDurableQueuedMessageDeliveries(
+      candidates.map(({ id, turnIntentId }) => ({ id, turnIntentId }))
+    );
+    if (removed.length === 0) return;
+
+    const removals = await Promise.allSettled(
+      removed.map(async (message) => {
+        await removeOptimisticQueueUserDelivery({
+          sessionId: message.sessionId,
+          queueMessageId: message.id,
+        });
+        return message;
+      })
+    );
+    const cancelledIds = new Set<string>();
+    const failed: QueuedMessage[] = [];
+    for (let index = 0; index < removals.length; index += 1) {
+      const result = removals[index];
+      const message = removed[index];
+      if (!message) continue;
+      if (result?.status === "fulfilled") cancelledIds.add(message.id);
+      else failed.push(message);
+    }
+
+    // If EventStore cleanup fails, restore only those rows as cancellable
+    // queue owners. Successful cancellations remain absent. The current live
+    // queue is the existing authority for concurrent enqueues and preserves
+    // their order and payloads in the same snapshot transaction.
+    if (failed.length > 0) {
+      await persistDurableMessageQueue(
+        store
+          .get(messageQueueAtom)
+          .filter((message) => !cancelledIds.has(message.id))
+      );
+    }
+
+    noteLocalMutation(store);
+    const records = store.get(messageDeliveryRecordsAtom);
+    publishRecords(
+      store,
+      records
+        .filter(isQueuedMessageDelivery)
+        .filter((message) => !cancelledIds.has(message.id)),
+      records.filter(isActiveMessageDelivery)
+    );
+    broadcastMutation();
+
+    if (failed.length > 0) {
+      const firstFailure = removals.find(
+        (result): result is PromiseRejectedResult =>
+          result.status === "rejected"
+      );
+      const detail =
+        firstFailure?.reason instanceof Error
+          ? `: ${firstFailure.reason.message}`
+          : "";
+      throw new Error(
+        `failed to remove ${failed.length} optimistic queued message projection(s)${detail}`
+      );
+    }
+  } finally {
+    store.set(messageQueueHandoffIdsAtom, (current) => {
+      if (![...candidateIds].some((id) => current.has(id))) return current;
+      const next = new Set(current);
+      for (const id of candidateIds) next.delete(id);
+      return next;
+    });
   }
 }
 
@@ -320,6 +595,10 @@ export function disposeMessageQueuePersistence(store: Store): void {
   lastObservedQueueByStore.delete(store);
   mutationGenerationByStore.delete(store);
   externalRefreshByStore.delete(store);
+  orphanReconciliationUnsubscribeByStore.get(store)?.();
+  orphanReconciliationUnsubscribeByStore.delete(store);
+  reconciledOrphanSessionsByStore.delete(store);
+  orphanReconciliationInFlightByStore.delete(store);
   hydratedStores.delete(store);
   store.set(messageQueueHydratedAtom, false);
   if (hydratedStores.size === 0) {

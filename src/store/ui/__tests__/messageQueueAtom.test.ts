@@ -233,6 +233,53 @@ describe("messageQueueAtom", () => {
       });
     });
 
+    it("clears a held delivery failure when the user explicitly retries", () => {
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({
+          id: "m1",
+          requiresExplicitDispatch: true,
+          deliveryError: "provider unavailable",
+        })
+      );
+
+      store.set(forceSendMessageAtom, "m1");
+
+      expect(store.get(messageQueueAtom)[0]).toMatchObject({
+        priority: "now",
+        requiresExplicitDispatch: false,
+      });
+      expect(store.get(messageQueueAtom)[0].deliveryError).toBeUndefined();
+    });
+
+    it("keeps an edited retry intent instead of minting it twice", () => {
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({
+          id: "m1",
+          requiresExplicitDispatch: true,
+          deliveryError: "provider unavailable",
+        })
+      );
+      store.set(editMessageAtom, {
+        messageId: "m1",
+        content: "@VantaNode retry with attachment",
+        imageDataUrls: ["data:image/png;base64,retry"],
+        turnIntentId: "terminal-retry-intent",
+      });
+
+      store.set(forceSendMessageAtom, "m1");
+
+      expect(store.get(messageQueueAtom)[0]).toMatchObject({
+        id: "m1",
+        turnIntentId: "terminal-retry-intent",
+        displayContent: "@VantaNode retry with attachment",
+        imageDataUrls: ["data:image/png;base64,retry"],
+        priority: "now",
+        requiresExplicitDispatch: false,
+      });
+    });
+
     it("is idempotent", () => {
       store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
 

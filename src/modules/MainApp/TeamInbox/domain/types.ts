@@ -22,6 +22,8 @@ export interface TeamInboxActor {
 
 export interface SessionCommentTarget {
   kind: "session_comment";
+  /** Present for managed-cloud mentions; names the canonical conversation owner. */
+  orgId?: string;
   sessionId: string;
   sessionTitle: string;
   commentId: string;
@@ -271,6 +273,7 @@ export type TeamInboxNavigationIntent =
     }
   | {
       kind: "open_session_comment";
+      orgId?: string;
       sessionId: string;
       commentId: string;
       threadId: string;

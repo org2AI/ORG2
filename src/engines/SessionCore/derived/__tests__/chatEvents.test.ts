@@ -124,6 +124,40 @@ describe("chatEventsAtom live streaming overlay", () => {
     expect(store.get(chatEventsAtom)).toEqual([providerRow]);
   });
 
+  it("projects a held durable delivery failure as failed after hydration", () => {
+    const store = createStore();
+    store.set(sessionIdAtom, "session-1");
+    store.set(derivedSnapshotAtom, makeSnapshot([], false));
+    store.set(messageQueueAtom, [
+      {
+        id: "queue-failed",
+        turnIntentId: "turn-failed",
+        sessionId: "session-1",
+        content: "retry this request",
+        displayContent: "retry this request",
+        priority: "next",
+        requiresExplicitDispatch: true,
+        status: "queued",
+        deliveryError: "provider unavailable",
+        createdAt: "2026-06-06T20:00:01.000Z",
+      },
+    ]);
+
+    expect(store.get(chatEventsAtom)).toEqual([
+      expect.objectContaining({
+        id: "queued-user-turn-failed",
+        displayText: "retry this request",
+        displayStatus: "failed",
+        result: expect.objectContaining({
+          deliveryStatus: "failed",
+          deliveryError: "provider unavailable",
+          queueMessageId: "queue-failed",
+          turnIntentId: "turn-failed",
+        }),
+      }),
+    ]);
+  });
+
   it("suppresses the pending overlay after the provider's real user echo", () => {
     const store = createStore();
     const pending = makeChatEvent(

@@ -4,10 +4,23 @@ import {
   conversationRootForSession,
   conversationSourceFromImportedHistory,
   latestConversationExecution,
+  resolveNativeConversationCliTargets,
   writableConversationWorkspacePath,
 } from "./useConversationTargetBinding";
 
 describe("conversation target binding source", () => {
+  it("keeps an installed shell-out Claude runtime without GUI launch support", () => {
+    expect(
+      resolveNativeConversationCliTargets(
+        [
+          { name: "claude_code", installed: true, supportsGui: false },
+          { name: "codex", installed: true, supportsGui: true },
+        ] as never,
+        true
+      )
+    ).toEqual(["claude_code", "codex"]);
+  });
+
   it("projects a native imported history onto the canonical runtime picker", () => {
     expect(
       conversationSourceFromImportedHistory({

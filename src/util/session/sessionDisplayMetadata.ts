@@ -49,6 +49,7 @@ export interface LocalSessionDisplayInput {
 type RemoteSessionDisplayInput = Pick<
   RemoteTeammateSessionMetadata,
   | "sourceSessionId"
+  | "forkedFrom"
   | "cliAgentType"
   | "agentDisplayName"
   | "agentDefinitionId"
@@ -105,7 +106,10 @@ function normalizeSessionDisplayInput(
     const { session } = source;
     return {
       kind: source.kind,
-      sessionId: session.sourceSessionId,
+      // A visible Team Session fork is another episode in the same canonical
+      // conversation. Keep the root provider mark (Codex/Claude/...) instead
+      // of replacing it with the local ORG2 runtime that produced the fork.
+      sessionId: session.forkedFrom?.rootSessionId ?? session.sourceSessionId,
       cliAgentType: session.cliAgentType,
       agentDisplayName: session.agentDisplayName,
       agentDefinitionId: session.agentDefinitionId,

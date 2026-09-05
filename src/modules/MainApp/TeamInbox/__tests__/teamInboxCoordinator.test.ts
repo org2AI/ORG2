@@ -250,6 +250,11 @@ describe("TeamInboxCoordinator", () => {
       "identity_unresolved"
     );
     expect(store.get(teamInboxCacheAtom).items).toHaveLength(1);
+    expect(store.get(teamInboxCacheAtom).items[0]?.target).toMatchObject({
+      kind: "session_comment",
+      orgId: "org-1",
+      sessionId: "session-cloud-1",
+    });
   });
 
   it("keeps a failed source cursor retryable while appending a successful page", async () => {

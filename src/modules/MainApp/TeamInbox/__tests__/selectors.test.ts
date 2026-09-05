@@ -30,6 +30,7 @@ const mention = (
   actor: { id: "member-1", displayName: "Ada" },
   target: {
     kind: "session_comment",
+    orgId: "org-1",
     sessionId: "session-1",
     sessionTitle: "Fix canvas preview",
     commentId: "comment-1",
@@ -226,6 +227,7 @@ describe("Team Inbox selectors", () => {
   it("maps both targets to typed navigation intents", () => {
     expect(toTeamInboxNavigationIntent(mention())).toEqual({
       kind: "open_session_comment",
+      orgId: "org-1",
       sessionId: "session-1",
       commentId: "comment-1",
       threadId: "thread-1",

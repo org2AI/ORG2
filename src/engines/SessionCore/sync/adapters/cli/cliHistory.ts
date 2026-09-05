@@ -9,7 +9,6 @@ import type {
   CliSessionStatus,
 } from "@src/types/session/session";
 
-import { registerSessionTranscriptSource } from "../../nativeTranscriptReconcile";
 import type { PostLoadResult } from "../../types";
 
 const log = createLogger("CliAdapter");
@@ -53,7 +52,9 @@ export async function postLoadCliSession(
     })) as StoredSession | null;
     if (signal.aborted || !storedSession) return result;
 
-    registerSessionTranscriptSource(sessionId, storedSession.transcriptSource);
+    if (storedSession.transcriptSource) {
+      result.transcriptSource = storedSession.transcriptSource;
+    }
 
     if (typeof storedSession.totalTokens === "number") {
       result.contextTokens = storedSession.totalTokens;

@@ -210,6 +210,7 @@ function mapMentionsToItems(
     },
     target: {
       kind: "session_comment" as const,
+      orgId: activeCloudOrgId,
       sessionId: mention.session.id,
       sessionTitle: mention.session.title ?? mention.session.id,
       commentId: mention.comment.id,

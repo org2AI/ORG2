@@ -91,6 +91,13 @@ export interface ChatHistoryProps {
   groupChatViewActive?: boolean;
   onGroupChatViewToggle?: (active: boolean) => void;
   mutationActionsDisabled?: boolean;
+  /** Re-admit a failed canonical Agent intent through its canonical queue. */
+  onFailedUserIntentRetry?: (input: {
+    displayText: string;
+    agentContent?: string;
+    imageDataUrls?: string[];
+    turnIntentId?: string;
+  }) => Promise<boolean>;
   /**
    * Session-scoped source for the planning footer. Session-scoped surfaces
    * should set `isLive` to false while showing a replay slice.

@@ -1308,6 +1308,142 @@ describe("createCliEventHandler ingestion boundary", () => {
       });
     });
 
+    it("keeps visible assistant partial text but fences an unresolved tool on cancel", async () => {
+      handler.handleEvent(
+        activityEvent(
+          makeChunk({
+            chunk_id: "partial-answer",
+            action_type: "assistant_delta",
+            result: { content: "I inspected the router.", is_delta: true },
+          })
+        )
+      );
+      handler.handleEvent(
+        activityEvent(
+          makeChunk({
+            chunk_id: "pending-tool",
+            action_type: "tool_call_delta",
+            function: "read_file",
+            result: {
+              tool_call_id: "call-pending",
+              tool_name: "read_file",
+              arguments_delta: '{"path":"src/router.ts"}',
+            },
+          })
+        )
+      );
+      await flush();
+
+      handler.handleEvent({
+        type: "code_session.status_changed",
+        session_id: SESSION_ID,
+        status: "cancelled",
+      });
+      await flush();
+
+      expect(
+        eventsFor().find((event) => event.id === "partial-answer") ??
+          eventsFor().find((event) =>
+            String(event.id).startsWith("stream-msg-ts-")
+          )
+      ).toMatchObject({
+        displayText: "I inspected the router.",
+        displayStatus: "completed",
+        isDelta: false,
+        result: { status: "completed" },
+      });
+      expect(
+        eventsFor().find((event) => event.id === "tool-call-call-pending")
+      ).toMatchObject({
+        displayStatus: "completed",
+        isDelta: false,
+        result: { status: "pending", interrupted: true },
+      });
+      expect(callbacks.agentCompletes).toBe(1);
+    });
+
+    it("closes interrupted tool output as a portable error result", async () => {
+      await store.api.upsert(
+        {
+          id: "partial-tool-output",
+          chunk_id: "partial-tool-output",
+          sessionId: SESSION_ID,
+          createdAt: "2026-08-01T00:00:00.000Z",
+          functionName: "run_command_line",
+          uiCanonical: "run_command_line",
+          actionType: "tool_call",
+          args: { command: "pnpm test" },
+          callId: "call-partial-output",
+          result: {
+            status: "running",
+            output: "Tests 12 passed\n",
+            observation: "Tests 12 passed\n",
+          },
+          source: "assistant",
+          displayText: "Tests 12 passed\n",
+          displayStatus: "running",
+          displayVariant: "tool_call",
+          activityStatus: "agent",
+        },
+        SESSION_ID
+      );
+
+      handler.handleEvent({
+        type: "code_session.status_changed",
+        session_id: SESSION_ID,
+        status: "cancelled",
+      });
+      await flush();
+
+      expect(
+        eventsFor().find((event) => event.id === "partial-tool-output")
+      ).toMatchObject({
+        displayStatus: "completed",
+        isDelta: false,
+        result: {
+          status: "interrupted",
+          interrupted: true,
+          output: "Tests 12 passed\n",
+        },
+      });
+    });
+
+    it("does not expose the terminal runtime state before partial rows close", async () => {
+      await store.api.upsert(
+        {
+          id: "slow-partial",
+          sessionId: SESSION_ID,
+          displayStatus: "running",
+          result: { status: "running" },
+          source: "assistant",
+        },
+        SESSION_ID
+      );
+      let releaseBarrier: (() => void) | undefined;
+      const barrier = new Promise<void>((resolve) => {
+        releaseBarrier = resolve;
+      });
+      store.api.upsert.mockImplementationOnce(async () => {
+        await barrier;
+      });
+
+      handler.handleEvent({
+        type: "code_session.status_changed",
+        session_id: SESSION_ID,
+        status: "cancelled",
+      });
+      await vi.waitFor(() => expect(store.api.upsert).toHaveBeenCalledTimes(2));
+
+      expect(getInstrumentedStore().get(sessionRuntimeStatusAtom)).toBe("idle");
+      releaseBarrier?.();
+      await flush();
+
+      expect(getInstrumentedStore().get(sessionRuntimeStatusAtom)).toBe(
+        "cancelled"
+      );
+      expect(callbacks.agentCompletes).toBe(1);
+    });
+
     it("force-closes still-running events when the session ends", async () => {
       await store.api.upsert(
         {

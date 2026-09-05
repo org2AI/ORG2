@@ -58,10 +58,12 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
   onClose,
   advancedConfig,
   onConfigChange,
+  agentNameOverride,
   dispatchCategoryOverride,
   cliAgentTypeOverride,
 }) => {
-  const agentName = useAtomValue(agentNameAtom);
+  const creatorAgentName = useAtomValue(agentNameAtom);
+  const agentName = agentNameOverride ?? creatorAgentName;
   const setDefaultSpotlightOpen = useSetAtom(spotlightOpenAtom);
   const [keyFirst, setKeyFirst] = useAtom(spotlightModelKeyFirstAtom);
 

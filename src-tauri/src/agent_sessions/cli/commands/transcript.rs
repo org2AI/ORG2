@@ -20,21 +20,47 @@ fn load_native_transcript_chunks(session: &CodeSession) -> Option<Vec<ActivityCh
         .as_deref()
         .and_then(key_vault::key_store::ModelType::from_str)?;
     let binding = native_transcript::native_transcript_binding(&agent)?;
-    // Walk the binding ledger newest→oldest instead of trusting only the
-    // newest id: an aborted follow-up can bind a fork whose file the killed
-    // CLI never flushed, and replaying "nothing" would blank turns that a
-    // superseded fork still holds.
-    let mut candidate_ids =
-        persistence::native_transcript_ids_newest_first(&session.session_id, binding.source)
-            .unwrap_or_default();
-    if let Some(cli_session_id) = session.cli_session_id.clone() {
-        if !candidate_ids.contains(&cli_session_id) {
-            candidate_ids.push(cli_session_id);
-        }
-    }
+    // UI replay and provider resume must use the same account-scoped native
+    // UUID. The historical ledger is source-wide and may contain another
+    // account's newest UUID after A→B→A; consulting it here would render B's
+    // transcript while the next send resumes A. Until the ledger itself is
+    // profile-scoped, fail closed to the exact current account mapping.
+    let account_id = session
+        .account_id
+        .as_deref()
+        .filter(|value| !value.trim().is_empty());
+    let candidate_ids =
+        persistence::get_cli_session_id_for_account(&session.session_id, account_id)
+            .ok()
+            .flatten()
+            .into_iter();
     let conn = database::db::get_connection().ok()?;
     for cli_session_id in candidate_ids {
         let imported_id = binding.imported_session_id(&cli_session_id);
+        // A managed native session already has an exact provider UUID and
+        // execution workspace. Read that authoritative file first: it is
+        // available synchronously after materialization and does not require
+        // the eventually-consistent imported-history cache (or a global
+        // provider-store scan) to have observed it yet.
+        let exact_error = match super::super::native_materializer::load_materialized_cli_transcript(
+            session,
+            &cli_session_id,
+        ) {
+            Ok(Some(mut chunks)) if !chunks.is_empty() => {
+                for chunk in &mut chunks {
+                    chunk.session_id = session.session_id.clone();
+                }
+                return Some(chunks);
+            }
+            Ok(_) => None,
+            Err(err) => Some(err),
+        };
+
+        // Fall back to discovery for legacy/provider files that moved away
+        // from the bound workspace. Only report errors after both exact and
+        // discovery readers failed, so a healthy exact transcript does not
+        // emit a misleading file-not-found warning while the cache catches up.
+        let mut discovery_failed = false;
         match orgtrack_core::sources::imported_history::load_activity_chunks_for_session(
             &conn,
             &imported_id,
@@ -47,12 +73,25 @@ fn load_native_transcript_chunks(session: &CodeSession) -> Option<Vec<ActivityCh
                 }
                 return Some(chunks);
             }
-            Ok(_) => continue,
+            Ok(_) => {}
             Err(err) => {
+                discovery_failed = true;
+                if let Some(exact_error) = exact_error.as_deref() {
+                    tracing::warn!(
+                        "[cli_agent_chunks] Native transcript load failed for {imported_id}: exact={exact_error}; discovery={err}"
+                    );
+                } else {
+                    tracing::warn!(
+                        "[cli_agent_chunks] Native transcript load failed for {imported_id}: {err}"
+                    );
+                }
+            }
+        }
+        if !discovery_failed {
+            if let Some(err) = exact_error {
                 tracing::warn!(
-                    "[cli_agent_chunks] Native transcript load failed for {imported_id}: {err}"
+                    "[cli_agent_chunks] Exact native transcript load failed for {imported_id}: {err}"
                 );
-                continue;
             }
         }
     }
@@ -195,9 +234,14 @@ pub async fn cli_agent_truncate_after_chunk(
     created_at: String,
     revert_files: Option<bool>,
 ) -> Result<i64, String> {
+    let control_lock = session_runner::session_control_lock(&session_id).await;
+    let _control_guard = control_lock.lock_owned().await;
     // Kill any running agent first to prevent it from writing new chunks
     session_runner::kill_running_agent(&session_id).await;
-
+    let _identity_guard = session_runner::session_identity_lock(&session_id)
+        .await
+        .lock_owned()
+        .await;
     // Wipe the Cursor config dir so the agent starts fresh — legacy chunk mode
     // ONLY. Under `transcript_source = 'native'` that directory IS the
     // transcript of record (hosted-key Cursor stores its chats under the

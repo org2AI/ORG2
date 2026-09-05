@@ -521,6 +521,7 @@ class EventStoreProxyImpl {
     return rpc.sessionCore.eventStore.removeSyntheticUserInputs({
       sessionId: sessionId ?? null,
       matchingContents: scope?.matchingContents,
+      matchingTurnIntentIds: scope?.matchingTurnIntentIds,
       olderThan: scope?.olderThan,
     });
   }

@@ -10,6 +10,10 @@
  */
 import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHistory";
 import { rpc } from "@src/api/tauri/rpc";
+import {
+  loadLocalCanonicalConversationSnapshot,
+  loadLocalExecutionChildrenRevision,
+} from "@src/engines/SessionCore/conversations/localConversationExecutionTail";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { processChunksRust } from "@src/engines/SessionCore/ingestion/rustBridge";
@@ -71,6 +75,7 @@ interface ImportedReplayAnchorDraft {
 interface LoadedPushEvents {
   events: SessionEvent[];
   localContentRevision?: number;
+  localExecutionRevision?: string | null;
   anchorDraft?: ImportedReplayAnchorDraft;
   precomputedEventHashes?: string[];
   precomputedLocalFrozenEventCount?: number;
@@ -100,6 +105,17 @@ function lastUserChunkIndex(chunks: readonly ActivityChunk[]): number {
 }
 
 export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
+  protected async loadLocalExecutionRevision(
+    sessionId: string
+  ): Promise<string | undefined> {
+    if (!isCliSession(sessionId)) return undefined;
+    return loadLocalExecutionChildrenRevision({
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: sessionId,
+    });
+  }
+
   private async loadFullPushEvents(
     sessionId: string
   ): Promise<LoadedPushEvents> {
@@ -172,6 +188,20 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
       }
       return { events };
     }
+    const localRoot = {
+      authority: "local-session" as const,
+      authorityScope: [],
+      conversationId: sessionId,
+    };
+    const localExecutionRevision =
+      await this.loadLocalExecutionRevision(sessionId);
+    if (localExecutionRevision && localExecutionRevision !== "[]") {
+      const snapshot = await loadLocalCanonicalConversationSnapshot(localRoot);
+      return {
+        events: snapshot.events,
+        localExecutionRevision: snapshot.childRevision,
+      };
+    }
     const revisionBefore =
       await eventStoreProxy.getPersistedEventRevision(sessionId);
     const persisted = await eventStoreProxy.getPersistedEvents(sessionId);
@@ -185,7 +215,11 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
         ? revisionAfter.revision
         : undefined;
     if (persisted.length > 0 || !isCliSession(sessionId)) {
-      return { events: persisted, localContentRevision };
+      return {
+        events: persisted,
+        localContentRevision,
+        localExecutionRevision,
+      };
     }
     // Live CLI sessions keep their transcript of record in the CLI's native
     // store (account-profile aware) and never write the events cache, so a
@@ -193,8 +227,13 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
     // and the pass then stamps the event plane clean. Load the full native
     // transcript through the same command the session-resume path uses.
     const chunks = (await rpc.cli.chunks({ sessionId })) as ActivityChunk[];
-    if (!Array.isArray(chunks) || chunks.length === 0) return { events: [] };
-    return { events: await processChunksRust(chunks, sessionId) };
+    if (!Array.isArray(chunks) || chunks.length === 0) {
+      return { events: [], localExecutionRevision };
+    }
+    return {
+      events: await processChunksRust(chunks, sessionId),
+      localExecutionRevision,
+    };
   }
 
   /** Authoritative complete loader retained for first anchor and recovery. */
@@ -472,6 +511,7 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
       mode,
       baseEventCount,
       localContentRevision: loaded.localContentRevision,
+      localExecutionRevision: loaded.localExecutionRevision,
       events,
       plan,
     };

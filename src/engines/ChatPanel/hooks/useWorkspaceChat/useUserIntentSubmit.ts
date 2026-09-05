@@ -11,21 +11,10 @@ import { useCallback, useEffect } from "react";
 
 import type { AgentExecMode } from "@src/config/sessionCreatorConfig";
 import { resolveSessionAgentExecMode } from "@src/config/sessionCreatorConfig";
-import {
-  beginOptimisticTurn,
-  failOptimisticTurn,
-} from "@src/engines/SessionCore/control/optimisticTurnStatus";
-import { publishTurnIntentDispatch } from "@src/engines/SessionCore/control/turnIntentDispatchLifecycle";
-import {
-  beginTurnDispatch,
-  getTurnPhase,
-  markTurnTerminal,
-} from "@src/engines/SessionCore/control/turnLifecycle";
-import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import { getTurnPhase } from "@src/engines/SessionCore/control/turnLifecycle";
 import { mintTurnIntentId } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
 import {
   type SessionRuntimeStatusSource,
-  closePostStopDispatchEpisodeAtom,
   isSessionActiveAtom,
   lastUserMessageAtom,
   postStopDispatchSessionsAtom,
@@ -35,7 +24,6 @@ import { sessionMapAtom } from "@src/store/session/sessionAtom";
 import {
   enqueueMessageAtom,
   messageQueueAtom,
-  queueFlushRequestAtom,
 } from "@src/store/ui/messageQueueAtom";
 import { selectionFromSession } from "@src/util/session/selectionFromSession";
 
@@ -79,7 +67,6 @@ export interface SubmitUserIntentOptions {
   source?: SessionRuntimeStatusSource;
   applyStopSubmitGuards?: boolean;
   dedupeDirectSubmit?: boolean;
-  clearUserInitiatedCancelOnQueue?: boolean;
   onQueued?: () => void;
   onBeforeDirectDispatch?: () => void;
   /** Stable caller-owned identity for observing a queued/direct dispatch. */
@@ -95,13 +82,8 @@ export function useUserIntentSubmit({
 }: UseUserIntentSubmitOptions) {
   const store = useStore();
   const isSessionActive = useAtomValue(isSessionActiveAtom);
-  const enqueueMessage = useSetAtom(enqueueMessageAtom);
-  const setQueueFlushRequest = useSetAtom(queueFlushRequestAtom);
   const setLastUserMessage = useSetAtom(lastUserMessageAtom);
-  const closePostStopDispatchEpisode = useSetAtom(
-    closePostStopDispatchEpisodeAtom
-  );
-  const { addUserMessage, dispatchMessageBySessionType } = useMessageDispatch();
+  const { dispatchMessageBySessionType } = useMessageDispatch();
 
   useEffect(() => {
     if (!isSessionActive) {
@@ -119,7 +101,6 @@ export function useUserIntentSubmit({
       source = "dispatch",
       applyStopSubmitGuards = false,
       dedupeDirectSubmit = false,
-      clearUserInitiatedCancelOnQueue = false,
       onQueued,
       onBeforeDirectDispatch,
       turnIntentId: providedTurnIntentId,
@@ -194,7 +175,7 @@ export function useUserIntentSubmit({
           session?.agentExecMode
         );
 
-        const queueResult = enqueueMessage({
+        const queueResult = store.set(enqueueMessageAtom, {
           id: `queued-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           turnIntentId,
           sessionId,
@@ -214,15 +195,6 @@ export function useUserIntentSubmit({
               : "Message queue is full; send or remove a queued message first"
           );
         }
-        if (clearUserInitiatedCancelOnQueue && explicitPostStopSubmit) {
-          closePostStopDispatchEpisode(sessionId);
-        }
-        if (explicitPostStopSubmit) {
-          setQueueFlushRequest((requestId) => requestId + 1);
-        }
-        if (!explicitPostStopSubmit) {
-          beginOptimisticTurn(sessionId, "queue");
-        }
         onQueued?.();
         return;
       }
@@ -232,71 +204,33 @@ export function useUserIntentSubmit({
         displayContent,
         imageDataUrls: restoreImageDataUrls,
       });
-      const dispatchGeneration = beginTurnDispatch(sessionId);
-      publishTurnIntentDispatch(turnIntentId, {
-        sessionId,
-        generation: dispatchGeneration,
-      });
-      beginOptimisticTurn(sessionId, source);
       if (dedupeDirectSubmit) {
         sharedSubmitGuard.current = true;
         sharedSubmitPayload.current = submitPayloadKey;
       }
 
-      let userEventId: string | null = null;
-      let dispatchStarted = false;
       try {
-        onBeforeDirectDispatch?.();
-        userEventId = await addUserMessage(
-          sessionId,
-          displayContent,
-          imageDataUrls,
-          turnIntentId
-        );
         const displayTextForDispatch =
           contentForAgent !== displayContent ? displayContent : undefined;
-        dispatchStarted = true;
-        await dispatchMessageBySessionType(
+        await dispatchMessageBySessionType({
           sessionId,
-          contentForAgent,
+          content: contentForAgent,
+          visibleText: displayContent,
           imageDataUrls,
-          undefined,
-          displayTextForDispatch,
-          `direct:${sessionId}:${stableSubmitHash(submitPayloadKey)}`,
+          displayText: displayTextForDispatch,
+          clientMessageId: `direct:${sessionId}:${stableSubmitHash(submitPayloadKey)}`,
           turnIntentId,
-          dispatchGeneration
-        );
+          runtimeStatusSource: source,
+          beforeAppend: onBeforeDirectDispatch,
+        });
       } catch (error) {
         if (dedupeDirectSubmit) {
           sharedSubmitGuard.current = false;
           sharedSubmitPayload.current = null;
         }
-        if (!dispatchStarted) {
-          failOptimisticTurn(sessionId, source);
-          markTurnTerminal(sessionId, "failed", {
-            generation: dispatchGeneration,
-          });
-        }
-        if (userEventId) {
-          try {
-            await eventStoreProxy.removeByIdPrefix(userEventId, sessionId);
-          } catch {
-            // Preserve the original dispatch error. A failed cleanup must not
-            // turn an already-failed submit into a misleading success.
-          }
-        }
         throw error;
       }
     },
-    [
-      addUserMessage,
-      closePostStopDispatchEpisode,
-      dispatchMessageBySessionType,
-      enqueueMessage,
-      getSessionId,
-      setLastUserMessage,
-      setQueueFlushRequest,
-      store,
-    ]
+    [dispatchMessageBySessionType, getSessionId, setLastUserMessage, store]
   );
 }

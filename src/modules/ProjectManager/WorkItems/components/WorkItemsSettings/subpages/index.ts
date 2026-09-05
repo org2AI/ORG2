@@ -9,3 +9,5 @@ export { default as LabelsSection } from "./LabelsSection";
 export type { LabelsSectionProps } from "./LabelsSection";
 
 export { default as SyncSection } from "./SyncSection";
+export type { SyncSectionProps } from "./SyncSection";
+export { default as StatusesSection } from "./StatusesSection";

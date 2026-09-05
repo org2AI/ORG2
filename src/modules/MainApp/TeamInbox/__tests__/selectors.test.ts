@@ -17,6 +17,7 @@ import type {
   AssignedWorkItem,
   CommentMentionItem,
   TeamInboxItem,
+  WorkItemUpdateItem,
 } from "../domain/types";
 
 const mention = (
@@ -68,6 +69,31 @@ const assignment = (
   ...overrides,
 });
 
+const update = (
+  overrides: Partial<WorkItemUpdateItem> = {}
+): WorkItemUpdateItem => ({
+  id: "event-1",
+  kind: "work_item_run_failed",
+  occurredAt: "2026-07-23T11:00:00.000Z",
+  readAt: null,
+  actor: { id: "system", displayName: "" },
+  target: {
+    kind: "work_item",
+    projectId: "project-1",
+    workItemId: "work-item-1",
+  },
+  payload: {
+    title: "Add Team Inbox",
+    eventKind: "run_failed",
+    status: "in_progress",
+    priority: "high",
+    recipientMemberId: "member-2",
+    summary: "Provider disconnected",
+    updatedAt: "2026-07-23T11:00:00.000Z",
+  },
+  ...overrides,
+});
+
 describe("Team Inbox selectors", () => {
   it("builds identity from kind and canonical id", () => {
     expect(getTeamInboxItemKey(mention())).toBe("comment_mention:comment-1");
@@ -108,10 +134,12 @@ describe("Team Inbox selectors", () => {
   });
 
   it("filters mentions and assignments without mutating the input", () => {
-    const items = [mention(), assignment()];
+    const items = [mention(), assignment(), update()];
 
     expect(filterTeamInboxItems(items, "mentions")).toEqual([items[0]]);
     expect(filterTeamInboxItems(items, "assigned")).toEqual([items[1]]);
+    expect(filterTeamInboxItems(items, "all")).toEqual(items);
+    expect(filterTeamInboxItems(items, "archived")).toEqual(items);
     expect(filterTeamInboxItems(items, "all")).not.toBe(items);
   });
 
@@ -175,8 +203,9 @@ describe("Team Inbox selectors", () => {
         mention(),
         assignment(),
         unreadAssignment,
+        update(),
       ])
-    ).toEqual({ all: 2, mentions: 1, assigned: 1 });
+    ).toEqual({ all: 3, mentions: 1, assigned: 1 });
   });
 
   it("returns zeroed counts for an empty inbox", () => {
@@ -191,6 +220,7 @@ describe("Team Inbox selectors", () => {
     expect(filterItemKind("all")).toBeNull();
     expect(filterItemKind("mentions")).toBe("comment_mention");
     expect(filterItemKind("assigned")).toBe("assigned_work_item");
+    expect(filterItemKind("archived")).toBeNull();
   });
 
   it("maps both targets to typed navigation intents", () => {

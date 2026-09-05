@@ -25,7 +25,10 @@ export {
   useProjectDataChangedListener,
   useProjectDataChanged,
   projectDataChangedSignalAtom,
+  projectRosterChangedSignalAtom,
   type ProjectDataChange,
 } from "./useProjectDataChanged";
 
 export { useAllRepoProjects } from "./useAllRepoProjects";
+
+export { useProjectCachedResource } from "./useProjectCachedResource";

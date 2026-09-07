@@ -48,7 +48,6 @@ import { getViewportSize } from "@src/util/ui/window/viewport";
 
 import { ICONS } from "../../config";
 import {
-  EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD,
   type WorkspaceSwitchEntry,
   useExternalRecentPaths,
   useSharedRepoList,
@@ -309,7 +308,7 @@ export const WorkingDirectoryDropdown: React.FC<
   );
 
   const { recentPathRepos: externalRecentRepos } = useExternalRecentPaths({
-    enabled: isOpen && repos.length <= EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD,
+    enabled: isOpen,
     existingRepoPaths,
     searchQuery,
   });

@@ -16,6 +16,8 @@ import { REPO_KIND } from "@src/store/repo";
 
 import { WorkingDirectoryDropdown } from "./WorkingDirectoryDropdown";
 
+const discovery = vi.hoisted(() => ({ enabled: vi.fn() }));
+
 const EXTERNAL_RECENT_PATH = "/Users/tester/Documents/GitHub/business-plan";
 
 vi.mock("react-i18next", () => ({
@@ -27,24 +29,30 @@ vi.mock("@src/api/tauri/repo", () => ({
 }));
 
 vi.mock("@src/scaffold/GlobalSpotlight/hooks", () => ({
-  EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD: 5,
   useSharedRepoList: () => ({
-    repos: [],
+    repos: Array.from({ length: 10 }, (_, index) => ({
+      id: `saved-${index}`,
+      name: `Saved ${index}`,
+      fs_uri: `/saved/${index}`,
+    })),
     filteredRepos: [],
     repoLoading: false,
     refreshReposForce: vi.fn(),
   }),
-  useExternalRecentPaths: () => ({
-    recentPathRepos: [
-      {
-        id: `external-recent:${EXTERNAL_RECENT_PATH}`,
-        name: "business-plan",
-        description: EXTERNAL_RECENT_PATH,
-        fs_uri: EXTERNAL_RECENT_PATH,
-        kind: REPO_KIND.FOLDER,
-      },
-    ],
-  }),
+  useExternalRecentPaths: (options: { enabled: boolean }) => {
+    discovery.enabled(options.enabled);
+    return {
+      recentPathRepos: [
+        {
+          id: `external-recent:${EXTERNAL_RECENT_PATH}`,
+          name: "business-plan",
+          description: EXTERNAL_RECENT_PATH,
+          fs_uri: EXTERNAL_RECENT_PATH,
+          kind: REPO_KIND.FOLDER,
+        },
+      ],
+    };
+  },
   useWorkspaceSwitch: () => ({
     workspaces: [],
     activateWorkspace: vi.fn(),
@@ -120,6 +128,13 @@ describe("WorkingDirectoryDropdown rows", () => {
 
   afterAll(() => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
+  });
+
+  it("loads external apps even with more than five saved repositories", () => {
+    discovery.enabled.mockClear();
+    renderDropdown();
+    expect(discovery.enabled).toHaveBeenLastCalledWith(true);
+    expect(externalRecentRow()).not.toBeNull();
   });
 
   it("keeps the path off the row instead of rendering it as a second line", () => {

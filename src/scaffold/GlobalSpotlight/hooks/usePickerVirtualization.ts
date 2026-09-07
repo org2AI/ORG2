@@ -1,7 +1,25 @@
-import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  type Range,
+  defaultRangeExtractor,
+  useVirtualizer,
+} from "@tanstack/react-virtual";
 import { useCallback, useLayoutEffect, useRef } from "react";
 
+const NO_STICKY_INDICES: number[] = [];
+
+export function findStickyIndex(indices: number[], startIndex: number): number {
+  let low = 0;
+  let high = indices.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (indices[mid] <= startIndex) low = mid + 1;
+    else high = mid;
+  }
+  return indices[low - 1] ?? -1;
+}
+
 interface Options {
+  stickyIndices?: number[];
   count: number;
   getItemKey: (index: number) => string | number;
   estimateSize: (index: number) => number;
@@ -18,6 +36,7 @@ interface Options {
 
 /** One scrolling owner for branch/PR rows in both picker presentations. */
 export function usePickerVirtualization({
+  stickyIndices = NO_STICKY_INDICES,
   count,
   getItemKey,
   estimateSize,
@@ -32,6 +51,16 @@ export function usePickerVirtualization({
   onLoadMore,
 }: Options) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const rangeExtractor = useCallback(
+    (range: Range) => {
+      const indices = defaultRangeExtractor(range);
+      const stickyIndex = findStickyIndex(stickyIndices, range.startIndex);
+      return stickyIndex >= 0 && stickyIndex < indices[0]
+        ? [stickyIndex, ...indices]
+        : indices;
+    },
+    [stickyIndices]
+  );
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack's imperative instance stays inside this hook; consumers receive a rendered snapshot.
   const virtualizer = useVirtualizer({
     count,
@@ -39,6 +68,7 @@ export function usePickerVirtualization({
     estimateSize,
     getScrollElement: () => containerRef.current,
     overscan: 5,
+    rangeExtractor,
     enabled: enabled && count > 0,
     initialRect: { width: 0, height: containerHeight },
     gap,
@@ -78,9 +108,15 @@ export function usePickerVirtualization({
     [onScrollExternal, onLoadMore]
   );
 
+  const rows = virtualizer.getVirtualItems();
+
   return {
     containerRef,
-    rows: virtualizer.getVirtualItems(),
+    stickyIndex: findStickyIndex(
+      stickyIndices,
+      virtualizer.range?.startIndex ?? 0
+    ),
+    rows,
     totalSize: virtualizer.getTotalSize(),
     measureElement: virtualizer.measureElement,
     handleScroll,

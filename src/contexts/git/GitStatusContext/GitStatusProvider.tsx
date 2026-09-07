@@ -28,7 +28,6 @@ import React, {
   useState,
 } from "react";
 
-import { setGitOperationAtom } from "@src/store/git";
 import {
   repoMapAtom,
   selectedRepoAtom,
@@ -74,9 +73,6 @@ export const GitStatusProvider: React.FC<{ children: React.ReactNode }> = ({
   const setGitStatusAtom = useSetAtom(gitStatusAtom);
   const setScopedGitStatusAtom = useSetAtom(scopedGitStatusAtom);
   const setGitSuggestedActionAtom = useSetAtom(gitSuggestedActionAtom);
-
-  // Git operation broadcasting (for Output panel)
-  const setGitOperation = useSetAtom(setGitOperationAtom);
 
   // Check if repos are loaded OR we have cached repo data
   const reposLoaded = repoMap.size > 0 || !!currentRepo;
@@ -229,7 +225,6 @@ export const GitStatusProvider: React.FC<{ children: React.ReactNode }> = ({
     setGitSuggestedAction,
     setGitStatusAtom,
     setGitSuggestedActionAtom,
-    setGitOperation,
   });
 
   // ============================================

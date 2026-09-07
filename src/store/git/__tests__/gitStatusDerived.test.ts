@@ -5,8 +5,6 @@
  *   • gitFileStatusMapAtom  — file path → { status, staged }
  *   • gitFolderStatusMapAtom — folder path → aggregate status
  *   • STATUS_PRIORITY ordering
- *   • gitFetchOriginVisibleAtom
- *   • hasGitSuggestionsAtom
  *
  * The existing gitStatusAtom.test.ts covers cache staleness and pruning;
  * this file extends coverage to the derived tree-decoration atoms.
@@ -21,8 +19,6 @@ import type {
 
 import {
   STATUS_PRIORITY,
-  gitFetchOriginStateAtom,
-  gitFetchOriginVisibleAtom,
   gitFileStatusMapAtom,
   workspaceFileStatusMapAtom,
   workspaceGitStatusMapAtom,
@@ -90,32 +86,6 @@ describe("gitFileStatusMapAtom", () => {
     );
     const map = store.get(workspaceFileStatusMapAtom);
     expect(map.has("/repo/src/index.ts")).toBe(true);
-  });
-});
-
-describe("gitFetchOriginVisibleAtom", () => {
-  it("is false in idle state", () => {
-    const store = createStore();
-    expect(store.get(gitFetchOriginVisibleAtom)).toBe(false);
-  });
-
-  it("is true when fetching", () => {
-    const store = createStore();
-    store.set(gitFetchOriginStateAtom, { status: "fetching", repoId: "r1" });
-    expect(store.get(gitFetchOriginVisibleAtom)).toBe(true);
-  });
-
-  it("is true when up-to-date", () => {
-    const store = createStore();
-    store.set(gitFetchOriginStateAtom, { status: "up-to-date", repoId: "r1" });
-    expect(store.get(gitFetchOriginVisibleAtom)).toBe(true);
-  });
-
-  it("is false when reset to idle", () => {
-    const store = createStore();
-    store.set(gitFetchOriginStateAtom, { status: "fetching", repoId: "r1" });
-    store.set(gitFetchOriginStateAtom, { status: "idle", repoId: null });
-    expect(store.get(gitFetchOriginVisibleAtom)).toBe(false);
   });
 });
 

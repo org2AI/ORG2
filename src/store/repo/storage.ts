@@ -133,12 +133,7 @@ export function resetRepoStore(): void {
     store.set(atoms.branchesAtom, []);
     store.set(atoms.repoLoadingAtom, false);
     store.set(atoms.branchLoadingAtom, false);
-    store.set(atoms.repoErrorAtom, null);
-    store.set(atoms.repoLastLoadedAtom, null);
     store.set(atoms.repoFilterAtom, "");
-    // Reset freshness tracking
-    store.set(atoms.repoLastCheckAtom, null);
-    store.set(atoms.repoIsFreshAtom, false);
 
     // Note: globalSelectedRepoIdAtom and globalSelectedBranchAtom in globalSelectorAtom.ts
     // are just re-exports of selectedRepoIdAtom and selectedBranchAtom, so they're

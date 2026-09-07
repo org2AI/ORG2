@@ -61,14 +61,10 @@ export {
   branchesAtom,
   branchCacheAtom,
   branchLoadingRepoIdsAtom,
-  // Loading & error states
+  // Loading states
   repoLoadingAtom,
   branchLoadingAtom,
-  repoErrorAtom,
-  repoLastLoadedAtom,
-  // Freshness tracking
-  repoLastCheckAtom,
-  repoIsFreshAtom,
+  // Search
   repoFilterAtom,
 } from "./atoms";
 
@@ -81,21 +77,10 @@ export {
   repoMapAtom,
   selectedRepoAtom,
   selectedRepoPathAtom,
-  currentRepoIsGitAtom,
-  isValidRepoIdAtom,
   // Filtered & search
   filteredReposAtom,
-  branchOptionsAtom,
-  // Stats
-  isSelectedRepoValidAtom,
-  reposByTypeAtom,
-  repoTotalStatsAtom,
-  repoAgeSecondsAtom,
   // Session repo hint
   sessionRepoHintAtom,
-  // Kind-based filtering
-  gitReposAtom,
-  workFoldersAtom,
 } from "./derived";
 
 // ============================================

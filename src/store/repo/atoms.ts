@@ -159,7 +159,7 @@ export const branchLoadingRepoIdsAtom = atom<Set<string>>(new Set<string>());
 branchLoadingRepoIdsAtom.debugLabel = "branchLoadingRepoIdsAtom";
 
 // ============================================
-// Loading & Error States
+// Loading & Search States
 // ============================================
 
 /** Repo loading state */
@@ -169,26 +169,6 @@ repoLoadingAtom.debugLabel = "repoLoadingAtom";
 /** Branch loading state */
 export const branchLoadingAtom = atom<boolean>(false);
 branchLoadingAtom.debugLabel = "branchLoadingAtom";
-
-/** Error state */
-export const repoErrorAtom = atom<string | null>(null);
-repoErrorAtom.debugLabel = "repoErrorAtom";
-
-/** Last loaded timestamp (for cache invalidation) */
-export const repoLastLoadedAtom = atom<number | null>(null);
-repoLastLoadedAtom.debugLabel = "repoLastLoadedAtom";
-
-// ============================================
-// Freshness Tracking
-// ============================================
-
-/** Last check timestamp */
-export const repoLastCheckAtom = atom<Date | null>(null);
-repoLastCheckAtom.debugLabel = "repoLastCheckAtom";
-
-/** Whether repos are fresh */
-export const repoIsFreshAtom = atom<boolean>(false);
-repoIsFreshAtom.debugLabel = "repoIsFreshAtom";
 
 /** Filter string for repo search */
 export const repoFilterAtom = atom<string>("");

@@ -5,5 +5,4 @@
  */
 
 export * from "./gitStatusAtom";
-export * from "./gitOperationAtom";
 export * from "./prStatusAtom";

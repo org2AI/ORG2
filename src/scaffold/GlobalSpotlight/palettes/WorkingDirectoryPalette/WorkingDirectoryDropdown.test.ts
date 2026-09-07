@@ -116,6 +116,7 @@ describe("WorkingDirectoryDropdown rows", () => {
     act(() => root.unmount());
     container.remove();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   afterAll(() => {
@@ -131,27 +132,34 @@ describe("WorkingDirectoryDropdown rows", () => {
     expect(row?.textContent).not.toContain(EXTERNAL_RECENT_PATH);
   });
 
-  it("reveals the path in a tooltip while the row is hovered", () => {
+  it("reveals the path in a detail pane while the row is hovered", () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      }
+    );
     renderDropdown();
 
     const row = externalRecentRow();
-    expect(document.querySelector(".native-tooltip")).toBeNull();
+    expect(document.querySelector("[data-spotlight-detail-pane]")).toBeNull();
 
     act(() => {
       row?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
       vi.advanceTimersByTime(500);
     });
 
-    expect(document.querySelector(".native-tooltip")?.textContent).toBe(
-      EXTERNAL_RECENT_PATH
-    );
+    expect(
+      document.querySelector("[data-spotlight-detail-pane]")?.textContent
+    ).toContain(EXTERNAL_RECENT_PATH);
 
     act(() => {
       row?.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
       vi.advanceTimersByTime(500);
     });
 
-    expect(document.querySelector(".native-tooltip")).toBeNull();
+    expect(document.querySelector("[data-spotlight-detail-pane]")).toBeNull();
   });
 
   it("marks the panel as a menu so side tooltips clear its border", () => {

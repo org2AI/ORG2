@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
+import { getSidePanePlacement } from "./sidePanePlacement";
 import {
   allocateInstanceId,
   cancelPendingClose,
@@ -20,7 +21,10 @@ import {
   useHoverCardState,
 } from "./singletonStore";
 
-export type HoverCardPosition = "bottom-start" | "right-start";
+export type HoverCardPosition =
+  | "bottom-start"
+  | "right-start"
+  | "right-or-bottom";
 
 const DEFAULT_MOUSE_ENTER_DELAY_MS = 500;
 const DEFAULT_MOUSE_LEAVE_DELAY_MS = 100;
@@ -30,6 +34,10 @@ const TRIGGER_GAP_PX = 8;
 const CARD_LEAVE_DELAY_MS = 80;
 
 interface HoverCardBaseProps {
+  panelClassName?: string;
+  /** Optional enclosing panel to clear when placing a secondary pane. */
+  anchorSelector?: string;
+  zIndex?: number;
   cardId?: string | null;
   children: React.ReactElement;
   position?: HoverCardPosition;
@@ -48,6 +56,9 @@ interface HoverCardTriggerProps {
 }
 
 interface HoverCardPortalProps {
+  anchorSelector?: string;
+  panelClassName?: string;
+  zIndex?: number;
   instanceId: number;
   cardId: string;
   position: HoverCardPosition;
@@ -72,6 +83,8 @@ type ElementProps = {
   onMouseEnter?: (event: React.MouseEvent) => void;
   onMouseLeave?: (event: React.MouseEvent) => void;
   onClick?: (event: React.MouseEvent) => void;
+  onFocus?: (event: React.FocusEvent) => void;
+  onBlur?: (event: React.FocusEvent) => void;
   [key: string]: unknown;
 };
 
@@ -91,12 +104,24 @@ function computePortalStyle(
   rect: DOMRect,
   position: HoverCardPosition,
   cardWidth: number,
-  cardHeight: number
+  cardHeight: number,
+  viewport = getViewportSize(),
+  panelRect = rect
 ): React.CSSProperties {
   let top = 0;
   let left = 0;
 
-  const viewport = getViewportSize();
+  if (position === "right-or-bottom") {
+    return {
+      position: "fixed",
+      ...getSidePanePlacement(
+        rect,
+        { width: cardWidth, height: cardHeight },
+        viewport,
+        panelRect
+      ),
+    };
+  }
 
   if (position === "right-start") {
     top = rect.top;
@@ -153,7 +178,6 @@ const HoverCardTrigger: React.FC<HoverCardTriggerProps> = ({
   useEffect(() => {
     return () => {
       clearEnterTimer();
-      cancelPendingClose();
       scheduleClose(instanceId, 0);
     };
   }, [clearEnterTimer, instanceId]);
@@ -165,8 +189,19 @@ const HoverCardTrigger: React.FC<HoverCardTriggerProps> = ({
     const run = () => {
       enterTimerRef.current = null;
       const current = triggerRef.current;
-      if (!current) return;
-      openCard(instanceId, cardId, current.getBoundingClientRect(), position);
+      if (
+        !current ||
+        (position === "right-or-bottom" &&
+          document.visibilityState === "hidden")
+      )
+        return;
+      openCard(
+        instanceId,
+        cardId,
+        current.getBoundingClientRect(),
+        position,
+        current
+      );
     };
     if (mouseEnterDelay <= 0) {
       run();
@@ -203,6 +238,14 @@ const HoverCardTrigger: React.FC<HoverCardTriggerProps> = ({
       handleLeave();
       originalProps.onMouseLeave?.(event);
     },
+    onFocus: (event: React.FocusEvent) => {
+      if (position === "right-or-bottom") openWithDelay();
+      originalProps.onFocus?.(event);
+    },
+    onBlur: (event: React.FocusEvent) => {
+      if (position === "right-or-bottom") handleLeave();
+      originalProps.onBlur?.(event);
+    },
     onClick: (event: React.MouseEvent) => {
       clearEnterTimer();
       dismissHoverCard();
@@ -212,6 +255,9 @@ const HoverCardTrigger: React.FC<HoverCardTriggerProps> = ({
 };
 
 const HoverCardPortal: React.FC<HoverCardPortalProps> = ({
+  anchorSelector,
+  panelClassName,
+  zIndex = 1000,
   instanceId,
   cardId,
   position,
@@ -219,13 +265,29 @@ const HoverCardPortal: React.FC<HoverCardPortalProps> = ({
 }) => {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [cardSize, setCardSize] = useState({ width: 0, height: 0 });
-  const { triggerRect } = useHoverCardState();
+  const { triggerRect, anchorElement } = useHoverCardState();
+  const [geometry, setGeometry] = useState(() => ({
+    anchorRect: triggerRect,
+    panelRect: triggerRect,
+    viewport: getViewportSize(),
+  }));
 
   useLayoutEffect(() => {
     const node = cardRef.current;
     if (!node) return;
 
+    const panelElement = anchorSelector
+      ? anchorElement?.closest<HTMLElement>(anchorSelector)
+      : null;
     const updateCardSize = () => {
+      if (position === "right-or-bottom" && anchorElement) {
+        // Viewport changes can alter placement even when the anchor is unchanged.
+        setGeometry({
+          anchorRect: anchorElement.getBoundingClientRect(),
+          panelRect: (panelElement ?? anchorElement).getBoundingClientRect(),
+          viewport: getViewportSize(),
+        });
+      }
       const rect = node.getBoundingClientRect();
       setCardSize((current) =>
         current.width === rect.width && current.height === rect.height
@@ -237,23 +299,60 @@ const HoverCardPortal: React.FC<HoverCardPortalProps> = ({
     updateCardSize();
     const observer = new ResizeObserver(updateCardSize);
     observer.observe(node);
-    return () => observer.disconnect();
-  }, [cardId]);
+    if (position === "right-or-bottom" && anchorElement) {
+      observer.observe(anchorElement);
+      if (panelElement && panelElement !== anchorElement)
+        observer.observe(panelElement);
+      window.addEventListener("resize", updateCardSize);
+    }
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateCardSize);
+    };
+  }, [anchorElement, anchorSelector, cardId, position]);
+
+  useEffect(() => {
+    if (position !== "right-or-bottom") return;
+    const dismiss = () => dismissHoverCard();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismiss();
+    };
+    const onScroll = (event: Event) => {
+      if (
+        !(event.target instanceof Node) ||
+        !cardRef.current?.contains(event.target)
+      )
+        dismiss();
+    };
+    window.addEventListener("scroll", onScroll, true);
+    document.addEventListener("visibilitychange", dismiss);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("visibilitychange", dismiss);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [position]);
 
   if (!triggerRect) return null;
 
   const style = computePortalStyle(
-    triggerRect,
+    position === "right-or-bottom"
+      ? (geometry.anchorRect ?? triggerRect)
+      : triggerRect,
     position,
     cardSize.width,
-    cardSize.height
+    cardSize.height,
+    position === "right-or-bottom" ? geometry.viewport : undefined,
+    geometry.panelRect ?? triggerRect
   );
 
   return createPortal(
     <div
       ref={cardRef}
       data-hover-card="true"
-      style={style}
+      className={panelClassName}
+      style={{ ...style, zIndex }}
       onMouseEnter={cancelPendingClose}
       onMouseLeave={() => scheduleClose(instanceId, CARD_LEAVE_DELAY_MS)}
     >
@@ -302,6 +401,9 @@ export const HoverCardRow: React.FC<HoverCardRowProps> = ({
 );
 
 const HoverCardBase: React.FC<HoverCardBaseProps> = ({
+  panelClassName,
+  anchorSelector,
+  zIndex,
   cardId,
   children,
   position = DEFAULT_POSITION,
@@ -329,6 +431,9 @@ const HoverCardBase: React.FC<HoverCardBaseProps> = ({
       </HoverCardTrigger>
       {isActiveOwner && (
         <HoverCardPortal
+          anchorSelector={anchorSelector}
+          panelClassName={panelClassName}
+          zIndex={zIndex}
           instanceId={instanceId}
           cardId={cardId}
           position={position}

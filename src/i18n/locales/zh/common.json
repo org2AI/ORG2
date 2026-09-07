@@ -1545,8 +1545,9 @@
         "systemPaths": "系统路径",
         "usedElsewhere": "在其他应用中使用",
         "workspace": "工作目录",
-        "thisOrg": "此工作目录",
-        "outsideOrg": "此工作目录之外"
+        "thisOrg": "此组织",
+        "outsideOrg": "此组织之外",
+        "outsideNamedOrg": "{{org}}之外"
       },
       "tabs": {},
       "addOptions": {

@@ -1591,8 +1591,9 @@
         "systemPaths": "System Paths",
         "usedElsewhere": "Used in other apps",
         "workspace": "Working Directory",
-        "thisOrg": "This working directory",
-        "outsideOrg": "Outside this working directory"
+        "thisOrg": "This organization",
+        "outsideOrg": "Outside this organization",
+        "outsideNamedOrg": "Outside {{org}}"
       },
       "tabs": {},
       "addOptions": {

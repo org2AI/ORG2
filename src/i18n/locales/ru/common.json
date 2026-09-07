@@ -1644,8 +1644,9 @@
         "systemPaths": "Системные пути",
         "usedElsewhere": "Используется в других приложениях",
         "workspace": "Рабочий каталог",
-        "thisOrg": "Этот рабочий каталог",
-        "outsideOrg": "За пределами этого рабочего каталога"
+        "thisOrg": "Эта организация",
+        "outsideOrg": "Вне этой организации",
+        "outsideNamedOrg": "Вне {{org}}"
       },
       "tabs": {},
       "addOptions": {

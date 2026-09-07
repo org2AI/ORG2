@@ -41,6 +41,8 @@ export interface WorkingDirectoryPaletteProps extends BasePaletteProps {
     repo_url?: string | null;
     fs_uri?: string | null;
   }) => boolean;
+  /** Display name for the organization represented by `repoFilter`. */
+  orgScopeName?: string;
 }
 
 export interface WorkingDirectoryPaletteText {

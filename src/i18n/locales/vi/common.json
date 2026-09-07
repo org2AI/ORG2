@@ -1625,8 +1625,9 @@
         "systemPaths": "Đường dẫn hệ thống",
         "usedElsewhere": "Được dùng trong các ứng dụng khác",
         "workspace": "Thư mục làm việc",
-        "thisOrg": "Thư mục làm việc này",
-        "outsideOrg": "Ngoài thư mục làm việc này"
+        "thisOrg": "Tổ chức này",
+        "outsideOrg": "Bên ngoài tổ chức này",
+        "outsideNamedOrg": "Bên ngoài {{org}}"
       },
       "tabs": {},
       "addOptions": {

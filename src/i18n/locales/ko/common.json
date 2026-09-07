@@ -1625,8 +1625,9 @@
         "systemPaths": "시스템 경로",
         "usedElsewhere": "다른 앱에서 사용됨",
         "workspace": "작업 디렉터리",
-        "thisOrg": "이 작업 디렉터리",
-        "outsideOrg": "이 작업 디렉터리 외부"
+        "thisOrg": "이 조직",
+        "outsideOrg": "이 조직 외부",
+        "outsideNamedOrg": "{{org}} 외부"
       },
       "tabs": {},
       "addOptions": {

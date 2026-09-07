@@ -1625,8 +1625,9 @@
         "systemPaths": "システムパス",
         "usedElsewhere": "他のアプリで使用",
         "workspace": "作業ディレクトリ",
-        "thisOrg": "この作業ディレクトリ",
-        "outsideOrg": "この作業ディレクトリの外"
+        "thisOrg": "この組織",
+        "outsideOrg": "この組織の外",
+        "outsideNamedOrg": "{{org}} の外"
       },
       "tabs": {},
       "addOptions": {

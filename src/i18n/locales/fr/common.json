@@ -1626,8 +1626,9 @@
         "systemPaths": "Chemins système",
         "usedElsewhere": "Utilisé dans d’autres applications",
         "workspace": "Répertoire de travail",
-        "thisOrg": "Ce répertoire de travail",
-        "outsideOrg": "En dehors de ce répertoire de travail"
+        "thisOrg": "Cette organisation",
+        "outsideOrg": "En dehors de cette organisation",
+        "outsideNamedOrg": "En dehors de {{org}}"
       },
       "tabs": {},
       "addOptions": {

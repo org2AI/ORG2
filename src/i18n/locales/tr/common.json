@@ -1627,8 +1627,9 @@
         "systemPaths": "Sistem Yolları",
         "usedElsewhere": "Diğer uygulamalarda kullanıldı",
         "workspace": "Çalışma dizini",
-        "thisOrg": "Bu çalışma dizini",
-        "outsideOrg": "Bu çalışma dizininin dışında"
+        "thisOrg": "Bu kuruluş",
+        "outsideOrg": "Bu kuruluşun dışında",
+        "outsideNamedOrg": "{{org}} dışında"
       },
       "tabs": {},
       "addOptions": {

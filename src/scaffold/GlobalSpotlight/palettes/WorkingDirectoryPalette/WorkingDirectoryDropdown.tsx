@@ -260,6 +260,8 @@ interface WorkingDirectoryDropdownProps {
     repo_url?: string | null;
     fs_uri?: string | null;
   }) => boolean;
+  /** Display name for the organization represented by `repoFilter`. */
+  orgScopeName?: string;
 }
 
 export const WorkingDirectoryDropdown: React.FC<
@@ -273,6 +275,7 @@ export const WorkingDirectoryDropdown: React.FC<
   placement = "bottom",
   leadingRepos = [],
   repoFilter,
+  orgScopeName,
 }) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -527,14 +530,24 @@ export const WorkingDirectoryDropdown: React.FC<
       if (thisOrgItems.length > 0) {
         nextSections.push({
           key: "thisOrg",
-          label: t("selectors.repo.sections.thisOrg", "This org"),
+          label:
+            orgScopeName ??
+            t("selectors.repo.sections.thisOrg", "This organization"),
           items: thisOrgItems,
         });
       }
       if (outsideOrgItems.length > 0) {
         nextSections.push({
           key: "outsideOrg",
-          label: t("selectors.repo.sections.outsideOrg", "Outside this org"),
+          label: orgScopeName
+            ? t("selectors.repo.sections.outsideNamedOrg", {
+                org: orgScopeName,
+                defaultValue: "Outside {{org}}",
+              })
+            : t(
+                "selectors.repo.sections.outsideOrg",
+                "Outside this organization"
+              ),
           items: outsideOrgItems,
         });
       }
@@ -592,6 +605,7 @@ export const WorkingDirectoryDropdown: React.FC<
     outsideOrgWorkspaceIds,
     leadingRepos,
     openPathItem,
+    orgScopeName,
     searchQuery,
     t,
   ]);

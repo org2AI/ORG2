@@ -1640,8 +1640,9 @@
         "systemPaths": "系統路徑",
         "usedElsewhere": "在其他應用程式中使用",
         "workspace": "工作目錄",
-        "thisOrg": "此工作目錄",
-        "outsideOrg": "此工作目錄之外"
+        "thisOrg": "此組織",
+        "outsideOrg": "此組織之外",
+        "outsideNamedOrg": "{{org}}之外"
       },
       "tabs": {},
       "addOptions": {

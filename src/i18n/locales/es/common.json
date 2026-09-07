@@ -1626,8 +1626,9 @@
         "systemPaths": "Rutas del sistema",
         "usedElsewhere": "Usado en otras aplicaciones",
         "workspace": "Directorio de trabajo",
-        "thisOrg": "Este directorio de trabajo",
-        "outsideOrg": "Fuera de este directorio de trabajo"
+        "thisOrg": "Esta organización",
+        "outsideOrg": "Fuera de esta organización",
+        "outsideNamedOrg": "Fuera de {{org}}"
       },
       "tabs": {},
       "addOptions": {

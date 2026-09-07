@@ -1644,8 +1644,9 @@
         "systemPaths": "Ścieżki systemowe",
         "usedElsewhere": "Używane w innych aplikacjach",
         "workspace": "Katalog roboczy",
-        "thisOrg": "Ten katalog roboczy",
-        "outsideOrg": "Poza tym katalogiem roboczym"
+        "thisOrg": "Ta organizacja",
+        "outsideOrg": "Poza tą organizacją",
+        "outsideNamedOrg": "Poza {{org}}"
       },
       "tabs": {},
       "addOptions": {

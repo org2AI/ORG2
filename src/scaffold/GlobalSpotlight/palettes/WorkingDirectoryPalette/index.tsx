@@ -73,6 +73,7 @@ export const WorkingDirectoryPalette: React.FC<
   hideActionClose = false,
   leadingRepos = [],
   repoFilter,
+  orgScopeName,
   onGoBackToParent,
 }) => {
   const { t } = useTranslation();
@@ -127,13 +128,17 @@ export const WorkingDirectoryPalette: React.FC<
         "workspaceForm.multiRepoWorkspace",
         "Multi-Repo Working Directory"
       ),
-      sectionThisOrgLabel: t("selectors.repo.sections.thisOrg", "This org"),
-      sectionOutsideOrgLabel: t(
-        "selectors.repo.sections.outsideOrg",
-        "Outside this org"
-      ),
+      sectionThisOrgLabel:
+        orgScopeName ??
+        t("selectors.repo.sections.thisOrg", "This organization"),
+      sectionOutsideOrgLabel: orgScopeName
+        ? t("selectors.repo.sections.outsideNamedOrg", {
+            org: orgScopeName,
+            defaultValue: "Outside {{org}}",
+          })
+        : t("selectors.repo.sections.outsideOrg", "Outside this organization"),
     }),
-    [t, isManageMode, switchPathLabel]
+    [t, isManageMode, switchPathLabel, orgScopeName]
   );
 
   const wasOpenRef = React.useRef(false);

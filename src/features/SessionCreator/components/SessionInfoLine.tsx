@@ -37,7 +37,10 @@ import {
   isSystemHomeRepoItem,
   isSystemPathRepoItem,
 } from "@src/features/SessionCreator/utils/systemPathSource";
-import { useActiveCloudOrgRepoFilter } from "@src/features/TeamCollaboration/useActiveCloudOrgRepoFilter";
+import {
+  useActiveCloudOrgName,
+  useActiveCloudOrgRepoFilter,
+} from "@src/features/TeamCollaboration/useActiveCloudOrgRepoFilter";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { BranchPalette } from "@src/scaffold/GlobalSpotlight/palettes/BranchPalette";
 import { BranchDropdown } from "@src/scaffold/GlobalSpotlight/palettes/BranchPalette/BranchDropdown";
@@ -380,6 +383,7 @@ const SessionInfoLine: React.FC<SessionInfoLineProps> = ({
   // the pickers group rows into "This org" / "Outside this org" instead,
   // and out-of-scope repos are legitimate picks (they simply launch
   // without the org tag — autoTagLaunchedSessionToActiveCloudOrg guards).
+  const activeCloudOrgName = useActiveCloudOrgName();
   const orgScopeRepoFilter = useActiveCloudOrgRepoFilter();
 
   const handleBranchSelect = useCallback(
@@ -640,6 +644,7 @@ const SessionInfoLine: React.FC<SessionInfoLineProps> = ({
           placement={dropdownDirection === "up" ? "top" : "bottom"}
           leadingRepos={systemPathSourceItems}
           repoFilter={orgScopeRepoFilter ?? undefined}
+          orgScopeName={activeCloudOrgName ?? undefined}
         />
       ) : (
         <WorkingDirectoryPalette
@@ -651,6 +656,7 @@ const SessionInfoLine: React.FC<SessionInfoLineProps> = ({
           hideActionClose
           leadingRepos={systemPathSourceItems}
           repoFilter={orgScopeRepoFilter ?? undefined}
+          orgScopeName={activeCloudOrgName ?? undefined}
         />
       )}
 

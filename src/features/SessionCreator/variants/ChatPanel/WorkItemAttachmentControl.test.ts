@@ -288,7 +288,7 @@ describe("WorkItemAttachmentControl", () => {
       expect(
         dialog
           ?.querySelector(
-            '[data-testid="work-item-picker-ci-github_pr:https://github.com/acme/app/pull/44"] span'
+            '[data-testid="work-item-picker-ci-github_pr:https://github.com/acme/app/pull/44"] .animate-pulse'
           )
           ?.classList.contains("animate-pulse")
       ).toBe(true);

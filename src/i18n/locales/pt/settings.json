@@ -1419,6 +1419,15 @@
     "desktopRestored": "Configuração anterior restaurada — encerre completamente e reabra o Claude Desktop",
     "desktopCredentials": "O modo direto grava as credenciais em um perfil local com acesso restrito; excluir a chave do cofre não revoga essa cópia"
   },
+  "providerLibrary": {
+    "search": "Pesquisar perfis, endpoints ou modelos",
+    "noResults": "Nenhum perfil corresponde à pesquisa",
+    "tested": "Teste aprovado",
+    "defaultModel": "Modelo padrão",
+    "edit": "Editar",
+    "duplicate": "Duplicar",
+    "duplicateName": "Cópia de {{name}}"
+  },
   "claudeProfiles": {
     "new": "Novo perfil",
     "newName": "Novo provedor",

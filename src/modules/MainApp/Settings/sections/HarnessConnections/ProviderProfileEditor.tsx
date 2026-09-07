@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { HarnessProviderProfile } from "@src/api/tauri/rpc/schemas/agentOrgs";
@@ -14,7 +14,9 @@ import {
 
 import ClaudeModelMappings from "./ClaudeModelMappings";
 import CodexModelSettings from "./CodexModelSettings";
+import ProviderProfileLibrary from "./ProviderProfileLibrary";
 import {
+  duplicateProviderProfile,
   newProviderProfile,
   useProviderProfileEditor,
 } from "./useProviderProfileEditor";
@@ -22,11 +24,11 @@ import {
 export default function ProviderProfileEditor({
   target,
   onAdd,
-  onDirtyChange,
+  onNavigationBlockedChange,
 }: {
   target: HarnessProviderProfile["target"];
   onAdd: () => void;
-  onDirtyChange?: (dirty: boolean) => void;
+  onNavigationBlockedChange?: (dirty: boolean) => void;
 }) {
   const { t } = useTranslation("settings");
   const {
@@ -45,10 +47,15 @@ export default function ProviderProfileEditor({
     act,
     cancel,
   } = useProviderProfileEditor(target);
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
-    onDirtyChange?.(dirty);
-    return () => onDirtyChange?.(false);
-  }, [dirty, onDirtyChange]);
+    onNavigationBlockedChange?.(dirty || busy !== null);
+    return () => onNavigationBlockedChange?.(false);
+  }, [dirty, busy, onNavigationBlockedChange]);
+  const openEditor = (profile: HarnessProviderProfile) => {
+    edit(profile);
+    setEditing(true);
+  };
   const active = view?.appliedProfile;
   const disabled = busy !== null || loading;
   const choice = view?.choices.find((c) => c.keyId === draft?.keyId);
@@ -92,7 +99,7 @@ export default function ProviderProfileEditor({
             <Button
               disabled={disabled || dirty}
               onClick={() =>
-                edit(
+                openEditor(
                   newProviderProfile(target, t("claudeProfiles.newName"), view)
                 )
               }
@@ -109,7 +116,7 @@ export default function ProviderProfileEditor({
                 view.config.conflict
               }
               onClick={() =>
-                edit(
+                openEditor(
                   newProviderProfile(
                     target,
                     t("claudeProfiles.copyName"),
@@ -136,52 +143,76 @@ export default function ProviderProfileEditor({
               {t("harnessConnections.refresh")}
             </Button>
           </div>
-          <p className={SECTION_DESCRIPTION_CLASSES}>
-            {t("harnessConnections.current")}:{" "}
-            {active?.name ??
-              (view?.config.mode === "default"
-                ? t("harnessConnections.original")
-                : (view?.choices.find(
-                    (c) => c.keyId === view.config.selectedKeyId
-                  )?.name ?? t("harnessConnections.loading")))}
-          </p>
-          {!loading && !view?.profiles?.length && (
-            <p className={SECTION_DESCRIPTION_CLASSES}>
-              {t("claudeProfiles.empty")}
-            </p>
-          )}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {view?.profiles?.map((profile) => (
-              <Button
-                key={profile.id}
-                variant={draft?.id === profile.id ? "primary" : "secondary"}
-                appearance="outline"
-                disabled={disabled || dirty}
-                aria-pressed={draft?.id === profile.id}
-                style={{ height: "auto" }}
-                className="min-w-0 justify-start p-3 text-left"
-                onClick={() => edit(profile)}
-              >
-                <span className="flex min-w-0 flex-col gap-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-medium">{profile.name}</span>
-                    {active?.id === profile.id && (
-                      <span className="text-xs text-primary-6">
-                        {t(
-                          active.revision === profile.revision
-                            ? "claudeProfiles.active"
-                            : "claudeProfiles.updatePending"
-                        )}
-                      </span>
-                    )}
-                  </span>
-                  <span className="truncate text-xs text-text-2">
-                    {profile.endpoint}
-                  </span>
+          {(view || loading) && (
+            <div
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border-2 bg-fill-2 p-4"
+              data-testid="provider-active-connection"
+            >
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-xs text-text-3">
+                  {t("harnessConnections.current")}
                 </span>
+                <span className="font-medium break-words text-text-1">
+                  {active?.name ??
+                    (view?.config.mode === "default"
+                      ? t("harnessConnections.original")
+                      : (view?.choices.find(
+                          (c) => c.keyId === view.config.selectedKeyId
+                        )?.name ?? t("harnessConnections.loading")))}
+                </span>
+                {active && (
+                  <span className="text-xs break-all text-text-2">
+                    {active.endpoint}
+                  </span>
+                )}
+              </div>
+              <Button
+                variant="secondary"
+                disabled={
+                  disabled ||
+                  dirty ||
+                  !view ||
+                  view.config.mode === "default" ||
+                  view.config.conflict ||
+                  Boolean(view.configurationIssue)
+                }
+                onClick={() => void act("restore")}
+              >
+                {t("harnessConnections.restore")}
               </Button>
-            ))}
-          </div>
+            </div>
+          )}
+          {loading ? (
+            <p role="status" className={SECTION_DESCRIPTION_CLASSES}>
+              {t("harnessConnections.loading")}
+            </p>
+          ) : view ? (
+            <ProviderProfileLibrary
+              view={view}
+              selected={draft?.id}
+              disabled={disabled || dirty}
+              busy={busy}
+              canConnect={Boolean(
+                view?.installed &&
+                view.config.supported &&
+                !view.config.conflict &&
+                !view.configurationIssue &&
+                !error
+              )}
+              testedProfileId={receipt && !dirty ? draft?.id : undefined}
+              onEdit={openEditor}
+              onDuplicate={(profile) =>
+                openEditor(
+                  duplicateProviderProfile(
+                    profile,
+                    t("providerLibrary.duplicateName", { name: profile.name })
+                  )
+                )
+              }
+              onTest={(profile) => void act("test", profile)}
+              onApply={(profile) => void act("apply", profile)}
+            />
+          ) : null}
         </div>
       </SectionRow>
       {(error ||
@@ -202,7 +233,7 @@ export default function ProviderProfileEditor({
           </p>
         </SectionRow>
       )}
-      {draft && (
+      {draft && editing && (
         <>
           {!loading && !choice && (
             <SectionRow showHeader={false}>
@@ -335,7 +366,10 @@ export default function ProviderProfileEditor({
                 <Button
                   variant="secondary"
                   disabled={disabled}
-                  onClick={() => edit(saved ?? null)}
+                  onClick={() => {
+                    edit(saved ?? null);
+                    setEditing(false);
+                  }}
                 >
                   {t("claudeProfiles.discard")}
                 </Button>
@@ -353,28 +387,13 @@ export default function ProviderProfileEditor({
           </SectionRow>
         </>
       )}
-      <SectionRow showHeader={false}>
-        <div className="flex flex-wrap gap-2">
-          {(busy === "test" || busy === "fetch") && (
-            <Button variant="secondary" onClick={cancel}>
-              {t("harnessConnections.cancel")}
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            disabled={
-              disabled ||
-              !view ||
-              view.config.mode === "default" ||
-              view.config.conflict ||
-              Boolean(view.configurationIssue)
-            }
-            onClick={() => void act("restore")}
-          >
-            {t("harnessConnections.restore")}
+      {(busy === "test" || busy === "fetch") && (
+        <SectionRow showHeader={false}>
+          <Button variant="secondary" onClick={cancel}>
+            {t("harnessConnections.cancel")}
           </Button>
-        </div>
-      </SectionRow>
+        </SectionRow>
+      )}
       {message && (
         <SectionRow showHeader={false}>
           <p

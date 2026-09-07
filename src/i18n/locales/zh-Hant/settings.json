@@ -1431,6 +1431,15 @@
     "desktopRestored": "已還原先前的桌面設定，請完全結束並重新開啟 Claude Desktop",
     "desktopCredentials": "直連模式會將所選憑證寫入限制檔案存取權限的本機桌面設定；刪除金鑰庫中的金鑰不會撤銷已匯出的憑證"
   },
+  "providerLibrary": {
+    "search": "搜尋設定、端點或模型",
+    "noResults": "沒有符合的設定",
+    "tested": "測試通過",
+    "defaultModel": "預設模型",
+    "edit": "編輯",
+    "duplicate": "複製",
+    "duplicateName": "{{name}}的副本"
+  },
   "claudeProfiles": {
     "new": "新增設定檔",
     "newName": "新供應商",

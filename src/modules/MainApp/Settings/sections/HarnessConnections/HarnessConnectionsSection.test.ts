@@ -22,8 +22,27 @@ vi.mock("./useHarnessConnection", () => ({
   refreshHarnessConnections: vi.fn(),
 }));
 vi.mock("./ProviderProfileEditor", () => ({
-  default: ({ target }: { target: string }) =>
-    createElement("section", { "data-target": target }),
+  default: ({
+    target,
+    onNavigationBlockedChange,
+  }: {
+    target: string;
+    onNavigationBlockedChange: (blocked: boolean) => void;
+  }) =>
+    createElement(
+      "section",
+      { "data-target": target },
+      createElement(
+        "button",
+        { onClick: () => onNavigationBlockedChange(true) },
+        "busy"
+      ),
+      createElement(
+        "button",
+        { onClick: () => onNavigationBlockedChange(false) },
+        "idle"
+      )
+    ),
 }));
 vi.mock("./HarnessConnectionEditor", () => ({
   default: ({ agentName }: { agentName: string }) =>
@@ -48,6 +67,23 @@ it("exposes separate Desktop and CLI selectors and mounts only the selected targ
     expect(
       container.querySelector('[data-testid="credential-import"]')
     ).not.toBeNull();
+    const clickControl = async (label: string) => {
+      const control = [...container.querySelectorAll("button")].find(
+        (button) => button.textContent === label
+      )!;
+      await act(async () => control.click());
+    };
+    await clickControl("busy");
+    const codex = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Codex"
+    )!;
+    expect(codex.disabled).toBe(true);
+    await act(async () => codex.click());
+    expect(
+      container.querySelector("section")?.getAttribute("data-target")
+    ).toBe("claude_code");
+    await clickControl("idle");
+    expect(codex.disabled).toBe(false);
     for (const [label, target] of [
       ["Claude Desktop", "claude_desktop"],
       ["Codex", "codex"],

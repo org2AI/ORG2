@@ -345,3 +345,197 @@ it("keeps Codex manual entry available after failed discovery and discards late 
   expect(container.querySelector('option[value="late/model"]')).toBeNull();
   expect(mocks.cancelTest).toHaveBeenCalled();
 });
+
+function profileCard(id: string) {
+  const card = container.querySelector<HTMLElement>(
+    `[data-testid="provider-profile-${id}"]`
+  );
+  if (!card) throw new Error(`Missing profile ${id}`);
+  return card;
+}
+function cardButton(id: string, label: string) {
+  const element = [...profileCard(id).querySelectorAll("button")].find(
+    (b) => b.textContent === label
+  );
+  if (!element) throw new Error(`Missing ${label} on ${id}`);
+  return element;
+}
+function libraryProfiles(
+  target: HarnessProviderProfile["target"] = "claude_code"
+) {
+  const a = {
+    ...newProviderProfile(target, "Production", view),
+    id: "production",
+    revision: 2,
+  };
+  const b = {
+    ...newProviderProfile(target, "Staging", view),
+    id: "staging",
+    revision: 3,
+    endpoint: "https://staging.example/v1",
+  };
+  view.config.agentName = target;
+  view.profiles = [a, b];
+  view.appliedProfile = a;
+  view.config.mode = "direct";
+  view.config.selectedKeyId = "key";
+  return [a, b];
+}
+
+it.each(["claude_code", "claude_desktop", "codex"] as const)(
+  "duplicates any saved %s profile without writes or inherited activation",
+  async (target) => {
+    const [, source] = libraryProfiles(target);
+    await mount(target);
+    await act(async () =>
+      cardButton("staging", "providerLibrary.duplicate").click()
+    );
+    expect(mocks.saveProfile).not.toHaveBeenCalled();
+    expect(mocks.apply).not.toHaveBeenCalled();
+    expect(button("claudeProfiles.save").disabled).toBe(false);
+    await click("claudeProfiles.save");
+    const copy = mocks.saveProfile.mock.calls[0][0].profile;
+    expect(copy.id).not.toBe(source.id);
+    expect(copy.revision).toBe(0);
+    expect(copy.target).toBe(target);
+    expect(copy.models).toEqual(source.models);
+    expect(copy.endpoint).toBe(source.endpoint);
+    expect(copy.keyId).toBe(source.keyId);
+    expect(mocks.apply).not.toHaveBeenCalled();
+  }
+);
+
+it("tests and applies the selected card without opening the editor or borrowing another receipt", async () => {
+  const [production, staging] = libraryProfiles("codex");
+  await mount("codex");
+  expect(
+    container.querySelector('input[aria-label="claudeProfiles.name"]')
+  ).toBeNull();
+  expect(cardButton("staging", "harnessConnections.apply").disabled).toBe(true);
+  await act(async () => cardButton("staging", "claudeProfiles.test").click());
+  expect(mocks.test.mock.calls[0][0].profile).toEqual(staging);
+  expect(cardButton("production", "harnessConnections.apply").disabled).toBe(
+    true
+  );
+  expect(cardButton("staging", "harnessConnections.apply").disabled).toBe(
+    false
+  );
+  await act(async () =>
+    cardButton("staging", "harnessConnections.apply").click()
+  );
+  expect(mocks.apply.mock.calls[0][0]).toMatchObject({
+    agentName: "codex",
+    profile: staging,
+    receipt: "receipt",
+    routing: "direct",
+  });
+  expect(cardButton("staging", "harnessConnections.apply").disabled).toBe(true);
+  expect(view.appliedProfile).toEqual(production); // only a native status refresh can move the active badge
+});
+
+it("filters by endpoint and credential while keeping the active connection visible", async () => {
+  libraryProfiles();
+  await mount();
+  await input("providerLibrary.search", "STAGING.EXAMPLE");
+  expect(
+    container.querySelector('[data-testid="provider-profile-production"]')
+  ).toBeNull();
+  expect(profileCard("staging")).toBeTruthy();
+  expect(
+    container.querySelector('[data-testid="provider-active-connection"]')
+      ?.textContent
+  ).toContain("Production");
+  await input("providerLibrary.search", "Gateway");
+  expect(profileCard("production")).toBeTruthy();
+  await input("providerLibrary.search", "no match");
+  expect(container.textContent).toContain("providerLibrary.noResults");
+  expect(mocks.test).not.toHaveBeenCalled();
+});
+
+it("serializes repeated actions, blocks navigation during a test, and ignores canceled results", async () => {
+  libraryProfiles();
+  let complete!: (value: string) => void;
+  mocks.test.mockImplementation(
+    () =>
+      new Promise<string>((resolve) => {
+        complete = resolve;
+      })
+  );
+  const blocked = vi.fn();
+  await act(async () =>
+    root.render(
+      createElement(ProviderProfileEditor, {
+        target: "claude_code",
+        onAdd: vi.fn(),
+        onNavigationBlockedChange: blocked,
+      })
+    )
+  );
+  await act(async () => {
+    const test = cardButton("staging", "claudeProfiles.test");
+    test.click();
+    test.click();
+  });
+  expect(mocks.test).toHaveBeenCalledTimes(1);
+  expect(blocked).toHaveBeenLastCalledWith(true);
+  expect(cardButton("production", "providerLibrary.duplicate").disabled).toBe(
+    true
+  );
+  await click("harnessConnections.cancel");
+  expect(blocked).toHaveBeenLastCalledWith(false);
+  await act(async () => complete("late-receipt"));
+  expect(cardButton("staging", "harnessConnections.apply").disabled).toBe(true);
+  expect(mocks.cancelTest).toHaveBeenCalledTimes(1);
+});
+
+it("keeps editing and duplication available for missing keys but blocks network and activation actions", async () => {
+  libraryProfiles();
+  view.choices = [];
+  await mount();
+  expect(cardButton("staging", "providerLibrary.edit").disabled).toBe(false);
+  expect(cardButton("staging", "providerLibrary.duplicate").disabled).toBe(
+    false
+  );
+  expect(cardButton("staging", "claudeProfiles.test").disabled).toBe(true);
+  expect(cardButton("staging", "harnessConnections.apply").disabled).toBe(true);
+  expect(profileCard("staging").textContent).toContain(
+    "harnessConnections.missingKey"
+  );
+});
+
+it("restores through the existing non-force command and clears test evidence", async () => {
+  libraryProfiles();
+  mocks.restore.mockResolvedValue(view.config);
+  await mount();
+  await act(async () => cardButton("staging", "claudeProfiles.test").click());
+  await click("harnessConnections.restore");
+  expect(mocks.restore).toHaveBeenCalledWith({
+    agentName: "claude_code",
+    force: false,
+  });
+  expect(cardButton("staging", "harnessConnections.apply").disabled).toBe(true);
+});
+
+it("surfaces refresh failures and removes activation readiness", async () => {
+  libraryProfiles();
+  await mount();
+  await act(async () => cardButton("staging", "claudeProfiles.test").click());
+  mocks.status.mockRejectedValueOnce(
+    new Error("Configuration could not be read")
+  );
+  await click("harnessConnections.refresh");
+  expect(container.textContent).toContain("Configuration could not be read");
+  expect(cardButton("staging", "harnessConnections.apply").disabled).toBe(true);
+});
+
+it("shows read failures without presenting a missing catalog as an empty one", async () => {
+  mocks.status.mockRejectedValueOnce(
+    new Error("Cannot load provider profiles")
+  );
+  await mount();
+  expect(container.textContent).toContain("Cannot load provider profiles");
+  expect(container.textContent).not.toContain("claudeProfiles.empty");
+  expect(
+    container.querySelector('[data-testid="provider-active-connection"]')
+  ).toBeNull();
+});

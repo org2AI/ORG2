@@ -1533,6 +1533,15 @@
     "desktopRestored": "Previous Desktop configuration restored — fully quit and reopen Claude Desktop",
     "desktopCredentials": "Direct mode exports the selected credential to a local Desktop profile with restricted file access; deleting the vault key does not revoke that export"
   },
+  "providerLibrary": {
+    "search": "Search profiles, endpoints or models",
+    "noResults": "No profiles match your search",
+    "tested": "Test passed",
+    "defaultModel": "Default model",
+    "edit": "Edit",
+    "duplicate": "Duplicate",
+    "duplicateName": "Copy of {{name}}"
+  },
   "claudeProfiles": {
     "new": "New profile",
     "newName": "New provider",

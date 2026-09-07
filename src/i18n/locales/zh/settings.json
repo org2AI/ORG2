@@ -1533,6 +1533,15 @@
     "desktopRestored": "已恢复之前的桌面配置，请完全退出并重新打开 Claude Desktop",
     "desktopCredentials": "直连模式会将所选凭据写入限制文件访问权限的本地桌面配置；删除密钥库中的密钥不会撤销已导出的凭据"
   },
+  "providerLibrary": {
+    "search": "搜索配置、端点或模型",
+    "noResults": "没有匹配的配置",
+    "tested": "测试通过",
+    "defaultModel": "默认模型",
+    "edit": "编辑",
+    "duplicate": "复制",
+    "duplicateName": "{{name}}的副本"
+  },
   "claudeProfiles": {
     "new": "新建配置",
     "newName": "新提供商",

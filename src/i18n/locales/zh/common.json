@@ -2562,5 +2562,14 @@
       "previewFailed": "无法从该浏览器读取 Cookie",
       "importFailed": "无法导入所选 Cookie"
     }
+  },
+  "documentOpen": {
+    "label": "打开方式…",
+    "defaultApp": "默认应用",
+    "appDefault": "{{name}}（默认）",
+    "loading": "正在加载应用…",
+    "loadFailed": "无法加载应用，请重新展开重试",
+    "openFailed": "无法打开文档",
+    "saveFirst": "请先保存或放弃修改，再使用其他应用打开"
   }
 }

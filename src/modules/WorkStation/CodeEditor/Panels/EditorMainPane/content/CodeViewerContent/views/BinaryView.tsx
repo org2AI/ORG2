@@ -20,6 +20,8 @@ import {
   PdfPreview,
   VideoPreview,
 } from "../../FilePreviewContent";
+import DocumentOpenMenu from "../DocumentOpenMenu";
+import { isExternalDocument } from "../DocumentOpenMenu/documentApplications";
 import type { BinaryViewProps } from "../types";
 
 const LazyDbPreviewView = React.lazy(
@@ -83,7 +85,17 @@ export const BinaryView: React.FC<BinaryViewProps> = ({
     onReload,
     loading: false,
     hasUnsavedChanges: hasPreviewUnsavedChanges,
-    beforeMoreMenuSlot: <TabBarBottomPanelToggle />,
+    beforeMoreMenuSlot: (
+      <>
+        {isExternalDocument(selectedFile) && (
+          <DocumentOpenMenu
+            filePath={selectedFile}
+            hasUnsavedChanges={hasPreviewUnsavedChanges}
+          />
+        )}
+        <TabBarBottomPanelToggle />
+      </>
+    ),
     isMarkdownFile: false,
     isPreviewMode: true,
     onTogglePreview: undefined,

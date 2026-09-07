@@ -2495,5 +2495,14 @@
   "notifications": {
     "taskCancelledToast": "「{{name}}」已取消",
     "taskCompletedToast": "「{{name}}」已完成。開啟工作階段以檢視結果。"
+  },
+  "documentOpen": {
+    "label": "開啟方式…",
+    "defaultApp": "預設應用程式",
+    "appDefault": "{{name}}（預設）",
+    "loading": "正在載入應用程式…",
+    "loadFailed": "無法載入應用程式，請重新展開重試",
+    "openFailed": "無法開啟文件",
+    "saveFirst": "請先儲存或捨棄修改，再使用其他應用程式開啟"
   }
 }

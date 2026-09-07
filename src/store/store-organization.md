@@ -105,7 +105,7 @@ Multi-repo project lists, centralized `.orgii` project store state, tracker mode
 ```typescript
 import {
   orgiiSyncStatusAtom,
-  projectsAtom,
+  projectListRefreshAtom,
   trackerModeMapAtom,
 } from "@src/store/project";
 ```

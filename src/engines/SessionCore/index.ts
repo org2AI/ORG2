@@ -24,7 +24,7 @@
  *   // State
  *   eventsAtom, currentEventAtom,
  *   // Workspace state
- *   useRepositoryInfo, sessionShowAtom,
+ *   useRepositoryInfo,
  *   // UI components
  *   ShellEvent, TerminalBlock,
  *   // Adapters

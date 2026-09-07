@@ -12,10 +12,6 @@ import { spotlightOpenAtom } from "./uiAtom";
 // These atoms track when overlays (dropdowns, modals, spotlight) are open.
 // Used primarily by useWebviewVisibility to hide native webviews behind overlays.
 
-// Track when ellipsis menu dropdown is open (to hide native webviews)
-export const ellipsisMenuOpenAtom = atom<boolean>(false);
-ellipsisMenuOpenAtom.debugLabel = "ellipsisMenuOpenAtom";
-
 // Track when there's a global error (to hide native webviews so error overlay is visible)
 export const hasGlobalErrorAtom = atom<boolean>(false);
 hasGlobalErrorAtom.debugLabel = "hasGlobalErrorAtom";

@@ -2,8 +2,8 @@
  * Session atom derived values and helpers — pure logic tests.
  *
  * Tests the pure helpers (`isValidSessionUUID`, `sessionByIdAtom` cache),
- * and derived atoms (`sessionsAtom`, `sessionMapAtom`, `validSessionIdsAtom`,
- * session count atoms) using a raw Jotai store to avoid React/hook machinery.
+ * and derived atoms (`sessionsAtom`, `sessionMapAtom`, `validSessionIdsAtom`)
+ * using a raw Jotai store to avoid React/hook machinery.
  */
 import { createStore } from "jotai";
 import { describe, expect, it, vi } from "vitest";
@@ -11,11 +11,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   anySessionWorkingAtom,
   recentSessionsAtom,
-  sessionActiveCountAtom,
   sessionByIdAtom,
-  sessionCompletedCountAtom,
   sessionMapAtom,
-  sessionTotalCountAtom,
   sessionsAtom,
   validSessionIdsAtom,
 } from "../sessionAtom/atoms";
@@ -108,34 +105,6 @@ describe("validSessionIdsAtom", () => {
 
   it("is empty when there are no sessions", () => {
     expect(makeStore().get(validSessionIdsAtom).size).toBe(0);
-  });
-});
-
-describe("count atoms", () => {
-  it("sessionTotalCountAtom reflects array length", () => {
-    const store = makeStore([
-      makeSession({ session_id: "a" }),
-      makeSession({ session_id: "b" }),
-    ]);
-    expect(store.get(sessionTotalCountAtom)).toBe(2);
-  });
-
-  it("sessionActiveCountAtom counts running sessions", () => {
-    const store = makeStore([
-      makeSession({ session_id: "r1", status: "running" }),
-      makeSession({ session_id: "r2", status: "idle" }),
-      makeSession({ session_id: "r3", status: "completed" }),
-    ]);
-    expect(store.get(sessionActiveCountAtom)).toBe(2);
-  });
-
-  it("sessionCompletedCountAtom counts only completed", () => {
-    const store = makeStore([
-      makeSession({ session_id: "c1", status: "completed" }),
-      makeSession({ session_id: "c2", status: "completed" }),
-      makeSession({ session_id: "r1", status: "running" }),
-    ]);
-    expect(store.get(sessionCompletedCountAtom)).toBe(2);
   });
 });
 

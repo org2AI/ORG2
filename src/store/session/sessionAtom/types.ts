@@ -284,13 +284,3 @@ export interface Session {
   /** Total token usage (input + output) reported by the source, when known. */
   totalTokens?: number;
 }
-
-// ============================================
-// Session Record Types (from Tauri backend)
-// ============================================
-
-export interface SessionGroups {
-  active: Session[];
-  completed: Session[];
-  failed: Session[];
-}

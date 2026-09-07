@@ -31,11 +31,10 @@ import {
 } from "@src/config/appearance/skins/accent";
 import {
   DEFAULT_SKIN_ID,
-  getSkinSeed,
   resolveSkinId,
   supportsBothVariants,
 } from "@src/config/appearance/skins/registry";
-import type { SkinSeed, SkinVariant } from "@src/config/appearance/skins/types";
+import type { SkinVariant } from "@src/config/appearance/skins/types";
 import {
   settingsAtom,
   updateSettingAtom,
@@ -169,11 +168,6 @@ export const activeSkinIdAtom = atom<string>((get) =>
   get(skinVariantAtom) === "dark" ? get(darkSkinIdAtom) : get(lightSkinIdAtom)
 );
 activeSkinIdAtom.debugLabel = "activeSkinIdAtom";
-
-export const activeSkinSeedAtom = atom<SkinSeed>((get) =>
-  getSkinSeed(get(activeSkinIdAtom), get(skinVariantAtom))
-);
-activeSkinSeedAtom.debugLabel = "activeSkinSeedAtom";
 
 // ============================================
 // Accent
@@ -454,17 +448,6 @@ inspectModeEnabledAtom.debugLabel = "inspectModeEnabledAtom";
 /** ADE Manager active state. When enabled, agent-originated GUI actions may dispatch through the Zod ActionSystem. */
 export const adeManagerEnabledAtom = atom<boolean>(false);
 adeManagerEnabledAtom.debugLabel = "adeManagerEnabledAtom";
-
-// ============================================
-// Loading & Status
-// ============================================
-
-/** Online status. Guarded against environments where `navigator` is not
- *  defined (e.g. Vitest `node` runs that import this atom transitively). */
-export const isOnlineAtom = atom<boolean>(
-  typeof navigator === "undefined" ? true : navigator.onLine
-);
-isOnlineAtom.debugLabel = "isOnlineAtom";
 
 export type SpotlightPlacement = "top" | "center";
 

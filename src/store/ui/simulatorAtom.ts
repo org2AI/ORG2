@@ -399,12 +399,3 @@ subagentPanelRevealRequestAtom.debugLabel = "subagentPanelRevealRequestAtom";
  */
 export const simulatorSubagentSessionsAtom = atom<SubagentSession[]>([]);
 simulatorSubagentSessionsAtom.debugLabel = "simulatorSubagentSessionsAtom";
-
-/**
- * Whether the subagent panel is in picture-in-picture (mini) mode.
- * When true, the full-width BackgroundTasksApp is replaced by a floating
- * mini card in the bottom-right corner, preserving visibility without
- * consuming the full workspace area.
- */
-export const subagentPanelPipModeAtom = atom<boolean>(false);
-subagentPanelPipModeAtom.debugLabel = "subagentPanelPipModeAtom";

@@ -5,7 +5,6 @@
  * Shared by both UI (useRepoSearchPanel) and AI (SearchService).
  *
  * Related submodules (also re-exported below):
- * - cacheAtom: Search result caching with TTL and stats
  * - indexingProgressAtom: Indexing progress UI state
  */
 import { atom } from "jotai";
@@ -145,8 +144,6 @@ export const searchAppendResultsAtom = atom(
 // ============================================
 // Re-exports from submodules
 // ============================================
-
-export * from "./cacheAtom";
 
 export {
   indexingProgressAtom,

@@ -10,7 +10,7 @@
  * - Editor: editorSettingsAtom, fileTreeSelectionAtom, searchResultSelectionAtom
  * - Settings: settingsPanelAtoms (panel-internal side-channel state),
  *   settingsSyncAtom
- * - Tabs: navigationSidebarTabsAtom, globalSelectorAtom
+ * - Tabs: navigationSidebarTabsAtom
  */
 
 // Sidebar
@@ -33,7 +33,6 @@ export * from "./languageAtom";
 // Tabs
 export * from "./navigationSidebarTabsAtom";
 export * from "./globalTabsActions";
-export * from "./globalSelectorAtom";
 
 // Other UI state
 export * from "./uiAtom";
@@ -69,7 +68,6 @@ export * from "./chatPanel/miscAtoms";
 export * from "./chatImageAtom";
 export * from "./messageQueueAtom";
 export * from "./sessionPaginationAtom";
-export * from "./uploadsAtom";
 export * from "./draftAtom";
 export * from "./workStationLayout";
 export * from "./workspace";

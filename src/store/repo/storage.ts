@@ -140,10 +140,6 @@ export function resetRepoStore(): void {
     store.set(atoms.repoLastCheckAtom, null);
     store.set(atoms.repoIsFreshAtom, false);
 
-    // Note: globalSelectedRepoIdAtom and globalSelectedBranchAtom in globalSelectorAtom.ts
-    // are just re-exports of selectedRepoIdAtom and selectedBranchAtom, so they're
-    // already reset above. No need to reset them separately.
-
     // 3. Set cache invalidation timestamp for components that check it on mount
     localStorage.setItem(CACHE_INVALIDATION_KEY, Date.now().toString());
   } catch (error) {

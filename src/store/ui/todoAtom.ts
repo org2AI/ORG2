@@ -5,8 +5,8 @@
  * sessionId so the parent session's todos never mix with a subagent's
  * (or any other sibling session's) todos.
  *
- * The legacy "current session" atoms (`todosAtom`, `todosVisibleAtom`,
- * `todoStateAtom`) are derived off `workstationActiveSessionIdAtom` —
+ * The legacy "current session" atoms (`todosAtom`, `todoStateAtom`) are
+ * derived off `workstationActiveSessionIdAtom` —
  * NOT the pipeline. They answer "what should the WorkStation chrome
  * (pin bar, todo UI) show?" and must stay anchored to the user's
  * persistent selection, not a transient pipeline claim from a kanban
@@ -111,11 +111,6 @@ todoStateAtom.debugLabel = "todoStateAtom";
 
 export const todosAtom = atom((get) => get(todoStateAtom).todos as TodoItem[]);
 todosAtom.debugLabel = "todosAtom";
-
-export const todosVisibleAtom = atom(
-  (get) => get(todoStateAtom).todos.length > 0
-);
-todosVisibleAtom.debugLabel = "todosVisibleAtom";
 
 /**
  * Read-only access to a specific session's todos. Returns a stable

@@ -1,5 +1,5 @@
 /**
- * Replay slider state, and the chat dropdown / read-only flags.
+ * Replay slider state and chat read-only / search flags.
  */
 import { atom } from "jotai";
 import { atomFamily } from "jotai-family";
@@ -16,10 +16,6 @@ replayDisplayValueAtom.debugLabel = "replayDisplayValueAtom";
  */
 export const replayIsDraggingAtom = atom<boolean>(false);
 replayIsDraggingAtom.debugLabel = "replayIsDraggingAtom";
-
-/** Whether the chat-related dropdown UI is open */
-export const chatDropDownShowAtom = atom<boolean>(false);
-chatDropDownShowAtom.debugLabel = "chatDropDownShowAtom";
 
 /** Whether the chat panel / workspace is in read-only mode */
 export const wpReadOnlyAtom = atom<boolean>(true);

@@ -38,6 +38,7 @@ import {
 } from "@src/icons";
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
+import { SpotlightDetailPane } from "../../components/SpotlightDetailPane";
 import type { BranchItem } from "../../types";
 import { categorizeBranches } from "../../utils/branchUtils";
 import { BranchDropdownList } from "./BranchDropdownList";
@@ -69,40 +70,49 @@ const BranchRow: React.FC<BranchRowProps> = ({
   keyboardProps,
 }) => {
   return (
-    <button
-      type="button"
-      data-testid={`branch-dropdown-row-${branch.name}`}
-      {...keyboardProps}
-      className={`${DROPDOWN_CLASSES.item} ${
-        isCurrent ? DROPDOWN_CLASSES.itemSelected : DROPDOWN_CLASSES.itemHover
-      } w-full justify-start`}
+    <SpotlightDetailPane
+      item={{
+        id: branch.name,
+        label: branch.name,
+        type: "branch",
+        data: { ...branch, isCurrentSelection: isCurrent },
+      }}
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-        {isCurrent ? (
-          <HugeiconsIcon
-            icon={Tick01Icon}
-            data-icon="check"
-            size={DROPDOWN_ITEM.iconSize}
-            className="text-primary-6"
-          />
-        ) : branch.worktreePath ? (
-          <HugeiconsIcon
-            icon={FolderClosedIcon}
-            data-icon="folder"
-            size={DROPDOWN_ITEM.iconSize}
-            className="text-text-2"
-          />
-        ) : (
-          <HugeiconsIcon
-            icon={WorkflowCircle05Icon}
-            data-icon="git-branch"
-            size={DROPDOWN_ITEM.iconSize}
-            className="text-text-2"
-          />
-        )}
-      </span>
-      <span className="truncate">{branch.name}</span>
-    </button>
+      <button
+        type="button"
+        data-testid={`branch-dropdown-row-${branch.name}`}
+        {...keyboardProps}
+        className={`${DROPDOWN_CLASSES.item} ${
+          isCurrent ? DROPDOWN_CLASSES.itemSelected : DROPDOWN_CLASSES.itemHover
+        } w-full justify-start`}
+      >
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+          {isCurrent ? (
+            <HugeiconsIcon
+              icon={Tick01Icon}
+              data-icon="check"
+              size={DROPDOWN_ITEM.iconSize}
+              className="text-primary-6"
+            />
+          ) : branch.worktreePath ? (
+            <HugeiconsIcon
+              icon={FolderClosedIcon}
+              data-icon="folder"
+              size={DROPDOWN_ITEM.iconSize}
+              className="text-text-2"
+            />
+          ) : (
+            <HugeiconsIcon
+              icon={WorkflowCircle05Icon}
+              data-icon="git-branch"
+              size={DROPDOWN_ITEM.iconSize}
+              className="text-text-2"
+            />
+          )}
+        </span>
+        <span className="truncate">{branch.name}</span>
+      </button>
+    </SpotlightDetailPane>
   );
 };
 
@@ -300,6 +310,7 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
   return createPortal(
     <div
       ref={panelRef}
+      data-spotlight-detail-anchor
       data-spotlight-tabs-scope
       className={`${DROPDOWN_CLASSES.panel} fixed flex flex-col`}
       style={{

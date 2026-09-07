@@ -16,8 +16,16 @@ import { REPO_KIND } from "@src/store/repo";
 
 import { WorkingDirectoryDropdown } from "./WorkingDirectoryDropdown";
 
+const discovery = vi.hoisted(() => ({ enabled: vi.fn() }));
+
 const EXTERNAL_RECENT_PATH = "/Users/tester/Documents/GitHub/business-plan";
 const SAVED_REPOS = [
+  ...Array.from({ length: 8 }, (_, index) => ({
+    id: `saved-${index}`,
+    name: `Saved ${index}`,
+    fs_uri: `/saved/${index}`,
+    kind: REPO_KIND.GIT,
+  })),
   {
     id: "inside-org",
     name: "Inside org",
@@ -46,24 +54,26 @@ vi.mock("@src/api/tauri/repo", () => ({
 }));
 
 vi.mock("@src/scaffold/GlobalSpotlight/hooks", () => ({
-  EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD: 5,
   useSharedRepoList: () => ({
     repos: SAVED_REPOS,
     filteredRepos: SAVED_REPOS,
     repoLoading: false,
     refreshReposForce: vi.fn(),
   }),
-  useExternalRecentPaths: () => ({
-    recentPathRepos: [
-      {
-        id: `external-recent:${EXTERNAL_RECENT_PATH}`,
-        name: "business-plan",
-        description: EXTERNAL_RECENT_PATH,
-        fs_uri: EXTERNAL_RECENT_PATH,
-        kind: REPO_KIND.FOLDER,
-      },
-    ],
-  }),
+  useExternalRecentPaths: (options: { enabled: boolean }) => {
+    discovery.enabled(options.enabled);
+    return {
+      recentPathRepos: [
+        {
+          id: `external-recent:${EXTERNAL_RECENT_PATH}`,
+          name: "business-plan",
+          description: EXTERNAL_RECENT_PATH,
+          fs_uri: EXTERNAL_RECENT_PATH,
+          kind: REPO_KIND.FOLDER,
+        },
+      ],
+    };
+  },
   useWorkspaceSwitch: () => ({
     workspaces: [],
     activateWorkspace: vi.fn(),
@@ -138,10 +148,18 @@ describe("WorkingDirectoryDropdown rows", () => {
     act(() => root.unmount());
     container.remove();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   afterAll(() => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
+  });
+
+  it("loads external apps even with more than five saved repositories", () => {
+    discovery.enabled.mockClear();
+    renderDropdown();
+    expect(discovery.enabled).toHaveBeenLastCalledWith(true);
+    expect(externalRecentRow()).not.toBeNull();
   });
 
   it("keeps the path off the row instead of rendering it as a second line", () => {
@@ -153,27 +171,34 @@ describe("WorkingDirectoryDropdown rows", () => {
     expect(row?.textContent).not.toContain(EXTERNAL_RECENT_PATH);
   });
 
-  it("reveals the path in a tooltip while the row is hovered", () => {
+  it("reveals the path in a detail pane while the row is hovered", () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      }
+    );
     renderDropdown();
 
     const row = externalRecentRow();
-    expect(document.querySelector(".native-tooltip")).toBeNull();
+    expect(document.querySelector("[data-spotlight-detail-pane]")).toBeNull();
 
     act(() => {
       row?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
       vi.advanceTimersByTime(500);
     });
 
-    expect(document.querySelector(".native-tooltip")?.textContent).toBe(
-      EXTERNAL_RECENT_PATH
-    );
+    expect(
+      document.querySelector("[data-spotlight-detail-pane]")?.textContent
+    ).toContain(EXTERNAL_RECENT_PATH);
 
     act(() => {
       row?.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
       vi.advanceTimersByTime(500);
     });
 
-    expect(document.querySelector(".native-tooltip")).toBeNull();
+    expect(document.querySelector("[data-spotlight-detail-pane]")).toBeNull();
   });
 
   it("marks the panel as a menu so side tooltips clear its border", () => {

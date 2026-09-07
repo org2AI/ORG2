@@ -34,7 +34,6 @@ import {
 import { ICONS } from "../../config";
 import {
   type AddWorkingDirectoryModalStage,
-  EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD,
   useAddWorkingDirectoryFlow,
   useExternalRecentPaths,
   useSharedRepoList,
@@ -210,10 +209,7 @@ export const WorkingDirectoryPalette: React.FC<
   );
 
   const { recentPathRepos: externalRecentRepos } = useExternalRecentPaths({
-    enabled:
-      isOpen &&
-      !isManageMode &&
-      repos.length <= EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD,
+    enabled: isOpen && !isManageMode,
     existingRepoPaths,
     searchQuery,
   });

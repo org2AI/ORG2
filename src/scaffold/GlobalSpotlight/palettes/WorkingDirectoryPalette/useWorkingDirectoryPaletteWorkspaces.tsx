@@ -396,6 +396,10 @@ export function useWorkingDirectoryPaletteWorkspaces({
         icon: ICONS.workspace,
         type: "repo" as const,
         data: {
+          detailFolders: ws.folders.map((folder, index) => ({
+            name: names[index],
+            path: folder.folderPath,
+          })),
           isCurrentSelection: isActive,
           outsideOrgScope: isOutsideOrgScope(ws),
           updatedAt: ws.updatedAt,

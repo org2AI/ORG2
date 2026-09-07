@@ -10,12 +10,12 @@ import {
   windsurfRecentPaths,
   zcodeRecentPaths,
 } from "@src/api/tauri/externalHistory";
+import { createLogger } from "@src/hooks/logger";
 import type { RepoItem } from "@src/scaffold/GlobalSpotlight/types";
 import { REPO_KIND } from "@src/store/repo";
 
 import { getWorkingDirectoryPathDisplayName } from "../../palettes/WorkingDirectoryPalette/workingDirectoryPathImport";
 
-export const EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD = 5;
 const EXTERNAL_RECENT_PATH_LIMIT = 12;
 
 interface RecentPathRecord {
@@ -71,6 +71,41 @@ function mergeRecentPaths(paths: RecentPathRecord[]): RecentPathRecord[] {
   );
 }
 
+// One bounded in-flight batch per webview, shared by simultaneously open pickers.
+// Results live only in mounted consumers; reopening revalidates app history.
+let inFlight: Promise<RecentPathRecord[]> | undefined;
+const log = createLogger("ExternalRecentPaths");
+const recentPathSources = {
+  codexAppRecentPaths,
+  claudeCodeRecentPaths,
+  cursorCliRecentPaths,
+  opencodeRecentPaths,
+  windsurfRecentPaths,
+  warpRecentPaths,
+  zcodeRecentPaths,
+  qoderRecentPaths,
+};
+
+function loadExternalRecentPaths(): Promise<RecentPathRecord[]> {
+  if (inFlight) return inFlight;
+  const sources = Object.entries(recentPathSources);
+  inFlight = Promise.allSettled(
+    sources.map(([, load]) => load({ limit: EXTERNAL_RECENT_PATH_LIMIT }))
+  )
+    .then((results) => {
+      const paths: RecentPathRecord[] = [];
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") paths.push(...result.value);
+        else log.warn(`Failed to load ${sources[index][0]}`, result.reason);
+      });
+      return mergeRecentPaths(paths);
+    })
+    .finally(() => {
+      inFlight = undefined;
+    });
+  return inFlight;
+}
+
 export function useExternalRecentPaths({
   enabled,
   existingRepoPaths,
@@ -83,45 +118,18 @@ export function useExternalRecentPaths({
 
     let cancelled = false;
 
-    Promise.all([
-      codexAppRecentPaths({ limit: EXTERNAL_RECENT_PATH_LIMIT }),
-      claudeCodeRecentPaths({ limit: EXTERNAL_RECENT_PATH_LIMIT }),
-      cursorCliRecentPaths({ limit: EXTERNAL_RECENT_PATH_LIMIT }),
-      opencodeRecentPaths({ limit: EXTERNAL_RECENT_PATH_LIMIT }),
-      windsurfRecentPaths({ limit: EXTERNAL_RECENT_PATH_LIMIT }),
-      warpRecentPaths({ limit: EXTERNAL_RECENT_PATH_LIMIT }),
-      zcodeRecentPaths({ limit: EXTERNAL_RECENT_PATH_LIMIT }),
-      qoderRecentPaths({ limit: EXTERNAL_RECENT_PATH_LIMIT }),
-    ]).then(
-      ([
-        codexPaths,
-        claudePaths,
-        cursorCliPaths,
-        opencodePaths,
-        windsurfPaths,
-        warpPaths,
-        zcodePaths,
-        qoderPaths,
-      ]) => {
-        if (!cancelled) {
-          setPaths(
-            mergeRecentPaths([
-              ...codexPaths,
-              ...claudePaths,
-              ...cursorCliPaths,
-              ...opencodePaths,
-              ...windsurfPaths,
-              ...warpPaths,
-              ...zcodePaths,
-              ...qoderPaths,
-            ])
-          );
-        }
-      }
-    );
+    const load = () => {
+      if (document.visibilityState === "hidden") return;
+      void loadExternalRecentPaths().then((recentPaths) => {
+        if (!cancelled) setPaths(recentPaths);
+      });
+    };
+    load();
+    document.addEventListener("visibilitychange", load);
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", load);
     };
   }, [enabled]);
 

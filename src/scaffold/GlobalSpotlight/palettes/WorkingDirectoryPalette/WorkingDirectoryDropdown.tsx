@@ -28,7 +28,6 @@ import {
   DROPDOWN_ITEM,
   DROPDOWN_PANEL,
 } from "@src/components/Dropdown/tokens";
-import Tooltip from "@src/components/Tooltip";
 import {
   isSystemHomeRepoItem,
   isSystemPathRepoItem,
@@ -46,9 +45,9 @@ import {
 } from "@src/store/ui/workspaceFoldersAtom";
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
+import { SpotlightDetailPane } from "../../components/SpotlightDetailPane";
 import { ICONS } from "../../config";
 import {
-  EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD,
   type WorkspaceSwitchEntry,
   useExternalRecentPaths,
   useSharedRepoList,
@@ -61,8 +60,6 @@ import { importWorkingDirectoryPath } from "./workingDirectoryPathImport";
 
 const LIST_MAX_HEIGHT = 360;
 const MIN_DROPDOWN_WIDTH = 320;
-/** Long enough that scanning the list doesn't flash a popup on every row. */
-const ROW_DETAIL_TOOLTIP_DELAY = 200;
 
 type DropdownRepoItem =
   | { kind: "repo"; repo: RepoItem }
@@ -108,43 +105,6 @@ interface WorkspaceRowProps {
   keyboardProps: ReturnType<UseDropdownListNavigationReturn["getItemProps"]>;
 }
 
-interface RowDetailTooltipProps {
-  /** Secondary text to reveal on hover — a repo description, or the
-   *  filesystem path for externally-used and open-path rows. Rows without
-   *  one render bare. */
-  detail?: string;
-  children: React.ReactElement;
-}
-
-/**
- * Reveals a row's secondary text on hover instead of on a second line.
- *
- * A second line overflows the token-fixed 32px row and pushes the list past
- * its max height, so the detail moves into a framed side tooltip. Tooltip
- * measures side placements from the enclosing `role="menu"` panel and offsets
- * by `DROPDOWN_PANEL.submenuGap`, so the popup clears the panel border by the
- * same distance a submenu would rather than landing on top of it.
- */
-const RowDetailTooltip: React.FC<RowDetailTooltipProps> = ({
-  detail,
-  children,
-}) => {
-  if (!detail) return children;
-
-  return (
-    <Tooltip
-      content={detail}
-      position="right"
-      mouseEnterDelay={ROW_DETAIL_TOOLTIP_DELAY}
-      framedPanel
-      framedPanelWide
-      smartPlacement
-    >
-      {children}
-    </Tooltip>
-  );
-};
-
 const RepoRow: React.FC<RepoRowProps> = ({
   repo,
   isCurrent,
@@ -156,11 +116,17 @@ const RepoRow: React.FC<RepoRowProps> = ({
     : isSystemPath || repo.kind === REPO_KIND.FOLDER
       ? ICONS.folder
       : ICONS.repo;
-  // System-path rows are self-describing ("Home"), so they keep no hover text.
-  const hoverDetail = isSystemPath ? undefined : repo.description;
 
   return (
-    <RowDetailTooltip detail={hoverDetail}>
+    <SpotlightDetailPane
+      item={{
+        id: repo.id,
+        label: repo.name,
+        icon: Icon,
+        type: "repo",
+        data: { ...repo, isCurrentSelection: isCurrent },
+      }}
+    >
       <button
         type="button"
         role="menuitem"
@@ -184,7 +150,7 @@ const RepoRow: React.FC<RepoRowProps> = ({
         </span>
         <span className="min-w-0 flex-1 truncate text-left">{repo.name}</span>
       </button>
-    </RowDetailTooltip>
+    </SpotlightDetailPane>
   );
 };
 
@@ -194,7 +160,7 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({
 }) => {
   const { workspace, isActive } = entry;
 
-  return (
+  const row = (
     <button
       type="button"
       role="menuitem"
@@ -221,13 +187,32 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({
       </span>
     </button>
   );
+  return (
+    <SpotlightDetailPane
+      item={{
+        id: workspace.workspaceId,
+        label: workspace.name,
+        icon: ICONS.workspace,
+        desc: entry.folderNames.join(", "),
+        data: {
+          isCurrentSelection: isActive,
+          detailFolders: workspace.folders.map((folder, index) => ({
+            name: entry.folderNames[index],
+            path: folder.folderPath,
+          })),
+        },
+      }}
+    >
+      {row}
+    </SpotlightDetailPane>
+  );
 };
 
 const OpenPathRow: React.FC<OpenPathRowProps> = ({ item, keyboardProps }) => {
   const Icon = typeof item.icon === "string" ? ICONS.folder : item.icon;
 
   return (
-    <RowDetailTooltip detail={item.desc}>
+    <SpotlightDetailPane item={item}>
       <button
         type="button"
         role="menuitem"
@@ -240,7 +225,7 @@ const OpenPathRow: React.FC<OpenPathRowProps> = ({ item, keyboardProps }) => {
         </span>
         <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
       </button>
-    </RowDetailTooltip>
+    </SpotlightDetailPane>
   );
 };
 
@@ -312,7 +297,7 @@ export const WorkingDirectoryDropdown: React.FC<
   );
 
   const { recentPathRepos: externalRecentRepos } = useExternalRecentPaths({
-    enabled: isOpen && repos.length <= EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD,
+    enabled: isOpen,
     existingRepoPaths,
     searchQuery,
   });

@@ -121,7 +121,10 @@ export const SpotlightShellChrome: React.FC<SpotlightShellChromeProps> = ({
   };
 
   const panel = (
-    <div ref={inputHostRef}>
+    <div
+      ref={inputHostRef}
+      {...(footer == null ? { "data-spotlight-detail-anchor": true } : {})}
+    >
       <div
         className="overflow-hidden rounded-2xl border border-border-2 bg-bg-2 shadow-xl"
         style={{
@@ -137,7 +140,7 @@ export const SpotlightShellChrome: React.FC<SpotlightShellChromeProps> = ({
 
   const shell =
     footer != null ? (
-      <div className="flex w-full flex-col gap-2">
+      <div data-spotlight-detail-anchor className="flex w-full flex-col gap-2">
         {panel}
         <div className="flex w-full justify-center" onClick={refocusInput}>
           {footer}

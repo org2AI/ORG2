@@ -32,6 +32,7 @@ import {
 import { ICONS } from "../config";
 import { SPOTLIGHT_TOKENS } from "../constants";
 import type { SpotlightItem, SpotlightItemData } from "../types";
+import { SpotlightDetailPane } from "./SpotlightDetailPane";
 import { HighlightText } from "./highlightUtils";
 
 // ============ CONSTANTS ============
@@ -352,7 +353,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
       );
     }
 
-    return (
+    const row = (
       <div
         data-testid={testId}
         data-spotlight-item-index={index}
@@ -535,6 +536,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
         </div>
       </div>
     );
+    return <SpotlightDetailPane item={item}>{row}</SpotlightDetailPane>;
   }
 );
 

@@ -242,7 +242,13 @@ it.each(["spotlight", "dropdown"] as const)(
           glyphs[index]
         );
       } else {
-        expect(indicator.querySelector(".bg-current")).not.toBeNull();
+        const dot = indicator.querySelector(".bg-current");
+        expect(dot).not.toBeNull();
+        expect(dot?.parentElement?.style.width).toBe("16px");
+        expect(dot?.parentElement?.style.height).toBe("16px");
+        expect(dot?.parentElement?.classList.contains("justify-center")).toBe(
+          true
+        );
       }
       if (presentation === "dropdown") {
         expect(row.lastElementChild).toBe(indicator);

@@ -2633,5 +2633,14 @@
       "previewFailed": "Couldn't read cookies from that browser",
       "importFailed": "Couldn't import the selected cookies"
     }
+  },
+  "documentOpen": {
+    "label": "Open in…",
+    "defaultApp": "Default application",
+    "appDefault": "{{name}} (default)",
+    "loading": "Loading applications…",
+    "loadFailed": "Applications unavailable — reopen to retry",
+    "openFailed": "Could not open the document",
+    "saveFirst": "Save or discard changes before opening in another application"
   }
 }

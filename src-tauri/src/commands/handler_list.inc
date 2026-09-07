@@ -152,6 +152,8 @@ integrations::github::detect::detect_github_credentials,
 integrations::github::profile::github_fetch_profile,
 project_management::sync::git_credentials::git_credential_for_remote,
 // Platform commands
+system_services::document_apps::document_applications,
+system_services::document_apps::document_open,
 system_services::notifications::send_notification,
 system_services::notifications::check_notification_permission,
 system_services::notifications::request_notification_permission,

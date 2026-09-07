@@ -14,6 +14,7 @@
 pub mod app_menu;
 pub mod dependencies;
 pub mod dock_menu;
+pub mod document_apps;
 pub mod network;
 pub mod notifications;
 pub mod power;

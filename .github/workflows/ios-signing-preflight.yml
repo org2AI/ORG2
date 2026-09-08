@@ -1,0 +1,73 @@
+name: iOS signing preflight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [junyu/ios-signing-preflight]
+    paths: [.github/workflows/ios-signing-preflight.yml]
+
+permissions: {}
+
+jobs:
+  inspect:
+    if: github.repository == 'org2AI/ORG2'
+    runs-on: macos-latest
+    timeout-minutes: 5
+    steps:
+      # No checkout, external action, artifact upload, or Apple network request.
+      # Only fixed classifications leave the temporary keychain.
+      - name: Classify existing signing identity without exposing credentials
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          HAS_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+          HAS_APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD != '' }}
+          HAS_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          check_dir=$(mktemp -d "$RUNNER_TEMP/ios-signing-check.XXXXXX")
+          keychain="$check_dir/inspection.keychain-db"
+          cleanup() {
+            security delete-keychain "$keychain" >/dev/null 2>&1 || true
+            rm -f "$check_dir/certificate.p12" "$check_dir/identities.txt" "$check_dir/errors.txt"
+            rmdir "$check_dir" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          report() { printf '%s\n' "$1" | tee -a "$GITHUB_STEP_SUMMARY"; }
+          report '## Apple signing preflight (not a release)'
+          report "Apple ID configured: $HAS_APPLE_ID"
+          report "App-specific password configured: $HAS_APPLE_PASSWORD"
+          report "Team ID configured: $HAS_APPLE_TEAM_ID"
+          if [[ -z "$APPLE_CERTIFICATE" ]]; then
+            report 'Certificate bundle: missing'
+            exit 1
+          fi
+          if ! printf '%s' "$APPLE_CERTIFICATE" | base64 -D > "$check_dir/certificate.p12" 2> "$check_dir/errors.txt"; then
+            report 'Certificate bundle: invalid base64'
+            exit 1
+          fi
+          keychain_password=$(openssl rand -hex 32)
+          security create-keychain -p "$keychain_password" "$keychain" > "$check_dir/errors.txt" 2>&1
+          security unlock-keychain -p "$keychain_password" "$keychain" > "$check_dir/errors.txt" 2>&1
+          if ! security import "$check_dir/certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -t cert -f pkcs12 -k "$keychain" > "$check_dir/errors.txt" 2>&1; then
+            report 'Certificate bundle: import failed (password or format; details suppressed)'
+            exit 1
+          fi
+          report 'Certificate bundle: import succeeded'
+          security find-identity -v -p codesigning "$keychain" > "$check_dir/identities.txt" 2> "$check_dir/errors.txt"
+          classify() {
+            if grep -Eq "$2" "$check_dir/identities.txt"; then
+              report "$1: present (valid signing identity with private key)"
+            else
+              report "$1: not found among valid signing identities"
+            fi
+          }
+          classify 'macOS Developer ID' '"Developer ID Application:'
+          classify 'Apple Distribution' '"Apple Distribution:'
+          classify 'Legacy iOS Distribution' '"iPhone Distribution:'
+          classify 'Development only' '"(Apple Development|iPhone Developer):'
+          report 'Membership, App Store Connect access, bundle registration and provisioning profiles: NOT verified'
+          report 'No certificates were created/revoked and no app was built or uploaded.'

@@ -7,40 +7,44 @@ import { StartPageQuotaModal } from "./StartPageQuotaModal";
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@src/scaffold/ModalSystem", () => ({
-  default: ({
+vi.mock("@src/scaffold/GlobalSpotlight/shell", () => ({
+  SpotlightShell: ({
     children,
-    headerActions,
-    title,
-    visible,
-    width,
+    isOpen,
+    hideFooter,
   }: {
     children: React.ReactNode;
-    headerActions: React.ReactNode;
-    title: React.ReactNode;
-    visible: boolean;
-    width: number;
+    isOpen: boolean;
+    hideFooter: boolean;
   }) =>
-    visible
+    isOpen
       ? createElement(
           "section",
-          { "data-testid": "quota-modal", "data-width": width },
-          title,
-          headerActions,
+          {
+            "data-testid": "quota-spotlight",
+            "data-hide-footer": String(hideFooter),
+          },
           children
         )
       : null,
 }));
 vi.mock("./StartPageQuotaGrid", () => ({
-  StartPageQuotaGrid: ({ showHeader }: { showHeader: boolean }) =>
+  StartPageQuotaGrid: ({
+    showHeader,
+    paginate,
+  }: {
+    showHeader: boolean;
+    paginate: boolean;
+  }) =>
     createElement("div", {
       "data-testid": "runtime-quota-grid",
       "data-show-header": String(showHeader),
+      "data-paginate": String(paginate),
     }),
 }));
 
 describe("StartPageQuotaModal", () => {
-  it("puts icon-only refresh ahead of close while reusing the Runtime quota grid", () => {
+  it("uses the Spotlight back pill and refresh slot with the Runtime quota grid", () => {
     const markup = renderToStaticMarkup(
       createElement(StartPageQuotaModal, {
         visible: true,
@@ -48,14 +52,27 @@ describe("StartPageQuotaModal", () => {
       })
     );
 
-    expect(markup).toContain('data-testid="quota-modal"');
-    expect(markup).toContain('data-width="760"');
+    expect(markup).toContain('data-testid="quota-spotlight"');
+    expect(markup).toContain('data-hide-footer="true"');
+    expect(markup).toContain('role="dialog"');
+    expect(markup).toContain('data-icon="chevron-left"');
+    expect(markup).toContain('class="p-3"');
     expect(markup).toContain("kanban.dataSource.views.quota");
     expect(markup).toContain('data-testid="quota-modal-refresh"');
     expect(markup).toContain('data-show-header="false"');
+    expect(markup).toContain('data-paginate="true"');
+    expect(markup).toContain("ml-auto");
     expect(markup).toContain('data-testid="runtime-quota-grid"');
     expect(markup.indexOf("quota-modal-refresh")).toBeLessThan(
       markup.indexOf("runtime-quota-grid")
     );
   });
+});
+
+it("does not render the quota grid when closed", () => {
+  expect(
+    renderToStaticMarkup(
+      createElement(StartPageQuotaModal, { visible: false, onClose: vi.fn() })
+    )
+  ).toBe("");
 });

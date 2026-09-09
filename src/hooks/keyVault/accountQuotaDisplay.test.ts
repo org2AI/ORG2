@@ -1,8 +1,13 @@
-import type { TFunction } from "i18next";
+import i18n, { type TFunction, createInstance } from "i18next";
 import { describe, expect, it } from "vitest";
+
+import en from "@src/i18n/locales/en/integrations.json";
+import zh from "@src/i18n/locales/zh/integrations.json";
 
 import {
   collectAccountQuotaCards,
+  formatQuotaResetHint,
+  formatQuotaResetTime,
   resolveQuotaPlanLabel,
 } from "./accountQuotaDisplay";
 import type { KeyVaultAccount } from "./types";
@@ -87,3 +92,117 @@ describe("collectAccountQuotaCards", () => {
     );
   });
 });
+
+describe("provider plan and reset details", () => {
+  it.each(["max_5x", "default_claude_max_5x", "max_20x"])(
+    "formats reported Claude tier %s",
+    (tier) => {
+      const account = deepSeekAccount();
+      account.modelType = "claude_code";
+      account.accountMetadata = { rate_limit_tier: tier };
+      expect(resolveQuotaPlanLabel(account)).toBe(
+        tier.includes("20") ? "Max 20x" : "Max 5x"
+      );
+    }
+  );
+
+  it("passes reset details through alongside the Codex plan tier", () => {
+    const account = deepSeekAccount();
+    account.modelType = "codex";
+    account.quotaInfo!.plan_type = "pro";
+    account.quotaInfo!.named_message = "Reset credits available: 3";
+    const [card] = collectAccountQuotaCards([account], translate, translate);
+    expect(card.accountPlan).toBe("Pro 20x");
+    expect(card.quotaMessage).toBe("3 resets available");
+  });
+});
+
+it.each([
+  ["prolite", "Pro 5x"],
+  ["pro", "Pro 20x"],
+  [" PROLITE ", "Pro 5x"],
+  ["plus", "Plus"],
+  ["future_plan", "Future Plan"],
+  [null, null],
+])("displays Codex plan %s as %s", (planType, label) => {
+  const account = deepSeekAccount();
+  account.modelType = "codex";
+  account.quotaInfo!.plan_type = planType;
+  expect(resolveQuotaPlanLabel(account)).toBe(label);
+});
+
+it("keeps other providers' Pro labels unchanged", () => {
+  const account = deepSeekAccount();
+  account.quotaInfo!.plan_type = "pro";
+  expect(resolveQuotaPlanLabel(account)).toBe("Pro");
+});
+
+it.each([
+  ["en", 0, "0 resets available"],
+  ["en", 1, "1 reset available"],
+  ["en", 3, "3 resets available"],
+  ["zh", 3, "3个可用重置"],
+])("localizes reset count for %s (%s)", async (lng, count, expected) => {
+  const i18n = createInstance();
+  await i18n.init({
+    lng: String(lng),
+    resources: { en: { integrations: en }, zh: { integrations: zh } },
+  });
+  const account = deepSeekAccount();
+  account.modelType = "codex";
+  account.quotaInfo!.named_message = `Reset credits available: ${count}`;
+  const [card] = collectAccountQuotaCards(
+    [account],
+    translate,
+    i18n.getFixedT(String(lng), "integrations")
+  );
+  expect(card.quotaMessage).toBe(expected);
+});
+
+describe("quota timestamp formatting", () => {
+  it("uses English dates and 12-hour time for labels and tooltips", () => {
+    expect(
+      formatQuotaResetTime(new Date(2026, 8, 15, 6, 56).toISOString())
+    ).toEqual({
+      compact: "Sep 15, 6:56 AM",
+      full: "Sep 15, 6:56 AM",
+    });
+    expect(
+      formatQuotaResetTime(new Date(2026, 8, 15, 18, 6).toISOString())?.compact
+    ).toBe("Sep 15, 6:06 PM");
+  });
+  it.each(["session", "weekly", "monthly"])(
+    "uses the same timestamp format for %s",
+    (usageType) => {
+      expect(
+        formatQuotaResetHint(
+          usageType,
+          50,
+          new Date(2026, 8, 15, 6, 56).toISOString(),
+          translate
+        )?.compact
+      ).toBe("Sep 15, 6:56 AM");
+    }
+  );
+  it("keeps missing and invalid timestamps unavailable", () => {
+    expect(formatQuotaResetTime(null)).toBeNull();
+    expect(formatQuotaResetTime("invalid")).toBeNull();
+    expect(formatQuotaResetHint("session", 50, null, translate)).toBeNull();
+  });
+});
+
+it.each(["zh", "de", "en"])(
+  "keeps English quota timestamps when app language is %s",
+  (language) => {
+    const previousLanguage = i18n.language;
+    try {
+      i18n.language = language;
+      expect(
+        formatQuotaResetTime(new Date(2026, 7, 15, 18, 9).toISOString())
+          ?.compact
+      ).toBe("Aug 15, 6:09 PM");
+    } finally {
+      i18n.language = previousLanguage;
+    }
+  }
+);

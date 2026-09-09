@@ -25,6 +25,7 @@ const keyVaultMocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   refreshAccount: vi.fn(),
   resetTime: null as string | null,
+  entryCount: 5,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -48,10 +49,11 @@ vi.mock("@src/components/ModelIcon", () => ({
 
 vi.mock("@src/hooks/keyVault/accountQuotaDisplay", () => ({
   collectAccountQuotaCards: () =>
-    Array.from({ length: 5 }, (_, index) => ({
+    Array.from({ length: keyVaultMocks.entryCount }, (_, index) => ({
       id: `account-${index + 1}`,
       accountName: index === 0 ? "Codex account" : `Account ${index + 1}`,
       accountPlan: "Plus",
+      quotaMessage: index === 0 ? "3 resets available" : null,
       modelType: "codex",
       metrics: [
         ...(index === 0
@@ -90,6 +92,7 @@ afterEach(() => {
   vi.clearAllMocks();
   keyVaultMocks.accounts = [];
   keyVaultMocks.resetTime = null;
+  keyVaultMocks.entryCount = 5;
 });
 
 afterAll(() => {
@@ -308,4 +311,97 @@ describe("StartPageQuotaGrid", () => {
     act(() => root.unmount());
     container.remove();
   });
+});
+
+it("renders provider reset-credit details", () => {
+  const html = renderToStaticMarkup(createElement(StartPageQuotaGrid));
+  expect(html).toContain(" · 3 resets available");
+  expect(html).not.toContain("tag-pill");
+});
+
+it("pages four cards at a time, clamps after removal, and resets on remount", () => {
+  keyVaultMocks.entryCount = 9;
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  let root = createRoot(container);
+  const render = () =>
+    root.render(createElement(StartPageQuotaGrid, { paginate: true }));
+  const previous = () =>
+    container.querySelector<HTMLButtonElement>(
+      '[aria-label="actions.previous"]'
+    )!;
+  const next = () =>
+    container.querySelector<HTMLButtonElement>('[aria-label="actions.next"]')!;
+  act(render);
+  expect(container.textContent).toContain("Account 4");
+  expect(container.textContent).not.toContain("Account 5");
+  expect(previous().disabled).toBe(true);
+  expect(next().disabled).toBe(false);
+  act(() => next().click());
+  expect(container.textContent).toContain("Account 5");
+  expect(container.textContent).toContain("Account 8");
+  expect(container.textContent).not.toContain("Account 9");
+  act(() => next().click());
+  expect(container.textContent).toContain("Account 9");
+  expect(next().disabled).toBe(true);
+  act(() => previous().click());
+  expect(container.textContent).toContain("Account 5");
+  keyVaultMocks.entryCount = 2;
+  keyVaultMocks.accounts = [];
+  act(render);
+  expect(container.textContent).toContain("Codex account");
+  expect(previous().disabled).toBe(true);
+  expect(next().disabled).toBe(true);
+  keyVaultMocks.entryCount = 9;
+  keyVaultMocks.accounts = [];
+  act(render);
+  act(() => next().click());
+  act(() => root.unmount());
+  root = createRoot(container);
+  act(render);
+  expect(container.textContent).toContain("Codex account");
+  expect(previous().disabled).toBe(true);
+  act(() => root.unmount());
+  container.remove();
+});
+
+it("always displays disabled paging controls for an empty quota list", () => {
+  keyVaultMocks.entryCount = 0;
+  const markup = renderToStaticMarkup(
+    createElement(StartPageQuotaGrid, { paginate: true })
+  );
+  expect(markup).toContain('data-testid="quota-pagination"');
+  expect(markup.match(/disabled=""/g)).toHaveLength(3);
+});
+
+it("renders paging controls in the header slot instead of below the cards", () => {
+  const container = document.createElement("div");
+  const headerSlot = document.createElement("div");
+  document.body.append(container, headerSlot);
+  const root = createRoot(container);
+  act(() =>
+    root.render(
+      createElement(StartPageQuotaGrid, {
+        paginate: true,
+        paginationContainer: headerSlot,
+      })
+    )
+  );
+  expect(
+    container.querySelector('[data-testid="quota-pagination"]')
+  ).toBeNull();
+  expect(
+    headerSlot.querySelector('[data-testid="quota-pagination"]')
+  ).not.toBeNull();
+  act(() =>
+    headerSlot
+      .querySelector<HTMLButtonElement>('[aria-label="actions.next"]')!
+      .click()
+  );
+  expect(container.textContent).toContain("Account 5");
+  expect(container.textContent).not.toContain("Codex account");
+  act(() => root.unmount());
+  expect(headerSlot.childElementCount).toBe(0);
+  container.remove();
+  headerSlot.remove();
 });

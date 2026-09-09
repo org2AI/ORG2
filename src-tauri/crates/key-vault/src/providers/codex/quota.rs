@@ -14,6 +14,8 @@ struct CodexRateLimitWindow {
 
 #[derive(Debug, Deserialize)]
 struct CodexRateLimitsPayload {
+    #[serde(rename = "planType")]
+    plan_type: Option<String>,
     primary: Option<CodexRateLimitWindow>,
     secondary: Option<CodexRateLimitWindow>,
 }
@@ -158,13 +160,28 @@ pub(super) fn quota_from_usage_json(data: &serde_json::Value) -> Option<QuotaInf
         .unwrap_or("plus")
         .to_lowercase();
 
-    Some(quota_from_windows(&plan_type, "codex_usage_api", windows))
+    let mut quota = quota_from_windows(&plan_type, "codex_usage_api", windows);
+    // The usage API reports available credits inline; absence is unknown, not zero.
+    quota.named_message = data
+        .get("rate_limit_reset_credits")
+        .and_then(|credits| credits.get("available_count"))
+        .and_then(serde_json::Value::as_u64)
+        .map(|available| format!("Reset credits available: {available}"));
+    Some(quota)
 }
 
 pub(super) fn quota_from_codex_rate_limits_response(
     response: CodexRateLimitsResponse,
 ) -> QuotaInfo {
     let mut windows = Vec::new();
+    let plan_type = response
+        .rate_limits
+        .as_ref()
+        .and_then(|limits| limits.plan_type.as_deref())
+        .map(str::trim)
+        .filter(|plan| !plan.is_empty())
+        .unwrap_or("codex")
+        .to_lowercase();
     if let Some(rate_limits) = response.rate_limits {
         let primary_fallback: fn(f64, Option<String>) -> QuotaWindow =
             if rate_limits.secondary.is_some() {
@@ -194,16 +211,19 @@ pub(super) fn quota_from_codex_rate_limits_response(
         }
     }
 
-    let mut quota = quota_from_windows("codex", "codex_app_server", windows);
+    let mut quota = quota_from_windows(&plan_type, "codex_app_server", windows);
     if let Some(reset_credits) = response.rate_limit_reset_credits {
-        quota.named_message = Some(format_codex_reset_credits(reset_credits));
+        quota.named_message = format_codex_reset_credits(reset_credits);
     }
     quota
 }
 
-fn format_codex_reset_credits(reset_credits: CodexRateLimitResetCredits) -> String {
-    let available = reset_credits.available_count.unwrap_or(0);
-    let total = reset_credits.total_earned_count.unwrap_or(available);
+fn format_codex_reset_credits(reset_credits: CodexRateLimitResetCredits) -> Option<String> {
+    let available = reset_credits.available_count?;
+    let summary = match reset_credits.total_earned_count {
+        Some(total) => format!("Reset credits available: {available} (total earned: {total})"),
+        None => format!("Reset credits available: {available}"),
+    };
     let expiry = reset_credits.next_expires_at.and_then(|value| match value {
         serde_json::Value::Number(number) => number.as_i64().and_then(unix_seconds_to_rfc3339),
         serde_json::Value::String(value) => Some(value),
@@ -211,10 +231,8 @@ fn format_codex_reset_credits(reset_credits: CodexRateLimitResetCredits) -> Stri
     });
 
     match expiry {
-        Some(expires_at) => {
-            format!("Reset credits: {available}/{total}, next expires {expires_at}")
-        }
-        None => format!("Reset credits: {available}/{total}"),
+        Some(expires_at) => Some(format!("{summary}, next expires {expires_at}")),
+        None => Some(summary),
     }
 }
 
@@ -288,9 +306,56 @@ mod tests {
     }
 
     #[test]
+    fn app_server_preserves_reported_plan_type() {
+        for plan in ["pro", "prolite"] {
+            let response = serde_json::from_value::<CodexRateLimitsResponse>(serde_json::json!({
+                "rateLimits": {"planType": plan}
+            }))
+            .unwrap();
+            let quota = quota_from_codex_rate_limits_response(response);
+            assert_eq!(quota.plan_type.as_deref(), Some(plan));
+        }
+    }
+
+    #[test]
+    fn usage_api_preserves_available_reset_credits_without_inventing_zero() {
+        for (credits, expected) in [
+            (
+                serde_json::json!({"available_count": 3}),
+                Some("Reset credits available: 3"),
+            ),
+            (
+                serde_json::json!({"available_count": 0}),
+                Some("Reset credits available: 0"),
+            ),
+            (serde_json::json!({}), None),
+            (serde_json::Value::Null, None),
+            (serde_json::json!({"available_count": -1}), None),
+        ] {
+            let quota = quota_from_usage_json(&serde_json::json!({
+                "plan_type": "pro",
+                "seven_day": {"utilization": 13},
+                "rate_limit_reset_credits": credits
+            }))
+            .unwrap();
+            assert_eq!(quota.named_message.as_deref(), expected);
+            assert_eq!(quota.plan_type.as_deref(), Some("pro"));
+        }
+        assert_eq!(
+            format_codex_reset_credits(CodexRateLimitResetCredits {
+                available_count: None,
+                total_earned_count: Some(3),
+                next_expires_at: None,
+            }),
+            None
+        );
+    }
+
+    #[test]
     fn codex_rate_limits_response_maps_windows_and_reset_credits() {
         let response = CodexRateLimitsResponse {
             rate_limits: Some(CodexRateLimitsPayload {
+                plan_type: None,
                 primary: Some(CodexRateLimitWindow {
                     used_percent: Some(30.0),
                     window_duration_mins: Some(300),
@@ -320,7 +385,7 @@ mod tests {
         assert_eq!(quota.usage_items[1].usage_type, "weekly");
         assert_eq!(
             quota.named_message.as_deref(),
-            Some("Reset credits: 2/3, next expires 2026-07-07T10:00:00Z")
+            Some("Reset credits available: 2 (total earned: 3), next expires 2026-07-07T10:00:00Z")
         );
     }
 
@@ -328,6 +393,7 @@ mod tests {
     fn codex_rate_limits_response_classifies_lone_weekly_primary_by_duration() {
         let quota = quota_from_codex_rate_limits_response(CodexRateLimitsResponse {
             rate_limits: Some(CodexRateLimitsPayload {
+                plan_type: None,
                 primary: Some(CodexRateLimitWindow {
                     used_percent: Some(44.0),
                     window_duration_mins: Some(10_080),

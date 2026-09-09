@@ -16,12 +16,14 @@ interface SpotlightPillBarProps {
   path: PathSegment[];
   onRemoveSegment?: (index: number) => void;
   trailingSlot?: React.ReactNode;
+  trailingSlotAlign?: "start" | "end";
 }
 
 export const SpotlightPillBar: React.FC<SpotlightPillBarProps> = ({
   path,
   onRemoveSegment,
   trailingSlot,
+  trailingSlotAlign = "start",
 }) => {
   const handlePillRemove = (
     index: number,
@@ -72,7 +74,11 @@ export const SpotlightPillBar: React.FC<SpotlightPillBarProps> = ({
       </div>
 
       {trailingSlot && (
-        <div className="flex shrink-0 items-center">{trailingSlot}</div>
+        <div
+          className={`flex shrink-0 items-center ${trailingSlotAlign === "end" ? "ml-auto" : ""}`}
+        >
+          {trailingSlot}
+        </div>
       )}
     </div>
   );

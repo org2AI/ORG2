@@ -175,7 +175,7 @@ export function useCloudMemberFilterDropdown({
     <div
       // Fixed positioning creates a stacking context; the portal root must
       // own the overlay layer so its child panel can appear above the app.
-      className={`fixed ${DROPDOWN_PANEL.zIndexClass}`}
+      className={`fixed flex ${DROPDOWN_PANEL.zIndexClass}`}
       style={{ top: memberMenu.top, left: memberMenu.left }}
       data-testid="sidebar-cloud-member-filter"
     >
@@ -186,7 +186,8 @@ export function useCloudMemberFilterDropdown({
         }}
         position="bottom-start"
         className={`${DROPDOWN_CLASSES.panelAnimated} ${DROPDOWN_WIDTHS.sidebarMenuClass} flex flex-col`}
-        style={{ maxHeight: DROPDOWN_PANEL.maxHeight }}
+        // memberMenu already includes the gap below the real filter button.
+        style={{ maxHeight: DROPDOWN_PANEL.maxHeight, marginTop: 0 }}
         showSearch
         options={options}
         value={selectedValue}
@@ -217,7 +218,8 @@ export function useCloudMemberFilterDropdown({
           </>
         )}
       >
-        <span aria-hidden="true" />
+        {/* A block anchor has no inline line box to push the panel down. */}
+        <span aria-hidden="true" className="block size-0" />
       </Dropdown>
     </div>,
     document.body

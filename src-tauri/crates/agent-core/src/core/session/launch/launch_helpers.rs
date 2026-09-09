@@ -41,16 +41,37 @@ pub(super) async fn handle_background_launch_failure(
     }
     release_work_item_execution_lock_if_present(project_slug, work_item_id, session_id, app_handle)
         .await;
-    broadcast_launch_send_error(session_id, message);
-    crate::lifecycle::persist_session_error_event(app_handle, session_id, message);
-    if let Err(mark_err) = mark_session_failed(session_id.to_string()).await {
+
+    // First-turn failures happen after `session_launch` has already returned
+    // `first_turn_started`, so every recovery path is asynchronous. Make the
+    // durable event + session row authoritative before publishing transient
+    // notifications; a window that misses both broadcasts can then replay the
+    // same terminal error from SQLite.
+    if let Err(err) =
+        crate::lifecycle::persist_session_error_event(app_handle, session_id, message).await
+    {
         tracing::warn!(
+            session_id = %session_id,
+            error = %err,
+            "[session_launch] failed to persist first-turn error event"
+        );
+    }
+
+    match mark_session_failed(session_id.to_string()).await {
+        Ok(()) => crate::lifecycle::emit_session_status_changed(
+            app_handle,
+            session_id,
+            crate::persistence::db_helpers::AgentSessionStatus::Failed,
+        ),
+        Err(mark_err) => tracing::warn!(
             session_id = %session_id,
             error = %mark_err,
             "{}",
             session_mark_warning
-        );
+        ),
     }
+
+    broadcast_launch_send_error(session_id, message);
 }
 
 pub(super) fn apply_member_launch_overrides_to_snapshot(
@@ -257,7 +278,9 @@ pub(super) async fn mark_session_failed(session_id: String) -> Result<(), String
         let Some(mut record) =
             crate::session::persistence::get_session(&session_id).map_err(|err| err.to_string())?
         else {
-            return Ok(());
+            return Err(format!(
+                "session {session_id} disappeared before first-turn failure could be persisted"
+            ));
         };
         record.status = crate::session::SessionStatus::Failed.as_str().to_string();
         record.updated_at = chrono::Utc::now().to_rfc3339();

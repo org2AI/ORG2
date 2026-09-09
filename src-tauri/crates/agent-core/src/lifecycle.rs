@@ -89,7 +89,7 @@ pub struct TerminalTurnSignal {
     pub completed_at: String,
 }
 
-fn emit_session_status_changed(
+pub(crate) fn emit_session_status_changed(
     app_handle: Option<&tauri::AppHandle>,
     session_id: &str,
     status: AgentSessionStatus,
@@ -245,19 +245,34 @@ pub fn build_session_error_event(session_id: &str, message: &str) -> SessionEven
     event
 }
 
-pub fn persist_session_error_event(
+pub async fn persist_session_error_event(
     app_handle: Option<&tauri::AppHandle>,
     session_id: &str,
     message: &str,
-) {
-    let Some(handle) = app_handle else {
-        return;
-    };
-    event_pipeline_bridge::push_events(
-        handle,
-        session_id,
-        vec![build_session_error_event(session_id, message)],
-    );
+) -> Result<(), String> {
+    let event = build_session_error_event(session_id, message);
+
+    // Lifecycle errors are terminal user-visible facts, not high-frequency
+    // streaming updates. Persist synchronously before notifying any UI so a
+    // missed `agent:error`/`es:changed` can always be recovered on reopen. The
+    // retry loop sleeps on SQLite contention, so await it on the blocking pool.
+    let durable_session_id = session_id.to_string();
+    let durable_event = event.clone();
+    tokio::task::spawn_blocking(move || {
+        event_pipeline_bridge::persist_events(
+            "session-error-terminal",
+            &durable_session_id,
+            std::slice::from_ref(&durable_event),
+            8,
+        )
+    })
+    .await
+    .map_err(|err| format!("persist terminal session error worker failed: {err}"))??;
+
+    if let Some(handle) = app_handle {
+        event_pipeline_bridge::push_events(handle, session_id, vec![event]);
+    }
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -559,6 +574,19 @@ pub async fn finalize_session(
         AgentSessionStatus::Failed
     };
 
+    // A terminal error is durable before any status notification leaves this
+    // function. Status broadcasts can be missed; the EventStore row is the
+    // authoritative replay path after a window reload or app restart.
+    if let Err(message) = response {
+        if let Err(err) = persist_session_error_event(app_handle, session_id, message).await {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %err,
+                "[lifecycle] failed to persist terminal session error event"
+            );
+        }
+    }
+
     if let Some(ref terminal_turn) = terminal_turn {
         persist_and_emit_terminal_turn(session_id, terminal_turn, final_status, app_handle);
     } else {
@@ -623,10 +651,6 @@ pub async fn finalize_session(
             app_handle_clone.as_ref(),
         )
         .await;
-    }
-
-    if let Err(message) = response {
-        persist_session_error_event(app_handle, session_id, message);
     }
 
     // Turn-end wake re-check (one of the two triggers feeding the single

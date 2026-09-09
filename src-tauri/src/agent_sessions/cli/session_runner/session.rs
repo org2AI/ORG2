@@ -386,11 +386,10 @@ fn resolve_cli_effective_mode(
 fn scope_codex_transport_to_turn(
     agent: &ModelType,
     launch_profile: &mut super::launch_profiles::ResolvedCliLaunchProfile,
-    native_continuation_episode: bool,
 ) {
     if matches!(agent, ModelType::Codex) {
-        launch_profile.transport = native_continuation_episode
-            .then(|| super::launch_profiles::CLI_TRANSPORT_APP_SERVER.to_string());
+        launch_profile.transport =
+            Some(super::launch_profiles::CLI_TRANSPORT_APP_SERVER.to_string());
     }
 }
 
@@ -596,10 +595,10 @@ pub(crate) async fn run_session_with_ide_context(
     // changes prompt assembly (images travel as native localImage inputs)
     // as well as argv and the stdout-processing branch below.
     let mut launch_profile = resolve_cli_launch_profile(&agent)?;
-    // Ordinary Codex sessions keep the established `codex exec --json`
-    // transport. A canonical/native continuation episode opts into app-server
-    // for this turn only, without mutating the user's saved launch profile.
-    scope_codex_transport_to_turn(&agent, &mut launch_profile, allow_native_context_recovery);
+    // Codex Desktop excludes exec-origin threads from its default catalog.
+    // Create and resume all managed Codex turns through the native transport;
+    // context recovery remains a separate per-episode capability.
+    scope_codex_transport_to_turn(&agent, &mut launch_profile);
     let use_codex_app_server =
         super::launch_profiles::uses_codex_app_server(&agent, &launch_profile);
 

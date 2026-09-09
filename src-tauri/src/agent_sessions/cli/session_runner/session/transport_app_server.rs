@@ -1,7 +1,7 @@
 //! Codex app-server transport: long-lived JSON-RPC turn over stdio.
 //!
-//! Native continuation episodes opt into this transport explicitly. Ordinary
-//! Codex sessions retain the established per-turn `codex exec --json` path.
+//! Managed Codex sessions use this per-turn transport for both fresh threads
+//! and continuations so their native source is visible in Codex Desktop.
 
 use tokio::process::Child;
 
@@ -52,7 +52,6 @@ pub(super) async fn run_codex_app_server_branch(
     turn_intent_id: Option<&str>,
 ) -> Result<AppServerOutcome, String> {
     // ── Codex app-server: long-lived JSON-RPC over stdio ──
-    // The resolved launch profile may explicitly select the legacy exec path.
     // Same CODEX_HOME / auth env as the exec shell-out — the spawn
     // above already carries env_vars.
     use crate::agent_sessions::cli::parsers::codex_app_server;

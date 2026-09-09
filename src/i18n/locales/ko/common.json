@@ -774,8 +774,7 @@
     "agentTerminal": "Agent 터미널",
     "myStation": "내 스테이션",
     "agentStation": "Agent 스테이션",
-    "myTerminal": "My Terminal",
-    "myTerminalInfo": "My Terminal 정보"
+    "myTerminal": "My Terminal"
   },
   "tooltips": {
     "closeEsc": "닫기 (Esc)",

@@ -247,7 +247,6 @@ const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
             dataUrl={asyncSrc}
             fileName={imageLabel(alt, source.path)}
             onClose={handleClose}
-            showCopyButton={false}
           />
         )}
       </>

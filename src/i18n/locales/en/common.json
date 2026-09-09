@@ -605,8 +605,7 @@
     "agentTerminal": "Agent Terminal",
     "myStation": "My Station",
     "agentStation": "Agent's Station",
-    "myTerminal": "My Terminal",
-    "myTerminalInfo": "My Terminal Info"
+    "myTerminal": "My Terminal"
   },
   "tooltips": {
     "closeEsc": "Close (Esc)",

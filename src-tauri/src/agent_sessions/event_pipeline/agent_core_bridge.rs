@@ -444,9 +444,9 @@ fn persist_events_adapter(
     session_id: &str,
     events: &[SessionEvent],
     max_retries: u32,
-) {
+) -> Result<(), String> {
     let cached: Vec<_> = events.iter().map(session_event_to_cached_event).collect();
-    let _ = save_events_retry(label, session_id, &cached, max_retries);
+    save_events_retry(label, session_id, &cached, max_retries)
 }
 
 fn persist_events_async_adapter(
@@ -692,4 +692,36 @@ pub fn register() {
         persist_events_async_adapter,
         persist_user_message_event_adapter,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn persist_events_adapter_returns_only_after_the_error_is_readable() {
+        let _sandbox = test_helpers::test_env::sandbox();
+        let conn = database::db::get_connection().expect("test database");
+        session_persistence::init_session_tables(&conn).expect("session event schema");
+
+        let session_id = "terminal-error-durability";
+        let event = agent_core::lifecycle::build_session_error_event(
+            session_id,
+            "provider rejected the first turn",
+        );
+        persist_events_adapter(
+            "terminal-error-test",
+            session_id,
+            std::slice::from_ref(&event),
+            1,
+        )
+        .expect("persistence barrier succeeds");
+
+        let stored = session_persistence::get_event(session_id, &event.id)
+            .expect("read persisted event")
+            .expect("event is durable before the adapter returns");
+        assert_eq!(stored.session_id, session_id);
+        assert_eq!(stored.id, event.id);
+        assert!(stored.content.contains("provider rejected the first turn"));
+    }
 }

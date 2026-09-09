@@ -337,7 +337,7 @@ describe("UserChatItem raw prompt affordance", () => {
 });
 
 describe("UserChatItem delivery failure", () => {
-  it("renders the underlying provider error beside the failed message", () => {
+  it("renders provider details in a default session-body alert", () => {
     const event = makeSessionEvent({
       id: "user-message-failed",
       sessionId: "agentsession-local",

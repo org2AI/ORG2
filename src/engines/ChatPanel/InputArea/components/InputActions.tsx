@@ -168,7 +168,7 @@ const InputActions: React.FC<InputActionsProps> = memo(
         : activeButtonClass
       : showStop
         ? canStopAgent
-          ? "cursor-pointer border-none bg-text-2 text-white hover:bg-text-1"
+          ? INPUT_AREA_BUTTONS.iconButtonActive
           : "cursor-not-allowed border border-solid border-border-2 bg-transparent text-text-3 opacity-50"
         : showRetry
           ? "cursor-pointer border-none bg-warning-6 text-white hover:bg-warning-5"

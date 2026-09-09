@@ -195,7 +195,7 @@ describe("continuous chat user-message previews", () => {
     );
 
     const retryButton = container.querySelector<HTMLButtonElement>(
-      '[data-testid="chat-message-delivery-retry"]'
+      '[data-testid="chat-message-delivery-failed"] button'
     );
     const editButton = container.querySelector<HTMLButtonElement>(
       '[data-testid="chat-message-user-edit-button"]'
@@ -221,7 +221,9 @@ describe("continuous chat user-message previews", () => {
     );
 
     expect(
-      container.querySelector('[data-testid="chat-message-delivery-retry"]')
+      container.querySelector(
+        '[data-testid="chat-message-delivery-failed"] button'
+      )
     ).toBeNull();
     expect(
       container.querySelector('[data-testid="chat-message-user-edit-button"]')

@@ -774,8 +774,7 @@
     "agentTerminal": "Agent терминал",
     "myStation": "Моя станция",
     "agentStation": "Станция Agent",
-    "myTerminal": "Мой терминал",
-    "myTerminalInfo": "Информация о моем терминале"
+    "myTerminal": "Мой терминал"
   },
   "tooltips": {
     "closeEsc": "Закрыть (Esc)",

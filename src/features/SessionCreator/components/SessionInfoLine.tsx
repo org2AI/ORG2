@@ -27,7 +27,6 @@ import { useTranslation } from "react-i18next";
 import { gitApi } from "@src/api/http/git";
 import { CheckoutBlockedDialog } from "@src/components/GitDialogs/CheckoutBlockedDialog";
 import { CheckoutConflictDialog } from "@src/components/GitDialogs/CheckoutConflictDialog";
-import PillGroup from "@src/components/PillGroup";
 import RunningLocationDropdownPanel from "@src/components/RunningLocationDropdownPanel";
 import {
   RUNNING_LOCATIONS,
@@ -62,6 +61,7 @@ import { isMultiRootWorkspaceAtom } from "@src/store/ui/workspaceFoldersAtom";
 import { workspaceNameAtom } from "@src/store/workspace/derived";
 import { showGitActionDialogSafely } from "@src/util/dialogs/gitActionDialog";
 
+import { SessionInfoPillGroup } from "./SessionInfoLine/SessionInfoPillGroup";
 import {
   buildSessionInfoSegments,
   getSessionInfoDisplayState,
@@ -614,9 +614,7 @@ const SessionInfoLine: React.FC<SessionInfoLineProps> = ({
     return segment;
   });
 
-  const sessionInfoPills = (
-    <PillGroup segments={segments} className="flex-wrap" strongSurface />
-  );
+  const sessionInfoPills = <SessionInfoPillGroup segments={segments} />;
 
   return (
     <>

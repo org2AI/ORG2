@@ -51,6 +51,7 @@ export const AgentControlSubmitButton: React.FC<
     <Tooltip
       content={
         <KeyboardShortcutTooltipContent
+          rendering="original"
           label={t("adeManager.submit")}
           shortcut={sendShortcut}
         />

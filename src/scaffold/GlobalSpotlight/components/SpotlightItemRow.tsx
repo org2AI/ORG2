@@ -529,7 +529,9 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
           {(item.type === "action" ||
             item.type === "command" ||
             item.type === "hint") &&
-            item.shortcut && <KeyboardShortcut shortcut={item.shortcut} />}
+            item.shortcut && (
+              <KeyboardShortcut shortcut={item.shortcut} rendering="original" />
+            )}
 
           {hasDisclosureChevron && (
             <span className="spotlight-disclosure-chevron pointer-events-none inline-flex h-5 shrink-0 items-center justify-center overflow-hidden text-primary-6">

@@ -15,6 +15,7 @@ import ClampedContent from "@src/components/ClampedContent";
 import type { ComposerSnapshot } from "@src/components/ComposerInput";
 import ExpandOverlay from "@src/components/ExpandOverlay";
 import Message from "@src/components/Message";
+import PageNotice from "@src/components/PageNotice";
 import PersonAvatar from "@src/components/PersonAvatar";
 import { REPO_SETUP_PROMPT_MARKER } from "@src/config/repoSetupMarker";
 import type { OptimizedChatItem } from "@src/engines/ChatPanel/ChatHistory/chatItemPipeline/types";
@@ -569,8 +570,7 @@ const UserChatItem = ({
       {(rawPrompt.trim() ||
         isEditableDisplay ||
         toolbarActions ||
-        deliveryStatus === "pending" ||
-        deliveryStatus === "failed") && (
+        deliveryStatus === "pending") && (
         <div className="relative mt-1 flex min-h-6 items-center px-1 text-[11px] leading-none text-text-3">
           {(rawPrompt.trim() ||
             isEditableDisplay ||
@@ -655,41 +655,9 @@ const UserChatItem = ({
               {toolbarActions}
             </div>
           )}
-          {(deliveryStatus === "pending" || deliveryStatus === "failed") && (
-            <span className="flex items-center gap-1.5">
-              {deliveryStatus === "pending" && (
-                <span data-testid="chat-message-delivery-pending">
-                  {t("common:status.sending")}
-                </span>
-              )}
-              {deliveryStatus === "failed" && (
-                <>
-                  <span
-                    className="text-danger-6"
-                    data-testid="chat-message-delivery-failed"
-                    title={deliveryError ?? undefined}
-                  >
-                    {t("chat.failedToSendMessage")}
-                    {deliveryError &&
-                    deliveryError !== t("chat.failedToSendMessage")
-                      ? `: ${deliveryError}`
-                      : null}
-                  </span>
-                  {retryDelivery && (
-                    <button
-                      type="button"
-                      className="font-medium text-danger-6 hover:underline"
-                      data-testid="chat-message-delivery-retry"
-                      onClick={(clickEvent) => {
-                        clickEvent.stopPropagation();
-                        retryDelivery();
-                      }}
-                    >
-                      {t("common:actions.retry", "Retry")}
-                    </button>
-                  )}
-                </>
-              )}
+          {deliveryStatus === "pending" && (
+            <span data-testid="chat-message-delivery-pending">
+              {t("common:status.sending")}
             </span>
           )}
         </div>
@@ -698,53 +666,75 @@ const UserChatItem = ({
   );
 
   return (
-    <div
-      className={`group/msg flex w-full flex-col ${
-        isRemoteSharedMessage ? "items-start pr-24" : "items-end pl-24"
-      }`}
-      data-message-side={messageSide}
-    >
-      {isRemoteSharedMessage && senderName ? (
-        <div className="flex max-w-full items-start gap-2.5">
-          <span
-            className="mt-0.5 shrink-0"
-            title={senderName}
-            aria-label={senderName}
-            data-testid={
-              isParentAgentMessage
-                ? "parent-agent-sender-avatar"
-                : "shared-message-sender-avatar"
-            }
-          >
-            {isParentAgentMessage ? (
-              <span
-                className="flex h-6 w-6 items-center justify-center rounded-full"
-                style={{ backgroundColor: "var(--color-fill-2)" }}
-              >
-                <SessionIdentityIcon
-                  session={parentAgentSender?.parentSession}
-                  sessionId={parentAgentSender?.parentSessionId ?? ""}
+    <>
+      <div
+        className={`group/msg flex w-full flex-col ${
+          isRemoteSharedMessage ? "items-start pr-24" : "items-end pl-24"
+        }`}
+        data-message-side={messageSide}
+      >
+        {isRemoteSharedMessage && senderName ? (
+          <div className="flex max-w-full items-start gap-2.5">
+            <span
+              className="mt-0.5 shrink-0"
+              title={senderName}
+              aria-label={senderName}
+              data-testid={
+                isParentAgentMessage
+                  ? "parent-agent-sender-avatar"
+                  : "shared-message-sender-avatar"
+              }
+            >
+              {isParentAgentMessage ? (
+                <span
+                  className="flex h-6 w-6 items-center justify-center rounded-full"
+                  style={{ backgroundColor: "var(--color-fill-2)" }}
+                >
+                  <SessionIdentityIcon
+                    session={parentAgentSender?.parentSession}
+                    sessionId={parentAgentSender?.parentSessionId ?? ""}
+                  />
+                </span>
+              ) : (
+                <PersonAvatar
+                  size={24}
+                  name={senderName}
+                  src={senderResolution.identity?.avatarUrl}
                 />
-              </span>
-            ) : (
-              <PersonAvatar
-                size={24}
-                name={senderName}
-                src={senderResolution.identity?.avatarUrl}
-              />
-            )}
-          </span>
-          <div className="flex min-w-0 flex-col items-start">
-            <span className="mb-0.5 text-xs font-medium text-text-3">
-              {senderName}
+              )}
             </span>
-            {display}
+            <div className="flex min-w-0 flex-col items-start">
+              <span className="mb-0.5 text-xs font-medium text-text-3">
+                {senderName}
+              </span>
+              {display}
+            </div>
           </div>
-        </div>
-      ) : (
-        display
+        ) : (
+          display
+        )}
+      </div>
+      {deliveryStatus === "failed" && (
+        <PageNotice
+          title={t("chat.failedToSendMessage")}
+          dataTestId="chat-message-delivery-failed"
+          action={
+            retryDelivery
+              ? {
+                  label: t("common:actions.retry", "Retry"),
+                  onClick: retryDelivery,
+                }
+              : undefined
+          }
+        >
+          {deliveryError && (
+            <div className="wrap-anywhere whitespace-pre-wrap">
+              {deliveryError}
+            </div>
+          )}
+        </PageNotice>
       )}
-    </div>
+    </>
   );
 };
 

@@ -1,9 +1,7 @@
 /**
  * AgentErrorChatItem — Displays LLM/agent errors inline in the chat panel.
  *
- * Rendered as a single PageNotice, so the error reads as one bordered card
- * instead of the split header / body / footer layout the previous block-style
- * render produced. PageNotice has one neutral style for every type.
+ * Rendered as a full-width PageNotice in the session body.
  *
  * IMPORTANT: This component must NOT subscribe to chatEventsAtom. It is
  * rendered inside the chat list which is itself driven by chatEventsAtom.
@@ -62,7 +60,7 @@ const AgentErrorChatItem: React.FC<AgentErrorChatItemProps> = memo(
 
     return (
       <div className="animate-fade-in">
-        <PageNotice type="danger" title={title} action={action}>
+        <PageNotice title={title} action={action}>
           {needsCodexReauthentication ? (
             <>
               <div>{t("errors.codexLoginExpiredDescription")}</div>

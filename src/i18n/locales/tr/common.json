@@ -774,8 +774,7 @@
     "agentTerminal": "Agent Terminal",
     "myStation": "İstasyonum",
     "agentStation": "Agent istasyonu",
-    "myTerminal": "Terminalim",
-    "myTerminalInfo": "Terminalim bilgisi"
+    "myTerminal": "Terminalim"
   },
   "tooltips": {
     "closeEsc": "Kapat (Esc)",

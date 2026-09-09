@@ -5,7 +5,7 @@
  * Toolbar (optional copy, download, close) at the top-right of the image.
  * Click backdrop or press ESC to close.
  */
-import React, { memo, useCallback, useEffect } from "react";
+import React, { memo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
@@ -26,7 +26,7 @@ interface ImagePreviewOverlayProps {
   dataUrl: string;
   fileName?: string;
   onClose: () => void;
-  /** When false, hides the copy-to-clipboard control (e.g. chat panel). Default true. */
+  /** When false, hides the copy-to-clipboard control. Default true. */
   showCopyButton?: boolean;
 }
 
@@ -37,6 +37,7 @@ interface ImagePreviewOverlayProps {
 const ImagePreviewOverlay: React.FC<ImagePreviewOverlayProps> = memo(
   ({ dataUrl, fileName, onClose, showCopyButton = true }) => {
     const { t } = useTranslation("common");
+    const imageRef = useRef<HTMLImageElement>(null);
 
     // Drop inline browser webviews behind this fullscreen modal.
     useOverlayLayer(true);
@@ -64,16 +65,35 @@ const ImagePreviewOverlay: React.FC<ImagePreviewOverlayProps> = memo(
 
     const handleCopy = useCallback(async () => {
       try {
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
+        const image = imageRef.current;
+        if (!image?.complete || !image.naturalWidth || !image.naturalHeight) {
+          throw new Error("Preview image is not ready");
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Image conversion is unavailable");
+        context.drawImage(image, 0, 0);
+        // PNG is the portable clipboard image format. Pass its promise directly
+        // so clipboard.write runs within the click gesture, including on WebKit.
+        const png = new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            canvas.width = canvas.height = 0;
+            if (blob) resolve(blob);
+            else reject(new Error("Image conversion failed"));
+          }, "image/png");
+        });
+        // Also observe conversion failures if the clipboard API rejects early.
+        void png.catch(() => {});
         await navigator.clipboard.write([
-          new ClipboardItem({ [blob.type]: blob }),
+          new ClipboardItem({ "image/png": png }),
         ]);
         Message.success(t("imagePreview.copiedToClipboard"));
       } catch {
         Message.error(t("errors.failedToCopy"));
       }
-    }, [dataUrl, t]);
+    }, [t]);
 
     const handleDownload = useCallback(() => {
       const link = document.createElement("a");
@@ -102,7 +122,7 @@ const ImagePreviewOverlay: React.FC<ImagePreviewOverlayProps> = memo(
                 onClick={handleCopy}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-white/80 transition-colors hover:bg-white/15 hover:text-white"
                 aria-label={t("imagePreview.copyImage")}
-                title={t("actions.copy")}
+                title={t("imagePreview.copyImage")}
               >
                 <HugeiconsIcon
                   icon={Copy01Icon}
@@ -144,6 +164,7 @@ const ImagePreviewOverlay: React.FC<ImagePreviewOverlayProps> = memo(
 
           {/* Image */}
           <img
+            ref={imageRef}
             src={dataUrl}
             alt={fileName || t("imagePreview.previewAlt")}
             className="max-h-[80vh] max-w-[80vw] rounded-lg object-contain"

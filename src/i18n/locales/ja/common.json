@@ -774,8 +774,7 @@
     "agentTerminal": "Agent ターミナル",
     "myStation": "自分のステーション",
     "agentStation": "Agent のステーション",
-    "myTerminal": "My Terminal",
-    "myTerminalInfo": "My Terminal 情報"
+    "myTerminal": "My Terminal"
   },
   "tooltips": {
     "closeEsc": "閉じる (Esc)",

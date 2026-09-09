@@ -605,8 +605,7 @@
     "agentTerminal": "Agent 终端",
     "myStation": "我的工作站",
     "agentStation": "Agent的工作站",
-    "myTerminal": "我的终端",
-    "myTerminalInfo": "我的终端信息"
+    "myTerminal": "我的终端"
   },
   "tooltips": {
     "closeEsc": "关闭 (Esc)",

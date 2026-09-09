@@ -774,8 +774,7 @@
     "agentTerminal": "Agent 終端",
     "myStation": "我的工作站",
     "agentStation": "Agent的工作站",
-    "myTerminal": "我的終端",
-    "myTerminalInfo": "我的終端信息"
+    "myTerminal": "我的終端"
   },
   "tooltips": {
     "closeEsc": "關閉 (Esc)",

@@ -51,21 +51,9 @@ pub const CLAUDE_CODE_OAUTH_DEFAULT_ENABLED_MODELS: &[&str] = &[
     "claude-sonnet-4-6",
 ];
 
-pub const CODEX_OAUTH_MODELS: &[&str] = &[
-    "gpt-6-astra",
-    "gpt-5.6-sol",
-    "gpt-5.6-terra",
-    "gpt-5.6-luna",
-    "gpt-5.5",
-    "gpt-5.4",
-    "gpt-5.4-mini",
-    "gpt-5.3-codex",
-    "gpt-5.2",
-    "codex-auto-review",
-];
-
+pub const CODEX_OAUTH_MODELS: &[&str] = crate::model_catalog::CODEX_OAUTH_MODELS;
 pub const CODEX_OAUTH_DEFAULT_ENABLED_MODELS: &[&str] =
-    &["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
+    crate::model_catalog::CODEX_OAUTH_DEFAULT_ENABLED_MODELS;
 
 /// Claude models whose Messages requests carry `output_config.effort`.
 pub fn model_supports_output_config_effort(model: &str) -> bool {

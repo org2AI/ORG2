@@ -20,8 +20,12 @@ import { REPO_KIND, type RepoKind } from "@src/store/repo/types";
 
 import { LOCATION_ICONS } from "./locationConfig";
 
-/** Max pill label width for repo/branch segments in the session info row. */
-const SESSION_INFO_LABEL_MAX_WIDTH = 180;
+/**
+ * Safety cap for source/location labels. The branch segment intentionally has
+ * no fixed cap so its flexible item can use the remaining row width before the
+ * shared pill styles apply overflow ellipsis.
+ */
+const SESSION_INFO_FIXED_LABEL_MAX_WIDTH = 180;
 const SESSION_INFO_SHORTCUT_TOOLTIP_DELAY_MS = 2000;
 
 interface SessionInfoDisplayParams {
@@ -126,7 +130,7 @@ export function buildSessionInfoSegments({
         />
       ),
       label: sourceDisplayName,
-      maxLabelWidth: SESSION_INFO_LABEL_MAX_WIDTH,
+      maxLabelWidth: SESSION_INFO_FIXED_LABEL_MAX_WIDTH,
       active: isRepoSelectorOpen,
       danger: !hasSource,
       tooltip: disabled ? undefined : (
@@ -155,7 +159,7 @@ export function buildSessionInfoSegments({
         worktreeLocation === "worktree" && worktreeLocationLabel
           ? worktreeLocationLabel
           : t(locationEntry.i18nKey),
-      maxLabelWidth: SESSION_INFO_LABEL_MAX_WIDTH,
+      maxLabelWidth: SESSION_INFO_FIXED_LABEL_MAX_WIDTH,
       active: isLocationDropdownOpen,
       tooltip: disabled ? undefined : (
         <KeyboardShortcutTooltipContent
@@ -176,6 +180,7 @@ export function buildSessionInfoSegments({
   if (showBranchRow) {
     segments.push({
       id: "branch",
+      flexible: true,
       icon: (
         <HugeiconsIcon
           icon={WorkflowCircle05Icon}
@@ -190,7 +195,6 @@ export function buildSessionInfoSegments({
         : worktreeLocation === "worktree" && worktreeSourceLabel
           ? worktreeSourceLabel
           : branchName || "",
-      maxLabelWidth: SESSION_INFO_LABEL_MAX_WIDTH,
       active: isBranchSelectorOpen,
       tooltip: disabled ? undefined : (
         <KeyboardShortcutTooltipContent

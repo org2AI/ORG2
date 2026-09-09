@@ -64,8 +64,9 @@ impl KeyStore {
             .collect()
     }
 
-    /// Save or update a key
+    /// Save or update a key after enforcing account-type catalog invariants.
     pub fn set(&mut self, mut key: ModelKey) {
+        key.normalize_model_catalog();
         key.updated_at = Utc::now();
         self.keys.insert(key.id.clone(), key);
         self.updated_at = Utc::now();

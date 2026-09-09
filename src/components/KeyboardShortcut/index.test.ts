@@ -41,14 +41,54 @@ describe("KeyboardShortcut", () => {
     expect(markup).toContain("rounded-full");
     expect(markup).toContain("font-normal");
     expect(markup).not.toContain("font-semibold");
-    for (const character of ["⌘", "⇧", "⌥", "⌃", "⌫", "esc", "⇥"]) {
+    for (const character of [
+      "⌘",
+      "⇧",
+      "⌥",
+      "⌃",
+      "↑",
+      "↓",
+      "↩",
+      "⌫",
+      "esc",
+      "⇥",
+    ]) {
       expect(markup).toContain(character);
     }
-    expect(markup).toContain('data-icon="arrow-up"');
-    expect(markup).toContain('data-icon="arrow-down"');
-    expect(markup).toContain('data-icon="corner-down-left"');
+    expect(markup).toContain("↑");
+    expect(markup).toContain("↓");
+    expect(markup).not.toContain("<svg");
+    expect(markup).toContain("font-family:system-ui");
+    expect(markup).not.toContain("text-[12px]");
     expect(markup).not.toContain("↵");
     expect(markup).toContain(">2</span>");
+  });
+
+  it.each(["spotlightFooter", "default"] as const)(
+    "preserves original rendering for Spotlight %s shortcuts",
+    async (variant) => {
+      const { KeyboardShortcut } = await import("./index");
+      const markup = renderToStaticMarkup(
+        createElement(KeyboardShortcut, {
+          shortcut: "Up+Down+Enter+Esc",
+          variant,
+          ...(variant === "default" ? { rendering: "original" as const } : {}),
+        })
+      );
+      expect(markup).toContain('data-icon="arrow-up"');
+      expect(markup).toContain('data-icon="arrow-down"');
+      expect(markup).toContain('data-icon="corner-down-left"');
+      expect(markup).toContain("text-[12px]");
+      expect(markup).not.toContain("font-family:system-ui");
+    }
+  );
+
+  it("sets the native font on Shift itself despite the global span reset", async () => {
+    const { KeyboardShortcut } = await import("./index");
+    const markup = renderToStaticMarkup(
+      createElement(KeyboardShortcut, { shortcut: "Shift+M" })
+    );
+    expect(markup).toMatch(/<span style="font-family:system-ui[^>]+>⇧<\/span>/);
   });
 
   it("supports a compact size for dense menus", async () => {
@@ -72,7 +112,7 @@ describe("KeyboardShortcut", () => {
     expect(markup).not.toContain("data-icon=");
   });
 
-  it("keeps the up and down icons close together", async () => {
+  it("keeps the up and down text symbols close together", async () => {
     const { KeyboardShortcut } = await import("./index");
 
     const markup = renderToStaticMarkup(
@@ -80,8 +120,8 @@ describe("KeyboardShortcut", () => {
     );
 
     expect(markup).toContain("gap-0");
-    expect(markup).toContain('data-icon="arrow-up"');
-    expect(markup).toContain('data-icon="arrow-down"');
+    expect(markup).toContain("↑");
+    expect(markup).toContain("↓");
   });
 });
 

@@ -26,6 +26,7 @@ export interface KeyboardShortcutProps {
   className?: string;
   variant?: KeyboardShortcutVariant;
   size?: KeyboardShortcutSize;
+  rendering?: "native" | "original";
 }
 
 interface KeyboardShortcutTooltipRow {
@@ -35,6 +36,7 @@ interface KeyboardShortcutTooltipRow {
 }
 
 interface KeyboardShortcutTooltipContentProps {
+  rendering?: KeyboardShortcutProps["rendering"];
   label?: ReactNode;
   shortcutId?: string;
   shortcut?: string;
@@ -179,10 +181,10 @@ function ModifierKey({ modifier }: { modifier: ModifierType }) {
     ctrl: IS_MAC ? "⌃" : "Ctrl",
   }[modifier];
 
-  return <span className="leading-none">{character}</span>;
+  return character;
 }
 
-function SpecialKey({
+function OriginalSpecialKey({
   special,
   iconSize,
 }: {
@@ -217,7 +219,20 @@ function SpecialKey({
     tab: "⇥",
   }[special];
 
-  return <span className="leading-none">{character}</span>;
+  return character;
+}
+
+function SpecialKey({ special }: { special: SpecialKeyType }) {
+  const character = {
+    arrowUp: "↑",
+    arrowDown: "↓",
+    enter: "↩",
+    backspace: "⌫",
+    esc: "esc",
+    tab: "⇥",
+  }[special];
+
+  return character;
 }
 
 // A shortcut chord is one joined pill, matching the compact presentation used
@@ -271,6 +286,9 @@ export const KeyboardShortcut = memo<KeyboardShortcutProps>(
     className = "",
     variant = KEYBOARD_SHORTCUT_VARIANT.default,
     size = "default",
+    rendering = variant === KEYBOARD_SHORTCUT_VARIANT.spotlightFooter
+      ? "original"
+      : "native",
   }) => {
     const resolvedShortcut = useShortcutKeys(shortcutId ?? "");
     const tokens = parseShortcut(shortcutId ? resolvedShortcut : shortcut);
@@ -302,19 +320,28 @@ export const KeyboardShortcut = memo<KeyboardShortcutProps>(
             return (
               <span
                 key={index}
-                className={`${KEY_TOKEN_BASE} ${
-                  isTextToken ? capSize.text : capSize.glyph
-                }`}
+                style={
+                  rendering === "native"
+                    ? {
+                        fontFamily:
+                          "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+                      }
+                    : undefined
+                }
+                className={`${KEY_TOKEN_BASE} ${rendering === "original" && isTextToken ? capSize.text : capSize.glyph}`}
               >
                 {token.type === "modifier" && (
                   <ModifierKey modifier={token.modifier} />
                 )}
-                {token.type === "special" && (
-                  <SpecialKey
-                    special={token.special}
-                    iconSize={capSize.iconSize}
-                  />
-                )}
+                {token.type === "special" &&
+                  (rendering === "original" ? (
+                    <OriginalSpecialKey
+                      special={token.special}
+                      iconSize={capSize.iconSize}
+                    />
+                  ) : (
+                    <SpecialKey special={token.special} />
+                  ))}
                 {token.type === "key" && token.label}
               </span>
             );
@@ -335,6 +362,7 @@ export const KeyboardShortcutTooltipContent =
       shortcutId,
       rows,
       noShortcut = false,
+      rendering,
       className = "",
     }) => {
       const resolvedShortcut = useShortcutKeys(shortcutId ?? "");
@@ -353,6 +381,7 @@ export const KeyboardShortcutTooltipContent =
               shortcut={row.shortcut}
               shortcutId={row.shortcutId}
               variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
+              rendering={rendering}
             />
           </div>
         );
@@ -373,6 +402,7 @@ export const KeyboardShortcutTooltipContent =
                   shortcut={row.shortcut}
                   shortcutId={row.shortcutId}
                   variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
+                  rendering={rendering}
                 />
               </div>
             ))}

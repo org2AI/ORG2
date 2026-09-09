@@ -98,7 +98,6 @@ export function WorkstationTrailTerminalHeader({
         <>
           {!collapsed && activeTab ? (
             <ProcessStopButton
-              className="rounded-lg"
               size="sm"
               label={t("common:tooltips.killTerminal")}
               onClick={() => onStop(activeTab.key)}

@@ -29,7 +29,7 @@ export function ProcessStopButton({
       aria-label={label}
       title={label}
       disabled={disabled || loading}
-      className={`hover:text-danger-7 inline-flex shrink-0 items-center justify-center rounded text-danger-6 transition-colors hover:bg-danger-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-6 disabled:cursor-not-allowed disabled:opacity-40 ${BUTTON_SIZE[size]} ${className}`}
+      className={`hover:text-danger-7 inline-flex shrink-0 items-center justify-center rounded-lg text-danger-6 transition-colors hover:bg-danger-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-6 disabled:cursor-not-allowed disabled:opacity-40 ${BUTTON_SIZE[size]} ${className}`}
       onClick={(event) => {
         event.stopPropagation();
         onClick?.(event);

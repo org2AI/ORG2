@@ -774,8 +774,7 @@
     "agentTerminal": "Agent Terminal",
     "myStation": "Trạm của tôi",
     "agentStation": "Trạm của Agent",
-    "myTerminal": "Terminal của tôi",
-    "myTerminalInfo": "Thông tin terminal của tôi"
+    "myTerminal": "Terminal của tôi"
   },
   "tooltips": {
     "closeEsc": "Đóng (Esc)",

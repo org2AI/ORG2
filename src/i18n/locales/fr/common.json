@@ -774,8 +774,7 @@
     "agentTerminal": "Agent Terminal",
     "myStation": "Ma station",
     "agentStation": "Station de l'Agent",
-    "myTerminal": "Mon terminal",
-    "myTerminalInfo": "Infos de mon terminal"
+    "myTerminal": "Mon terminal"
   },
   "tooltips": {
     "closeEsc": "Fermer (Esc)",

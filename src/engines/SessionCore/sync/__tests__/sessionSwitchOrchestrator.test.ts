@@ -133,6 +133,7 @@ describe("runSessionSwitchOrchestrator reconciliation", () => {
       } else {
         expect(mocks.dispatchLoadSession).toHaveBeenCalledWith(
           expect.objectContaining({
+            storeHydrated: true,
             nativeHistoryRevision:
               state === "stable"
                 ? { revision: "v1", generation: 0 }

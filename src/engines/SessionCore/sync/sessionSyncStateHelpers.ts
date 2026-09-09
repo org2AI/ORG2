@@ -38,6 +38,7 @@ import type {
 } from "./types";
 
 type LoadSessionPayload = {
+  storeHydrated?: boolean;
   nativeHistoryRevision?: NativeHistoryLoadRevision;
   sessionId: string;
   events: SessionEvent[];

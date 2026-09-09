@@ -734,7 +734,7 @@ fn materialized_cli_transcript_paths(
     Ok(Some((agent.to_string(), paths)))
 }
 
-fn materialized_cli_transcript_path(
+pub(super) fn materialized_cli_transcript_path(
     session: &persistence::CodeSession,
     native_id: &str,
 ) -> Result<Option<(String, PathBuf)>, String> {

@@ -115,6 +115,28 @@ function makeUserMessageEvent(
 }
 
 describe("loadSessionAtom", () => {
+  it("does not rewrite an already hydrated native history or append its evicted prefix", () => {
+    const store = createStore();
+    const events = Array.from({ length: 8192 }, (_, i) =>
+      makeMessageEvent(`message-${i}`)
+    );
+    store.set(loadSessionAtom, {
+      sessionId: "session-1",
+      events: events.slice(192),
+    });
+    vi.mocked(eventStoreProxy.mergeEvents).mockClear();
+    store.set(loadSessionAtom, {
+      sessionId: "session-1",
+      events,
+      storeHydrated: true,
+    });
+    expect(store.get(eventsAtom).map((e) => e.id)).toEqual(
+      events.map((e) => e.id)
+    );
+    expect(eventStoreProxy.set).not.toHaveBeenCalled();
+    expect(eventStoreProxy.mergeEvents).toHaveBeenCalledWith([], "session-1");
+  });
+
   it("preserves existing same-session rounds when a later load carries only a new tail event", () => {
     const store = createStore();
     const existingEvents = [

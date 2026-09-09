@@ -42,11 +42,13 @@ pub type ClaudeCodeHistorySessionPage =
 pub type ClaudeCodeRecentPath = crate::sources::imported_history::ImportedHistoryRecentPath;
 
 pub use cache_sync::{list_claude_code_history_sessions_paginated, list_claude_code_recent_paths};
+pub use discovery::resolve_claude_session_path;
 pub use replay::{load_claude_code_history_for_session, load_claude_code_history_from_path};
 pub use windows::{
     load_claude_code_cloud_turn_windows_for_session, load_claude_code_initial_window_for_session,
-    load_claude_code_turn_ids_for_session, load_claude_code_turn_index_for_session,
-    load_claude_code_turn_windows_for_session, stat_claude_code_history_for_session,
+    load_claude_code_initial_window_from_path, load_claude_code_turn_ids_for_session,
+    load_claude_code_turn_index_for_session, load_claude_code_turn_windows_for_session,
+    load_claude_code_turn_windows_from_path, stat_claude_code_history_for_session,
 };
 
 #[cfg(test)]
@@ -80,8 +82,7 @@ use metadata::{
 #[cfg(test)]
 use windows::{
     claude_window_turn_id, index_claude_user_turns, load_claude_code_cloud_turn_windows_from_path,
-    load_claude_code_initial_window_from_path, load_claude_turn_range, overlay_indexed_body_counts,
-    CLAUDE_WINDOW_TURN_ID_PREFIX,
+    load_claude_turn_range, overlay_indexed_body_counts, CLAUDE_WINDOW_TURN_ID_PREFIX,
 };
 
 #[cfg(test)]

@@ -5,6 +5,7 @@ import {
   type ConversationRootLocator,
   conversationRootKey,
 } from "@src/engines/SessionCore/conversations/conversationTypes";
+import * as localHistory from "@src/engines/SessionCore/conversations/localConversationExecutionTail";
 import {
   NATIVE_SOURCE_EVENT_ID_ARG,
   nativeSourceEventId,
@@ -20,6 +21,7 @@ import {
 import {
   conversationActiveDeliveriesAtom,
   createLocalExecutionHydrationCoordinator,
+  hydrateLocalExecutionSnapshot,
   projectVisibleLocalExecutionTail,
   resolveConversationRunnerBindings,
   selectConversationActiveRunners,
@@ -395,5 +397,30 @@ describe("local execution-child hydration lifecycle", () => {
         "root"
       ).map((event) => event.displayText)
     ).toEqual(["continue", "continued"]);
+  });
+});
+
+describe("local execution history hydration", () => {
+  it("does not read or retain the root transcript when there are no children", async () => {
+    const children = vi
+      .spyOn(localHistory, "loadLocalExecutionChildren")
+      .mockResolvedValue([]);
+    const canonical = vi.spyOn(
+      localHistory,
+      "loadLocalCanonicalConversationSnapshot"
+    );
+    try {
+      expect(
+        await hydrateLocalExecutionSnapshot({
+          root: root("local"),
+          rootKey: "local",
+        })
+      ).toEqual({ rootKey: "local", snapshot: null });
+      expect(children).toHaveBeenCalledOnce();
+      expect(canonical).not.toHaveBeenCalled();
+    } finally {
+      children.mockRestore();
+      canonical.mockRestore();
+    }
   });
 });

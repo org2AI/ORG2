@@ -270,7 +270,7 @@ pub(super) fn claude_file_stem_from_session_id(session_id: &str) -> Result<&str,
     Ok(file_stem)
 }
 
-pub(super) fn resolve_claude_session_path(
+pub fn resolve_claude_session_path(
     conn: &Connection,
     file_stem: &str,
 ) -> Result<PathBuf, String> {

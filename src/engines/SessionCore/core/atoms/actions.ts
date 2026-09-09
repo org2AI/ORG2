@@ -129,6 +129,8 @@ clearSessionAtom.debugLabel = "session/clear";
  * Sets all relevant state at once.
  */
 interface LoadSessionPayload {
+  /** A completed idle native load already wrote this projection to Rust. */
+  storeHydrated?: boolean;
   sessionId: string;
   events: SessionEvent[];
   specs?: SessionSpec[];
@@ -157,6 +159,7 @@ export const loadSessionAtom = atom(
       specs = [],
       isFromCache = false,
       replace = false,
+      storeHydrated = false,
     } = payload;
 
     // Preserve synthetic user events (injected by session launch or a queue
@@ -258,6 +261,7 @@ export const loadSessionAtom = atom(
       set(transcriptReplaceEpochAtom, get(transcriptReplaceEpochAtom) + 1);
     }
     const baseEvents =
+      !storeHydrated &&
       !replaceForSession &&
       currentSessionId === sessionId &&
       existingSameSessionEvents.length > 0
@@ -413,9 +417,17 @@ export const loadSessionAtom = atom(
     //
     // Explicit sessionId avoids the "active session" fallback that crashes on
     // app restart when Rust has no active session but localStorage has a stale id.
-    const rustStoreWrite = replaceForSession
-      ? eventStoreProxy.set(mergedEvents, sessionId)
-      : eventStoreProxy.mergeEvents(mergedEvents, sessionId);
+    // An idle native cold load already completed its authoritative write.
+    // Re-merging the full input here resurrects the prefix evicted by Rust's
+    // event cap. Only newly rescued frontend placeholders still need a write.
+    const rustStoreWrite = storeHydrated
+      ? eventStoreProxy.mergeEvents(
+          mergedEvents.filter(isSyntheticUserInputEvent),
+          sessionId
+        )
+      : replaceForSession
+        ? eventStoreProxy.set(mergedEvents, sessionId)
+        : eventStoreProxy.mergeEvents(mergedEvents, sessionId);
     rustStoreWrite.catch((err) => {
       log.warn("[loadSession] Failed to sync events to Rust store:", err);
     });

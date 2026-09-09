@@ -20,7 +20,17 @@ use crate::agent_sessions::event_pipeline::types::{ActivityStatus, EventDisplayS
 impl EventStore {
     /// Replace all events (session load / clear).
     pub fn set(&mut self, events: Vec<crate::agent_sessions::event_pipeline::types::SessionEvent>) {
-        self.set_with_hydration(events, HydrationMode::Full);
+        // Native preview IPC uses the same atomic replacement boundary as full
+        // history. A placeholder proves this is not a canonical full snapshot.
+        let mode = if events
+            .iter()
+            .any(|event| placeholder_turn_id(event).is_some())
+        {
+            HydrationMode::RoundWindow
+        } else {
+            HydrationMode::Full
+        };
+        self.set_with_hydration(events, mode);
     }
 
     /// Compare and replace while the caller holds the EventStore lock.

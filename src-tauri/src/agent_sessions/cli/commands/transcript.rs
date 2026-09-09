@@ -371,32 +371,9 @@ pub async fn cli_agent_chunks(session_id: String) -> Result<Vec<ActivityChunk>, 
         "[cli_agent_chunks] Loading chunks for session: {}",
         session_id
     );
-    let result = tokio::task::spawn_blocking(move || {
-        let session =
-            persistence::get_session(&session_id).map_err(|e| format!("DB error: {}", e))?;
-        if let Some(session) = session.as_ref() {
-            if let Some(chunks) = load_native_transcript_chunks(session)? {
-                return Ok(chunks);
-            }
-        }
-        let chunks =
-            persistence::load_chunks(&session_id).map_err(|e| format!("DB error: {}", e))?;
-        if chunks.is_empty() {
-            if let Some(chunk) = session
-                .as_ref()
-                .filter(|session| {
-                    session.transcript_source
-                        == super::super::native_transcript::TRANSCRIPT_SOURCE_NATIVE
-                })
-                .and_then(synthesized_user_message_chunk)
-            {
-                return Ok(vec![chunk]);
-            }
-        }
-        Ok(chunks)
-    })
-    .await
-    .map_err(|e| format!("Task error: {}", e))?;
+    let result = tokio::task::spawn_blocking(move || load_session_chunks(&session_id))
+        .await
+        .map_err(|e| format!("Task error: {}", e))?;
 
     match &result {
         Ok(chunks) => {
@@ -405,6 +382,29 @@ pub async fn cli_agent_chunks(session_id: String) -> Result<Vec<ActivityChunk>, 
         Err(ref err) => tracing::error!("[cli_agent_chunks] Failed: {}", err),
     }
     result
+}
+
+pub(super) fn load_session_chunks(session_id: &str) -> Result<Vec<ActivityChunk>, String> {
+    let session = persistence::get_session(session_id).map_err(|e| format!("DB error: {}", e))?;
+    if let Some(session) = session.as_ref() {
+        if let Some(chunks) = load_native_transcript_chunks(session)? {
+            return Ok(chunks);
+        }
+    }
+    let chunks = persistence::load_chunks(session_id).map_err(|e| format!("DB error: {}", e))?;
+    if chunks.is_empty() {
+        if let Some(chunk) = session
+            .as_ref()
+            .filter(|session| {
+                session.transcript_source
+                    == super::super::native_transcript::TRANSCRIPT_SOURCE_NATIVE
+            })
+            .and_then(synthesized_user_message_chunk)
+        {
+            return Ok(vec![chunk]);
+        }
+    }
+    Ok(chunks)
 }
 
 /// Truncate chunks at and after a specific timestamp.

@@ -91,7 +91,7 @@ pub fn load_claude_code_initial_window_for_session(
     load_claude_code_initial_window_from_path(session_id, &path, recent_turn_count)
 }
 
-pub(super) fn load_claude_code_initial_window_from_path(
+pub fn load_claude_code_initial_window_from_path(
     session_id: &str,
     path: &Path,
     recent_turn_count: usize,
@@ -153,8 +153,16 @@ pub fn load_claude_code_turn_windows_for_session(
 ) -> Result<Vec<imported_history::window::ImportedHistoryTurnWindow>, String> {
     let file_stem = claude_file_stem_from_session_id(session_id)?;
     let path = resolve_claude_session_path(conn, file_stem)?;
-    let indexed = index_claude_user_turns(session_id, &path)?;
-    let file_len = fs::metadata(path.as_path())
+    load_claude_code_turn_windows_from_path(session_id, &path, turn_ids)
+}
+
+pub fn load_claude_code_turn_windows_from_path(
+    session_id: &str,
+    path: &Path,
+    turn_ids: &[String],
+) -> Result<Vec<imported_history::window::ImportedHistoryTurnWindow>, String> {
+    let indexed = index_claude_user_turns(session_id, path)?;
+    let file_len = fs::metadata(path)
         .map_err(|err| format!("Failed to stat Claude history {}: {err}", path.display()))?
         .len();
     let positions = indexed
@@ -162,7 +170,7 @@ pub fn load_claude_code_turn_windows_for_session(
         .enumerate()
         .map(|(index, turn)| (turn.start_offset, index))
         .collect::<HashMap<_, _>>();
-    let mut file = fs::File::open(path.as_path())
+    let mut file = fs::File::open(path)
         .map_err(|err| format!("Failed to open Claude history {}: {err}", path.display()))?;
 
     turn_ids

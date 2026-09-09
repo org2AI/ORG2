@@ -1921,3 +1921,16 @@ fn test_merge_round_window_events_removes_loaded_turn_placeholder() {
         crate::agent_sessions::event_pipeline::store::HydrationMode::RoundWindow
     );
 }
+
+#[test]
+fn native_preview_replace_never_claims_full_hydration() {
+    use crate::agent_sessions::event_pipeline::store::HydrationMode;
+    let mut store = EventStore::new();
+    store.set(vec![make_turn_placeholder("old", None)]);
+    assert_eq!(store.hydration_mode(), HydrationMode::RoundWindow);
+    let version = store.version();
+    assert!(store.set_if_version(vec![make_turn_placeholder("new", None)], version));
+    assert_eq!(store.hydration_mode(), HydrationMode::RoundWindow);
+    store.set(vec![]);
+    assert_eq!(store.hydration_mode(), HydrationMode::Full);
+}

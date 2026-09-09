@@ -1,7 +1,10 @@
 import { useStore } from "jotai";
 import { useEffect } from "react";
 
-import { loadStatusAtom } from "@src/engines/SessionCore/core/atoms/metadata";
+import {
+  loadStatusAtom,
+  transcriptReplaceEpochAtom,
+} from "@src/engines/SessionCore/core/atoms/metadata";
 import { createLogger } from "@src/hooks/logger";
 import { activeSessionIdAtom } from "@src/store/session";
 import { isCliSession } from "@src/util/session/sessionDispatch";
@@ -95,11 +98,15 @@ export function useNativeHistoryAutoRefresh(
       generation: () => getTurnGeneration(sessionId),
       loadedRevision,
       readRevision: () => loadCliTranscriptRevision(sessionId),
-      refresh: (signal, isCurrent) =>
-        reconcileNativeTranscript(sessionId, {
+      refresh: async (signal, isCurrent) => {
+        await reconcileNativeTranscript(sessionId, {
           signal,
           refreshGuard: isCurrent,
-        }),
+        });
+        if (isCurrent()) {
+          store.set(transcriptReplaceEpochAtom, (epoch) => epoch + 1);
+        }
+      },
     });
     const stop = startExternalHistoryRefreshScheduler({
       foregroundIntervalMs: REFRESH_INTERVAL_MS,

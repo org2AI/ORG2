@@ -11,6 +11,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   loadAuthoritative: vi.fn(),
+  loadPreview: vi.fn(),
   getPersisted: vi.fn(),
   set: vi.fn(),
   setStreaming: vi.fn(),
@@ -33,6 +34,13 @@ vi.mock("../adapters/cli/cliLifecycle", () => ({
       "abandoned",
       "timeout",
     ].includes(status ?? ""),
+}));
+
+vi.mock("../adapters/cli/cliHistory", () => ({
+  loadCliPreviewHistory: mocks.loadPreview,
+}));
+vi.mock("../../turns/loadedTurnRegistry", () => ({
+  clearLoadedTurnRegistry: vi.fn(),
 }));
 
 vi.mock("../authoritativeSessionEvents", () => ({
@@ -69,6 +77,9 @@ function makeEvent(id: string, sessionId: string): SessionEvent {
 
 function historySequence(sequence: SessionEvent[][]): void {
   let call = 0;
+  mocks.loadPreview.mockImplementation(
+    async () => sequence[Math.min(call++, sequence.length - 1)] ?? []
+  );
   mocks.loadAuthoritative.mockImplementation(async () => ({
     events: sequence[Math.min(call++, sequence.length - 1)] ?? [],
     source: "cli_history",
@@ -108,14 +119,15 @@ describe("single-owner native transcript reconcile", () => {
   it("a terminal caller rereads after a cancelled idle job", async () => {
     const controller = new AbortController();
     let finish!: () => void;
-    mocks.loadAuthoritative
-      .mockImplementationOnce(async () => {
-        await new Promise<void>((resolve) => {
-          finish = resolve;
-        });
-        return { events: [makeEvent("old", "shared-refresh")] };
-      })
-      .mockResolvedValueOnce({ events: [makeEvent("new", "shared-refresh")] });
+    mocks.loadPreview.mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      return [makeEvent("old", "shared-refresh")];
+    });
+    mocks.loadAuthoritative.mockResolvedValueOnce({
+      events: [makeEvent("new", "shared-refresh")],
+    });
     const idle = reconcileNativeTranscript("shared-refresh", {
       signal: controller.signal,
       refreshGuard: () => true,
@@ -163,6 +175,8 @@ describe("single-owner native transcript reconcile", () => {
     await reconcileNativeTranscript("conditional-refresh", {
       refreshGuard: () => true,
     });
+    expect(mocks.loadAuthoritative).not.toHaveBeenCalled();
+    expect(mocks.loadPreview).toHaveBeenCalledOnce();
     expect(mocks.set).toHaveBeenCalledWith(
       expect.any(Array),
       "conditional-refresh",

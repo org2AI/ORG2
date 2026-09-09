@@ -691,7 +691,7 @@ fn codex_file_stem_from_session_id(session_id: &str) -> Result<&str, String> {
     Ok(file_stem)
 }
 
-fn resolve_codex_session_path(conn: &Connection, file_stem: &str) -> Result<PathBuf, String> {
+pub fn resolve_codex_session_path(conn: &Connection, file_stem: &str) -> Result<PathBuf, String> {
     let transcript_session_id = canonical_session_id(file_stem);
     let store = SqliteRecordStore::new(conn);
     if let Some(path) = store

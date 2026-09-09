@@ -313,7 +313,12 @@ async function handleCacheMiss(
   );
   if (abortController.signal.aborted) return;
 
-  actions.dispatchLoadSession({ sessionId, events, nativeHistoryRevision });
+  actions.dispatchLoadSession({
+    sessionId,
+    events,
+    nativeHistoryRevision,
+    storeHydrated: adapter.category === "cli" && !missInFlight,
+  });
   if (
     missInFlight &&
     !isImportedHistorySession(sessionId) &&

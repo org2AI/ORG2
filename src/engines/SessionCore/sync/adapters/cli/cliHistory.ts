@@ -3,12 +3,8 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { rpc } from "@src/api/tauri/rpc";
 import { cliSessionContextUsage } from "@src/api/tauri/session/contextUsage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { processChunksRust } from "@src/engines/SessionCore/ingestion/rustBridge";
 import { createLogger } from "@src/hooks/logger";
-import type {
-  ActivityChunk,
-  CliSessionStatus,
-} from "@src/types/session/session";
+import type { CliSessionStatus } from "@src/types/session/session";
 
 import type { PostLoadResult } from "../../types";
 
@@ -21,7 +17,7 @@ interface StoredSession {
   transcriptSource?: string;
 }
 
-function convertResultImages(event: SessionEvent): SessionEvent {
+export function convertResultImages(event: SessionEvent): SessionEvent {
   const result = event.result as Record<string, unknown> | undefined;
   if (!result?.images || !Array.isArray(result.images)) return event;
   const converted = (result.images as string[]).map((imgRef) =>
@@ -30,15 +26,56 @@ function convertResultImages(event: SessionEvent): SessionEvent {
   return { ...event, result: { ...result, images: converted } };
 }
 
-export async function loadCliHistory(
+// Only pending reads are shared; no transcript bodies survive completion.
+// Revision keys include the account-scoped file binding, so a profile switch
+// cannot join a pending read from a different native store.
+const inFlightHistory = new Map<string, Promise<SessionEvent[]>>();
+const MAX_TRACKED_READS = 8;
+
+async function loadHistory(
+  sessionId: string,
+  signal: AbortSignal,
+  kind: "full" | "preview"
+): Promise<SessionEvent[]> {
+  if (signal.aborted) return [];
+  // This probe only permits safe coalescing. Its failure must not make a
+  // readable transcript unavailable; read independently without a cache key.
+  const revision = await loadCliTranscriptRevision(sessionId).catch(() => null);
+  if (signal.aborted) return [];
+  const key = revision ? JSON.stringify([sessionId, kind, revision]) : null;
+  let request = key ? inFlightHistory.get(key) : undefined;
+  if (!request) {
+    request = rpc.cli
+      .history({ sessionId, read: { kind } })
+      .then((events) => events.map(convertResultImages));
+    if (key && inFlightHistory.size < MAX_TRACKED_READS) {
+      inFlightHistory.set(key, request);
+      const current = request;
+      void request
+        .finally(() => {
+          if (inFlightHistory.get(key) === current) inFlightHistory.delete(key);
+        })
+        .catch(() => {});
+    }
+  }
+  const events = await request;
+  return signal.aborted ? [] : events;
+}
+
+/** Complete canonical read for continuation/export, never a UI preview. */
+export function loadCliHistory(
   sessionId: string,
   signal: AbortSignal
 ): Promise<SessionEvent[]> {
-  const chunks = (await rpc.cli.chunks({ sessionId })) as ActivityChunk[];
-  if (signal.aborted || !Array.isArray(chunks)) return [];
-  const events = await processChunksRust(chunks, sessionId);
-  if (signal.aborted) return [];
-  return events.map(convertResultImages);
+  return loadHistory(sessionId, signal, "full");
+}
+
+/** Chat keeps one recent body and lazy placeholders for older native turns. */
+export function loadCliPreviewHistory(
+  sessionId: string,
+  signal: AbortSignal
+): Promise<SessionEvent[]> {
+  return loadHistory(sessionId, signal, "preview");
 }
 
 /**

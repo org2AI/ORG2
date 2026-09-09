@@ -26,6 +26,8 @@ import {
 import { createLogger } from "@src/hooks/logger";
 import { isSessionEngineActiveStatus } from "@src/util/session/sessionRuntimeExecuting";
 
+import { clearLoadedTurnRegistry } from "../turns/loadedTurnRegistry";
+import { loadCliPreviewHistory } from "./adapters/cli/cliHistory";
 import { loadAuthoritativeSessionEvents } from "./authoritativeSessionEvents";
 import { mergeFailedUserDeliveryProjection } from "./sessionSyncUtils";
 
@@ -160,6 +162,7 @@ async function publishNativeProjection(
     await eventStoreProxy.set(events, sessionId);
   } else {
     await eventStoreProxy.set(events, sessionId, expectedVersion);
+    clearLoadedTurnRegistry(sessionId);
   }
   return events;
 }
@@ -212,10 +215,14 @@ async function runReconcile(
   // Check the mutable preserve flag after every await so a foreground caller
   // can still upgrade an in-flight background job without a settle delay. A
   // normal completed turn never pays for a second full-history cache read.
-  const nativeEvents = await loadAuthoritativeSessionEvents(
-    sessionId,
-    job.signal
-  ).then(({ events }) => events);
+  const nativeEvents = job.refreshGuard
+    ? await loadCliPreviewHistory(
+        sessionId,
+        job.signal ?? new AbortController().signal
+      )
+    : await loadAuthoritativeSessionEvents(sessionId, job.signal).then(
+        ({ events }) => events
+      );
   assertCurrent();
   let preserveApplied = false;
   const publishCurrentProjection = async (): Promise<SessionEvent[]> => {

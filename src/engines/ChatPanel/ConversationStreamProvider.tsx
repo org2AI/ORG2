@@ -17,6 +17,7 @@ import {
   type LocalCanonicalConversationSnapshot,
   type LocalExecutionSegment,
   loadLocalCanonicalConversationSnapshot,
+  loadLocalExecutionChildren,
   projectVerifiedLocalExecutionTail,
   suppressLandedQueuedUserRows,
   suppressLandedRowsOfFailedQueuedTurns,
@@ -206,7 +207,7 @@ interface LocalExecutionHydrationRequest {
 
 interface LocalExecutionHydrationSnapshot {
   rootKey: string;
-  snapshot: LocalCanonicalConversationSnapshot;
+  snapshot: LocalCanonicalConversationSnapshot | null;
 }
 
 interface LocalExecutionHydrationTrigger {
@@ -232,12 +233,18 @@ export function shouldHydrateLocalExecutionSnapshot(
   );
 }
 
-async function hydrateLocalExecutionSnapshot(
+export async function hydrateLocalExecutionSnapshot(
   request: LocalExecutionHydrationRequest
 ): Promise<LocalExecutionHydrationSnapshot> {
   return {
     rootKey: request.rootKey,
-    snapshot: await loadLocalCanonicalConversationSnapshot(request.root),
+    // The root is already owned by SessionSync. A conversation with no
+    // execution children has no suffix to verify or merge; do not retain a
+    // second complete native root just to compute an empty tail.
+    snapshot:
+      (await loadLocalExecutionChildren(request.root)).length > 0
+        ? await loadLocalCanonicalConversationSnapshot(request.root)
+        : null,
   };
 }
 

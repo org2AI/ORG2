@@ -14,6 +14,7 @@ import {
 } from "vitest";
 
 import {
+  allAgentDefsAtom,
   builtInAgentsAtom,
   customAgentsAtom,
 } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
@@ -53,18 +54,20 @@ function Probe({
   return null;
 }
 
-describe("useAgentToolMatrix", () => {
+describe.each([true, false])("useAgentToolMatrix (builtIn=%s)", (builtIn) => {
   let container: HTMLDivElement;
   let root: Root;
   let store: ReturnType<typeof createStore>;
   let latest: UseAgentToolMatrixReturn;
 
   const agent: AgentDefinition = {
-    id: "builtin:sde",
+    id: builtIn ? "builtin:sde" : "custom:sde",
     name: "SDE",
-    builtIn: true,
+    builtIn,
     tools: {},
   };
+
+  const selectedAgentsAtom = builtIn ? builtInAgentsAtom : customAgentsAtom;
 
   beforeAll(() => {
     reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
@@ -72,8 +75,7 @@ describe("useAgentToolMatrix", () => {
 
   beforeEach(() => {
     store = createStore();
-    store.set(builtInAgentsAtom, [agent]);
-    store.set(customAgentsAtom, []);
+    store.set(allAgentDefsAtom, [agent]);
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -107,26 +109,32 @@ describe("useAgentToolMatrix", () => {
 
     let request!: Promise<void>;
     act(() => {
-      request = latest.toggle("builtin:sde", "read_file", false);
+      request = latest.toggle(agent.id, "read_file", false);
     });
 
     expect(latest.rowsByTool("read_file")[0]?.enabled).toBe(false);
-    expect(store.get(builtInAgentsAtom)[0]?.tools?.excludedTools).toEqual([
+    expect(store.get(selectedAgentsAtom)[0]?.tools?.excludedTools).toEqual([
+      "read_file",
+    ]);
+
+    expect(store.get(allAgentDefsAtom)[0]?.tools?.excludedTools).toEqual([
       "read_file",
     ]);
 
     await act(async () => request);
-    expect(store.get(builtInAgentsAtom)[0]).toEqual(saved);
+    expect(store.get(selectedAgentsAtom)[0]).toEqual(saved);
+    expect(store.get(allAgentDefsAtom)[0]).toEqual(saved);
   });
 
   it("rolls back the shared atom when persistence fails", async () => {
     mocks.updatePatch.mockRejectedValueOnce(new Error("write failed"));
 
     await act(async () => {
-      await latest.toggle("builtin:sde", "read_file", false);
+      await latest.toggle(agent.id, "read_file", false);
     });
 
     expect(latest.rowsByTool("read_file")[0]?.enabled).toBe(true);
-    expect(store.get(builtInAgentsAtom)[0]).toEqual(agent);
+    expect(store.get(selectedAgentsAtom)[0]).toEqual(agent);
+    expect(store.get(allAgentDefsAtom)[0]).toEqual(agent);
   });
 });

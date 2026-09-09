@@ -39,13 +39,10 @@
 import { useStore } from "jotai";
 import { type FC, useEffect } from "react";
 
-import { INTERNAL_AGENT_IDS } from "@src/modules/MainApp/AgentOrgs/config/agentConstants";
 import {
   agentDefsLoadErrorAtom,
   agentDefsLoadedAtom,
   allAgentDefsAtom,
-  builtInAgentsAtom,
-  customAgentsAtom,
 } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
 import type { AgentDefinition } from "@src/modules/MainApp/AgentOrgs/types";
 
@@ -125,16 +122,6 @@ export const E2EBootstrap: FC = () => {
         if (!result.ok) return result;
         const defs = result.defs as unknown as AgentDefinition[];
         store.set(allAgentDefsAtom, defs);
-        store.set(
-          builtInAgentsAtom,
-          defs.filter(
-            (agent) => agent.builtIn && !INTERNAL_AGENT_IDS.has(agent.id)
-          )
-        );
-        store.set(
-          customAgentsAtom,
-          defs.filter((agent) => !agent.builtIn)
-        );
         store.set(agentDefsLoadedAtom, true);
         store.set(agentDefsLoadErrorAtom, null);
         return result;

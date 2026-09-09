@@ -24,12 +24,9 @@ import { useEffect } from "react";
 import { rpc } from "@src/api/tauri/rpc";
 import { createLogger } from "@src/hooks/logger";
 
-import { INTERNAL_AGENT_IDS } from "../config/agentConstants";
 import {
   agentDefsLoadedAtom,
   allAgentDefsAtom,
-  builtInAgentsAtom,
-  customAgentsAtom,
 } from "../store/builtInAgentsAtom";
 
 const log = createLogger("useEnsureAgentDefs");
@@ -42,8 +39,6 @@ const log = createLogger("useEnsureAgentDefs");
 export function useEnsureAgentDefs(enabled = true): boolean {
   const loaded = useAtomValue(agentDefsLoadedAtom);
   const setAllDefs = useSetAtom(allAgentDefsAtom);
-  const setBuiltInAgents = useSetAtom(builtInAgentsAtom);
-  const setCustomAgents = useSetAtom(customAgentsAtom);
   const setLoaded = useSetAtom(agentDefsLoadedAtom);
 
   useEffect(() => {
@@ -56,12 +51,6 @@ export function useEnsureAgentDefs(enabled = true): boolean {
       .then((result) => {
         if (cancelled) return;
         setAllDefs(result);
-        setBuiltInAgents(
-          result.filter(
-            (agent) => agent.builtIn && !INTERNAL_AGENT_IDS.has(agent.id)
-          )
-        );
-        setCustomAgents(result.filter((agent) => !agent.builtIn));
         setLoaded(true);
       })
       .catch((err) => {
@@ -71,14 +60,7 @@ export function useEnsureAgentDefs(enabled = true): boolean {
     return () => {
       cancelled = true;
     };
-  }, [
-    enabled,
-    loaded,
-    setAllDefs,
-    setBuiltInAgents,
-    setCustomAgents,
-    setLoaded,
-  ]);
+  }, [enabled, loaded, setAllDefs, setLoaded]);
 
   return loaded;
 }

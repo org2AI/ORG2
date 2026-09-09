@@ -564,3 +564,88 @@ fn decodes_file_uris_with_percent_escapes() {
     );
     assert_eq!(file_uri_to_path("not-a-uri"), None);
 }
+
+#[test]
+fn wal_store_read_does_not_dirty_the_persisted_discovery_signature() {
+    let dir = std::env::temp_dir().join(format!(
+        "orgii-cursor-wal-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    let writer_path = dir.join("writer.db");
+    fixture_conn()
+        .execute("VACUUM INTO ?1", [writer_path.to_str().unwrap()])
+        .unwrap();
+    let writer = Connection::open(&writer_path).unwrap();
+    writer
+        .execute_batch(
+            "PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; UPDATE meta SET value=value;",
+        )
+        .unwrap();
+    let path = dir.join("store.db");
+    std::fs::copy(&writer_path, &path).unwrap();
+    std::fs::copy(dir.join("writer.db-wal"), dir.join("store.db-wal")).unwrap();
+    let discover = || {
+        let (mtime, size) = imported_paths::file_metadata_signature(&path, "Cursor CLI").unwrap();
+        ImportedHistoryDiscoveredRecord {
+            source_path: path.clone(),
+            source_mtime_ms: mtime,
+            source_size_bytes: size,
+            source_fingerprint: imported_paths::sqlite_sidecar_signature(&path),
+            ..fixture_record()
+        }
+    };
+    let record = discover();
+    let mut cache = Connection::open_in_memory().unwrap();
+    crate::store::sqlite::SqliteRecordStore::init_tables(&cache).unwrap();
+    crate::store::sqlite::SqliteRecordStore::init_source_cache_tables(&cache).unwrap();
+    let reader = open_store_readonly(&path).unwrap();
+    let input = session_meta_to_cache_input(
+        session_meta_from_store_conn(&reader, &record, 10)
+            .unwrap()
+            .unwrap(),
+    );
+    assert_eq!(input.name, "Fix the login bug");
+    imported_cache::upsert_imported_session_cache_from_conn(&mut cache, &[input]).unwrap();
+    drop(reader);
+    for _ in 0..4 {
+        let reader = open_store_readonly(&path).unwrap();
+        assert!(read_store_meta(&reader).unwrap().is_some());
+        drop(reader);
+        let records = [discover()];
+        let changed = imported_cache::changed_records_with_generated_name_repairs_from_conn(
+            &cache,
+            SOURCE_CURSOR_CLI,
+            &records,
+            |record| record.signature(),
+        )
+        .unwrap();
+        assert!(
+            changed.is_empty(),
+            "our own metadata read must not cause a reparse/cache write"
+        );
+    }
+    // A real provider commit in the WAL still invalidates the persisted row.
+    let provider = Connection::open(&path).unwrap();
+    provider
+        .execute_batch(
+            "PRAGMA wal_autocheckpoint=0; INSERT INTO blobs VALUES ('new-message', X'7B7D');",
+        )
+        .unwrap();
+    let records = [discover()];
+    let changed = imported_cache::changed_records_with_generated_name_repairs_from_conn(
+        &cache,
+        SOURCE_CURSOR_CLI,
+        &records,
+        |record| record.signature(),
+    )
+    .unwrap();
+    assert_eq!(changed.len(), 1);
+    drop(provider);
+    drop(writer);
+    std::fs::remove_dir_all(dir).unwrap();
+}

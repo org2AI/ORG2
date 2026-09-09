@@ -533,7 +533,8 @@ export function createCliEventHandler(
     }
   }
 
-  function handleStatusChange(status: string): void {
+  function handleStatusChange(raw: RawSessionEvent): void {
+    const status = raw.status as string;
     const terminalStatus = isCliTerminalStatus(status as CliSessionStatus)
       ? (status as CliSessionStatus)
       : undefined;
@@ -549,7 +550,21 @@ export function createCliEventHandler(
       // Otherwise a fast Stop -> runtime switch can read the old native fork
       // before EventStore owns the interrupted suffix.
       void markObservedCliTerminalStatus(sessionId, observedTerminalStatus)
-        .then(() => callbacks.onAgentComplete?.())
+        .then(() => {
+          if (disposed) return;
+          // The shared lifecycle callback owns native transcript reconciliation.
+          // Notify it after streamed writes settle, preserving the turn identity
+          // so a late terminal cannot reconcile a newer dispatch.
+          callbacks.onStatusChange?.(
+            status,
+            asString(raw.error_message) ?? asString(raw.errorMessage),
+            {
+              turnIntentId:
+                asString(raw.turn_intent_id) ?? asString(raw.turnIntentId),
+            }
+          );
+          callbacks.onAgentComplete?.();
+        })
         .catch((error: unknown) => {
           log.error("CLI terminal completion failed", error);
         });
@@ -607,7 +622,7 @@ export function createCliEventHandler(
       } else if (raw.type === "agent:streaming_complete") {
         handleStreamingComplete(raw);
       } else if (raw.type === "code_session.status_changed") {
-        handleStatusChange(raw.status as string);
+        handleStatusChange(raw);
       } else if (raw.type === "code_session.token_usage_updated") {
         const total = raw.total_tokens;
         // Billing events invalidate telemetry; their cumulative total is not context.

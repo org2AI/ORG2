@@ -9,8 +9,14 @@ import { settingsAtom } from "@src/store/settings/settingsAtom";
 import { TerminalCore } from "..";
 import type { UseTerminalStateReturn } from "../types";
 
-const runtime = vi.hoisted(() => ({ create: vi.fn(), fit: vi.fn() }));
-vi.mock("@src/hooks/terminal", () => ({ useTerminalProcessPoller: () => {} }));
+const runtime = vi.hoisted(() => ({
+  create: vi.fn(),
+  fit: vi.fn(),
+  poll: vi.fn(),
+}));
+vi.mock("@src/hooks/terminal", () => ({
+  useTerminalProcessPoller: (options: unknown) => runtime.poll(options),
+}));
 vi.mock("@/src/scaffold/ContextMenu/exports", () => ({
   TextSelectionDropdown: () => null,
 }));
@@ -63,12 +69,12 @@ function terminalState(id: string): UseTerminalStateReturn {
     closeSession: () => {},
     setActiveSession: () => {},
     markSessionInitialized: () => {},
-    updateSessionInfo: () => {},
+    updateSessionInfo: vi.fn(),
     renameSession: () => {},
   };
 }
 
-describe("terminal host font sizes", () => {
+describe("terminal host integration", () => {
   let root: Root;
   let container: HTMLDivElement;
   let store: ReturnType<typeof createStore>;
@@ -92,6 +98,7 @@ describe("terminal host font sizes", () => {
     root = createRoot(container);
     runtime.create.mockReset();
     runtime.fit.mockReset();
+    runtime.poll.mockReset();
     runtime.create.mockImplementation(
       ({ terminalFontSize }: { terminalFontSize: number }) => ({
         terminal: {
@@ -118,7 +125,7 @@ describe("terminal host font sizes", () => {
     Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
   });
 
-  function render(fontSize?: number) {
+  function render(fontSize?: number, visible = true) {
     act(() =>
       root.render(
         React.createElement(
@@ -127,12 +134,46 @@ describe("terminal host font sizes", () => {
           React.createElement(TerminalCore, {
             terminalState: pinnedState,
             fontSize,
+            visible,
           }),
-          React.createElement(TerminalCore, { terminalState: stationState })
+          React.createElement(TerminalCore, {
+            terminalState: stationState,
+            visible,
+          })
         )
       )
     );
   }
+
+  it("preserves command refresh and live cwd callbacks without command history state", () => {
+    render();
+    const callbacks = runtime.create.mock.calls[0][0].shellIntegration;
+    runtime.poll.mockClear();
+    act(() => callbacks.onCommandExecuted("pwd"));
+    expect(runtime.poll).toHaveBeenCalledWith(
+      expect.objectContaining({ refreshSignal: 1 })
+    );
+    act(() => callbacks.onCommandFinished(0));
+    expect(runtime.poll).toHaveBeenCalledWith(
+      expect.objectContaining({ refreshSignal: 2 })
+    );
+    act(() => callbacks.onCwdChanged("/project/next"));
+    expect(pinnedState.updateSessionInfo).toHaveBeenCalledWith("pinned", {
+      liveCwd: "/project/next",
+    });
+  });
+
+  it("does not request command-triggered process refresh while hidden", () => {
+    render();
+    const callbacks = runtime.create.mock.calls[0][0].shellIntegration;
+    render(undefined, false);
+    runtime.poll.mockClear();
+    act(() => {
+      callbacks.onCommandExecuted("pwd");
+      callbacks.onCommandFinished(0);
+    });
+    expect(runtime.poll).not.toHaveBeenCalled();
+  });
 
   it("scopes initial and live font overrides without recreating either terminal", () => {
     render(12);

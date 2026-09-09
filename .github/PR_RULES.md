@@ -98,6 +98,29 @@ details may follow the required sections.
 - If scope or behavior changes materially after review starts, update the
   description and notify reviewers.
 
+## Agent authorization boundary
+
+- An explicit user request to create a pull request authorizes the normal steps
+  needed to deliver that task: create an isolated branch or worktree, stage and
+  commit only in-scope changes, push that branch, and create the pull request.
+  Do not ask for separate confirmation at each step. Respect any narrower
+  limits explicitly set by the user.
+- If the previous pull request is already merged, start a new isolated branch
+  or worktree from the latest intended target branch and carry over only the
+  current task's changes. A merged pull request or zero committed changes ahead
+  of the target is not, by itself, a reason to request authorization again.
+- Preserve unrelated working-tree changes. When the task's changes can be
+  clearly separated, isolate them and continue rather than asking the user to
+  approve the normal isolation workflow.
+- Ask for clarification when the task's scope or ownership of changes is
+  ambiguous. Obtain separate explicit authorization before including unrelated
+  changes, discarding user data, force-pushing, or performing other destructive
+  operations. Never silently expand the task's scope.
+- A request only to modify code or documentation does not authorize committing,
+  pushing, or creating a pull request. A request to commit alone does not
+  authorize pushing or creating a pull request. Creating a pull request does
+  not authorize merging it.
+
 ## Agent handoff
 
 Any agent that creates or updates a pull request must:

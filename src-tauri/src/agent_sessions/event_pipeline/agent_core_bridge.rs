@@ -709,8 +709,13 @@ mod tests {
             session_id,
             "provider rejected the first turn",
         );
-        persist_events_adapter("terminal-error-test", session_id, &[event.clone()], 1)
-            .expect("persistence barrier succeeds");
+        persist_events_adapter(
+            "terminal-error-test",
+            session_id,
+            std::slice::from_ref(&event),
+            1,
+        )
+        .expect("persistence barrier succeeds");
 
         let stored = session_persistence::get_event(session_id, &event.id)
             .expect("read persisted event")

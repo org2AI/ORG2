@@ -41,11 +41,11 @@ describe("useReloadSession", () => {
         finish = resolve;
       })
     );
-    const pending = useReloadSession("session-a")();
+    expect(useReloadSession("session-a")()).toBeUndefined();
     expect(mocks.reload).not.toHaveBeenCalled();
     expect(mocks.status).not.toHaveBeenCalled();
     finish();
-    await pending;
+    await Promise.resolve();
     expect(mocks.reload).toHaveBeenCalledOnce();
     expect(mocks.reload).toHaveBeenCalledWith("session-a");
     expect(mocks.status).toHaveBeenCalledWith("loading");
@@ -58,18 +58,21 @@ describe("useReloadSession", () => {
         finish = resolve;
       })
     );
-    const pending = useReloadSession("session-a")();
+    expect(useReloadSession("session-a")()).toBeUndefined();
     mocks.activeId = "session-b";
     finish();
-    await pending;
+    await Promise.resolve();
     expect(mocks.reload).not.toHaveBeenCalled();
     expect(mocks.select).not.toHaveBeenCalled();
   });
 
   it("reports eviction failure without racing a reload against stale data", async () => {
     mocks.evict.mockRejectedValue(new Error("eviction failed"));
-    await useReloadSession("session-a")();
-    expect(mocks.fail).toHaveBeenCalledWith("eviction failed");
+    useReloadSession("session-a")();
+    await Promise.resolve();
+    await vi.waitFor(() =>
+      expect(mocks.fail).toHaveBeenCalledWith("eviction failed")
+    );
     expect(mocks.reload).not.toHaveBeenCalled();
   });
 });

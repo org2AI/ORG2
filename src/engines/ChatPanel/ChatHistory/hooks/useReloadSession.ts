@@ -18,22 +18,24 @@ export function useReloadSession(activeId: string | null) {
   const triggerSessionReload = useSetAtom(triggerSessionReloadAtom);
   const setActiveSessionId = useSetAtom(activeSessionIdAtom);
 
-  return useCallback(async () => {
+  return useCallback((): void => {
     if (!activeId) return;
-    try {
+    // UI actions are synchronous callbacks. This owner awaits eviction and
+    // handles failures for the complete async reload operation.
+    const reload = async () => {
       await eventStoreProxy.evictSession(activeId);
-    } catch (error) {
+      // Eviction can finish after navigation to a different session.
+      if (store.get(activeSessionIdAtom) !== activeId) return;
+      clearSessionLoadError();
+      setLoadStatus("loading");
+      setActiveSessionId(activeId);
+      triggerSessionReload(activeId);
+    };
+    reload().catch((error: unknown) => {
       if (store.get(activeSessionIdAtom) === activeId) {
         failSessionLoad(error instanceof Error ? error.message : String(error));
       }
-      return;
-    }
-    // An eviction can finish after the user has selected a different session.
-    if (store.get(activeSessionIdAtom) !== activeId) return;
-    clearSessionLoadError();
-    setLoadStatus("loading");
-    setActiveSessionId(activeId);
-    triggerSessionReload(activeId);
+    });
   }, [
     activeId,
     store,

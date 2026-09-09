@@ -259,16 +259,6 @@ export const WorkStationViewService = {
     return true;
   },
 
-  async openCodeEditorTabOrToggleChatPanelMaximized(
-    tabId: string,
-    options?: NavigationOptions
-  ): Promise<boolean> {
-    if (await shouldToggleMaximizedForActiveTab(tabId, options)) {
-      return this.toggleChatPanelMaximized();
-    }
-    return this.openCodeEditorTab(tabId);
-  },
-
   async openFileFolderTab(options?: NavigationOptions): Promise<boolean> {
     const { EditorTabService } =
       await import("@src/services/workStation/EditorTabService");

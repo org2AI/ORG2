@@ -692,6 +692,7 @@ fn native_turn(
         user_input: user_input.to_string(),
         developer_instructions: Some(developer_instructions.to_string()),
         working_dir: "/workspace".to_string(),
+        project_id: Some("desktop-project-id".to_string()),
         resume_thread_id: resume_thread_id.map(str::to_string),
         model: Some("gpt-5.6-sol".to_string()),
         permission_mode: CliPermissionMode::Manual,
@@ -711,6 +712,7 @@ fn fresh_thread_keeps_agent_context_out_of_native_user_input() {
 
     let (method, params) = build_thread_launch_request(&turn);
     assert_eq!(method, "thread/start");
+    assert_eq!(params["projectId"], "desktop-project-id");
     assert_eq!(params["developerInstructions"], developer_context);
     assert!(params.get("baseInstructions").is_none());
 
@@ -744,6 +746,10 @@ fn resumed_thread_receives_the_updated_developer_context() {
     );
     let (method, params) = build_thread_launch_request(&resumed);
     assert_eq!(method, "thread/resume");
+    assert!(
+        params.get("projectId").is_none(),
+        "resume must preserve the existing project"
+    );
     assert_eq!(params["threadId"], "native-codex-thread");
     assert_eq!(
         params["developerInstructions"],
@@ -790,6 +796,7 @@ async fn live_smoke_trivial_turn() {
         user_input: "Reply with exactly: pong".to_string(),
         developer_instructions: None,
         working_dir: std::env::temp_dir().to_string_lossy().to_string(),
+        project_id: None,
         resume_thread_id: None,
         model: None,
         permission_mode: CliPermissionMode::Plan,
@@ -895,7 +902,14 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
     let native_home = root.join("desktop");
     let project = root.join("target project");
     let other_project = root.join("other project");
-    for dir in [&home, &native_home, &project, &other_project] {
+    let execution_worktree = root.join("execution worktree");
+    for dir in [
+        &home,
+        &native_home,
+        &project,
+        &other_project,
+        &execution_worktree,
+    ] {
         std::fs::create_dir(dir).unwrap();
     }
     let server = MockServer::start().await;
@@ -935,8 +949,36 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
         server.uri()
     )).unwrap();
 
+    let project_id = {
+        let home = native_home.clone();
+        let workspace = project.clone();
+        tokio::task::spawn_blocking(move || super::ensure_project(&home, &workspace))
+            .await
+            .unwrap()
+            .expect("register Desktop project")
+    };
+    let reused_id = {
+        let home = native_home.clone();
+        let workspace = project.clone();
+        tokio::task::spawn_blocking(move || super::ensure_project(&home, &workspace))
+            .await
+            .unwrap()
+            .expect("reuse Desktop project")
+    };
+    assert_eq!(project_id, reused_id);
+    let other_project_id = {
+        let home = native_home.clone();
+        let workspace = other_project.clone();
+        tokio::task::spawn_blocking(move || super::ensure_project(&home, &workspace))
+            .await
+            .unwrap()
+            .expect("register unrelated project")
+    };
     let mut thread_id = None;
     for user_text in ["ORGII_VISIBLE_FRESH", "ORGII_VISIBLE_RESUME"] {
+        // Execute outside the saved project root, as a managed worktree does.
+        // Sidebar membership must use projectId rather than cwd equality.
+        let working_dir = &execution_worktree;
         let mut child = tokio::process::Command::new(&binary)
             .arg("app-server")
             .arg("-c")
@@ -947,7 +989,7 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
             .env("CODEX_HOME", &home)
             .env_remove("OPENAI_API_KEY")
             .env_remove("OPENAI_BASE_URL")
-            .current_dir(&project)
+            .current_dir(working_dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -962,7 +1004,8 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
             developer_instructions: Some(
                 "ORGII_PROVIDER_CONTEXT_MUST_NOT_BE_USER_TEXT".to_string(),
             ),
-            working_dir: project.to_string_lossy().to_string(),
+            working_dir: working_dir.to_string_lossy().to_string(),
+            project_id: Some(project_id.clone()),
             resume_thread_id: thread_id.clone(),
             model: Some("gpt-5.4".to_string()),
             permission_mode: CliPermissionMode::Plan,
@@ -1002,7 +1045,7 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
                 "thread/list",
                 json!({
                     "limit": 20, "sourceKinds": [], "modelProviders": [], "archived": false,
-                    "useStateDbOnly": true, "cwd": [project]
+                    "useStateDbOnly": true, "projectId": project_id
                 }),
                 Duration::from_secs(10),
             )
@@ -1020,8 +1063,40 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
             "default Desktop list must contain the native thread once: {list}"
         );
         assert_ne!(matches[0]["source"], "exec");
-        assert_eq!(matches[0]["cwd"], project.to_string_lossy().as_ref());
-        // Desktop associates local conversations with the saved project's cwd.
+        assert_eq!(matches[0]["projectId"], project_id);
+        let projects = catalog
+            .request(
+                "project/list",
+                json!({"limit": 20}),
+                Duration::from_secs(10),
+            )
+            .await
+            .unwrap();
+        let projects = projects["data"].as_array().unwrap();
+        assert_eq!(projects.len(), 2, "two Desktop projects, no duplicates");
+        let target = projects
+            .iter()
+            .find(|entry| entry["id"] == project_id)
+            .unwrap();
+        assert_eq!(target["name"], "target project");
+        assert_eq!(
+            target["roots"][0]["path"],
+            project.to_string_lossy().as_ref()
+        );
+        let other_members = catalog
+            .request(
+                "thread/list",
+                json!({
+                    "limit": 20, "sourceKinds": [], "modelProviders": [], "archived": false,
+                    "useStateDbOnly": true, "projectId": other_project_id
+                }),
+                Duration::from_secs(10),
+            )
+            .await
+            .unwrap();
+        assert!(other_members["data"].as_array().unwrap().is_empty());
+        assert_eq!(matches[0]["cwd"], working_dir.to_string_lossy().as_ref());
+        // Directory discovery must not confuse storage/other roots with this thread.
         // Neither a different project nor the auth/index directory may claim it.
         for wrong_project in [&other_project, &home, &native_home] {
             let wrong_list = catalog

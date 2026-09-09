@@ -36,17 +36,12 @@ describe("SplitListFullscreenButton", () => {
     );
 
     expect(maximized).toContain('data-testid="split-list-fullscreen-toggle"');
-    expect(maximized).toContain(
-      'aria-label="windowChrome.items.maximizeRestore"'
-    );
-    expect(maximized).toContain(
-      'data-tooltip-label="windowChrome.items.maximizeRestore"'
-    );
+    expect(maximized).toContain('aria-label="actions.expandView"');
+    expect(maximized).toContain('data-tooltip-label="actions.expandView"');
     expect(maximized).not.toContain('title="');
     expect(maximized).toContain('data-icon="maximize-2"');
-    expect(restored).toContain(
-      'aria-label="windowChrome.items.maximizeRestore"'
-    );
+    expect(restored).toContain('aria-label="actions.restoreSplitView"');
+    expect(restored).toContain('data-tooltip-label="actions.restoreSplitView"');
     expect(restored).toContain('data-icon="minimize-2"');
   });
 });

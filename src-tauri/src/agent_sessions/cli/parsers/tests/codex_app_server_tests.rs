@@ -890,9 +890,14 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
     let binary = std::env::var("ORGII_NATIVE_CODEX_APP_BINARY")
         .expect("set ORGII_NATIVE_CODEX_APP_BINARY to the installed Desktop Codex binary");
     let sandbox = tempfile::tempdir().expect("isolated Codex home");
-    let home = sandbox.path().canonicalize().unwrap();
-    let native_home = home.join("desktop");
-    std::fs::create_dir(&native_home).unwrap();
+    let root = sandbox.path().canonicalize().unwrap();
+    let home = root.join("account");
+    let native_home = root.join("desktop");
+    let project = root.join("target project");
+    let other_project = root.join("other project");
+    for dir in [&home, &native_home, &project, &other_project] {
+        std::fs::create_dir(dir).unwrap();
+    }
     let server = MockServer::start().await;
     let message = json!({
         "id": "msg_fixture", "type": "message", "role": "assistant", "status": "completed",
@@ -942,7 +947,7 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
             .env("CODEX_HOME", &home)
             .env_remove("OPENAI_API_KEY")
             .env_remove("OPENAI_BASE_URL")
-            .current_dir(&home)
+            .current_dir(&project)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -957,7 +962,7 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
             developer_instructions: Some(
                 "ORGII_PROVIDER_CONTEXT_MUST_NOT_BE_USER_TEXT".to_string(),
             ),
-            working_dir: home.to_string_lossy().to_string(),
+            working_dir: project.to_string_lossy().to_string(),
             resume_thread_id: thread_id.clone(),
             model: Some("gpt-5.4".to_string()),
             permission_mode: CliPermissionMode::Plan,
@@ -989,7 +994,7 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
         // A new process must discover the thread through the exact default list
         // contract used by Desktop, without force-reading or revealing its id.
         let mut catalog =
-            CodexAppServerRpcClient::launch(std::path::Path::new(&binary), &native_home, &home)
+            CodexAppServerRpcClient::launch(std::path::Path::new(&binary), &native_home, &project)
                 .await
                 .unwrap();
         let list = catalog
@@ -997,7 +1002,7 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
                 "thread/list",
                 json!({
                     "limit": 20, "sourceKinds": [], "modelProviders": [], "archived": false,
-                    "useStateDbOnly": true, "cwd": [home]
+                    "useStateDbOnly": true, "cwd": [project]
                 }),
                 Duration::from_secs(10),
             )
@@ -1015,7 +1020,27 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
             "default Desktop list must contain the native thread once: {list}"
         );
         assert_ne!(matches[0]["source"], "exec");
-        assert_eq!(matches[0]["cwd"], home.to_string_lossy().as_ref());
+        assert_eq!(matches[0]["cwd"], project.to_string_lossy().as_ref());
+        // Desktop associates local conversations with the saved project's cwd.
+        // Neither a different project nor the auth/index directory may claim it.
+        for wrong_project in [&other_project, &home, &native_home] {
+            let wrong_list = catalog
+                .request(
+                    "thread/list",
+                    json!({
+                        "limit": 20, "sourceKinds": [], "modelProviders": [], "archived": false,
+                        "useStateDbOnly": true, "cwd": [wrong_project]
+                    }),
+                    Duration::from_secs(10),
+                )
+                .await
+                .unwrap();
+            assert!(
+                wrong_list["data"].as_array().unwrap().is_empty(),
+                "thread must not appear under {}: {wrong_list}",
+                wrong_project.display()
+            );
+        }
     }
     let requests = server.received_requests().await.unwrap();
     assert_eq!(requests.len(), 2);

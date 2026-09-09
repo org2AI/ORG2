@@ -9,7 +9,6 @@ import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 
 import { resetChatEventsMemoCaches } from "../../derived/chatEvents";
 import { eventStoreProxy } from "../store/EventStoreProxy";
-import { resetContextAtomMemoCaches } from "./context";
 import { resetEventAtomMemoCaches } from "./events";
 
 export function releaseDepartingSessionSnapshot(sessionId: string): void {
@@ -18,7 +17,6 @@ export function releaseDepartingSessionSnapshot(sessionId: string): void {
   // leaves the session. Clear it synchronously even for live sessions whose
   // Rust/bridge snapshot keeps the normal warm-switch grace period.
   resetEventAtomMemoCaches();
-  resetContextAtomMemoCaches();
   resetChatEventsMemoCaches(sessionId);
 
   if (isImportedHistorySession(sessionId)) {

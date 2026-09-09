@@ -28,11 +28,6 @@ quitConfirmationModalOpenAtom.debugLabel = "quitConfirmationModalOpenAtom";
 export const componentIssueModalOpenAtom = atom<boolean>(false);
 componentIssueModalOpenAtom.debugLabel = "componentIssueModalOpenAtom";
 
-// Track when any toolbar dropdown is open (repo selector, branch selector, spotlight, etc.)
-// This is a generic atom for all toolbar dropdowns to use
-export const toolbarDropdownOpenAtom = atom<boolean>(false);
-toolbarDropdownOpenAtom.debugLabel = "toolbarDropdownOpenAtom";
-
 // Track the initial add-working-directory mode so SelectRepoPage can open a
 // specific form. String values remain stable because they are route-stage IDs.
 export type WorkingDirectoryInitialStage =
@@ -77,7 +72,6 @@ export const webviewOverlayBlockedAtom = atom((get) => {
   const hasGlobalError = get(hasGlobalErrorAtom);
   const isComponentIssueModalOpen = get(componentIssueModalOpenAtom);
   const isQuitConfirmationModalOpen = get(quitConfirmationModalOpenAtom);
-  const isToolbarDropdownOpen = get(toolbarDropdownOpenAtom);
   const isSpotlightOpen = get(spotlightOpenAtom);
 
   return (
@@ -85,7 +79,6 @@ export const webviewOverlayBlockedAtom = atom((get) => {
     hasGlobalError ||
     isComponentIssueModalOpen ||
     isQuitConfirmationModalOpen ||
-    isToolbarDropdownOpen ||
     isSpotlightOpen
   );
 });

@@ -24,7 +24,9 @@ const SplitListFullscreenButton: React.FC<SplitListFullscreenButtonProps> = ({
   onToggle,
 }) => {
   const { t } = useTranslation("common");
-  const label = t("windowChrome.items.maximizeRestore");
+  const label = t(
+    isFullscreen ? "actions.restoreSplitView" : "actions.expandView"
+  );
 
   return (
     <ToolbarTooltip label={label} position="bottom-end">

@@ -104,7 +104,10 @@ export function useDraftManagement(options: UseDraftManagementOptions) {
 
     if (!currentDraft) {
       setSessionName("");
-      setEditorContent("");
+      // The child composer may already have restored or accepted text before
+      // this effect runs. Keep launch validation and the next persisted draft
+      // aligned with that live editor instead of resetting only their text.
+      setEditorContent(composerInputRef.current?.getText() ?? "");
       setUploadedFiles([]);
       // Do NOT call setContent("") here. This branch means "no saved draft for
       // this slot", but the editor may already have user-typed content (e.g.

@@ -55,7 +55,8 @@ export function deliverSessionTerminalNotification(
         content: t("notifications.taskCompletedToast", {
           name: event.sessionName,
         }),
-        duration: 0,
+        // Actionable completion notices still expire; duration is milliseconds.
+        duration: 6000,
         closable: true,
         // The copy says "open the Session" — give it an actual door.
         action: {

@@ -359,7 +359,7 @@ pub(super) fn map_claude_model(model: &str) -> String {
     map_claude_model_variant(model).base_model
 }
 
-pub(super) struct ClaudeModelLaunchConfig {
+pub(in crate::agent_sessions::cli) struct ClaudeModelLaunchConfig {
     pub base_model: String,
     pub effort: Option<String>,
 }
@@ -385,7 +385,9 @@ fn claude_effort_token(token: &str) -> Option<&'static str> {
 /// same way [`map_claude_model`] does (strip date suffix, re-add `claude-`
 /// prefix). Non-effort suffixes (e.g. `thinking`, `fast`) and plain version
 /// numbers are left on the base model untouched.
-pub(super) fn map_claude_model_variant(model: &str) -> ClaudeModelLaunchConfig {
+pub(in crate::agent_sessions::cli) fn map_claude_model_variant(
+    model: &str,
+) -> ClaudeModelLaunchConfig {
     // Try the compound `extra-high` token first (two trailing segments),
     // then a single trailing segment. `rfind` alone would split
     // `...-extra-high` at the last `-`, leaving `extra` on the base model.

@@ -1312,7 +1312,13 @@ fn publish_claude_desktop_session_at_path(
         .as_deref()
         .filter(|value| !value.trim().is_empty())
     {
-        object.insert("model".to_string(), json!(model));
+        let launch = super::session_runner::command::map_claude_model_variant(model);
+        object.insert("model".to_string(), json!(launch.base_model));
+        // Desktop resumes with separate model/effort fields, just like the CLI
+        // launch flags. An unspecified override preserves its existing choice.
+        if let Some(effort) = launch.effort {
+            object.insert("effort".to_string(), json!(effort));
+        }
     }
     if is_new {
         object.insert("orgiiMaterialization".to_string(), json!(true));
@@ -4004,6 +4010,75 @@ mod tests {
             Some(active_project.join(format!("local_{new_native_id}.json"))),
             "a new row must be placed under the active account"
         );
+    }
+
+    #[test]
+    fn claude_desktop_publication_preserves_selected_model_and_effort() {
+        let sandbox = test_env::sandbox();
+        let cwd = sandbox.path().join("effort-workspace");
+        fs::create_dir_all(&cwd).unwrap();
+        let session_id = "cliagent-desktop-effort";
+        create_native_claude_session(session_id, "effort-account", &cwd);
+        let mut session = persistence::get_session(session_id).unwrap().unwrap();
+        let native_id = "33333333-4444-4555-8666-777777777777";
+        let native_path = cwd.join("transcript.jsonl");
+        fs::write(&native_path, b"{}\n").unwrap();
+
+        for effort in ["low", "medium", "high", "xhigh", "max"] {
+            session.model = Some(format!("claude-fable-5-1-{effort}"));
+            let path = cwd.join(format!("{effort}.json"));
+            publish_claude_desktop_session_at_path(
+                &session,
+                &cwd,
+                native_id,
+                &native_path,
+                &[],
+                path.clone(),
+            )
+            .unwrap();
+            let row: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+            assert_eq!(row["model"], "claude-fable-5-1");
+            assert_eq!(row["effort"], effort);
+        }
+
+        let path = cwd.join("existing.json");
+        fs::write(
+            &path,
+            serde_json::to_vec(&json!({
+                "model": "claude-fable-5-1-high", "effort": "low",
+                "providerOwnedField": "preserve"
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        session.model = Some("claude-fable-5-1-high".to_string());
+        publish_claude_desktop_session_at_path(
+            &session,
+            &cwd,
+            native_id,
+            &native_path,
+            &[],
+            path.clone(),
+        )
+        .unwrap();
+        let row: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(row["model"], "claude-fable-5-1");
+        assert_eq!(row["effort"], "high");
+        assert_eq!(row["providerOwnedField"], "preserve");
+
+        // A selection without an effort override must not erase App-owned effort.
+        session.model = Some("claude-fable-5-1".to_string());
+        publish_claude_desktop_session_at_path(
+            &session,
+            &cwd,
+            native_id,
+            &native_path,
+            &[],
+            path.clone(),
+        )
+        .unwrap();
+        let row: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(row["effort"], "high");
     }
 
     #[test]

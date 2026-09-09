@@ -282,10 +282,9 @@ describe("TeamInboxList pagination", () => {
     expect(markup).toContain("teamInbox.filters.assigned · ORG2 issue");
     expect(markup).not.toContain("orgii-issu");
     expect(markup).not.toContain("author · #42");
-    expect(markup).toContain(">5h<");
-    // The inbox row's own timestamp is the localized narrow relative form
-    // of `occurredAt` (five hours before the pinned clock above).
-    expect(markup).toContain(">5h ago<");
+    // Both PR rows and the assigned-work row use the same compact age.
+    expect(markup.match(/>5h</g)).toHaveLength(3);
+    expect(markup).not.toContain(">5h ago<");
     expect(markup).not.toContain("teamInbox.groups.");
     expect(markup).toMatch(/class="[^"]*text-text-3[^"]*"[^>]*>5h<\/span>/);
     expect(markup).toContain("text-text-2");

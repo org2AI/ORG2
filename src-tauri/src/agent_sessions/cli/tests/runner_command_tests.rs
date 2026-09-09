@@ -731,6 +731,33 @@ fn build_codex_app_server_argv_keeps_gpt_5_6_max_overrides() {
 }
 
 #[test]
+fn build_codex_app_server_preserves_additional_workspace_roots() {
+    let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
+    let turn = CliTurnEnvelope::new("write tests");
+    let directories = vec!["/extra workspace".to_string(), String::new()];
+    let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
+        agent: &ModelType::Codex,
+        launch_profile: &profile,
+        model: None,
+        turn: &turn,
+        resume_id: None,
+        api_key: None,
+        endpoint: None,
+        mode: None,
+        repo_path: None,
+        additional_dirs: &directories,
+        mcp_config_path: None,
+        codex_mcp_profile: None,
+    });
+    assert!(cmd.windows(2).any(|args| args
+        == [
+            "-c",
+            "sandbox_workspace_write.writable_roots=[\"/extra workspace\"]"
+        ]));
+    assert!(!cmd.iter().any(|arg| arg == "--add-dir"));
+}
+
+#[test]
 fn build_codex_app_server_argv_never_exposes_mcp_profile() {
     let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
     let turn = CliTurnEnvelope::new("write tests");

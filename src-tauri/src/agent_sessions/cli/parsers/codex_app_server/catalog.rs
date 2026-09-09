@@ -329,6 +329,82 @@ fn inspect_suffix_application(
     }
 }
 
+/// Resolve the Desktop project before creating a managed native thread.
+/// Called on a blocking worker: project discovery is bounded and per-creation,
+/// never an idle watcher. Existing names/metadata remain owned by Desktop.
+pub(crate) fn ensure_project(codex_home: &Path, project_root: &Path) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+
+    let root = project_root
+        .canonicalize()
+        .map_err(|error| format!("resolve Codex project root: {error}"))?;
+    with_rpc(codex_home, &root, |runtime, client| {
+        let mut cursor = Value::Null;
+        let deadline = std::time::Instant::now() + REQUEST_TIMEOUT;
+        for _ in 0..100 {
+            if std::time::Instant::now() >= deadline {
+                return Err("Codex project discovery timed out".to_string());
+            }
+            let page = request(
+                runtime,
+                client,
+                "project/list",
+                json!({
+                    "cursor": cursor, "limit": 100
+                }),
+            )?;
+            let projects = page["data"]
+                .as_array()
+                .ok_or_else(|| "Codex project/list returned no project array".to_string())?;
+            for project in projects {
+                let roots = project["roots"]
+                    .as_array()
+                    .ok_or_else(|| "Codex project has no roots".to_string())?;
+                if roots
+                    .iter()
+                    .filter_map(|entry| entry["path"].as_str())
+                    .any(|path| paths_have_same_identity(Path::new(path), &root))
+                {
+                    return project["id"]
+                        .as_str()
+                        .filter(|id| !id.is_empty())
+                        .map(str::to_string)
+                        .ok_or_else(|| "Codex project has no id".to_string());
+                }
+            }
+            let next = page.get("nextCursor").cloned().unwrap_or(Value::Null);
+            if next.is_null() {
+                let name = root
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("ORGII workspace");
+                let key = format!(
+                    "orgii-project-{:x}",
+                    Sha256::digest(root.to_string_lossy().as_bytes())
+                );
+                let created = request(
+                    runtime,
+                    client,
+                    "project/create",
+                    json!({
+                        "idempotencyKey": key, "name": name, "roots": [{"path": root}]
+                    }),
+                )?;
+                return created["project"]["id"]
+                    .as_str()
+                    .filter(|id| !id.is_empty())
+                    .map(str::to_string)
+                    .ok_or_else(|| "Codex project/create returned no project id".to_string());
+            }
+            if next == cursor {
+                return Err("Codex project/list repeated its cursor".to_string());
+            }
+            cursor = next;
+        }
+        Err("Codex project discovery exceeded 100 pages".to_string())
+    })
+}
+
 pub(crate) fn register_thread(
     codex_home: &Path,
     cwd: &Path,

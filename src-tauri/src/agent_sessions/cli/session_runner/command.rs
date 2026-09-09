@@ -70,6 +70,16 @@ pub(super) fn build_command_with_launch_profile(
                 cmd.push(config);
             }
         }
+        let writable_roots: Vec<_> = additional_dirs.iter().filter(|dir| !dir.is_empty()).collect();
+        if !writable_roots.is_empty() {
+            // app-server has no --add-dir flag. Preserve the session's explicit
+            // extra workspace roots through the equivalent native config.
+            cmd.push("-c".into());
+            cmd.push(format!(
+                "sandbox_workspace_write.writable_roots={}",
+                serde_json::to_string(&writable_roots).expect("directory strings serialize")
+            ));
+        }
         return cmd;
     }
 

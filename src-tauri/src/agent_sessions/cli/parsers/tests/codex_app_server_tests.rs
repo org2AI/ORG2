@@ -692,6 +692,7 @@ fn native_turn(
         user_input: user_input.to_string(),
         developer_instructions: Some(developer_instructions.to_string()),
         working_dir: "/workspace".to_string(),
+        project_id: Some("desktop-project-id".to_string()),
         resume_thread_id: resume_thread_id.map(str::to_string),
         model: Some("gpt-5.6-sol".to_string()),
         permission_mode: CliPermissionMode::Manual,
@@ -711,6 +712,7 @@ fn fresh_thread_keeps_agent_context_out_of_native_user_input() {
 
     let (method, params) = build_thread_launch_request(&turn);
     assert_eq!(method, "thread/start");
+    assert_eq!(params["projectId"], "desktop-project-id");
     assert_eq!(params["developerInstructions"], developer_context);
     assert!(params.get("baseInstructions").is_none());
 
@@ -744,6 +746,10 @@ fn resumed_thread_receives_the_updated_developer_context() {
     );
     let (method, params) = build_thread_launch_request(&resumed);
     assert_eq!(method, "thread/resume");
+    assert!(
+        params.get("projectId").is_none(),
+        "resume must preserve the existing project"
+    );
     assert_eq!(params["threadId"], "native-codex-thread");
     assert_eq!(
         params["developerInstructions"],
@@ -790,6 +796,7 @@ async fn live_smoke_trivial_turn() {
         user_input: "Reply with exactly: pong".to_string(),
         developer_instructions: None,
         working_dir: std::env::temp_dir().to_string_lossy().to_string(),
+        project_id: None,
         resume_thread_id: None,
         model: None,
         permission_mode: CliPermissionMode::Plan,
@@ -875,4 +882,256 @@ async fn live_smoke_trivial_turn() {
         "rollout jsonl written for {}",
         result.thread_id
     );
+}
+
+/// Real native protocol + local Responses fixture; no account or network service.
+/// Opt in with ORGII_NATIVE_CODEX_APP_BINARY pointing to the Desktop binary.
+#[tokio::test]
+#[ignore = "requires an installed Codex Desktop binary; uses isolated storage and local HTTP only"]
+async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
+    use super::{run_app_server_turn, CodexAppServerRpcClient};
+    use std::process::Stdio;
+    use std::time::Duration;
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let binary = std::env::var("ORGII_NATIVE_CODEX_APP_BINARY")
+        .expect("set ORGII_NATIVE_CODEX_APP_BINARY to the installed Desktop Codex binary");
+    let sandbox = tempfile::tempdir().expect("isolated Codex home");
+    let root = sandbox.path().canonicalize().unwrap();
+    let home = root.join("account");
+    let native_home = root.join("desktop");
+    let project = root.join("target project");
+    let other_project = root.join("other project");
+    let execution_worktree = root.join("execution worktree");
+    for dir in [
+        &home,
+        &native_home,
+        &project,
+        &other_project,
+        &execution_worktree,
+    ] {
+        std::fs::create_dir(dir).unwrap();
+    }
+    let server = MockServer::start().await;
+    let message = json!({
+        "id": "msg_fixture", "type": "message", "role": "assistant", "status": "completed",
+        "content": [{"type": "output_text", "text": "visibility fixture reply", "annotations": []}]
+    });
+    let events = [
+        json!({"type": "response.created", "response": {"id": "resp_fixture", "status": "in_progress", "output": []}}),
+        json!({"type": "response.output_item.done", "output_index": 0, "item": message}),
+        json!({"type": "response.completed", "response": {
+            "id": "resp_fixture", "status": "completed", "output": [message],
+            "usage": {"input_tokens": 10, "output_tokens": 3, "total_tokens": 13}
+        }}),
+    ];
+    let body = events
+        .iter()
+        .map(|event| {
+            format!(
+                "event: {}\ndata: {event}\n\n",
+                event["type"].as_str().unwrap()
+            )
+        })
+        .collect::<String>();
+    Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/responses"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "text/event-stream")
+                .set_body_string(body),
+        )
+        .expect(2)
+        .mount(&server)
+        .await;
+    std::fs::write(home.join("config.toml"), format!(
+        "model = \"gpt-5.4\"\nmodel_provider = \"orgii_test\"\n[model_providers.orgii_test]\nname = \"Local test\"\nbase_url = \"{}\"\nwire_api = \"responses\"\nrequires_openai_auth = false\nsupports_websockets = false\n",
+        server.uri()
+    )).unwrap();
+
+    let project_id = {
+        let home = native_home.clone();
+        let workspace = project.clone();
+        tokio::task::spawn_blocking(move || super::ensure_project(&home, &workspace))
+            .await
+            .unwrap()
+            .expect("register Desktop project")
+    };
+    let reused_id = {
+        let home = native_home.clone();
+        let workspace = project.clone();
+        tokio::task::spawn_blocking(move || super::ensure_project(&home, &workspace))
+            .await
+            .unwrap()
+            .expect("reuse Desktop project")
+    };
+    assert_eq!(project_id, reused_id);
+    let other_project_id = {
+        let home = native_home.clone();
+        let workspace = other_project.clone();
+        tokio::task::spawn_blocking(move || super::ensure_project(&home, &workspace))
+            .await
+            .unwrap()
+            .expect("register unrelated project")
+    };
+    let mut thread_id = None;
+    for user_text in ["ORGII_VISIBLE_FRESH", "ORGII_VISIBLE_RESUME"] {
+        // Execute outside the saved project root, as a managed worktree does.
+        // Sidebar membership must use projectId rather than cwd equality.
+        let working_dir = &execution_worktree;
+        let mut child = tokio::process::Command::new(&binary)
+            .arg("app-server")
+            .arg("-c")
+            .arg(format!(
+                "sqlite_home={}",
+                serde_json::to_string(&native_home).unwrap()
+            ))
+            .env("CODEX_HOME", &home)
+            .env_remove("OPENAI_API_KEY")
+            .env_remove("OPENAI_BASE_URL")
+            .current_dir(working_dir)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .spawn()
+            .expect("start real native process");
+        let (tx, mut rx) = tokio::sync::mpsc::channel(256);
+        let drain = tokio::spawn(async move { while rx.recv().await.is_some() {} });
+        let turn = CodexAppServerTurn {
+            session_id: "orgii-desktop-listability-fixture".to_string(),
+            user_input: user_text.to_string(),
+            developer_instructions: Some(
+                "ORGII_PROVIDER_CONTEXT_MUST_NOT_BE_USER_TEXT".to_string(),
+            ),
+            working_dir: working_dir.to_string_lossy().to_string(),
+            project_id: Some(project_id.clone()),
+            resume_thread_id: thread_id.clone(),
+            model: Some("gpt-5.4".to_string()),
+            permission_mode: CliPermissionMode::Plan,
+            config: None,
+            image_paths: vec![],
+            allow_native_context_recovery: false,
+        };
+        let outcome = tokio::time::timeout(
+            Duration::from_secs(30),
+            run_app_server_turn(
+                child.stdin.take().unwrap(),
+                child.stdout.take().unwrap(),
+                turn,
+                tx,
+            ),
+        )
+        .await
+        .expect("native turn timeout")
+        .expect("native turn succeeds");
+        assert_eq!(outcome.turn_status, "completed");
+        if let Some(ref previous) = thread_id {
+            assert_eq!(previous, &outcome.thread_id);
+        }
+        thread_id = Some(outcome.thread_id);
+        child.kill().await.expect("stop completed app-server");
+        child.wait().await.expect("reap app-server");
+        drain.await.expect("chunk drain closes");
+
+        // A new process must discover the thread through the exact default list
+        // contract used by Desktop, without force-reading or revealing its id.
+        let mut catalog =
+            CodexAppServerRpcClient::launch(std::path::Path::new(&binary), &native_home, &project)
+                .await
+                .unwrap();
+        let list = catalog
+            .request(
+                "thread/list",
+                json!({
+                    "limit": 20, "sourceKinds": [], "modelProviders": [], "archived": false,
+                    "useStateDbOnly": true, "projectId": project_id
+                }),
+                Duration::from_secs(10),
+            )
+            .await
+            .unwrap();
+        let matches: Vec<_> = list["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|thread| thread["id"].as_str() == thread_id.as_deref())
+            .collect();
+        assert_eq!(
+            matches.len(),
+            1,
+            "default Desktop list must contain the native thread once: {list}"
+        );
+        assert_ne!(matches[0]["source"], "exec");
+        assert_eq!(matches[0]["projectId"], project_id);
+        let projects = catalog
+            .request(
+                "project/list",
+                json!({"limit": 20}),
+                Duration::from_secs(10),
+            )
+            .await
+            .unwrap();
+        let projects = projects["data"].as_array().unwrap();
+        assert_eq!(projects.len(), 2, "two Desktop projects, no duplicates");
+        let target = projects
+            .iter()
+            .find(|entry| entry["id"] == project_id)
+            .unwrap();
+        assert_eq!(target["name"], "target project");
+        assert_eq!(
+            target["roots"][0]["path"],
+            project.to_string_lossy().as_ref()
+        );
+        let other_members = catalog
+            .request(
+                "thread/list",
+                json!({
+                    "limit": 20, "sourceKinds": [], "modelProviders": [], "archived": false,
+                    "useStateDbOnly": true, "projectId": other_project_id
+                }),
+                Duration::from_secs(10),
+            )
+            .await
+            .unwrap();
+        assert!(other_members["data"].as_array().unwrap().is_empty());
+        assert_eq!(matches[0]["cwd"], working_dir.to_string_lossy().as_ref());
+        // Directory discovery must not confuse storage/other roots with this thread.
+        // Neither a different project nor the auth/index directory may claim it.
+        for wrong_project in [&other_project, &home, &native_home] {
+            let wrong_list = catalog
+                .request(
+                    "thread/list",
+                    json!({
+                        "limit": 20, "sourceKinds": [], "modelProviders": [], "archived": false,
+                        "useStateDbOnly": true, "cwd": [wrong_project]
+                    }),
+                    Duration::from_secs(10),
+                )
+                .await
+                .unwrap();
+            assert!(
+                wrong_list["data"].as_array().unwrap().is_empty(),
+                "thread must not appear under {}: {wrong_list}",
+                wrong_project.display()
+            );
+        }
+    }
+    let requests = server.received_requests().await.unwrap();
+    assert_eq!(requests.len(), 2);
+    for (request, expected) in requests
+        .iter()
+        .zip(["ORGII_VISIBLE_FRESH", "ORGII_VISIBLE_RESUME"])
+    {
+        let payload: serde_json::Value = request.body_json().unwrap();
+        let users: Vec<_> = payload["input"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|item| item["role"] == "user")
+            .collect();
+        let last_user = users.last().expect("literal user message sent");
+        assert_eq!(last_user["content"][0]["text"], expected);
+        assert!(!last_user.to_string().contains("ORGII_PROVIDER_CONTEXT"));
+    }
 }

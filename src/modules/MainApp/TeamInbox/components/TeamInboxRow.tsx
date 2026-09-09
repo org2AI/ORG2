@@ -12,7 +12,7 @@ import {
   Notification01Icon,
 } from "@src/icons";
 import { compactRepositoryLabel } from "@src/modules/shared/githubRepositoryLabel";
-import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
+import { formatCompactAge } from "@src/util/time/formatRelativeTime";
 
 import {
   type TeamInboxItem,
@@ -118,7 +118,7 @@ const TeamInboxRow = forwardRef<HTMLButtonElement, TeamInboxRowProps>(
       };
     }, [isAssigned, item, t]);
     const relativeTime = useMemo(
-      () => formatRelativeTime(item.occurredAt, "nano"),
+      () => formatCompactAge(item.occurredAt),
       [item.occurredAt]
     );
     const unread = item.readAt === null;

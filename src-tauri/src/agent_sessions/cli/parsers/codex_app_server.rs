@@ -74,7 +74,8 @@ use crate::agent_sessions::cli::session_runner::launch_profiles::CliPermissionMo
 
 mod catalog;
 pub(crate) use catalog::{
-    archive_thread, native_codex_app_server_command, register_thread, synchronize_thread,
+    archive_thread, ensure_project, native_codex_app_server_command, register_thread,
+    synchronize_thread,
 };
 
 /// How long to keep draining after `turn/interrupt` before giving up on a
@@ -192,6 +193,8 @@ pub struct CodexAppServerTurn {
     /// developer channel. Never copied into `turn/start.input`.
     pub developer_instructions: Option<String>,
     pub working_dir: String,
+    /// Desktop project resolved from the session repository, not its execution worktree.
+    pub project_id: Option<String>,
     /// Stored codex thread id to resume; `None` starts a fresh thread.
     pub resume_thread_id: Option<String>,
     /// Base model name for `thread/start` (already variant-mapped).
@@ -258,6 +261,9 @@ pub(crate) fn build_thread_launch_request(turn: &CodexAppServerTurn) -> (&'stati
         params["threadId"] = Value::String(resume_id.clone());
         ("thread/resume", params)
     } else {
+        if let Some(ref project_id) = turn.project_id {
+            params["projectId"] = Value::String(project_id.clone());
+        }
         ("thread/start", params)
     }
 }
@@ -1315,6 +1321,7 @@ pub async fn run_app_server_turn(
                 "title": "ORGII",
                 "version": env!("CARGO_PKG_VERSION"),
             },
+            "capabilities": {"experimentalApi": true},
         }),
     )
     .await?;

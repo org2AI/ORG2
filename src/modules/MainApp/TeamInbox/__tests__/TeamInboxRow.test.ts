@@ -168,9 +168,9 @@ describe("TeamInboxRow", () => {
         element.className.includes("text-text-2")
     );
     expect(secondaryText).toHaveLength(1);
-    // The shared formatter uses sentence-case localized relative labels.
+    // Inbox timestamps use the same bare compact ages as pull requests.
     const time = Array.from(container.querySelectorAll("span")).find(
-      (element) => element.textContent === "Now"
+      (element) => element.textContent === "now"
     );
     expect(time?.className).toContain("text-text-3");
     expect(time?.className).not.toContain("text-text-2");

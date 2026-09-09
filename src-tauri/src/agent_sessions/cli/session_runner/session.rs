@@ -386,11 +386,10 @@ fn resolve_cli_effective_mode(
 fn scope_codex_transport_to_turn(
     agent: &ModelType,
     launch_profile: &mut super::launch_profiles::ResolvedCliLaunchProfile,
-    native_continuation_episode: bool,
 ) {
     if matches!(agent, ModelType::Codex) {
-        launch_profile.transport = native_continuation_episode
-            .then(|| super::launch_profiles::CLI_TRANSPORT_APP_SERVER.to_string());
+        launch_profile.transport =
+            Some(super::launch_profiles::CLI_TRANSPORT_APP_SERVER.to_string());
     }
 }
 
@@ -596,10 +595,10 @@ pub(crate) async fn run_session_with_ide_context(
     // changes prompt assembly (images travel as native localImage inputs)
     // as well as argv and the stdout-processing branch below.
     let mut launch_profile = resolve_cli_launch_profile(&agent)?;
-    // Ordinary Codex sessions keep the established `codex exec --json`
-    // transport. A canonical/native continuation episode opts into app-server
-    // for this turn only, without mutating the user's saved launch profile.
-    scope_codex_transport_to_turn(&agent, &mut launch_profile, allow_native_context_recovery);
+    // Codex Desktop excludes exec-origin threads from its default catalog.
+    // Create and resume all managed Codex turns through the native transport;
+    // context recovery remains a separate per-episode capability.
+    scope_codex_transport_to_turn(&agent, &mut launch_profile);
     let use_codex_app_server =
         super::launch_profiles::uses_codex_app_server(&agent, &launch_profile);
 
@@ -939,8 +938,23 @@ pub(crate) async fn run_session_with_ide_context(
 
     let mut cli_session_id_out: Option<String> = None;
     let mut cli_plan_approval_gate_reached = false;
-    // App-server transport: whether the turn reached a non-failed
-    // `turn/completed` (drives final status like exit_code does for exec).
+    // Project registration belongs to the native Desktop catalog. Resolve only
+    // for fresh threads; resumes retain their existing project assignment.
+    let codex_project_id = if use_codex_app_server && cli_resume_id.is_none() {
+        let native_home = app_paths::native_transcript_home_dir().join(".codex");
+        let project_root = std::path::PathBuf::from(base_working_dir);
+        Some(
+            tokio::task::spawn_blocking(move || {
+                super::super::parsers::codex_app_server::ensure_project(&native_home, &project_root)
+            })
+            .await
+            .map_err(|error| format!("Codex project registration task failed: {error}"))??,
+        )
+    } else {
+        None
+    };
+
+    // Whether the native turn completed successfully, independent of child exit.
     let mut codex_app_server_turn_ok = false;
 
     let session_timeout = tokio::time::Duration::from_secs(4 * 60 * 60);
@@ -1042,6 +1056,7 @@ pub(crate) async fn run_session_with_ide_context(
                 turn.user_text().to_string(),
                 turn.provider_context(),
                 working_dir,
+                codex_project_id.clone(),
                 cli_resume_id.clone(),
                 model.as_deref(),
                 &launch_profile,

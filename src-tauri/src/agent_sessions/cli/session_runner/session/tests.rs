@@ -21,36 +21,24 @@ use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 
 #[test]
-fn codex_app_server_is_scoped_to_native_continuation_episode() {
-    let profile = || super::super::launch_profiles::ResolvedCliLaunchProfile {
-        permission_mode: super::super::launch_profiles::CliPermissionMode::Manual,
-        command: "codex".to_string(),
-        args: vec!["exec".to_string()],
-        env: HashMap::new(),
-        // Even a stale persisted opt-in must not change an ordinary turn.
-        transport: Some(super::super::launch_profiles::CLI_TRANSPORT_APP_SERVER.to_string()),
-    };
-
-    let mut ordinary = profile();
-    scope_codex_transport_to_turn(&ModelType::Codex, &mut ordinary, false);
-    assert!(!super::super::launch_profiles::uses_codex_app_server(
-        &ModelType::Codex,
-        &ordinary
-    ));
-
-    let mut continuation = profile();
-    scope_codex_transport_to_turn(&ModelType::Codex, &mut continuation, true);
-    assert!(super::super::launch_profiles::uses_codex_app_server(
-        &ModelType::Codex,
-        &continuation
-    ));
-
-    let mut claude = profile();
-    scope_codex_transport_to_turn(&ModelType::ClaudeCode, &mut claude, true);
-    assert_eq!(
-        claude.transport.as_deref(),
-        Some(super::super::launch_profiles::CLI_TRANSPORT_APP_SERVER)
-    );
+fn codex_turns_always_use_the_desktop_visible_native_transport() {
+    for saved_transport in [None, Some("app-server"), Some("legacy")] {
+        let mut profile = super::super::launch_profiles::ResolvedCliLaunchProfile {
+            permission_mode: super::super::launch_profiles::CliPermissionMode::Manual,
+            command: "codex".to_string(),
+            args: vec!["exec".to_string()],
+            env: HashMap::new(),
+            transport: saved_transport.map(str::to_string),
+        };
+        let mut claude = profile.clone();
+        scope_codex_transport_to_turn(&ModelType::Codex, &mut profile);
+        assert!(super::super::launch_profiles::uses_codex_app_server(
+            &ModelType::Codex,
+            &profile
+        ));
+        scope_codex_transport_to_turn(&ModelType::ClaudeCode, &mut claude);
+        assert_eq!(claude.transport.as_deref(), saved_transport);
+    }
 }
 
 #[test]

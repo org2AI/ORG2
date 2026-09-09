@@ -1389,6 +1389,40 @@ describe("createCliEventHandler ingestion boundary", () => {
   // -------------------------------------------------------------------------
 
   describe("status transitions", () => {
+    it.each(["completed", "failed", "cancelled"])(
+      "forwards %s to the shared lifecycle with its dispatch identity",
+      async (status) => {
+        const onStatusChange = vi.fn();
+        callbacks.onStatusChange = onStatusChange;
+        handler.handleEvent({
+          type: "code_session.status_changed",
+          session_id: SESSION_ID,
+          status,
+          turn_intent_id: "intent-first-turn",
+        });
+        await flush();
+        expect(onStatusChange).toHaveBeenCalledTimes(1);
+        expect(onStatusChange).toHaveBeenCalledWith(status, undefined, {
+          turnIntentId: "intent-first-turn",
+        });
+      }
+    );
+
+    it("does not notify a disposed view after terminal persistence settles", async () => {
+      const onStatusChange = vi.fn();
+      callbacks.onStatusChange = onStatusChange;
+      handler.handleEvent({
+        type: "code_session.status_changed",
+        session_id: SESSION_ID,
+        status: "completed",
+        turn_intent_id: "intent-disposed",
+      });
+      handler.dispose();
+      await flush();
+      expect(onStatusChange).not.toHaveBeenCalled();
+      expect(callbacks.agentCompletes).toBe(0);
+    });
+
     it("closes the turn on a terminal status and mirrors it into the runtime atom", async () => {
       handler.handleEvent(
         activityEvent(
@@ -1520,6 +1554,8 @@ describe("createCliEventHandler ingestion boundary", () => {
     });
 
     it("does not expose the terminal runtime state before partial rows close", async () => {
+      const onStatusChange = vi.fn();
+      callbacks.onStatusChange = onStatusChange;
       await store.api.upsert(
         {
           id: "slow-partial",
@@ -1542,10 +1578,13 @@ describe("createCliEventHandler ingestion boundary", () => {
         type: "code_session.status_changed",
         session_id: SESSION_ID,
         status: "cancelled",
+        turn_intent_id: "intent-terminal-history",
+        error_message: "cancelled by user",
       });
       await vi.waitFor(() => expect(store.api.upsert).toHaveBeenCalledTimes(2));
 
       expect(getInstrumentedStore().get(sessionRuntimeStatusAtom)).toBe("idle");
+      expect(onStatusChange).not.toHaveBeenCalled();
       releaseBarrier?.();
       await flush();
 
@@ -1553,6 +1592,12 @@ describe("createCliEventHandler ingestion boundary", () => {
         "cancelled"
       );
       expect(callbacks.agentCompletes).toBe(1);
+      expect(onStatusChange).toHaveBeenCalledTimes(1);
+      expect(onStatusChange).toHaveBeenCalledWith(
+        "cancelled",
+        "cancelled by user",
+        { turnIntentId: "intent-terminal-history" }
+      );
     });
 
     it("waits for an in-flight streamed row before publishing terminal state", async () => {

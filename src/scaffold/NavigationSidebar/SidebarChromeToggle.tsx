@@ -2,7 +2,7 @@
  * SidebarChromeToggle
  *
  * The sidebar show / hide control, in whichever state the sidebar is in:
- * hide while it is open, show while it is collapsed, and expand + close while
+ * hide while it is open, show while it is collapsed, and expand while
  * the hover sidebar is peeking in over a collapsed one.
  *
  * macOS draws it inside `PinnedSidebarChrome`, pinned in window space after
@@ -18,7 +18,6 @@ import type { SessionHistoryNavVariant } from "@src/components/SessionHistoryNav
 import SidebarChromeIconButton from "@src/components/SidebarChromeIconButton";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
 import {
-  Cancel01Icon,
   HugeiconsIcon,
   type IconSvgElement,
   LayoutAlignLeftIcon,
@@ -33,6 +32,7 @@ interface ChromeButtonProps {
   label: string;
   shortcutId?: string;
   onClick: () => void;
+  onMouseEnter?: React.MouseEventHandler<HTMLButtonElement>;
   testId: string;
   icon: IconSvgElement;
   dataIcon: string;
@@ -46,6 +46,7 @@ const ChromeButton: React.FC<ChromeButtonProps> = ({
   label,
   shortcutId,
   onClick,
+  onMouseEnter,
   testId,
   icon,
   dataIcon,
@@ -79,6 +80,7 @@ const ChromeButton: React.FC<ChromeButtonProps> = ({
         shortcutId={shortcutId}
         tooltipMouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
         onClick={onClick}
+        onMouseEnter={onMouseEnter}
         className="group/toggle"
         data-testid={testId}
       >
@@ -94,6 +96,7 @@ const ChromeButton: React.FC<ChromeButtonProps> = ({
       tooltipMouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
       nativeTitle={false}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
       className="group/toggle"
       data-testid={testId}
     >
@@ -126,33 +129,23 @@ const SidebarChromeToggleComponent: React.FC<SidebarChromeToggleProps> = ({
 
   const hide = useCallback(() => setCollapsed(true), [setCollapsed]);
   const show = useCallback(() => setCollapsed(false), [setCollapsed]);
+  const peek = useCallback(() => setHoverOpen(true), [setHoverOpen]);
   const expandFromHover = useCallback(() => {
     setHoverOpen(false);
     setCollapsed(false);
   }, [setCollapsed, setHoverOpen]);
-  const closeHover = useCallback(() => setHoverOpen(false), [setHoverOpen]);
 
   if (collapsed && hoverOpen) {
     return (
-      <>
-        <ChromeButton
-          variant={variant}
-          label={t("common:tooltips.showSidebar")}
-          shortcutId="toggle_sidebar"
-          onClick={expandFromHover}
-          testId="sidebar-chrome-expand"
-          icon={PanelLeftIcon}
-          dataIcon="panel-left"
-        />
-        <ChromeButton
-          variant={variant}
-          label={t("common:actions.close")}
-          onClick={closeHover}
-          testId="sidebar-chrome-close-hover"
-          icon={Cancel01Icon}
-          dataIcon="x"
-        />
-      </>
+      <ChromeButton
+        variant={variant}
+        label={t("common:tooltips.showSidebar")}
+        shortcutId="toggle_sidebar"
+        onClick={expandFromHover}
+        testId="sidebar-chrome-expand"
+        icon={PanelLeftIcon}
+        dataIcon="panel-left"
+      />
     );
   }
   if (collapsed) {
@@ -162,6 +155,7 @@ const SidebarChromeToggleComponent: React.FC<SidebarChromeToggleProps> = ({
         label={t("common:tooltips.showSidebar")}
         shortcutId="toggle_sidebar"
         onClick={show}
+        onMouseEnter={peek}
         testId="sidebar-chrome-show"
         icon={LayoutAlignLeftIcon}
         dataIcon="layout-align-left"

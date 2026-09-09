@@ -141,7 +141,39 @@ describe("PinnedSidebarChrome", () => {
     expect(group?.style.left).toBe("88px");
   });
 
-  it("offers expand and close while the hover sidebar is open", () => {
+  it("previews the collapsed sidebar on hover and expands it on click", () => {
+    act(() => store.set(sidebarCollapsedAtom, true));
+    render();
+
+    act(() => {
+      query("sidebar-chrome-show")?.dispatchEvent(
+        new MouseEvent("mouseover", { bubbles: true })
+      );
+    });
+
+    expect(store.get(hoverSidebarOpenAtom)).toBe(true);
+    expect(store.get(sidebarCollapsedAtom)).toBe(true);
+    expect(query("sidebar-chrome-expand")).not.toBeNull();
+    click("sidebar-chrome-expand");
+    expect(store.get(hoverSidebarOpenAtom)).toBe(false);
+    expect(store.get(sidebarCollapsedAtom)).toBe(false);
+  });
+
+  it("does not preview the sidebar when hovering its hide button", () => {
+    act(() => store.set(sidebarCollapsedAtom, false));
+    render();
+
+    act(() => {
+      query("sidebar-chrome-hide")?.dispatchEvent(
+        new MouseEvent("mouseover", { bubbles: true })
+      );
+    });
+
+    expect(store.get(hoverSidebarOpenAtom)).toBe(false);
+    expect(store.get(sidebarCollapsedAtom)).toBe(false);
+  });
+
+  it("offers expand without a close button while the hover sidebar is open", () => {
     act(() => {
       store.set(sidebarCollapsedAtom, true);
       store.set(hoverSidebarOpenAtom, true);
@@ -152,11 +184,7 @@ describe("PinnedSidebarChrome", () => {
     expect(query("pinned-sidebar-chrome")?.getAttribute("data-variant")).toBe(
       "sidebar"
     );
-    click("sidebar-chrome-close-hover");
-    expect(store.get(hoverSidebarOpenAtom)).toBe(false);
-    expect(store.get(sidebarCollapsedAtom)).toBe(true);
-
-    act(() => store.set(hoverSidebarOpenAtom, true));
+    expect(query("sidebar-chrome-close-hover")).toBeNull();
     click("sidebar-chrome-expand");
     expect(store.get(hoverSidebarOpenAtom)).toBe(false);
     expect(store.get(sidebarCollapsedAtom)).toBe(false);

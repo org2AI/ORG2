@@ -302,6 +302,10 @@ export const EventsInput = z.object({
   sessionId: z.string().nullable(),
 });
 
+export const SetEventsInput = EventsInput.extend({
+  expectedVersion: z.number().int().nonnegative().optional(),
+});
+
 export const EventInput = z.object({
   event: SessionEventSchema,
   sessionId: z.string().nullable(),

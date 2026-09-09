@@ -785,16 +785,31 @@ pub(super) fn load_materialized_cli_transcript(
     Ok(Some(chunks))
 }
 
-/// Current revision of the exact provider transcript selected by the same
-/// resolver as [`load_materialized_cli_transcript`].
+/// Cheap invalidation token for both possible native transcript copies.
+/// Selecting the authoritative copy can compare entire files. Do that only
+/// when replaying a changed transcript, never during an idle revision probe.
 pub(super) fn materialized_cli_transcript_revision(
     session: &persistence::CodeSession,
     native_id: &str,
 ) -> Result<Option<String>, String> {
-    let Some((_agent, path)) = materialized_cli_transcript_path(session, native_id)? else {
+    let Some((_agent, paths)) = materialized_cli_transcript_paths(session, native_id)? else {
         return Ok(None);
     };
-    native_transcript_revision(&path).map(Some)
+    native_candidate_revision(&paths, native_id)
+}
+
+fn native_candidate_revision(
+    paths: &NativeTranscriptPaths,
+    native_id: &str,
+) -> Result<Option<String>, String> {
+    let native = native_transcript_revision(&paths.native_path).ok();
+    let runner = native_transcript_revision(&paths.runner_path).ok();
+    if native.is_none() && runner.is_none() {
+        return Ok(None);
+    }
+    serde_json::to_string(&("native-candidates-v1", native_id, native, runner))
+        .map(Some)
+        .map_err(|error| format!("serialize native candidate revision: {error}"))
 }
 
 /// Resolve the authoritative copy without guessing from timestamps. Two
@@ -2974,6 +2989,42 @@ pub async fn discard_native_conversation_materialization(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn native_candidate_revision_tracks_both_copies_without_selecting_a_winner() {
+        let root = std::env::temp_dir().join(format!("native-revision-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let paths = super::NativeTranscriptPaths {
+            native_path: root.join("native.jsonl"),
+            runner_path: root.join("runner.jsonl"),
+        };
+        assert_eq!(
+            super::native_candidate_revision(&paths, "one").unwrap(),
+            None
+        );
+        std::fs::write(&paths.native_path, "native content").unwrap();
+        std::fs::write(&paths.runner_path, "conflicting runner content").unwrap();
+        // Divergent files are intentionally not prefix-compatible: replay
+        // rejects that conflict, but a cheap revision probe must still work.
+        let before = super::native_candidate_revision(&paths, "one").unwrap();
+        assert!(super::preferred_materialized_transcript_path(&paths).is_err());
+        std::fs::write(&paths.runner_path, "runner append with more content").unwrap();
+        let appended = super::native_candidate_revision(&paths, "one").unwrap();
+        assert_ne!(before, appended);
+        std::fs::write(&paths.native_path, "rewrite").unwrap();
+        let rewritten = super::native_candidate_revision(&paths, "one").unwrap();
+        assert_ne!(appended, rewritten);
+        assert_ne!(
+            rewritten,
+            super::native_candidate_revision(&paths, "two").unwrap()
+        );
+        std::fs::remove_file(&paths.runner_path).unwrap();
+        assert_ne!(
+            rewritten,
+            super::native_candidate_revision(&paths, "one").unwrap()
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     use super::*;
     use crate::test_utils::test_env;
     use std::ffi::OsString;
@@ -3223,7 +3274,9 @@ mod tests {
         assert!(projected[1]["id"].as_str().unwrap().starts_with("msg_"));
         let call_id = projected[2]["id"].as_str().unwrap();
         assert!(call_id.starts_with("fc_"));
-        assert!(call_id.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_'));
+        assert!(call_id
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '_'));
         assert_eq!(projected[2]["call_id"], "call_read");
         assert!(projected[3]["id"].as_str().unwrap().starts_with("msg_"));
     }

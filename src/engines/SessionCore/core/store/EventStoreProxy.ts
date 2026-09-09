@@ -188,9 +188,14 @@ class EventStoreProxyImpl {
   }
 
   /** Replace all events (session load / clear). */
-  async set(events: SessionEvent[], sessionId?: string): Promise<void> {
+  async set(
+    events: SessionEvent[],
+    sessionId?: string,
+    expectedVersion?: number
+  ): Promise<void> {
     await rpc.sessionCore.eventStore.set({
       events,
+      ...(expectedVersion === undefined ? {} : { expectedVersion }),
       sessionId: sessionId ?? inferSessionId(events),
     });
   }
@@ -321,8 +326,9 @@ class EventStoreProxyImpl {
   async evictSession(sessionId: string): Promise<void> {
     await rpc.sessionCore.eventStore.evictSession({ sessionId });
     // Mirror the Rust-side eviction in the JS snapshot cache so large event
-    // arrays are freed on the JS heap as well.
-    this.evictSessionCache(sessionId);
+    // arrays are freed on the JS heap as well. Mounted subscribers own their
+    // lifetime: Reload, edit and compaction must keep delivering new snapshots.
+    this.releaseSessionSnapshot(sessionId);
   }
 
   /** Buffer events for a background session. */

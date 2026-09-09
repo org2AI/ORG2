@@ -49,6 +49,33 @@ fn make_tool_result(id: &str, call_id: &str) -> SessionEvent {
 }
 
 #[test]
+fn test_conditional_set_preserves_events_written_during_refresh() {
+    let mut store = EventStore::new();
+    store.set(vec![make_event("old", "message")]);
+    let observed = store.version();
+    store.append(vec![make_event("new-turn", "message")]);
+    let current = store.version();
+    assert!(!store.set_if_version(vec![make_event("stale", "message")], observed));
+    assert_eq!(store.version(), current);
+    assert!(store.get_by_id("new-turn").is_some());
+    assert!(store.get_by_id("stale").is_none());
+    assert!(store.set_if_version(vec![make_event("native-turn", "message")], current));
+    assert!(store.get_by_id("native-turn").is_some());
+}
+
+#[test]
+fn test_late_cache_hydration_cannot_replace_a_new_authoritative_load() {
+    for authoritative in [vec![make_event("native-new", "message")], vec![]] {
+        let mut store = EventStore::new();
+        let before_cache_read = store.version();
+        store.set(authoritative.clone());
+        assert!(!store.set_if_version(vec![make_event("old-cache", "message")], before_cache_read));
+        assert_eq!(store.event_count(), authoritative.len());
+        assert!(store.get_by_id("old-cache").is_none());
+    }
+}
+
+#[test]
 fn test_set_replaces_all() {
     let mut store = EventStore::new();
     store.set(vec![

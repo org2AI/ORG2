@@ -80,10 +80,20 @@ pub async fn es_set(
     state: State<'_, EventStoreState>,
     session_id: Option<String>,
     mut events: Vec<SessionEvent>,
+    expected_version: Option<u64>,
 ) -> Result<(), String> {
     normalize_events(&mut events);
     let sid = state.resolve_session_id(session_id)?;
-    state.with_store_mut(&sid, |store| store.set(events));
+    let applied = state.with_store_mut(&sid, |store| match expected_version {
+        Some(version) => store.set_if_version(events, version),
+        None => {
+            store.set(events);
+            true
+        }
+    });
+    if !applied {
+        return Err("EventStore changed during native history refresh".to_string());
+    }
     schedule_notify(&app, &state, &sid);
     Ok(())
 }

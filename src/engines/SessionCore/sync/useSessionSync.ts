@@ -42,6 +42,7 @@ import { wpReadOnlyAtom } from "@src/store/ui/chatPanel/miscAtoms";
 import "./adapters";
 import { isInterruptedCliTerminalStatus } from "./adapters/cli/cliLifecycle";
 import { useExternalHistoryAutoRefresh } from "./externalHistoryAutoRefresh";
+import { useNativeHistoryAutoRefresh } from "./nativeHistoryAutoRefresh";
 import { scheduleNativeTranscriptReconcile } from "./nativeTranscriptReconcile";
 import {
   resetEmptySessionRefs,
@@ -302,6 +303,7 @@ export function useSessionSync(
     dispatchLoadSession,
   });
 
+  useNativeHistoryAutoRefresh(sessionId);
   useEventStoreCacheSync(sessionId);
   useSessionSyncCleanup(refs);
 }

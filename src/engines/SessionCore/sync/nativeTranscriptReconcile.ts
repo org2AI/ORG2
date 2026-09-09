@@ -24,6 +24,7 @@ import {
   isCliTerminalStatus,
 } from "@src/engines/SessionCore/sync/adapters/cli/cliLifecycle";
 import { createLogger } from "@src/hooks/logger";
+import { isSessionEngineActiveStatus } from "@src/util/session/sessionRuntimeExecuting";
 
 import { loadAuthoritativeSessionEvents } from "./authoritativeSessionEvents";
 import { mergeFailedUserDeliveryProjection } from "./sessionSyncUtils";
@@ -39,10 +40,15 @@ async function hasDurableNativeTranscript(sessionId: string): Promise<boolean> {
 export interface NativeTranscriptReconcileOptions {
   /** Preserve provider-portable output that survived an interrupted flush. */
   preserveInterruptedSuffix?: boolean;
+  /** Idle refreshes can be superseded by navigation or a new local turn. */
+  refreshGuard?: () => boolean;
+  signal?: AbortSignal;
 }
 
 interface ReconcileJob {
   preserveInterruptedSuffix: boolean;
+  refreshGuard?: () => boolean;
+  signal?: AbortSignal;
   promise: Promise<SessionEvent[]>;
 }
 
@@ -139,7 +145,8 @@ async function publishNativeProjection(
   sessionId: string,
   nativeEvents: readonly SessionEvent[],
   projectedEvents: readonly SessionEvent[],
-  preserveInterruptedSuffix: boolean
+  preserveInterruptedSuffix: boolean,
+  expectedVersion?: number
 ): Promise<SessionEvent[]> {
   const events = mergeProjection(
     nativeEvents,
@@ -149,7 +156,11 @@ async function publishNativeProjection(
   // An authoritative empty transcript is still an authoritative replacement.
   // Skipping the write here would leave stale streamed/projected rows visible
   // after the provider history was cleared or reset.
-  await eventStoreProxy.set(events, sessionId);
+  if (expectedVersion === undefined) {
+    await eventStoreProxy.set(events, sessionId);
+  } else {
+    await eventStoreProxy.set(events, sessionId, expectedVersion);
+  }
   return events;
 }
 
@@ -160,7 +171,24 @@ async function runReconcile(
   // `code_sessions.transcript_source` is the authority. Hidden/background
   // continuations may never mount a CLI adapter, so an in-memory UI registry
   // cannot decide whether provider-native reconciliation is required.
+  const assertCurrent = () => {
+    if (job.signal?.aborted || (job.refreshGuard && !job.refreshGuard())) {
+      throw new DOMException("Native refresh superseded", "AbortError");
+    }
+  };
+  assertCurrent();
   const session = await rpc.cli.status({ sessionId });
+  assertCurrent();
+  if (
+    job.refreshGuard &&
+    (session?.transcriptSource !== "native" ||
+      isSessionEngineActiveStatus(session.status))
+  ) {
+    throw new DOMException(
+      "Native session is busy or unavailable",
+      "AbortError"
+    );
+  }
   if (session?.transcriptSource !== "native") {
     return loadAuthoritativeSessionEvents(sessionId).then(
       ({ events }) => events
@@ -173,26 +201,36 @@ async function runReconcile(
     // snapshots a still-delta assistant message or a still-running tool.
     await closeObservedCliTerminalEvents(sessionId, session.status);
   }
+  const expectedVersion = job.refreshGuard
+    ? eventStoreProxy.getLatestSessionSnapshot(sessionId)?.version
+    : undefined;
+  if (job.refreshGuard && expectedVersion === undefined) {
+    throw new DOMException("Native snapshot not mounted", "AbortError");
+  }
   // The backend converges the provider transcript before broadcasting the
   // terminal lifecycle. One authoritative read is therefore the normal path.
   // Check the mutable preserve flag after every await so a foreground caller
   // can still upgrade an in-flight background job without a settle delay. A
   // normal completed turn never pays for a second full-history cache read.
-  const nativeEvents = await loadAuthoritativeSessionEvents(sessionId).then(
-    ({ events }) => events
-  );
+  const nativeEvents = await loadAuthoritativeSessionEvents(
+    sessionId,
+    job.signal
+  ).then(({ events }) => events);
+  assertCurrent();
   let preserveApplied = false;
   const publishCurrentProjection = async (): Promise<SessionEvent[]> => {
     // Accepted intent metadata and failed delivery rows belong to ORG2 even
     // on success. Read them before replacement; a failed read must not erase
     // the retry owner or make current output disappear while Cloud publishes.
     const projectedEvents = await eventStoreProxy.getPersistedEvents(sessionId);
+    assertCurrent();
     preserveApplied = job.preserveInterruptedSuffix;
     return await publishNativeProjection(
       sessionId,
       nativeEvents,
       projectedEvents,
-      job.preserveInterruptedSuffix
+      job.preserveInterruptedSuffix,
+      expectedVersion
     );
   };
 
@@ -201,6 +239,8 @@ async function runReconcile(
     published = await publishCurrentProjection();
   }
 
+  assertCurrent();
+  if (job.refreshGuard) return published;
   await eventStoreProxy.setStreaming(false, sessionId);
   if (job.preserveInterruptedSuffix && !preserveApplied) {
     published = await publishCurrentProjection();
@@ -237,6 +277,14 @@ export function reconcileNativeTranscript(
 ): Promise<SessionEvent[]> {
   const existing = reconcileJobs.get(sessionId);
   if (existing) {
+    if (Boolean(existing.refreshGuard) !== Boolean(options.refreshGuard)) {
+      // Terminal and idle readers have different generations/guards. Finish
+      // the current job before reading again, rather than acknowledging a
+      // newer revision with an older job's projection.
+      return existing.promise
+        .catch(() => [])
+        .then(() => reconcileNativeTranscript(sessionId, options));
+    }
     if (options.preserveInterruptedSuffix) {
       existing.preserveInterruptedSuffix = true;
     }
@@ -245,6 +293,8 @@ export function reconcileNativeTranscript(
 
   const job: ReconcileJob = {
     preserveInterruptedSuffix: Boolean(options.preserveInterruptedSuffix),
+    refreshGuard: options.refreshGuard,
+    signal: options.signal,
     promise: Promise.resolve([]),
   };
   job.promise = runReconcile(sessionId, job).finally(() => {

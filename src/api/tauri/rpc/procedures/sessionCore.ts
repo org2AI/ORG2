@@ -129,7 +129,9 @@ const cache = {
 } as const;
 
 const eventStore = {
-  set: defineProcedure("es_set").input(schemas.sessionCore.EventsInput).build(),
+  set: defineProcedure("es_set")
+    .input(schemas.sessionCore.SetEventsInput)
+    .build(),
   append: defineProcedure("es_append")
     .input(schemas.sessionCore.EventsInput)
     .build(),

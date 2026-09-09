@@ -23,6 +23,19 @@ impl EventStore {
         self.set_with_hydration(events, HydrationMode::Full);
     }
 
+    /// Compare and replace while the caller holds the EventStore lock.
+    pub fn set_if_version(
+        &mut self,
+        events: Vec<crate::agent_sessions::event_pipeline::types::SessionEvent>,
+        expected_version: u64,
+    ) -> bool {
+        if self.version() != expected_version {
+            return false;
+        }
+        self.set(events);
+        true
+    }
+
     pub fn set_round_window(
         &mut self,
         events: Vec<crate::agent_sessions::event_pipeline::types::SessionEvent>,

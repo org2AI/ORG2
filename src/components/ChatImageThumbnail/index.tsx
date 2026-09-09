@@ -132,11 +132,7 @@ export const ChatImageThumbnail: React.FC<ChatImageThumbnailProps> = memo(
           )}
         </div>
         {showOverlay && resolvedSrc && (
-          <ImagePreviewOverlay
-            dataUrl={resolvedSrc}
-            onClose={handleClose}
-            showCopyButton={false}
-          />
+          <ImagePreviewOverlay dataUrl={resolvedSrc} onClose={handleClose} />
         )}
       </>
     );

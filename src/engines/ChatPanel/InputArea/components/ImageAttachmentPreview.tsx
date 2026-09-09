@@ -2,7 +2,7 @@
  * ImageAttachmentPreview
  *
  * Displays pasted/dropped image thumbnails above the chat input.
- * Click opens fullscreen preview overlay with download/close.
+ * Click opens fullscreen preview overlay with copy/download/close.
  */
 import { useAtom } from "jotai";
 import React, { memo, useCallback, useState } from "react";
@@ -80,7 +80,6 @@ const ImageThumbnail: React.FC<ImageThumbnailProps> = memo(
             dataUrl={image.dataUrl}
             fileName={image.fileName}
             onClose={handleCloseOverlay}
-            showCopyButton={false}
           />
         )}
       </>

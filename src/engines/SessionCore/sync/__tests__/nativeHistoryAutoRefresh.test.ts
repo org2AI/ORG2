@@ -12,6 +12,7 @@ function setup() {
     generation: 0,
     time: 0,
     revision: "v1" as string | null | undefined,
+    loaded: undefined as { revision: string; generation: number } | undefined,
   };
   const refresh = vi.fn(
     async (_signal: AbortSignal, _isCurrent: () => boolean) => {}
@@ -21,6 +22,7 @@ function setup() {
     isCurrent: () => state.current,
     generation: () => state.generation,
     readRevision,
+    loadedRevision: () => state.loaded,
     refresh,
     now: () => state.time,
   });
@@ -47,6 +49,33 @@ describe("managed native history refresh", () => {
     t.state.time += 30_000;
     await t.poller.poll();
     expect(t.refresh).toHaveBeenCalledTimes(2);
+  });
+
+  it("inherits an applied cold-load revision without parsing unchanged history again", async () => {
+    const t = setup();
+    t.state.loaded = { revision: "v1", generation: 0 };
+    await t.settle();
+    for (let i = 0; i < 20; i++) await t.poller.poll();
+    expect(t.refresh).not.toHaveBeenCalled();
+    t.state.revision = "v2";
+    await t.settle();
+    expect(t.refresh).toHaveBeenCalledOnce();
+  });
+
+  it("does not mistake a first probe after an external append for loaded data", async () => {
+    const t = setup();
+    t.state.loaded = { revision: "v1", generation: 0 };
+    t.state.revision = "v2";
+    await t.settle();
+    expect(t.refresh).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a cold-load revision from an older turn generation", async () => {
+    const t = setup();
+    t.state.loaded = { revision: "v1", generation: 0 };
+    t.state.generation = 1;
+    await t.settle();
+    expect(t.refresh).toHaveBeenCalledOnce();
   });
 
   it("skips legacy/unbound files and recovers after binding", async () => {

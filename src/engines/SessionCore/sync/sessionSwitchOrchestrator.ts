@@ -11,6 +11,7 @@ import {
 
 import { isTurnActive } from "../control/turnLifecycle";
 import { getCursorIdeSnapshotLastUpdatedAt } from "./adapters/cursorIdeAdapter";
+import { loadWithNativeHistoryRevision } from "./nativeHistoryLoadRevision";
 import { isCursorIdeSessionId } from "./sessionSyncDerivedState";
 import { rehydratePendingPlanApproval } from "./sessionSyncPlanApproval";
 import { reconcileInFlightHistory } from "./sessionSyncReconcile";
@@ -292,9 +293,18 @@ async function handleCacheMiss(
     ) &&
       isInFlightRunStatus(missPostResult?.runStatus)) ||
     isTurnActive(sessionId);
-  const events = !missInFlight
-    ? await loadPersistedHistory(adapter, sessionId, abortController.signal)
-    : await adapter.loadHistory(sessionId, abortController.signal);
+  const load = () =>
+    !missInFlight
+      ? loadPersistedHistory(adapter, sessionId, abortController.signal)
+      : adapter.loadHistory(sessionId, abortController.signal);
+  const { value: events, nativeHistoryRevision } =
+    adapter.category === "cli" && !missInFlight
+      ? await loadWithNativeHistoryRevision(
+          sessionId,
+          abortController.signal,
+          load
+        )
+      : { value: await load(), nativeHistoryRevision: undefined };
   if (abortController.signal.aborted) return;
   await hydrateSessionStoreBeforeDisplay(
     sessionId,
@@ -303,7 +313,7 @@ async function handleCacheMiss(
   );
   if (abortController.signal.aborted) return;
 
-  actions.dispatchLoadSession({ sessionId, events });
+  actions.dispatchLoadSession({ sessionId, events, nativeHistoryRevision });
   if (
     missInFlight &&
     !isImportedHistorySession(sessionId) &&

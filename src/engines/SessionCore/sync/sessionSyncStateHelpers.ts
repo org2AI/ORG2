@@ -29,6 +29,7 @@ import type {
 import type { CliSessionStatus } from "@src/types/session/session";
 import { isSessionRuntimeExecuting } from "@src/util/session/sessionRuntimeExecuting";
 
+import type { NativeHistoryLoadRevision } from "./nativeHistoryLoadRevision";
 import { toCliSessionStatus, toSessionListStatus } from "./sessionSyncUtils";
 import type {
   EventHandlerCallbacks,
@@ -37,6 +38,7 @@ import type {
 } from "./types";
 
 type LoadSessionPayload = {
+  nativeHistoryRevision?: NativeHistoryLoadRevision;
   sessionId: string;
   events: SessionEvent[];
   isFromCache?: boolean;

@@ -12,6 +12,7 @@ import {
   shouldWaitForStableTranscript,
   startExternalHistoryRefreshScheduler,
 } from "./externalHistoryAutoRefresh";
+import type { NativeHistoryLoadRevision } from "./nativeHistoryLoadRevision";
 import { reconcileNativeTranscript } from "./nativeTranscriptReconcile";
 
 const log = createLogger("NativeHistoryAutoRefresh");
@@ -23,6 +24,7 @@ export function createNativeHistoryRefreshPoll(options: {
   generation: () => number;
   readRevision: () => Promise<string | null | undefined>;
   refresh: (signal: AbortSignal, isCurrent: () => boolean) => Promise<unknown>;
+  loadedRevision?: () => NativeHistoryLoadRevision | undefined;
   now?: () => number;
 }) {
   let appliedRevision: string | undefined;
@@ -36,6 +38,11 @@ export function createNativeHistoryRefreshPoll(options: {
       const request = new AbortController();
       controller = request;
       const generation = options.generation();
+      if (!appliedRevision) {
+        const loaded = options.loadedRevision?.();
+        if (loaded?.generation === generation)
+          appliedRevision = loaded.revision;
+      }
       const isCurrent = () =>
         !request.signal.aborted &&
         options.isCurrent() &&
@@ -71,7 +78,10 @@ export function createNativeHistoryRefreshPoll(options: {
  * A slow stat-only safety poll catches those writes for the visible managed
  * session. Imported history has its own mutually exclusive scheduler.
  */
-export function useNativeHistoryAutoRefresh(sessionId: string | null): void {
+export function useNativeHistoryAutoRefresh(
+  sessionId: string | null,
+  loadedRevision: () => NativeHistoryLoadRevision | undefined
+): void {
   const store = useStore();
   useEffect(() => {
     if (!sessionId || !isCliSession(sessionId)) return;
@@ -83,6 +93,7 @@ export function useNativeHistoryAutoRefresh(sessionId: string | null): void {
         store.get(loadStatusAtom) === "loaded" &&
         !isTurnActive(sessionId),
       generation: () => getTurnGeneration(sessionId),
+      loadedRevision,
       readRevision: () => loadCliTranscriptRevision(sessionId),
       refresh: (signal, isCurrent) =>
         reconcileNativeTranscript(sessionId, {
@@ -116,5 +127,5 @@ export function useNativeHistoryAutoRefresh(sessionId: string | null): void {
       stop();
       refresh.abort();
     };
-  }, [sessionId, store]);
+  }, [sessionId, store, loadedRevision]);
 }

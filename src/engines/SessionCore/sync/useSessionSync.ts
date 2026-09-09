@@ -43,6 +43,7 @@ import "./adapters";
 import { isInterruptedCliTerminalStatus } from "./adapters/cli/cliLifecycle";
 import { useExternalHistoryAutoRefresh } from "./externalHistoryAutoRefresh";
 import { useNativeHistoryAutoRefresh } from "./nativeHistoryAutoRefresh";
+import type { NativeHistoryLoadRevision } from "./nativeHistoryLoadRevision";
 import { scheduleNativeTranscriptReconcile } from "./nativeTranscriptReconcile";
 import {
   resetEmptySessionRefs,
@@ -74,7 +75,38 @@ export function useSessionSync(
   sessionId: string | null,
   reloadEpoch = 0
 ): void {
-  const dispatchLoadSession = useSetAtom(loadSessionAtom);
+  const applyLoadedSession = useSetAtom(loadSessionAtom);
+  // Owned by this mounted view. Background reads cannot certify its history.
+  const loadedNativeRevision = useRef<
+    | {
+        sessionId: string;
+        revision: NativeHistoryLoadRevision;
+      }
+    | undefined
+  >(undefined);
+  const dispatchLoadSession = useCallback(
+    (
+      payload: Parameters<typeof applyLoadedSession>[0] & {
+        nativeHistoryRevision?: NativeHistoryLoadRevision;
+      }
+    ) => {
+      applyLoadedSession(payload);
+      loadedNativeRevision.current = payload.nativeHistoryRevision
+        ? {
+            sessionId: payload.sessionId,
+            revision: payload.nativeHistoryRevision,
+          }
+        : undefined;
+    },
+    [applyLoadedSession]
+  );
+  const getLoadedNativeRevision = useCallback(
+    () =>
+      loadedNativeRevision.current?.sessionId === sessionId
+        ? loadedNativeRevision.current.revision
+        : undefined,
+    [sessionId]
+  );
   const clearSessionLoadError = useSetAtom(clearSessionLoadErrorAtom);
   const failSessionLoad = useSetAtom(failSessionLoadAtom);
   const setLoadStatus = useSetAtom(loadStatusAtom);
@@ -303,7 +335,7 @@ export function useSessionSync(
     dispatchLoadSession,
   });
 
-  useNativeHistoryAutoRefresh(sessionId);
+  useNativeHistoryAutoRefresh(sessionId, getLoadedNativeRevision);
   useEventStoreCacheSync(sessionId);
   useSessionSyncCleanup(refs);
 }

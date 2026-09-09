@@ -4,6 +4,7 @@ import { runSessionSwitchOrchestrator } from "../sessionSwitchOrchestrator";
 import type { SessionAdapter } from "../types";
 
 const mocks = vi.hoisted(() => ({
+  revision: vi.fn(),
   applyPostLoadResult: vi.fn(),
   capturePostLoadLifecycleSnapshot: vi.fn(() => ({
     lastTerminal: null,
@@ -19,6 +20,10 @@ const mocks = vi.hoisted(() => ({
   reconcileInFlightHistory: vi.fn(),
   rehydratePendingPlanApproval: vi.fn(),
   switchSession: vi.fn(),
+}));
+
+vi.mock("../adapters/cli/cliHistory", () => ({
+  loadCliTranscriptRevision: mocks.revision,
 }));
 
 vi.mock("@src/components/Message", () => ({
@@ -87,10 +92,57 @@ function createActions() {
 describe("runSessionSwitchOrchestrator reconciliation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.revision.mockReset().mockResolvedValue("v1");
     mocks.isCollaborationImportedSession.mockReturnValue(false);
     mocks.switchSession.mockResolvedValue(true);
     mocks.getEvents.mockResolvedValue([{ id: "visible" }]);
   });
+
+  it.each(["stable", "changed", "aborted"])(
+    "hands off only a published stable cold load (%s)",
+    async (state) => {
+      mocks.switchSession.mockResolvedValue(false);
+      mocks.loadPersistedHistory.mockResolvedValue([{ id: "native-history" }]);
+      const controller = new AbortController();
+      if (state === "changed")
+        mocks.revision.mockResolvedValueOnce("v1").mockResolvedValue("v2");
+      mocks.hydrateSessionStoreBeforeDisplay.mockImplementationOnce(
+        async () => {
+          expect(mocks.dispatchLoadSession).not.toHaveBeenCalled();
+          if (state === "aborted") controller.abort();
+        }
+      );
+      const actions = createActions();
+      runSessionSwitchOrchestrator({
+        sessionId: "cli-cold-load",
+        adapter: {
+          category: "cli",
+          postLoad: vi.fn().mockResolvedValue({ runStatus: "idle" }),
+        } as unknown as SessionAdapter,
+        abortController: controller,
+        refs: { liveSessionIdRef: { current: "cli-cold-load" } },
+        actions,
+        setPendingPlanApprovals: vi.fn(),
+        logger: { error: vi.fn() } as never,
+      });
+      await vi.waitFor(() =>
+        expect(mocks.hydrateSessionStoreBeforeDisplay).toHaveBeenCalledOnce()
+      );
+      if (state === "aborted") {
+        expect(mocks.dispatchLoadSession).not.toHaveBeenCalled();
+      } else {
+        expect(mocks.dispatchLoadSession).toHaveBeenCalledWith(
+          expect.objectContaining({
+            nativeHistoryRevision:
+              state === "stable"
+                ? { revision: "v1", generation: 0 }
+                : undefined,
+          })
+        );
+      }
+      expect(actions.failSessionLoad).not.toHaveBeenCalled();
+    }
+  );
 
   it("uses the complete persisted projection on an imported-session cache hit", async () => {
     const sessionId = "imported-session-retry";

@@ -84,12 +84,15 @@ impl KeyService {
         store.get_all(agent_type).into_iter().cloned().collect()
     }
 
-    /// Save or update a key
+    /// Save or update a key after enforcing persisted catalog invariants.
     pub fn save_key(&self, key: ModelKey) -> Result<ModelKey, String> {
+        let key_id = key.id.clone();
         self.update_store(|store| {
-            let entry = key.clone();
             store.set(key);
-            entry
+            store
+                .get_by_id(&key_id)
+                .cloned()
+                .expect("KeyStore::set must retain the inserted key")
         })
     }
 
@@ -236,6 +239,7 @@ impl KeyService {
                 if let Some(enabled) = enabled_models {
                     entry.enabled_models = enabled;
                 }
+                entry.normalize_model_catalog();
                 if let Some(quota) = quota_info {
                     entry.quota_info = Some(quota);
                 }

@@ -548,6 +548,16 @@ impl ModelKey {
         }
     }
 
+    /// Restore catalog invariants owned by this account type.
+    pub(crate) fn normalize_model_catalog(&mut self) {
+        if self.is_native_oauth_for(&ModelType::Codex) {
+            crate::model_catalog::complete_codex_oauth_model_catalog(
+                &mut self.available_models,
+                &self.enabled_models,
+            );
+        }
+    }
+
     /// Whether this credential is a native OAuth account for the target CLI.
     /// Cross-provider keys and native API keys must never enter OAuth retry,
     /// token rotation, or OAuth health bookkeeping.

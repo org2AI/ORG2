@@ -718,6 +718,122 @@ fn test_proxy_env_anthropic_api() {
 }
 
 #[test]
+fn codex_oauth_catalog_is_completed_at_storage_boundaries() {
+    use crate::model_catalog::CODEX_OAUTH_MODELS;
+
+    let temp_dir = tempdir().unwrap();
+    let service = KeyService::new(Some(temp_dir.path().to_path_buf()));
+
+    let mut oauth_key = ModelKey::new(ModelType::Codex);
+    oauth_key.auth_method = AuthMethod::Oauth;
+    oauth_key.session_token = Some("oauth-access-token".to_string());
+    oauth_key.available_models = vec!["account-visible-model".to_string()];
+    oauth_key.enabled_models = vec!["custom-enabled-model".to_string()];
+    let key_id = oauth_key.id.clone();
+
+    let saved = service.save_key(oauth_key).unwrap();
+    assert_eq!(
+        saved.available_models.first().unwrap(),
+        "account-visible-model"
+    );
+    assert!(CODEX_OAUTH_MODELS.iter().all(|model| saved
+        .available_models
+        .iter()
+        .any(|available| available == model)));
+    assert!(saved
+        .available_models
+        .iter()
+        .any(|model| model == "custom-enabled-model"));
+
+    let refreshed = service
+        .update_key_health(
+            &key_id,
+            HealthStatus::Valid,
+            None,
+            Some(vec!["fresh-live-model".to_string()]),
+            Some(vec!["custom-enabled-model".to_string()]),
+            None,
+            None,
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        refreshed.available_models.first().unwrap(),
+        "fresh-live-model"
+    );
+    assert!(refreshed
+        .available_models
+        .iter()
+        .any(|model| model == "gpt-6-astra"));
+    assert!(refreshed
+        .available_models
+        .iter()
+        .any(|model| model == "custom-enabled-model"));
+}
+
+#[test]
+fn legacy_codex_oauth_catalog_is_repaired_on_load_and_next_write() {
+    use crate::model_catalog::CODEX_OAUTH_MODELS;
+
+    let temp_dir = tempdir().unwrap();
+    let service = KeyService::new(Some(temp_dir.path().to_path_buf()));
+
+    let mut oauth_key = ModelKey::new(ModelType::Codex);
+    oauth_key.auth_method = AuthMethod::Oauth;
+    oauth_key.session_token = Some("oauth-access-token".to_string());
+    let key_id = oauth_key.id.clone();
+    service.save_key(oauth_key).unwrap();
+
+    let storage_file = temp_dir.path().join("credentials.json");
+    let mut stored: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&storage_file).unwrap()).unwrap();
+    stored["credentials"][&key_id]["available_models"] = serde_json::json!(["gpt-5.6-sol"]);
+    stored["credentials"][&key_id]["enabled_models"] = serde_json::json!(["legacy-enabled-model"]);
+    std::fs::write(&storage_file, serde_json::to_vec_pretty(&stored).unwrap()).unwrap();
+
+    let loaded = service.get_key_by_id_checked(&key_id).unwrap().unwrap();
+    assert!(loaded
+        .available_models
+        .iter()
+        .any(|model| model == "gpt-6-astra"));
+    assert!(loaded
+        .available_models
+        .iter()
+        .any(|model| model == "legacy-enabled-model"));
+
+    service
+        .save_key(ModelKey::new(ModelType::AnthropicApi))
+        .unwrap();
+    let persisted: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&storage_file).unwrap()).unwrap();
+    let persisted_models = persisted["credentials"][&key_id]["available_models"]
+        .as_array()
+        .unwrap();
+    assert!(CODEX_OAUTH_MODELS.iter().all(|model| {
+        persisted_models
+            .iter()
+            .any(|available| available.as_str() == Some(*model))
+    }));
+    assert!(persisted_models
+        .iter()
+        .any(|model| model.as_str() == Some("legacy-enabled-model")));
+}
+
+#[test]
+fn codex_api_key_catalog_is_not_completed_with_oauth_models() {
+    let temp_dir = tempdir().unwrap();
+    let service = KeyService::new(Some(temp_dir.path().to_path_buf()));
+
+    let mut api_key = ModelKey::new(ModelType::Codex);
+    api_key.auth_method = AuthMethod::ApiKey;
+    api_key.api_key = Some("sk-api-key".to_string());
+    api_key.available_models = vec!["api-visible-model".to_string()];
+
+    let saved = service.save_key(api_key).unwrap();
+    assert_eq!(saved.available_models, vec!["api-visible-model"]);
+}
+
+#[test]
 fn test_store_get_with_key_id() {
     let mut store = KeyStore::default();
     let mut first = ModelKey::new(ModelType::CursorCli);

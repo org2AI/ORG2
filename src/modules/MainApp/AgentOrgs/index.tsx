@@ -43,7 +43,7 @@ import {
   resolveLegacyAgentOrgsRedirect,
 } from "./model";
 import { builtInAgentsAtom } from "./store/builtInAgentsAtom";
-import type { AgentDefinition, OrgMember } from "./types";
+import type { AgentDefinition, OrgDefinition } from "./types";
 
 const logger = createLogger("AgentOrgs");
 
@@ -136,7 +136,7 @@ const AgentOrgsPage: React.FC = () => {
 
   const { orgs, setOrgs, orgsLoading, loadOrgs } = useAgentOrgsDirectory();
 
-  const editingOrg = useMemo<OrgMember | undefined>(
+  const editingOrg = useMemo<OrgDefinition | undefined>(
     () => (orgEditId ? orgs.find((org) => org.id === orgEditId) : undefined),
     [orgEditId, orgs]
   );
@@ -146,15 +146,11 @@ const AgentOrgsPage: React.FC = () => {
   }, [openWizard]);
 
   const handleTeamWizardSave = useCallback(
-    async (org: OrgMember) => {
+    async (org: OrgDefinition) => {
       const isUpdate = orgs.some((existing) => existing.id === org.id);
       const orgJson = JSON.stringify(org);
       try {
-        if (isUpdate) {
-          await rpc.agentOrgs.orgs.update({ orgJson });
-        } else {
-          await rpc.agentOrgs.orgs.add({ orgJson });
-        }
+        await rpc.agentOrgs.orgs.saveTrustedSettings({ orgJson });
         const refreshed = await loadOrgs();
         setOrgs(refreshed);
         closeWizard();

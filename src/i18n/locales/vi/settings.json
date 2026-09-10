@@ -791,9 +791,7 @@
     "noAgentsTitle": "Không có Agent khả dụng",
     "noAgentsSubtitle": "Tạo hoặc nhập Agent để cấu hình Tiến hóa."
   },
-  "org": {
-    "addChild": "Thêm cấp dưới"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Trình duyệt Learnings",
     "searchPlaceholder": "Tìm takeaway, nội dung, scope…",

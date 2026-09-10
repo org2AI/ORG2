@@ -791,9 +791,7 @@
     "noAgentsTitle": "Нет доступных Agent",
     "noAgentsSubtitle": "Создайте или импортируйте Agent, чтобы настроить эволюцию."
   },
-  "org": {
-    "addChild": "Добавить подчинённого"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Браузер Learnings",
     "searchPlaceholder": "Поиск по takeaway, содержимому, scope…",

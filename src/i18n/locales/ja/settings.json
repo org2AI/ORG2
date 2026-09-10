@@ -791,9 +791,7 @@
     "noAgentsTitle": "利用可能な Agent はありません",
     "noAgentsSubtitle": "進化を設定するには Agent を作成またはインポートしてください。"
   },
-  "org": {
-    "addChild": "部下を追加"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Learnings ブラウザ",
     "searchPlaceholder": "要約・本文・scope を検索…",

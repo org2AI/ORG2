@@ -867,9 +867,7 @@
     "noAgentsTitle": "No agents available",
     "noAgentsSubtitle": "Create or import an agent to configure Evolution."
   },
-  "org": {
-    "addChild": "Add subordinate"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Learnings Browser",
     "searchPlaceholder": "Search takeaways, contents, scope…",

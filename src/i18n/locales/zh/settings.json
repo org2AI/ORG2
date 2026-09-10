@@ -867,9 +867,7 @@
     "noAgentsTitle": "没有可用 Agent",
     "noAgentsSubtitle": "创建或导入 Agent 以配置进化。"
   },
-  "org": {
-    "addChild": "添加下属"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Learnings 浏览器",
     "searchPlaceholder": "搜索要点、正文、scope…",

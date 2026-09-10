@@ -791,9 +791,7 @@
     "noAgentsTitle": "사용 가능한 Agent가 없습니다",
     "noAgentsSubtitle": "진화를 구성하려면 Agent를 만들거나 가져오세요."
   },
-  "org": {
-    "addChild": "부하 추가"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Learnings 브라우저",
     "searchPlaceholder": "Takeaway, 내용, scope 검색…",

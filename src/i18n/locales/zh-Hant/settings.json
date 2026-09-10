@@ -791,9 +791,7 @@
     "noAgentsTitle": "沒有可用 Agent",
     "noAgentsSubtitle": "建立或匯入 Agent 以設定進化。"
   },
-  "org": {
-    "addChild": "添加下屬"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Learnings 瀏覽器",
     "searchPlaceholder": "搜索要點、正文、scope…",

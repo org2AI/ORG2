@@ -791,9 +791,7 @@
     "noAgentsTitle": "Kullanılabilir Agent yok",
     "noAgentsSubtitle": "Evrim’i yapılandırmak için bir Agent oluşturun veya içe aktarın."
   },
-  "org": {
-    "addChild": "Alt kademe ekle"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Learnings Tarayıcısı",
     "searchPlaceholder": "Takeaway, içerik, scope ara…",

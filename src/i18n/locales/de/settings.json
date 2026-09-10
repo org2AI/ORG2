@@ -791,9 +791,7 @@
     "noAgentsTitle": "Keine Agents verfügbar",
     "noAgentsSubtitle": "Erstellen oder importieren Sie einen Agent, um Evolution zu konfigurieren."
   },
-  "org": {
-    "addChild": "Untergebenen hinzufügen"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Learnings-Browser",
     "searchPlaceholder": "Takeaways, Inhalte, Scope durchsuchen…",

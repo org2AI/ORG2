@@ -791,9 +791,7 @@
     "noAgentsTitle": "No hay Agents disponibles",
     "noAgentsSubtitle": "Crea o importa un Agent para configurar Evolución."
   },
-  "org": {
-    "addChild": "Agregar subordinado"
-  },
+  "org": {},
   "learningsBrowser": {
     "title": "Explorador de Learnings",
     "searchPlaceholder": "Buscar takeaways, contenido, scope…",

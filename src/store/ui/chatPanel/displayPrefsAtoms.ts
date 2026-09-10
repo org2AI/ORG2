@@ -92,3 +92,12 @@ export const modelPickerStyleAtom = atom(
   }
 );
 modelPickerStyleAtom.debugLabel = "modelPickerStyleAtom";
+
+/** Display-only grouping; off preserves the existing category stacks. */
+export const collapseToolActivityAtom = atomWithStorage<boolean>(
+  "orgii:collapseToolActivity",
+  false,
+  createZodJsonStorage(z.boolean()),
+  { getOnInit: true }
+);
+collapseToolActivityAtom.debugLabel = "collapseToolActivityAtom";

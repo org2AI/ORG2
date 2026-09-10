@@ -32,16 +32,11 @@ import { MemoizedUserChatItem } from "./MemoizedItems";
 export interface ChatItemRendererProps {
   chatItem: OptimizedChatItem;
   index: number;
-  isWpGeneWorking: boolean;
-  isExploring: boolean;
-  onSubmit: (eventId: string, answers: Record<string, string>) => void;
-  onSkip: (eventId: string) => void;
   onEditUserMessage?: (
     chatItem: OptimizedChatItem,
     newText: string,
     imageDataUrls?: string[]
   ) => void;
-  codeBlockContainerWidth?: number;
   /** Render the item through activity components even if the source is `user`. */
   treatAsAgentActivity?: boolean;
 }
@@ -51,17 +46,7 @@ export interface ChatItemRendererProps {
 // ============================================
 
 export const ChatItemRenderer: React.FC<ChatItemRendererProps> = memo(
-  ({
-    chatItem,
-    index,
-    isWpGeneWorking: _isWpGeneWorking,
-    isExploring: _isExploring,
-    onSubmit: _onSubmit,
-    onSkip: _onSkip,
-    onEditUserMessage,
-    codeBlockContainerWidth: _codeBlockContainerWidth,
-    treatAsAgentActivity = false,
-  }) => {
+  ({ chatItem, index, onEditUserMessage, treatAsAgentActivity = false }) => {
     const key = chatItem.chunk_id || `chat-${index}`;
     const event = chatItem.event;
 

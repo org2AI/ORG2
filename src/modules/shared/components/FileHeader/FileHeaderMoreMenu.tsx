@@ -163,6 +163,24 @@ export const FileHeaderMoreMenu: React.FC<FileHeaderMoreMenuProps> = ({
   const revealInFileManagerDisabled = !showRevealInFileManagerAction;
   const reloadDisabled = !showReloadButton || loading || reloadMenuCoolingDown;
 
+  const hasFileChangeActions = !saveDisabled || !discardDisabled;
+  const hasNavigationActions =
+    !searchDisabled ||
+    !goToLineDisabled ||
+    !copyRelativePathDisabled ||
+    !revealInFileManagerDisabled ||
+    !reloadDisabled;
+  const hasDisplayToggles =
+    showLineNumbersToggle ||
+    showWordWrapToggle ||
+    showMinimapToggle ||
+    showHighlightActiveLineToggle ||
+    showGitBlameToggle;
+  const hasDisplaySettings = hasDisplayToggles || showMoreSettingsAction;
+  const fileActions =
+    menuVisible && isPositioned ? renderFileActions?.(close) : null;
+  const hasFileActions = React.Children.toArray(fileActions).length > 0;
+
   const renderToggleRow = useCallback(
     ({
       label,
@@ -312,9 +330,10 @@ export const FileHeaderMoreMenu: React.FC<FileHeaderMoreMenuProps> = ({
               </DropdownItem>
             )}
 
-            {(!saveDisabled || !discardDisabled) && (
-              <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-            )}
+            {hasFileChangeActions &&
+              (hasNavigationActions || hasFileActions) && (
+                <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
+              )}
 
             {!searchDisabled && (
               <DropdownItem
@@ -428,24 +447,16 @@ export const FileHeaderMoreMenu: React.FC<FileHeaderMoreMenuProps> = ({
               </DropdownItem>
             )}
 
-            {(showLineNumbersToggle ||
-              showWordWrapToggle ||
-              showMinimapToggle ||
-              showHighlightActiveLineToggle ||
-              showGitBlameToggle ||
-              showMoreSettingsAction) && (
-              <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-            )}
-
-            {renderFileActions?.(close)}
-            {(showLineNumbersToggle ||
-              showWordWrapToggle ||
-              showMinimapToggle ||
-              showHighlightActiveLineToggle ||
-              showGitBlameToggle ||
-              showMoreSettingsAction) && (
+            {fileActions}
+            {hasDisplaySettings &&
+              (hasFileChangeActions ||
+                hasNavigationActions ||
+                hasFileActions) && (
+                <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
+              )}
+            {hasDisplaySettings && (
               <ActionSubmenu
-                label={t("common:actions.uiSettings")}
+                label={t("sessions:chat.pageSettings")}
                 icon={
                   <HugeiconsIcon
                     icon={Layers01Icon}
@@ -490,7 +501,7 @@ export const FileHeaderMoreMenu: React.FC<FileHeaderMoreMenuProps> = ({
                   onChange: onGitBlameChange,
                 })}
 
-                {showMoreSettingsAction && (
+                {hasDisplayToggles && showMoreSettingsAction && (
                   <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
                 )}
 

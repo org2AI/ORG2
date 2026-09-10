@@ -14,10 +14,16 @@ import {
 
 import TurnCollapsePinBar from "./TurnCollapsePinBar";
 
+const { setOverride, replayEventById, replayState } = vi.hoisted(() => ({
+  setOverride: vi.fn(),
+  replayEventById: vi.fn(),
+  replayState: { canReplay: false },
+}));
+
 vi.mock("jotai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("jotai")>()),
   useAtomValue: () => new Map(),
-  useSetAtom: () => vi.fn(),
+  useSetAtom: () => setOverride,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -28,7 +34,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@src/engines/ChatPanel/hooks/useChatEventReplay", () => ({
-  useChatEventReplay: () => ({ canReplay: false, replayEventById: vi.fn() }),
+  useChatEventReplay: () => ({ ...replayState, replayEventById }),
 }));
 
 describe("TurnCollapsePinBar", () => {
@@ -43,6 +49,8 @@ describe("TurnCollapsePinBar", () => {
   });
 
   beforeEach(() => {
+    vi.clearAllMocks();
+    replayState.canReplay = false;
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -51,6 +59,7 @@ describe("TurnCollapsePinBar", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    window.getSelection()?.removeAllRanges();
   });
 
   afterAll(() => {
@@ -113,6 +122,76 @@ describe("TurnCollapsePinBar", () => {
     expect(
       divider?.classList.contains("peer-hover/turn-collapse:opacity-0")
     ).toBe(true);
+  });
+
+  it.each([true, false])(
+    "toggles on the first click outside the chevron with selected transcript text (collapsed=%s)",
+    async (defaultCollapsed) => {
+      act(() => {
+        root.render(
+          createElement(TurnCollapsePinBar, {
+            turnId: "turn-1",
+            durationMs: 42_000,
+            startMs: 1_000,
+            endMs: 43_000,
+            defaultCollapsed,
+            turnCollapseInteractionAtRef: { current: 0 },
+          })
+        );
+      });
+      const transcript = document.createElement("p");
+      transcript.textContent = "Previously selected transcript text";
+      container.appendChild(transcript);
+      const range = document.createRange();
+      range.selectNodeContents(transcript);
+      window.getSelection()?.addRange(range);
+      expect(window.getSelection()?.isCollapsed).toBe(false);
+
+      const button = container.querySelector<HTMLButtonElement>("button")!;
+      const label = button.querySelector<HTMLSpanElement>("span > span")!;
+      await act(async () => {
+        label.click();
+      });
+      expect(setOverride).toHaveBeenCalledOnce();
+      expect(setOverride).toHaveBeenCalledWith({
+        turnId: "turn-1",
+        collapsed: !defaultCollapsed,
+      });
+      expect(button.classList.contains("h-full")).toBe(true);
+      expect(button.classList.contains("px-2")).toBe(true);
+    }
+  );
+
+  it("reserves a fixed right-side replay slot and keeps replay clicks separate", async () => {
+    replayState.canReplay = true;
+    for (const defaultCollapsed of [true, false]) {
+      act(() => {
+        root.render(
+          createElement(TurnCollapsePinBar, {
+            turnId: "turn-1",
+            durationMs: 42_000,
+            startMs: 1_000,
+            endMs: 43_000,
+            defaultCollapsed,
+            turnCollapseInteractionAtRef: { current: 0 },
+          })
+        );
+      });
+      const navigate = container.querySelector<HTMLButtonElement>(
+        '[data-testid="event-navigate"]'
+      )!;
+      expect(navigate.classList.contains("w-5")).toBe(true);
+      expect(navigate.classList.contains("w-0")).toBe(false);
+      expect(navigate.parentElement?.classList.contains("absolute")).toBe(true);
+      expect(navigate.parentElement?.classList.contains("right-2")).toBe(true);
+      expect(navigate.parentElement?.classList.contains("w-5")).toBe(true);
+      await act(async () => {
+        navigate.click();
+      });
+    }
+    expect(replayEventById).toHaveBeenCalledTimes(2);
+    expect(replayEventById).toHaveBeenCalledWith("turn-1");
+    expect(setOverride).not.toHaveBeenCalled();
   });
 
   it("shows a loading indicator after the time range while expanding", async () => {

@@ -81,7 +81,7 @@ function getEventCallId(event: SessionEvent): string | undefined {
   );
 }
 
-function getStableActivityItemId(event: SessionEvent): string {
+export function getStableActivityItemId(event: SessionEvent): string {
   const callId = getEventCallId(event);
   if (
     callId &&

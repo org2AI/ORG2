@@ -15,6 +15,7 @@ import {
   CursorInWindowIcon,
   ThirdBracketIcon,
 } from "@src/icons";
+import { collapseToolActivityAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 import {
   SessionHeaderActionsMenu,
@@ -31,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   messageError: vi.fn(),
   pinnedActionsVisible: false,
   setPinnedActionsVisible: vi.fn(),
+  setCollapseToolActivity: vi.fn(),
 }));
 
 vi.mock("@src/api/tauri/externalHistory/appOpen", () => ({
@@ -48,7 +50,10 @@ vi.mock("@src/assets/modelIcons/openai.svg", () => ({
 }));
 vi.mock("jotai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("jotai")>()),
-  useAtom: () => [mocks.pinnedActionsVisible, mocks.setPinnedActionsVisible],
+  useAtom: (atom: unknown) =>
+    atom === collapseToolActivityAtom
+      ? [false, mocks.setCollapseToolActivity]
+      : [mocks.pinnedActionsVisible, mocks.setPinnedActionsVisible],
   useAtomValue: () => mocks.session,
   useSetAtom: () => mocks.openWindow,
 }));
@@ -229,6 +234,7 @@ describe("SessionHeaderActionsMenu", () => {
       "session-move-submenu",
       "session-project-links-submenu",
       "session-ui-settings-submenu",
+      "session-input-settings-submenu",
     ]) {
       const suffix = element(testId).lastElementChild;
       const chevron = suffix?.querySelector("svg");
@@ -335,6 +341,7 @@ describe("SessionHeaderActionsMenu", () => {
       "session-copy-submenu",
       "session-project-links-submenu",
       "session-ui-settings-submenu",
+      "session-input-settings-submenu",
     ]);
     expect(
       document.querySelector('[data-testid="session-track-as-project-button"]')
@@ -401,11 +408,11 @@ describe("SessionHeaderActionsMenu", () => {
     expect(props.toggleHeaderActionsMenu).not.toHaveBeenCalled();
   });
 
-  it("nests the five display switches under UI settings without closing on toggle", () => {
+  it("separates page and input settings without closing on toggle", () => {
     render();
     expect(document.querySelector('[role="switch"]')).toBeNull();
     expect(element("session-ui-settings-submenu").textContent).toBe(
-      "common:actions.uiSettings"
+      "chat.pageSettings"
     );
     click("session-ui-settings-submenu");
     const panel = element("session-ui-settings-submenu-panel");
@@ -414,22 +421,25 @@ describe("SessionHeaderActionsMenu", () => {
     expect(
       [...switches].map((control) => control.getAttribute("aria-label"))
     ).toEqual([
-      "chat.startPage.showSkills",
+      "common:pagination.title",
       "chat.showTokenUsage",
       "chat.showTurnMetadata",
-      "common:pagination.title",
-      "chat.compactDisplayMode",
+      "chat.showInlineDiffs",
+      "chat.collapseToolActivity",
     ]);
+    expect(panel.children[1].getAttribute("role")).toBe("separator");
+    expect(panel.children[1].className).toBe(
+      DROPDOWN_CLASSES.menuGroupSeparator
+    );
+    expect(switches[0].parentElement?.className).toBe(
+      DROPDOWN_CLASSES.menuControlItem
+    );
     expect(switches[0].closest('[role="menu"]')).toBe(panel);
     key("ArrowDown");
     expect(document.activeElement).toBe(switches[0]);
     key("ArrowDown");
     expect(document.activeElement).toBe(switches[1]);
     act(() => switches.forEach((control) => control.click()));
-    expect(mocks.setPinnedActionsVisible).toHaveBeenCalledWith(
-      true,
-      expect.anything()
-    );
     expect(props.handleTokenUsageVisibleToggle).toHaveBeenCalledWith(
       true,
       expect.anything()
@@ -442,7 +452,9 @@ describe("SessionHeaderActionsMenu", () => {
       true,
       expect.anything()
     );
-    expect(props.handleCompactDisplayModeToggle).toHaveBeenCalledWith(
+    expect(switches[3].getAttribute("aria-checked")).toBe("true");
+    expect(props.handleCompactDisplayModeToggle).toHaveBeenCalledWith(true);
+    expect(mocks.setCollapseToolActivity).toHaveBeenCalledWith(
       true,
       expect.anything()
     );
@@ -455,11 +467,30 @@ describe("SessionHeaderActionsMenu", () => {
     expect(document.activeElement).toBe(element("session-ui-settings-submenu"));
     expect(props.toggleHeaderActionsMenu).not.toHaveBeenCalled();
 
-    render({ showTranscriptActions: false });
-    expect(document.body.textContent).not.toContain(
-      "common:actions.uiSettings"
+    click("session-input-settings-submenu");
+    const inputPanel = element("session-input-settings-submenu-panel");
+    expect(inputPanel.querySelectorAll('[role="switch"]')).toHaveLength(1);
+    click("session-menu-show-skills-toggle");
+    expect(mocks.setPinnedActionsVisible).toHaveBeenCalledWith(
+      true,
+      expect.anything()
     );
+    expect(props.toggleHeaderActionsMenu).not.toHaveBeenCalled();
+
+    render({ showTranscriptActions: false });
+    expect(document.body.textContent).not.toContain("chat.pageSettings");
     expect(document.querySelector('[role="switch"]')).toBeNull();
+  });
+
+  it("enables inline diffs from compact mode", () => {
+    render({ displayMode: "compact" });
+    click("session-ui-settings-submenu");
+    const toggle = element(
+      "session-ui-settings-submenu-panel"
+    ).querySelector<HTMLButtonElement>('[aria-label="chat.showInlineDiffs"]')!;
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    act(() => toggle.click());
+    expect(props.handleCompactDisplayModeToggle).toHaveBeenCalledWith(false);
   });
 
   it("preserves copy eligibility and disabled states", () => {
@@ -693,6 +724,7 @@ describe("SessionHeaderActionsMenu native app action", () => {
         "session-copy-submenu",
         "session-project-links-submenu",
         "session-ui-settings-submenu",
+        "session-input-settings-submenu",
       ]);
       expect(
         document.querySelector('[data-testid="session-open-in-app-submenu"]')
@@ -867,6 +899,7 @@ describe("SessionHeaderActionsMenu native app action", () => {
 
     for (const testId of [
       "session-ui-settings-submenu",
+      "session-input-settings-submenu",
       "session-project-links-submenu",
       "session-copy-submenu",
       "session-move-submenu",

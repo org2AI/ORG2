@@ -73,7 +73,6 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
     groupCounts,
     turnIds,
     totalFlatItems,
-    codeBlockContainerWidth,
     footerSpacerHeight,
     bottomInset,
     topPaddingPx = CHAT_PANEL_TRANSCRIPT_TOP_PADDING_PX,
@@ -85,7 +84,6 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
     virtualListRef,
     virtualListDataKey,
     getIsWpGeneWorking,
-    getIsExploring,
     renderGroupHeader: renderGroupHeaderProp,
     onAtBottomStateChange,
     onRangeChanged,
@@ -93,8 +91,6 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
     hideActiveGroupHeader = false,
     onEndReached,
     onRegenerate,
-    onSubmit,
-    onSkip,
     onEditUserMessage,
     virtualScrollerRef,
     staticScrollerRef,
@@ -382,23 +378,15 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
             isLastItemInGroup={rowMeta.isLastItemInGroup}
             isLastGroup={rowMeta.isLastGroup}
             isWpGeneWorking={getIsWpGeneWorking()}
-            isExploring={getIsExploring()}
-            codeBlockContainerWidth={codeBlockContainerWidth}
             onRegenerate={onRegenerate}
-            onSubmit={onSubmit}
-            onSkip={onSkip}
             onEditUserMessage={onEditUserMessage}
             newEventDividerLabel={newEventDividerLabel}
           />
         );
       },
       [
-        codeBlockContainerWidth,
         getIsWpGeneWorking,
-        getIsExploring,
         onRegenerate,
-        onSubmit,
-        onSkip,
         onEditUserMessage,
         newEventDividerLabel,
       ]
@@ -495,11 +483,7 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
                         isLastItemInGroup={rowMeta.isLastItemInGroup}
                         isLastGroup={rowMeta.isLastGroup}
                         isWpGeneWorking={false}
-                        isExploring={false}
-                        codeBlockContainerWidth={codeBlockContainerWidth}
                         onRegenerate={onRegenerate}
-                        onSubmit={onSubmit}
-                        onSkip={onSkip}
                         onEditUserMessage={onEditUserMessage}
                         newEventDividerLabel={newEventDividerLabel}
                       />

@@ -8,7 +8,6 @@
  * - Scroll state (atBottom)
  * - Visible range tracking
  * - Chat appearance settings
- * - Handler refs for stable callbacks
  */
 import { useAtomValue } from "jotai";
 import {
@@ -16,7 +15,6 @@ import {
   type MutableRefObject,
   type RefObject,
   type SetStateAction,
-  useEffect,
   useRef,
   useState,
 } from "react";
@@ -35,19 +33,6 @@ import {
 } from "@src/store/config/configAtom";
 
 import type { ChatHistoryListHandle } from "../components/ChatHistoryList";
-
-// ============================================
-// Helpers
-// ============================================
-
-/** Keep a ref in sync with a value — avoids repeating the useRef + useEffect pattern */
-function useSyncRef<T>(value: T): MutableRefObject<T> {
-  const ref = useRef(value);
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
-  return ref;
-}
 
 // ============================================
 // Props Interface
@@ -72,11 +57,6 @@ export interface UseChatHistoryStateReturn {
   chatContainerRef: RefObject<HTMLDivElement | null>;
   virtualListRef: RefObject<ChatHistoryListHandle | null>;
   isWpGeneWorkingRef: MutableRefObject<boolean>;
-  isExploringRef: MutableRefObject<boolean>;
-  handleReplyQuestionRef: MutableRefObject<
-    (params: { reply: string; chunk_id: string }) => void
-  >;
-  handleIgnoreQuestionRef: MutableRefObject<(eventId: string) => void>;
 
   // Scroll state
   atBottom: boolean;
@@ -90,7 +70,6 @@ export interface UseChatHistoryStateReturn {
   chatFontSize: number;
   chatCodeFontSize: number;
   chatLineHeight: number;
-  codeBlockContainerWidth?: number;
 
   // Session loading
   sessionLoadStatus: SessionLoadStatus;
@@ -140,28 +119,6 @@ export function useChatHistoryState({
   });
 
   // ============================================
-  // Computed Values
-  // ============================================
-
-  // PERFORMANCE OPTIMIZATION: Don't subscribe to chatWidthAtom
-  // Code blocks will use 100% width (their default behavior)
-  // The actual width is controlled by CSS - parent container handles sizing
-  // ChatCodeBlock already has fallback: `width: containerWidth || "100%"`
-  // ModernCodeViewer already has default: `width = "100%"`
-  const codeBlockContainerWidth = undefined;
-
-  // ============================================
-  // Refs for Stable Callbacks
-  // ============================================
-
-  // PERFORMANCE OPTIMIZATION: Store handler references in refs for stable callback identity
-  // This prevents renderChatItem from being recreated when these handlers change
-
-  const handleIgnoreQuestionRef = useSyncRef(platform.onIgnoreQuestion);
-  const isExploringRef = useSyncRef(platform.isExploring);
-  const handleReplyQuestionRef = useSyncRef(platform.onReplyQuestion);
-
-  // ============================================
   // Return
   // ============================================
 
@@ -175,9 +132,6 @@ export function useChatHistoryState({
     chatContainerRef,
     virtualListRef,
     isWpGeneWorkingRef: platform.isAgentWorkingRef,
-    isExploringRef,
-    handleReplyQuestionRef,
-    handleIgnoreQuestionRef,
 
     // Scroll state
     atBottom,
@@ -189,7 +143,6 @@ export function useChatHistoryState({
     chatFontSize,
     chatCodeFontSize,
     chatLineHeight,
-    codeBlockContainerWidth,
 
     // Session loading
     sessionLoadStatus: platform.loadStatus,

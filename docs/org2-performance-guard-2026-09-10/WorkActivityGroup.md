@@ -1,0 +1,20 @@
+# Work activity grouping performance guard
+
+| Area               | Verdict | Evidence                                                                                                                             | Change or reason kept                                                                                | Verification                                                                                                             |
+| ------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Background work    | keep    | No timers, network calls, workers, or listeners added; existing projection worker owns computation                                   | Option invalidates the existing projection path; group UI uses existing collapse subscriptions       | Existing worker lifecycle/runtime tests pass                                                                             |
+| Memory             | keep    | Linear temporary event-reference buffers and group-occurrence counts, owned by a single projection call; no new global history cache | Existing four-session worker cache bound remains unchanged; expanded page state unmounts on collapse | 2,000-action fixture remains one row; 45-action component fixture mounts 0 children collapsed and 20 per expanded page   |
+| Scope/isolation    | keep    | Grouping explicitly splits session/thread identities; preference stores only a boolean                                               | No account, endpoint, sync, or source ingestion changes                                              | Session/thread and worker parity tests pass                                                                              |
+| Rendering/hot path | keep    | Grouping occurs before virtualization; stable first-tool keys survive category transitions; duplicate keys are disambiguated         | Native tool renderers mount only on expansion; paging avoids eager mounting of a long run            | Renderer tests verify expansion, page navigation, recollapse, icon selection and consistent labels across status changes |
+
+Lifecycle matrix: visible/active updates follow existing projection invalidation; hidden/idle adds no periodic work; collapsed rows mount no tool content; unmount releases page state; network/account/transport/source-ingestion lifecycles are unchanged. Worker eviction, generation, disposal, and static import graph are covered by existing targeted suites. Runtime CPU/RSS in visible, hidden, and post-close app states was not measured.
+
+Commands run:
+
+- `pnpm test src/engines/ChatPanel/ChatItems/WorkActivityGroup src/engines/ChatPanel/ChatHistory/projection/__tests__ src/engines/ChatPanel/ChatHistory/hooks/__tests__/useChatGroupsProjection.test.ts src/engines/ChatPanel/ChatHistory/hooks/__tests__/chatSearchProjection.test.ts src/engines/ChatPanel/ChatHistory/chatItemPipeline/__tests__ src/engines/ChatPanel/components/SessionHeaderActionsMenu.test.ts src/engines/ChatPanel/blocks/primitives/EventBlockHeader.test.ts src/engines/ChatPanel/ChatItems/ActionSummaryGroup src/engines/ChatPanel/ChatItems/TerminalActivityGroup` — 358 tests passed
+- `pnpm test src/engines/ChatPanel/ChatHistory/projection/__tests__/compactToolActivity.test.ts` — rerun after adding duplicate-call identity coverage
+- `pnpm run typecheck:fast` — passed
+- `pnpm exec eslint` with the changed TypeScript/TSX files — passed
+- `git diff --check` — passed
+
+Performance verdict: blocked for real-app measurement. Automated correctness and bounded mounting checks pass; desktop visual/CPU/RSS verification was not run because the user has not opted into computer control. No measured responsiveness or memory improvement is claimed.

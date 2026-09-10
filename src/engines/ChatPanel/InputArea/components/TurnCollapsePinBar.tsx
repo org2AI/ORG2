@@ -2,7 +2,7 @@
  * TurnCollapsePinBar — "Agent worked for xxx" collapse control.
  *
  * Rendered inside the group header (`GroupHeaderRenderer`), positioned below
- * the user message for every completed turn that has body items. Clicking the chevron
+ * the user message for every completed turn that has body items. Clicking the row
  * toggles the collapse state in `turnCollapseOverrideAtom`; when
  * collapsed, `GroupItemRenderer` hides every non-final-assistant item
  * in the group so only the closing agent message remains visible —
@@ -173,15 +173,13 @@ const TurnCollapsePinBar: React.FC<TurnCollapsePinBarProps> = memo(
 
     return (
       <div className="mt-1 pb-2">
-        <div className="peer/turn-collapse group/turn-collapse group/chat-block-header chat-block-header flex h-8 w-full items-center gap-1 rounded-lg px-2 transition-colors hover:bg-fill-2">
+        <div className="peer/turn-collapse group/turn-collapse group/chat-block-header chat-block-header relative flex h-8 w-full items-center rounded-lg transition-colors hover:bg-fill-2">
           <button
             type="button"
             aria-expanded={expanded}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent px-0 text-left focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none"
+            className={`flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-left select-none focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none ${showReplayNavigate ? "pr-9" : ""}`}
             onClick={(event) => {
               event.stopPropagation();
-              const selection = window.getSelection();
-              if (selection && !selection.isCollapsed) return;
               void handleToggle();
             }}
           >
@@ -213,10 +211,13 @@ const TurnCollapsePinBar: React.FC<TurnCollapsePinBarProps> = memo(
             </span>
           </button>
           {showReplayNavigate ? (
-            <EventNavigateIcon
-              onClick={handleReplayNavigate}
-              ariaLabel={t("tools.replay.title")}
-            />
+            <div className="absolute right-2 flex h-5 w-5 items-center justify-center opacity-0 transition-opacity group-focus-within/turn-collapse:opacity-100 group-hover/turn-collapse:opacity-100">
+              <EventNavigateIcon
+                variant="footer"
+                onClick={handleReplayNavigate}
+                ariaLabel={t("tools.replay.title")}
+              />
+            </div>
           ) : null}
         </div>
         <div

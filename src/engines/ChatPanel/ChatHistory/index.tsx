@@ -218,8 +218,6 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
   const actions = useChatHistoryItemActions({
     displaySourceGroupIndices: projection.displaySourceGroupIndices,
     groupHeaders: projection.groupHeaders,
-    handleIgnoreQuestionRef: historyState.handleIgnoreQuestionRef,
-    handleReplyQuestionRef: historyState.handleReplyQuestionRef,
     onFailedUserIntentRetry,
     resolveFailedUserIntentDispatch,
   });

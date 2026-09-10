@@ -1,0 +1,22 @@
+# Work activity display grouping
+
+Acceptance criteria: an opt-in page preference combines adjacent tool activities; messages, thinking, interactive requests, session/thread boundaries remain separate; native tool details remain available; existing group icons are retained for one family and ActivitySparkIcon is used for mixed work; worker/main-thread behavior and stable row identities agree.
+
+| Layer                     | Coverage and outcome                                                                                                                                                                                                  |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 Compilation             | TypeScript fast typecheck and changed-file lint run; focused projection, renderer, menu, pipeline, search and header suites pass                                                                                      |
+| 2 Ownership/deduplication | Display pass runs after existing pipeline deduplication and thread selection, before turn grouping/virtualization; reuses the pipeline's stable tool identity helper and existing activityStackGroup event membership |
+| 3 Naming                  | collapseToolActivity is distinct from inline-diff display mode and turn collapse                                                                                                                                      |
+| 4 Semantic overloading    | Action count refers to retained tool events, not project tasks or unique file paths; subtitle uses existing category-count translations                                                                               |
+| 5 Defaults                | Preference defaults off; unknown tools retain inspectable native rendering and a generic action count; messages and interactive events are boundaries                                                                 |
+| 6 Boundaries              | No event ingestion, database, sync, or backend mutations; serializable grouping stays outside React; renderer imports remain outside worker graph                                                                     |
+| 7 Readability             | Pure grouping, summary classification, and rendering are separate owners                                                                                                                                              |
+| 8 Serialization           | Optional boolean on the existing bundled projection options; structured worker runtime test covers parity; no external protocol/schema changes                                                                        |
+| 9 Initialization parity   | Shared projectChatHistory implementation serves worker and fallback paths, with the common ChatHistory model consuming the persisted preference                                                                       |
+| 10 Resolver symmetry      | No multi-field fallback resolver changed; canonical tool identity uses the existing registry fallback                                                                                                                 |
+
+Rollback: turn off Collapse tool activity to restore existing category groups. The new local preference is a validated boolean at orgii:collapseToolActivity; no event-data migration or historical cleanup is needed. Inline diffs remain an independent preference.
+
+Verification includes message/thinking boundaries, failed tool retention, 2,000-action grouping, incremental row identity, duplicate call-ID row uniqueness, session/thread isolation, worker parity, existing search membership, keyboard expansion, and 20-row paging. Desktop pixel verification and runtime CPU/RSS profiling were not performed.
+
+Follow-up: group titles use the same base verb form (Explore, Run commands, Edit files, Perform N actions). Homogeneous terminal header text and icons are regression-tested against the existing renderer; browser header presentation is extracted into a shared UI-only helper. This touches naming/deduplication layers 2–7 without changing event projection, worker serialization, lifecycle resources, or field resolution. Pagination now owns a separate first menu section using shared dropdown tokens.

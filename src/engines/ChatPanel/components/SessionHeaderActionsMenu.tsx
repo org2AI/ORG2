@@ -28,6 +28,7 @@ import {
   DeliveryBox01Icon,
   FolderOutputIcon,
   HugeiconsIcon,
+  InputCursorTextIcon,
   Layers01Icon,
   Link01Icon,
   Link02Icon,
@@ -40,6 +41,7 @@ import {
 import { sessionByIdAtom, upsertSession } from "@src/store/session";
 import { pinnedActionsVisibleAtom } from "@src/store/session/pinnedActionsVisibleAtom";
 import { openSessionInNewWindowAtom } from "@src/store/session/sessionTabPlacementAtom";
+import { collapseToolActivityAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import { isAgentSession } from "@src/util/session/sessionDispatch";
 
@@ -128,6 +130,9 @@ export const SessionHeaderActionsMenu: React.FC<
   const currentSession = useAtomValue(sessionByIdAtom(currentSessionId ?? ""));
   const [pinnedActionsVisible, setPinnedActionsVisible] = useAtom(
     pinnedActionsVisibleAtom
+  );
+  const [collapseToolActivity, setCollapseToolActivity] = useAtom(
+    collapseToolActivityAtom
   );
   const showSkillsLabel = t("chat.startPage.showSkills");
 
@@ -490,7 +495,7 @@ export const SessionHeaderActionsMenu: React.FC<
               <>
                 <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
                 <ActionSubmenu
-                  label={t("common:actions.uiSettings")}
+                  label={t("chat.pageSettings")}
                   icon={
                     <HugeiconsIcon
                       icon={Layers01Icon}
@@ -500,48 +505,7 @@ export const SessionHeaderActionsMenu: React.FC<
                   }
                   dataTestId="session-ui-settings-submenu"
                 >
-                  <div
-                    className={`${DROPDOWN_CLASSES.item} w-full justify-between text-left`}
-                  >
-                    <span className="flex-1 truncate">{showSkillsLabel}</span>
-                    <Switch
-                      checked={pinnedActionsVisible}
-                      onCheckedChange={setPinnedActionsVisible}
-                      size="small"
-                      ariaLabel={showSkillsLabel}
-                      dataTestId="session-menu-show-skills-toggle"
-                    />
-                  </div>
-                  <div
-                    className={`${DROPDOWN_CLASSES.item} w-full justify-between text-left`}
-                  >
-                    <span className="flex-1 truncate">
-                      {t("chat.showTokenUsage")}
-                    </span>
-                    <Switch
-                      checked={tokenUsageVisible}
-                      onCheckedChange={handleTokenUsageVisibleToggle}
-                      size="small"
-                      ariaLabel={t("chat.showTokenUsage")}
-                    />
-                  </div>
-                  <div
-                    className={`${DROPDOWN_CLASSES.item} w-full justify-between text-left`}
-                  >
-                    <span className="flex-1 truncate">
-                      {t("chat.showTurnMetadata")}
-                    </span>
-                    <Switch
-                      checked={turnMetadataVisible}
-                      onCheckedChange={handleTurnMetadataVisibleToggle}
-                      size="small"
-                      ariaLabel={t("chat.showTurnMetadata")}
-                      dataTestId="session-menu-turn-metadata-toggle"
-                    />
-                  </div>
-                  <div
-                    className={`${DROPDOWN_CLASSES.item} w-full justify-between text-left`}
-                  >
+                  <div className={DROPDOWN_CLASSES.menuControlItem}>
                     <span className="flex-1 truncate">
                       {t("common:pagination.title")}
                     </span>
@@ -553,16 +517,77 @@ export const SessionHeaderActionsMenu: React.FC<
                     />
                   </div>
                   <div
-                    className={`${DROPDOWN_CLASSES.item} w-full justify-between text-left`}
-                  >
+                    role="separator"
+                    className={DROPDOWN_CLASSES.menuGroupSeparator}
+                  />
+                  <div className={DROPDOWN_CLASSES.menuControlItem}>
                     <span className="flex-1 truncate">
-                      {t("chat.compactDisplayMode")}
+                      {t("chat.showTokenUsage")}
                     </span>
                     <Switch
-                      checked={displayMode === "compact"}
-                      onCheckedChange={handleCompactDisplayModeToggle}
+                      checked={tokenUsageVisible}
+                      onCheckedChange={handleTokenUsageVisibleToggle}
                       size="small"
-                      ariaLabel={t("chat.compactDisplayMode")}
+                      ariaLabel={t("chat.showTokenUsage")}
+                    />
+                  </div>
+                  <div className={DROPDOWN_CLASSES.menuControlItem}>
+                    <span className="flex-1 truncate">
+                      {t("chat.showTurnMetadata")}
+                    </span>
+                    <Switch
+                      checked={turnMetadataVisible}
+                      onCheckedChange={handleTurnMetadataVisibleToggle}
+                      size="small"
+                      ariaLabel={t("chat.showTurnMetadata")}
+                      dataTestId="session-menu-turn-metadata-toggle"
+                    />
+                  </div>
+                  <div className={DROPDOWN_CLASSES.menuControlItem}>
+                    <span className="flex-1 truncate">
+                      {t("chat.showInlineDiffs")}
+                    </span>
+                    <Switch
+                      checked={displayMode === "full"}
+                      onCheckedChange={(checked) =>
+                        handleCompactDisplayModeToggle(!checked)
+                      }
+                      size="small"
+                      ariaLabel={t("chat.showInlineDiffs")}
+                    />
+                  </div>
+                  <div className={DROPDOWN_CLASSES.menuControlItem}>
+                    <span className="flex-1 truncate">
+                      {t("chat.collapseToolActivity")}
+                    </span>
+                    <Switch
+                      checked={collapseToolActivity}
+                      onCheckedChange={setCollapseToolActivity}
+                      size="small"
+                      ariaLabel={t("chat.collapseToolActivity")}
+                      dataTestId="session-menu-collapse-tool-activity-toggle"
+                    />
+                  </div>
+                </ActionSubmenu>
+                <ActionSubmenu
+                  label={t("chat.inputSettings")}
+                  icon={
+                    <HugeiconsIcon
+                      icon={InputCursorTextIcon}
+                      size={DROPDOWN_ITEM.iconSize}
+                      strokeWidth={1.75}
+                    />
+                  }
+                  dataTestId="session-input-settings-submenu"
+                >
+                  <div className={DROPDOWN_CLASSES.menuControlItem}>
+                    <span className="flex-1 truncate">{showSkillsLabel}</span>
+                    <Switch
+                      checked={pinnedActionsVisible}
+                      onCheckedChange={setPinnedActionsVisible}
+                      size="small"
+                      ariaLabel={showSkillsLabel}
+                      dataTestId="session-menu-show-skills-toggle"
                     />
                   </div>
                 </ActionSubmenu>

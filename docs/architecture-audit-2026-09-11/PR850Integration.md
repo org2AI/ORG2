@@ -32,3 +32,7 @@ Performance verdict: blocked for live authenticated measurements; source inspect
 ## Type-aware lint follow-up
 
 The separate typed-lint gate found thirteen unhandled promise sites introduced by the viewer and its shared adapters. Rejection handlers now report unexpected failures through the existing logger; expected errors retain their existing UI handling. Pagination keeps its nullable no-op result, and refresh preserves its synchronous-or-asynchronous contract. No new timer, retry, cache, or subscription is added, and the typed-lint baseline is unchanged. A lifecycle regression forces cache cleanup to reject during sign-out and verifies that authentication still clears without an unhandled rejection.
+
+## Subsequent develop integration
+
+Develop advanced through `1efdb932c` during CI. The single conflict in `useChatHistoryState` retains develop's removal of unused renderer props and callback refs, while preserving the injected platform's working ref and load status/error. Browser code therefore does not regain a desktop EventStore subscription. The affected browser/chat-history tests passed (70 files, 549 tests), and the final resolved hook passed ESLint and full frontend typechecking.

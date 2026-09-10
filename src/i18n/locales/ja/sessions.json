@@ -2172,7 +2172,13 @@
         "retryFailed": "最終レポートの再試行を開始できませんでした。"
       },
       "idleWithLatestOutcome": "{{phase}} · 最新エピソード: {{outcome}}",
-      "pendingInboxCount": "要対応 {{count}} 件"
+      "pendingInboxCount": "要対応 {{count}} 件",
+      "activeMembers": "アクティブなメンバー",
+      "inFlightTurns": "実行中のターン",
+      "openTasks": "未完了のタスク",
+      "blockingInbox": "ブロック中の受信メッセージ",
+      "blockersTitle": "完了を妨げている項目",
+      "unknownBlocker": "不明なシステムブロッカー"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}} への直接作業",
@@ -2427,7 +2433,12 @@
       "rejected": "要修正",
       "failed": "失敗",
       "deferred": "完了を延期 · クリーンアップ待ち"
-    }
+    },
+    "unassignedOwner": "未割り当て",
+    "currentRecordUnavailable": "現在の状態を取得できません",
+    "currentStatusLabel": "現在のステータス",
+    "currentOwnerLabel": "現在の担当者",
+    "replacementLabel": "代替タスク"
   },
   "manageAgentDef": {
     "action": {

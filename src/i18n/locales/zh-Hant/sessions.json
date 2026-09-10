@@ -2172,7 +2172,13 @@
         "retryFailed": "無法啟動最終報告重試。"
       },
       "idleWithLatestOutcome": "{{phase}} · 上一個工作輪次：{{outcome}}",
-      "pendingInboxCount": "{{count}} 則待處理"
+      "pendingInboxCount": "{{count}} 則待處理",
+      "activeMembers": "活躍成員",
+      "inFlightTurns": "進行中的回合",
+      "openTasks": "未完成任務",
+      "blockingInbox": "阻塞中的收件匣",
+      "blockersTitle": "仍在阻礙完成的項目",
+      "unknownBlocker": "未知系統阻塞項"
     },
     "agentOrgIntervention": {
       "directTitle": "直接交給 {{member}} 工作",
@@ -2427,7 +2433,12 @@
       "rejected": "需要修正",
       "failed": "失敗",
       "deferred": "暫緩完成 · 等待清理"
-    }
+    },
+    "unassignedOwner": "未指派",
+    "currentRecordUnavailable": "目前狀態無法使用",
+    "currentStatusLabel": "目前狀態",
+    "currentOwnerLabel": "目前負責人",
+    "replacementLabel": "替代任務"
   },
   "manageAgentDef": {
     "action": {

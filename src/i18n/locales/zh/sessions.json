@@ -2172,7 +2172,13 @@
         "archived": "已归档"
       },
       "idleWithLatestOutcome": "{{phase}} · 上一工作轮次：{{outcome}}",
-      "pendingInboxCount": "{{count}} 条待处理"
+      "pendingInboxCount": "{{count}} 条待处理",
+      "activeMembers": "活跃成员",
+      "inFlightTurns": "进行中的轮次",
+      "openTasks": "未完成任务",
+      "blockingInbox": "阻塞中的收件箱",
+      "blockersTitle": "仍在阻碍完成的事项",
+      "unknownBlocker": "未知系统阻塞项"
     },
     "agentOrgIntervention": {
       "directTitle": "直接交给 {{member}} 工作",
@@ -2426,7 +2432,12 @@
       "pending": "待处理",
       "in_progress": "进行中",
       "completed": "已完成"
-    }
+    },
+    "unassignedOwner": "未分配",
+    "currentRecordUnavailable": "当前状态不可用",
+    "currentStatusLabel": "当前状态",
+    "currentOwnerLabel": "当前负责人",
+    "replacementLabel": "替代任务"
   },
   "manageAgentDef": {
     "action": {

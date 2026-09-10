@@ -2172,7 +2172,13 @@
         "retryFailed": "최종 보고서 재시도를 시작하지 못했습니다."
       },
       "idleWithLatestOutcome": "{{phase}} · 최근 에피소드: {{outcome}}",
-      "pendingInboxCount": "처리 대기 {{count}}개"
+      "pendingInboxCount": "처리 대기 {{count}}개",
+      "activeMembers": "활성 구성원",
+      "inFlightTurns": "진행 중인 턴",
+      "openTasks": "열린 작업",
+      "blockingInbox": "차단 중인 받은 편지함",
+      "blockersTitle": "완료를 계속 차단하는 항목",
+      "unknownBlocker": "알 수 없는 시스템 차단 요소"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}}에게 직접 작업",
@@ -2427,7 +2433,12 @@
       "rejected": "수정 필요",
       "failed": "실패",
       "deferred": "완료 보류 · 정리 대기 중"
-    }
+    },
+    "unassignedOwner": "할당되지 않음",
+    "currentRecordUnavailable": "현재 상태를 사용할 수 없음",
+    "currentStatusLabel": "현재 상태",
+    "currentOwnerLabel": "현재 담당자",
+    "replacementLabel": "대체 작업"
   },
   "manageAgentDef": {
     "action": {

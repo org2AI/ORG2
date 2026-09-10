@@ -2191,7 +2191,13 @@
         "archived": "Archived"
       },
       "idleWithLatestOutcome": "{{phase}} · Latest episode: {{outcome}}",
-      "pendingInboxCount": "{{count}} pending"
+      "pendingInboxCount": "{{count}} pending",
+      "activeMembers": "Active members",
+      "inFlightTurns": "In-flight turns",
+      "openTasks": "Open tasks",
+      "blockingInbox": "Blocking inbox",
+      "blockersTitle": "What is still blocking completion",
+      "unknownBlocker": "Unknown system blocker"
     },
     "agentOrgIntervention": {
       "directTitle": "Direct work with {{member}}",
@@ -2426,7 +2432,12 @@
       "pending": "Pending",
       "in_progress": "In Progress",
       "completed": "Completed"
-    }
+    },
+    "unassignedOwner": "Unassigned",
+    "currentRecordUnavailable": "Current state unavailable",
+    "currentStatusLabel": "Current status",
+    "currentOwnerLabel": "Current owner",
+    "replacementLabel": "Replacement"
   },
   "manageAgentDef": {
     "action": {

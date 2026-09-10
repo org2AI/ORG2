@@ -2172,7 +2172,13 @@
         "retryFailed": "Không thể bắt đầu thử lại báo cáo cuối."
       },
       "idleWithLatestOutcome": "{{phase}} · Episode gần nhất: {{outcome}}",
-      "pendingInboxCount": "{{count}} chờ xử lý"
+      "pendingInboxCount": "{{count}} chờ xử lý",
+      "activeMembers": "Thành viên đang hoạt động",
+      "inFlightTurns": "Lượt đang chạy",
+      "openTasks": "Nhiệm vụ đang mở",
+      "blockingInbox": "Hộp thư đến đang chặn",
+      "blockersTitle": "Những gì vẫn đang cản trở hoàn tất",
+      "unknownBlocker": "Trở ngại hệ thống không xác định"
     },
     "agentOrgIntervention": {
       "directTitle": "Làm việc trực tiếp với {{member}}",
@@ -2427,7 +2433,12 @@
       "rejected": "Cần chỉnh sửa",
       "failed": "Thất bại",
       "deferred": "Đã tạm hoãn hoàn thành · đang chờ dọn dẹp"
-    }
+    },
+    "unassignedOwner": "Chưa được giao",
+    "currentRecordUnavailable": "Không có trạng thái hiện tại",
+    "currentStatusLabel": "Trạng thái hiện tại",
+    "currentOwnerLabel": "Người phụ trách hiện tại",
+    "replacementLabel": "Nhiệm vụ thay thế"
   },
   "manageAgentDef": {
     "action": {

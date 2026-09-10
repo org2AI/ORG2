@@ -2172,7 +2172,13 @@
         "retryFailed": "La nouvelle tentative du rapport final n’a pas pu démarrer."
       },
       "idleWithLatestOutcome": "{{phase}} · Dernier épisode : {{outcome}}",
-      "pendingInboxCount": "{{count}} en attente"
+      "pendingInboxCount": "{{count}} en attente",
+      "activeMembers": "Membres actifs",
+      "inFlightTurns": "Tours en cours",
+      "openTasks": "Tâches ouvertes",
+      "blockingInbox": "Boîte de réception bloquante",
+      "blockersTitle": "Ce qui bloque encore la finalisation",
+      "unknownBlocker": "Blocage système inconnu"
     },
     "agentOrgIntervention": {
       "directTitle": "Travail direct avec {{member}}",
@@ -2427,7 +2433,12 @@
       "rejected": "À corriger",
       "failed": "Échec",
       "deferred": "Finalisation reportée · en attente du nettoyage"
-    }
+    },
+    "unassignedOwner": "Non attribué",
+    "currentRecordUnavailable": "État actuel indisponible",
+    "currentStatusLabel": "État actuel",
+    "currentOwnerLabel": "Responsable actuel",
+    "replacementLabel": "Remplacement"
   },
   "manageAgentDef": {
     "action": {

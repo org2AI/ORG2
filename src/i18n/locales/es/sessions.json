@@ -2172,7 +2172,13 @@
         "retryFailed": "No se pudo iniciar el reintento del informe final."
       },
       "idleWithLatestOutcome": "{{phase}} · Último episodio: {{outcome}}",
-      "pendingInboxCount": "{{count}} pendientes"
+      "pendingInboxCount": "{{count}} pendientes",
+      "activeMembers": "Miembros activos",
+      "inFlightTurns": "Turnos en curso",
+      "openTasks": "Tareas abiertas",
+      "blockingInbox": "Bandeja de entrada bloqueante",
+      "blockersTitle": "Qué sigue impidiendo la finalización",
+      "unknownBlocker": "Bloqueo del sistema desconocido"
     },
     "agentOrgIntervention": {
       "directTitle": "Trabajo directo con {{member}}",
@@ -2427,7 +2433,12 @@
       "rejected": "Necesita corrección",
       "failed": "Fallida",
       "deferred": "Finalización pospuesta · esperando limpieza"
-    }
+    },
+    "unassignedOwner": "Sin asignar",
+    "currentRecordUnavailable": "Estado actual no disponible",
+    "currentStatusLabel": "Estado actual",
+    "currentOwnerLabel": "Responsable actual",
+    "replacementLabel": "Sustitución"
   },
   "manageAgentDef": {
     "action": {

@@ -2191,7 +2191,13 @@
         "retryFailed": "Nie udało się rozpocząć ponownej próby raportu."
       },
       "idleWithLatestOutcome": "{{phase}} · Ostatni epizod: {{outcome}}",
-      "pendingInboxCount": "{{count}} oczekujących"
+      "pendingInboxCount": "{{count}} oczekujących",
+      "activeMembers": "Aktywni członkowie",
+      "inFlightTurns": "Trwające tury",
+      "openTasks": "Otwarte zadania",
+      "blockingInbox": "Blokująca skrzynka odbiorcza",
+      "blockersTitle": "Co nadal blokuje ukończenie",
+      "unknownBlocker": "Nieznana blokada systemowa"
     },
     "agentOrgIntervention": {
       "directTitle": "Bezpośrednia praca z {{member}}",
@@ -2427,7 +2433,12 @@
       "rejected": "Wymaga poprawki",
       "failed": "Niepowodzenie",
       "deferred": "Ukończenie odroczone · oczekiwanie na porządkowanie"
-    }
+    },
+    "unassignedOwner": "Nieprzypisane",
+    "currentRecordUnavailable": "Bieżący stan niedostępny",
+    "currentStatusLabel": "Bieżący status",
+    "currentOwnerLabel": "Bieżący właściciel",
+    "replacementLabel": "Zastępstwo"
   },
   "manageAgentDef": {
     "action": {

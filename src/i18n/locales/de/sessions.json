@@ -2172,7 +2172,13 @@
         "retryFailed": "Der erneute Versuch konnte nicht gestartet werden."
       },
       "idleWithLatestOutcome": "{{phase}} · Letzte Episode: {{outcome}}",
-      "pendingInboxCount": "{{count}} ausstehend"
+      "pendingInboxCount": "{{count}} ausstehend",
+      "activeMembers": "Aktive Mitglieder",
+      "inFlightTurns": "Laufende Durchläufe",
+      "openTasks": "Offene Aufgaben",
+      "blockingInbox": "Blockierende Nachrichten",
+      "blockersTitle": "Was den Abschluss noch blockiert",
+      "unknownBlocker": "Unbekannte Systemblockade"
     },
     "agentOrgIntervention": {
       "directTitle": "Direkte Arbeit mit {{member}}",
@@ -2427,7 +2433,12 @@
       "rejected": "Korrektur nötig",
       "failed": "Fehlgeschlagen",
       "deferred": "Abschluss zurückgestellt · wartet auf Bereinigung"
-    }
+    },
+    "unassignedOwner": "Nicht zugewiesen",
+    "currentRecordUnavailable": "Aktueller Zustand nicht verfügbar",
+    "currentStatusLabel": "Aktueller Status",
+    "currentOwnerLabel": "Aktueller Verantwortlicher",
+    "replacementLabel": "Ersatz"
   },
   "manageAgentDef": {
     "action": {

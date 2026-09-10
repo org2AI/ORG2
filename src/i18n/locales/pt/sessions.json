@@ -2191,7 +2191,13 @@
         "retryFailed": "Não foi possível iniciar a nova tentativa do relatório final."
       },
       "idleWithLatestOutcome": "{{phase}} · Episódio mais recente: {{outcome}}",
-      "pendingInboxCount": "{{count}} pendentes"
+      "pendingInboxCount": "{{count}} pendentes",
+      "activeMembers": "Membros ativos",
+      "inFlightTurns": "Turnos em andamento",
+      "openTasks": "Tarefas abertas",
+      "blockingInbox": "Caixa de entrada bloqueante",
+      "blockersTitle": "O que ainda impede a conclusão",
+      "unknownBlocker": "Bloqueio de sistema desconhecido"
     },
     "agentOrgIntervention": {
       "directTitle": "Trabalho direto com {{member}}",
@@ -2427,7 +2433,12 @@
       "rejected": "Precisa de correção",
       "failed": "Falhou",
       "deferred": "Conclusão adiada · aguardando limpeza"
-    }
+    },
+    "unassignedOwner": "Não atribuído",
+    "currentRecordUnavailable": "Estado atual indisponível",
+    "currentStatusLabel": "Status atual",
+    "currentOwnerLabel": "Responsável atual",
+    "replacementLabel": "Substituição"
   },
   "manageAgentDef": {
     "action": {

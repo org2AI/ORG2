@@ -2172,7 +2172,13 @@
         "retryFailed": "Не удалось запустить повтор итогового отчёта."
       },
       "idleWithLatestOutcome": "{{phase}} · Последний эпизод: {{outcome}}",
-      "pendingInboxCount": "{{count}} требуют обработки"
+      "pendingInboxCount": "{{count}} требуют обработки",
+      "activeMembers": "Активные участники",
+      "inFlightTurns": "Выполняемые ходы",
+      "openTasks": "Открытые задачи",
+      "blockingInbox": "Блокирующие входящие сообщения",
+      "blockersTitle": "Что ещё мешает завершению",
+      "unknownBlocker": "Неизвестная системная блокировка"
     },
     "agentOrgIntervention": {
       "directTitle": "Прямая работа с {{member}}",
@@ -2427,7 +2433,12 @@
       "rejected": "Требует исправления",
       "failed": "Ошибка",
       "deferred": "Завершение отложено · ожидание очистки"
-    }
+    },
+    "unassignedOwner": "Не назначено",
+    "currentRecordUnavailable": "Текущее состояние недоступно",
+    "currentStatusLabel": "Текущий статус",
+    "currentOwnerLabel": "Текущий исполнитель",
+    "replacementLabel": "Замена"
   },
   "manageAgentDef": {
     "action": {

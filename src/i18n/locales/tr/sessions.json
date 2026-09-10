@@ -2172,7 +2172,13 @@
         "retryFailed": "Nihai rapor yeniden denemesi başlatılamadı."
       },
       "idleWithLatestOutcome": "{{phase}} · Son bölüm: {{outcome}}",
-      "pendingInboxCount": "{{count}} bekleyen"
+      "pendingInboxCount": "{{count}} bekleyen",
+      "activeMembers": "Aktif üyeler",
+      "inFlightTurns": "Devam eden turlar",
+      "openTasks": "Açık görevler",
+      "blockingInbox": "Engelleyen gelen kutusu",
+      "blockersTitle": "Tamamlanmayı hâlâ engelleyenler",
+      "unknownBlocker": "Bilinmeyen sistem engeli"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}} ile doğrudan çalışma",
@@ -2427,7 +2433,12 @@
       "rejected": "Düzeltme gerekiyor",
       "failed": "Başarısız",
       "deferred": "Tamamlama ertelendi · temizleme bekleniyor"
-    }
+    },
+    "unassignedOwner": "Atanmamış",
+    "currentRecordUnavailable": "Geçerli durum kullanılamıyor",
+    "currentStatusLabel": "Geçerli durum",
+    "currentOwnerLabel": "Geçerli sorumlu",
+    "replacementLabel": "Değiştirme"
   },
   "manageAgentDef": {
     "action": {

@@ -9,6 +9,7 @@ import type {
 import { AgentMessageClampProvider } from "@src/engines/ChatPanel/blocks/AgentMessageBlock";
 
 import ChatHistory from "./ChatHistory";
+import { AgentOrgTaskProjectionProvider } from "./ChatHistory/AgentOrgTaskProjectionContext";
 import type { ChatHistoryProps } from "./ChatHistory/ChatHistory.types";
 import AgentOrgGroupProjectionView from "./ChatHistory/GroupChatView/AgentOrgGroupProjectionView";
 import AgentOrgOverviewPanel from "./InputArea/components/AgentOrgOverviewPanel";
@@ -131,46 +132,48 @@ export function ChatViewHistorySurface({
   }
 
   return (
-    <AgentMessageClampProvider value={agentMessageClampEligible}>
-      <ChatHistory
-        surfaceBgClass={surfaceBgClass}
-        chatPanelPosition={position}
-        agentOrgCurrentMemberName={currentAgentOrgMember?.name ?? null}
-        agentOrgCurrentMemberId={currentAgentOrgMember?.memberId ?? null}
-        agentOrgMembers={agentOrgRunView?.members ?? []}
-        mutationActionsDisabled={isReadOnlySurface}
-        agentOrgOverviewPanel={
-          agentOrgRunView || agentOrgRunViewError ? (
-            <AgentOrgOverviewPanel
-              view={agentOrgRunView}
-              error={agentOrgRunViewError}
-              currentSessionId={
-                groupChatViewActive
-                  ? sessionId
-                  : (pipelineSessionId ?? sessionId)
-              }
-              onRefresh={refreshAgentOrgRunView}
-            />
-          ) : null
-        }
-        onAgentOrgMemberSelect={handleAgentOrgMemberSessionJump}
-        onAgentOrgRunViewRefresh={refreshAgentOrgRunView}
-        onScrollNavChange={handleScrollNavChange}
-        followAgentNav={followAgentNav}
-        browserAddToConversationNav={browserAddToConversationNav}
-        displayMode={displayMode}
-        turnPaginationEnabled={turnPaginationEnabled}
-        paginationTrailingSlot={paginationTrailingSlot}
-        pinnedHeaderPortalHost={pinnedHeaderHost}
-        chromeTopInset={chromeTopInset}
-        bottomInset={historyBottomInset}
-        groupChatViewAvailable={groupChatViewAvailable}
-        groupChatViewActive={groupChatViewActive}
-        onGroupChatViewToggle={handleGroupChatViewToggle}
-        onFailedUserIntentRetry={onFailedUserIntentRetry}
-        resolveFailedUserIntentDispatch={resolveFailedUserIntentDispatch}
-        planningIndicatorScope={planningIndicatorScope}
-      />
-    </AgentMessageClampProvider>
+    <AgentOrgTaskProjectionProvider view={agentOrgRunView}>
+      <AgentMessageClampProvider value={agentMessageClampEligible}>
+        <ChatHistory
+          surfaceBgClass={surfaceBgClass}
+          chatPanelPosition={position}
+          agentOrgCurrentMemberName={currentAgentOrgMember?.name ?? null}
+          agentOrgCurrentMemberId={currentAgentOrgMember?.memberId ?? null}
+          agentOrgMembers={agentOrgRunView?.members ?? []}
+          mutationActionsDisabled={isReadOnlySurface}
+          agentOrgOverviewPanel={
+            agentOrgRunView || agentOrgRunViewError ? (
+              <AgentOrgOverviewPanel
+                view={agentOrgRunView}
+                error={agentOrgRunViewError}
+                currentSessionId={
+                  groupChatViewActive
+                    ? sessionId
+                    : (pipelineSessionId ?? sessionId)
+                }
+                onRefresh={refreshAgentOrgRunView}
+              />
+            ) : null
+          }
+          onAgentOrgMemberSelect={handleAgentOrgMemberSessionJump}
+          onAgentOrgRunViewRefresh={refreshAgentOrgRunView}
+          onScrollNavChange={handleScrollNavChange}
+          followAgentNav={followAgentNav}
+          browserAddToConversationNav={browserAddToConversationNav}
+          displayMode={displayMode}
+          turnPaginationEnabled={turnPaginationEnabled}
+          paginationTrailingSlot={paginationTrailingSlot}
+          pinnedHeaderPortalHost={pinnedHeaderHost}
+          chromeTopInset={chromeTopInset}
+          bottomInset={historyBottomInset}
+          groupChatViewAvailable={groupChatViewAvailable}
+          groupChatViewActive={groupChatViewActive}
+          onGroupChatViewToggle={handleGroupChatViewToggle}
+          onFailedUserIntentRetry={onFailedUserIntentRetry}
+          resolveFailedUserIntentDispatch={resolveFailedUserIntentDispatch}
+          planningIndicatorScope={planningIndicatorScope}
+        />
+      </AgentMessageClampProvider>
+    </AgentOrgTaskProjectionProvider>
   );
 }

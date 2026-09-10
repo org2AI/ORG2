@@ -291,6 +291,7 @@ pub async fn agent_send_message(
         ide_context,
         isResume.unwrap_or(false),
         agentOrgDirectSourceEventId,
+        None,
         false,
         clientMessageId,
         turnIntentId,

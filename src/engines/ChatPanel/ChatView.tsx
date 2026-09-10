@@ -293,10 +293,16 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       queueSessionId,
       groupChatViewActive,
       groupChatViewAvailable,
-      groupChatMergedEvents,
-      groupChatAgents,
-      handleGroupChatTapEvents,
-      retryFailedGroupChatMessage,
+      groupProjectionItems,
+      groupProjectionHasMore,
+      groupProjectionLoading,
+      groupProjectionError,
+      groupProjectionActionError,
+      actionPendingTurns,
+      loadOlderGroupProjection,
+      retryGroupProjection,
+      handleStopGroupDelivery,
+      handleRetryGroupDelivery,
       groupChatMentionOptions,
       groupChatPendingMessage,
       handleGroupChatViewToggle,
@@ -312,7 +318,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       groupChatPausedBottomContent,
       shouldShowCurrentPlanSurface,
       agentOrgInterventionSlot,
-      groupChatHistoryAction,
     } = useChatViewAgentOrgSurface({
       sessionId,
       showCurrentPlanSurface,
@@ -530,9 +535,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
           rootRef={rootRef}
           dataSessionId={chatHistorySessionId}
           conversationSessionId={sessionId}
-          conversationOverrideEvents={
-            groupChatViewActive ? groupChatMergedEvents : undefined
-          }
+          conversationOverrideEvents={undefined}
         >
           {(activeRunnerSessionId) => {
             const runnerBindings = resolveConversationRunnerBindings(
@@ -559,12 +562,23 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                 />
                 <div className="min-h-0 max-w-full min-w-0 flex-1 overflow-hidden">
                   <ChatViewHistorySurface
-                    sessionId={runnerBindings.sourceSessionId}
+                    sessionId={
+                      groupChatViewActive
+                        ? sessionId
+                        : runnerBindings.sourceSessionId
+                    }
                     groupChatViewActive={groupChatViewActive}
-                    groupChatAgents={groupChatAgents}
+                    groupProjectionItems={groupProjectionItems}
+                    groupProjectionHasMore={groupProjectionHasMore}
+                    groupProjectionLoading={groupProjectionLoading}
+                    groupProjectionError={groupProjectionError}
+                    groupProjectionActionError={groupProjectionActionError}
+                    actionPendingTurns={actionPendingTurns}
                     pipelineSessionId={pipelineSessionId}
-                    handleGroupChatTapEvents={handleGroupChatTapEvents}
-                    retryFailedGroupChatMessage={retryFailedGroupChatMessage}
+                    loadOlderGroupProjection={loadOlderGroupProjection}
+                    retryGroupProjection={retryGroupProjection}
+                    handleStopGroupDelivery={handleStopGroupDelivery}
+                    handleRetryGroupDelivery={handleRetryGroupDelivery}
                     agentMessageClampEligible={agentMessageClampEligible}
                     surfaceBgClass={surfaceBgClass}
                     position={position}
@@ -580,7 +594,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                     browserAddToConversationNav={browserAddToConversationNav}
                     displayMode={displayMode}
                     turnPaginationEnabled={turnPaginationEnabled}
-                    paginationTrailingSlot={groupChatHistoryAction}
+                    paginationTrailingSlot={null}
                     pinnedHeaderHost={pinnedHeaderHost}
                     chromeTopInset={chromeTopInset}
                     historyBottomInset={historyBottomInset}

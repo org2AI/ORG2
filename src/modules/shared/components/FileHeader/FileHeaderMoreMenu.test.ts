@@ -4,6 +4,7 @@ import { act, createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { activeOverlayCountAtom } from "@src/store/ui/overlayLayerAtom";
 
 import {
@@ -123,6 +124,63 @@ afterEach(() => {
 });
 
 describe("FileHeaderMoreMenu", () => {
+  it("renders no divider when page display is the only section", () => {
+    render({
+      showSaveAction: false,
+      showDiscardAction: false,
+      showSearchAction: false,
+      showGoToLineAction: false,
+      showCopyRelativePathAction: false,
+      showRevealInFileManagerAction: false,
+      showReloadButton: false,
+    });
+    const menu = element("file-header-more-menu");
+    expect(menu.textContent).toContain("common:actions.uiSettings");
+    expect(
+      [...menu.children].filter(
+        (child) => child.className === DROPDOWN_CLASSES.menuGroupSeparator
+      )
+    ).toHaveLength(0);
+    expect(menu.children).toHaveLength(1);
+    render({ showSearchAction: true });
+    expect(
+      [...menu.children].filter(
+        (child) => child.className === DROPDOWN_CLASSES.menuGroupSeparator
+      )
+    ).toHaveLength(1);
+  });
+
+  it("does not surround an isolated save section or lone more-settings action with dividers", () => {
+    render({
+      showDiscardAction: false,
+      showSearchAction: false,
+      showGoToLineAction: false,
+      showCopyRelativePathAction: false,
+      showRevealInFileManagerAction: false,
+      showReloadButton: false,
+      showLineNumbersToggle: false,
+      showWordWrapToggle: false,
+      showMinimapToggle: false,
+      showHighlightActiveLineToggle: false,
+      showGitBlameToggle: false,
+      showMoreSettingsAction: false,
+    });
+    const menu = element("file-header-more-menu");
+    expect(menu.children).toHaveLength(1);
+    render({ showMoreSettingsAction: true });
+    expect(
+      [...menu.children].filter(
+        (child) => child.className === DROPDOWN_CLASSES.menuGroupSeparator
+      )
+    ).toHaveLength(1);
+    const panel = openSettings();
+    expect(
+      [...panel.children].filter(
+        (child) => child.className === DROPDOWN_CLASSES.menuGroupSeparator
+      )
+    ).toHaveLength(0);
+  });
+
   it("keeps file actions at the first level and moves display controls into UI settings", () => {
     render();
     const menu = element("file-header-more-menu");

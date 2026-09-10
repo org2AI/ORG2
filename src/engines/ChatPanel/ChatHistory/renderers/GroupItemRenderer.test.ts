@@ -54,11 +54,18 @@ describe("GroupItemRenderer terminal collapse updates", () => {
         isLastItemInGroup: false,
         isLastGroup: false,
         isWpGeneWorking: false,
-        isExploring: false,
-        onSubmit: vi.fn(),
-        onSkip: vi.fn(),
       };
       expect(compare(previous, { ...previous })).toBe(true);
+      // Active parent controls must still invalidate the memoized row.
+      expect(compare(previous, { ...previous, isWpGeneWorking: true })).toBe(
+        false
+      );
+      expect(compare(previous, { ...previous, onRegenerate: vi.fn() })).toBe(
+        false
+      );
+      expect(
+        compare(previous, { ...previous, onEditUserMessage: vi.fn() })
+      ).toBe(false);
       expect(
         compare(previous, {
           ...previous,

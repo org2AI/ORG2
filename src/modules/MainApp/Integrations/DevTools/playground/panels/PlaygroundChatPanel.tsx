@@ -56,7 +56,6 @@ const LazyInputArea = lazy(() => import("@src/engines/ChatPanel/InputArea"));
 
 const NOOP = () => {};
 const NOOP_MESSAGE_ACTION = (_messageId: string) => {};
-const NOOP_SUBMIT = (_eventId: string, _answers: Record<string, string>) => {};
 const MOCK_INTERVENTION: AgentOrgMemberIntervention = {
   interventionReceiptId: "playground-intervention",
   orgRunId: "playground-org-run",
@@ -275,10 +274,6 @@ export function PlaygroundChatPanel({
                   key={item.chunk_id || `playground-${index}`}
                   chatItem={item}
                   index={index}
-                  isWpGeneWorking={false}
-                  isExploring={false}
-                  onSubmit={NOOP_SUBMIT}
-                  onSkip={NOOP}
                   onEditUserMessage={handleEditUserMessage}
                 />
               ))}

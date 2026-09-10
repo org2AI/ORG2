@@ -2,15 +2,12 @@ import { useCallback, useEffect, useRef } from "react";
 
 import type { ChatHistoryProps } from "../ChatHistory.types";
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
-import type { UseChatHistoryStateReturn } from "./useChatHistoryState";
 import { useEditUserMessage } from "./useEditUserMessage";
 import { useRestoreCheckpoint } from "./useRestoreCheckpoint";
 
 interface UseChatHistoryItemActionsOptions {
   displaySourceGroupIndices: number[];
   groupHeaders: (OptimizedChatItem | null)[];
-  handleIgnoreQuestionRef: UseChatHistoryStateReturn["handleIgnoreQuestionRef"];
-  handleReplyQuestionRef: UseChatHistoryStateReturn["handleReplyQuestionRef"];
   onFailedUserIntentRetry?: ChatHistoryProps["onFailedUserIntentRetry"];
   resolveFailedUserIntentDispatch?: ChatHistoryProps["resolveFailedUserIntentDispatch"];
 }
@@ -19,8 +16,6 @@ interface UseChatHistoryItemActionsOptions {
 export function useChatHistoryItemActions({
   displaySourceGroupIndices,
   groupHeaders,
-  handleIgnoreQuestionRef,
-  handleReplyQuestionRef,
   onFailedUserIntentRetry,
   resolveFailedUserIntentDispatch,
 }: UseChatHistoryItemActionsOptions) {
@@ -77,26 +72,10 @@ export function useChatHistoryItemActions({
     void current.handleEditUserMessage(header, originalText, images);
   }, []);
 
-  const handleSubmitAnswers = useCallback(
-    (eventId: string, answers: Record<string, string>) => {
-      handleReplyQuestionRef.current({
-        reply: Object.values(answers).join("\n"),
-        chunk_id: eventId,
-      });
-    },
-    [handleReplyQuestionRef]
-  );
-  const handleIgnoreQuestion = useCallback(
-    (eventId: string) => handleIgnoreQuestionRef.current(eventId),
-    [handleIgnoreQuestionRef]
-  );
-
   return {
     handleEditUserMessage,
     handleHeaderRestoreCheckpoint,
-    handleIgnoreQuestion,
     handlePinnedEditSubmit,
     handleRegenerateGroup,
-    handleSubmitAnswers,
   };
 }

@@ -375,15 +375,15 @@
     font-size: var(--chat-block-title-size, 13px);
   }
 
-  // Chat block icon — sized to match block title text
+  // Chat activity icons share a fixed 16px slot independently of title text
   .chat-block-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     align-self: center;
-    width: var(--chat-block-title-size, 13px);
-    height: var(--chat-block-title-size, 13px);
+    width: 16px;
+    height: 16px;
 
     svg {
       width: 100%;

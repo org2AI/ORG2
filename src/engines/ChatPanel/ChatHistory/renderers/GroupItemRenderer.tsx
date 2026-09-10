@@ -205,11 +205,7 @@ function areGroupItemRendererPropsEqual(
     previous.isLastItemInGroup === next.isLastItemInGroup &&
     previous.isLastGroup === next.isLastGroup &&
     previous.isWpGeneWorking === next.isWpGeneWorking &&
-    previous.isExploring === next.isExploring &&
-    previous.codeBlockContainerWidth === next.codeBlockContainerWidth &&
     previous.onRegenerate === next.onRegenerate &&
-    previous.onSubmit === next.onSubmit &&
-    previous.onSkip === next.onSkip &&
     previous.onEditUserMessage === next.onEditUserMessage &&
     previous.newEventDividerLabel === next.newEventDividerLabel
   );
@@ -317,11 +313,7 @@ export interface GroupItemRendererProps {
   /** Whether this row belongs to the latest group. */
   isLastGroup: boolean;
   isWpGeneWorking: boolean;
-  isExploring: boolean;
-  codeBlockContainerWidth?: number;
   onRegenerate?: (groupIndex: number) => void;
-  onSubmit: (eventId: string, answers: Record<string, string>) => void;
-  onSkip: (eventId: string) => void;
   onEditUserMessage?: (
     item: OptimizedChatItem,
     newText: string,
@@ -364,11 +356,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
     isLastItemInGroup,
     isLastGroup,
     isWpGeneWorking,
-    isExploring,
-    codeBlockContainerWidth,
     onRegenerate,
-    onSubmit,
-    onSkip,
     onEditUserMessage,
     newEventDividerLabel = null,
   }) => {
@@ -497,12 +485,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
           <ChatItemRenderer
             chatItem={chatItem}
             index={flatIndex}
-            isWpGeneWorking={isWpGeneWorking}
-            isExploring={isExploring}
-            onSubmit={onSubmit}
-            onSkip={onSkip}
             onEditUserMessage={onEditUserMessage}
-            codeBlockContainerWidth={codeBlockContainerWidth}
             treatAsAgentActivity={treatAsAgentActivity}
           />
         )

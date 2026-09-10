@@ -24,6 +24,7 @@ export { HugeiconsIcon } from "@hugeicons/react";
 export type { IconSvgElement } from "@hugeicons/react";
 
 export { default as Activity01Icon } from "@hugeicons/core-free-icons/Activity01Icon";
+export { default as ActivitySparkIcon } from "@hugeicons/core-free-icons/ActivitySparkIcon";
 export { default as Add01Icon } from "@hugeicons/core-free-icons/Add01Icon";
 export { default as AiGenerativeIcon } from "@hugeicons/core-free-icons/AiGenerativeIcon";
 export { default as AiNetworkIcon } from "@hugeicons/core-free-icons/AiNetworkIcon";
@@ -250,6 +251,7 @@ export { default as ImportIcon } from "@hugeicons/core-free-icons/ImportIcon";
 export { default as InboxIcon } from "@hugeicons/core-free-icons/InboxIcon";
 export { default as Infinity01Icon } from "@hugeicons/core-free-icons/Infinity01Icon";
 export { default as InformationCircleIcon } from "@hugeicons/core-free-icons/InformationCircleIcon";
+export { default as InputCursorTextIcon } from "@hugeicons/core-free-icons/InputCursorTextIcon";
 export { default as InternetIcon } from "@hugeicons/core-free-icons/InternetIcon";
 export { default as KanbanIcon } from "@hugeicons/core-free-icons/KanbanIcon";
 export { default as Key01Icon } from "@hugeicons/core-free-icons/Key01Icon";

@@ -21,7 +21,7 @@ export interface EventBlockHeaderIconProps {
   isCollapsed?: boolean;
   /** Whether the header is currently hovered (default: false) */
   isHeaderHovered?: boolean;
-  /** Icon size (default: 14) */
+  /** Icon size (default: 16) */
   iconSize?: number;
   /** Additional className for wrapper */
   className?: string;
@@ -40,7 +40,7 @@ export const EventBlockHeaderIcon: React.FC<EventBlockHeaderIconProps> = ({
   icon,
   isCollapsed = false,
   isHeaderHovered = false,
-  iconSize = 14,
+  iconSize = 16,
   className = "",
   hasContent = true,
   isLoading = false,
@@ -59,7 +59,7 @@ export const EventBlockHeaderIcon: React.FC<EventBlockHeaderIconProps> = ({
   return (
     <div ref={iconRefCb} className={wrapperClass}>
       {showChevron ? (
-        <span className="transition-colors group-hover/chat-block-header:text-text-1">
+        <span className="inline-flex size-full items-center justify-center transition-colors group-hover/chat-block-header:text-text-1">
           {isCollapsed ? (
             <HugeiconsIcon
               icon={UnfoldMoreIcon}

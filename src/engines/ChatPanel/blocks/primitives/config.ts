@@ -293,7 +293,7 @@ export const EVENT_BLOCK_ELEVATED_BG = "bg-fill-3";
  * Uses CSS class for variable-based sizing
  */
 export const EVENT_BLOCK_ICON_WRAPPER_CLASSES =
-  "chat-block-icon inline-flex h-[14px] w-[14px] shrink-0 select-none items-center justify-center self-center text-text-2";
+  "chat-block-icon inline-flex size-4 [&_svg]:size-4 shrink-0 select-none items-center justify-center self-center text-text-2";
 
 // ============================================
 // Text Classes

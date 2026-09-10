@@ -10,6 +10,7 @@ import {
   estimateRuntimeValueBytes,
   registerChatRenderedTreeMemoryEntry,
 } from "@src/hooks/perf/runtimeMemoryStats";
+import { collapseToolActivityAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import { selectedExecutionThreadAtom } from "@src/store/ui/sessionPaginationAtom";
 import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 
@@ -80,6 +81,7 @@ export function useChatHistoryProjectionModel({
   } | null>(null);
   const turnCollapseOverrides = useAtomValue(turnCollapseOverrideAtom);
   const collapseAllCommand = useAtomValue(collapseAllCommandAtom);
+  const collapseToolActivity = useAtomValue(collapseToolActivityAtom);
   const selectedThreadId = useAtomValue(selectedExecutionThreadAtom);
   // Drives bar visibility ("complete") and the stale default-collapse;
   // see useTailTurnPhase for the rules and the anti-flicker latch.
@@ -130,10 +132,11 @@ export function useChatHistoryProjectionModel({
   const projectionOptions = useMemo(
     () => ({
       selectedThreadId,
+      collapseToolActivity,
       skipPolicy: "none" as const,
       groups: groupOptions,
     }),
-    [groupOptions, selectedThreadId]
+    [groupOptions, selectedThreadId, collapseToolActivity]
   );
   const projection = useChatProjection({
     sessionId: activeId,

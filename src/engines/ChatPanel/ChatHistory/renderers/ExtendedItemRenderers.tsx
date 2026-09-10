@@ -17,17 +17,13 @@ import { useStreamingDeltaForSession } from "@src/engines/SessionCore";
 import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { createLogger } from "@src/hooks/logger";
-import {
-  InternetIcon as Chrome,
-  FileSymlinkIcon as FileSymlink,
-  InternetIcon as Globe,
-  HugeiconsIcon,
-} from "@src/icons";
 
 import ActionSummaryGroup from "../../ChatItems/ActionSummaryGroup";
 import EditActivityGroup from "../../ChatItems/EditActivityGroup";
 import ReadFileGroup from "../../ChatItems/ReadFileGroup";
 import TerminalActivityGroup from "../../ChatItems/TerminalActivityGroup";
+import WorkActivityGroup from "../../ChatItems/WorkActivityGroup";
+import { getBrowserGroupPresentation } from "../../ChatItems/browserGroupPresentation";
 import ActivityChatItem from "../ActivityRouter";
 import type { OptimizedChatItem } from "../chatItemPipeline";
 import ChatItemWrap from "./ChatItemWrap";
@@ -154,82 +150,20 @@ export function renderActionSummaryGroup(
   );
 }
 
-function getStackGroupPresentation(events: SessionEvent[]): {
-  icon: React.ReactNode;
-  label: string;
-} {
-  // Prefer uiCanonical (pre-computed, alias-resolved) over the raw functionName
-  // so that matching is stable even when the Rust backend renames tool aliases.
-  const canonical = (ev: SessionEvent) => ev.uiCanonical || ev.functionName;
-
-  const hasBrowser = events.some(
-    (ev) =>
-      canonical(ev) === "browser" ||
-      (canonical(ev)?.startsWith("browser_") ?? false)
-  );
-  const hasSearch = events.some(
-    (ev) => canonical(ev) === "web_search" || canonical(ev) === "WebSearch"
-  );
-  const hasFetch = events.some(
-    (ev) => canonical(ev) === "web_fetch" || canonical(ev) === "WebFetch"
-  );
-
-  const iconCls = "text-text-2";
-  if (hasSearch && !hasBrowser && !hasFetch)
-    return {
-      icon: (
-        <HugeiconsIcon
-          icon={Globe}
-          data-icon="globe"
-          size={14}
-          className={iconCls}
-        />
-      ),
-      label: i18next.t("sessions:chat.webSearchGroup"),
-    };
-  if (hasFetch && !hasBrowser && !hasSearch)
-    return {
-      icon: (
-        <HugeiconsIcon
-          icon={FileSymlink}
-          data-icon="file-symlink"
-          size={14}
-          className={iconCls}
-        />
-      ),
-      label: i18next.t("sessions:chat.webFetchGroup"),
-    };
-  if (hasBrowser && !hasSearch && !hasFetch)
-    return {
-      icon: (
-        <HugeiconsIcon
-          icon={Chrome}
-          data-icon="chrome"
-          size={14}
-          className={iconCls}
-        />
-      ),
-      label: i18next.t("sessions:chat.browserGroup"),
-    };
-  return {
-    icon: (
-      <HugeiconsIcon
-        icon={Globe}
-        data-icon="globe"
-        size={14}
-        className={iconCls}
-      />
-    ),
-    label: i18next.t("sessions:chat.webActivityGroup"),
-  };
-}
-
 export function renderActivityStackGroup(
   chatItem: OptimizedChatItem,
   itemKey: string
 ): React.ReactElement | null {
   const stackGroup = chatItem.activityStackGroup;
   if (!stackGroup || stackGroup.events.length === 0) return null;
+
+  if (stackGroup.category === "work") {
+    return (
+      <ChatItemWrap key={itemKey}>
+        <WorkActivityGroup events={stackGroup.events} />
+      </ChatItemWrap>
+    );
+  }
 
   if (stackGroup.category === "terminal") {
     return (
@@ -257,7 +191,7 @@ export function renderActivityStackGroup(
   const countLabel = i18next.t("sessions:chat.actionCount", {
     count: actionCount,
   });
-  const { icon, label } = getStackGroupPresentation(stackGroup.events);
+  const { icon, label } = getBrowserGroupPresentation(stackGroup.events);
 
   return (
     <ChatItemWrap key={itemKey}>

@@ -42,6 +42,20 @@ export const EventBlockHeader: React.FC<EventBlockHeaderProps> = ({
   return (
     <div
       className={`group/chat-block-header ${getEventBlockHeaderClasses(isCollapsed, withHover, isClickable)} ${className}`}
+      role={rowAction ? "button" : undefined}
+      tabIndex={rowAction ? 0 : undefined}
+      aria-expanded={onToggleCollapse ? !isCollapsed : undefined}
+      onKeyDown={
+        rowAction
+          ? (event) => {
+              if (event.target !== event.currentTarget) return;
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                rowAction();
+              }
+            }
+          : undefined
+      }
       onClick={rowAction ? handleClick : undefined}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

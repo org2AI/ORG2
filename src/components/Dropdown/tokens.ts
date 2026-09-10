@@ -404,8 +404,10 @@ export const DROPDOWN_CLASSES = {
     "text-text-1",
   ].join(" "),
 
-  /** Inset rule between menu-item groups with a tight 2px local offset. */
+  /** Inset rule between populated groups; never draw at a menu edge. */
   menuGroupSeparator: [
+    "first:hidden",
+    "last:hidden",
     "mx-1.5",
     "my-0.5",
     "shrink-0",

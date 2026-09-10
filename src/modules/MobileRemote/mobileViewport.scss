@@ -38,8 +38,8 @@ html {
     justify-content: center;
     flex-shrink: 0;
     align-self: center;
-    width: var(--chat-block-title-size, #{$mobile-chat-font-size});
-    height: var(--chat-block-title-size, #{$mobile-chat-font-size});
+    width: 16px;
+    height: 16px;
 
     svg {
       width: 100%;

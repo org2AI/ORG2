@@ -35,7 +35,6 @@ export interface ChatHistoryListProps {
   groupCounts: number[];
   turnIds: (string | null)[];
   totalFlatItems: number;
-  codeBlockContainerWidth: number;
   footerSpacerHeight: number;
   bottomInset: number;
   /** Top padding keeping content clear of the floating chrome; see chatPanelHeaderLayout. */
@@ -64,7 +63,6 @@ export interface ChatHistoryListProps {
    * Stable getter returning whether the agent is in "exploring" mode.
    * Same rationale as `getIsWpGeneWorking`.
    */
-  getIsExploring: () => boolean;
   renderGroupHeader: (
     groupIndex: number,
     renderPart?: GroupHeaderRenderPart
@@ -80,8 +78,6 @@ export interface ChatHistoryListProps {
   hideActiveGroupHeader?: boolean;
   onEndReached: () => void;
   onRegenerate?: (groupIndex: number) => void;
-  onSubmit: (eventId: string, answers: Record<string, string>) => void;
-  onSkip: (eventId: string) => void;
   onEditUserMessage?: (
     header: OptimizedChatItem,
     text: string,

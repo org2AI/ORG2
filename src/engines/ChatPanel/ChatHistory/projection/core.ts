@@ -16,8 +16,10 @@ import {
   type UseChatGroupsReturn,
   projectChatGroups,
 } from "../hooks/useChatGroupsProjection";
+import { compactToolActivity } from "./compactToolActivity";
 
 export interface ChatHistoryProjectionOptions {
+  collapseToolActivity?: boolean;
   selectedThreadId?: string | null;
   skipPolicy?: ChatPipelineSkipPolicy;
   groups?: ChatGroupsProjectionOptions;
@@ -248,11 +250,14 @@ export function projectChatHistory(
     skipPolicy: options.skipPolicy ?? "none",
   }).items;
   const filtered = filterByThread(base, selectedThreadId);
-  const optimizedChatHistory = insertThreadSelectors(
+  const threadedHistory = insertThreadSelectors(
     filtered,
     collectExecutionRounds(events),
     selectedThreadId
   );
+  const optimizedChatHistory = options.collapseToolActivity
+    ? compactToolActivity(threadedHistory)
+    : threadedHistory;
   const groups = options.groups
     ? projectChatGroups(optimizedChatHistory, options.groups)
     : undefined;

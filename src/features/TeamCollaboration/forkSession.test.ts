@@ -195,6 +195,47 @@ beforeEach(() => {
 });
 
 describe("resolveForkWorkspacePath", () => {
+  it("prefers the known source checkout over another clone of the same repo", async () => {
+    store.set(sessionsAtom, [
+      { session_id: "other", repoPath: "/repo/other-clone" } as Session,
+      { session_id: "source", repoPath: "/repo/shared" } as Session,
+    ]);
+    existsMock.mockResolvedValue(true);
+    resolveCheckoutMock.mockImplementation(
+      async (_scopeKey, candidates) => candidates[0] ?? null
+    );
+
+    await expect(
+      resolveForkWorkspacePath(
+        makeRemote({ repoScopeKey: "github.com/example/repo" })
+      )
+    ).resolves.toBe("/repo/shared");
+    expect(resolveCheckoutMock).toHaveBeenCalledWith(
+      "github.com/example/repo",
+      ["/repo/shared", "/repo/other-clone"]
+    );
+  });
+
+  it("still verifies the preferred checkout's repository identity", async () => {
+    store.set(sessionsAtom, [
+      { session_id: "other", repoPath: "/repo/other-clone" } as Session,
+      { session_id: "source", repoPath: "/repo/shared" } as Session,
+    ]);
+    existsMock.mockResolvedValue(true);
+    // The source path exists here but belongs to a different repository.
+    resolveCheckoutMock.mockImplementation(
+      async (_scopeKey, candidates) =>
+        candidates.find((candidate) => candidate === "/repo/other-clone") ??
+        null
+    );
+
+    await expect(
+      resolveForkWorkspacePath(
+        makeRemote({ repoScopeKey: "github.com/example/repo" })
+      )
+    ).resolves.toBe("/repo/other-clone");
+  });
+
   it("ignores stale imported paths and probes only checkouts that exist locally", async () => {
     store.set(sessionsAtom, [
       { session_id: "stale", repoPath: "/Users/owner/ORG2" } as Session,

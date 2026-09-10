@@ -85,6 +85,20 @@ export async function resolveForkWorkspacePath(
     }
   }
 
+  // Several local clones can share the same remote. Prefer the source's
+  // checkout when it is already a known, existing local candidate, rather
+  // than letting repo-list order silently move a continuation to a sibling.
+  // It still goes through scope verification below; a foreign path is never
+  // introduced as a new candidate by this preference.
+  const sourcePath = normalizeRepoScopeKey(remoteSession.repoPath ?? "");
+  const sourceIndex = existingCandidates.findIndex(
+    (candidate) => normalizeRepoScopeKey(candidate) === sourcePath
+  );
+  if (sourceIndex > 0) {
+    const [sourceCandidate] = existingCandidates.splice(sourceIndex, 1);
+    existingCandidates.unshift(sourceCandidate);
+  }
+
   const byScopeKey = await resolveLocalCheckoutForScopeKey(
     remoteSession.repoScopeKey,
     existingCandidates

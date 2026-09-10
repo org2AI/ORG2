@@ -646,7 +646,7 @@ fn codex_initial_window_keeps_one_hundred_rounds_discoverable() {
 }
 
 #[test]
-fn codex_turn_catalog_incrementally_discovers_an_appended_round() {
+fn codex_turn_catalog_discovers_an_appended_round() {
     use std::io::Write;
 
     let temp_dir = std::env::temp_dir().join(format!(
@@ -2876,4 +2876,25 @@ fn rollout_without_originator_has_no_client_origin() {
     assert_eq!(cache_input.client_origin_raw, None);
 
     std::fs::remove_dir_all(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn codex_window_discards_old_catalog_after_larger_atomic_replacement() {
+    let dir = std::env::temp_dir().join(format!("orgii-codex-rotation-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("rollout.jsonl");
+    let transcript = |label: &str| (0..3).map(|i| format!("{}\n{}\n",
+        serde_json::json!({"type":"event_msg","timestamp":"2026-09-09T00:00:00Z","payload":{"type":"user_message","message":format!("{label}-question-{i}")}}),
+        serde_json::json!({"type":"event_msg","timestamp":"2026-09-09T00:00:01Z","payload":{"type":"agent_message","message":format!("{label}-answer-{i}")}})
+    )).collect::<String>();
+    std::fs::write(&path, transcript("old")).unwrap();
+    load_codex_app_initial_window_from_path("codexapp-rotation", &path, 1).unwrap();
+    let replacement = dir.join("replacement.jsonl");
+    std::fs::write(&replacement, transcript("replacement-is-longer")).unwrap();
+    std::fs::rename(replacement, &path).unwrap();
+    let window = load_codex_app_initial_window_from_path("codexapp-rotation", &path, 1).unwrap();
+    let encoded = serde_json::to_string(&window.chunks).unwrap();
+    assert!(!encoded.contains("old-question"), "rotated source must not keep stale catalog rows");
+    assert!(encoded.contains("replacement-is-longer-question-0"));
+    std::fs::remove_dir_all(dir).unwrap();
 }

@@ -191,7 +191,7 @@ const eventStore = {
     .output(schemas.sessionCore.ExtractedEventDataPairsSchema)
     .build(),
   exportMarkdown: defineProcedure("es_export_markdown")
-    .input(schemas.sessionCore.NullableSessionIdInput)
+    .input(schemas.sessionCore.ExportMarkdownInput)
     .output(z.string())
     .build(),
   loadFromCache: defineProcedure("es_load_from_cache")

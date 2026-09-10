@@ -36,47 +36,82 @@ pub async fn es_get_events(
         .unwrap_or_default())
 }
 
-/// Serialize session conversation history as Markdown.
-///
-/// Only user messages and assistant (agent) messages are included.
-/// Tool-call events are skipped — callers see a clean turn-by-turn
-/// transcript that mirrors what the user read in the chat panel.
+/// Serialize conversation messages. Managed CLI history is read from its
+/// authoritative source, never from the partial mounted Chat window.
+/// An output path avoids transferring the complete Markdown through the WebView;
+/// callers omitting it retain the original string-returning IPC contract.
 #[tauri::command]
 pub async fn es_export_markdown(
     state: State<'_, EventStoreState>,
     session_id: Option<String>,
+    output_path: Option<String>,
 ) -> Result<String, String> {
     let sid = state.resolve_session_id(session_id)?;
-    let events = state
-        .with_store_opt(&sid, |store| store.events().to_vec())
-        .unwrap_or_default();
+    let cached = if sid.starts_with("cliagent-") {
+        Vec::new()
+    } else {
+        state
+            .with_store_opt(&sid, |store| store.events().to_vec())
+            .unwrap_or_default()
+    };
+    tokio::task::spawn_blocking(move || export_markdown_output(&sid, cached, output_path))
+        .await
+        .map_err(|e| e.to_string())?
+}
 
-    let mut out = String::new();
+pub(crate) fn export_markdown_output(
+    sid: &str,
+    cached: Vec<SessionEvent>,
+    output_path: Option<String>,
+) -> Result<String, String> {
+    if let Some(path) = output_path {
+        let path = std::path::Path::new(&path);
+        let parent = path
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .ok_or_else(|| "Export requires an absolute destination path".to_string())?;
+        if !path.is_absolute() {
+            return Err("Export requires an absolute destination path".to_string());
+        }
+        let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(|e| e.to_string())?;
+        {
+            use std::io::Write;
+            let mut writer = std::io::BufWriter::new(temporary.as_file_mut());
+            export_session_markdown(sid, cached, &mut writer)?;
+            writer.flush().map_err(|e| e.to_string())?;
+        }
+        temporary.persist(path).map_err(|e| e.to_string())?;
+        Ok(String::new())
+    } else {
+        let mut bytes = Vec::new();
+        export_session_markdown(sid, cached, &mut bytes)?;
+        String::from_utf8(bytes).map_err(|e| e.to_string())
+    }
+}
 
+pub(crate) fn export_session_markdown(
+    session_id: &str,
+    cached: Vec<SessionEvent>,
+    writer: &mut impl std::io::Write,
+) -> Result<(), String> {
+    let events = if session_id.starts_with("cliagent-") {
+        crate::agent_sessions::cli::commands::load_full_cli_history(session_id)?
+    } else {
+        cached
+    };
     for event in &events {
         let text = event.display_text.trim();
         if text.is_empty() {
             continue;
         }
-        match event.source {
-            EventSource::User => {
-                out.push_str("**User**\n\n");
-                out.push_str(text);
-                out.push_str("\n\n---\n\n");
-            }
-            EventSource::Assistant => {
-                // Only emit genuine message events, not tool-call activities.
-                if event.ui_canonical == "agent_message" {
-                    out.push_str("**Assistant**\n\n");
-                    out.push_str(text);
-                    out.push_str("\n\n---\n\n");
-                }
-            }
-            EventSource::System => {}
-        }
+        let role = match event.source {
+            EventSource::User => "User",
+            EventSource::Assistant if event.ui_canonical == "agent_message" => "Assistant",
+            _ => continue,
+        };
+        write!(writer, "**{role}**\n\n{text}\n\n---\n\n").map_err(|e| e.to_string())?;
     }
-
-    Ok(out)
+    Ok(())
 }
 
 /// Activity-only ranking probe. Never creates an EventStore or a derived snapshot.

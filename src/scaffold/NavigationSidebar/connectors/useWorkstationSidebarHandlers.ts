@@ -1,5 +1,4 @@
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAtomValue, useSetAtom } from "jotai";
 import { type Dispatch, type SetStateAction, useCallback } from "react";
 
@@ -302,10 +301,10 @@ export function useWorkstationSidebarHandlers({
         });
         if (!filePath) return;
 
-        const markdown = await rpc.sessionCore.eventStore.exportMarkdown({
+        await rpc.sessionCore.eventStore.exportMarkdown({
           sessionId,
+          outputPath: filePath,
         });
-        await writeTextFile(filePath, markdown);
         Message.success(tCommon("sessions:chat.exportSuccess", "Exported!"));
       } catch (error) {
         log.error("[WorkstationSidebar] Export markdown failed:", error);

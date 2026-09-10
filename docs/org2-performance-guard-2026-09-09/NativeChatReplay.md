@@ -93,3 +93,51 @@ The frontend log independently records all 20 Reload pipelines. Latest user/assi
 - `pnpm run build` and `TAURI_CONFIG='{"identifier":"org2ai.org2.instance3","productName":"ORG2 Performance"}' CARGO_TARGET_DIR=<shared-target> cargo rustc --manifest-path src-tauri/Cargo.toml --bin org2 --profile dev-build --features tauri/custom-protocol -- -C strip=none` — actual isolated packages built and signed/verified before testing.
 
 The bulk measurement package preceded only the final optional-probe error fallback in TypeScript; that fallback has a targeted regression. Final package smoke verification is recorded in the PR. No claim of improved failed-probe performance is made from the normal-path measurements.
+
+## Additional canonical export and source-transition acceptance
+
+Further acceptance found two concrete defects after the original Chat-only verdict:
+
+- The Sidebar Markdown action actually exported the mounted EventStore, not canonical history. That could omit unloaded bodies or an entirely unopened session. The earlier broad statement that export already loaded full canonical history was inaccurate. Managed CLI exports now resolve full account-bound history in Rust. The production action supplies the selected `outputPath`, writes through a buffered temporary file and atomically replaces the destination only after success. The full Markdown no longer travels through the WebView. Existing callers omitting `outputPath` retain the string response; non-CLI source selection is unchanged.
+- Codex treated any larger file as append and merged its previous catalog. A larger atomic replacement reproduced stale old user rows. Changed revisions now rebuild the bounded reverse-scanned catalog; unchanged revisions retain the cache. This trades changed-file scan I/O for correctness and does not add a timer. In-place larger rewrites are handled by the same boundary.
+
+Both changes directly protect the native window hydration introduced by this PR. Provider JSONL remains authoritative; no real history or cloud rows were modified.
+
+### Additional automated evidence
+
+- The new Codex atomic-replacement regression failed before the fix and passed afterwards; `cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core sources::codex::` passed 83 tests, with 1 explicit fixture-dependent test ignored.
+- The managed provider regression exercises Codex and Claude raw compaction records after warm window/discovery reads, then truncation, larger in-place rewrite and larger atomic replacement. Full export must exclude compact summaries as user messages, contain the actual latest assistant body and not resurrect old users. Both providers passed through the production reader and real EventStore replacement.
+- Explicit ignored resource test `managed_native_full_export_large_history_acceptance` ran with 4096 turns of approximately 16 KiB assistant bodies per provider. File and string export modes retained every user/assistant pair, including history beyond the UI event cap, and oldest body tails. This test also exercises preview/full/old-turn reads and source transitions; its runtime is not a single export latency.
+- Direct execution under `/usr/bin/time -l` of the compiled debug test binary: passed in 40.44 seconds wall, 38.10 user / 1.98 system seconds, maximum RSS 1,661,550,592 bytes and peak process footprint 1,474,496,240 bytes. This is one test process with assertions/fixtures and retained comparison buffers, not the full GUI or a production build benchmark.
+
+### Actual Sidebar export read-back
+
+The rebuilt signed isolated package exported unopened large sessions through the real Sidebar menu and native Save panel. Claude produced 70,792,246 bytes with 4160 user and 4160 assistant turns; Codex produced 69,679,021 bytes with 4097 user and 4097 assistant turns. Each complete Markdown file matched the expected formatting of **every** source user/assistant text, in order, byte for byte. This verifies full bodies rather than only first/last markers. The initial old-package Save-panel attempts did not produce files and are not counted as successful exports; the rebuilt-package native actions succeeded.
+
+The new optional export destination is an IPC addition, not a persistence migration. Frontend/backend must ship together to avoid an older backend ignoring the destination. Rollback remains a paired bundle revert. Canonical event decoding still allocates the complete history in Rust; this removes the large output IPC copies but is not a streaming parser or a hard byte ceiling.
+
+Physical dual-machine verification remains unavailable without a second connected machine. Same-path faithful native compaction/rewrite fixtures do not certify a real vendor-generated continuation sibling with a new native UUID, nor remote cloud delivery or revocation. No such coverage is inferred from the local tests.
+
+### Rendered raw-transition matrix and changed-catalog cost
+
+The same rebuilt package stayed open while isolated raw files changed. Codex and Claude each passed native compaction append (latest new user/assistant), larger atomic replacement (new last turn 99, old rows absent), and truncation (only the two replacement turns). No Reload was used. Codex replacement export contained exactly 100 user/assistant pairs and its last full body; Claude compact export contained 66 pairs and no compact-summary user, and truncated export contained exactly two pairs with no rotated text. Same-process in-place larger rewrite is additionally covered at the managed reader/store boundary by the automated test.
+
+These are local faithful native-record fixtures, not real paid provider `/compact` runs or cloud lifecycle certification. Window focus/visibility return was used. CUA intermittently reported `noWindowsAvailable` or stale window observations; the app was reacquired by bundle identifier and actual latest content checked. Observation durations must not be interpreted as refresh latency. Exact hidden/focused timing was not instrumented again.
+
+| Actual new-package phase                        | Observation seconds | Mean CPU, one core = 100% | Sampled peak summed footprint | Final footprint |
+| ----------------------------------------------- | ------------------: | ------------------------: | ----------------------------: | --------------: |
+| Codex 67.2 MiB open, rebuilt catalog            |               61.29 |                     6.68% |                   1448.04 MiB |      786.76 MiB |
+| Same large file, two short raw records appended |              112.45 |                     3.30% |                   1973.65 MiB |     1046.38 MiB |
+
+The complete export observation phases sampled at most 1109.63 MiB across the four app processes. Sampling is once per second and can miss shorter spikes. Three Chat tabs had been opened by the later append phase; this is not a controlled A/B against the earlier single-view run. Rebuilding changed Codex catalogs intentionally reads more file bytes than the former append-only shortcut. The sample demonstrates no return to the previous 10–12 GiB replay amplification in this workload; it does not prove zero overhead for arbitrarily large files.
+
+| Area               | Verdict | Evidence                                                                | Change or reason kept                                                      | Verification                                                                |
+| ------------------ | ------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Background work    | keep    | Existing 30/60-second visible scheduler; export only on explicit action | No new timer; decode/write stays on blocking worker                        | Scheduler regressions plus actual focus-return source changes               |
+| Memory             | fix     | Full Markdown formerly required another WebView round trip              | Direct buffered file output; canonical Rust decoding remains O(history)    | Exact 70 MB file read-back, explicit 4096-turn test, four-process samples   |
+| Scope/isolation    | keep    | Existing account-bound native resolver and isolated data/provider roots | Export does not hydrate or replace Chat; no cloud writes or credential use | Both-provider producing-boundary tests; dedicated Instance 3 only           |
+| Rendering/hot path | fix     | Previous changed-file catalog retained stale offsets                    | Rebuild on revision change; unchanged catalog cache retained and bounded   | Failing-then-passing atomic replacement regression and actual Chat rotation |
+
+Additional source ownership review covered the authoritative reader, EventStore boundary, background execution and IPC payload. No UI layout, domain schema, account identity format or cloud transport changes were made. Frontend targeted suite now passes 249 tests; the latest backend session suite passes 851 with 5 explicitly ignored tests, including the resource test run separately. The destination-preservation assertion was added after the first timed large-test sample and passed its targeted rerun; production code was unchanged by that test-only addition.
+
+The final cooldown plus quit-interaction phase lasted 134.58 seconds, averaged 1.59% CPU, and ended at 1077.90 MiB summed footprint (sampled peak 1234.30 MiB) across three opened Chat tabs. Normal UI quit released all four attributed processes. The independent user instance stayed running. Only the isolated 1 MiB raw fixtures were restored from their local backups after exit; real provider history and cloud data were untouched.

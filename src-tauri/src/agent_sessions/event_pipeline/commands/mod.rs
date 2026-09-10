@@ -315,3 +315,6 @@ pub use search::*;
 
 // History commands
 pub use history::*;
+
+#[cfg(test)]
+pub(crate) use snapshot::{export_markdown_output, export_session_markdown};

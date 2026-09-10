@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ExportMarkdownInput,
   SessionEventArraySchema,
   SetEventsInput,
   ShellReplayBookmarkSchema,
@@ -11,6 +12,18 @@ import {
 } from "../schemas/sessionCore";
 
 describe("sessionCore RPC schemas", () => {
+  it("preserves the export destination and accepts legacy string exports", () => {
+    expect(
+      ExportMarkdownInput.parse({
+        sessionId: "cliagent-one",
+        outputPath: "/tmp/export.md",
+      })
+    ).toEqual({ sessionId: "cliagent-one", outputPath: "/tmp/export.md" });
+    expect(ExportMarkdownInput.parse({ sessionId: "cliagent-one" })).toEqual({
+      sessionId: "cliagent-one",
+    });
+    expect(() => ExportMarkdownInput.parse({ outputPath: "" })).toThrow();
+  });
   it("retains the conditional replacement version without requiring it for existing callers", () => {
     expect(
       SetEventsInput.parse({

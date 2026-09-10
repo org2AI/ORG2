@@ -117,6 +117,11 @@ fn read_history(session_id: &str, read: &CliHistoryRead) -> Result<Vec<SessionEv
     Ok(normalize_history(chunks, session_id))
 }
 
+/// Canonical replay for non-Chat consumers. Never reads the mounted window.
+pub(crate) fn load_full_cli_history(session_id: &str) -> Result<Vec<SessionEvent>, String> {
+    read_history(session_id, &CliHistoryRead::Full)
+}
+
 #[tauri::command]
 pub async fn cli_agent_history(
     session_id: String,
@@ -136,6 +141,17 @@ mod tests {
 
     #[test]
     fn managed_native_preview_is_bounded_and_old_bodies_remain_fetchable() {
+        check_managed_native_history(128);
+    }
+
+    #[test]
+    #[ignore = "explicit 64 MiB per-provider resource acceptance"]
+    fn managed_native_full_export_large_history_acceptance() {
+        check_managed_native_history(4096);
+    }
+
+    fn check_managed_native_history(turn_count: i64) {
+        let last_tail = format!("tail-{}", turn_count - 1);
         let sandbox = crate::test_utils::test_env::sandbox();
         let cwd = fs::canonicalize(sandbox.path()).unwrap();
         for provider in ["claude_code", "codex"] {
@@ -189,7 +205,7 @@ mod tests {
                 .unwrap();
             }
             let mut parent = None;
-            for index in 0..128 {
+            for index in 0..turn_count {
                 for (offset, role) in [(0, "user"), (1, "assistant")] {
                     let text = if role == "user" {
                         format!("question-{index}")
@@ -222,9 +238,51 @@ mod tests {
                 preview_json.len() < full_json.len() / 8,
                 "{provider}: preview must not ship every body"
             );
-            assert!(preview_json.contains("tail-127"));
+            assert!(preview_json.contains(&last_tail));
             assert!(!preview_json.contains("tail-0"));
             assert!(full_json.contains("tail-0"));
+            let export_path = cwd.join(format!("{provider}-export.md"));
+            let response = crate::agent_sessions::event_pipeline::commands::export_markdown_output(
+                &sid,
+                Vec::new(),
+                Some(export_path.to_string_lossy().into_owned()),
+            )
+            .unwrap();
+            assert!(
+                response.is_empty(),
+                "file export must not send the body through IPC"
+            );
+            assert!(fs::read_to_string(&export_path).unwrap().contains("tail-0"));
+            // An unreadable authoritative file must not replace a previous
+            // successful export with a partial/empty result.
+            let held = path.with_extension("held");
+            fs::rename(&path, &held).unwrap();
+            fs::create_dir(&path).unwrap();
+            let old_export = fs::read(&export_path).unwrap();
+            assert!(crate::agent_sessions::event_pipeline::commands::export_markdown_output(
+                &sid, Vec::new(), Some(export_path.to_string_lossy().into_owned()),
+            ).is_err());
+            assert_eq!(fs::read(&export_path).unwrap(), old_export);
+            fs::remove_dir(&path).unwrap();
+            fs::rename(held, &path).unwrap();
+            for cached in [preview.clone(), Vec::new()] {
+                let mut markdown = Vec::new();
+                crate::agent_sessions::event_pipeline::commands::export_session_markdown(
+                    &sid,
+                    cached,
+                    &mut markdown,
+                )
+                .unwrap();
+                let markdown = String::from_utf8(markdown).unwrap();
+                assert!(
+                    markdown.contains("tail-0"),
+                    "{provider}: export must include unloaded body"
+                );
+                assert!(markdown.contains(&last_tail));
+                assert_eq!(markdown.matches("**User**").count(), turn_count as usize);
+                assert_eq!(markdown.matches("**Assistant**").count(), turn_count as usize);
+            }
+
             let turn_id = preview
                 .iter()
                 .find_map(|event| {
@@ -298,6 +356,93 @@ mod tests {
                     .contains("tail-0"),
                 "{provider}: discovered fallback must remain lazy and fetchable"
             );
+            // Provider compaction is metadata, not a new human turn. Exercise
+            // it after the managed window and discovered-path caches are warm.
+            let transition = |label: &str, padding: usize| {
+                let mut rows = if provider == "codex" {
+                    vec![
+                        json!({"type":"compacted","timestamp":"2026-09-09T00:00:00Z",
+                        "payload":{"message":"provider compact summary", "replacement_history":[]}}),
+                    ]
+                } else {
+                    vec![
+                        json!({"type":"system","subtype":"compact_boundary","uuid":format!("{label}-boundary"),"timestamp":"2026-09-09T00:00:00Z"}),
+                        json!({"type":"user","isCompactSummary":true,"uuid":format!("{label}-summary"),"timestamp":"2026-09-09T00:00:00Z",
+                            "message":{"role":"user","content":"provider compact summary"}}),
+                    ]
+                };
+                for (i, role) in [(1, "user"), (2, "assistant")] {
+                    let text = format!("{label}-{role}{}", "x".repeat(padding));
+                    rows.push(if provider == "codex" {
+                        json!({"type":"event_msg","timestamp":format!("2026-09-09T00:00:0{i}Z"),
+                            "payload":{"type":if role == "user" {"user_message"} else {"agent_message"},"message":text}})
+                    } else {
+                        json!({"type":role,"uuid":format!("{label}-{role}"),"sessionId":native_id,"cwd":cwd,
+                            "timestamp":format!("2026-09-09T00:00:0{i}Z"),"message":{"role":role,"content":[{"type":"text","text":text}]}})
+                    });
+                }
+                rows.into_iter()
+                    .map(|row| format!("{row}\n"))
+                    .collect::<String>()
+            };
+            fs::OpenOptions::new()
+                .append(true)
+                .open(&moved)
+                .unwrap()
+                .write_all(transition("after-compact", 0).as_bytes())
+                .unwrap();
+            let appended = read_history(&sid, &CliHistoryRead::Preview).unwrap();
+            assert!(serde_json::to_string(&appended)
+                .unwrap()
+                .contains("after-compact-assistant"));
+            let full = read_history(&sid, &CliHistoryRead::Full).unwrap();
+            assert_eq!(
+                full.iter()
+                    .filter(|e| e.source == core_types::session_event::EventSource::User)
+                    .count(),
+                turn_count as usize + 1,
+                "{provider}: compact summary must not create a human round"
+            );
+            for (label, padding, atomic) in [
+                ("truncated", 0, false),
+                ("grown-rewrite", 2048, false),
+                ("rotated", 4096, true),
+            ] {
+                let replacement = transition(label, padding);
+                if atomic {
+                    let staging = moved.with_extension("replacement");
+                    fs::write(&staging, replacement).unwrap();
+                    fs::rename(staging, &moved).unwrap();
+                } else {
+                    fs::write(&moved, replacement).unwrap();
+                }
+                let refreshed = read_history(&sid, &CliHistoryRead::Preview).unwrap();
+                assert!(
+                    refreshed
+                        .iter()
+                        .filter(|e| e.source == core_types::session_event::EventSource::User)
+                        .all(|e| e.display_text.starts_with(label)),
+                    "{provider}: {label} resurrected an old user"
+                );
+                assert!(refreshed
+                    .iter()
+                    .any(|e| e.display_text.starts_with(&format!("{label}-assistant"))));
+                store.set(refreshed.clone());
+                assert!(!serde_json::to_string(store.events())
+                    .unwrap()
+                    .contains("question-0"));
+                let mut exported = Vec::new();
+                crate::agent_sessions::event_pipeline::commands::export_session_markdown(
+                    &sid,
+                    refreshed,
+                    &mut exported,
+                )
+                .unwrap();
+                let exported = String::from_utf8(exported).unwrap();
+                assert_eq!(exported.matches("**User**").count(), 1);
+                assert!(exported.contains(&format!("{label}-assistant")));
+                assert!(!exported.contains("question-0"));
+            }
         }
     }
 }

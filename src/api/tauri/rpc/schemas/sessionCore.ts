@@ -286,6 +286,10 @@ export const NullableSessionIdInput = z.object({
   sessionId: z.string().nullable(),
 });
 
+export const ExportMarkdownInput = NullableSessionIdInput.extend({
+  outputPath: z.string().min(1).optional(),
+});
+
 export const RemoveSyntheticUserInputsInput = z.object({
   sessionId: z.string().nullable(),
   matchingContents: z.array(z.string()).optional(),

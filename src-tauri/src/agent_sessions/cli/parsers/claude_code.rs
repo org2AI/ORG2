@@ -371,6 +371,9 @@ impl CliAgentParser for ClaudeCodeParser {
                             // has old_string/new_string/path even without the "running" chunk
                             chunk.args = normalized_args;
                             chunk.result = result;
+                            orgtrack_core::sources::claude_code::history::apply_claude_question_result(
+                                &mut chunk, tool_use_result, is_error,
+                            );
                             if let Some(obj) = chunk.result.as_object_mut() {
                                 obj.insert("call_id".to_string(), Value::String(tool_id));
                             }

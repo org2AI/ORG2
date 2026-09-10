@@ -118,6 +118,21 @@ describe("queued local conversation runner recovery", () => {
     );
   });
 
+  it("forwards the queued Plan selection into native continuation", async () => {
+    mocks.continueLocal.mockResolvedValueOnce(undefined);
+    await dispatchQueuedCanonicalConversation(
+      createStore(),
+      {
+        ...message(),
+        agentExecMode: "plan",
+      },
+      { onAccepted: vi.fn() }
+    );
+    expect(mocks.continueLocal).toHaveBeenLastCalledWith(
+      expect.objectContaining({ mode: "plan" })
+    );
+  });
+
   it("keeps recovery pending when a native child's durable runner receipt fails", async () => {
     mocks.order.length = 0;
     mocks.continueLocal.mockImplementation(async (params) => {

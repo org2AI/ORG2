@@ -327,7 +327,7 @@ export interface PermissionRequestEvent {
    * (OpenCode/Copilot/Kiro) parked `session/request_permission` — both
    * answered via `cli_agent_approval_response` instead.
    */
-  origin?: "cli_hook" | "acp";
+  origin?: "cli_hook" | "acp" | "native_cli";
 }
 
 export interface QuestionRequestEvent {

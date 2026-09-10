@@ -21,6 +21,10 @@ export function buildAnswerIds(
   customTexts: Map<number, string>
 ): string[][] {
   return questions.map((question, qIdx) => {
+    if (question.freeText)
+      return customTexts.get(qIdx)?.trim()
+        ? [customTexts.get(qIdx)!.trim()]
+        : [];
     if (question.options.length === 0) return ["acknowledged"];
     const selected = selections.get(qIdx);
     if (!selected || selected.size === 0) return [];
@@ -50,6 +54,7 @@ export function buildAnswerLabels(
   customTexts: Map<number, string>
 ): string[][] {
   return questions.map((question, qIdx) => {
+    if (question.freeText) return [customTexts.get(qIdx)?.trim() ?? ""];
     if (question.options.length === 0) return ["Acknowledged"];
     const selected = selections.get(qIdx);
     if (!selected || selected.size === 0) return [];
@@ -86,7 +91,8 @@ export function validateAnswers(
 ): { valid: boolean; hasEmptyCustom: boolean } {
   const unanswered = questions.some(
     (question, qIdx) =>
-      question.options.length > 0 && answers[qIdx].length === 0
+      (question.options.length > 0 || question.freeText) &&
+      answers[qIdx].length === 0
   );
   if (!unanswered) return { valid: true, hasEmptyCustom: false };
 

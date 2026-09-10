@@ -10,6 +10,7 @@
  */
 import { getSession as getAgentSession } from "@src/api/tauri/agent";
 import { rpc } from "@src/api/tauri/rpc";
+import type { AgentExecMode } from "@src/config/sessionCreatorConfig";
 import {
   type TurnTerminalStatus,
   toTurnTerminalStatus,
@@ -126,6 +127,8 @@ async function notifyConversationTurnAccepted(
 export const CONVERSATION_TURN_ID_ARG = "conversationTurnId";
 
 interface ContinueLocalConversationParams {
+  /** Selected execution policy; legacy/cloud callers retain Build by default. */
+  mode?: AgentExecMode;
   root: ConversationRootLocator;
   title: string;
   /** Canonical transcript immediately before this new user turn. */
@@ -1074,7 +1077,7 @@ async function dispatchConversationMessage(
       displayText: params.displayText,
       model: params.target.model,
       accountId: params.target.accountId,
-      mode: "build",
+      mode: params.mode ?? "build",
       clientMessageId: `conversation-turn:${params.turnIntentId}`,
       turnIntentId: params.turnIntentId,
       turnIntentSource: "user_submit",
@@ -1085,7 +1088,10 @@ async function dispatchConversationMessage(
 }
 
 async function createConversationExecution(
-  params: Pick<ContinueLocalConversationParams, "root" | "title" | "target">
+  params: Pick<
+    ContinueLocalConversationParams,
+    "root" | "title" | "target" | "mode"
+  >
 ): Promise<{ sessionId: string }> {
   return SessionService.create({
     task: "",
@@ -1097,7 +1103,7 @@ async function createConversationExecution(
     keySource: "own_key",
     agentDefinitionId: params.target.agentDefinitionId,
     parentSessionId: conversationExecutionParentId(params.root),
-    mode: "build",
+    mode: params.mode ?? "build",
   });
 }
 

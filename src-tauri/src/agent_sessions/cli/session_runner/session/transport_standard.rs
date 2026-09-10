@@ -61,6 +61,9 @@ pub(super) async fn run_standard_branch(
     let mut replay_unsafe_output_seen = false;
 
     // ── Standard agents: read stdout line by line through CliAgentParser ──
+    let mut interactions =
+        crate::agent_sessions::cli::interactions::InteractionRun::new(&session_id);
+    let mut stdin = child.stdin.take();
     let mut parser = create_parser(&agent, &session_id);
     let stdout = child.stdout.take().expect("stdout was piped");
     let mut reader = BufReader::new(stdout);
@@ -75,7 +78,6 @@ pub(super) async fn run_standard_branch(
     let read_result = tokio::time::timeout(session_timeout, async {
         use tokio::io::AsyncBufReadExt;
         loop {
-            line_buf.clear();
             let read_next_line = reader.read_until(b'\n', &mut line_buf);
             let read_next_line = if cli_plan_approval_gate_triggered {
                 match tokio::time::timeout(
@@ -96,16 +98,66 @@ pub(super) async fn run_standard_branch(
                     }
                 }
             } else {
-                read_next_line.await
+                tokio::select! {
+                    result = read_next_line => result,
+                    reply = interactions.receiver.recv(), if stdin.is_some() => {
+                        if let Some(reply) = reply {
+                            use tokio::io::AsyncWriteExt;
+                            let wire = crate::agent_sessions::cli::interactions_protocol::claude_response(&reply);
+                            let result = stdin.as_mut().expect("guarded stdin").write_all(format!("{wire}\n").as_bytes()).await.map_err(|e| e.to_string());
+                            crate::agent_sessions::cli::interactions::finalize_reply(&session_id, &reply, result.is_ok());
+                            let failed = result.is_err();
+                            let _ = reply.acknowledgement.send(result);
+                            if failed { break; }
+                        }
+                        continue;
+                    }
+                }
             };
             match read_next_line {
                 Ok(0) => break,
                 Ok(_) => {
                     let line = String::from_utf8_lossy(&line_buf).trim_end().to_string();
+                    line_buf.clear();
                     if line.is_empty() {
                         continue;
                     }
 
+                    if matches!(agent, ModelType::ClaudeCode) {
+                        if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
+                            if msg["type"] == "control_request" {
+                                if msg["request"]["tool_name"] == "ExitPlanMode" {
+                                    let content = msg["request"]["input"]["plan"].as_str().unwrap_or_default();
+                                    let plan_result = if content.trim().is_empty() { Err("Claude submitted an empty plan".to_string()) }
+                                        else { register_synthetic_cli_plan_approval(&session_id, content, "native-plan", *sequence).await };
+                                    match plan_result {
+                                        Ok(plan) => {
+                                            emit_chunk(&plan, &session_id, sequence, turn_intent_id).await;
+                                            cli_plan_registered_this_turn = true;
+                                            cli_plan_approval_gate_triggered = true;
+                                        }
+                                        Err(error) => { terminal_error_message = Some(error); }
+                                    }
+                                    use tokio::io::AsyncWriteExt;
+                                    let response = serde_json::json!({"type":"control_response","response":{"subtype":"success","request_id":msg["request_id"],"response":{"behavior":"deny","message":"The plan is awaiting review in ORG2. Stop this turn without implementing it. An approved plan will arrive in a subsequent user message."}}});
+                                    if let Some(stdin) = stdin.as_mut() { let _ = stdin.write_all(format!("{response}\n").as_bytes()).await; }
+                                    continue;
+                                }
+                                match crate::agent_sessions::cli::interactions_protocol::claude_request(&interactions, &session_id, &msg) {
+                                    Ok(Some(chunk)) => emit_chunk(&chunk, &session_id, sequence, turn_intent_id).await,
+                                    Ok(None) => {},
+                                    Err(error) => {
+                                        use tokio::io::AsyncWriteExt;
+                                        let response = serde_json::json!({"type":"control_response","response":{"subtype":"error","request_id":msg["request_id"],"error":error}});
+                                        if let Some(stdin) = stdin.as_mut() { let _ = stdin.write_all(format!("{response}\n").as_bytes()).await; }
+                                    }
+                                }
+                                continue;
+                            }
+                            // Stream input keeps stdin open. A result completes this run.
+                            if msg["type"] == "result" { stdin.take(); }
+                        }
+                    }
                     let chunks = parser.parse_line(&line);
                     // Bind the CLI's native conversation id as soon
                     // as the parser sees it (Claude emits it in the
@@ -137,6 +189,12 @@ pub(super) async fn run_standard_branch(
                         }
                     }
                     for chunk in chunks {
+                        // The control request owns the actionable question. The stdout
+                        // start is its transcript echo and has no response address yet.
+                        // Its completed tool result still merges by the native call id.
+                        if matches!(agent, ModelType::ClaudeCode) && chunk.function == "ask_user_questions" && chunk.result["status"] == "running" {
+                            continue;
+                        }
                         if cli_plan_approval_gate_triggered {
                             continue;
                         }
@@ -187,7 +245,7 @@ pub(super) async fn run_standard_branch(
                         // heuristic (keyword-sniffing normal replies into
                         // synthetic plan cards) produced false-positive
                         // cards and was removed.
-                        if cli_plan_active && !cli_plan_registered_this_turn {
+                        if !matches!(agent, ModelType::ClaudeCode) && cli_plan_active && !cli_plan_registered_this_turn {
                             if let Some(plan_text) = create_plan_content_from_chunk(&chunk)
                             {
                                 match register_synthetic_cli_plan_approval(
@@ -223,7 +281,7 @@ pub(super) async fn run_standard_branch(
                             plan_candidate_path_from_chunk(&chunk, Path::new(&snapshot_working_dir))
                         {
                             last_plan_candidate_path = Some(candidate_path);
-                            if cli_plan_active
+                            if !matches!(agent, ModelType::ClaudeCode) && cli_plan_active
                                 && !cli_plan_registered_this_turn
                             {
                                 match register_cli_plan_approval(

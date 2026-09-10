@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "需要麦克风权限"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "操作前审批",
+      "workspace": "工作区权限",
+      "edit": "允许编辑",
+      "full": "完全访问",
+      "nextTurn": "权限设置从下一轮开始生效"
+    },
     "planApprovedLabel": "执行已批准的计划",
     "planApprovedEditedLabel": "执行已批准的计划（已编辑）",
     "restoreCheckpoint": "恢复到此检查点",

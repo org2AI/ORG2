@@ -14,6 +14,8 @@
 pub mod agent_core_bridge;
 pub mod commands;
 pub mod hook_approvals;
+pub mod interactions;
+mod interactions_protocol;
 pub mod launch_profile_store;
 mod native_ir;
 pub mod native_materializer;
@@ -23,6 +25,7 @@ pub mod parsers;
 pub mod persistence;
 mod permission_lifecycle;
 pub mod platform_adapters;
+pub mod session_permissions;
 pub mod session_runner;
 pub mod skill_sync;
 pub mod tui_bridge;
@@ -68,6 +71,11 @@ pub fn init_cli_agent_tables(conn: &Connection) -> SqliteResult<()> {
             agent_definition_id TEXT,
             created_at     TEXT NOT NULL,
             updated_at     TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS code_session_permissions (
+            session_id TEXT PRIMARY KEY REFERENCES code_sessions(session_id) ON DELETE CASCADE,
+            mode TEXT NOT NULL CHECK(mode IN ('manual','auto_edit','full_permission'))
         );
 
         CREATE TABLE IF NOT EXISTS code_session_chunks (

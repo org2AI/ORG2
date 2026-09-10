@@ -120,7 +120,7 @@ fn build_claude_code_with_strict_mcp_config_preserves_resume() {
         .position(|part| part == "--resume")
         .expect("--resume flag");
     assert_eq!(cmd[resume_pos + 1], "claude-session-id");
-    assert_eq!(cmd.last().unwrap(), "task", "task stays the trailing arg");
+    assert_eq!(cmd.last().unwrap(), "-p", "user input is sent over stdin");
 }
 
 #[test]
@@ -145,9 +145,10 @@ fn build_claude_code_routes_context_to_system_prompt_and_keeps_user_text_literal
     );
 
     let prompt_index = cmd.iter().position(|part| part == "-p").expect("-p");
-    assert_eq!(cmd[prompt_index + 1], user_text);
-    assert!(!cmd[prompt_index + 1].contains("<orgii_"));
-    assert!(!cmd[prompt_index + 1].contains("<ide_context>"));
+    assert_eq!(prompt_index, cmd.len() - 1);
+    assert!(!cmd.contains(&user_text.to_string()));
+    assert!(cmd.windows(2).any(|args| args == ["--input-format", "stream-json"]));
+    assert!(cmd.windows(2).any(|args| args == ["--permission-prompt-tool", "stdio"]));
 
     let system_index = cmd
         .iter()
@@ -235,7 +236,7 @@ fn build_claude_code_basic() {
     assert!(cmd.contains(&"--verbose".to_string()));
     assert!(cmd.contains(&"--dangerously-skip-permissions".to_string()));
     assert!(cmd.contains(&"-p".to_string()));
-    assert_eq!(cmd.last().unwrap(), "implement feature");
+    assert_eq!(cmd.last().unwrap(), "-p");
 }
 
 #[test]

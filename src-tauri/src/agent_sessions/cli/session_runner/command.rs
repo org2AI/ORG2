@@ -130,6 +130,15 @@ pub(super) fn build_command_with_launch_profile(
             cmd.push("--output-format".into());
             cmd.push("stream-json".into());
             cmd.push("--verbose".into());
+            cmd.extend(
+                [
+                    "--input-format",
+                    "stream-json",
+                    "--permission-prompt-tool",
+                    "stdio",
+                ]
+                .map(String::from),
+            );
             if let Some(path) = mcp_config_path {
                 cmd.push("--mcp-config".into());
                 cmd.push(path.into());
@@ -165,7 +174,6 @@ pub(super) fn build_command_with_launch_profile(
                 cmd.push(provider_context);
             }
             cmd.push("-p".into());
-            cmd.push(turn.user_text().into());
             cmd
         }
         ModelType::Codex => {

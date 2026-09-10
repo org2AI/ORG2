@@ -127,7 +127,30 @@ pub(super) async fn run_codex_app_server_branch(
             if let Some(snap_id) = &pre_message_snapshot_id {
                 snapshot_cli_file_edit(&session_id, snap_id, &chunk, &snapshot_working_dir).await;
             }
-            emit_chunk(&chunk, &session_id, sequence, turn_intent_id).await;
+            if chunk.action_type == "native_plan" {
+                if let Some(content) = chunk
+                    .args
+                    .get("content")
+                    .and_then(serde_json::Value::as_str)
+                {
+                    match super::super::plan_approval::register_synthetic_cli_plan_approval(
+                        &session_id,
+                        content,
+                        &chunk.chunk_id,
+                        *sequence,
+                    )
+                    .await
+                    {
+                        Ok(plan) => emit_chunk(&plan, &session_id, sequence, turn_intent_id).await,
+                        Err(error) => {
+                            terminal_error_message = Some(error);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                emit_chunk(&chunk, &session_id, sequence, turn_intent_id).await;
+            }
         }
     })
     .await;

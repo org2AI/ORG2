@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Microphone access needed"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Ask for approval",
+      "workspace": "Workspace access",
+      "edit": "Allow edits",
+      "full": "Full access",
+      "nextTurn": "Permissions apply to the next turn"
+    },
     "planApprovedLabel": "Implementing approved plan",
     "planApprovedEditedLabel": "Implementing approved plan (edited)",
     "restoreCheckpoint": "Restore checkpoint",

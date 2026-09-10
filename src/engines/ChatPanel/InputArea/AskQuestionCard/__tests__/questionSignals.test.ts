@@ -34,6 +34,19 @@ function askEvent(
 }
 
 describe("extractQuestionSignals", () => {
+  it("routes native answers by live request identity, not the provider tool identity", () => {
+    const signals = extractQuestionSignals([
+      askEvent("tool-call-provider-1", {
+        callId: "provider-1",
+        result: {
+          call_id: "provider-1",
+          native_request_id: "native-interaction-request-1",
+        },
+      }),
+    ]);
+    expect(signals.batches[0].questionId).toBe("native-interaction-request-1");
+  });
+
   it("returns empty signals when there are no questions", () => {
     expect(extractQuestionSignals([])).toEqual({
       batches: [],

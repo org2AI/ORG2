@@ -595,6 +595,28 @@ pub(crate) async fn run_session_with_ide_context(
     // changes prompt assembly (images travel as native localImage inputs)
     // as well as argv and the stdout-processing branch below.
     let mut launch_profile = resolve_cli_launch_profile(&agent)?;
+    if matches!(agent, ModelType::Codex | ModelType::ClaudeCode) {
+        let sid = session_id.clone();
+        let selected = tokio::task::spawn_blocking(move || {
+            crate::agent_sessions::cli::session_permissions::load(&sid)
+        })
+        .await
+        .map_err(|e| e.to_string())??;
+        if let Some(selected) = selected {
+            crate::agent_sessions::cli::session_permissions::apply(
+                &mut launch_profile,
+                &agent,
+                selected,
+            )?;
+        }
+        if effective_mode_str == "plan" {
+            crate::agent_sessions::cli::session_permissions::apply(
+                &mut launch_profile,
+                &agent,
+                super::launch_profiles::CliPermissionMode::Plan,
+            )?;
+        }
+    }
     // Codex Desktop excludes exec-origin threads from its default catalog.
     // Create and resume all managed Codex turns through the native transport;
     // context recovery remains a separate per-episode capability.
@@ -791,15 +813,14 @@ pub(crate) async fn run_session_with_ide_context(
     // even before the CLI's native session id is known.
     env_vars.insert("ORGII_SESSION_ID".to_string(), session_id.clone());
 
-    // Record the launch permission mode so a PermissionRequest hook
-    // long-poll (`POST /hooks/agent-approval`) knows whether this session
-    // gets an interactive approval card (Manual) or falls through to the
-    // CLI's own launch flags (AutoEdit/FullPermission/Plan). Unregistered
-    // on every terminal transition below.
-    super::super::hook_approvals::register_session_permission_mode(
-        &session_id,
-        launch_profile.permission_mode,
-    );
+    // Claude's stdio control channel owns interactive approvals. Do not also
+    // park its provenance hook: that would create a second card and timeout.
+    if !matches!(agent, ModelType::ClaudeCode) {
+        super::super::hook_approvals::register_session_permission_mode(
+            &session_id,
+            launch_profile.permission_mode,
+        );
+    }
 
     if matches!(agent, ModelType::CursorCli) {
         env_vars.insert("CURSOR_CLI_COMPAT".to_string(), "1".to_string());
@@ -988,7 +1009,7 @@ pub(crate) async fn run_session_with_ide_context(
             .current_dir(working_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        if is_acp_agent || use_codex_app_server {
+        if is_acp_agent || use_codex_app_server || matches!(agent, ModelType::ClaudeCode) {
             spawn_cmd.stdin(Stdio::piped());
         } else {
             spawn_cmd.stdin(Stdio::null());
@@ -1106,6 +1127,17 @@ pub(crate) async fn run_session_with_ide_context(
             retryable_oauth_message = None;
             retryable_overload_message = None;
         } else {
+            if matches!(agent, ModelType::ClaudeCode) {
+                use tokio::io::AsyncWriteExt;
+                let message = serde_json::json!({"type":"user", "message":{"role":"user","content":turn.user_text()}});
+                child
+                    .stdin
+                    .as_mut()
+                    .ok_or("Claude stdin unavailable")?
+                    .write_all(format!("{message}\n").as_bytes())
+                    .await
+                    .map_err(|e| e.to_string())?;
+            }
             let outcome = transport_standard::run_standard_branch(
                 child,
                 session_id.clone(),

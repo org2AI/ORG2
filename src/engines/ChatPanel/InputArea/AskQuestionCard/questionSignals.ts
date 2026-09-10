@@ -63,6 +63,7 @@ function questionBatchEqual(
     const rightQuestion = right.questions[index];
     if (
       leftQuestion.text !== rightQuestion.text ||
+      leftQuestion.freeText !== rightQuestion.freeText ||
       leftQuestion.multiSelect !== rightQuestion.multiSelect ||
       leftQuestion.options.length !== rightQuestion.options.length
     ) {

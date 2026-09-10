@@ -2280,23 +2280,20 @@ describe("createCliEventHandler ingestion boundary", () => {
         toolName: "Write",
         toolArgs: { file_path: "test.txt" },
       });
+      expect(requests()).toHaveLength(1);
+      expect(requests()[0].origin).toBe("native_cli");
       handler.handleEvent({
         type: "native_interaction:resolved",
         session_id: "other",
         requestId: "native-interaction-1",
       });
+      expect(requests()).toHaveLength(1);
       handler.handleEvent({
         type: "native_interaction:resolved",
         session_id: SESSION_ID,
         requestId: "native-interaction-1",
       });
-      expect(dispatched).toHaveLength(2);
-      expect(dispatched[0].detail.origin).toBe("native_cli");
-      expect(dispatched[1].type).toBe("native-interaction-resolved");
-      expect(dispatched[1].detail).toEqual({
-        sessionId: SESSION_ID,
-        requestId: "native-interaction-1",
-      });
+      expect(requests()).toHaveLength(0);
     });
 
     it("defaults the tool name and args when the frame omits them", () => {

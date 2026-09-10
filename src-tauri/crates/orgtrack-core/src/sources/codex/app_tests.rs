@@ -3008,3 +3008,40 @@ fn codex_window_discards_old_catalog_after_larger_atomic_replacement() {
     assert!(encoded.contains("replacement-is-longer-question-0"));
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn codex_question_receipts_replay_with_ordered_answers() {
+    let path = std::env::temp_dir().join(format!(
+        "codex-question-{}.jsonl",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let questions = serde_json::json!({"questions":[{"id":"choice","question":"Alpha or Beta?","options":[{"label":"Alpha"},{"label":"Beta"}]}]});
+    let call = serde_json::json!({"timestamp":"2026-09-10T00:00:00Z","type":"response_item","payload":{"type":"function_call","name":"request_user_input","call_id":"question-call","arguments":questions.to_string()}});
+    for (output, answered) in [
+        (
+            serde_json::json!({"answers":{"choice":{"answers":["Beta"]}}}).to_string(),
+            true,
+        ),
+        (
+            "request_user_input is unavailable in Default mode".to_string(),
+            false,
+        ),
+    ] {
+        let receipt = serde_json::json!({"timestamp":"2026-09-10T00:00:01Z","type":"response_item","payload":{"type":"function_call_output","call_id":"question-call","output":output}});
+        std::fs::write(&path, format!("{call}\n{receipt}\n")).unwrap();
+        let chunks = load_codex_app_from_path("codexapp-question", &path).unwrap();
+        let question = chunks
+            .iter()
+            .find(|chunk| chunk.function == "ask_user_questions")
+            .unwrap();
+        assert_eq!(question.result["call_id"], "question-call");
+        assert_eq!(question.result["status"] == "answered", answered);
+        if answered {
+            assert_eq!(question.result["answers"], serde_json::json!([["Beta"]]));
+        }
+    }
+    std::fs::remove_file(path).unwrap();
+}

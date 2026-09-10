@@ -368,6 +368,39 @@ pub(super) fn codex_tool_call_chunk(
             );
         }
     }
+    if call.canonical_name == "ask_user_questions" && !failed {
+        if let Ok(receipt) = serde_json::from_str::<Value>(output) {
+            if let (Some(questions), Some(answers)) = (
+                call.args.get("questions").and_then(Value::as_array),
+                receipt.get("answers").and_then(Value::as_object),
+            ) {
+                let ordered: Vec<Vec<String>> = questions
+                    .iter()
+                    .map(|question| {
+                        question
+                            .get("id")
+                            .and_then(Value::as_str)
+                            .and_then(|id| answers.get(id))
+                            .and_then(|answer| answer.get("answers"))
+                            .and_then(Value::as_array)
+                            .map(|values| {
+                                values
+                                    .iter()
+                                    .filter_map(Value::as_str)
+                                    .map(str::to_string)
+                                    .collect()
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect();
+                if ordered.iter().any(|answer| !answer.is_empty()) {
+                    chunk.result["status"] = json!("answered");
+                    chunk.result["answers"] = json!(ordered);
+                }
+            }
+        }
+    }
+
     chunk
 }
 

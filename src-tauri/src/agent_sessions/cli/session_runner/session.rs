@@ -1014,6 +1014,10 @@ pub(crate) async fn run_session_with_ide_context(
         } else {
             spawn_cmd.stdin(Stdio::null());
         }
+        if matches!(agent, ModelType::ClaudeCode) {
+            // Stream-input setup/response errors must not orphan a CLI waiting on stdin.
+            spawn_cmd.kill_on_drop(true);
+        }
         #[cfg(unix)]
         {
             spawn_cmd.process_group(0);

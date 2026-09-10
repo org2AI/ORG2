@@ -90,7 +90,8 @@ fn native_window_chunks(
     Ok(Some(chunks))
 }
 
-fn normalize_history(chunks: Vec<ActivityChunk>, session_id: &str) -> Vec<SessionEvent> {
+fn normalize_history(mut chunks: Vec<ActivityChunk>, session_id: &str) -> Vec<SessionEvent> {
+    super::super::interactions::overlay_live_questions(session_id, &mut chunks);
     // Move fields instead of a serialize/parse round-trip through the WebView.
     // This mirrors rustBridge.toRawChunk, including its absent top-level call id.
     let raw: Vec<_> = chunks

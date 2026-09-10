@@ -9,7 +9,7 @@
  * Delegates all rendering to PermissionCardBody (shared with ApprovalPreview).
  */
 import { invoke } from "@tauri-apps/api/core";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -21,9 +21,10 @@ import Message from "@src/components/Message";
 import { createLogger } from "@src/hooks/logger";
 import {
   clearPendingPermissionRequest,
+  getPendingPermissionRequests,
   pendingPermissionRequestsAtom,
   permissionRequestsForSessionAtomFamily,
-  upsertPendingPermissionRequest,
+  reconcileNativePermissionSnapshot,
 } from "@src/store/session/permissionRequestAtom";
 
 import { PermissionCardBody } from "./PermissionCardBody";
@@ -63,12 +64,21 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
   );
   const setPermissionMap = useSetAtom(pendingPermissionRequestsAtom);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const store = useStore();
 
   const pending = queue.length > 0 ? queue[0] : null;
 
   useEffect(() => {
     setIsSubmitting(false);
     if (!sessionId) return;
+    const baselineIds = new Set(
+      getPendingPermissionRequests(
+        store.get(pendingPermissionRequestsAtom),
+        sessionId
+      )
+        .filter((request) => request.origin === "native_cli")
+        .map((request) => request.requestId)
+    );
     let disposed = false;
     const resolvedIds = new Set<string>();
     let snapshotPending = true;
@@ -96,16 +106,17 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
             row.origin === "native_cli" && !resolvedIds.has(row.requestId)
         );
         setPermissionMap((previous) =>
-          pendingRows.reduce(
-            (state, row) =>
-              upsertPendingPermissionRequest(state, {
-                requestId: row.requestId,
-                sessionId,
-                tool: row.toolName ?? "",
-                args: row.toolArgs ?? {},
-                origin: "native_cli",
-              }),
-            previous
+          reconcileNativePermissionSnapshot(
+            previous,
+            sessionId,
+            baselineIds,
+            pendingRows.map((row) => ({
+              requestId: row.requestId,
+              sessionId,
+              tool: row.toolName ?? "",
+              args: row.toolArgs ?? {},
+              origin: "native_cli" as const,
+            }))
           )
         );
       })
@@ -118,7 +129,7 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
       disposed = true;
       window.removeEventListener("native-interaction-resolved", resolved);
     };
-  }, [sessionId, setPermissionMap]);
+  }, [sessionId, setPermissionMap, store]);
 
   const respond = useCallback(
     async (response: "allow" | "deny" | "always_allow") => {

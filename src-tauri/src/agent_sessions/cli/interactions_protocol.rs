@@ -7,7 +7,7 @@ pub fn question_chunk(session: &str, id: &str, questions: &[Value]) -> ActivityC
     let mut chunk = ActivityChunk::new(session, "ask_user_questions", "ask_user_questions");
     chunk.chunk_id = id.into();
     chunk.args = json!({"questions": questions, "call_id": id});
-    chunk.result = json!({"status": "waiting_for_answer", "call_id": id, "native_request_id":id});
+    chunk.result = json!({"status": "pending", "call_id": id, "native_request_id":id});
     chunk
 }
 
@@ -44,10 +44,12 @@ pub fn codex_request(
         let mut chunk = question_chunk(session, &id, &questions);
         if let Some(item_id) = params["itemId"].as_str() {
             super::interactions::bind_tool_call(&id, item_id);
+            chunk.chunk_id = format!("tool-call-{item_id}");
             chunk.args["call_id"] = json!(item_id);
             chunk.result["call_id"] = json!(item_id);
         }
         chunk.result["blocking"] = params["isBlocking"].clone();
+        super::interactions::remember_question(&id, &chunk);
         return Ok(Some(chunk));
     }
     let tool = match method {
@@ -56,7 +58,24 @@ pub fn codex_request(
         "item/permissions/requestApproval" => "RequestPermissions",
         _ => method,
     };
-    publish_permission(session, &id, tool, params.clone());
+    // Present the operation being approved, not app-server routing identifiers
+    // or the optional policy-amendment protocol that this one-shot UI does not offer.
+    let fields: &[&str] = match method {
+        "item/commandExecution/requestApproval" => &["command", "cwd", "reason"],
+        "item/fileChange/requestApproval" => &["grantRoot", "reason"],
+        "item/permissions/requestApproval" => &["permissions", "cwd", "reason"],
+        _ => &[],
+    };
+    let args: serde_json::Map<String, Value> = fields
+        .iter()
+        .filter_map(|key| {
+            params
+                .get(*key)
+                .filter(|value| !value.is_null())
+                .map(|value| ((*key).to_string(), value.clone()))
+        })
+        .collect();
+    publish_permission(session, &id, tool, Value::Object(args));
     Ok(None)
 }
 
@@ -108,6 +127,7 @@ pub fn claude_request(
             chunk.args["call_id"] = json!(call_id);
             chunk.result["call_id"] = json!(call_id);
         }
+        super::interactions::remember_question(&id, &chunk);
         return Ok(Some(chunk));
     }
     publish_permission(session, &id, tool, request["input"].clone());
@@ -145,6 +165,55 @@ pub fn claude_response(reply: &Reply) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn live_question_overrides_only_its_native_call_and_expires_with_process() {
+        let session = uuid::Uuid::new_v4().to_string();
+        let run = InteractionRun::new(&session);
+        let chunk = codex_request(&run, &session, &json!({"id":77,"method":"item/tool/requestUserInput","params":{"itemId":"call-live","questions":[{"id":"q","question":"Pick","options":[{"label":"Beta"}]}]}})).unwrap().unwrap();
+        let mut native = ActivityChunk::new(&session, "tool_call", "request_user_input");
+        native.result =
+            json!({"call_id":"call-live","success":false,"status":"pending","interrupted":true});
+        let mut history = vec![native.clone()];
+        super::super::interactions::overlay_live_questions("another-session", &mut history);
+        assert_eq!(history[0].result["success"], false);
+        super::super::interactions::overlay_live_questions(&session, &mut history);
+        assert_eq!(history[0].chunk_id, chunk.chunk_id);
+        let raw = serde_json::from_value(serde_json::to_value(&history[0]).unwrap()).unwrap();
+        let event = crate::agent_sessions::event_pipeline::ingestion::normalizer::normalize_chunk(
+            &raw, &session,
+        );
+        assert_eq!(
+            event.display_status,
+            crate::agent_sessions::event_pipeline::types::EventDisplayStatus::Pending
+        );
+        let mut older_page = vec![ActivityChunk::new(&session, "assistant", "assistant")];
+        super::super::interactions::overlay_live_questions(&session, &mut older_page);
+        assert_eq!(older_page[0].function, "assistant");
+        drop(run);
+        let mut after_exit = vec![native];
+        super::super::interactions::overlay_live_questions(&session, &mut after_exit);
+        assert_eq!(after_exit[0].result["success"], false);
+    }
+
+    #[test]
+    fn native_question_is_pending_after_production_normalization() {
+        let chunk = question_chunk(
+            "native-session",
+            "native-interaction-test",
+            &[json!({"id":"choice","question":"Pick","options":[{"label":"Beta"}]})],
+        );
+        let raw = serde_json::from_value(serde_json::to_value(chunk).unwrap()).unwrap();
+        let event = crate::agent_sessions::event_pipeline::ingestion::normalizer::normalize_chunk(
+            &raw,
+            "native-session",
+        );
+        assert_eq!(
+            event.display_status,
+            crate::agent_sessions::event_pipeline::types::EventDisplayStatus::Pending
+        );
+        assert_eq!(event.function_name, "ask_user_questions");
+    }
 
     #[tokio::test]
     async fn native_interaction_claude_answers_preserve_input_and_request_id() {

@@ -47,6 +47,20 @@ describe("extractQuestionSignals", () => {
     expect(signals.batches[0].questionId).toBe("native-interaction-request-1");
   });
 
+  it("keeps native free-text input after history replaces the transient request id", () => {
+    const signals = extractQuestionSignals([
+      askEvent("provider-call", {
+        args: { questions: [{ id: "name", question: "What name?" }] },
+        result: {
+          call_id: "provider-call",
+          raw_tool_name: "request_user_input",
+        },
+        displayStatus: "pending",
+      }),
+    ]);
+    expect(signals.batches[0].questions[0].freeText).toBe(true);
+  });
+
   it("returns empty signals when there are no questions", () => {
     expect(extractQuestionSignals([])).toEqual({
       batches: [],

@@ -14,6 +14,7 @@ struct Pending {
     wire_id: Value,
     tool_call_id: String,
     questions: Option<Vec<Value>>,
+    question_chunk: Option<core_types::activity::ActivityChunk>,
     view: Option<Value>,
     sender: mpsc::Sender<Reply>,
 }
@@ -77,6 +78,7 @@ impl InteractionRun {
                 wire_id,
                 tool_call_id: id.clone(),
                 questions,
+                question_chunk: None,
                 view: None,
                 sender: self.sender.clone(),
             },
@@ -380,6 +382,44 @@ pub fn bind_tool_call(id: &str, tool_call_id: &str) {
     if let Ok(mut pending) = PENDING.lock() {
         if let Some(p) = pending.get_mut(id) {
             p.tool_call_id = tool_call_id.to_string();
+        }
+    }
+}
+
+/// A live control request is authoritative while a native file has an unfinished tool call.
+/// Replace matching calls only: never inject the active question into an older history page.
+pub fn overlay_live_questions(session: &str, chunks: &mut [core_types::activity::ActivityChunk]) {
+    let questions: HashMap<_, _> = match PENDING.lock() {
+        Ok(pending) => pending
+            .values()
+            .filter(|p| p.session == session)
+            .filter_map(|p| {
+                p.question_chunk
+                    .as_ref()
+                    .map(|chunk| (p.tool_call_id.clone(), chunk.clone()))
+            })
+            .collect(),
+        Err(_) => return,
+    };
+    if questions.is_empty() {
+        return;
+    }
+    for chunk in chunks {
+        if let Some(question) = chunk
+            .result
+            .get("call_id")
+            .and_then(Value::as_str)
+            .and_then(|id| questions.get(id))
+        {
+            *chunk = question.clone();
+        }
+    }
+}
+
+pub fn remember_question(id: &str, chunk: &core_types::activity::ActivityChunk) {
+    if let Ok(mut pending) = PENDING.lock() {
+        if let Some(request) = pending.get_mut(id) {
+            request.question_chunk = Some(chunk.clone());
         }
     }
 }

@@ -107,7 +107,9 @@ export function extractQuestionBatch(
         options,
         multiSelect,
         freeText:
-          questionId.startsWith("native-interaction-") && options.length === 0,
+          (questionId.startsWith("native-interaction-") ||
+            result?.raw_tool_name === "request_user_input") &&
+          options.length === 0,
       };
     });
 

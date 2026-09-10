@@ -90,3 +90,29 @@ export function clearSessionPermissionRequests(
   next.delete(sessionId);
   return next;
 }
+
+/** Reconcile a native registry snapshot without deleting requests received after it began. */
+export function reconcileNativePermissionSnapshot(
+  state: PendingPermissionRequestMap,
+  sessionId: string,
+  baselineIds: ReadonlySet<string>,
+  liveRequests: readonly PermissionRequestEvent[]
+): PendingPermissionRequestMap {
+  const live = liveRequests.filter(
+    (request) =>
+      request.sessionId === sessionId && request.origin === "native_cli"
+  );
+  const liveIds = new Set(live.map((request) => request.requestId));
+  let next = state;
+  for (const id of baselineIds) {
+    if (
+      !liveIds.has(id) &&
+      next.get(sessionId)?.get(id)?.origin === "native_cli"
+    ) {
+      next = clearPendingPermissionRequest(next, sessionId, id);
+    }
+  }
+  for (const request of live)
+    next = upsertPendingPermissionRequest(next, request);
+  return next;
+}

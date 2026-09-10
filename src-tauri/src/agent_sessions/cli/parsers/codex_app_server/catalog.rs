@@ -410,7 +410,11 @@ pub(crate) fn register_thread(
     cwd: &Path,
     title: &str,
     items: &[Value],
+    project_root: &Path,
 ) -> Result<CodexCatalogEntry, String> {
+    // Converted histories start a new provider thread here, then resume it in
+    // the runner. Assign membership at creation, exactly like fresh runs.
+    let project_id = ensure_project(codex_home, project_root)?;
     with_rpc(codex_home, cwd, |runtime, client| {
         let model_provider = effective_model_provider(runtime, client, cwd)?;
         let result = request(
@@ -420,6 +424,7 @@ pub(crate) fn register_thread(
             json!({
                 "cwd": cwd,
                 "modelProvider": model_provider,
+                "projectId": project_id,
                 "ephemeral": false,
                 "historyMode": "legacy",
                 "experimentalRawEvents": false
@@ -538,6 +543,50 @@ pub(crate) fn archive_thread(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore = "requires installed Codex app-server; isolated storage, no model requests"]
+    fn converted_thread_preserves_repository_project_across_resume() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let home = root.join("codex-home");
+        let project = root.join("repository");
+        let worktree = root.join("execution-worktree");
+        for path in [&home, &project, &worktree] {
+            std::fs::create_dir(path).unwrap();
+        }
+        let project_id = ensure_project(&home, &project).unwrap();
+        let items = vec![
+            json!({"type":"message", "role":"user", "content":[{"type":"input_text","text":"conversion project fixture"}]}),
+        ];
+        let entry =
+            register_thread(&home, &worktree, "Converted fixture", &items, &project).unwrap();
+        for _ in 0..2 {
+            synchronize_thread(
+                &home,
+                &entry.path,
+                &entry.id,
+                &worktree,
+                "Converted fixture",
+                &[],
+            )
+            .unwrap();
+            // No model turn is sent by this isolated test. The app-server has
+            // not set has_user_event yet, so its default sidebar query hides
+            // the pending thread. Check the authoritative membership instead.
+            let db = rusqlite::Connection::open(home.join("state_5.sqlite")).unwrap();
+            let (saved_project, saved_cwd): (Option<String>, String) = db
+                .query_row(
+                    "SELECT project_id, cwd FROM threads WHERE id=?1",
+                    [&entry.id],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .unwrap();
+            assert_eq!(saved_project.as_deref(), Some(project_id.as_str()));
+            assert_eq!(Path::new(&saved_cwd), worktree);
+            assert_eq!(ensure_project(&home, &project).unwrap(), project_id);
+        }
+    }
 
     #[test]
     fn parses_supported_thread_catalog_shape() {

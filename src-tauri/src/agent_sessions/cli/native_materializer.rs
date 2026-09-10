@@ -2148,6 +2148,12 @@ fn materialize_cli(
                 &cwd,
                 &title,
                 &codex_response_items(items),
+                session
+                    .repo_path
+                    .as_deref()
+                    .filter(|path| !path.trim().is_empty())
+                    .map(Path::new)
+                    .unwrap_or(&cwd),
             )?;
             let staged = persistence::stage_cli_session_id_for_account(
                 session_id,

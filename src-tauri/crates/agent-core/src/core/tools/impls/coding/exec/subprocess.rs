@@ -105,6 +105,9 @@ pub async fn execute_via_command(
     shell_replays_root: &Path,
     app_handle: Option<AppHandle>,
     cancel_flag: Option<&AtomicBool>,
+    task_effect_fence_release: Option<
+        crate::coordination::agent_org_task_execution_fence::TaskExecutionEffectFenceRelease,
+    >,
 ) -> Result<String, ToolError> {
     if identity.cancellation_requested() {
         return Err(ToolError::ExecutionFailed(
@@ -183,7 +186,16 @@ pub async fn execute_via_command(
             identity.clone(),
             app_handle,
             worktree_lock,
+            task_effect_fence_release,
         );
+    }
+
+    // A blocking process remains owned by this exact Turn and its latched
+    // cancellation token. Once that control identity is established, the
+    // handoff may commit and cancel the Turn without waiting for the command
+    // itself to finish.
+    if let Some(release) = task_effect_fence_release.as_ref() {
+        release.release();
     }
 
     let wait_started_at = Instant::now();
@@ -359,6 +371,7 @@ pub async fn execute_via_command(
                 identity.clone(),
                 app_handle,
                 worktree_lock,
+                None,
             );
         }
         tokio::time::sleep(Duration::from_millis(50)).await;

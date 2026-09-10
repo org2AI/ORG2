@@ -428,7 +428,8 @@
             "taskOperationRunning": "{{subject}} выполняет операцию с задачей",
             "taskOperationRejected": "Операция с задачей от {{subject}} требует исправления",
             "taskOperationFailed": "Операция с задачей от {{subject}} не выполнена",
-            "turnLoading": "Сообщение от {{subject}} загружается…"
+            "turnLoading": "Сообщение от {{subject}} загружается…",
+            "taskOperationDeferred": "{{subject}} отложил завершение задачи до окончания очистки"
           }
         },
         "divider": {
@@ -2074,6 +2075,9 @@
       "handoffFailed": "Не удалось безопасно обновить задачу",
       "handoffNeedsDecision": "Передача задачи требует решения",
       "handoffStopping": "Остановка предыдущего выполнения",
+      "handoffApplyingDecision": "Применяется: {{decision}}",
+      "handoffDecisionFailed": "Для принятого решения требуется повторная очистка",
+      "retryHandoffDecision": "Повторить решение",
       "handoffEvidence": "Предыдущий исполнитель: {{owner}} · {{state}} · локальные записи: {{count}}",
       "continueReplacement": "Продолжить замену",
       "keepStopped": "Оставить остановленным",
@@ -2098,7 +2102,7 @@
         "failed": "Ошибка"
       },
       "title": "Обзор Команды Agent",
-      "summary": "{{active}} активны · {{unread}} непрочитано",
+      "summary": "{{active}} активны · {{pending}} требуют обработки",
       "loadFailed": "Не удалось загрузить обзор команды",
       "tasks": "Задачи",
       "doneOf": "{{done}} / {{total}} выполнено",
@@ -2106,7 +2110,6 @@
       "directActivity": "Прямая работа участников",
       "activeOf": "{{active}} / {{total}} активны",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} непрочитано",
       "pauseRun": "Приостановить выполнение",
       "resumeRun": "Возобновить выполнение",
       "archiveRun": "Архивировать команду",
@@ -2167,7 +2170,9 @@
         "evidencePreserved": "Доказательства завершения и результаты задач сохранены.",
         "retry": "Повторить итоговый отчёт",
         "retryFailed": "Не удалось запустить повтор итогового отчёта."
-      }
+      },
+      "idleWithLatestOutcome": "{{phase}} · Последний эпизод: {{outcome}}",
+      "pendingInboxCount": "{{count}} требуют обработки"
     },
     "agentOrgIntervention": {
       "directTitle": "Прямая работа с {{member}}",
@@ -2306,7 +2311,8 @@
       "createFailed": "{{sender}} не удалось создать задачу",
       "updateRunning": "{{sender}} обновляет задачу",
       "updateRejected": "Обновление задачи от {{sender}} требует исправления",
-      "updateFailed": "{{sender}} не удалось обновить задачу"
+      "updateFailed": "{{sender}} не удалось обновить задачу",
+      "updateDeferred": "{{sender}} отложил завершение задачи до окончания очистки"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator прочитал сообщения, отправленные другими agents"
@@ -2349,7 +2355,8 @@
       "title": "Задача обновлена",
       "runningTitle": "Обновление задачи",
       "rejectedTitle": "Обновление задачи требует исправления",
-      "failedTitle": "Не удалось обновить задачу"
+      "failedTitle": "Не удалось обновить задачу",
+      "deferredTitle": "Завершение задачи отложено до окончания очистки"
     },
     "get": {
       "title": "Просмотр деталей задачи"
@@ -2372,7 +2379,8 @@
     "outcome": {
       "pending": "В работе",
       "rejected": "Требует исправления",
-      "failed": "Ошибка"
+      "failed": "Ошибка",
+      "deferred": "Завершение отложено · ожидание очистки"
     }
   },
   "manageAgentDef": {

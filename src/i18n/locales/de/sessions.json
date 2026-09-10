@@ -428,7 +428,8 @@
             "taskOperationRunning": "{{subject}} führt eine Aufgabenoperation aus",
             "taskOperationRejected": "Aufgabenoperation von {{subject}} muss korrigiert werden",
             "taskOperationFailed": "Aufgabenoperation von {{subject}} ist fehlgeschlagen",
-            "turnLoading": "Nachricht von {{subject}} wird geladen…"
+            "turnLoading": "Nachricht von {{subject}} wird geladen…",
+            "taskOperationDeferred": "{{subject}} hat den Aufgabenabschluss bis zur Bereinigung zurückgestellt"
           }
         },
         "divider": {
@@ -2074,6 +2075,9 @@
       "handoffFailed": "Diese Aufgabe konnte nicht sicher aktualisiert werden",
       "handoffNeedsDecision": "Die Aufgabenübergabe benötigt eine Entscheidung",
       "handoffStopping": "Vorherige Ausführung wird beendet",
+      "handoffApplyingDecision": "{{decision}} wird angewendet",
+      "handoffDecisionFailed": "Die angenommene Entscheidung benötigt einen weiteren Bereinigungsversuch",
+      "retryHandoffDecision": "Entscheidung erneut versuchen",
       "handoffEvidence": "Vorherige Person: {{owner}} · {{state}} · lokale Schreiber: {{count}}",
       "continueReplacement": "Ersatz fortsetzen",
       "keepStopped": "Gestoppt lassen",
@@ -2098,7 +2102,7 @@
         "failed": "Fehlgeschlagen"
       },
       "title": "Agent-Team-Übersicht",
-      "summary": "{{active}} aktiv · {{unread}} ungelesen",
+      "summary": "{{active}} aktiv · {{pending}} ausstehend",
       "loadFailed": "Team-Übersicht konnte nicht geladen werden",
       "tasks": "Aufgaben",
       "doneOf": "{{done}} / {{total}} erledigt",
@@ -2106,7 +2110,6 @@
       "directActivity": "Direkte Mitgliederaktivität",
       "activeOf": "{{active}} / {{total}} aktiv",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} ungelesen",
       "pauseRun": "Ausführung pausieren",
       "resumeRun": "Ausführung fortsetzen",
       "archiveRun": "Team archivieren",
@@ -2167,7 +2170,9 @@
         "evidencePreserved": "Abschlussnachweise und Aufgabenergebnisse bleiben erhalten.",
         "retry": "Abschlussbericht erneut versuchen",
         "retryFailed": "Der erneute Versuch konnte nicht gestartet werden."
-      }
+      },
+      "idleWithLatestOutcome": "{{phase}} · Letzte Episode: {{outcome}}",
+      "pendingInboxCount": "{{count}} ausstehend"
     },
     "agentOrgIntervention": {
       "directTitle": "Direkte Arbeit mit {{member}}",
@@ -2306,7 +2311,8 @@
       "createFailed": "{{sender}} konnte die Aufgabe nicht erstellen",
       "updateRunning": "{{sender}} aktualisiert eine Aufgabe",
       "updateRejected": "Aufgabenaktualisierung von {{sender}} muss korrigiert werden",
-      "updateFailed": "{{sender}} konnte die Aufgabe nicht aktualisieren"
+      "updateFailed": "{{sender}} konnte die Aufgabe nicht aktualisieren",
+      "updateDeferred": "{{sender}} hat den Aufgabenabschluss bis zur Bereinigung zurückgestellt"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator hat von anderen Agents gesendete Nachrichten gelesen"
@@ -2349,7 +2355,8 @@
       "title": "Aufgabe aktualisiert",
       "runningTitle": "Aufgabe wird aktualisiert",
       "rejectedTitle": "Aufgabenaktualisierung muss korrigiert werden",
-      "failedTitle": "Aufgabenaktualisierung fehlgeschlagen"
+      "failedTitle": "Aufgabenaktualisierung fehlgeschlagen",
+      "deferredTitle": "Aufgabenabschluss bis zur Bereinigung zurückgestellt"
     },
     "get": {
       "title": "Aufgabendetails anzeigen"
@@ -2372,7 +2379,8 @@
     "outcome": {
       "pending": "In Bearbeitung",
       "rejected": "Korrektur nötig",
-      "failed": "Fehlgeschlagen"
+      "failed": "Fehlgeschlagen",
+      "deferred": "Abschluss zurückgestellt · wartet auf Bereinigung"
     }
   },
   "manageAgentDef": {

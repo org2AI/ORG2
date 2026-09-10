@@ -431,7 +431,8 @@
             "taskOperationRunning": "{{subject}} wykonuje operację na zadaniu",
             "taskOperationRejected": "Operacja na zadaniu {{subject}} wymaga poprawki",
             "taskOperationFailed": "Operacja na zadaniu {{subject}} nie powiodła się",
-            "turnLoading": "Wiadomość {{subject}} jest wczytywana…"
+            "turnLoading": "Wiadomość {{subject}} jest wczytywana…",
+            "taskOperationDeferred": "{{subject}} odroczył(a) ukończenie zadania do czasu zakończenia porządkowania"
           }
         },
         "divider": {
@@ -2093,6 +2094,9 @@
       "handoffFailed": "Nie udało się bezpiecznie zaktualizować zadania",
       "handoffNeedsDecision": "Przekazanie zadania wymaga decyzji",
       "handoffStopping": "Zatrzymywanie poprzedniego wykonania",
+      "handoffApplyingDecision": "Stosowanie: {{decision}}",
+      "handoffDecisionFailed": "Zaakceptowana decyzja wymaga ponownej próby czyszczenia",
+      "retryHandoffDecision": "Ponów decyzję",
       "handoffEvidence": "Poprzedni wykonawca: {{owner}} · {{state}} · lokalni zapisujący: {{count}}",
       "continueReplacement": "Kontynuuj zastępstwo",
       "keepStopped": "Pozostaw zatrzymane",
@@ -2117,7 +2121,7 @@
         "failed": "Niepowodzenie"
       },
       "title": "Przegląd Zespołu Agent",
-      "summary": "{{active}} aktywnych · {{unread}} nieprzeczytanych",
+      "summary": "{{active}} aktywnych · {{pending}} oczekujących",
       "loadFailed": "Nie udało się załadować przeglądu zespołu",
       "tasks": "Zadania",
       "doneOf": "{{done}} / {{total}} ukończono",
@@ -2125,7 +2129,6 @@
       "directActivity": "Bezpośrednia praca członków",
       "activeOf": "{{active}} / {{total}} aktywnych",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} nieprzeczytanych",
       "pauseRun": "Wstrzymaj wykonanie",
       "resumeRun": "Wznów wykonanie",
       "archiveRun": "Archiwizuj zespół",
@@ -2186,7 +2189,9 @@
         "evidencePreserved": "Dowody ukończenia i wyniki zadań zostały zachowane.",
         "retry": "Ponów raport końcowy",
         "retryFailed": "Nie udało się rozpocząć ponownej próby raportu."
-      }
+      },
+      "idleWithLatestOutcome": "{{phase}} · Ostatni epizod: {{outcome}}",
+      "pendingInboxCount": "{{count}} oczekujących"
     },
     "agentOrgIntervention": {
       "directTitle": "Bezpośrednia praca z {{member}}",
@@ -2306,7 +2311,8 @@
       "createFailed": "{{sender}} nie zdołał utworzyć zadania",
       "updateRunning": "{{sender}} aktualizuje zadanie",
       "updateRejected": "Aktualizacja zadania przez {{sender}} wymaga poprawki",
-      "updateFailed": "{{sender}} nie zdołał zaktualizować zadania"
+      "updateFailed": "{{sender}} nie zdołał zaktualizować zadania",
+      "updateDeferred": "{{sender}} odroczył(a) ukończenie zadania do czasu zakończenia porządkowania"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator przeczytał wiadomości wysłane przez innych agents"
@@ -2349,7 +2355,8 @@
       "title": "Zaktualizowano zadanie",
       "runningTitle": "Aktualizowanie zadania",
       "rejectedTitle": "Aktualizacja zadania wymaga poprawki",
-      "failedTitle": "Aktualizacja zadania nie powiodła się"
+      "failedTitle": "Aktualizacja zadania nie powiodła się",
+      "deferredTitle": "Ukończenie zadania odroczone do czasu porządkowania"
     },
     "get": {
       "title": "Wyświetl szczegóły zadania"
@@ -2372,7 +2379,8 @@
     "outcome": {
       "pending": "W toku",
       "rejected": "Wymaga poprawki",
-      "failed": "Niepowodzenie"
+      "failed": "Niepowodzenie",
+      "deferred": "Ukończenie odroczone · oczekiwanie na porządkowanie"
     }
   },
   "manageAgentDef": {

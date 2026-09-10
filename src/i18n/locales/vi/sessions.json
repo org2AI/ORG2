@@ -428,7 +428,8 @@
             "taskOperationRunning": "{{subject}} đang thực hiện thao tác nhiệm vụ",
             "taskOperationRejected": "Thao tác nhiệm vụ của {{subject}} cần chỉnh sửa",
             "taskOperationFailed": "Thao tác nhiệm vụ của {{subject}} thất bại",
-            "turnLoading": "Tin nhắn của {{subject}} đang tải…"
+            "turnLoading": "Tin nhắn của {{subject}} đang tải…",
+            "taskOperationDeferred": "{{subject}} đã hoãn hoàn thành tác vụ cho đến khi dọn dẹp xong"
           }
         },
         "divider": {
@@ -2074,6 +2075,9 @@
       "handoffFailed": "Không thể cập nhật nhiệm vụ này một cách an toàn",
       "handoffNeedsDecision": "Việc bàn giao cần quyết định của bạn",
       "handoffStopping": "Đang dừng lần thực thi trước",
+      "handoffApplyingDecision": "Đang áp dụng {{decision}}",
+      "handoffDecisionFailed": "Quyết định đã được chấp nhận nhưng cần thử dọn dẹp lại",
+      "retryHandoffDecision": "Thử lại quyết định",
       "handoffEvidence": "Người phụ trách trước: {{owner}} · {{state}} · tiến trình ghi cục bộ: {{count}}",
       "continueReplacement": "Tiếp tục nhiệm vụ thay thế",
       "keepStopped": "Giữ trạng thái dừng",
@@ -2098,7 +2102,7 @@
         "failed": "Thất bại"
       },
       "title": "Tổng quan Nhóm Agent",
-      "summary": "{{active}} đang hoạt động · {{unread}} chưa đọc",
+      "summary": "{{active}} đang hoạt động · {{pending}} chờ xử lý",
       "loadFailed": "Không tải được tổng quan nhóm",
       "tasks": "Nhiệm vụ",
       "doneOf": "{{done}} / {{total}} hoàn thành",
@@ -2106,7 +2110,6 @@
       "directActivity": "Công việc trực tiếp của thành viên",
       "activeOf": "{{active}} / {{total}} đang hoạt động",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} chưa đọc",
       "pauseRun": "Tạm dừng thực thi",
       "resumeRun": "Tiếp tục thực thi",
       "archiveRun": "Lưu trữ nhóm",
@@ -2167,7 +2170,9 @@
         "evidencePreserved": "Bằng chứng hoàn thành và kết quả tác vụ vẫn được giữ nguyên.",
         "retry": "Thử lại báo cáo cuối",
         "retryFailed": "Không thể bắt đầu thử lại báo cáo cuối."
-      }
+      },
+      "idleWithLatestOutcome": "{{phase}} · Episode gần nhất: {{outcome}}",
+      "pendingInboxCount": "{{count}} chờ xử lý"
     },
     "agentOrgIntervention": {
       "directTitle": "Làm việc trực tiếp với {{member}}",
@@ -2306,7 +2311,8 @@
       "createFailed": "{{sender}} không thể tạo tác vụ",
       "updateRunning": "{{sender}} đang cập nhật tác vụ",
       "updateRejected": "Việc cập nhật tác vụ của {{sender}} cần chỉnh sửa",
-      "updateFailed": "{{sender}} không thể cập nhật tác vụ"
+      "updateFailed": "{{sender}} không thể cập nhật tác vụ",
+      "updateDeferred": "{{sender}} đã hoãn hoàn thành tác vụ cho đến khi dọn dẹp xong"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator đã đọc tin nhắn do agents khác gửi"
@@ -2349,7 +2355,8 @@
       "title": "Đã cập nhật nhiệm vụ",
       "runningTitle": "Đang cập nhật nhiệm vụ",
       "rejectedTitle": "Việc cập nhật nhiệm vụ cần chỉnh sửa",
-      "failedTitle": "Cập nhật nhiệm vụ thất bại"
+      "failedTitle": "Cập nhật nhiệm vụ thất bại",
+      "deferredTitle": "Tạm hoãn hoàn thành tác vụ cho đến khi dọn dẹp xong"
     },
     "get": {
       "title": "Xem chi tiết nhiệm vụ"
@@ -2372,7 +2379,8 @@
     "outcome": {
       "pending": "Đang thực hiện",
       "rejected": "Cần chỉnh sửa",
-      "failed": "Thất bại"
+      "failed": "Thất bại",
+      "deferred": "Đã tạm hoãn hoàn thành · đang chờ dọn dẹp"
     }
   },
   "manageAgentDef": {

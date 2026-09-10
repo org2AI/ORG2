@@ -441,7 +441,8 @@
             "sentTo": "{{subject}} sent a message to {{recipient}}",
             "sentBroadcast": "{{subject}} sent a message to multiple agents",
             "sentMessage": "{{subject}} sent a message",
-            "turnLoading": "{{subject}}'s message is loading…"
+            "turnLoading": "{{subject}}'s message is loading…",
+            "taskOperationDeferred": "{{subject}} deferred task completion until cleanup"
           }
         },
         "unloadedTurn": {
@@ -2094,6 +2095,9 @@
       "handoffFailed": "Could not safely update this Task",
       "handoffNeedsDecision": "Task handoff needs your decision",
       "handoffStopping": "Stopping the previous execution",
+      "handoffApplyingDecision": "Applying {{decision}}",
+      "handoffDecisionFailed": "The accepted decision needs another cleanup attempt",
+      "retryHandoffDecision": "Retry decision",
       "handoffEvidence": "Previous owner: {{owner}} · {{state}} · local writers: {{count}}",
       "continueReplacement": "Continue replacement",
       "keepStopped": "Keep stopped",
@@ -2117,7 +2121,7 @@
         "failed": "Failed"
       },
       "title": "Agent Team overview",
-      "summary": "{{active}} active · {{unread}} unread",
+      "summary": "{{active}} active · {{pending}} pending",
       "loadFailed": "Team overview failed to load",
       "tasks": "Tasks",
       "doneOf": "{{done}} / {{total}} done",
@@ -2126,7 +2130,6 @@
       "directActivity": "Direct member activity",
       "activeOf": "{{active}} / {{total}} active",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} unread",
       "pauseRun": "Pause run",
       "resumeRun": "Resume run",
       "archiveRun": "Archive Team",
@@ -2186,7 +2189,9 @@
         "idle": "Idle",
         "failed": "Failed",
         "archived": "Archived"
-      }
+      },
+      "idleWithLatestOutcome": "{{phase}} · Latest episode: {{outcome}}",
+      "pendingInboxCount": "{{count}} pending"
     },
     "agentOrgIntervention": {
       "directTitle": "Direct work with {{member}}",
@@ -2307,7 +2312,8 @@
       "updateRejected": "{{sender}}'s task update needs correction",
       "updateFailed": "{{sender}} couldn't update task",
       "get": "{{sender}} viewed task details",
-      "list": "{{sender}} viewed task list"
+      "list": "{{sender}} viewed task list",
+      "updateDeferred": "{{sender}} deferred task completion until cleanup"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator read messages sent by other agents"
@@ -2348,7 +2354,8 @@
       "runningTitle": "Updating task",
       "rejectedTitle": "Task update needs correction",
       "failedTitle": "Task update failed",
-      "title": "Updated task"
+      "title": "Updated task",
+      "deferredTitle": "Task completion deferred until cleanup"
     },
     "get": {
       "title": "View task details"
@@ -2366,7 +2373,8 @@
     "outcome": {
       "pending": "In progress",
       "rejected": "Needs correction",
-      "failed": "Failed"
+      "failed": "Failed",
+      "deferred": "Completion deferred · waiting for cleanup"
     },
     "status": {
       "pending": "Pending",

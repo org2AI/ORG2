@@ -428,7 +428,8 @@
             "taskOperationRunning": "{{subject}} bir görev işlemi çalıştırıyor",
             "taskOperationRejected": "{{subject}} tarafından yapılan görev işleminin düzeltilmesi gerekiyor",
             "taskOperationFailed": "{{subject}} tarafından yapılan görev işlemi başarısız oldu",
-            "turnLoading": "{{subject}} mesajı yükleniyor…"
+            "turnLoading": "{{subject}} mesajı yükleniyor…",
+            "taskOperationDeferred": "{{subject}}, temizleme tamamlanana kadar görev tamamlamayı erteledi"
           }
         },
         "divider": {
@@ -2074,6 +2075,9 @@
       "handoffFailed": "Bu görev güvenli biçimde güncellenemedi",
       "handoffNeedsDecision": "Görev devri kararınızı bekliyor",
       "handoffStopping": "Önceki yürütme durduruluyor",
+      "handoffApplyingDecision": "{{decision}} uygulanıyor",
+      "handoffDecisionFailed": "Kabul edilen karar için temizleme yeniden denenmeli",
+      "retryHandoffDecision": "Kararı yeniden dene",
       "handoffEvidence": "Önceki sorumlu: {{owner}} · {{state}} · yerel yazıcılar: {{count}}",
       "continueReplacement": "Yeni göreve devam et",
       "keepStopped": "Durdurulmuş tut",
@@ -2098,7 +2102,7 @@
         "failed": "Başarısız"
       },
       "title": "Agent Ekibi genel görünümü",
-      "summary": "{{active}} aktif · {{unread}} okunmadı",
+      "summary": "{{active}} aktif · {{pending}} bekleyen",
       "loadFailed": "Ekip genel görünümü yüklenemedi",
       "tasks": "Görevler",
       "doneOf": "{{done}} / {{total}} tamamlandı",
@@ -2106,7 +2110,6 @@
       "directActivity": "Doğrudan üye çalışması",
       "activeOf": "{{active}} / {{total}} aktif",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} okunmadı",
       "pauseRun": "Çalıştırmayı duraklat",
       "resumeRun": "Çalıştırmayı devam ettir",
       "archiveRun": "Ekibi arşivle",
@@ -2167,7 +2170,9 @@
         "evidencePreserved": "Tamamlama kanıtları ve görev çıktıları korundu.",
         "retry": "Nihai raporu yeniden dene",
         "retryFailed": "Nihai rapor yeniden denemesi başlatılamadı."
-      }
+      },
+      "idleWithLatestOutcome": "{{phase}} · Son bölüm: {{outcome}}",
+      "pendingInboxCount": "{{count}} bekleyen"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}} ile doğrudan çalışma",
@@ -2306,7 +2311,8 @@
       "createFailed": "{{sender}} görev oluşturamadı",
       "updateRunning": "{{sender}} bir görevi güncelliyor",
       "updateRejected": "{{sender}} tarafından yapılan görev güncellemesinin düzeltilmesi gerekiyor",
-      "updateFailed": "{{sender}} görevi güncelleyemedi"
+      "updateFailed": "{{sender}} görevi güncelleyemedi",
+      "updateDeferred": "{{sender}}, temizleme tamamlanana kadar görev tamamlamayı erteledi"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator diğer agents tarafından gönderilen mesajları okudu"
@@ -2349,7 +2355,8 @@
       "title": "Görev güncellendi",
       "runningTitle": "Görev güncelleniyor",
       "rejectedTitle": "Görev güncellemesinin düzeltilmesi gerekiyor",
-      "failedTitle": "Görev güncellenemedi"
+      "failedTitle": "Görev güncellenemedi",
+      "deferredTitle": "Görev tamamlama, temizleme bitene kadar ertelendi"
     },
     "get": {
       "title": "Görev ayrıntılarını görüntüle"
@@ -2372,7 +2379,8 @@
     "outcome": {
       "pending": "Devam ediyor",
       "rejected": "Düzeltme gerekiyor",
-      "failed": "Başarısız"
+      "failed": "Başarısız",
+      "deferred": "Tamamlama ertelendi · temizleme bekleniyor"
     }
   },
   "manageAgentDef": {

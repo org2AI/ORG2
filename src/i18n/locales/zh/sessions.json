@@ -441,7 +441,8 @@
             "sentTo": "{{subject}} 向 {{recipient}} 发送了消息",
             "sentBroadcast": "{{subject}} 向多个 Agent 发送了消息",
             "sentMessage": "{{subject}} 发送了消息",
-            "turnLoading": "{{subject}} 的消息正在加载…"
+            "turnLoading": "{{subject}} 的消息正在加载…",
+            "taskOperationDeferred": "{{subject}} 已暂缓完成任务，等待清理结束"
           }
         },
         "divider": {
@@ -2075,6 +2076,9 @@
       "handoffFailed": "无法安全更新这个任务",
       "handoffNeedsDecision": "任务交接需要你决定",
       "handoffStopping": "正在停止旧执行",
+      "handoffApplyingDecision": "正在应用：{{decision}}",
+      "handoffDecisionFailed": "决定已接受，但后台清理需要重试",
+      "retryHandoffDecision": "重试这个决定",
       "handoffEvidence": "旧负责人：{{owner}} · {{state}} · 本地写入者：{{count}}",
       "continueReplacement": "继续 replacement",
       "keepStopped": "保持停止",
@@ -2098,7 +2102,7 @@
         "failed": "失败"
       },
       "title": "Agent 团队概览",
-      "summary": "{{active}} active · {{unread}} unread",
+      "summary": "{{active}} 个活跃 · {{pending}} 条待处理",
       "loadFailed": "团队概览加载失败",
       "tasks": "任务",
       "doneOf": "{{done}} / {{total}} 已完成",
@@ -2107,7 +2111,6 @@
       "directActivity": "成员的直接工作",
       "activeOf": "{{active}} / {{total}} active",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} unread",
       "pauseRun": "暂停运行",
       "resumeRun": "恢复运行",
       "archiveRun": "归档团队",
@@ -2167,7 +2170,9 @@
         "idle": "待命",
         "failed": "失败",
         "archived": "已归档"
-      }
+      },
+      "idleWithLatestOutcome": "{{phase}} · 上一工作轮次：{{outcome}}",
+      "pendingInboxCount": "{{count}} 条待处理"
     },
     "agentOrgIntervention": {
       "directTitle": "直接交给 {{member}} 工作",
@@ -2307,7 +2312,8 @@
       "updateRejected": "{{sender}} 的任务更新需要修正",
       "updateFailed": "{{sender}} 更新任务失败",
       "get": "{{sender}} 查看了任务详情",
-      "list": "{{sender}} 查看了任务列表"
+      "list": "{{sender}} 查看了任务列表",
+      "updateDeferred": "{{sender}} 已暂缓完成任务，等待清理结束"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator 读取了其他 Agent 发送的消息"
@@ -2348,7 +2354,8 @@
       "runningTitle": "正在更新任务",
       "rejectedTitle": "任务更新需要修正",
       "failedTitle": "任务更新失败",
-      "title": "已更新任务"
+      "title": "已更新任务",
+      "deferredTitle": "暂缓完成任务，等待清理"
     },
     "get": {
       "title": "查看任务详情"
@@ -2366,7 +2373,8 @@
     "outcome": {
       "pending": "正在处理",
       "rejected": "需要修正",
-      "failed": "失败"
+      "failed": "失败",
+      "deferred": "暂缓完成 · 等待清理"
     },
     "status": {
       "pending": "待处理",

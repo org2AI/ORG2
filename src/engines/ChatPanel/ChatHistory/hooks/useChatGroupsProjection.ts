@@ -50,6 +50,7 @@ export interface UseChatGroupsReturn {
 
 export type TurnGroupingPolicy =
   | { mode: "standard" }
+  | { mode: "agent-org-member" }
   | { mode: "agent-org"; coordinatorSessionId: string };
 
 /**
@@ -169,6 +170,16 @@ function resolveTurnPredicates(options: UseChatGroupsOptions): {
       isHeader: (item) =>
         isCoordinatorTurnHeader(item, grouping.coordinatorSessionId),
       isBoundary: isAgentOrgGroupMessage,
+    };
+  }
+
+  if (grouping.mode === "agent-org-member") {
+    return {
+      // Each inbox transcript is the durable user-side header of one member
+      // execution. Standard sessions intentionally hide these internal
+      // messages, but member history needs them to preserve round boundaries.
+      isHeader: isUserMessageItem,
+      isBoundary: () => false,
     };
   }
 

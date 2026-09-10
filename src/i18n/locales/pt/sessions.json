@@ -431,7 +431,8 @@
             "taskOperationRunning": "{{subject}} está executando uma operação de tarefa",
             "taskOperationRejected": "A operação de tarefa de {{subject}} precisa de correção",
             "taskOperationFailed": "A operação de tarefa de {{subject}} falhou",
-            "turnLoading": "A mensagem de {{subject}} está carregando…"
+            "turnLoading": "A mensagem de {{subject}} está carregando…",
+            "taskOperationDeferred": "{{subject}} adiou a conclusão da tarefa até a limpeza"
           }
         },
         "divider": {
@@ -2093,6 +2094,9 @@
       "handoffFailed": "Não foi possível atualizar esta tarefa com segurança",
       "handoffNeedsDecision": "A transferência precisa da sua decisão",
       "handoffStopping": "Parando a execução anterior",
+      "handoffApplyingDecision": "Aplicando {{decision}}",
+      "handoffDecisionFailed": "A decisão aceita precisa de outra tentativa de limpeza",
+      "retryHandoffDecision": "Tentar decisão novamente",
       "handoffEvidence": "Responsável anterior: {{owner}} · {{state}} · escritores locais: {{count}}",
       "continueReplacement": "Continuar substituição",
       "keepStopped": "Manter parado",
@@ -2117,7 +2121,7 @@
         "failed": "Falhou"
       },
       "title": "Visão geral da Equipe Agent",
-      "summary": "{{active}} ativos · {{unread}} não lidos",
+      "summary": "{{active}} ativos · {{pending}} pendentes",
       "loadFailed": "Falha ao carregar a visão geral da equipe",
       "tasks": "Tarefas",
       "doneOf": "{{done}} / {{total}} concluídas",
@@ -2125,7 +2129,6 @@
       "directActivity": "Atividade direta dos membros",
       "activeOf": "{{active}} / {{total}} ativos",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} não lidos",
       "pauseRun": "Pausar execução",
       "resumeRun": "Retomar execução",
       "archiveRun": "Arquivar equipe",
@@ -2186,7 +2189,9 @@
         "evidencePreserved": "As evidências de conclusão e os resultados das tarefas foram preservados.",
         "retry": "Tentar relatório final novamente",
         "retryFailed": "Não foi possível iniciar a nova tentativa do relatório final."
-      }
+      },
+      "idleWithLatestOutcome": "{{phase}} · Episódio mais recente: {{outcome}}",
+      "pendingInboxCount": "{{count}} pendentes"
     },
     "agentOrgIntervention": {
       "directTitle": "Trabalho direto com {{member}}",
@@ -2306,7 +2311,8 @@
       "createFailed": "{{sender}} não conseguiu criar a tarefa",
       "updateRunning": "{{sender}} está atualizando uma tarefa",
       "updateRejected": "A atualização de tarefa de {{sender}} precisa de correção",
-      "updateFailed": "{{sender}} não conseguiu atualizar a tarefa"
+      "updateFailed": "{{sender}} não conseguiu atualizar a tarefa",
+      "updateDeferred": "{{sender}} adiou a conclusão da tarefa até a limpeza"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator leu as mensagens enviadas por outros agents"
@@ -2349,7 +2355,8 @@
       "title": "Tarefa atualizada",
       "runningTitle": "Atualizando tarefa",
       "rejectedTitle": "A atualização da tarefa precisa de correção",
-      "failedTitle": "Falha ao atualizar tarefa"
+      "failedTitle": "Falha ao atualizar tarefa",
+      "deferredTitle": "Conclusão da tarefa adiada até a limpeza"
     },
     "get": {
       "title": "Ver detalhes da tarefa"
@@ -2372,7 +2379,8 @@
     "outcome": {
       "pending": "Em andamento",
       "rejected": "Precisa de correção",
-      "failed": "Falhou"
+      "failed": "Falhou",
+      "deferred": "Conclusão adiada · aguardando limpeza"
     }
   },
   "manageAgentDef": {

@@ -79,6 +79,15 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
   const historyState = useChatHistoryState();
   const isAgentWorking = useAtomValue(isSessionActiveAtom);
   const groupChat = useGroupChatContext();
+  const isAgentOrgMemberSession = useMemo(
+    () =>
+      agentOrgCurrentMemberId !== null &&
+      agentOrgMembers.some(
+        (member) =>
+          member.memberId === agentOrgCurrentMemberId && !member.isCoordinator
+      ),
+    [agentOrgCurrentMemberId, agentOrgMembers]
+  );
   useEffect(() => {
     // Canvas payloads can reach the WorkStation as soon as the tool call is
     // stored. Warm the chat renderer while the user is still waiting for the
@@ -107,6 +116,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     forceCollapseAllTurns,
     groupChat,
     hideGroupUserMessage,
+    isAgentOrgMemberSession,
     isAgentWorking,
     planningIndicatorCount,
     sessionStatus: activeSession?.status,

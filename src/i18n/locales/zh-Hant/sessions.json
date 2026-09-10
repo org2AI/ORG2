@@ -431,7 +431,8 @@
             "taskOperationRunning": "{{subject}} 正在執行任務操作",
             "taskOperationRejected": "{{subject}} 的任務操作需要修正",
             "taskOperationFailed": "{{subject}} 的任務操作失敗",
-            "turnLoading": "{{subject}} 的訊息正在載入…"
+            "turnLoading": "{{subject}} 的訊息正在載入…",
+            "taskOperationDeferred": "{{subject}} 已暫緩完成任務，等待清理結束"
           }
         },
         "divider": {
@@ -2074,6 +2075,9 @@
       "handoffFailed": "無法安全更新任務",
       "handoffNeedsDecision": "任務交接需要你的決定",
       "handoffStopping": "正在停止先前的執行",
+      "handoffApplyingDecision": "正在套用：{{decision}}",
+      "handoffDecisionFailed": "決定已接受，但背景清理需要重試",
+      "retryHandoffDecision": "重試此決定",
       "handoffEvidence": "先前負責人：{{owner}} · {{state}} · 本機寫入者：{{count}}",
       "continueReplacement": "繼續替代任務",
       "keepStopped": "保持停止",
@@ -2098,7 +2102,7 @@
         "failed": "失敗"
       },
       "title": "Agent 團隊概覽",
-      "summary": "{{active}} active · {{unread}} unread",
+      "summary": "{{active}} 個活躍 · {{pending}} 則待處理",
       "loadFailed": "團隊概覽載入失敗",
       "tasks": "任務",
       "doneOf": "{{done}} / {{total}} 已完成",
@@ -2106,7 +2110,6 @@
       "directActivity": "成員的直接工作",
       "activeOf": "{{active}} / {{total}} active",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} unread",
       "pauseRun": "暫停執行",
       "resumeRun": "恢復執行",
       "archiveRun": "封存團隊",
@@ -2167,7 +2170,9 @@
         "evidencePreserved": "完成憑證、任務結果和產物均已保留。",
         "retry": "重試最終報告",
         "retryFailed": "無法啟動最終報告重試。"
-      }
+      },
+      "idleWithLatestOutcome": "{{phase}} · 上一個工作輪次：{{outcome}}",
+      "pendingInboxCount": "{{count}} 則待處理"
     },
     "agentOrgIntervention": {
       "directTitle": "直接交給 {{member}} 工作",
@@ -2306,7 +2311,8 @@
       "createFailed": "{{sender}} 無法建立任務",
       "updateRunning": "{{sender}} 正在更新任務",
       "updateRejected": "{{sender}} 的任務更新需要修正",
-      "updateFailed": "{{sender}} 無法更新任務"
+      "updateFailed": "{{sender}} 無法更新任務",
+      "updateDeferred": "{{sender}} 已暫緩完成任務，等待清理結束"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator 讀取了其他 Agent 傳送的訊息"
@@ -2349,7 +2355,8 @@
       "title": "已更新任務",
       "runningTitle": "正在更新任務",
       "rejectedTitle": "任務更新需要修正",
-      "failedTitle": "任務更新失敗"
+      "failedTitle": "任務更新失敗",
+      "deferredTitle": "暫緩完成任務，等待清理"
     },
     "get": {
       "title": "查看任務詳情"
@@ -2372,7 +2379,8 @@
     "outcome": {
       "pending": "進行中",
       "rejected": "需要修正",
-      "failed": "失敗"
+      "failed": "失敗",
+      "deferred": "暫緩完成 · 等待清理"
     }
   },
   "manageAgentDef": {

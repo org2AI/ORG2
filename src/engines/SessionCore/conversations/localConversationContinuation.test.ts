@@ -1036,7 +1036,7 @@ describe("local native conversation continuation", () => {
     ]);
   });
 
-  it("leaves context recovery to the native runtime and waits for its accepted anchor", async () => {
+  it("leaves context recovery to the native runtime and settles its terminal failure", async () => {
     const timeline = [
       event("u1", "user", "canonical question"),
       event("a1", "assistant", "canonical answer"),
@@ -1096,7 +1096,7 @@ describe("local native conversation continuation", () => {
         },
         turnIntentId: "turn-context-rollover",
       })
-    ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
+    ).resolves.toMatchObject({ terminalStatus: "failed", agentTail: [] });
 
     expect(mocks.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1723,6 +1723,80 @@ describe("local native conversation continuation", () => {
     ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
 
     expect(mocks.markTerminal).not.toHaveBeenCalled();
+  });
+
+  it("settles a failed process with unchanged history after bounded native recovery", async () => {
+    mocks.cliWaitForTurnTerminal.mockResolvedValueOnce({
+      sessionId: "agentsession-child",
+      turnIntentId: "failed-before-prompt",
+      status: "failed",
+      updatedAt: "2026-08-29T00:01:00.000Z",
+    });
+    mocks.sendMessage.mockResolvedValueOnce(undefined);
+
+    const result = await continueLocalConversation({
+      root,
+      title: "Rejected native resume ID",
+      timeline: [event("u1", "user", "original question")],
+      displayText: "continue",
+      target,
+      turnIntentId: "failed-before-prompt",
+    });
+
+    expect(result).toMatchObject({ terminalStatus: "failed", agentTail: [] });
+    expect(mocks.recoverNativeAfterMismatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not settle a failed process whose native history no longer matches", async () => {
+    mocks.cliWaitForTurnTerminal.mockResolvedValueOnce({
+      sessionId: "agentsession-child",
+      turnIntentId: "failed-rewritten-history",
+      status: "failed",
+      updatedAt: "2026-08-29T00:01:00.000Z",
+    });
+    mocks.sendMessage.mockResolvedValueOnce(undefined);
+    mocks.recoverNativeAfterMismatch.mockResolvedValueOnce([
+      event("other-user", "user", "different history"),
+    ]);
+
+    await expect(
+      continueLocalConversation({
+        root,
+        title: "Unresolved source mismatch",
+        timeline: [event("u1", "user", "original question")],
+        displayText: "continue",
+        target,
+        turnIntentId: "failed-rewritten-history",
+      })
+    ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
+  });
+
+  it("retains a failed turn's partial output exposed by native recovery", async () => {
+    mocks.cliWaitForTurnTerminal.mockResolvedValueOnce({
+      sessionId: "agentsession-child",
+      turnIntentId: "failed-partial-flush",
+      status: "failed",
+      updatedAt: "2026-08-29T00:01:00.000Z",
+    });
+    mocks.sendMessage.mockResolvedValueOnce(undefined);
+    mocks.recoverNativeAfterMismatch.mockResolvedValueOnce([
+      event("u1", "user", "original question"),
+      event("u2", "user", "continue"),
+      event("a2", "assistant", "partial answer"),
+    ]);
+
+    const result = await continueLocalConversation({
+      root,
+      title: "Late native output",
+      timeline: [event("u1", "user", "original question")],
+      displayText: "continue",
+      target,
+      turnIntentId: "failed-partial-flush",
+    });
+    expect(result.terminalStatus).toBe("failed");
+    expect(
+      result.agentTail.some((item) => item.displayText === "partial answer")
+    ).toBe(true);
   });
 
   it("settles an interrupted turn the provider closed before recording its prompt", async () => {

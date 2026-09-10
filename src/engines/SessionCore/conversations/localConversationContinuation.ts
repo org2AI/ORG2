@@ -815,8 +815,10 @@ async function loadSettledTail(
   before: readonly SessionEvent[],
   turnIntentId: string,
   expectedRequest: ProviderRequestIdentity,
-  preserveInterruptedSuffix: boolean
+  terminalStatus: TurnTerminalStatus
 ): Promise<{ agentTail: SessionEvent[]; events: SessionEvent[] }> {
+  const preserveInterruptedSuffix =
+    terminalStatus === "cancelled" || terminalStatus === "failed";
   const reconcileOptions = {
     preserveInterruptedSuffix,
   };
@@ -829,6 +831,44 @@ async function loadSettledTail(
     false
   );
   if (agentTail) return { agentTail, events };
+  if (terminalStatus === "failed") {
+    // A CLI can exit before recording the prompt (for example, a rejected
+    // resume ID). Its durable terminal is authoritative, but a cached replay
+    // alone is not proof that it wrote nothing. Force the existing mismatch
+    // recovery once before accepting an unchanged portable history.
+    events = await recoverNativeTranscriptAfterMismatch(
+      sessionId,
+      events,
+      (candidate) =>
+        resolveSettledTail(
+          before,
+          candidate,
+          turnIntentId,
+          expectedRequest,
+          false
+        ) !== null,
+      reconcileOptions
+    );
+    agentTail = resolveSettledTail(
+      before,
+      events,
+      turnIntentId,
+      expectedRequest,
+      true
+    );
+    if (agentTail) return { agentTail, events };
+    const beforeItems = projectNativeConversationItems(before);
+    const afterItems = projectNativeConversationItems(events);
+    if (
+      beforeItems.length === afterItems.length &&
+      nativeConversationItemsArePrefix(beforeItems, afterItems)
+    ) {
+      // The canonical user row already exists. An empty FAILED tail goes
+      // through the ordinary failure publisher; it is never a success and
+      // must not leave an execution retrying an impossible native anchor.
+      return { agentTail: [], events };
+    }
+  }
   if (preserveInterruptedSuffix) {
     if (providerClosedTurnWithoutRecordingPrompt(before, events)) {
       // Stop reached the provider before it persisted the prompt: the native
@@ -971,7 +1011,7 @@ async function finishConversationTurn(params: {
     params.before,
     params.turnIntentId,
     params.providerRequest,
-    terminalStatus === "cancelled" || terminalStatus === "failed"
+    terminalStatus
   );
   // Fresh sends are closed only by the CLI/Agent lifecycle coordinator.
   // Crash recovery created a synthetic frontend lifecycle after the original

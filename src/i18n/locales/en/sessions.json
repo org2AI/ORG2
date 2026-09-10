@@ -2337,7 +2337,8 @@
       "otherTools_one": "{{count}} other tool call",
       "otherTools_other": "{{count}} other tool calls"
     },
-    "triggerLabel": "Group chat"
+    "triggerLabel": "Group chat",
+    "userMessageOutcomeUnknown": "Delivery outcome unknown. Retry the original delivery."
   },
   "orgTask": {
     "create": {

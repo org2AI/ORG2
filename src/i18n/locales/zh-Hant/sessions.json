@@ -2338,7 +2338,8 @@
     },
     "loadOlder": "載入更早的訊息",
     "historyLoadFailed": "歷史訊息暫不可用",
-    "triggerLabel": "群組聊天"
+    "triggerLabel": "群組聊天",
+    "userMessageOutcomeUnknown": "訊息提交結果未知，請使用原請求重試。"
   },
   "orgTask": {
     "create": {

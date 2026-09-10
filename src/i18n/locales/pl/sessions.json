@@ -2338,7 +2338,8 @@
     },
     "loadOlder": "Wczytaj starsze wiadomości",
     "historyLoadFailed": "Historia niedostępna",
-    "triggerLabel": "Czat grupowy"
+    "triggerLabel": "Czat grupowy",
+    "userMessageOutcomeUnknown": "Wynik dostarczenia jest nieznany. Ponów pierwotne dostarczenie."
   },
   "orgTask": {
     "create": {

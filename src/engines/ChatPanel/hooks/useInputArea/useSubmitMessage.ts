@@ -18,6 +18,8 @@ import { useAtomValue, useStore } from "jotai";
 import React, { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { ComposerSnapshot } from "@src/components/ComposerInput";
+import { serializePillNode } from "@src/components/ComposerInput/utils";
 import Message from "@src/components/Message";
 import { chatEventsAtom } from "@src/engines/SessionCore";
 import { createLogger } from "@src/hooks/logger";
@@ -37,6 +39,7 @@ import { resolveMcpSlashCommand } from "./mcpSlashCommand";
 import { expandSkillPills } from "./outgoingTextTransforms";
 import { projectOutgoingUserMessage } from "./projectOutgoingUserMessage";
 import { interceptPendingQuestionBatches } from "./questionIntercept";
+import { shouldRestoreSubmissionAfterDispatchError } from "./submissionErrors";
 import type {
   CiteCodeSnapshot,
   InputAreaRefs,
@@ -51,6 +54,43 @@ import { SubmitRetainedDeliveryError } from "./types";
 export { stripContextPillBase64 } from "./outgoingTextTransforms";
 
 const log = createLogger("useSubmitMessage");
+
+export function serializeSubmissionSnapshot(
+  snapshot: ComposerSnapshot,
+  omitMemberPills: boolean
+): string {
+  return snapshot.parts
+    .map((part) => {
+      if (part.kind === "text") return part.text;
+      if (part.kind === "newline") return "\n";
+      if (omitMemberPills && part.attrs.iconType === "member") return "";
+      return serializePillNode(part.attrs);
+    })
+    .join("")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/^[ \t]+|[ \t]+$/g, "");
+}
+
+export function memberMentionsFromSnapshot(
+  snapshot: ComposerSnapshot
+): Array<{ memberId: string; displayName: string }> {
+  const seen = new Set<string>();
+  const mentions: Array<{ memberId: string; displayName: string }> = [];
+  for (const part of snapshot.parts) {
+    if (part.kind !== "pill" || part.attrs.iconType !== "member") continue;
+    if (!part.attrs.filePath.startsWith("member://")) {
+      throw new Error("Agent Team Member pill has no canonical member:// id");
+    }
+    const memberId = part.attrs.filePath.slice("member://".length).trim();
+    if (!memberId) {
+      throw new Error("Agent Team Member pill has an empty canonical id");
+    }
+    if (seen.has(memberId)) continue;
+    seen.add(memberId);
+    mentions.push({ memberId, displayName: part.attrs.fileName });
+  }
+  return mentions;
+}
 
 // ============================================================================
 // Types
@@ -165,20 +205,22 @@ export function useSubmitMessage({
         return;
       }
 
-      const liveDisplayText = refs.composerInputRef.current.getTextWithPills();
+      const isExplicitAction = options.source === "explicit-action";
+      const submitComposerSnapshot = isExplicitAction
+        ? undefined
+        : refs.composerInputRef.current.getSnapshot();
+      const liveDisplayText = submitComposerSnapshot
+        ? serializeSubmissionSnapshot(submitComposerSnapshot, false)
+        : refs.composerInputRef.current.getTextWithPills();
       const resolvedInput = resolveSubmitInput(
         options,
         liveDisplayText,
         imageAttachment.hasImages
       );
-      const { isExplicitAction } = resolvedInput;
       // Capture typed mention identities before any async secret scan, MCP
       // expansion, or pending-pill load. Display text is not an identity
       // source: a roster rename while those awaits run must not retarget the
       // Team Chat message.
-      const submitComposerSnapshot = isExplicitAction
-        ? undefined
-        : refs.composerInputRef.current.getSnapshot();
       let { displayText } = resolvedInput;
       const hasText = displayText.trim().length > 0;
       const { hasAttachedImages } = resolvedInput;
@@ -370,6 +412,20 @@ export function useSubmitMessage({
           !hasAttachedImages && !isCliSession(draftSessionId || null),
       });
       displayText = displayContent;
+      const displayTextWithoutMemberMentions = submitComposerSnapshot
+        ? serializeSubmissionSnapshot(submitComposerSnapshot, true)
+        : displayText;
+      const { agentContent: agentContentWithoutMemberMentions } =
+        projectOutgoingUserMessage({
+          displayText: displayTextWithoutMemberMentions,
+          contextBlocks,
+          enableAgentInterceptors,
+          allowCanvasInterception:
+            !hasAttachedImages && !isCliSession(draftSessionId || null),
+        });
+      const memberMentions = submitComposerSnapshot
+        ? memberMentionsFromSnapshot(submitComposerSnapshot)
+        : [];
 
       const imageDataUrls = isExplicitAction
         ? []
@@ -378,6 +434,7 @@ export function useSubmitMessage({
         draftSessionId,
         displayText,
         agentContent,
+        memberIds: memberMentions.map((mention) => mention.memberId),
         imageDataUrls,
         composerSnapshot: submitComposerSnapshot,
       });
@@ -433,15 +490,25 @@ export function useSubmitMessage({
                 agentContent,
                 imageDataUrls: dispatchImages,
                 composerSnapshot: submitComposerSnapshot,
+                memberMentions,
+                displayTextWithoutMemberMentions,
+                agentContentWithoutMemberMentions:
+                  agentContentWithoutMemberMentions ??
+                  displayTextWithoutMemberMentions,
               })
             : false;
           if (!overrideHandled) {
+            const ordinaryAgentContent =
+              memberMentions.length > 0
+                ? (agentContentWithoutMemberMentions ??
+                  displayTextWithoutMemberMentions)
+                : agentContent;
             // Queue-vs-direct is decided inside handleSessChatSubmit against
             // the turn-lifecycle FSM — no composer-side heuristics.
             await handleSessChatSubmit(
               undefined,
               displayText || "(image)",
-              agentContent,
+              ordinaryAgentContent,
               dispatchImages
             );
           }
@@ -450,8 +517,13 @@ export function useSubmitMessage({
           // Until a transport has retained a visible failed row, the composer
           // remains the only recoverable copy of the user's text, images and
           // structured mention pills. Optimistic transports explicitly mark
-          // that ownership hand-off with SubmitRetainedDeliveryError.
-          if (!(err instanceof SubmitRetainedDeliveryError)) {
+          // that ownership hand-off with SubmitRetainedDeliveryError. A Group
+          // delivery with an unknown outcome similarly owns an immutable retry
+          // envelope and must not also repopulate the editor.
+          if (
+            !(err instanceof SubmitRetainedDeliveryError) &&
+            shouldRestoreSubmissionAfterDispatchError(err)
+          ) {
             const editor = refs.composerInputRef.current;
             if (editor && editorSnapshot) {
               try {

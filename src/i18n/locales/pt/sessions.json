@@ -2338,7 +2338,8 @@
     },
     "loadOlder": "Carregar mensagens anteriores",
     "historyLoadFailed": "Histórico indisponível",
-    "triggerLabel": "Chat de grupo"
+    "triggerLabel": "Chat de grupo",
+    "userMessageOutcomeUnknown": "O resultado da entrega é desconhecido. Tente novamente a entrega original."
   },
   "orgTask": {
     "create": {

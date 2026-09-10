@@ -258,12 +258,17 @@ describe("useSubmitMessage composer boundary", () => {
       });
 
       if (path === "override") {
-        expect(onSubmitOverride).toHaveBeenCalledWith({
-          displayText: expected,
-          agentContent: undefined,
-          imageDataUrls: undefined,
-          composerSnapshot: editorHarness.editor.getSnapshot(),
-        });
+        expect(onSubmitOverride).toHaveBeenCalledWith(
+          expect.objectContaining({
+            displayText: expected,
+            agentContent: undefined,
+            imageDataUrls: undefined,
+            composerSnapshot: {
+              parts: [{ kind: "text", text: draft }],
+            },
+            memberMentions: [],
+          })
+        );
         expect(handleSessChatSubmit).not.toHaveBeenCalled();
       } else {
         expect(handleSessChatSubmit).toHaveBeenCalledWith(
@@ -398,12 +403,17 @@ describe("useSubmitMessage composer boundary", () => {
     });
 
     expect(mocks.messageWarning).not.toHaveBeenCalled();
-    expect(onSubmitOverride).toHaveBeenCalledWith({
-      displayText: "continue from this replay",
-      agentContent: "agent:continue from this replay",
-      imageDataUrls: undefined,
-      composerSnapshot: editorHarness.editor.getSnapshot(),
-    });
+    expect(onSubmitOverride).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayText: "continue from this replay",
+        agentContent: "agent:continue from this replay",
+        imageDataUrls: undefined,
+        composerSnapshot: {
+          parts: [{ kind: "text", text: "continue from this replay" }],
+        },
+        memberMentions: [],
+      })
+    );
     expect(handleSessChatSubmit).not.toHaveBeenCalled();
     expect(editorHarness.readText()).toBe("");
     expect(clearReplyTarget).toHaveBeenCalledOnce();

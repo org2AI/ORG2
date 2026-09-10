@@ -2338,7 +2338,8 @@
     },
     "loadOlder": "Ältere Nachrichten laden",
     "historyLoadFailed": "Verlauf nicht verfügbar",
-    "triggerLabel": "Gruppenchat"
+    "triggerLabel": "Gruppenchat",
+    "userMessageOutcomeUnknown": "Das Zustellungsergebnis ist unbekannt. Wiederhole die ursprüngliche Zustellung."
   },
   "orgTask": {
     "create": {

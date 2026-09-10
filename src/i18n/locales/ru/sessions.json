@@ -2338,7 +2338,8 @@
     },
     "loadOlder": "Загрузить более ранние сообщения",
     "historyLoadFailed": "История недоступна",
-    "triggerLabel": "Групповой чат"
+    "triggerLabel": "Групповой чат",
+    "userMessageOutcomeUnknown": "Результат доставки неизвестен. Повторите исходную доставку."
   },
   "orgTask": {
     "create": {

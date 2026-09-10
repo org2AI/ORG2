@@ -33,6 +33,11 @@ export interface SubmitOverrideInput {
    * mutable display name after asynchronous preprocessing.
    */
   composerSnapshot?: ComposerSnapshot;
+  /** Ordered canonical Member pill identities from the same snapshot. */
+  memberMentions?: Array<{ memberId: string; displayName: string }>;
+  /** Display/agent copies with only Member pills removed. */
+  displayTextWithoutMemberMentions?: string;
+  agentContentWithoutMemberMentions?: string;
 }
 
 /** Rejected before any network/provider delivery was attempted. */

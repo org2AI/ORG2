@@ -2338,7 +2338,8 @@
     },
     "loadOlder": "古いメッセージを読み込む",
     "historyLoadFailed": "履歴を取得できません",
-    "triggerLabel": "グループチャット"
+    "triggerLabel": "グループチャット",
+    "userMessageOutcomeUnknown": "配信結果は不明です。元の配信を再試行してください。"
   },
   "orgTask": {
     "create": {

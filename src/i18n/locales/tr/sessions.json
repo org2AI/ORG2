@@ -2338,7 +2338,8 @@
     },
     "loadOlder": "Eski mesajları yükle",
     "historyLoadFailed": "Geçmiş kullanılamıyor",
-    "triggerLabel": "Grup sohbeti"
+    "triggerLabel": "Grup sohbeti",
+    "userMessageOutcomeUnknown": "Teslimat sonucu bilinmiyor. Özgün teslimatı yeniden deneyin."
   },
   "orgTask": {
     "create": {

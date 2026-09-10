@@ -2337,7 +2337,8 @@
       "otherTools_one": "{{count}} 次其他工具调用",
       "otherTools_other": "{{count}} 次其他工具调用"
     },
-    "triggerLabel": "群聊"
+    "triggerLabel": "群聊",
+    "userMessageOutcomeUnknown": "消息提交结果未知，请使用原请求重试。"
   },
   "orgTask": {
     "create": {

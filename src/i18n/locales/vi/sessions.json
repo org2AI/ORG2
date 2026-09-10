@@ -2338,7 +2338,8 @@
     },
     "loadOlder": "Tải tin nhắn cũ hơn",
     "historyLoadFailed": "Lịch sử không khả dụng",
-    "triggerLabel": "Trò chuyện nhóm"
+    "triggerLabel": "Trò chuyện nhóm",
+    "userMessageOutcomeUnknown": "Không xác định được kết quả gửi. Hãy thử lại lần gửi ban đầu."
   },
   "orgTask": {
     "create": {

@@ -1,5 +1,5 @@
 import { getTurnGeneration, isTurnActive } from "../control/turnLifecycle";
-import { loadCliTranscriptRevision } from "./adapters/cli/cliHistory";
+import { loadNativeConversationRevision } from "./nativeConversationRevision";
 
 export interface NativeHistoryLoadRevision {
   revision: string;
@@ -16,7 +16,7 @@ export async function loadWithNativeHistoryRevision<T>(
   // Revision probing is an optimization. An unavailable probe must not break
   // the initial history load; the normal safety refresh will retry instead.
   const probe = () =>
-    loadCliTranscriptRevision(sessionId).catch(() => undefined);
+    loadNativeConversationRevision(sessionId).catch(() => undefined);
   const before = !isTurnActive(sessionId) ? await probe() : undefined;
   const value = await load();
   const after = before && !signal.aborted ? await probe() : undefined;

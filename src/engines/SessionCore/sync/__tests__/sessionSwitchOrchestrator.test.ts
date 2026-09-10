@@ -22,8 +22,8 @@ const mocks = vi.hoisted(() => ({
   switchSession: vi.fn(),
 }));
 
-vi.mock("../adapters/cli/cliHistory", () => ({
-  loadCliTranscriptRevision: mocks.revision,
+vi.mock("../nativeConversationRevision", () => ({
+  loadNativeConversationRevision: mocks.revision,
 }));
 
 vi.mock("@src/components/Message", () => ({

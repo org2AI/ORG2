@@ -10,11 +10,11 @@ import { activeSessionIdAtom } from "@src/store/session";
 import { isCliSession } from "@src/util/session/sessionDispatch";
 
 import { getTurnGeneration, isTurnActive } from "../control/turnLifecycle";
-import { loadCliTranscriptRevision } from "./adapters/cli/cliHistory";
 import {
   shouldWaitForStableTranscript,
   startExternalHistoryRefreshScheduler,
 } from "./externalHistoryAutoRefresh";
+import { loadNativeConversationRevision } from "./nativeConversationRevision";
 import type { NativeHistoryLoadRevision } from "./nativeHistoryLoadRevision";
 import { reconcileNativeTranscript } from "./nativeTranscriptReconcile";
 
@@ -97,7 +97,7 @@ export function useNativeHistoryAutoRefresh(
         !isTurnActive(sessionId),
       generation: () => getTurnGeneration(sessionId),
       loadedRevision,
-      readRevision: () => loadCliTranscriptRevision(sessionId),
+      readRevision: () => loadNativeConversationRevision(sessionId),
       refresh: async (signal, isCurrent) => {
         await reconcileNativeTranscript(sessionId, {
           signal,

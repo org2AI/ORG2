@@ -7,8 +7,8 @@ const mocks = vi.hoisted(() => ({
   generation: 0,
   active: false,
 }));
-vi.mock("../adapters/cli/cliHistory", () => ({
-  loadCliTranscriptRevision: mocks.revision,
+vi.mock("../nativeConversationRevision", () => ({
+  loadNativeConversationRevision: mocks.revision,
 }));
 vi.mock("../../control/turnLifecycle", () => ({
   getTurnGeneration: () => mocks.generation,

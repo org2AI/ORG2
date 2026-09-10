@@ -19,9 +19,11 @@ import {
 } from "@src/store/ui/messageQueueAtom";
 
 import {
+  assembleConversationWithLocalExecution,
   conversationActiveDeliveriesAtom,
   createLocalExecutionHydrationCoordinator,
   hydrateLocalExecutionSnapshot,
+  localExecutionRootForSession,
   projectVisibleLocalExecutionTail,
   resolveConversationRunnerBindings,
   selectConversationActiveRunners,
@@ -94,6 +96,43 @@ function activeDelivery(
 }
 
 describe("resolveConversationRunnerBindings", () => {
+  it("retains native execution authority for an owned session with cloud comments", () => {
+    const session = {
+      session_id: "cliagent-owned",
+      cliAgentType: "claude_code",
+      orgId: "cloud:team",
+    } as Parameters<typeof localExecutionRootForSession>[1];
+    expect(
+      localExecutionRootForSession("cliagent-owned", session, false)
+    ).toEqual({
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "cliagent-owned",
+    });
+    expect(
+      localExecutionRootForSession("cliagent-owned", session, true)
+    ).toBeNull();
+    expect(
+      localExecutionRootForSession("imported-session-remote", undefined, false)
+    ).toBeNull();
+  });
+  it("rehydrates a settled child projection after native refresh, but not during delivery", () => {
+    const before = { rootKey: "root", activeDeliveryCount: 0, refreshEpoch: 1 };
+    expect(
+      shouldHydrateLocalExecutionSnapshot(before, {
+        ...before,
+        refreshEpoch: 2,
+      })
+    ).toBe(true);
+    expect(
+      shouldHydrateLocalExecutionSnapshot(before, {
+        ...before,
+        activeDeliveryCount: 1,
+        refreshEpoch: 2,
+      })
+    ).toBe(false);
+    expect(shouldHydrateLocalExecutionSnapshot(before, before)).toBe(false);
+  });
   it("keeps the visible transcript on its canonical source while footer and Stop follow the runner", () => {
     expect(
       resolveConversationRunnerBindings(
@@ -422,5 +461,73 @@ describe("local execution history hydration", () => {
       children.mockRestore();
       canonical.mockRestore();
     }
+  });
+});
+
+describe("native child and cloud plane ownership", () => {
+  it("merges a landed child through plane identity once while retaining external App turns", () => {
+    const first = messageEvent(
+      "root-answer",
+      "assistant",
+      "41",
+      "2026-09-09T20:00:00Z"
+    );
+    const user = messageEvent(
+      "child-user",
+      "user",
+      "add one",
+      "2026-09-09T20:01:00Z"
+    );
+    user.result = { ...user.result, turnIntentId: "conversion-turn" };
+    const answer = messageEvent(
+      "child-answer",
+      "assistant",
+      "42",
+      "2026-09-09T20:01:01Z"
+    );
+    const externalUser = messageEvent(
+      "app-user",
+      "user",
+      "add one",
+      "2026-09-09T20:02:00Z"
+    );
+    const externalAnswer = messageEvent(
+      "app-answer",
+      "assistant",
+      "43",
+      "2026-09-09T20:02:01Z"
+    );
+    const tails = [user, answer, externalUser, externalAnswer].map((event) => ({
+      ...event,
+      id: `runlanded-${event.id}`,
+      args: { ...event.args, [NATIVE_SOURCE_EVENT_ID_ARG]: event.id },
+    }));
+    const result = assembleConversationWithLocalExecution(
+      {
+        family: null,
+        anchorBareSessionId: "root",
+        anchorEvents: [first],
+        planeEvents: [user, answer].map((event, index) => ({
+          id: `plane-${index}`,
+          rootSessionId: "root",
+          authorUserId: "self",
+          turnId: "conversion-turn",
+          seq: index + 1,
+          event,
+          createdAt: event.createdAt,
+        })),
+        comments: [],
+        streamSessionId: "root",
+        viewer: { status: "loading" },
+      },
+      tails
+    );
+    expect(result.map((event) => event.displayText)).toEqual([
+      "41",
+      "add one",
+      "42",
+      "add one",
+      "43",
+    ]);
   });
 });

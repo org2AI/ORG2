@@ -22,7 +22,10 @@ import {
   suppressLandedQueuedUserRows,
   suppressLandedRowsOfFailedQueuedTurns,
 } from "@src/engines/SessionCore/conversations/localConversationExecutionTail";
-import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms/metadata";
+import {
+  sessionIdAtom,
+  transcriptReplaceEpochAtom,
+} from "@src/engines/SessionCore/core/atoms/metadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { derivePlanDisplayEvents } from "@src/engines/SessionCore/derived/planDisplayEvents";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
@@ -30,6 +33,7 @@ import { isVisibleInChat } from "@src/engines/SessionCore/ingestion/visibilityFi
 import { useSessionEventIngestion } from "@src/engines/SessionCore/sync/useSessionEventIngestion";
 import { useSessionCommentsContext } from "@src/features/Org2Cloud/SessionComments/SessionCommentsContext";
 import {
+  type CanonicalConversationTimelineInput,
   assembleCanonicalConversationTimeline,
   legacyConversationFamilyForTimeline,
 } from "@src/features/Org2Cloud/SessionConversation/canonicalConversationTimeline";
@@ -62,6 +66,7 @@ import { getSessionForkedFrom } from "@src/features/TeamCollaboration/forkSessio
 import { createLogger } from "@src/hooks/logger";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import { sessionByIdAtom, sessionsAtom } from "@src/store/session";
+import type { Session } from "@src/store/session/sessionAtom/types";
 import {
   type ActiveMessageDelivery,
   activeMessageDeliveriesAtom,
@@ -200,6 +205,22 @@ export function createLocalExecutionHydrationCoordinator<TRequest, TResult>(
   };
 }
 
+/** Cloud comments do not replace this device's native execution authority. */
+export function localExecutionRootForSession(
+  sessionId: string,
+  session: Session | undefined,
+  hasOverride: boolean
+): ConversationRootLocator | null {
+  if (hasOverride) return null;
+  const imported = conversationSourceFromImportedHistory({
+    sessionId,
+    session,
+  })?.root;
+  const root =
+    imported ?? (session ? conversationRootForSession(session) : null);
+  return root && root.conversationId === sessionId ? root : null;
+}
+
 interface LocalExecutionHydrationRequest {
   root: ConversationRootLocator;
   rootKey: string;
@@ -213,6 +234,7 @@ interface LocalExecutionHydrationSnapshot {
 interface LocalExecutionHydrationTrigger {
   rootKey: string | null;
   activeDeliveryCount: number;
+  refreshEpoch?: number;
 }
 
 /**
@@ -229,7 +251,9 @@ export function shouldHydrateLocalExecutionSnapshot(
   return (
     previous === null ||
     previous.rootKey !== next.rootKey ||
-    next.activeDeliveryCount < previous.activeDeliveryCount
+    next.activeDeliveryCount < previous.activeDeliveryCount ||
+    (next.activeDeliveryCount === 0 &&
+      next.refreshEpoch !== previous.refreshEpoch)
   );
 }
 
@@ -301,6 +325,22 @@ export function projectVisibleLocalExecutionTail(
       canonicalSessionId
     ).filter(isVisibleInChat)
   );
+}
+
+/** Native tails enter the canonical merge before cloud plane identity matching. */
+export function assembleConversationWithLocalExecution(
+  input: CanonicalConversationTimelineInput,
+  tails: readonly SessionEvent[]
+): SessionEvent[] {
+  return assembleCanonicalConversationTimeline({
+    ...input,
+    anchorEvents: tails.length
+      ? mergeConversationEvents(
+          suppressLandedQueuedUserRows(input.anchorEvents, tails),
+          suppressLandedRowsOfFailedQueuedTurns(input.anchorEvents, tails)
+        )
+      : input.anchorEvents,
+  });
 }
 
 interface ConversationStreamProviderProps {
@@ -555,17 +595,15 @@ export function ConversationStreamProvider({
       conversationId: planeRootId,
     });
   }, [auth, authIdentityKey, planeRootId, target]);
-  const localRoot = useMemo<ConversationRootLocator | null>(() => {
-    if (target || overrideEvents) return null;
-    const imported = conversationSourceFromImportedHistory({
-      sessionId,
-      session: currentSession,
-    })?.root;
-    const root =
-      imported ??
-      (currentSession ? conversationRootForSession(currentSession) : null);
-    return root && root.conversationId === sessionId ? root : null;
-  }, [currentSession, overrideEvents, sessionId, target]);
+  const localRoot = useMemo(
+    () =>
+      localExecutionRootForSession(
+        sessionId,
+        currentSession,
+        Boolean(overrideEvents)
+      ),
+    [currentSession, overrideEvents, sessionId]
+  );
   const localRootKey = localRoot ? conversationRootKey(localRoot) : null;
   const localRootRef = useRef(localRoot);
   useEffect(() => {
@@ -620,6 +658,7 @@ export function ConversationStreamProvider({
         : 0,
     [activeDeliveries, localRootKey]
   );
+  const nativeRefreshEpoch = useAtomValue(transcriptReplaceEpochAtom);
   const [loadedLocalExecution, setLoadedLocalExecution] =
     useState<LocalExecutionHydrationSnapshot | null>(null);
   const localHydrationCoordinatorRef =
@@ -658,6 +697,7 @@ export function ConversationStreamProvider({
     const nextTrigger = {
       rootKey: localRootKey,
       activeDeliveryCount: localRootDeliveryCount,
+      refreshEpoch: nativeRefreshEpoch,
     };
     const shouldHydrate = shouldHydrateLocalExecutionSnapshot(
       localHydrationTriggerRef.current,
@@ -676,7 +716,7 @@ export function ConversationStreamProvider({
       root: currentRoot,
       rootKey: localRootKey,
     });
-  }, [localRootDeliveryCount, localRootKey]);
+  }, [localRootDeliveryCount, localRootKey, nativeRefreshEpoch]);
   const localSnapshot =
     localRootKey && loadedLocalExecution?.rootKey === localRootKey
       ? loadedLocalExecution.snapshot
@@ -739,18 +779,21 @@ export function ConversationStreamProvider({
 
   const value = useMemo((): SessionEvent[] | undefined => {
     if (overrideEvents) return overrideEvents;
-    const timeline = assembleCanonicalConversationTimeline({
-      family: timelineFamily,
-      anchorBareSessionId,
-      anchorEvents: chatEvents,
-      eventsByBareSessionId: eventsByBareId,
-      planeEvents: plane.events,
-      planeHistoryStartedAt: plane.historyStartedAt,
-      comments: discussionComments,
-      streamSessionId: sessionId,
-      viewer,
-      ...(toSourceEventId ? { toSourceEventId } : {}),
-    });
+    const timeline = assembleConversationWithLocalExecution(
+      {
+        family: timelineFamily,
+        anchorBareSessionId,
+        anchorEvents: chatEvents,
+        eventsByBareSessionId: eventsByBareId,
+        planeEvents: plane.events,
+        planeHistoryStartedAt: plane.historyStartedAt,
+        comments: discussionComments,
+        streamSessionId: sessionId,
+        viewer,
+        ...(toSourceEventId ? { toSourceEventId } : {}),
+      },
+      localTails
+    );
     // The only UI-only addition is the sender's live runner overlay.
     const synthetic: SessionEvent[] = [];
     // Live runner overlay (sender-local, pre-tail): show the agent working.
@@ -761,17 +804,9 @@ export function ConversationStreamProvider({
       const overlay = runnerOverlayById.get(runner.runnerSessionId);
       if (overlay?.length) synthetic.push(...overlay);
     }
-    if (localTails.length > 0) {
-      return mergeConversationEvents(
-        suppressLandedQueuedUserRows(timeline, localTails),
-        [
-          ...synthetic,
-          ...suppressLandedRowsOfFailedQueuedTurns(timeline, localTails),
-        ]
-      );
-    }
     if (synthetic.length === 0) {
-      return timelineFamily ||
+      return localTails.length > 0 ||
+        timelineFamily ||
         plane.events.length > 0 ||
         discussionComments.length > 0
         ? timeline

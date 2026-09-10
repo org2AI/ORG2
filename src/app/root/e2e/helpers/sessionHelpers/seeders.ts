@@ -157,6 +157,7 @@ export function createSessionSeederHelpers(store: E2EStore) {
     status?: string;
     orgId?: string;
     touchedFiles?: string[];
+    persist?: boolean;
   }): Promise<Result<{ sessionId: string }>> => {
     try {
       if (!input.sessionId) {
@@ -185,6 +186,22 @@ export function createSessionSeederHelpers(store: E2EStore) {
         category: existing?.category ?? "rust_agent",
         is_active: true,
       };
+      // Cloud fixtures must survive the production directory refresh that
+      // opening a session triggers; an atom-only row is intentionally ephemeral.
+      if (input.persist) {
+        await invoke("agent_save_session", {
+          session: {
+            sessionId: input.sessionId,
+            name: session.name,
+            status: session.status,
+            createdAt: session.created_at,
+            updatedAt: session.updated_at,
+            sessionType: "sde",
+            workspacePath: input.repoPath,
+            userInput: session.user_input,
+          },
+        });
+      }
       upsertSession(session);
       return { ok: true, sessionId: input.sessionId };
     } catch (err) {

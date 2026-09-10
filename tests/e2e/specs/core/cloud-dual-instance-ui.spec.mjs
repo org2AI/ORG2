@@ -1,4 +1,4 @@
-/* global browser, describe, before, after, it, process */
+/* global browser, describe, before, after, afterEach, it, process */
 import { join } from "node:path";
 
 import {
@@ -53,6 +53,7 @@ import {
   waitForGoneOn,
   waitForRenderedOn,
 } from "../../support/core/dualCloudHarness.mjs";
+import { createNativeWindowScreenshot } from "../../support/core/nativeWindowScreenshot.mjs";
 
 // Rendered shape of buildCloudInviteLink (org2CloudOrgManagement.ts).
 const CLOUD_INVITE_LINK_PREFIX = "https://invite.org2.dev/#invite=";
@@ -4894,6 +4895,557 @@ describe("Cloud collaboration with two independent rendered app instances", func
         `[cloud-dual-e2e] deletion roster diagnostic ${JSON.stringify(deletionDiagnostic)}`
       );
       throw error;
+    }
+  });
+});
+
+// Deterministic auth and transcript fixtures establish preconditions only.
+// Sharing, upload, remote replay opening and file clicks use production paths.
+describe("Shared session files across two desktop accounts", function () {
+  const nativeCapture = createNativeWindowScreenshot();
+  async function capture(client, path) {
+    const port =
+      client === peer?.client
+        ? process.env.E2E_SECONDARY_IDE_SERVER_PORT
+        : process.env.E2E_IDE_SERVER_PORT;
+    await nativeCapture.save(client, Number(port), path);
+  }
+  let fixture;
+  let peer;
+  let fs;
+  const artifacts = process.env.E2E_SHARED_FILES_ARTIFACTS;
+  const fileRecords = [];
+  before(async function () {
+    if (!process.env.E2E_SHARED_FILES_FIXTURE) this.skip();
+    this.timeout(900_000);
+    fs = await import("node:fs");
+    fixture = JSON.parse(
+      fs.readFileSync(process.env.E2E_SHARED_FILES_FIXTURE, "utf8")
+    );
+    fs.mkdirSync(artifacts, { recursive: true });
+    await waitForApp();
+    await applyCloudEndpointOverride(fixture);
+    await seedAuthOn(browser, fixture, fixture.users[0], "File Sender A");
+    peer = await startSecondCloudInstance();
+    await waitForE2EOn(peer.client);
+    await applyCloudEndpointOn(peer.client, fixture);
+    await seedAuthOn(peer.client, fixture, fixture.users[1], "File Sender B");
+    for (const [index, client] of [browser, peer.client].entries()) {
+      await executeOn(
+        client,
+        "localStorage.setItem('orgii:e2e-shared-files-owner', arguments[0]);",
+        [fixture.users[index].userId]
+      );
+    }
+    for (const [index, client] of [browser, peer.client].entries()) {
+      const storageOwner = await executeOn(
+        client,
+        "return localStorage.getItem('orgii:e2e-shared-files-owner');"
+      );
+      if (storageOwner !== fixture.users[index].userId)
+        throw new Error("WebView storage leaked across accounts");
+      const identity = unwrapOn(
+        await invokeOn(client, "cloudReadAuthState"),
+        "independent account identity"
+      );
+      const backendUrl = await executeOn(
+        client,
+        "return window.__ORGII_E2E_IDE_SERVER_WS_URL__;"
+      );
+      const expectedPort = Number(process.env.E2E_IDE_SERVER_PORT) + index;
+      if (!backendUrl?.includes(`:${expectedPort}/`))
+        throw new Error(
+          `wrong native backend for account ${index}: ${backendUrl}`
+        );
+      if (identity.userId !== fixture.users[index].userId)
+        throw new Error("desktop accounts are not isolated");
+    }
+    fs.writeFileSync(
+      join(artifacts, "instance-homes.json"),
+      JSON.stringify({
+        primary: process.env.ORGII_HOME,
+        secondary: peer.orgiiHome,
+      })
+    );
+    for (const [index, client] of [browser, peer.client].entries()) {
+      unwrapOn(
+        await invokeOn(client, "ensureRepoSelected", {
+          repoPath: E2E_REPO_PATH,
+        }),
+        "fixture workspace"
+      );
+      unwrapOn(
+        await invokeOn(client, "cloudSeedRepoScopes", {
+          orgId: fixture.orgId,
+          repoScopes: ["github.com/orgii/e2e-workspace"],
+        }),
+        "scope mirror"
+      );
+      await waitForCloudOrgsOn(client);
+      await selectCloudOrgOn(client, fixture.orgId);
+      await capture(client, join(artifacts, `account-${index}-ready.png`));
+    }
+  });
+  afterEach(async function () {
+    if (this.currentTest?.state !== "failed") return;
+    for (const [index, client] of [browser, peer?.client].entries()) {
+      if (!client) continue;
+      await capture(client, join(artifacts, `failed-${index}.png`)).catch(
+        () => {}
+      );
+      const state = await executeOn(
+        client,
+        "return {text:document.body.innerText, links:[...document.querySelectorAll('a')].map(n=>({href:n.getAttribute('href'),text:n.textContent})),alerts:[...document.querySelectorAll('[role=alert]')].map(n=>n.textContent)};"
+      ).catch((error) => ({ error: String(error) }));
+      fs.writeFileSync(
+        join(artifacts, `failed-${index}.json`),
+        JSON.stringify(state)
+      );
+    }
+  });
+  after(async function () {
+    nativeCapture.cleanup();
+    if (peer) {
+      // Preserve logs before the harness removes its disposable secondary home.
+      if (fs.existsSync(join(peer.orgiiHome, "logs")))
+        fs.cpSync(
+          join(peer.orgiiHome, "logs"),
+          join(artifacts, "secondary-logs"),
+          { recursive: true }
+        );
+      await peer.stop();
+    }
+  });
+  async function rpc(index, method, body) {
+    const response = await fetch(
+      `${fixture.supabaseUrl}/rest/v1/rpc/${method}`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${fixture.users[index].accessToken}`,
+          apikey: fixture.anonKey,
+          "content-profile": "org2_cloud",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    const value = await response.json();
+    if (!response.ok)
+      throw new Error(`${method}: ${response.status} ${JSON.stringify(value)}`);
+    return value;
+  }
+  for (const direction of [0, 1]) {
+    it(`uploads and opens user/agent files ${direction === 0 ? "A to B" : "B to A"} with no receiver-local source`, async function () {
+      this.timeout(180_000);
+      const sender = direction === 0 ? browser : peer.client;
+      const receiver = direction === 0 ? peer.client : browser;
+      const sessionId = `sdeagent-shared-files-${RUN_ID}-${direction}`;
+      const name = `shared-report-${direction}.md`;
+      const filePath = join(E2E_REPO_PATH, name);
+      const userName = `user-note-${direction}.txt`;
+      const userPath = join(E2E_REPO_PATH, userName);
+      const missingPath = join(
+        E2E_REPO_PATH,
+        `removed-source-${RUN_ID}-${direction}.txt`
+      );
+      // Inject the new file-read fault before publication, not in a mock RPC.
+      fs.writeFileSync(missingPath, "removed before the sender reads it");
+      fs.unlinkSync(missingPath);
+      const userContent = `USER_FILE_BYTES_${RUN_ID}_${direction}`;
+      fs.writeFileSync(userPath, userContent);
+      const content = `SHARED_BYTES_${RUN_ID}_${direction}\nUser and agent files travel across accounts.\n`;
+      fs.writeFileSync(filePath, content);
+      // Seed a completed source turn, not a fake uploaded-file record.
+      unwrapOn(
+        await invokeOn(sender, "seedSidebarSession", {
+          sessionId,
+          name: `Shared files ${direction}`,
+          persist: true,
+          repoPath: E2E_REPO_PATH,
+        }),
+        "seed source session"
+      );
+      unwrapOn(
+        await invokeOn(sender, "openSession", sessionId),
+        "open source session"
+      );
+      const base = {
+        sessionId,
+        createdAt: new Date().toISOString(),
+        args: {},
+        result: {},
+        displayStatus: "completed",
+        displayVariant: "message",
+        activityStatus: "processed",
+        isDelta: false,
+      };
+      const events = [
+        {
+          ...base,
+          id: `user-${sessionId}`,
+          chunk_id: `user-${sessionId}`,
+          functionName: "user_message",
+          uiCanonical: "user_message",
+          actionType: "raw",
+          source: "user",
+          displayText: `Share ${userName} [file:${userPath}]`,
+        },
+        {
+          ...base,
+          id: `write-${sessionId}`,
+          chunk_id: `write-${sessionId}`,
+          functionName: "write_file",
+          args: { file_path: filePath, content },
+          result: { success: true },
+          uiCanonical: "write_file",
+          actionType: "tool_call",
+          source: "assistant",
+          filePath,
+          displayText: `Created ${name}`,
+          displayVariant: "tool_call",
+          extracted: {
+            kind: "edit",
+            filePath,
+            fileName: name,
+            language: "markdown",
+            isNew: true,
+            isDeleted: false,
+            applyPatchSegments: [],
+          },
+        },
+        {
+          ...base,
+          id: `answer-${sessionId}`,
+          chunk_id: `answer-${sessionId}`,
+          functionName: "assistant_message",
+          uiCanonical: "agent_message",
+          actionType: "assistant",
+          source: "assistant",
+          displayText: `Generated [${name}](${filePath}) and [removed source](${missingPath})`,
+        },
+      ];
+      unwrapOn(
+        await invokeOn(sender, "seedChatEvents", sessionId, events, {
+          chatPanelMaximized: true,
+        }),
+        "seed completed source turn"
+      );
+      unwrapOn(
+        await invokeOn(sender, "cloudTagSessionToOrg", {
+          sessionId,
+          orgId: fixture.orgId,
+        }),
+        "source org tag"
+      );
+      unwrapOn(
+        await invokeOn(sender, "cloudOpenSyncLevelDialog", { sessionId }),
+        "open share dialog"
+      );
+      await clickRenderedOn(
+        sender,
+        `[data-testid="session-sync-level-mode-${fixture.orgId}"]`,
+        "file share level"
+      );
+      await clickRenderedOn(
+        sender,
+        `[data-testid="session-sync-level-mode-option-${fixture.orgId}-full_replay"]`,
+        "full-content sharing"
+      );
+      await pressEscapeOn(sender);
+      unwrapOn(
+        await invokeOn(sender, "cloudRunSyncPass"),
+        "drain production sender sync"
+      );
+      let metadata;
+      await sender.waitUntil(
+        async () => {
+          try {
+            metadata = await rpc(direction, "cloud_find_session_file", {
+              p_org_id: fixture.orgId,
+              p_session_id: sessionId,
+              p_source_path: filePath,
+            });
+            return !!metadata;
+          } catch {
+            return false;
+          }
+        },
+        {
+          timeout: 60_000,
+          interval: 1000,
+          timeoutMsg: "production sync did not upload the source file",
+        }
+      );
+      const serverFile = await rpc(1 - direction, "cloud_get_session_file", {
+        p_file_id: metadata.id,
+      });
+      if (Buffer.from(serverFile.content, "base64").toString() !== content)
+        throw new Error("cloud bytes mismatch");
+      const userMetadata = await rpc(direction, "cloud_find_session_file", {
+        p_org_id: fixture.orgId,
+        p_session_id: sessionId,
+        p_source_path: userPath,
+      });
+      if (!userMetadata)
+        throw new Error("user file reference was not uploaded");
+      const unavailable = await rpc(direction, "cloud_find_session_file", {
+        p_org_id: fixture.orgId,
+        p_session_id: sessionId,
+        p_source_path: missingPath,
+      });
+      if (unavailable !== null)
+        throw new Error("Missing source created a false available-file record");
+      fs.renameSync(filePath, `${filePath}.source-offline`);
+      fs.renameSync(userPath, `${userPath}.source-offline`);
+      try {
+        unwrapOn(
+          await invokeOn(receiver, "cloudRunSyncPass"),
+          "drain receiver sync"
+        );
+        // The isolated HTTP fixture has no Realtime daemon. Exercise the
+        // production manual refresh instead of seeding the receiving list.
+        await clickRenderedOn(
+          receiver,
+          '[data-testid="cloud-team-sessions-refresh"]',
+          "refresh receiver Team sessions"
+        );
+        const row = `[data-testid="sidebar-cloud-session-item-${sessionId}"]`;
+        await waitForRenderedOn(
+          receiver,
+          row,
+          "receiver shared session",
+          60_000
+        );
+        await clickRenderedOn(receiver, row, "open received replay");
+        const link = `a[href="${filePath}"]`;
+        await waitForRenderedOn(
+          receiver,
+          link,
+          "received agent file link",
+          60_000
+        );
+        await clickRenderedOn(receiver, link, "open shared file");
+        await receiver.waitUntil(
+          async () =>
+            executeOn(
+              receiver,
+              "return [...document.querySelectorAll('pre')].some(n=>n.textContent.includes(arguments[0]));",
+              [content.trim()]
+            ),
+          {
+            timeout: 30_000,
+            timeoutMsg: "receiver did not render actual cloud bytes",
+          }
+        );
+        await capture(receiver, join(artifacts, `received-${direction}.png`));
+        await pressEscapeOn(receiver);
+        // A second open must still fetch the shared object after source removal.
+        await clickRenderedOn(receiver, link, "reopen shared file");
+        await receiver.waitUntil(
+          async () =>
+            executeOn(
+              receiver,
+              "return [...document.querySelectorAll('pre')].some(n=>n.textContent.includes(arguments[0]));",
+              [content.trim()]
+            ),
+          { timeout: 30_000 }
+        );
+        await pressEscapeOn(receiver);
+        const userLink = `a[href$="${userName}"]`;
+        await clickRenderedOn(receiver, userLink, "open received user file");
+        await receiver.waitUntil(
+          async () =>
+            executeOn(
+              receiver,
+              "return [...document.querySelectorAll('pre')].some(n=>n.textContent===arguments[0]);",
+              [userContent]
+            ),
+          { timeout: 30_000 }
+        );
+        await capture(
+          receiver,
+          join(artifacts, `received-user-${direction}.png`)
+        );
+        await pressEscapeOn(receiver);
+      } finally {
+        fs.renameSync(`${filePath}.source-offline`, filePath);
+        fs.renameSync(`${userPath}.source-offline`, userPath);
+      }
+      fileRecords[direction] = {
+        sessionId,
+        filePath,
+        id: metadata.id,
+        content,
+      };
+      fs.writeFileSync(
+        join(artifacts, `verified-${direction}.json`),
+        JSON.stringify({
+          sessionId,
+          fileId: metadata.id,
+          size: metadata.size,
+          sha256: metadata.sha256,
+          sourceRemovedDuringOpen: true,
+        })
+      );
+    });
+  }
+  it("denies reopening after the owner revokes sharing", async function () {
+    this.timeout(120_000);
+    if (!fileRecords[0])
+      throw new Error("A-to-B transfer must pass before revocation");
+    const { sessionId, filePath, id } = fileRecords[0];
+    const receiver = peer.client;
+    await clickRenderedOn(
+      receiver,
+      `[data-testid="sidebar-cloud-session-item-${sessionId}"]`,
+      "open replay before revocation"
+    );
+    const link = `a[href="${filePath}"]`;
+    await waitForRenderedOn(
+      receiver,
+      link,
+      "file link before revocation",
+      30_000
+    );
+    unwrap(
+      await invokeE2E("openSession", sessionId),
+      "owner source before revocation"
+    );
+    await setCloudSessionVisibilityViaDialog(
+      sessionId,
+      fixture.orgId,
+      "restricted"
+    );
+    unwrap(await invokeE2E("cloudRunSyncPass"), "publish revocation");
+    try {
+      await receiver.waitUntil(
+        async () => {
+          const r = await fetch(
+            `${fixture.supabaseUrl}/rest/v1/rpc/cloud_get_session_file`,
+            {
+              method: "POST",
+              headers: {
+                authorization: `Bearer ${fixture.users[1].accessToken}`,
+                apikey: fixture.anonKey,
+                "content-profile": "org2_cloud",
+                "content-type": "application/json",
+              },
+              body: JSON.stringify({ p_file_id: id }),
+            }
+          );
+          const body = await r.json();
+          return !r.ok && JSON.stringify(body).includes("ORG2_FORBIDDEN");
+        },
+        { timeout: 30_000, timeoutMsg: "revocation did not reach file ACL" }
+      );
+      await clickRenderedOn(receiver, link, "reopen revoked file");
+      await waitForRenderedOn(
+        receiver,
+        '[role="alert"]',
+        "revoked file error",
+        30_000
+      );
+      await capture(receiver, join(artifacts, "revoked-file.png"));
+      await pressEscapeOn(receiver);
+    } finally {
+      await setCloudSessionVisibilityViaDialog(sessionId, fixture.orgId, "org");
+      unwrap(await invokeE2E("cloudRunSyncPass"), "restore fixture sharing");
+    }
+  });
+  it("preserves both account identities and file previews across two cold boots", async function () {
+    this.timeout(300_000);
+    if (!fileRecords[0] || !fileRecords[1])
+      throw new Error("both transfers must pass before reboot");
+    for (let boot = 1; boot <= 2; boot++) {
+      for (const [index, client] of [browser, peer.client].entries()) {
+        await client.reloadSession();
+        await waitForE2EOn(client);
+        const identity = unwrapOn(
+          await invokeOn(client, "cloudReadAuthState"),
+          "persisted identity after cold boot"
+        );
+        if (identity.userId !== fixture.users[index].userId)
+          throw new Error("cold boot changed account identity");
+        for (let pass = 0; pass < 3; pass++)
+          unwrapOn(
+            await invokeOn(client, "cloudRunSyncPass"),
+            "cold-boot sync pass"
+          );
+        const record = fileRecords[index];
+        const existing = await rpc(index, "cloud_find_session_file", {
+          p_org_id: fixture.orgId,
+          p_session_id: record.sessionId,
+          p_source_path: record.filePath,
+        });
+        if (existing?.id !== record.id)
+          throw new Error("cold boot replaced immutable artifact");
+        await selectCloudOrgOn(client, fixture.orgId);
+        await clickRenderedOn(
+          client,
+          '[data-testid="cloud-team-sessions-refresh"]',
+          "refresh after cold boot"
+        );
+        const received = fileRecords[1 - index];
+        const row = `[data-testid="sidebar-cloud-session-item-${received.sessionId}"]`;
+        await waitForRenderedOn(
+          client,
+          row,
+          "received replay after cold boot",
+          30_000
+        );
+        await clickRenderedOn(
+          client,
+          row,
+          "open received replay after cold boot"
+        );
+        const link = `a[href="${received.filePath}"]`;
+        await waitForRenderedOn(
+          client,
+          link,
+          "received file after cold boot",
+          30_000
+        );
+        // Reopening an already-restored replay starts another hydration. Wait
+        // for its rendered anchor to survive successive polls before clicking.
+        const token = `${boot}-${index}-${Date.now()}`;
+        await client.waitUntil(
+          async () =>
+            executeOn(
+              client,
+              `
+          const node = document.querySelector(arguments[0]);
+          if (!node) return false;
+          if (node.dataset.e2eFileStable !== arguments[1]) {
+            node.dataset.e2eFileStable=arguments[1]; node.dataset.e2eFilePolls='0'; return false;
+          }
+          node.dataset.e2eFilePolls=String(Number(node.dataset.e2eFilePolls)+1);
+          return Number(node.dataset.e2eFilePolls)>=2;
+        `,
+              [link, token]
+            ),
+          { timeout: 10_000, interval: 250 }
+        );
+        await clickRenderedOn(
+          client,
+          link,
+          "open received file after cold boot"
+        );
+        await client.waitUntil(
+          async () =>
+            executeOn(
+              client,
+              "return [...document.querySelectorAll('pre')].some(n=>n.textContent===arguments[0]);",
+              [received.content]
+            ),
+          { timeout: 30_000 }
+        );
+        await capture(
+          client,
+          join(artifacts, `cold-boot-${index}-${boot}.png`)
+        );
+        await pressEscapeOn(client);
+      }
     }
   });
 });

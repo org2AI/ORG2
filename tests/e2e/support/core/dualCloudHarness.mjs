@@ -207,6 +207,10 @@ function secondaryTauriConfig(originalConfig) {
 function buildSecondaryBinary(tempRoot) {
   const originalConfig = readFileSync(tauriConfigPath, "utf8");
   const secondaryBinary = join(tempRoot, "org2-e2e-instance2");
+  // Keep the primary's embedded isolated config across reloadSession/cold boot.
+  // Rebuilding it from tauri.conf.json would restore the ordinary app identity.
+  const primarySnapshot = join(tempRoot, "org2-e2e-primary");
+  copyFileSync(compiledBinaryPath, primarySnapshot);
   const cargoArgs = [
     "build",
     "--manifest-path",
@@ -223,10 +227,9 @@ function buildSecondaryBinary(tempRoot) {
     copyFileSync(compiledBinaryPath, secondaryBinary);
   } finally {
     writeFileSync(tauriConfigPath, originalConfig);
+    // Atomic replacement keeps the running primary executable untouched.
+    renameSync(primarySnapshot, compiledBinaryPath);
   }
-
-  // Do not leave the shared debug artifact carrying the secondary bundle id.
-  execFileSync("cargo", cargoArgs, { cwd: repoRoot, stdio: "inherit" });
   return secondaryBinary;
 }
 

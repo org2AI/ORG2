@@ -22,7 +22,10 @@ import { isThemeCssPathDark } from "@src/config/appearance/globalThemes";
 import CanvasInlineCard from "@src/engines/ChatPanel/blocks/CanvasInlineCard";
 import ChatCodeBlock from "@src/engines/ChatPanel/blocks/CodeBlock";
 import SharedSessionFileLink from "@src/features/Org2Cloud/SharedSessionFileLink";
-import { useOpenSessionSharedFile } from "@src/features/Org2Cloud/SharedSessionFilesContext";
+import {
+  useIsSessionFileShared,
+  useOpenSessionSharedFile,
+} from "@src/features/Org2Cloud/SharedSessionFilesContext";
 import { parseCloudSessionReference } from "@src/features/Org2Cloud/cloudSessionReference";
 import { parseSharedSessionFileReference } from "@src/features/Org2Cloud/sharedSessionFileReference";
 import { useOpenCloudSessionReference } from "@src/features/Org2Cloud/useOpenCloudSessionReference";
@@ -204,6 +207,7 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
   );
 
   const openSharedFile = useOpenSessionSharedFile();
+  const sharedSessionFiles = useIsSessionFileShared();
   const handleLinkClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
       event.preventDefault();
@@ -476,6 +480,7 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
         // A workspace path is not an HTTP URL, so `LinkHoverCard` renders
         // nothing for it. Route local targets to the file-tree card instead so
         // both kinds of link carry a hover preview.
+        if (linkTarget.kind === "local" && sharedSessionFiles) return anchor;
         if (linkTarget.kind === "local") {
           return (
             <MarkdownFilePathHoverCard
@@ -526,6 +531,7 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
     enableFileNavigation,
     handleLinkClick,
     openSharedFile,
+    sharedSessionFiles,
     activeWorkspaceRoot,
     activeWorkspaceRootPath,
     fileRootPath,

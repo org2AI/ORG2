@@ -18,4 +18,4 @@
 
 Verdict totals: **0 fix**, **13 keep with reason**, **0 abstract**.
 
-Scope includes the shared provider and EventFileHoverPreview's shared-context guard, neither of which adds visual styling. No unrelated component sweep identified. Desktop theme/viewport/loading/error screenshots remain unverified. JSDOM tests establish lifecycle and safe text behavior, not actual native layout or PDF rendering.
+Scope includes the shared provider and EventFileHoverPreview's shared-context guard, neither of which adds visual styling. No unrelated component sweep identified. Native macOS light-theme text/user-file previews, denied state and second-boot previews are captured in the companion verification report. Dark/narrow/loading/PDF/native-save checks remain uncovered. JSDOM tests additionally establish lifecycle and safe text behavior.

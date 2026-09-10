@@ -24,6 +24,25 @@ function event(overrides: Partial<SessionEvent>): SessionEvent {
   } as SessionEvent;
 }
 describe("session artifact discovery", () => {
+  it("does not turn an empty extracted file path into the workspace directory", () => {
+    expect(
+      collectSessionSharedFiles(
+        [
+          event({
+            uiCanonical: "write_file",
+            extracted: {
+              kind: "file",
+              filePath: "",
+              fileName: "",
+              language: "text",
+            } as SessionEvent["extracted"],
+          }),
+        ],
+        "/repo"
+      )
+    ).toEqual([]);
+    expect(sharedFileAbsolutePath("   ", "/repo")).toBeNull();
+  });
   it("collects user file messages, successful writes and agent-generated linked output without a comment", () => {
     const result = collectSessionSharedFiles([
       event({

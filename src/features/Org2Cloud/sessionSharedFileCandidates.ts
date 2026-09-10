@@ -33,6 +33,7 @@ export function sharedFileAbsolutePath(
   if (/^[a-z][a-z0-9+.-]*:/i.test(value) && !/^[A-Za-z]:[\\/]/.test(value))
     return null;
   value = value.replace(/:(\d+)(?::\d+)?$/, "").replace(/\\/g, "/");
+  if (!value.trim()) return null;
   if (!value.startsWith("/") && !/^[A-Za-z]:\//.test(value)) {
     if (!repoPath) return null;
     value = `${repoPath.replace(/\/$/, "")}/${value}`;

@@ -11,7 +11,7 @@ Shared transcripts and comments previously persisted sender-local paths without 
 - File pills, output links, inline file links, code-block file actions, Edits and Inbox references use the shared-session source index. Shared file previews do not read a receiver's same-named local file. Comments are another entry point and carry immutable `orgii-file` IDs after preparation; there is no five-files-per-comment product rule.
 - A source key includes session, uploader, path and event revision. Batch metadata lookup (64 records/request) avoids reading already-published files. Uploads are sequential. Repeating a source revision with different bytes is rejected; independent versions remain immutable. Unqualified paths written by multiple authors fail as ambiguous rather than opening another author's file.
 - Source snapshots contain bytes at publication time, not a reconstructed historical version. A changed-during-read file is rejected. Missing/oversized source files produce no available-file record; replay can still sync. Network upload failures remain owned by the existing retry lifecycle and can delay replay or turn completion.
-- Text previews are escaped UTF-8 up to 128 KiB. Images and PDFs use revocable object URLs; PDF rendering is sandboxed. Other files can be saved with the native dialog. Preview/native save behavior still requires packaged-desktop verification.
+- Text previews are escaped UTF-8 up to 128 KiB. Images and PDFs use revocable object URLs; PDF rendering is sandboxed. Other files can be saved with the native dialog. Text preview passed native macOS desktop verification; image/PDF/native-save behavior still requires packaged-desktop verification.
 
 ## Bounds, security and compatibility
 
@@ -19,7 +19,7 @@ Current transport is an authenticated JSON/base64 RPC backed by private PostgreS
 
 Every metadata lookup, upload and download checks discussion visibility plus full-content access. Known roots require full replay mode, and restricted roots require a replay-level grant for non-owners. Metadata-only grants and fully deleted roots cannot expose bytes. Rootless conversations retain their existing membership boundary. Revoked access blocks new reads, while downloaded bytes cannot be recalled. No public links or direct authenticated table access exist. SHA-256, ID, filename and size are checked at the client boundary. Account/endpoint changes discard stale reads and stop later writes; close aborts metadata/byte requests and releases object URLs. Sender paths are private index metadata visible only under session access.
 
-The native capability additions enable bounded handle reads/stat and saving binary bytes. Existing filesystem scope rules still apply; the save dialog selects the destination. `frame-src blob:` permits the sandboxed PDF preview. No Rust implementation or public transcript/comment wire schema changed. The optional local cursor marker is backward-compatible; older desktops ignore it and may repeat a one-time file backfill after a downgrade/upgrade.
+The native capability additions enable bounded handle reads/stat and saving binary bytes. Existing filesystem scope rules still apply; the save dialog selects the destination. `frame-src blob:` permits the sandboxed PDF preview. The only Rust implementation change is debug-WebDriver macOS startup isolation; production startup and the public transcript/comment wire schema are unchanged. The optional local cursor marker is backward-compatible; older desktops ignore it and may repeat a one-time file backfill after a downgrade/upgrade.
 
 ## Deployment and rollback
 
@@ -31,7 +31,7 @@ Rollback the desktop to stop publication, retaining cloud table/RPCs and bytes. 
 
 | Layer             | Coverage                                                                                     |
 | ----------------- | -------------------------------------------------------------------------------------------- |
-| 1 Compilation     | TypeScript, native JSON configuration and SQL migration checked; no Rust source change       |
+| 1 Compilation     | TypeScript, native configuration, debug WebDriver startup and SQL migration checked          |
 | 2 Ownership       | One bounded reader, upload client, source registry and viewer; sync/delivery own retries     |
 | 3 Naming          | Shared files distinct from replay segments, local file paths and comments                    |
 | 4 Semantics       | Bytes belong to immutable records; session membership governs access; mentions grant nothing |
@@ -42,7 +42,7 @@ Rollback the desktop to stop publication, retaining cloud table/RPCs and bytes. 
 | 9 Entry parity    | User messages, agent outputs, Edits, shared conversation turns, comments and Inbox           |
 | 10 Resolution     | Endpoint/account/source-session identity and author ambiguity checks                         |
 
-All ten relevant layers reviewed; provider ingestion internals and Rust architecture were intentionally outside the change.
+All ten relevant layers reviewed; provider ingestion internals were intentionally outside the change. The debug-only native startup change is limited to isolated WebView storage.
 
 ## Performance review
 
@@ -54,11 +54,11 @@ All ten relevant layers reviewed; provider ingestion internals and Rust architec
 | Identity/isolation    | keep    | Live ACL plus endpoint/account guards                             | Close aborts lookup/download; source metadata is access-controlled | JSDOM lifecycle and PostgreSQL ACL tests                        |
 | Hidden/idle rendering | keep    | Shared links and hover state do not read local files              | No network work solely from rendering a link                       | Code-path inspection and existing renderer regression suites    |
 
-Runtime performance verdict: **blocked pending measurement**. Visible/hidden idle CPU/RSS, repeated native open/save, real authenticated HTTP transport, reconnect, two-account Tauri operation and screenshots have not been exercised. PostgreSQL/JSDOM tests are boundary evidence, not a dual-machine acceptance claim.
+Runtime performance verdict: **bounded lifecycle checks passed; complete resource acceptance UNCOVERED**. Authenticated HTTP, two-account native text previews, repeated opens, source-removal faults and two cold boots per account passed. Sequential publication, durable deduplication and unchanged cloud event epochs were observed. Backend CPU/RSS sampling was collected, but does not attribute WebKit child-process memory or establish full visible/hidden idle baselines; no whole-app CPU/RSS improvement is claimed.
 
 ## Verification
 
-Typecheck, changed-file ESLint and **153 tests across 18 files passed**. Native configuration JSON parsed successfully; SQL regression passed.
+Typecheck, changed-file ESLint and **154 tests across 18 files passed**. Native configuration JSON parsed successfully; SQL regression passed.
 
 - `pnpm typecheck:fast`
 - Changed-file lint: `pnpm exec eslint <all changed and new .ts/.tsx paths> --max-warnings 0` (paths enumerated from `git diff --name-only HEAD` and `git ls-files --others --exclude-standard`)
@@ -68,3 +68,56 @@ Typecheck, changed-file ESLint and **153 tests across 18 files passed**. Native 
 - Infra: `psql -h 127.0.0.1 -p 55439 -d shared_files_v4 -v ON_ERROR_STOP=1 -f scripts/cloud/test-shared-session-files.sql`
 
 The SQL suite ran on isolated PostgreSQL 17 with Supabase auth/realtime shims, the real baseline and migrations 0024, 0027, 0031, 0033. It checks binary roundtrip, immutable retries, source/latest-version lookup, author isolation/ambiguity, member uploads, restricted/revoked/metadata-only/deleted/anonymous access, rootless conversations, removed membership, filename/size validation and count/byte quotas. Test transactions roll back. No production deployment or production data change has been performed.
+
+## Desktop test setup
+
+The shared-file scenarios extend the existing `cloud-dual-instance-ui.spec.mjs` core spec. Set `E2E_SHARED_FILES_FIXTURE` to a private JSON fixture and `E2E_SHARED_FILES_ARTIFACTS` to a disposable evidence directory. Fixture fields are `supabaseUrl`, `webOrigin`, `anonKey`, `orgId`, and `users` (two distinct entries with `userId`, `accessToken`, `refreshToken`, `expiresAt`). Never commit credentials. Both users must be active members of the organization; configure its repository scope as `github.com/orgii/e2e-workspace` using the owner RPC and read it back.
+
+The isolated backend used PostgreSQL 17 plus real PostgREST v12.2.12, with the repository's real SQL migrations. A localhost proxy forwards `/rest/v1` bytes unchanged and supplies CORS. JWTs are independently signed fixture identities verified by PostgREST. Auth seeding establishes a session; it does not test login or token refresh. No production Supabase data or deployment was used. Realtime, GoTrue and blob Storage daemons are absent; the test uses the rendered Team sessions refresh button. Inline replay tails and file RPCs are real; frozen replay segments and live notifications remain uncovered.
+
+Source sessions are persisted through the native session command before their deterministic completed turns enter EventStore/SQLite. This is not a live provider-generation test. The sharing dialog, sync engine, filesystem read, authenticated upload, remote replay opening and file click all use production paths. Tests move the source files away while the receiver opens both user and agent bytes, preventing accidental receiver-local fallback. Native macOS screenshots use WindowServer capture of the process listening on the isolated backend port; the WebDriver plugin's SVG/DOM screenshots lose styles and are not accepted as native visual evidence.
+
+Test setup corrections: atom-only sessions were removed by the authoritative directory refresh, so persisted fixtures are required. Raw macOS WebDriver executables also shared the default WKWebView store. Tauri 2.10's configuration conversion omits `data_store_identifier`; the debug-only startup now calls the WebView builder directly with a stable identifier derived from the isolated native home. Secondary builds preserve the exact primary binary for cold-boot tests.
+
+A real upload probe exposed an empty extracted source path being resolved to the workspace directory. The path boundary now rejects empty values before applying the workspace root; a producing-boundary regression covers it. No cloud file record was created for the directory, and no historical cleanup is needed.
+
+## Final desktop result
+
+2026-09-10 final native run: **4/4 scenarios passed** in 1m37s (excluding native builds). Both app binaries were built from the worktree with `--features webdriver`. Two separate signed users, native homes, backend ports and WKWebView stores were checked. The same source files were unavailable locally while their cloud bytes rendered on the receiving account.
+
+| Cell                              | Result                | Evidence                                                                                                                                                                                                                                                        |
+| --------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A → B user and agent files        | PASS                  | Real filesystem reads → authenticated uploads → receiver replay/file clicks; exact bytes; repeated open                                                                                                                                                         |
+| B → A user and agent files        | PASS                  | Same checks with roles reversed                                                                                                                                                                                                                                 |
+| Source removed before publication | PASS, both directions | No available-file record; remaining files and replay still publish; expected missing-source diagnostic                                                                                                                                                          |
+| Owner revokes access              | PASS                  | Receiver RPC denied; reopening displays an error; owner restores the fixture share                                                                                                                                                                              |
+| Two cold boots per account        | PASS                  | Persisted identities, three sync passes each boot, immutable IDs and receiver text previews                                                                                                                                                                     |
+| Fleet invariants                  | PASS for sampled run  | 23 snapshots across all three visible organizations: six pre-existing rows unchanged; exactly two scenario rows added; seven explained new-row/metadata timestamp changes; epochs stay 1, event counts stay 3; no deletion/access-mode downgrade                |
+| Native visual checks              | PASS, scoped          | Actual WindowServer screenshots: default light theme, text preview, user reference and denied state                                                                                                                                                             |
+| Full dual-instance protocol       | UNCOVERED             | Production Supabase/Realtime/GoTrue/Storage, live provider generation, /compact, owner/guest live forks, imported-cache wipe, old-build→new-build upgrade, binary download/PDF/image, dark/narrow/loading states and complete process-family resource profiling |
+
+The ledger's only modified session IDs belong to this run. Reboot metadata upserts and explicit drained sync passes prove liveness; constant epochs are not inferred from idle engines. The one INFO `retract reconcile: covering 1 background org(s)` line enumerates organizations with local push markers before reconciliation (`org2CloudSyncEngine.ts`); the ledger shows no tombstone, mode downgrade or epoch rewrite. The two initial epoch-1 replay writes are initial publication, not replacement of pre-existing history. See [cloud ledger](shared-session-files/cloud-ledger.json).
+
+Log triage: missing-source warnings are the intentional reader fault. Realtime/presence channel errors are from the absent local daemon. Git default-branch/fetch errors come from the fixture's synthetic remote, which has no hosted repository. No startup watchdog, forced-splash or CRITICAL line occurred in the final run. Earlier setup attempts failed (missing prerequisite migrations, ephemeral fixture rows, default WebView storage, and screenshot capture); they are not counted as successful validation. An immediate cold-boot click in an earlier attempt raced replay hydration; the final test waits for the same rendered anchor to survive successive polls before the single click.
+
+**Open defect outside this feature:** an empty imported cache (`eventCount: 0`) returns `timeRangeStart/timeRangeEnd: null`, while the existing RPC schema accepts optional strings, producing an output-validation error during import. The authoritative boundary is native cache metadata serialization versus `src/api/tauri/rpc/schemas/sessionCore.ts`; these paths are unchanged by this PR. Import subsequently loads the three real events and every file assertion passes, but this is a defect, not an error-free/full-protocol acceptance claim. It requires a separate cache-contract fix.
+
+### Native evidence
+
+![A to B agent file](shared-session-files/received-0.png)
+![B to A agent file](shared-session-files/received-1.png)
+![Received user file](shared-session-files/received-user-0.png)
+![Revoked file](shared-session-files/revoked-file.png)
+![Second cold boot](shared-session-files/cold-boot-0-2.png)
+
+### Exact final desktop command
+
+```sh
+E2E_ISOLATED_RUN=1 E2E_ORGII_HOME=/tmp/orgii-shared-files-desktop/home-a-v9 E2E_ORGII_HOME_SEED_SOURCE=/tmp/orgii-shared-files-desktop/empty-home E2E_FRONTEND_PORT=21998 E2E_WEBDRIVER_PORT=24444 E2E_IDE_SERVER_PORT=13877 E2E_SECONDARY_IDE_SERVER_PORT=13878 E2E_SECONDARY_WEBDRIVER_PORT=24445 E2E_SHARED_FILES_FIXTURE=/tmp/orgii-shared-files-desktop/fixture.json E2E_SHARED_FILES_ARTIFACTS=/tmp/orgii-shared-files-desktop/evidence-v9 pnpm --dir tests/e2e test -- --spec ./specs/core/cloud-dual-instance-ui.spec.mjs --mochaOpts.grep 'Shared session files'
+```
+
+### Exact focused unit command
+
+```sh
+pnpm test "src/features/Org2Cloud/prepareSharedCommentFiles.test.ts" "src/features/Org2Cloud/sharedSessionFilesClient.test.ts" "src/features/Org2Cloud/sharedSessionFileReference.test.ts" "src/features/Org2Cloud/org2CloudSessionCommentsAtom.delivery.test.ts" "src/features/Org2Cloud/SharedSessionFileViewer.test.ts" "src/features/Org2Cloud/sessionSharedFileCandidates.test.ts" "src/features/Org2Cloud/syncSessionSharedFiles.test.ts" "src/features/Org2Cloud/org2CloudSessionSync" "src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter.test.ts" "src/features/Org2Cloud/SessionComments/SessionCommentsContext.test.ts" "src/features/Org2Cloud/org2CloudCapabilities.test.ts" "src/modules/MainApp/TeamInbox/__tests__/CommentMentionDetail.test.ts" "src/components/MarkDown/MarkdownLocalImage.test.ts" "src/engines/ChatPanel/ChatHistory/components/__tests__/UserMessageContent.test.ts" "src/components/MarkDown/markdownUrlTransform.test.ts"
+```

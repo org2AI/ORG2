@@ -368,6 +368,7 @@ const ModelPillComponent: React.FC = () => {
     !conversationBinding ||
     (conversationBinding.readiness === "ready" &&
       (Boolean(conversationBinding.target) ||
+        Boolean(conversationBinding.runtimeSelection) ||
         Boolean(pendingRuntimeSelection)));
   const modelDefaultLabel =
     conversationBinding?.readiness === "loading"

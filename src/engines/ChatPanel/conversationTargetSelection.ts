@@ -4,10 +4,11 @@ import {
 } from "@src/api/tauri/rpc/schemas/validation";
 import { KEY_SOURCE, isHostedKey } from "@src/api/tauri/session";
 import { formatAgentType } from "@src/assets/providers";
-import type {
-  ConversationRootLocator,
-  ConversationSource,
-  LocalConversationTarget,
+import {
+  type ConversationRootLocator,
+  type ConversationSource,
+  type LocalConversationTarget,
+  NATIVE_CONVERSATION_CLI_TARGETS,
 } from "@src/engines/SessionCore/conversations/conversationTypes";
 import type { SessionCommentTarget } from "@src/features/Org2Cloud/sessionCommentTarget";
 import {
@@ -333,8 +334,20 @@ export function resolveConversationRuntimeSelection(params: {
   source: ConversationSource;
   definitions: readonly AgentDefinition[];
 }): AgentSelection | null {
-  if (!params.target) return null;
-  const parsed = CliAgentTypeSchema.safeParse(params.target.cliAgentType);
+  // Replay provenance owns its runtime identity even when a local account/model
+  // pair is still missing. Sharing moves the authority to Cloud without changing
+  // the original agent, so both replay authorities must preserve that identity.
+  const sourceRuntime =
+    (params.source.root.authority === "imported-history" ||
+      params.source.root.authority === "org2-cloud") &&
+    NATIVE_CONVERSATION_CLI_TARGETS.some(
+      (runtime) => runtime === params.source.cliAgentType
+    )
+      ? params.source.cliAgentType
+      : undefined;
+  const parsed = CliAgentTypeSchema.safeParse(
+    params.target ? params.target.cliAgentType : sourceRuntime
+  );
   if (parsed.success) {
     return {
       category: "cli_agent",
@@ -343,7 +356,7 @@ export function resolveConversationRuntimeSelection(params: {
       agentName: formatAgentType(parsed.data),
     };
   }
-  const agentDefinitionId = params.target.agentDefinitionId;
+  const agentDefinitionId = params.target?.agentDefinitionId;
   if (!agentDefinitionId) return null;
   const definition = params.definitions.find(
     (candidate) => candidate.id === agentDefinitionId

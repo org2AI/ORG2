@@ -580,14 +580,14 @@ export function useConversationTargetBinding(
 
   const runtimeSelection = useMemo(
     () =>
-      source && readiness === "ready" && target
+      source && readiness === "ready"
         ? resolveConversationRuntimeSelection({
-            target,
+            target: target ?? preferredTarget ?? source.initialTarget,
             source,
             definitions,
           })
         : null,
-    [definitions, readiness, source, target]
+    [definitions, preferredTarget, readiness, source, target]
   );
 
   const applyModelPick = useCallback(

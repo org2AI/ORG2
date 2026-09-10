@@ -95,11 +95,12 @@ vi.mock("@src/components/ModelSelectorPill", async () => {
   return {
     default: forwardRef<
       HTMLButtonElement,
-      { onClick: () => void; dataTestId: string }
-    >(({ onClick, dataTestId }, ref) =>
+      { onClick: () => void; dataTestId: string; disabled?: boolean }
+    >(({ onClick, dataTestId, disabled }, ref) =>
       createElement("button", {
         ref,
         "data-testid": dataTestId,
+        disabled,
         onClick,
       })
     ),
@@ -246,6 +247,26 @@ describe("ModelPill disclosure ownership", () => {
       model: undefined,
     });
   }
+
+  it("opens the original agent's model picker before a complete target exists", () => {
+    const target = fixture.binding.target;
+    Reflect.set(fixture.binding, "target", null);
+    try {
+      act(() => renderCurrentSession());
+      const button = container.querySelector<HTMLButtonElement>(
+        '[data-testid="chat-model-pill-model"]'
+      )!;
+      expect(button.disabled).toBe(false);
+      click("chat-model-pill-model");
+      expect(
+        container
+          .querySelector('[data-testid="model-palette"]')
+          ?.getAttribute("data-cli-agent-type")
+      ).toBe("codex");
+    } finally {
+      fixture.binding.target = target;
+    }
+  });
 
   it("keeps the runtime and model palettes mutually exclusive", () => {
     click("chat-runtime-pill");

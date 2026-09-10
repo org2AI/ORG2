@@ -1,9 +1,46 @@
 import { describe, expect, it } from "vitest";
 
+import { resolveConversationRuntimeSelection } from "@src/engines/ChatPanel/conversationTargetSelection";
+
 import { cloudConversationAuthorityIsLive } from "./cloudConversationAuthority";
 import { conversationSourceFromCloudReplay } from "./useCloudConversationSource";
 
 describe("Cloud conversation source", () => {
+  it.each([
+    ["codexapp-rollout-session-1", "codex"],
+    ["claudecodeapp-session-1", "claude_code"],
+  ])(
+    "retains the original agent for shared external history %s without a model target",
+    (sessionId, cliAgentType) => {
+      const source = conversationSourceFromCloudReplay({
+        target: { orgId: "org-1", sessionId },
+        workspaceRepoPath: null,
+      })!;
+      expect(source.root.authority).toBe("org2-cloud");
+      expect(
+        resolveConversationRuntimeSelection({
+          source,
+          target: null,
+          definitions: [],
+        })
+      ).toMatchObject({ category: "cli_agent", cliAgentType });
+    }
+  );
+
+  it("keeps an explicit runtime choice ahead of shared external provenance", () => {
+    const source = conversationSourceFromCloudReplay({
+      target: { orgId: "org-1", sessionId: "codexapp-rollout-session-1" },
+      workspaceRepoPath: null,
+    })!;
+    expect(
+      resolveConversationRuntimeSelection({
+        source,
+        target: { cliAgentType: "claude_code", workspaceRepoPath: null },
+        definitions: [],
+      })
+    ).toMatchObject({ cliAgentType: "claude_code" });
+  });
+
   it("projects source runtime before the imported Session row exists", () => {
     expect(
       conversationSourceFromCloudReplay({

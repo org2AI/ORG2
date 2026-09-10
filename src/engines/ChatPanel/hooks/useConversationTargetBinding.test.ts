@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { resolveConversationRuntimeSelection } from "@src/engines/ChatPanel/conversationTargetSelection";
+
 import {
   conversationExecutions,
   conversationRootForSession,
@@ -13,6 +15,36 @@ import {
 } from "./useConversationTargetBinding";
 
 describe("conversation target binding source", () => {
+  it.each([
+    ["codexapp-session-1", "codex"],
+    ["claudecodeapp-session-1", "claude_code"],
+  ])(
+    "preserves %s's original agent without a resolved model target",
+    (sessionId, cliAgentType) => {
+      const source = conversationSourceFromImportedHistory({ sessionId })!;
+      expect(
+        resolveConversationRuntimeSelection({
+          source,
+          target: null,
+          definitions: [],
+        })
+      ).toMatchObject({ category: "cli_agent", cliAgentType });
+    }
+  );
+
+  it("does not invent a native agent for unsupported imported history", () => {
+    const source = conversationSourceFromImportedHistory({
+      sessionId: "windsurfapp-session-1",
+    })!;
+    expect(
+      resolveConversationRuntimeSelection({
+        source,
+        target: null,
+        definitions: [],
+      })
+    ).toBeNull();
+  });
+
   it("keeps an installed shell-out Claude runtime without GUI launch support", () => {
     expect(
       resolveNativeConversationCliTargets(

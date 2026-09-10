@@ -1419,6 +1419,15 @@
     "desktopRestored": "以前の設定を復元しました。Claude Desktop を完全に終了して再起動してください",
     "desktopCredentials": "直接接続では認証情報をアクセス制限付きのローカル設定に書き込みます。保管庫のキーを削除しても書き込んだ認証情報は無効になりません"
   },
+  "providerLibrary": {
+    "search": "プロファイル、エンドポイント、モデルを検索",
+    "noResults": "一致するプロファイルがありません",
+    "tested": "テスト成功",
+    "defaultModel": "既定のモデル",
+    "edit": "編集",
+    "duplicate": "複製",
+    "duplicateName": "{{name}} のコピー"
+  },
   "claudeProfiles": {
     "new": "新しいプロファイル",
     "newName": "新しいプロバイダー",

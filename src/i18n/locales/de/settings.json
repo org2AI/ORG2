@@ -1419,6 +1419,15 @@
     "desktopRestored": "Vorherige Desktop-Konfiguration wiederhergestellt — Claude Desktop vollständig beenden und neu öffnen",
     "desktopCredentials": "Direktverbindungen speichern Zugangsdaten in einem lokalen Desktop-Profil mit eingeschränkten Zugriffsrechten; das Löschen des Tresorschlüssels widerruft diesen Export nicht"
   },
+  "providerLibrary": {
+    "search": "Profile, Endpunkte oder Modelle suchen",
+    "noResults": "Keine passenden Profile",
+    "tested": "Test bestanden",
+    "defaultModel": "Standardmodell",
+    "edit": "Bearbeiten",
+    "duplicate": "Duplizieren",
+    "duplicateName": "Kopie von {{name}}"
+  },
   "claudeProfiles": {
     "new": "Neues Profil",
     "newName": "Neuer Anbieter",

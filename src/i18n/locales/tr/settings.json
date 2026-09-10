@@ -1419,6 +1419,15 @@
     "desktopRestored": "Önceki yapılandırma geri yüklendi — Claude Desktop’ı tamamen kapatıp yeniden açın",
     "desktopCredentials": "Doğrudan mod, kimlik bilgilerini erişimi kısıtlı yerel profile yazar; kasadaki anahtarı silmek dışa aktarılan kopyayı iptal etmez"
   },
+  "providerLibrary": {
+    "search": "Profil, uç nokta veya model ara",
+    "noResults": "Aramanızla eşleşen profil yok",
+    "tested": "Test başarılı",
+    "defaultModel": "Varsayılan model",
+    "edit": "Düzenle",
+    "duplicate": "Çoğalt",
+    "duplicateName": "{{name}} kopyası"
+  },
   "claudeProfiles": {
     "new": "Yeni profil",
     "newName": "Yeni sağlayıcı",

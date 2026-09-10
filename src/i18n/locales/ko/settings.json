@@ -1419,6 +1419,15 @@
     "desktopRestored": "이전 설정을 복원했습니다. Claude Desktop을 완전히 종료하고 다시 여세요",
     "desktopCredentials": "직접 연결은 접근이 제한된 로컬 설정에 자격 증명을 저장합니다. 보관함에서 키를 삭제해도 내보낸 자격 증명은 취소되지 않습니다"
   },
+  "providerLibrary": {
+    "search": "프로필, 엔드포인트 또는 모델 검색",
+    "noResults": "검색과 일치하는 프로필이 없습니다",
+    "tested": "테스트 통과",
+    "defaultModel": "기본 모델",
+    "edit": "편집",
+    "duplicate": "복제",
+    "duplicateName": "{{name}} 복사본"
+  },
   "claudeProfiles": {
     "new": "새 프로필",
     "newName": "새 공급자",

@@ -1419,6 +1419,15 @@
     "desktopRestored": "Đã khôi phục cấu hình trước — thoát hoàn toàn rồi mở lại Claude Desktop",
     "desktopCredentials": "Chế độ trực tiếp ghi thông tin xác thực vào hồ sơ cục bộ có quyền truy cập hạn chế; xóa khóa trong kho không thu hồi bản đã xuất"
   },
+  "providerLibrary": {
+    "search": "Tìm hồ sơ, điểm cuối hoặc mô hình",
+    "noResults": "Không có hồ sơ phù hợp",
+    "tested": "Kiểm tra thành công",
+    "defaultModel": "Mô hình mặc định",
+    "edit": "Chỉnh sửa",
+    "duplicate": "Nhân bản",
+    "duplicateName": "Bản sao {{name}}"
+  },
   "claudeProfiles": {
     "new": "Hồ sơ mới",
     "newName": "Nhà cung cấp mới",

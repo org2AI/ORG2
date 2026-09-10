@@ -15,7 +15,7 @@ import { refreshHarnessConnections } from "./useHarnessConnection";
 export default function HarnessConnectionsSection() {
   const { t } = useTranslation("settings");
   const [target, setTarget] = useState<ConnectionHarness>("claude_code");
-  const [profileDirty, setProfileDirty] = useState(false);
+  const [navigationBlocked, setNavigationBlocked] = useState(false);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const submit = async (data: SaveKeyRequest) => {
@@ -55,14 +55,14 @@ export default function HarnessConnectionsSection() {
             {
               value: "claude_code",
               label: "Claude Code CLI",
-              disabled: profileDirty,
+              disabled: navigationBlocked,
             },
             {
               value: "claude_desktop",
               label: "Claude Desktop",
-              disabled: profileDirty,
+              disabled: navigationBlocked,
             },
-            { value: "codex", label: "Codex", disabled: profileDirty },
+            { value: "codex", label: "Codex", disabled: navigationBlocked },
           ]}
         />
       </div>
@@ -70,7 +70,7 @@ export default function HarnessConnectionsSection() {
       <ProviderProfileEditor
         key={target}
         target={target}
-        onDirtyChange={setProfileDirty}
+        onNavigationBlockedChange={setNavigationBlocked}
         onAdd={() => setAdding(true)}
       />
     </div>

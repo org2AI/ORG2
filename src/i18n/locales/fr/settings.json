@@ -1419,6 +1419,15 @@
     "desktopRestored": "Configuration précédente restaurée — quittez complètement Claude Desktop puis rouvrez-le",
     "desktopCredentials": "Le mode direct écrit les identifiants dans un profil local à accès restreint ; supprimer la clé du coffre ne révoque pas cette copie"
   },
+  "providerLibrary": {
+    "search": "Rechercher un profil, un endpoint ou un modèle",
+    "noResults": "Aucun profil correspondant",
+    "tested": "Test réussi",
+    "defaultModel": "Modèle par défaut",
+    "edit": "Modifier",
+    "duplicate": "Dupliquer",
+    "duplicateName": "Copie de {{name}}"
+  },
   "claudeProfiles": {
     "new": "Nouveau profil",
     "newName": "Nouveau fournisseur",

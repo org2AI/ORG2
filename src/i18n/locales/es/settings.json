@@ -1419,6 +1419,15 @@
     "desktopRestored": "Configuración anterior restaurada — cierra Claude Desktop por completo y vuelve a abrirlo",
     "desktopCredentials": "El modo directo guarda las credenciales en un perfil local con acceso restringido; eliminar la clave de la bóveda no revoca esa copia"
   },
+  "providerLibrary": {
+    "search": "Buscar perfiles, endpoints o modelos",
+    "noResults": "Ningún perfil coincide con la búsqueda",
+    "tested": "Prueba superada",
+    "defaultModel": "Modelo predeterminado",
+    "edit": "Editar",
+    "duplicate": "Duplicar",
+    "duplicateName": "Copia de {{name}}"
+  },
   "claudeProfiles": {
     "new": "Nuevo perfil",
     "newName": "Nuevo proveedor",

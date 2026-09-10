@@ -1422,6 +1422,15 @@
     "desktopRestored": "Przywrócono poprzednią konfigurację — zamknij całkowicie Claude Desktop i otwórz ponownie",
     "desktopCredentials": "Tryb bezpośredni zapisuje dane uwierzytelniające w lokalnym profilu z ograniczonym dostępem; usunięcie klucza ze skarbca nie unieważnia tej kopii"
   },
+  "providerLibrary": {
+    "search": "Szukaj profili, punktów końcowych lub modeli",
+    "noResults": "Brak pasujących profili",
+    "tested": "Test zakończony pomyślnie",
+    "defaultModel": "Model domyślny",
+    "edit": "Edytuj",
+    "duplicate": "Duplikuj",
+    "duplicateName": "Kopia {{name}}"
+  },
   "claudeProfiles": {
     "new": "Nowy profil",
     "newName": "Nowy dostawca",

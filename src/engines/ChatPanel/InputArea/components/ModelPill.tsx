@@ -37,6 +37,7 @@ import { useSessionId } from "@src/engines/SessionCore/hooks/session";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import { useValidatedLastPair } from "@src/hooks/models/useValidatedLastPair";
 import { useSessionModelField } from "@src/hooks/session/useSessionPatch";
+import { Infinity01Icon, HugeiconsIcon } from "@src/icons";
 import type { AgentSelection } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette";
 import { DispatchCategoryPicker } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette/DispatchCategoryPicker";
 import { UnifiedModelPalette } from "@src/scaffold/GlobalSpotlight/palettes/UnifiedModelPalette";
@@ -372,7 +373,7 @@ const ModelPillComponent: React.FC = () => {
   const modelDefaultLabel =
     conversationBinding?.readiness === "loading"
       ? t("common:actions.loading")
-      : t("sessions:creator.model");
+      : t("sessions:creator.selectModel");
   const visiblePillSelection = conversationTargetReady ? pillSelection : null;
   const effectiveModelOpen = isModelOpen && conversationTargetReady;
   const runtimeSelection =
@@ -385,12 +386,14 @@ const ModelPillComponent: React.FC = () => {
       : (runtimeSelection?.agentName ?? t("sessions:creator.selectAgent"));
   const runtimeIcon = runtimeSelection?.cliAgentType ? (
     <ModelIcon agentType={runtimeSelection.cliAgentType} size={14} />
-  ) : (
+  ) : runtimeSelection ? (
     <AnyIcon
       icon={resolveAgentIcon(runtimeSelection?.agentIconId)}
       size={14}
       className="text-text-2"
     />
+  ) : (
+    <HugeiconsIcon icon={Infinity01Icon} size={14} className="text-text-2" />
   );
   const paletteAdvancedConfig = pendingRuntimeSelection
     ? {
@@ -420,6 +423,13 @@ const ModelPillComponent: React.FC = () => {
         ariaLabel={t("sessions:creator.selectModel")}
         isActiveSession={isActiveSession}
         disabled={!conversationTargetReady}
+        disabledTooltip={
+          conversationBinding?.readiness === "loading"
+            ? t("common:actions.loading")
+            : t("sessions:creator.selectAgentFirst", {
+                defaultValue: "Select agent first",
+              })
+        }
       />
     </div>
   );

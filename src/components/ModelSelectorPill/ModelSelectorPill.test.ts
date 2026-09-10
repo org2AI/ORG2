@@ -37,8 +37,8 @@ vi.mock("react-i18next", () => ({
 vi.mock("@src/hooks/models", () => ({
   useModelAccountLookup: () => ({ accounts: [] }),
   resolveModelDisplaySelection: (selection: unknown) => selection,
-  useModelPillLabel: () => ({
-    label: "GPT 5.6 Sol",
+  useModelPillLabel: (selection: unknown, defaultLabel: string) => ({
+    label: selection ? "GPT 5.6 Sol" : defaultLabel,
     title: "GPT 5.6 Sol",
     displayParts: { label: "GPT 5.6 Sol" },
   }),
@@ -46,13 +46,13 @@ vi.mock("@src/hooks/models", () => ({
     selection,
     onApply,
   }: {
-    selection: { model: string };
+    selection: { model: string } | null;
     onApply?: (model: string) => void;
   }) => ({
     editable: fixture.models.length > 1 && Boolean(onApply),
     effortLabel: "Extra High",
     effortAriaLabel: "Effort",
-    modelId: selection.model,
+    modelId: selection?.model,
     variantOptions: buildVariantEditOptions(fixture.models),
     handleApply: onApply,
   }),
@@ -88,6 +88,43 @@ describe("ModelSelectorPill combined settings", () => {
     container.remove();
     vi.useRealTimers();
     Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
+  });
+
+  it("disables model and effort selection while explaining the prerequisite on focus", () => {
+    act(() =>
+      root.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(ModelSelectorPill, {
+            selection: null,
+            defaultLabel: "Select model",
+            active: false,
+            onClick: openModel,
+            onVariantApply: apply,
+            disabled: true,
+            disabledTooltip: "Select agent first",
+            dataTestId: "model-pill",
+          })
+        )
+      )
+    );
+    const button = element("model-pill") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent).toBe("Select model");
+    act(() => button.click());
+    expect(openModel).not.toHaveBeenCalled();
+    expect(
+      container.querySelector('[data-testid="chat-model-pill-effort"]')
+    ).toBeNull();
+    const explanation = container.querySelector<HTMLElement>(
+      '[tabindex="0"][aria-disabled="true"]'
+    )!;
+    act(() => explanation.focus());
+    act(() => vi.advanceTimersByTime(500));
+    expect(document.body.textContent).toContain("Select agent first");
+    act(() => explanation.blur());
+    act(() => vi.runOnlyPendingTimers());
   });
 
   function render(

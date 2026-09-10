@@ -17,8 +17,8 @@ export interface SessionCreatorAgentHeroContent {
   danger: boolean;
 }
 
-const NO_AGENT_NAME = "Select an agent";
-const NO_AGENT_DESCRIPTION = "Choose an agent to see what it can help you with";
+const NO_AGENT_NAME = "Select agent";
+const NO_AGENT_DESCRIPTION = "Select agent to see its capabilities";
 
 const GENERIC_DESCRIPTION =
   "Ready to help with your next task in this workspace";

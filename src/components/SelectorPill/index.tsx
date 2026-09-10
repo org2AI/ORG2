@@ -321,7 +321,9 @@ export const SelectorPill = forwardRef<HTMLButtonElement, SelectorPillProps>(
         ? ""
         : active
           ? PILL_CONTROL_ACTIVE_SURFACE_CLASS
-          : PILL_CONTROL_HOVER_CLASS;
+          : disabled
+            ? "hover:bg-surface-hover!"
+            : PILL_CONTROL_HOVER_CLASS;
 
     // Controlled tooltip visibility so that opening the dropdown (active=true)
     // immediately hides the tooltip instead of leaving it covering the panel.

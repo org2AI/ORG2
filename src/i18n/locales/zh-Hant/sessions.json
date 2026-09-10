@@ -1957,6 +1957,7 @@
     "shortInputTitle": "輸入內容較短",
     "shortInputMessage": "您的輸入似乎非常簡短。確定要使用此內容啓動會話嗎？",
     "selectModel": "選擇模型",
+    "selectAgentFirst": "請先選擇 Agent",
     "switchModel": "切換模型",
     "switchMode": "切換模式",
     "switchAgent": "切換 Agent",
@@ -1977,7 +1978,7 @@
     "regionNoticeBodyProvider": "您所在位置：{{location}}。某些模型在您所在地區可能不可用。",
     "regionNoticeBodySanctions": "您所在位置：{{location}}。GitHub、npm、Docker Hub 等服務可能不可用。",
     "regionNoticeBodyBoth": "您所在位置：{{location}}。因地區政策與貿易規則，某些模型以及 GitHub、npm、Docker Hub 等服務可能不可用。",
-    "selectAgent": "選擇一個 Agent",
+    "selectAgent": "選擇 Agent",
     "placeholderDefault": "輸入訊息，使用 @ 加入檔案，使用 / 呼叫 skills",
     "wingmanPlaceholder": "描述你的任務 — Wingman 應該關注什麼？",
     "screenPicker": {

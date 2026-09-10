@@ -20,6 +20,7 @@ import ModelPillTooltipContent from "@src/components/ModelPillTooltipContent";
 import ModelPropertiesDropdown from "@src/components/ModelPropertiesDropdown";
 import PillGroup, { type PillGroupSegment } from "@src/components/PillGroup";
 import SelectorPill from "@src/components/SelectorPill";
+import Tooltip from "@src/components/Tooltip";
 import {
   resolveModelDisplaySelection,
   useModelAccountLookup,
@@ -65,6 +66,8 @@ interface ModelSelectorPillProps {
   preferCombinedSettingsMenu?: boolean;
   /** Prevent opening a picker while its execution inventory is unresolved. */
   disabled?: boolean;
+  /** Explanation shown on hover or focus while the picker is disabled. */
+  disabledTooltip?: string;
 }
 
 const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
@@ -87,6 +90,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
       settingsMenuDefaultAdvanced = false,
       preferCombinedSettingsMenu = false,
       disabled = false,
+      disabledTooltip,
     },
     ref
   ) => {
@@ -97,6 +101,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
     );
 
     const [effortOpen, setEffortOpen] = useState(false);
+    const [disabledTooltipOpen, setDisabledTooltipOpen] = useState(false);
 
     const { accounts } = useModelAccountLookup();
     const displaySelection = useMemo(
@@ -168,7 +173,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
         ),
         label: resolvedModelLabel,
         title: modelTitle,
-        tooltip: (
+        tooltip: disabled ? undefined : (
           <ModelPillTooltipContent
             accountName={accountName}
             modelLabel={displayParts.rawValue ?? displayParts.label}
@@ -367,13 +372,37 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
       );
     }
 
-    return (
+    const pill = (
       <PillGroup
         segments={segments}
         className={`shrink-0 text-[13px] ${className ?? ""}`}
-        segmentClassName={`h-[28px] ${triggerClassName ?? ""}`.trim()}
+        segmentClassName={`h-[28px] ${disabled ? "cursor-not-allowed [&>span]:opacity-50" : ""} ${triggerClassName ?? ""}`.trim()}
       />
     );
+
+    if (disabled && disabledTooltip) {
+      return (
+        <Tooltip
+          content={disabledTooltip}
+          position="top"
+          open={disabledTooltipOpen}
+          onOpenChange={setDisabledTooltipOpen}
+        >
+          <span
+            tabIndex={0}
+            onFocus={() => setDisabledTooltipOpen(true)}
+            onBlur={() => setDisabledTooltipOpen(false)}
+            aria-label={`${ariaLabel ?? defaultLabel}: ${disabledTooltip}`}
+            aria-disabled="true"
+            className="inline-flex min-w-0 cursor-not-allowed"
+          >
+            {pill}
+          </span>
+        </Tooltip>
+      );
+    }
+
+    return pill;
   }
 );
 

@@ -197,3 +197,23 @@ The same-head earlier receiver defect #1467 remains separate: an already-open im
 Architecture review covered canonical source ownership, types, state/compaction continuity, IPC compatibility, failure propagation and init/account-path parity (layers 1, 2, 5, 6, 8, 9 and 10). UI design and unrelated provider adapters were intentionally outside this Rust change.
 
 Performance verdict: blocked for complete two-instance rendered lifecycle certification. The standalone streaming-memory and canonical-output checks pass; foreground control and receiver-list hydration still prevent a full green verdict. Rollback is a paired bundle revert, with no source-history or schema migration to undo.
+
+## Subsequent real two-instance continuation acceptance
+
+This supersedes the receiver-list blocker in the preceding follow-up. The underlying queue prerequisite was fixed independently in #1485. Acceptance packages combined this PR's Rust head with that frontend fix; a later package also included the independent checkout-selection fix. These additional fixes are not silently included in #1465.
+
+- Secondary Opus resumed the existing native session successfully. Main Fable 5.1 completed initial and continued requests, including another continuation after normal restart.
+- Main opened secondary history and rendered its exact full answer. Main then continued through the actual Chat composer, generating a different native UUID with the complete original history and the answer “十一”.
+- Secondary continued the same shared conversation. Its Chat and raw native JSONL both acquired the main user/assistant pair, then added its own answer “十二”. Main reopened the shared view and rendered that exact answer. This is real bidirectional reception and continuation, not just cloud row presence.
+- Multiple local clones exposed a separate workspace ordering bug: the first main child used the sibling clone. The independent resolver fix prefers the known, existing source checkout while retaining repository-scope checking. With that fix packaged, main skipped the mismatching old child, created another new UUID under the correct source checkout, retained all 13 native user/assistant records, and rendered “十三” with terminal idle state. No existing history was moved or deleted.
+- The original blocked B2 prompt reached the provider after #1485, but Opus safeguards rejected that prompt. It is recorded as a failed attempt, not successful continuation; ordinary follow-ups succeeded.
+- Both old acceptance instances were normally quit; all four attributed GUI processes per instance exited. The sampling process was stopped. Replacement acceptance apps use the same established isolated homes.
+
+| Provider         | Raw transition                               | App/UI state                            | Topology/boundary                       | Expected invariant                           | Observed evidence                                    |
+| ---------------- | -------------------------------------------- | --------------------------------------- | --------------------------------------- | -------------------------------------------- | ---------------------------------------------------- |
+| Claude Opus      | Actual cross-instance continuation/new UUID  | Main opens B history and sends          | B → cloud → A → native child            | Previous context retained; completed answer  | Passed; raw records and Chat answer                  |
+| Claude Opus      | Incoming remote turn then local continuation | B source remains selected               | A → cloud → B → original native history | Remote pair and new local pair preserved     | Passed; raw JSONL and Chat show eleven then twelve   |
+| Claude Opus      | Workspace-correct new UUID                   | Main normal restart, old child retained | Shared history → local source checkout  | Correct cwd, full prior context, terminal UI | Passed with separate checkout fix; 13 native records |
+| Claude Fable 5.1 | Initial, append, restart and append          | Main Chat                               | Provider → native source → local UI     | Successful authenticated continuation        | Passed, including restart                            |
+
+The requested real continuation/new-UUID boundary now has evidence. This does not certify every matrix cell: passive idle roster/replay refresh (#1467), controlled visible/hidden timing, and comprehensive two-boot pinned-sibling/revocation scenarios remain outside this completed acceptance. Complete-result APIs still retain their required final output, legacy readers retain their fallback, and a single oversized current turn has no new hard byte cap. The streaming export measurement is not a whole-app memory ceiling.

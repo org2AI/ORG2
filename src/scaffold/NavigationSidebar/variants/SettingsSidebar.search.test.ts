@@ -99,6 +99,15 @@ describe("SettingsRootBody search integration", () => {
   });
 
   beforeEach(async () => {
+    // SidebarList observes layout in browsers; jsdom has no ResizeObserver.
+    // Edge geometry and observer cleanup are covered by SidebarList.test.ts.
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -130,6 +139,7 @@ describe("SettingsRootBody search integration", () => {
 
   afterEach(() => {
     act(() => root.unmount());
+    vi.unstubAllGlobals();
     container.remove();
     document
       .querySelectorAll('[data-testid="settings-navigation-search-panel"]')

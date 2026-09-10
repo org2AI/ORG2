@@ -15,6 +15,7 @@ import { dispatchQueuedCloudConversation } from "./cloudConversationQueueAdapter
 
 const mocks = vi.hoisted(() => ({
   refreshAuth: vi.fn(),
+  listOrgSessions: vi.fn(),
   capabilities: vi.fn(),
   pushEvents: vi.fn(),
   refreshPlane: vi.fn(),
@@ -31,6 +32,19 @@ const mocks = vi.hoisted(() => ({
   markAccepted: vi.fn(),
   finishTurn: vi.fn(),
 }));
+
+vi.mock("@src/features/Org2Cloud/org2CloudClient", async (importOriginal) => ({
+  ...(await importOriginal()),
+  ensureFreshSession: async (auth: unknown) => auth,
+}));
+
+vi.mock(
+  "@src/features/Org2Cloud/org2CloudSyncClient",
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    listOrgSessions: mocks.listOrgSessions,
+  })
+);
 
 vi.mock("@src/api/tauri/cloudDevice", () => ({
   cloudDeviceIdentity: mocks.cloudDeviceIdentity,
@@ -295,6 +309,25 @@ const ASSISTANT_TAIL_EVENT = {
 } as const;
 
 describe("dispatchQueuedCloudConversation coordination", () => {
+  it("loads missing family metadata for an explicit continuation without a mounted sidebar", async () => {
+    const store = readyStore();
+    const rows = store.get(org2CloudRemoteSessionsAtom)["org-1"].rows;
+    store.set(org2CloudRemoteSessionsAtom, {});
+    mocks.listOrgSessions.mockResolvedValueOnce({ sessions: rows });
+    mocks.runConversationTurn.mockResolvedValueOnce({
+      runnerSessionId: "runner",
+      terminalStatus: "completed",
+    });
+
+    await dispatchQueuedCloudConversation(store, MESSAGE, ROOT, {
+      onAccepted: vi.fn(),
+    });
+
+    expect(mocks.listOrgSessions).toHaveBeenCalledTimes(1);
+    expect(store.get(org2CloudRemoteSessionsAtom)["org-1"].state).toBe("ready");
+    expect(mocks.runConversationTurn).toHaveBeenCalledTimes(1);
+  });
+
   it("loads the owner's verified child history before overlaying Cloud turns", async () => {
     const store = readyStore();
     store.set(sessionsAtom, [

@@ -42,6 +42,7 @@ import {
 import { isRetryableCloudRequestError } from "@src/features/Org2Cloud/org2CloudFetchRetry";
 import { endpointForOrigin } from "@src/features/Org2Cloud/org2CloudOrgEndpointRouter";
 import {
+  fetchCloudOrgRemoteSessions,
   org2CloudRemoteSessionsAtom,
   remoteSessionsEntryForIdentity,
 } from "@src/features/Org2Cloud/org2CloudRemoteSessionsAtom";
@@ -382,6 +383,25 @@ export async function dispatchQueuedCloudConversation(
         "ORG2_VALIDATION: canonical conversation plane is unavailable"
       );
     }
+    let remoteEntry = remoteSessionsEntryForIdentity(
+      store.get(org2CloudRemoteSessionsAtom)[orgId],
+      authIdentityKey
+    );
+    if (!remoteEntry || remoteEntry.state !== "ready") {
+      // Execution owns this demand: a cold/hidden/unmounted sidebar cannot
+      // be the only actor capable of unblocking an accepted user intent.
+      await fetchCloudOrgRemoteSessions(store, orgId, { full: true });
+      requireBoundAuth();
+      remoteEntry = remoteSessionsEntryForIdentity(
+        store.get(org2CloudRemoteSessionsAtom)[orgId],
+        authIdentityKey
+      );
+    }
+    if (!remoteEntry || remoteEntry.state !== "ready") {
+      throw new QueuedConversationRecoveryPendingError(
+        "Cloud conversation family metadata is not ready"
+      );
+    }
     // The plane loader may refresh and commit a newer access token. Every
     // subsequent read in this attempt must use that same current auth snapshot
     // rather than the token captured before the plane refresh.
@@ -401,15 +421,6 @@ export async function dispatchQueuedCloudConversation(
 
     const sourceSession = sessionById(store, message.sessionId);
     const sessions = store.get(sessionsAtom);
-    const remoteEntry = remoteSessionsEntryForIdentity(
-      store.get(org2CloudRemoteSessionsAtom)[orgId],
-      authIdentityKey
-    );
-    if (!remoteEntry || remoteEntry.state !== "ready") {
-      throw new QueuedConversationRecoveryPendingError(
-        "Cloud conversation family metadata is not ready"
-      );
-    }
     const family = resolveConversationFamily(remoteEntry.rows, rootSessionId);
     const rootRow = remoteEntry.rows.find(
       (row) => row.sourceSessionId === rootSessionId

@@ -27,6 +27,13 @@ function withEnv(overrides, fn) {
   }
 }
 
+function getDefinedValue(config, key) {
+  const definePlugin = config.plugins.find(
+    (plugin) => plugin.constructor?.name === "DefinePlugin"
+  );
+  return definePlugin?.definitions?.[key];
+}
+
 test("light dev disables webpack dev-server browser client", () => {
   const config = withEnv(
     {
@@ -107,4 +114,38 @@ test("builds without --json keep the terse console stats", () => {
 
   assert.equal(config.stats.preset, "normal");
   assert.equal(config.stats.entrypoints, undefined);
+});
+
+test("WebDriver production bundles enable the E2E-only Agent Org gate", () => {
+  const config = withEnv(
+    {
+      ORGII_E2E: null,
+      ORGII_AGENT_ORG_REDESIGN: null,
+      WEBDRIVER: "1",
+    },
+    () => createWebpackConfig({}, { mode: "production" })
+  );
+
+  assert.equal(getDefinedValue(config, "process.env.ORGII_E2E"), '"1"');
+  assert.equal(
+    getDefinedValue(config, "process.env.ORGII_AGENT_ORG_REDESIGN"),
+    '"1"'
+  );
+});
+
+test("ordinary production bundles keep the Agent Org rollout disabled", () => {
+  const config = withEnv(
+    {
+      ORGII_E2E: null,
+      ORGII_AGENT_ORG_REDESIGN: null,
+      WEBDRIVER: null,
+    },
+    () => createWebpackConfig({}, { mode: "production" })
+  );
+
+  assert.equal(getDefinedValue(config, "process.env.ORGII_E2E"), '"0"');
+  assert.equal(
+    getDefinedValue(config, "process.env.ORGII_AGENT_ORG_REDESIGN"),
+    '"0"'
+  );
 });

@@ -2041,13 +2041,29 @@
       }
     },
     "agentOrgTasks": {
-      "title": "Задачи команды",
       "owner": "Owner: {{owner}}",
       "ownerNoSession": "{{owner}} has no visible member session yet",
       "statusPending": "В ожидании",
       "statusInProgress": "В работе",
       "statusCompleted": "Готово",
-      "statusBlocked": "Заблокировано"
+      "statusBlocked": "Заблокировано",
+      "statusFailed": "Ошибка",
+      "statusCancelled": "Отменено",
+      "currentWork": "Текущая работа",
+      "currentEmpty": "Нет текущей работы",
+      "history": "История",
+      "historyFilter": "Фильтр истории задач",
+      "historyEmpty": "Нет задач для этого фильтра",
+      "loadingHistory": "Загрузка истории…",
+      "historyLoadFailed": "Не удалось загрузить историю",
+      "previousPage": "Назад",
+      "nextPage": "Далее",
+      "details": "Подробности",
+      "loadingDetails": "Загрузка подробностей…",
+      "detailLoadFailed": "Не удалось загрузить подробности",
+      "output": "Результат",
+      "annotations": "Ход работы и аудит",
+      "loadMoreAnnotations": "Загрузить ещё"
     },
     "agentOrgOverview": {
       "title": "Обзор Команды Agent",

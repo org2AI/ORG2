@@ -38,6 +38,7 @@ const APPROVAL: AgentOrgPlanApprovalSummary = {
   sourceTaskId: "task-1",
   sourceMemberId: "member-1",
   sourceSessionId: "session-1",
+  sourceTurnIntentId: "turn-1",
   rootSessionId: "root-1",
   policy: "user",
   status: "pending",

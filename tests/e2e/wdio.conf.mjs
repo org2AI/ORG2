@@ -16,7 +16,10 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "..", "..");
-const appBinary = resolve(repoRoot, "src-tauri/target/debug/org2");
+const packagedAppBinary = process.env.E2E_APP_BINARY?.trim();
+const appBinary = packagedAppBinary
+  ? resolve(packagedAppBinary)
+  : resolve(repoRoot, "src-tauri/target/debug/org2");
 const require = createRequire(import.meta.url);
 const { createInstanceProfileFromIdeServerPort } = require(
   resolve(repoRoot, "scripts/tauri/instance-profile.cjs")
@@ -853,8 +856,14 @@ export const config = {
     if (reuseServices) return;
     assertManagedPortsAvailable();
     cleanWebDriverEnvironment();
-    startFrontendServer();
-    buildWebDriverApp();
+    if (packagedAppBinary) {
+      if (!existsSync(appBinary)) {
+        throw new Error(`E2E_APP_BINARY does not exist: ${appBinary}`);
+      }
+    } else {
+      startFrontendServer();
+      buildWebDriverApp();
+    }
     startTauriWebDriver();
   },
   before: async function () {

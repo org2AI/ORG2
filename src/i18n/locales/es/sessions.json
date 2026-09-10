@@ -2041,13 +2041,29 @@
       }
     },
     "agentOrgTasks": {
-      "title": "Tareas del equipo",
       "owner": "Owner: {{owner}}",
       "ownerNoSession": "{{owner}} has no visible member session yet",
       "statusPending": "Pendiente",
       "statusInProgress": "En curso",
       "statusCompleted": "Completado",
-      "statusBlocked": "Bloqueado"
+      "statusBlocked": "Bloqueado",
+      "statusFailed": "Fallido",
+      "statusCancelled": "Cancelado",
+      "currentWork": "Trabajo actual",
+      "currentEmpty": "No hay trabajo actual",
+      "history": "Historial",
+      "historyFilter": "Filtrar historial de tareas",
+      "historyEmpty": "No hay tareas con este filtro",
+      "loadingHistory": "Cargando historial…",
+      "historyLoadFailed": "No se pudo cargar el historial",
+      "previousPage": "Anterior",
+      "nextPage": "Siguiente",
+      "details": "Detalles",
+      "loadingDetails": "Cargando detalles…",
+      "detailLoadFailed": "No se pudieron cargar los detalles",
+      "output": "Resultado",
+      "annotations": "Progreso y notas de auditoría",
+      "loadMoreAnnotations": "Cargar más"
     },
     "agentOrgOverview": {
       "title": "Vista general del Equipo Agent",

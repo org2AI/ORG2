@@ -52,6 +52,7 @@ pub async fn send_message_impl_for_job_wake(
         None,
         None,
         None,
+        None,
         TurnIntentBridgeSource::Resume,
     )
     .await
@@ -81,6 +82,7 @@ pub async fn send_message_impl_for_org_wake(
         Some(format!("agent-org-wake:{org_run_id}:{member_id}")),
         None,
         Some(org_run_id.to_string()),
+        Some(member_id.to_string()),
         Some(org_run_id.to_string()),
         TurnIntentBridgeSource::Resume,
     )
@@ -130,6 +132,7 @@ pub async fn send_message_impl_for_mobile_remote(
         turn_intent_id,
         None,
         None,
+        None,
         TurnIntentBridgeSource::MobileRemote,
     )
     .await
@@ -168,6 +171,7 @@ pub async fn send_message_impl_for_test(
         None,
         false,
         false,
+        None,
         None,
         None,
         None,

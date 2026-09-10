@@ -496,6 +496,7 @@ export interface E2EHelpers {
   debugSessionOrgRuntimeSnapshot: (
     sessionId: string
   ) => Promise<Result<{ snapshot: Json }>>;
+  debugAgentOrgEnableRedesign: () => Promise<Result<{ enabled: true }>>;
   debugSessionExecuteTool: (
     sessionId: string,
     toolName: string,

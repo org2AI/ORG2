@@ -2060,13 +2060,29 @@
       }
     },
     "agentOrgTasks": {
-      "title": "Zadania zespołu",
       "owner": "Właściciel: {{owner}}",
       "ownerNoSession": "{{owner}} nie ma jeszcze widocznej sesji członka",
       "statusPending": "Oczekuje",
       "statusInProgress": "W toku",
       "statusCompleted": "Ukończone",
-      "statusBlocked": "Zablokowane"
+      "statusBlocked": "Zablokowane",
+      "statusFailed": "Niepowodzenie",
+      "statusCancelled": "Anulowane",
+      "currentWork": "Bieżąca praca",
+      "currentEmpty": "Brak bieżącej pracy",
+      "history": "Historia",
+      "historyFilter": "Filtruj historię zadań",
+      "historyEmpty": "Brak zadań dla tego filtra",
+      "loadingHistory": "Ładowanie historii…",
+      "historyLoadFailed": "Nie udało się załadować historii",
+      "previousPage": "Poprzednia",
+      "nextPage": "Następna",
+      "details": "Szczegóły",
+      "loadingDetails": "Ładowanie szczegółów…",
+      "detailLoadFailed": "Nie udało się załadować szczegółów",
+      "output": "Wynik",
+      "annotations": "Postęp i notatki audytu",
+      "loadMoreAnnotations": "Wczytaj więcej"
     },
     "agentOrgOverview": {
       "title": "Przegląd Zespołu Agent",

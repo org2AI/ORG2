@@ -139,6 +139,18 @@ const ProjectGitSyncReviewEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectGitSyncReview")),
 };
 
+const ProjectTreeEntry: RendererEntry = {
+  Component: lazy(() => import("./renderers/projectTree")),
+};
+
+const ProjectJourneyEntry: RendererEntry = {
+  Component: lazy(() => import("./renderers/projectJourney")),
+};
+
+const SessionJourneyEntry: RendererEntry = {
+  Component: lazy(() => import("./renderers/sessionJourney")),
+};
+
 const WorkItemDetailEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/workItemDetail")),
 };
@@ -201,6 +213,9 @@ export const REGISTRY: TabContentRegistry = {
   "project-org": ProjectOrgEntry,
   "project-org-settings": ProjectOrgSettingsEntry,
   "project-git-sync-review": ProjectGitSyncReviewEntry,
+  "project-tree": ProjectTreeEntry,
+  "project-journey": ProjectJourneyEntry,
+  "session-journey": SessionJourneyEntry,
   "project-workitems": ProjectWorkitemsEntry,
   "workItem-detail": WorkItemDetailEntry,
   "chat-session": ChatSessionEntry,

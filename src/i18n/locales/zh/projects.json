@@ -378,6 +378,7 @@
     },
     "addWorkItem": "添加工作项",
     "agentWorkflow": {
+      "viewSessionJourney": "会话旅程",
       "statusRunning": "运行中",
       "statusCompleted": "已完成",
       "statusFailed": "失败",
@@ -782,7 +783,9 @@
     "empty": "未找到 Workspace 项目",
     "issues": "Issues",
     "views": "Views",
-    "more": "More"
+    "more": "More",
+    "projectTree": "项目树",
+    "projectJourney": "项目旅程"
   },
   "linearProjects": {
     "createProject": "创建项目",

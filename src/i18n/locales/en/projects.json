@@ -378,6 +378,7 @@
     },
     "addWorkItem": "Add Work Item",
     "agentWorkflow": {
+      "viewSessionJourney": "Session Journey",
       "statusRunning": "Running",
       "statusCompleted": "Completed",
       "statusFailed": "Failed",
@@ -782,7 +783,9 @@
     "empty": "No workspace items found",
     "issues": "Issues",
     "views": "Views",
-    "more": "More"
+    "more": "More",
+    "projectTree": "Project Tree",
+    "projectJourney": "Project Journey"
   },
   "linearProjects": {
     "createProject": "Create Project",

@@ -393,6 +393,7 @@ export function processChatItems(
           },
         },
         consolidatedParts: partialBuffer.length,
+        consolidatedEvents: bufferEvents,
       });
     } else {
       result.push(...partialBuffer.map((entry) => entry.item));

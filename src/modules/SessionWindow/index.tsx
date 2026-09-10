@@ -235,6 +235,7 @@ const SessionWindowContent: React.FC<{ sessionId: string }> = memo(
               handleOpenExportSessionJson={
                 sessionActions.handleOpenExportSessionJson
               }
+              handleOpenLinkProject={sessionActions.handleOpenLinkProject}
               handleOpenLinkWorkItem={sessionActions.handleOpenLinkWorkItem}
               handleOpenSearch={headerActions.handleOpenSearch}
               handlePaginationToggle={headerActions.handlePaginationToggle}

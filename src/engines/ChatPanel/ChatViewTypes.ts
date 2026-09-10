@@ -10,6 +10,8 @@ import type { ConversationTargetBinding } from "./conversationTargetSelection";
 export interface ChatViewProps {
   /** Session ID to display. Sync bridges and events load for this session. */
   sessionId: string;
+  /** Exact durable message id supplied by a keyed chat tab or transcript owner. */
+  initialMessageId?: string;
   /**
    * Resolved once by a surface that also owns session header actions. When
    * omitted, ChatView remains self-contained and resolves the binding itself.

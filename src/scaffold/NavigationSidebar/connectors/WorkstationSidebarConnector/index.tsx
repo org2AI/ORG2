@@ -13,6 +13,7 @@ import { openAgentSessionSearchSpotlight } from "@src/scaffold/GlobalSpotlight/o
 import {
   activeSessionCreatorDraftIdAtom,
   deleteSessionCreatorDraftAtom,
+  loadSessionRoster,
   promoteActiveSessionCreatorDraftAtom,
   sessionCreatorDraftListAtom,
   sessionLoadingAtom,
@@ -131,6 +132,9 @@ export const WorkstationSidebarConnector: React.FC = () => {
     useState<SessionSidebarView>("sessions");
   const workItemsContentVisible = activeViewKey === "work-items";
   const channelSidebarVisible = activeViewKey === "channels";
+  const [linkProjectSessionId, setLinkProjectSessionId] = useState<
+    string | null
+  >(null);
 
   const {
     sortedSessions,
@@ -451,6 +455,7 @@ export const WorkstationSidebarConnector: React.FC = () => {
     handleOpenInNewWindow,
     handleOpenInMyStation,
     handleTogglePin,
+    onLinkToProject: setLinkProjectSessionId,
     handleToggleSubagentExpansion,
     buildCloudRemoteItemMenuItems,
     t,
@@ -698,6 +703,9 @@ export const WorkstationSidebarConnector: React.FC = () => {
         moveToOrg={moveToOrg}
         rename={rename}
         sessionMap={sessionMap}
+        linkProjectSessionId={linkProjectSessionId}
+        onCloseLinkProject={() => setLinkProjectSessionId(null)}
+        onProjectLinked={() => void loadSessionRoster()}
       />
     </>
   );

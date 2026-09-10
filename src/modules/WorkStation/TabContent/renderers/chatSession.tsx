@@ -140,6 +140,7 @@ const ChatSessionTabRenderer: React.FC<UnifiedTabContentProps> = memo(
           handleOpenExportSessionJson={
             sessionActions.handleOpenExportSessionJson
           }
+          handleOpenLinkProject={sessionActions.handleOpenLinkProject}
           handleOpenLinkWorkItem={sessionActions.handleOpenLinkWorkItem}
           handleOpenSearch={headerActions.handleOpenSearch}
           handlePaginationToggle={headerActions.handlePaginationToggle}
@@ -192,6 +193,7 @@ const ChatSessionTabRenderer: React.FC<UnifiedTabContentProps> = memo(
         >
           <SessionContentView
             sessionId={sessionId}
+            initialMessageId={tab.data.initialMessageId as string | undefined}
             conversationTargetBinding={conversationTargetBinding}
             secondary
             displayMode={headerActions.displayMode}

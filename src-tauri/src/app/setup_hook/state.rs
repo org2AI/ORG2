@@ -17,6 +17,27 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     app.manage(agent_sessions::event_pipeline::commands::EventStoreState::new());
     tracing::info!("[EventStore] Rust event store initialized");
 
+    let persistence_recovery = match crate::app::startup_recovery::run_persistence_startup_recovery(
+    ) {
+        Ok(report) => {
+            tracing::info!(
+                ordinary_turn_intents_reconciled = report.ordinary_turn_intents_reconciled,
+                agent_org_turn_intents_reconciled = report.agent_org_turn_intents_reconciled,
+                terminal_sessions_reconciled = report.terminal_sessions_reconciled,
+                sessions_abandoned = report.sessions_abandoned,
+                inspected_agent_org_runs = report.agent_org.inspected_runs,
+                recovered_agent_org_tasks = report.agent_org.recovered_task_count(),
+                recovery_failures = report.agent_org.failures.len(),
+                "[StartupRecovery] persistence reconciliation completed"
+            );
+            Some(report)
+        }
+        Err(error) => {
+            tracing::warn!(error = %error, "[StartupRecovery] persistence reconciliation failed");
+            None
+        }
+    };
+
     // Initialize PTY state for terminal sessions
     let pty_state = ::terminal::pty_commands::pty::PtyState::new();
     let pty_sessions_arc = pty_state.sessions_arc();
@@ -101,13 +122,6 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     );
     tracing::info!("[MemberIdle] Member idle hook installed");
 
-    if agent_core::coordination::agent_org_runs::agent_org_redesign_enabled() {
-        agent_core::coordination::agent_org_watchdog::spawn(app.handle().clone());
-        tracing::info!("[AgentOrgWatchdog] Agent Org watchdog started");
-    } else {
-        tracing::info!("[AgentOrgWatchdog] Agent Org redesign is disabled");
-    }
-
     // Plan artifacts have their own one-shot startup owner. Keep this repair
     // independent from the bounded Working-only watchdog so a global
     // filesystem scan cannot consume its Team scan budget or run repeatedly.
@@ -155,6 +169,29 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     let housekeeper_compaction_state = unified_state.clone();
     app.manage(unified_state);
     tracing::info!("[UnifiedAgent] Unified agent state initialized");
+
+    if let Some(report) = persistence_recovery.as_ref() {
+        crate::app::startup_recovery::dispatch_agent_org_recovery_receipts(
+            app.handle().clone(),
+            &report.agent_org,
+        );
+        tracing::info!(
+            receipts = report
+                .agent_org
+                .recovered_tasks
+                .iter()
+                .filter(|recovery| recovery.receipt_id.is_some())
+                .count(),
+            "[AgentOrgStartup] exact recovery doorbells scheduled"
+        );
+    }
+
+    if agent_core::coordination::agent_org_runs::agent_org_redesign_enabled() {
+        agent_core::coordination::agent_org_watchdog::spawn(app.handle().clone());
+        tracing::info!("[AgentOrgWatchdog] Agent Org watchdog started");
+    } else {
+        tracing::info!("[AgentOrgWatchdog] Agent Org redesign is disabled");
+    }
 
     agent_core::core::session::launch::spawn_agent_org_startup_recovery(agent_org_startup_state);
     tracing::info!("[AgentOrgStartup] one-shot lifecycle recovery scheduled");

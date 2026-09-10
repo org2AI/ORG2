@@ -29,6 +29,7 @@ mod dependencies;
 mod fsm;
 mod plan_completion;
 mod read;
+mod repair;
 mod requeue;
 mod update;
 mod validation;

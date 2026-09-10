@@ -114,6 +114,56 @@ impl AgentOrgRunStore {
         Self::list_runs_by_status(AgentOrgRunStatus::Running, limit)
     }
 
+    /// Stable keyset page used by one-shot startup recovery. Run mutations may
+    /// update timestamps while the scan is in progress, so the immutable run
+    /// id—not `updated_at`—owns the cursor.
+    pub fn list_running_runs_after_id(
+        after_id: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<AgentOrgRunRecord>, String> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+        let bounded_limit = i64::try_from(limit)
+            .map_err(|_| format!("Agent Org run list limit is too large: {limit}"))?;
+        let conn = get_connection().map_err(|err| err.to_string())?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT id,
+                        org_id,
+                        coordinator_agent_id,
+                        root_session_id,
+                        org_snapshot_json,
+                        entry_mode,
+                        status,
+                        activation_generation,
+                        has_initial_work,
+                        work_item_id,
+                        project_slug,
+                        routine_fire_id,
+                        summary,
+                        last_error,
+                        failure_json,
+                        last_activity_outcome,
+                        created_at,
+                        updated_at,
+                        idled_at,
+                        archived_at,
+                        archive_receipt_id
+                 FROM agent_org_runtime_runs
+                 WHERE root_session_id IS NOT NULL
+                   AND status='running'
+                   AND (?1 IS NULL OR id>?1)
+                 ORDER BY id ASC
+                 LIMIT ?2",
+            )
+            .map_err(|err| err.to_string())?;
+        let rows = stmt
+            .query_map(params![after_id, bounded_limit], row_to_run)
+            .map_err(|err| err.to_string())?;
+        rows.map(|row| row.map_err(|err| err.to_string())).collect()
+    }
+
     pub(super) fn list_runs_by_status(
         status: AgentOrgRunStatus,
         limit: usize,

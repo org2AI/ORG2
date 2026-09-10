@@ -2818,7 +2818,6 @@ pub async fn test_agent_org_seed_cli_member_run(
         .filter(|s| !s.trim().is_empty())
         .unwrap_or("idle")
         .to_string();
-
     let result = tokio::task::spawn_blocking(move || {
         let conn = database::db::get_connection().map_err(|err| err.to_string())?;
         agent_core::foundation::persistence::session_snapshots::ensure_tables_with(&conn)
@@ -2900,7 +2899,6 @@ pub async fn test_agent_org_seed_cli_member_run(
             ],
         )
         .map_err(|err| err.to_string())?;
-
         Ok::<serde_json::Value, String>(serde_json::json!({
             "ok": true,
             "org_run_id": run.id,
@@ -2918,6 +2916,310 @@ pub async fn test_agent_org_seed_cli_member_run(
         Ok(Err(err)) => Json(serde_json::json!({ "ok": false, "error": err })),
         Ok(Ok(value)) => Json(value),
     }
+}
+
+/// `POST /test/agent-org/startup-recovery/seed-crashed-task`
+///
+/// Establishes the durable state left immediately after a canonical Rust
+/// Member TaskExecution starts and immediately before its Provider call
+/// returns. Task creation and Pending -> InProgress both go through the
+/// production Task Store; direct inserts are limited to the two Turn identity
+/// rows that represent the intentional process-crash cut.
+pub async fn test_agent_org_seed_crashed_task_execution(
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    use agent_core::coordination::agent_org_runs::{
+        AgentOrgRunEntryMode, AgentOrgRunStatus, AgentOrgRunStore, CreateAgentOrgRunParams,
+        COORDINATOR_MEMBER_ID,
+    };
+    use agent_core::coordination::agent_org_tasks::{
+        AgentOrgTaskStore, CreatePendingTaskParams, TaskCreateSchedulingPolicy, TaskExecutionMode,
+        TaskGraphWriterAdmin, TaskOwnerExecution,
+    };
+    use agent_core::core::definitions::orgs::{
+        AgentOrgLaunchSnapshot, FlatOrgMember, OrgDefinition,
+    };
+    use agent_core::core::session::persistence::{
+        session_type, upsert_session, UnifiedSessionRecord,
+    };
+    use agent_core::core::session::SessionStatus;
+
+    let task_id = body
+        .get("task_id")
+        .and_then(serde_json::Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("crashed-task-{}", uuid::Uuid::new_v4()));
+    let member_id = body
+        .get("member_id")
+        .and_then(serde_json::Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("m-restart")
+        .to_string();
+
+    let result = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
+        let conn = database::db::get_connection().map_err(|error| error.to_string())?;
+        agent_core::foundation::persistence::session_snapshots::ensure_tables_with(&conn)
+            .map_err(|error| error.to_string())?;
+        agent_core::core::session::persistence::init(&conn).map_err(|error| error.to_string())?;
+        agent_core::coordination::init_agent_org_schemas(&conn)
+            .map_err(|error| error.to_string())?;
+
+        let now = chrono::Utc::now().to_rfc3339();
+        let root_session_id = format!("agent-org-crash-root-{}", uuid::Uuid::new_v4());
+        let member_session_id = format!("agent-org-crash-member-{}", uuid::Uuid::new_v4());
+        let org_id = format!(
+            "{E2E_RUN_FIXTURE_ORG_PREFIX}startup-recovery-{}",
+            uuid::Uuid::new_v4()
+        );
+        let agent_id = "builtin:sde".to_string();
+
+        upsert_session(&UnifiedSessionRecord {
+            session_id: root_session_id.clone(),
+            name: "startup-recovery-root".to_string(),
+            status: SessionStatus::Running.as_str().to_string(),
+            session_type: session_type::GENERIC.to_string(),
+            agent_definition_id: Some(agent_id.clone()),
+            org_member_id: Some(COORDINATOR_MEMBER_ID.to_string()),
+            created_at: now.clone(),
+            updated_at: now.clone(),
+            ..Default::default()
+        })
+        .map_err(|error| error.to_string())?;
+        upsert_session(&UnifiedSessionRecord {
+            session_id: member_session_id.clone(),
+            parent_session_id: Some(root_session_id.clone()),
+            name: "startup-recovery-member".to_string(),
+            status: SessionStatus::Failed.as_str().to_string(),
+            session_type: session_type::GENERIC.to_string(),
+            agent_definition_id: Some(agent_id.clone()),
+            org_member_id: Some(member_id.clone()),
+            created_at: now.clone(),
+            updated_at: now.clone(),
+            ..Default::default()
+        })
+        .map_err(|error| error.to_string())?;
+
+        let definition = OrgDefinition {
+            id: org_id.clone(),
+            name: org_id.clone(),
+            role: "coordinator".to_string(),
+            agent_id: agent_id.clone(),
+            description: Some("Deterministic startup-recovery crash fixture".to_string()),
+            plan_approval_policy: Default::default(),
+            members: vec![FlatOrgMember {
+                member_id: member_id.clone(),
+                name: "Recovery Worker".to_string(),
+                role: "worker".to_string(),
+                agent_id: agent_id.clone(),
+                runtime_config: None,
+            }],
+            additional_task_graph_writer_member_ids: Vec::new(),
+            member_communication_links: Vec::new(),
+        };
+        let run = AgentOrgRunStore::create(CreateAgentOrgRunParams {
+            org_id,
+            coordinator_agent_id: agent_id.clone(),
+            root_session_id: Some(root_session_id.clone()),
+            org_snapshot: AgentOrgLaunchSnapshot::from(&definition),
+            entry_mode: AgentOrgRunEntryMode::StandaloneSession,
+            status: AgentOrgRunStatus::Running,
+            work_item_id: None,
+            project_slug: None,
+            routine_fire_id: None,
+        })?;
+        conn.execute(
+            "INSERT INTO agent_org_runtime_member_materializations(
+                 org_run_id,member_id,agent_id,generation,session_id,
+                 authority_class,status,created_at,updated_at
+             ) VALUES (?1,?2,?3,1,?4,'formal','succeeded',?5,?5)",
+            rusqlite::params![&run.id, &member_id, &agent_id, &member_session_id, &now],
+        )
+        .map_err(|error| error.to_string())?;
+
+        let coordinator_turn_id = format!("fixture-coordinator-turn-{}", uuid::Uuid::new_v4());
+        conn.execute(
+            "INSERT INTO session_turn_intents(
+                 session_id,turn_intent_id,org_run_id,source,status,created_at,updated_at
+             ) VALUES (?1,?2,?3,'user_submit','running',?4,?4)",
+            rusqlite::params![&root_session_id, &coordinator_turn_id, &run.id, &now],
+        )
+        .map_err(|error| error.to_string())?;
+        conn.execute(
+            "INSERT INTO agent_org_runtime_turn_contexts(
+                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
+                 source_kind,source_id,activation_generation,created_at
+             ) VALUES (?1,?2,?3,'coordinator','coordinator','root_turn',?2,1,?4)",
+            rusqlite::params![&root_session_id, &coordinator_turn_id, &run.id, &now],
+        )
+        .map_err(|error| error.to_string())?;
+        AgentOrgTaskStore::create_pending_with_transactional_effects(
+            TaskGraphWriterAdmin::new(&root_session_id, &coordinator_turn_id)?,
+            CreatePendingTaskParams {
+                id: task_id.clone(),
+                org_run_id: run.id.clone(),
+                subject: "Interrupted provider execution".to_string(),
+                description: "Deterministic startup-recovery precondition".to_string(),
+                active_form: None,
+                owner: Some(member_id.clone()),
+                execution_mode: TaskExecutionMode::Build,
+                blocked_by: Vec::new(),
+                metadata: None,
+                originating_message_id: None,
+                replaces_task_id: None,
+            },
+            TaskCreateSchedulingPolicy {
+                allow_parallel_with_unlisted_open_tasks: true,
+            },
+            |_connection, _task, _tasks| Ok(()),
+        )?;
+
+        let turn_intent_id = format!("crashed-turn-{}", uuid::Uuid::new_v4());
+        conn.execute(
+            "INSERT INTO session_turn_intents(
+                 session_id,turn_intent_id,org_run_id,source,status,created_at,updated_at
+             ) VALUES (?1,?2,?3,'agent_org','running',?4,?4)",
+            rusqlite::params![&member_session_id, &turn_intent_id, &run.id, &now],
+        )
+        .map_err(|error| error.to_string())?;
+        conn.execute(
+            "INSERT INTO agent_org_runtime_turn_contexts(
+                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
+                 task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
+                 source_kind,source_id,activation_generation,created_at
+             ) VALUES (?1,?2,?3,?4,'task_execution',?5,?4,?4,1,
+                       'task',?5,1,?6)",
+            rusqlite::params![
+                &member_session_id,
+                &turn_intent_id,
+                &run.id,
+                &member_id,
+                &task_id,
+                &now,
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+        AgentOrgTaskStore::owner_start_with_transactional_effects(
+            TaskOwnerExecution::new(&member_session_id, &turn_intent_id)?,
+            &run.id,
+            &task_id,
+            |_connection, _outcome, _tasks| Ok(()),
+        )?;
+
+        Ok(serde_json::json!({
+            "ok": true,
+            "org_run_id": run.id,
+            "root_session_id": root_session_id,
+            "crashed_session_id": member_session_id,
+            "crashed_task_id": task_id,
+            "crashed_turn_intent_id": turn_intent_id,
+        }))
+    })
+    .await;
+
+    match result {
+        Err(join_error) => Json(serde_json::json!({
+            "ok": false,
+            "error": format!("spawn_blocking join error: {join_error}"),
+        })),
+        Ok(Err(error)) => Json(serde_json::json!({ "ok": false, "error": error })),
+        Ok(Ok(value)) => Json(value),
+    }
+}
+
+/// `POST /test/agent-org/startup-recovery/wake-seeded-task`
+///
+/// Delivers one seeded task through the production `TaskAssigned` producer and
+/// production inbox wake hook. This keeps real-provider crash acceptance tests
+/// on the actual member TaskExecution path without spending a separate
+/// Coordinator model turn merely to manufacture the assignment.
+pub async fn test_agent_org_wake_seeded_task(
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    use agent_core::coordination::agent_org_tasks::{enqueue_task_assigned_to, AgentOrgTaskStore};
+    use agent_core::tools::impls::orchestration::inbox_wake::AppHandleInboxWakeHook;
+    use agent_core::tools::impls::orchestration::org_send_message::InboxWakeHook;
+
+    let Some(obj) = body.as_object() else {
+        return Json(serde_json::json!({ "ok": false, "error": "body must be an object" }));
+    };
+    let required = |key: &str| {
+        obj.get(key)
+            .and_then(serde_json::Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .map(str::to_string)
+            .ok_or_else(|| format!("{key} is required (non-empty string)"))
+    };
+    let (org_run_id, task_id, member_id, recipient_agent_id) = match (
+        required("org_run_id"),
+        required("task_id"),
+        required("member_id"),
+        required("recipient_agent_id"),
+    ) {
+        (Ok(run), Ok(task), Ok(member), Ok(agent)) => (run, task, member, agent),
+        values => {
+            let error = [
+                values.0.err(),
+                values.1.err(),
+                values.2.err(),
+                values.3.err(),
+            ]
+            .into_iter()
+            .flatten()
+            .next()
+            .unwrap_or_else(|| "invalid request".to_string());
+            return Json(serde_json::json!({ "ok": false, "error": error }));
+        }
+    };
+
+    let run_for_delivery = org_run_id.clone();
+    let task_for_delivery = task_id.clone();
+    let member_for_delivery = member_id.clone();
+    let agent_for_delivery = recipient_agent_id.clone();
+    let delivered = tokio::task::spawn_blocking(move || -> Result<i64, String> {
+        let task = AgentOrgTaskStore::get(&run_for_delivery, &task_for_delivery)?
+            .ok_or_else(|| "seeded task was not found".to_string())?;
+        enqueue_task_assigned_to(
+            &task,
+            &agent_for_delivery,
+            &member_for_delivery,
+            "builtin:sde",
+            Some(agent_core::coordination::agent_org_runs::COORDINATOR_MEMBER_ID),
+            "Coordinator",
+        )
+    })
+    .await;
+
+    let inbox_id = match delivered {
+        Err(error) => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": format!("spawn_blocking join error: {error}")
+            }))
+        }
+        Ok(Err(error)) => {
+            return Json(serde_json::json!({ "ok": false, "error": error }));
+        }
+        Ok(Ok(inbox_id)) => inbox_id,
+    };
+
+    let Some(handle) = crate::api::get_app_handle() else {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "AppHandle not initialized",
+            "inbox_id": inbox_id,
+        }));
+    };
+    AppHandleInboxWakeHook::new(handle.clone()).wake_member(&member_id, &org_run_id);
+
+    Json(serde_json::json!({
+        "ok": true,
+        "org_run_id": org_run_id,
+        "task_id": task_id,
+        "member_id": member_id,
+        "recipient_agent_id": recipient_agent_id,
+        "inbox_id": inbox_id,
+    }))
 }
 
 /// `POST /test/agent-org/run/pause`
@@ -2982,32 +3284,13 @@ pub async fn test_agent_org_pause_run(
 /// startup never maps `running` to `paused` and never infers terminality from
 /// abandoned Session rows.
 ///
-/// Caller-path probe: drives the same sequence that `AgentAppState::
-/// with_browser` calls, so this endpoint stays in sync if any of those
-/// functions change their signature or semantics. No body required (`{}`).
+/// Caller-path probe: drives the same production startup owner, then dispatches
+/// only the exact receipts returned by that owner. No body required (`{}`).
 pub async fn test_agent_org_simulate_app_restart() -> Json<serde_json::Value> {
     let result = tokio::task::spawn_blocking(move || {
-        use agent_core::coordination::agent_org_runs::AgentOrgRunStore;
-        use agent_core::session::persistence::{
-            mark_stale_running_sessions_abandoned, reconcile_sessions_with_terminal_turn_markers,
-        };
-
+        let report = crate::app::startup_recovery::run_persistence_startup_recovery()?;
         let conn = database::db::get_connection()
-            .map_err(|err| format!("open sessions DB for intent reconciliation failed: {err}"))?;
-        let intents_reconciled =
-            session_persistence::turn_intents::reconcile_in_flight_after_restart(&conn)
-                .map_err(|err| format!("reconcile_in_flight_after_restart failed: {err}"))?;
-        let agent_org_intents_reconciled =
-            agent_core::coordination::reconcile_agent_org_turns_after_restart(&conn)
-                .map_err(|err| format!("reconcile_agent_org_turns failed: {err}"))?;
-        let terminal_sessions_reconciled = reconcile_sessions_with_terminal_turn_markers()
-            .map_err(|err| {
-                format!("reconcile_sessions_with_terminal_turn_markers failed: {err}")
-            })?;
-        let sessions_abandoned = mark_stale_running_sessions_abandoned()
-            .map_err(|err| format!("mark_stale_running_sessions_abandoned failed: {err}"))?;
-        let tasks_requeued = AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup()
-            .map_err(|err| format!("requeue_abandoned_member_tasks_on_startup failed: {err}"))?;
+            .map_err(|err| format!("open sessions DB for recovery inspection failed: {err}"))?;
         let interventions_preserved: i64 = conn
             .query_row(
                 "SELECT COUNT(*) FROM agent_org_runtime_member_interventions
@@ -3016,20 +3299,7 @@ pub async fn test_agent_org_simulate_app_restart() -> Json<serde_json::Value> {
                 |row| row.get(0),
             )
             .map_err(|err| format!("read preserved interventions failed: {err}"))?;
-        Ok::<serde_json::Value, String>(serde_json::json!({
-            "ok": true,
-            "intents_reconciled": intents_reconciled,
-            "agent_org_intents_reconciled": agent_org_intents_reconciled,
-            "terminal_sessions_reconciled": terminal_sessions_reconciled,
-            "sessions_abandoned": sessions_abandoned,
-            "tasks_requeued": tasks_requeued,
-            // Kept for old E2E clients; canonical PR1 startup performs neither
-            // transition, so both counters are intentionally always zero.
-            "runs_completed": 0,
-            "runs_paused": 0,
-            "interventions_cleared": 0,
-            "interventions_preserved": interventions_preserved,
-        }))
+        Ok::<_, String>((report, interventions_preserved))
     })
     .await;
 
@@ -3039,7 +3309,33 @@ pub async fn test_agent_org_simulate_app_restart() -> Json<serde_json::Value> {
             "error": format!("spawn_blocking join error: {join_err}"),
         })),
         Ok(Err(err)) => Json(serde_json::json!({ "ok": false, "error": err })),
-        Ok(Ok(value)) => Json(value),
+        Ok(Ok((report, interventions_preserved))) => {
+            let Some(app_handle) = crate::api::get_app_handle() else {
+                return Json(serde_json::json!({
+                    "ok": false,
+                    "error": "production AppHandle is unavailable; refusing to report recovery before exact doorbell dispatch",
+                }));
+            };
+            crate::app::startup_recovery::dispatch_agent_org_recovery_receipts(
+                app_handle.clone(),
+                &report.agent_org,
+            );
+            Json(serde_json::json!({
+                "ok": true,
+                "intents_reconciled": report.ordinary_turn_intents_reconciled,
+                "agent_org_intents_reconciled": report.agent_org_turn_intents_reconciled,
+                "terminal_sessions_reconciled": report.terminal_sessions_reconciled,
+                "sessions_abandoned": report.sessions_abandoned,
+                "tasks_requeued": report.agent_org.recovered_task_count(),
+                "recovery_plan": report.agent_org,
+                // Kept for old E2E clients; canonical production startup performs neither
+                // transition, so both counters are intentionally always zero.
+                "runs_completed": 0,
+                "runs_paused": 0,
+                "interventions_cleared": 0,
+                "interventions_preserved": interventions_preserved,
+            }))
+        }
     }
 }
 

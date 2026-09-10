@@ -3184,6 +3184,98 @@ fn an_unprocessed_old_turn_cannot_recover_a_new_execution_of_the_same_task() {
 }
 
 #[test]
+fn crash_recovery_reassignment_uses_a_new_execution_epoch_for_same_or_new_member() {
+    let _fixture = fixture();
+    let conn = get_connection().unwrap();
+
+    for (task_id, replacement_member, replacement_session) in [
+        ("retry-same-owner", MEMBER_A, MEMBER_A_SESSION),
+        ("retry-new-owner", MEMBER_B, MEMBER_B_SESSION),
+    ] {
+        create(pending(task_id, None, vec![]));
+        assign_pending(task_id, MEMBER_A);
+        let old_turn = format!("turn-{task_id}-old");
+        bind_and_start(&conn, MEMBER_A, MEMBER_A_SESSION, task_id, &old_turn, 1);
+        let old_context =
+            crate::coordination::agent_org_turn_contexts::require_context_with_connection(
+                &conn,
+                MEMBER_A_SESSION,
+                &old_turn,
+            )
+            .unwrap();
+        crate::coordination::agent_org_finality::claim_task_execution_in_tx(
+            &conn,
+            &old_context,
+            &crate::coordination::agent_org_finality::TaskExecutionAuthoritySource::receipt(
+                crate::coordination::agent_org_finality::TaskExecutionAuthoritySourceKind::Assignment,
+                format!("authority-{task_id}-old"),
+            ),
+        )
+        .expect("old execution owns epoch one");
+        assert_eq!(fail_turn(MEMBER_A_SESSION, &old_turn).len(), 1);
+
+        assign_pending(task_id, replacement_member);
+        let new_turn = format!("turn-{task_id}-new");
+        bind_and_start(
+            &conn,
+            replacement_member,
+            replacement_session,
+            task_id,
+            &new_turn,
+            1,
+        );
+        let new_context =
+            crate::coordination::agent_org_turn_contexts::require_context_with_connection(
+                &conn,
+                replacement_session,
+                &new_turn,
+            )
+            .unwrap();
+        crate::coordination::agent_org_finality::claim_task_execution_in_tx(
+            &conn,
+            &new_context,
+            &crate::coordination::agent_org_finality::TaskExecutionAuthoritySource::receipt(
+                crate::coordination::agent_org_finality::TaskExecutionAuthoritySourceKind::Assignment,
+                format!("authority-{task_id}-new"),
+            ),
+        )
+        .expect("replacement execution owns a fresh epoch");
+
+        let leases = conn
+            .prepare(
+                "SELECT execution_epoch,owner_member_id,state,prior_lease_id IS NOT NULL
+                 FROM agent_org_task_execution_leases
+                 WHERE org_run_id=?1 AND task_id=?2
+                 ORDER BY execution_epoch",
+            )
+            .unwrap()
+            .query_map(params![RUN_ID, task_id], |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, bool>(3)?,
+                ))
+            })
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(
+            leases,
+            vec![
+                (1, MEMBER_A.to_string(), "released".to_string(), false),
+                (
+                    2,
+                    replacement_member.to_string(),
+                    "active".to_string(),
+                    true,
+                ),
+            ]
+        );
+    }
+}
+
+#[test]
 fn recovery_mutation_failure_rolls_back_budget_and_concurrent_replay_counts_once() {
     let _fixture = fixture();
     let conn = get_connection().unwrap();
@@ -3245,4 +3337,58 @@ fn recovery_mutation_failure_rolls_back_budget_and_concurrent_replay_counts_once
     assert_eq!(mutation_counts, vec![0, 1]);
     assert_eq!(recovery_attempts("concurrent"), 1);
     assert_eq!(recovery_event_count(), 1);
+}
+
+#[test]
+fn startup_recovery_receipt_failure_rolls_back_task_turn_and_inbox_together() {
+    let _fixture = fixture();
+    let conn = get_connection().unwrap();
+    create(pending("atomic-startup-recovery", Some(MEMBER_A), vec![]));
+    bind_and_start(
+        &conn,
+        MEMBER_A,
+        MEMBER_A_SESSION,
+        "atomic-startup-recovery",
+        "turn-atomic-startup-recovery",
+        1,
+    );
+    conn.execute_batch("DROP TABLE agent_org_runtime_formal_trigger_receipts")
+        .expect("inject failure at formal receipt boundary");
+
+    let error = AgentOrgTaskStore::recover_task_execution_failure_on_startup(
+        MEMBER_A_SESSION,
+        "turn-atomic-startup-recovery",
+        "agent-coordinator",
+        "A",
+    )
+    .expect_err("receipt failure must abort the whole recovery transaction");
+    assert!(
+        error.contains("agent_org_runtime_formal_trigger_receipts"),
+        "{error}"
+    );
+    let task = AgentOrgTaskStore::get(RUN_ID, "atomic-startup-recovery")
+        .unwrap()
+        .unwrap();
+    assert_eq!(task.status, TaskStatus::InProgress);
+    assert_eq!(task.owner.as_deref(), Some(MEMBER_A));
+    let turn_status: String = conn
+        .query_row(
+            "SELECT status FROM session_turn_intents
+             WHERE session_id=?1 AND turn_intent_id='turn-atomic-startup-recovery'",
+            [MEMBER_A_SESSION],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(turn_status, "running");
+    let recovery_inbox_rows: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM agent_org_runtime_inbox
+             WHERE org_run_id=?1 AND payload_kind='member_idle'",
+            [RUN_ID],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(recovery_inbox_rows, 0);
+    assert_eq!(recovery_attempts("atomic-startup-recovery"), 0);
+    assert_eq!(recovery_event_count(), 0);
 }

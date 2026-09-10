@@ -707,8 +707,8 @@ fn all_scenarios() -> Vec<ScenarioDef> {
         ),
         scenario!(
             "agent-org",
-            "agent-org-app-restart-transitions-running-runs-to-paused",
-            agent_org::app_restart_transitions_running_runs_to_paused
+            "agent-org-app-restart-recovers-exact-task-execution-once",
+            agent_org::app_restart_recovers_exact_task_execution_once
         ),
         scenario!(
             "agent-org",

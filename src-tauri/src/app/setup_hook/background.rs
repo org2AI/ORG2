@@ -327,4 +327,53 @@ pub(crate) fn spawn_background_workers(app: &tauri::App) {
             let _ = infrastructure::housekeeping::run_deferred_cleanup();
         });
     });
+
+    // One process-wide WAL high-water owner. The first tick doubles as a
+    // startup retry after a previous busy shutdown; later ticks remain sparse
+    // and skip immediately when the foreground writer is occupied.
+    let wal_maintenance_handle = app.handle().clone();
+    tauri::async_runtime::spawn(async move {
+        const WAL_HIGH_WATER_BYTES: u64 = 64 * 1024 * 1024;
+        const WAL_MAINTENANCE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60);
+        let mut interval = tokio::time::interval(WAL_MAINTENANCE_INTERVAL);
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        loop {
+            interval.tick().await;
+            if wal_maintenance_handle
+                .try_state::<agent_core::state::AgentAppState>()
+                .is_some_and(|state| state.is_shutting_down())
+            {
+                break;
+            }
+            let outcome = tokio::task::spawn_blocking(|| {
+                database::db::checkpoint_sessions_if_wal_exceeds(
+                    WAL_HIGH_WATER_BYTES,
+                    std::time::Duration::from_millis(25),
+                    std::time::Duration::from_millis(100),
+                )
+            })
+            .await;
+            match outcome {
+                Ok(Ok(database::db::WalMaintenanceOutcome::Checkpointed(report))) => {
+                    tracing::info!(report = ?report, "[DatabaseWAL] high-water checkpoint finished")
+                }
+                Ok(Ok(database::db::WalMaintenanceOutcome::WriterBusy { wal_bytes })) => {
+                    tracing::debug!(
+                        wal_bytes,
+                        "[DatabaseWAL] foreground writer busy; checkpoint deferred"
+                    )
+                }
+                Ok(Ok(database::db::WalMaintenanceOutcome::AlreadyRunning { wal_bytes })) => {
+                    tracing::debug!(wal_bytes, "[DatabaseWAL] checkpoint already running")
+                }
+                Ok(Ok(database::db::WalMaintenanceOutcome::BelowHighWater { .. })) => {}
+                Ok(Err(error)) => {
+                    tracing::warn!(error = %error, "[DatabaseWAL] high-water checkpoint failed safely")
+                }
+                Err(error) => {
+                    tracing::warn!(error = %error, "[DatabaseWAL] checkpoint worker failed")
+                }
+            }
+        }
+    });
 }

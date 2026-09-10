@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 
 use serde::Serialize;
@@ -14,6 +14,8 @@ use super::{WATCHDOG_INTERVAL_SECS, WATCHDOG_MAX_RECEIPTS, WATCHDOG_TEAM_BUDGET}
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DoorbellRepairReport {
+    pub scanned_assignments: usize,
+    pub repaired_assignments: usize,
     pub scanned_receipts: usize,
     pub affected_runs: usize,
     pub repaired_receipts: usize,
@@ -59,32 +61,44 @@ pub fn repair_missing_doorbells(app_handle: AppHandle) -> Result<DoorbellRepairR
 pub(super) fn repair_missing_doorbells_with_hook(
     wake_hook: &dyn InboxWakeHook,
 ) -> Result<DoorbellRepairReport, String> {
+    let assignment_repairs =
+        crate::coordination::agent_org_tasks::AgentOrgTaskStore::repair_lost_assignment_doorbells(
+            WATCHDOG_MAX_RECEIPTS,
+        )?;
     let receipts = {
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         list_missing_doorbells_with_connection(&conn, WATCHDOG_MAX_RECEIPTS)?
     };
-    if receipts.is_empty() {
+    if receipts.is_empty() && assignment_repairs.is_empty() {
         return Ok(DoorbellRepairReport::default());
     }
 
-    let mut by_run = BTreeMap::<String, Vec<_>>::new();
-    for receipt in receipts {
-        by_run
-            .entry(receipt.org_run_id.clone())
-            .or_default()
-            .push(receipt);
-    }
+    let mut by_run = BTreeMap::<String, BTreeSet<String>>::new();
     let mut report = DoorbellRepairReport {
-        scanned_receipts: by_run.values().map(Vec::len).sum(),
-        affected_runs: by_run.len(),
+        scanned_assignments: assignment_repairs.len(),
+        repaired_assignments: assignment_repairs.len(),
+        scanned_receipts: receipts.len(),
         ..DoorbellRepairReport::default()
     };
-    for (run_id, receipts) in by_run {
+    for repair in assignment_repairs {
+        wake_hook.wake_member(&repair.owner_member_id, &repair.org_run_id);
+        by_run
+            .entry(repair.org_run_id)
+            .or_default()
+            .insert(repair.coordinator_receipt_id);
+    }
+    for receipt in receipts {
+        by_run
+            .entry(receipt.org_run_id)
+            .or_default()
+            .insert(receipt.receipt_id);
+    }
+    report.affected_runs = by_run.len();
+    for (run_id, receipt_ids) in by_run {
         let deadline = Instant::now() + WATCHDOG_TEAM_BUDGET;
-        let receipt_ids = receipts
-            .iter()
+        let receipt_ids = receipt_ids
+            .into_iter()
             .take_while(|_| Instant::now() < deadline)
-            .map(|receipt| receipt.receipt_id.clone())
             .collect::<Vec<_>>();
         if receipt_ids.is_empty() {
             continue;

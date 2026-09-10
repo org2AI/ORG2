@@ -7,7 +7,8 @@ use database::db::{get_connection, with_sessions_writer};
 use super::super::helpers::{insert_run, validate_entry_mode, validate_status};
 use super::super::progress::ensure_progress_in_conn;
 use super::super::{
-    AgentOrgRunRecord, AgentOrgRunStatus, CreateAgentOrgRunParams, COORDINATOR_MEMBER_ID,
+    AgentOrgRunRecord, AgentOrgRunStatus, AgentOrgStartupRecoveryFailure,
+    AgentOrgStartupRecoveryPlan, CreateAgentOrgRunParams, COORDINATOR_MEMBER_ID,
 };
 use super::AgentOrgRunStore;
 
@@ -64,42 +65,118 @@ impl AgentOrgRunStore {
     /// Member session terminal. Recovery proceeds only when one persisted
     /// running TaskExecution identifies the exact Task; a missing or ambiguous
     /// binding fails closed instead of mutating every Task owned by the Member.
-    pub fn requeue_abandoned_member_tasks_on_startup() -> Result<usize, String> {
-        let mut changed = 0usize;
-        for run in Self::list_running_runs(100)? {
-            for worker in Self::list_descendant_worker_sessions(&run.id)? {
-                if !worker.status.is_terminal() || worker.status == SessionStatus::Archived {
-                    continue;
-                }
-                let Some(member_id) = worker.member_id.as_deref() else {
-                    continue;
+    pub fn requeue_abandoned_member_tasks_on_startup() -> Result<AgentOrgStartupRecoveryPlan, String>
+    {
+        const PAGE_SIZE: usize = 100;
+
+        let mut plan = AgentOrgStartupRecoveryPlan::default();
+        let mut after_id: Option<String> = None;
+        loop {
+            let runs = Self::list_running_runs_after_id(after_id.as_deref(), PAGE_SIZE)?;
+            if runs.is_empty() {
+                break;
+            }
+            after_id = runs.last().map(|run| run.id.clone());
+            plan.inspected_runs = plan.inspected_runs.saturating_add(runs.len());
+
+            for run in runs {
+                let context = match super::super::helpers::context_for_run_record(&run) {
+                    Ok(context) => context,
+                    Err(error) => {
+                        plan.failures.push(AgentOrgStartupRecoveryFailure {
+                            org_run_id: run.id,
+                            session_id: String::new(),
+                            member_id: None,
+                            error,
+                        });
+                        continue;
+                    }
                 };
-                let failed_turn_intent_id = {
-                    let conn = get_connection().map_err(|error| error.to_string())?;
-                    crate::coordination::agent_org_turn_contexts::unique_running_task_execution_turn_for_recovery(
+                let workers = match Self::list_descendant_worker_sessions(&run.id) {
+                    Ok(workers) => workers,
+                    Err(error) => {
+                        plan.failures.push(AgentOrgStartupRecoveryFailure {
+                            org_run_id: run.id,
+                            session_id: String::new(),
+                            member_id: None,
+                            error,
+                        });
+                        continue;
+                    }
+                };
+                for worker in workers {
+                    if !worker.status.is_terminal() || worker.status == SessionStatus::Archived {
+                        continue;
+                    }
+                    plan.inspected_terminal_members =
+                        plan.inspected_terminal_members.saturating_add(1);
+                    let Some(member_id) = worker.member_id.as_deref() else {
+                        continue;
+                    };
+                    let failed_turn_lookup = {
+                        let conn = get_connection().map_err(|error| error.to_string())?;
+                        crate::coordination::agent_org_turn_contexts::unique_running_task_execution_turn_for_recovery(
                         &conn,
                         &run.id,
                         &worker.session_id,
                         member_id,
-                    )?
-                };
-                let Some(failed_turn_intent_id) = failed_turn_intent_id else {
-                    tracing::warn!(
-                        run_id = %run.id,
-                        session_id = %worker.session_id,
-                        member_id,
-                        "abandoned Agent Org Member has no unique persisted TaskExecution; refusing Task recovery"
-                    );
-                    continue;
-                };
-                changed += AgentOrgTaskStore::recover_task_execution_failure(
-                    &worker.session_id,
-                    &failed_turn_intent_id,
-                )?
-                .len();
+                    )
+                    };
+                    let failed_turn_intent_id = match failed_turn_lookup {
+                        Ok(Some(turn_intent_id)) => turn_intent_id,
+                        Ok(None) => {
+                            plan.skipped_without_unique_execution =
+                                plan.skipped_without_unique_execution.saturating_add(1);
+                            tracing::warn!(
+                                run_id = %run.id,
+                                session_id = %worker.session_id,
+                                member_id,
+                                "abandoned Agent Org Member has no unique persisted TaskExecution; refusing Task recovery"
+                            );
+                            continue;
+                        }
+                        Err(error) => {
+                            plan.failures.push(AgentOrgStartupRecoveryFailure {
+                                org_run_id: run.id.clone(),
+                                session_id: worker.session_id.clone(),
+                                member_id: Some(member_id.to_string()),
+                                error,
+                            });
+                            continue;
+                        }
+                    };
+                    let Some(member) = context
+                        .members
+                        .iter()
+                        .find(|candidate| candidate.member_id == member_id)
+                    else {
+                        plan.failures.push(AgentOrgStartupRecoveryFailure {
+                        org_run_id: run.id.clone(),
+                        session_id: worker.session_id.clone(),
+                        member_id: Some(member_id.to_string()),
+                        error: "startup recovery member is absent from the immutable launch snapshot"
+                            .to_string(),
+                    });
+                        continue;
+                    };
+                    match AgentOrgTaskStore::recover_task_execution_failure_on_startup(
+                        &worker.session_id,
+                        &failed_turn_intent_id,
+                        &run.coordinator_agent_id,
+                        &member.name,
+                    ) {
+                        Ok(recovered) => plan.recovered_tasks.extend(recovered),
+                        Err(error) => plan.failures.push(AgentOrgStartupRecoveryFailure {
+                            org_run_id: run.id.clone(),
+                            session_id: worker.session_id.clone(),
+                            member_id: Some(member_id.to_string()),
+                            error,
+                        }),
+                    }
+                }
             }
         }
-        Ok(changed)
+        Ok(plan)
     }
 
     /// Promote the canonical Root Coordinator's current Idle Turn only when

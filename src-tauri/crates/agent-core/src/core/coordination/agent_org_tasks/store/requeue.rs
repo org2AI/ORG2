@@ -10,8 +10,8 @@ use super::super::helpers::{
 };
 use super::super::SystemTaskOperation;
 use super::super::{
-    SystemArchiveOrRecovery, Task, TaskAnnotationKind, TaskStatus, TaskTerminalReason,
-    TASK_EVENT_RELEASED,
+    SystemArchiveOrRecovery, Task, TaskAnnotationKind, TaskExecutionRecovery, TaskStatus,
+    TaskTerminalReason, TASK_EVENT_RELEASED,
 };
 use super::validation::{ensure_run_allows_task_mutation, validate_task_model_invariants};
 use super::AgentOrgTaskStore;
@@ -21,35 +21,98 @@ impl AgentOrgTaskStore {
         session_id: &str,
         failed_turn_intent_id: &str,
     ) -> Result<Vec<Task>, String> {
-        let updated = with_sessions_writer(|| -> Result<Vec<Task>, String> {
-            let mut conn = get_connection().map_err(|error| error.to_string())?;
-            let tx = conn
-                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-                .map_err(|error| error.to_string())?;
-            let context = crate::coordination::agent_org_turn_contexts::require_task_failure_recovery_context_with_connection(
+        recover_task_execution_failure_inner(session_id, failed_turn_intent_id, None).map(
+            |recoveries| {
+                recoveries
+                    .into_iter()
+                    .map(|recovery| recovery.task)
+                    .collect()
+            },
+        )
+    }
+
+    pub(crate) fn recover_task_execution_failure_on_startup(
+        session_id: &str,
+        failed_turn_intent_id: &str,
+        coordinator_agent_id: &str,
+        member_name: &str,
+    ) -> Result<Vec<TaskExecutionRecovery>, String> {
+        recover_task_execution_failure_inner(
+            session_id,
+            failed_turn_intent_id,
+            Some(StartupRecoveryNotification {
+                coordinator_agent_id,
+                member_name,
+            }),
+        )
+    }
+
+    pub(crate) fn release_owner_for_shutdown(
+        actor: SystemArchiveOrRecovery,
+        org_run_id: &str,
+        owner_member_id: &str,
+    ) -> Result<Vec<Task>, String> {
+        release_owned_tasks_for_shutdown(actor, org_run_id, owner_member_id)
+    }
+
+    #[cfg(test)]
+    pub fn dispose_open_tasks_for_shutdown(
+        org_run_id: &str,
+        owner_member_id: &str,
+    ) -> Result<Vec<Task>, String> {
+        let reservation = crate::coordination::agent_org_watchdog::reserve_task_shutdown_release(
+            org_run_id,
+            owner_member_id,
+        )?;
+        let actor = SystemArchiveOrRecovery::new(
+            reservation.token,
+            reservation.generation,
+            SystemTaskOperation::ShutdownRelease,
+        )?;
+        Self::release_owner_for_shutdown(actor, org_run_id, owner_member_id)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct StartupRecoveryNotification<'a> {
+    coordinator_agent_id: &'a str,
+    member_name: &'a str,
+}
+
+fn recover_task_execution_failure_inner(
+    session_id: &str,
+    failed_turn_intent_id: &str,
+    startup_notification: Option<StartupRecoveryNotification<'_>>,
+) -> Result<Vec<TaskExecutionRecovery>, String> {
+    let updated = with_sessions_writer(|| -> Result<Vec<TaskExecutionRecovery>, String> {
+        let mut conn = get_connection().map_err(|error| error.to_string())?;
+        let tx = conn
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(|error| error.to_string())?;
+        let context = crate::coordination::agent_org_turn_contexts::require_task_failure_recovery_context_with_connection(
                 &tx,
                 session_id,
                 failed_turn_intent_id,
             )?;
-            ensure_run_allows_task_mutation(&tx, &context.org_run_id)?;
-            let task_id = context
-                .task_id
-                .as_deref()
-                .ok_or_else(|| "task_failure_recovery_context_missing_task".to_string())?;
-            let owner_member_id = context
-                .owner_member_id
-                .as_deref()
-                .ok_or_else(|| "task_failure_recovery_context_missing_owner".to_string())?;
-            let activation_generation = context
-                .activation_generation
-                .ok_or_else(|| "task_failure_recovery_context_missing_generation".to_string())?;
-            let fingerprint =
-                crate::coordination::agent_org_watchdog::task_failure_recovery_fingerprint(
-                    task_id,
-                    failed_turn_intent_id,
-                    activation_generation,
-                );
-            if crate::coordination::agent_org_watchdog::task_failure_recovery_already_processed_with_connection(
+        ensure_run_allows_task_mutation(&tx, &context.org_run_id)?;
+        let task_id = context
+            .task_id
+            .as_deref()
+            .ok_or_else(|| "task_failure_recovery_context_missing_task".to_string())?;
+        let owner_member_id = context
+            .owner_member_id
+            .as_deref()
+            .ok_or_else(|| "task_failure_recovery_context_missing_owner".to_string())?;
+        let activation_generation = context
+            .activation_generation
+            .ok_or_else(|| "task_failure_recovery_context_missing_generation".to_string())?;
+        let fingerprint =
+            crate::coordination::agent_org_watchdog::task_failure_recovery_fingerprint(
+                task_id,
+                failed_turn_intent_id,
+                activation_generation,
+            );
+        if crate::coordination::agent_org_watchdog::task_failure_recovery_already_processed_with_connection(
                 &tx,
                 &context.org_run_id,
                 &fingerprint,
@@ -57,16 +120,16 @@ impl AgentOrgTaskStore {
                 return Ok(Vec::new());
             }
 
-            // Revalidate after the idempotency probe so a replay of an already
-            // committed failure is a no-op, while an unprocessed late callback
-            // still fails closed on Task/Owner/run/snapshot/generation drift.
-            crate::coordination::agent_org_turn_contexts::revalidate_context_with_connection(
-                &tx,
-                session_id,
-                failed_turn_intent_id,
-            )?;
-            let sql = format!(
-                "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks task
+        // Revalidate after the idempotency probe so a replay of an already
+        // committed failure is a no-op, while an unprocessed late callback
+        // still fails closed on Task/Owner/run/snapshot/generation drift.
+        crate::coordination::agent_org_turn_contexts::revalidate_context_with_connection(
+            &tx,
+            session_id,
+            failed_turn_intent_id,
+        )?;
+        let sql = format!(
+            "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks task
                  WHERE task.org_run_id=?1 AND task.id=?2 AND task.owner=?3
                    AND task.status='in_progress'
                    AND NOT EXISTS (
@@ -96,106 +159,176 @@ impl AgentOrgTaskStore {
                                AND latest.task_id=task.id
                          )
                    )"
-            );
-            let previous = tx
-                .query_row(
-                    &sql,
-                    params![
-                        &context.org_run_id,
-                        task_id,
-                        owner_member_id,
-                        failed_turn_intent_id,
-                        session_id,
-                    ],
-                    row_to_task,
+        );
+        let previous = tx
+            .query_row(
+                &sql,
+                params![
+                    &context.org_run_id,
+                    task_id,
+                    owner_member_id,
+                    failed_turn_intent_id,
+                    session_id,
+                ],
+                row_to_task,
+            )
+            .optional()
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| {
+                format!(
+                    "task_failure_recovery_turn_or_target_changed: {}/{}",
+                    context.org_run_id, task_id
                 )
-                .optional()
-                .map_err(|error| error.to_string())?
-                .ok_or_else(|| {
-                    format!(
-                        "task_failure_recovery_turn_or_target_changed: {}/{}",
-                        context.org_run_id, task_id
-                    )
-                })?;
-            let reservation = crate::coordination::agent_org_watchdog::reserve_task_failure_recovery_with_connection(
+            })?;
+        let reservation =
+            crate::coordination::agent_org_watchdog::reserve_task_failure_recovery_with_connection(
                 &tx,
                 &context.org_run_id,
                 task_id,
                 &fingerprint,
                 activation_generation,
             )?;
-            let operation = if reservation.exhausted {
-                SystemTaskOperation::RecoveryFail
-            } else {
-                SystemTaskOperation::RecoveryRequeue
-            };
-            let actor =
-                SystemArchiveOrRecovery::new(reservation.token, reservation.generation, operation)?;
-            let mut audit = actor.validate(&tx, &context.org_run_id, task_id)?;
-            audit.turn_intent_id = Some(failed_turn_intent_id.to_string());
-            let updated = recover_task_in_tx(
-                &tx,
-                previous,
-                owner_member_id,
-                RecoveryMode::Failure {
-                    exhausted: reservation.exhausted,
-                },
-                &audit,
-            )?;
-            release_reservation_in_tx(&tx, &context.org_run_id, &actor, task_id)?;
-            crate::coordination::agent_org_finality::record_task_mutation_in_tx(
-                &tx,
-                &context.org_run_id,
-                &audit,
-            )?;
-            crate::foundation::session_bridge::update_turn_intent_status_with_connection(
-                &tx,
-                session_id,
-                failed_turn_intent_id,
-                crate::foundation::session_bridge::TurnIntentBridgeStatus::Failed,
-            )?;
-            crate::coordination::agent_org_finality::release_turn_lease_in_tx(
-                &tx,
-                session_id,
-                failed_turn_intent_id,
-                "released",
-                "task_execution_recovered",
-            )?;
-            tx.commit().map_err(|error| error.to_string())?;
-            Ok(vec![updated])
-        })?;
-        if let Some(task) = updated.first() {
-            crate::coordination::agent_org_run_events::notify_agent_org_run_changed(
-                &task.org_run_id,
-            );
-        }
-        Ok(updated)
-    }
-
-    pub(crate) fn release_owner_for_shutdown(
-        actor: SystemArchiveOrRecovery,
-        org_run_id: &str,
-        owner_member_id: &str,
-    ) -> Result<Vec<Task>, String> {
-        release_owned_tasks_for_shutdown(actor, org_run_id, owner_member_id)
-    }
-
-    #[cfg(test)]
-    pub fn dispose_open_tasks_for_shutdown(
-        org_run_id: &str,
-        owner_member_id: &str,
-    ) -> Result<Vec<Task>, String> {
-        let reservation = crate::coordination::agent_org_watchdog::reserve_task_shutdown_release(
-            org_run_id,
+        let operation = if reservation.exhausted {
+            SystemTaskOperation::RecoveryFail
+        } else {
+            SystemTaskOperation::RecoveryRequeue
+        };
+        let actor =
+            SystemArchiveOrRecovery::new(reservation.token, reservation.generation, operation)?;
+        let mut audit = actor.validate(&tx, &context.org_run_id, task_id)?;
+        audit.turn_intent_id = Some(failed_turn_intent_id.to_string());
+        let updated = recover_task_in_tx(
+            &tx,
+            previous,
             owner_member_id,
+            RecoveryMode::Failure {
+                exhausted: reservation.exhausted,
+            },
+            &audit,
         )?;
-        let actor = SystemArchiveOrRecovery::new(
-            reservation.token,
-            reservation.generation,
-            SystemTaskOperation::ShutdownRelease,
+        release_reservation_in_tx(&tx, &context.org_run_id, &actor, task_id)?;
+        crate::coordination::agent_org_finality::record_task_mutation_in_tx(
+            &tx,
+            &context.org_run_id,
+            &audit,
         )?;
-        Self::release_owner_for_shutdown(actor, org_run_id, owner_member_id)
+        crate::foundation::session_bridge::update_turn_intent_status_with_connection(
+            &tx,
+            session_id,
+            failed_turn_intent_id,
+            crate::foundation::session_bridge::TurnIntentBridgeStatus::Failed,
+        )?;
+        crate::coordination::agent_org_finality::release_turn_lease_in_tx(
+            &tx,
+            session_id,
+            failed_turn_intent_id,
+            "released",
+            "task_execution_recovered",
+        )?;
+        let receipt_id = if let Some(notification) = startup_notification {
+            Some(persist_startup_recovery_notification_in_tx(
+                &tx,
+                &updated,
+                owner_member_id,
+                session_id,
+                failed_turn_intent_id,
+                notification,
+            )?)
+        } else {
+            None
+        };
+        tx.commit().map_err(|error| error.to_string())?;
+        Ok(vec![TaskExecutionRecovery {
+            task: updated,
+            previous_owner_member_id: owner_member_id.to_string(),
+            failed_session_id: session_id.to_string(),
+            failed_turn_intent_id: failed_turn_intent_id.to_string(),
+            receipt_id,
+        }])
+    })?;
+    if let Some(recovery) = updated.first() {
+        crate::coordination::agent_org_run_events::notify_agent_org_run_changed(
+            &recovery.task.org_run_id,
+        );
     }
+    Ok(updated)
+}
+
+fn persist_startup_recovery_notification_in_tx(
+    tx: &rusqlite::Transaction<'_>,
+    task: &Task,
+    previous_owner_member_id: &str,
+    failed_session_id: &str,
+    failed_turn_intent_id: &str,
+    notification: StartupRecoveryNotification<'_>,
+) -> Result<String, String> {
+    use crate::coordination::agent_inbox::{
+        AgentInboxStore, AgentMessage, InsertInboxParams, MemberIdleReason, SYSTEM_SENDER_ID,
+    };
+
+    let eligible_member_ids = super::super::eligible_member_ids(task);
+    let eligible = if eligible_member_ids.is_empty() {
+        "none".to_string()
+    } else {
+        let truncated = eligible_member_ids.len() > 16;
+        let mut value = eligible_member_ids
+            .iter()
+            .take(16)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", ");
+        if truncated {
+            value.push_str(", …");
+        }
+        value
+    };
+    let failure_reason = crate::utils::safe_truncate_chars_to_string(
+        &format!(
+        "The app stopped while TaskExecution {failed_turn_intent_id} was running in session {failed_session_id}. Task {} is now {} and has no automatic replacement owner. Previous owner: {previous_owner_member_id}. Eligible replacement member IDs: [{eligible}]. Inspect any external side effects before explicitly assigning a new owner; startup recovery will not replay the interrupted execution.",
+        task.id,
+        task.status.as_wire(),
+        ),
+        crate::coordination::agent_org_payload_limits::MEMBER_FAILURE_REASON_MAX_CHARS,
+    );
+    let record = AgentInboxStore::insert_in_tx_without_formal_trigger(
+        tx,
+        InsertInboxParams {
+            recipient_agent_id: notification.coordinator_agent_id.to_string(),
+            recipient_member_id: Some(
+                crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID.to_string(),
+            ),
+            sender_agent_id: SYSTEM_SENDER_ID.to_string(),
+            sender_member_id: None,
+            org_run_id: Some(task.org_run_id.clone()),
+            message: AgentMessage::MemberIdle {
+                member_id: previous_owner_member_id.to_string(),
+                member_name: notification.member_name.to_string(),
+                reason: MemberIdleReason::Failed,
+                current_mode: None,
+                summary: Some(
+                    "A TaskExecution was interrupted by app shutdown; review and explicitly reassign its Task."
+                        .to_string(),
+                ),
+                failure_reason: Some(failure_reason),
+                unfinished_task_ids: vec![task.id.clone()],
+            },
+        },
+    )?;
+    let receipt = crate::coordination::agent_org_formal_triggers::record_inbox_trigger_in_tx(
+        tx,
+        &task.org_run_id,
+        record.id,
+        crate::coordination::agent_org_formal_triggers::InboxFormalTriggerSource {
+            source_kind: "task_execution_recovery_required",
+            task_id: Some(&task.id),
+            owner_member_id: Some(previous_owner_member_id),
+            source_turn_intent_id: Some(failed_turn_intent_id),
+            task_output_digest: None,
+            plan_revision_id: None,
+            suppress_self_wake: false,
+        },
+    )?;
+    Ok(receipt.receipt_id)
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -272,6 +272,9 @@ pub(crate) async fn send_message_impl(
     intent_org_run_id: Option<String>,
     source: TurnIntentBridgeSource,
 ) -> Result<AgentResponse, String> {
+    if state.is_shutting_down() {
+        return Err("app_shutdown_in_progress: refusing to enqueue a new Agent turn".into());
+    }
     // Canonical user-intent id: callers that already mint one at the
     // submit boundary pass it through; legacy / internal callers that
     // don't (mobile remote, wake hook, plan-approval re-entry) get a

@@ -435,21 +435,17 @@ pub fn initialize_recent_paths(app: &AppHandle) {
     super::system_recents::clear_system_recent_documents();
 
     let paths = load_recent_paths_from_disk(app);
-    if paths.is_empty() {
+    if let Err(err) = rebuild_menu(app) {
+        eprintln!("[AppMenu] Failed to install application menu: {}", err);
         return;
     }
 
-    if let Err(err) = rebuild_menu(app) {
-        eprintln!(
-            "[AppMenu] Failed to rebuild menu after loading recents: {}",
-            err
+    if !paths.is_empty() {
+        println!(
+            "✅ [AppMenu] Restored {} recent path(s) from disk",
+            paths.len()
         );
     }
-
-    println!(
-        "✅ [AppMenu] Restored {} recent path(s) from disk",
-        paths.len()
-    );
 }
 
 /// Add a path to the recent items list and persist to disk.

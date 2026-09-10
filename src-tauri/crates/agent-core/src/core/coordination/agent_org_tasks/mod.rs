@@ -24,6 +24,31 @@ pub use actor::{TaskGraphWriterAdmin, TaskOwnerExecution, UserTaskHandoffAdmin};
 pub use graph::TaskGraphIndex;
 pub use store::AgentOrgTaskStore;
 
+/// Exact durable output of one failed TaskExecution recovery.
+///
+/// `receipt_id` is present only for startup recovery, where the Task mutation
+/// and the Coordinator-facing recovery doorbell are committed atomically.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskExecutionRecovery {
+    pub task: Task,
+    pub previous_owner_member_id: String,
+    pub failed_session_id: String,
+    pub failed_turn_intent_id: String,
+    pub receipt_id: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskAssignmentDoorbellRepair {
+    pub org_run_id: String,
+    pub task_id: String,
+    pub owner_member_id: String,
+    pub assignment_event_id: String,
+    pub owner_inbox_id: i64,
+    pub coordinator_receipt_id: String,
+}
+
 #[cfg(test)]
 mod task_store_contract_tests;
 #[cfg(test)]

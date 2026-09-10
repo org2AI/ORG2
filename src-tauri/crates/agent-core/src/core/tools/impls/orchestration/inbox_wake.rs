@@ -39,8 +39,9 @@ use crate::tools::impls::orchestration::org_send_message::{InboxWakeHook, UserDi
 
 /// Production [`InboxWakeHook`] that resolves the recipient session by
 /// canonical `member_id` and, when the session is idle or terminal, fires
-/// `send_message_impl(session_id, "", is_resume=true)` on a detached Tokio
-/// task.
+/// `send_message_impl(session_id, "", is_resume=true)` on Tauri's detached
+/// application runtime. The hook is synchronous and may be called from the
+/// macOS setup thread, where no Tokio reactor is entered yet.
 ///
 /// Failures (DB lookup errors, missing app handle, in-flight session)
 /// are logged at `info!`/`warn!` and swallowed — the persisted inbox
@@ -85,7 +86,7 @@ impl InboxWakeHook for AppHandleInboxWakeHook {
 
     fn wake_user_directed_member(&self, wake: UserDirectedWake) {
         let app_handle = self.app_handle.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let Some(state) = app_handle.try_state::<AgentAppState>() else {
                 warn!(
                     run_id = %wake.org_run_id,
@@ -116,7 +117,7 @@ impl AppHandleInboxWakeHook {
         let member = member_id.to_string();
         let run_id = org_run_id.to_string();
         let app_handle = self.app_handle.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let is_repair = formal_receipt_ids.is_some();
             let formal_receipt_ids = if member
                 == crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID
@@ -180,6 +181,23 @@ impl AppHandleInboxWakeHook {
             }
             info!(run_id = %run_id, member_id = %member, ?outcome, "[inbox_wake] wake request finished");
         });
+    }
+}
+
+#[cfg(test)]
+mod runtime_boundary_tests {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    #[test]
+    fn tauri_runtime_spawn_is_safe_without_an_entered_tokio_reactor() {
+        let (sender, receiver) = mpsc::channel();
+        tauri::async_runtime::spawn(async move {
+            sender.send(()).expect("test receiver remains alive");
+        });
+        receiver
+            .recv_timeout(Duration::from_secs(2))
+            .expect("Tauri runtime should execute work from a synchronous startup thread");
     }
 }
 

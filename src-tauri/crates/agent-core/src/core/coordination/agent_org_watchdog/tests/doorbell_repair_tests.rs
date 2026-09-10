@@ -1,5 +1,6 @@
 use super::super::{WATCHDOG_INTERVAL_SECS, WATCHDOG_MAX_RECEIPTS, WATCHDOG_TEAM_BUDGET};
 use super::fixture::{RecordingWake, UnacceptedWake, WatchdogFixture};
+use crate::coordination::agent_org_runs::AgentOrgRunStatus;
 
 #[test]
 fn watchdog_budget_is_fixed_and_bounded() {
@@ -58,6 +59,95 @@ fn five_ticks_repair_only_the_original_receipt_once() {
         )
         .unwrap();
     assert_eq!(state, ("pending".into(), "delivered".into(), 0, 0));
+}
+
+#[test]
+fn ready_assigned_task_gets_one_replacement_doorbell_without_owner_or_task_mutation() {
+    let fixture = WatchdogFixture::new();
+    fixture.seed_lost_assignment_doorbell("assigned-with-lost-doorbell");
+    let wake = RecordingWake::default();
+
+    let first = super::super::recover::repair_missing_doorbells_with_hook(&wake).unwrap();
+    assert_eq!(first.repaired_assignments, 1);
+    assert_eq!(first.repaired_receipts, 1);
+    assert_eq!(
+        wake.calls(),
+        vec![
+            ("worker".to_string(), fixture.run_id.clone()),
+            ("coordinator".to_string(), fixture.run_id.clone()),
+        ]
+    );
+
+    for _ in 0..3 {
+        assert_eq!(
+            super::super::recover::repair_missing_doorbells_with_hook(&wake).unwrap(),
+            Default::default(),
+            "the same assignment event must never get another replacement envelope"
+        );
+    }
+    assert_eq!(wake.calls().len(), 2);
+
+    let conn = database::db::get_connection().unwrap();
+    let state: (String, String, i64, i64, i64) = conn
+        .query_row(
+            "SELECT task.status,task.owner,
+                    (SELECT COUNT(*) FROM agent_org_runtime_tasks
+                     WHERE org_run_id=task.org_run_id),
+                    (SELECT COUNT(*) FROM agent_org_runtime_inbox
+                     WHERE org_run_id=task.org_run_id
+                       AND recipient_member_id='worker'
+                       AND payload_kind='task_assigned'),
+                    (SELECT COUNT(*) FROM agent_org_runtime_recovery_attempts
+                     WHERE org_run_id=task.org_run_id
+                       AND action_kind='task_assignment_doorbell_repair_event')
+             FROM agent_org_runtime_tasks task
+             WHERE task.org_run_id=?1 AND task.id='assigned-with-lost-doorbell'",
+            [&fixture.run_id],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            },
+        )
+        .unwrap();
+    assert_eq!(state, ("pending".into(), "worker".into(), 1, 1, 1));
+}
+
+#[test]
+fn paused_idle_and_archived_teams_never_receive_assignment_repairs() {
+    let fixture = WatchdogFixture::new();
+    fixture.seed_lost_assignment_doorbell("inactive-team-assignment");
+    let wake = RecordingWake::default();
+
+    for status in [
+        AgentOrgRunStatus::Paused,
+        AgentOrgRunStatus::Idle,
+        AgentOrgRunStatus::Archived,
+    ] {
+        fixture.set_run_status(status);
+        assert_eq!(
+            super::super::recover::repair_missing_doorbells_with_hook(&wake).unwrap(),
+            Default::default(),
+            "inactive Team state must be a read-only watchdog no-op"
+        );
+    }
+
+    assert!(wake.calls().is_empty());
+    let conn = database::db::get_connection().unwrap();
+    let side_effects: (i64, i64) = conn
+        .query_row(
+            "SELECT
+                 (SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE org_run_id=?1),
+                 (SELECT COUNT(*) FROM agent_org_runtime_recovery_attempts WHERE org_run_id=?1)",
+            [&fixture.run_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(side_effects, (0, 0));
 }
 
 #[test]

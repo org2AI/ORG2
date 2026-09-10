@@ -797,11 +797,54 @@ fn startup_recovery_requeues_only_the_uniquely_bound_task_and_is_idempotent() {
     )
     .expect("reproduce historical Session-failed / Turn-running split");
 
+    let first = AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup()
+        .expect("recover exact abandoned TaskExecution");
+    assert_eq!(first.recovered_task_count(), 1);
+    assert!(first.failures.is_empty());
+    let recovery = &first.recovered_tasks[0];
+    let receipt_id = recovery
+        .receipt_id
+        .as_deref()
+        .expect("startup recovery must commit an exact formal receipt");
+    assert_eq!(recovery.task.id, "crashed-task");
+    assert_eq!(recovery.previous_owner_member_id, "member-worker");
+
+    let conn = database::db::get_connection().expect("inspect startup recovery receipt");
+    let receipt: (String, String, String, String, String) = conn
+        .query_row(
+            "SELECT source_kind,task_id,owner_member_id,source_turn_intent_id,doorbell_status
+             FROM agent_org_runtime_formal_trigger_receipts WHERE receipt_id=?1",
+            [receipt_id],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            },
+        )
+        .expect("exact startup recovery receipt");
     assert_eq!(
-        AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup()
-            .expect("recover exact abandoned TaskExecution"),
-        1
+        receipt,
+        (
+            "task_execution_recovery_required".to_string(),
+            "crashed-task".to_string(),
+            "member-worker".to_string(),
+            "turn-crashed-task".to_string(),
+            "missing".to_string(),
+        )
     );
+    let recovery_inbox_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM agent_org_runtime_inbox
+             WHERE org_run_id=?1 AND payload_kind='member_idle'",
+            [&run_id],
+            |row| row.get(0),
+        )
+        .expect("count recovery inbox rows");
+    assert_eq!(recovery_inbox_count, 1);
     assert_eq!(
         AgentOrgTaskStore::get(&run_id, "crashed-task")
             .unwrap()
@@ -817,9 +860,60 @@ fn startup_recovery_requeues_only_the_uniquely_bound_task_and_is_idempotent() {
         TaskStatus::InProgress,
         "startup must not batch-recover every Task owned by the Member"
     );
+    for restart in 2..=3 {
+        let replay = AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup()
+            .expect("startup replay is a no-op");
+        assert_eq!(
+            replay.recovered_task_count(),
+            0,
+            "restart {restart} must not duplicate recovery"
+        );
+    }
+    let receipt_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts
+             WHERE org_run_id=?1 AND source_kind='task_execution_recovery_required'",
+            [&run_id],
+            |row| row.get(0),
+        )
+        .expect("count exact recovery receipts");
     assert_eq!(
-        AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup()
-            .expect("startup replay is a no-op"),
-        0
+        receipt_count, 1,
+        "restarts must not duplicate recovery facts"
     );
+}
+
+#[test]
+fn startup_recovery_keyset_scan_is_not_capped_at_first_hundred_runs() {
+    let _serial = test_serial_guard();
+    let _sandbox = test_helpers::test_env::sandbox();
+    ensure_runtime_schemas();
+    let snapshot = serde_json::to_string(&crate::definitions::orgs::AgentOrgLaunchSnapshot::from(
+        &org_definition("builtin:sde"),
+    ))
+    .expect("launch snapshot");
+    let mut conn = database::db::get_connection().expect("seed paginated run set");
+    let tx = conn.transaction().expect("run-set transaction");
+    for index in 0..105 {
+        let id = format!("agent-org-run-page-{index:03}");
+        let root = format!("root-page-{index:03}");
+        let now = chrono::Utc::now().to_rfc3339();
+        tx.execute(
+            "INSERT INTO agent_org_runtime_runs(
+                 id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
+                 entry_mode,status,activation_generation,created_at,updated_at
+             ) VALUES (?1,'org-lifecycle','builtin:coord',?2,?3,
+                       'standalone_session','running',1,?4,?4)",
+            rusqlite::params![id, root, &snapshot, now],
+        )
+        .expect("running paginated Team");
+    }
+    tx.commit().expect("commit paginated run set");
+    drop(conn);
+
+    let plan = AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup()
+        .expect("scan every keyset page");
+    assert_eq!(plan.inspected_runs, 105);
+    assert_eq!(plan.recovered_task_count(), 0);
+    assert!(plan.failures.is_empty());
 }

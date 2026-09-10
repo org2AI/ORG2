@@ -14,5 +14,6 @@ pub(crate) mod builder;
 pub(crate) mod lifecycle;
 pub(crate) mod plugins;
 pub(crate) mod setup_hook;
+pub(crate) mod startup_recovery;
 
 pub(crate) use builder::run;

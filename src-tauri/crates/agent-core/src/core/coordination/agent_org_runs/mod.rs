@@ -393,6 +393,33 @@ pub struct AgentOrgRunRecord {
     pub archive_receipt_id: Option<String>,
 }
 
+/// One-shot persisted work produced before AgentAppState is installed.
+/// Only the exact receipt IDs in this plan may ring a post-init doorbell.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOrgStartupRecoveryPlan {
+    pub inspected_runs: usize,
+    pub inspected_terminal_members: usize,
+    pub skipped_without_unique_execution: usize,
+    pub recovered_tasks: Vec<crate::coordination::agent_org_tasks::TaskExecutionRecovery>,
+    pub failures: Vec<AgentOrgStartupRecoveryFailure>,
+}
+
+impl AgentOrgStartupRecoveryPlan {
+    pub fn recovered_task_count(&self) -> usize {
+        self.recovered_tasks.len()
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOrgStartupRecoveryFailure {
+    pub org_run_id: String,
+    pub session_id: String,
+    pub member_id: Option<String>,
+    pub error: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct CreateAgentOrgRunParams {
     pub org_id: String,

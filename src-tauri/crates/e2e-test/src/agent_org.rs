@@ -32,6 +32,8 @@ const RUN_VIEW_PATH: &str = "/agent/test/agent-org/run-view";
 const DURABLE_INVARIANTS_PATH: &str = "/agent/test/agent-org/durable-invariants";
 const FIND_WORKER_SESSION_PATH: &str = "/agent/test/agent-org/find-worker-session";
 const SEED_CLI_MEMBER_RUN_PATH: &str = "/agent/test/agent-org/stale-workers/seed-cli-member";
+const SEED_CRASHED_TASK_EXECUTION_PATH: &str =
+    "/agent/test/agent-org/startup-recovery/seed-crashed-task";
 const TASKS_SEED_PATH: &str = "/agent/test/agent-org/tasks/seed";
 const PAUSE_RUN_PATH: &str = "/agent/test/agent-org/run/pause";
 const RESUME_RUN_PATH: &str = "/agent/test/agent-org/run/resume";
@@ -2903,27 +2905,20 @@ pub async fn run_pause_resume_toggles_status(cfg: &Config) -> bool {
     )
 }
 
-/// Verify that `mark_all_running_as_paused_on_startup` transitions all
-/// `running` org runs to `paused` so that the UI can show the overview
-/// panel and Resume button after an app restart.
-///
-/// Invariants checked:
-/// - Before restart: seeded run is `running`
-/// - After simulated restart: run is `paused` (non-terminal, resumable)
-/// - `reconcile_run_finality` is a no-op for `paused` runs (run stays paused)
-/// - After user resumes: run is `running` again (full lifecycle round-trip)
-/// - Active interventions are cleared on startup (no stale intervention banner)
-pub async fn app_restart_transitions_running_runs_to_paused(cfg: &Config) -> bool {
-    let label = "app-restart-transitions-running-runs-to-paused";
+/// Production-caller-path restart pin for one interrupted TaskExecution.
+/// The debug helper establishes only the crash-cut precondition; the restart
+/// endpoint executes the same recovery owner and exact receipt dispatch as
+/// application startup.
+pub async fn app_restart_recovers_exact_task_execution_once(cfg: &Config) -> bool {
+    let label = "app-restart-recovers-exact-task-execution-once";
+    let crashed_task_id = unique_run_id("restart-crashed-task");
 
-    // (1) Seed a fresh running org run.
     let seed_resp = match post_agent_org_json(
         cfg,
-        SEED_CLI_MEMBER_RUN_PATH,
+        SEED_CRASHED_TASK_EXECUTION_PATH,
         serde_json::json!({
-            "cli_agent_type": "claude_code",
             "member_id": "m-restart",
-            "status": "idle"
+            "task_id": crashed_task_id,
         }),
     )
     .await
@@ -2940,20 +2935,17 @@ pub async fn app_restart_transitions_running_runs_to_paused(cfg: &Config) -> boo
         Some(value) if !value.is_empty() => value.to_string(),
         _ => return harness::print_error(label, "seed did not return root_session_id"),
     };
-    if let Err(err) = seed_task(
-        cfg,
-        &org_run_id,
-        &format!("restart-keep-open-{org_run_id}"),
-        "Keep restart fixture open",
-        "m-restart",
-        TASK_STATUS_PENDING,
-    )
-    .await
-    {
-        return harness::print_error(label, &err);
-    }
+    let crashed_session_id = seed_resp
+        .get("crashed_session_id")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let crashed_turn_intent_id = seed_resp
+        .get("crashed_turn_intent_id")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .to_string();
 
-    // (2) Confirm run starts as `running`.
     let inv_before_restart = match post_agent_org_json(
         cfg,
         DURABLE_INVARIANTS_PATH,
@@ -2969,19 +2961,62 @@ pub async fn app_restart_transitions_running_runs_to_paused(cfg: &Config) -> boo
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
-    // (3) Simulate app restart.
-    let restart_resp =
+    let first_restart =
         match post_agent_org_json(cfg, SIMULATE_APP_RESTART_PATH, serde_json::json!({})).await {
             Err(err) => return harness::print_error(label, &err),
             Ok(json) => json,
         };
-    let restart_ok = restart_resp.get("ok").and_then(|v| v.as_bool()) == Some(true);
-    let runs_paused_count = restart_resp
-        .get("runs_paused")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
+    let recovered = first_restart
+        .get("recovery_plan")
+        .and_then(|value| value.get("recoveredTasks"))
+        .and_then(serde_json::Value::as_array)
+        .and_then(|items| {
+            items.iter().find(|item| {
+                item.get("task")
+                    .and_then(|task| task.get("id"))
+                    .and_then(serde_json::Value::as_str)
+                    == Some(crashed_task_id.as_str())
+            })
+        });
+    let exact_recovery_ok = recovered.is_some_and(|recovery| {
+        recovery
+            .get("task")
+            .and_then(|task| task.get("status"))
+            .and_then(serde_json::Value::as_str)
+            == Some("pending")
+            && recovery
+                .get("task")
+                .and_then(|task| task.get("owner"))
+                .is_some_and(serde_json::Value::is_null)
+            && recovery
+                .get("previousOwnerMemberId")
+                .and_then(serde_json::Value::as_str)
+                == Some("m-restart")
+            && recovery
+                .get("failedSessionId")
+                .and_then(serde_json::Value::as_str)
+                == Some(crashed_session_id.as_str())
+            && recovery
+                .get("failedTurnIntentId")
+                .and_then(serde_json::Value::as_str)
+                == Some(crashed_turn_intent_id.as_str())
+            && recovery
+                .get("receiptId")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|value| !value.is_empty())
+    });
 
-    // (4) Confirm run is now `paused` (non-terminal).
+    let second_restart =
+        match post_agent_org_json(cfg, SIMULATE_APP_RESTART_PATH, serde_json::json!({})).await {
+            Err(err) => return harness::print_error(label, &err),
+            Ok(json) => json,
+        };
+    let third_restart =
+        match post_agent_org_json(cfg, SIMULATE_APP_RESTART_PATH, serde_json::json!({})).await {
+            Err(err) => return harness::print_error(label, &err),
+            Ok(json) => json,
+        };
+
     let inv_after_restart = match post_agent_org_json(
         cfg,
         DURABLE_INVARIANTS_PATH,
@@ -2996,88 +3031,98 @@ pub async fn app_restart_transitions_running_runs_to_paused(cfg: &Config) -> boo
         .get("runStatus")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
-
-    // (5) Reconcile should be a no-op for paused runs (status stays paused,
-    //     run is NOT auto-terminated even though sessions are now abandoned).
-    let run_view_resp = match post_agent_org_json(
-        cfg,
-        RUN_VIEW_PATH,
-        serde_json::json!({ "session_id": root_session_id }),
-    )
-    .await
-    {
+    let inbox = match list_inbox(cfg, &org_run_id).await {
         Err(err) => return harness::print_error(label, &err),
         Ok(json) => json,
     };
-    let run_status_after_view_poll = run_view_resp
-        .get("view")
-        .and_then(|value| value.get("runStatus"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-
-    // (6) User can resume from UI — full round trip.
-    let resume_resp = match post_agent_org_json(
-        cfg,
-        RESUME_RUN_PATH,
-        serde_json::json!({ "org_run_id": org_run_id }),
-    )
-    .await
-    {
-        Err(err) => return harness::print_error(label, &err),
-        Ok(json) => json,
-    };
-    let resume_ok = resume_resp.get("ok").and_then(|v| v.as_bool()) == Some(true);
-    let resume_transitioned =
-        resume_resp.get("transitioned").and_then(|v| v.as_bool()) == Some(true);
-
-    let inv_after_resume = match post_agent_org_json(
-        cfg,
-        DURABLE_INVARIANTS_PATH,
-        serde_json::json!({ "org_run_id": org_run_id, "root_session_id": root_session_id }),
-    )
-    .await
-    {
-        Err(err) => return harness::print_error(label, &err),
-        Ok(json) => json,
-    };
-    let run_status_after_resume = inv_after_resume
-        .get("runStatus")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    let matching_recovery_inbox_count = inbox
+        .get("messages")
+        .and_then(serde_json::Value::as_array)
+        .map(|messages| {
+            messages
+                .iter()
+                .filter(|message| {
+                    message
+                        .get("payload_kind")
+                        .and_then(serde_json::Value::as_str)
+                        == Some("member_idle")
+                        && message
+                            .get("payload_decoded")
+                            .and_then(|payload| payload.get("reason"))
+                            .and_then(serde_json::Value::as_str)
+                            == Some("failed")
+                        && message
+                            .get("payload_decoded")
+                            .and_then(|payload| payload.get("unfinished_task_ids"))
+                            .and_then(serde_json::Value::as_array)
+                            .is_some_and(|ids| {
+                                ids.iter()
+                                    .any(|id| id.as_str() == Some(crashed_task_id.as_str()))
+                            })
+                })
+                .count()
+        })
+        .unwrap_or(0);
 
     harness::print_result(
         label,
         &serde_json::json!({
             "seed": seed_resp,
-            "restart": restart_resp,
+            "first_restart": first_restart,
+            "second_restart": second_restart,
+            "third_restart": third_restart,
             "inv_before_restart": inv_before_restart,
             "inv_after_restart": inv_after_restart,
-            "run_view_after_restart": run_view_resp,
-            "resume": resume_resp,
-            "inv_after_resume": inv_after_resume,
+            "inbox": inbox,
         })
         .to_string(),
         &[
             ("seed ok", seed_ok),
             (
+                "crash fixture has exact session",
+                !crashed_session_id.is_empty(),
+            ),
+            (
+                "crash fixture has exact Turn",
+                !crashed_turn_intent_id.is_empty(),
+            ),
+            (
                 "run status before restart is 'running'",
                 run_status_before == "running",
             ),
-            ("simulate-app-restart endpoint ok", restart_ok),
-            ("at least one run was paused", runs_paused_count >= 1),
             (
-                "run status after restart is 'paused'",
-                run_status_after_restart == "paused",
+                "first restart endpoint ok",
+                first_restart.get("ok").and_then(serde_json::Value::as_bool) == Some(true),
             ),
             (
-                "run view poll does not auto-terminate paused run",
-                run_status_after_view_poll == "paused",
+                "exact TaskExecution became safe ownerless Pending",
+                exact_recovery_ok,
             ),
-            ("resume endpoint ok", resume_ok),
-            ("resume transitioned=true", resume_transitioned),
             (
-                "run status after resume is 'running'",
-                run_status_after_resume == "running",
+                "one typed Coordinator recovery inbox fact exists",
+                matching_recovery_inbox_count == 1,
+            ),
+            (
+                "running Team lifecycle is preserved",
+                run_status_after_restart == "running",
+            ),
+            (
+                "no ownerless in-progress Task remains",
+                inv_after_restart
+                    .get("ownerlessInProgressCount")
+                    .and_then(serde_json::Value::as_u64)
+                    == Some(0),
+            ),
+            (
+                "second and third restart are idempotent",
+                second_restart
+                    .get("tasks_requeued")
+                    .and_then(serde_json::Value::as_u64)
+                    == Some(0)
+                    && third_restart
+                        .get("tasks_requeued")
+                        .and_then(serde_json::Value::as_u64)
+                        == Some(0),
             ),
         ],
     )

@@ -22,7 +22,6 @@ pub mod test {
         pub async fn debug_work_item_scheduler_run_once() -> Result<serde_json::Value, String> {
             Err("debug_work_item_scheduler_run_once is only available in debug builds".to_string())
         }
-
     }
 }
 
@@ -730,6 +729,14 @@ pub fn create_routes() -> Router {
         .route(
             "/test/agent-org/stale-workers/seed-cli-member",
             post(test::agent_org::test_agent_org_seed_cli_member_run),
+        )
+        .route(
+            "/test/agent-org/startup-recovery/seed-crashed-task",
+            post(test::agent_org::test_agent_org_seed_crashed_task_execution),
+        )
+        .route(
+            "/test/agent-org/startup-recovery/wake-seeded-task",
+            post(test::agent_org::test_agent_org_wake_seeded_task),
         )
         .route(
             "/test/agent-org/find-worker-session",

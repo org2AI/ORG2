@@ -8,6 +8,9 @@ use crate::coordination::agent_org_formal_triggers::{
 use crate::coordination::agent_org_runs::{
     AgentOrgRunEntryMode, AgentOrgRunStatus, AgentOrgRunStore, CreateAgentOrgRunParams,
 };
+use crate::coordination::agent_org_tasks::{
+    AgentOrgTaskStore, CreateTaskParams, TaskStatus, TASK_METADATA_ELIGIBLE_MEMBER_IDS,
+};
 use crate::definitions::orgs::{FlatOrgMember, OrgDefinition, PlanApprovalPolicy};
 use crate::tools::impls::orchestration::org_send_message::InboxWakeHook;
 
@@ -21,6 +24,20 @@ impl WatchdogFixture {
         let sandbox = test_helpers::test_env::sandbox();
         let conn = get_connection().expect("watchdog fixture database");
         crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS session_turn_intents (
+                 session_id TEXT NOT NULL,
+                 turn_intent_id TEXT NOT NULL,
+                 client_message_id TEXT,
+                 org_run_id TEXT,
+                 source TEXT NOT NULL,
+                 status TEXT NOT NULL,
+                 created_at TEXT NOT NULL,
+                 updated_at TEXT NOT NULL,
+                 PRIMARY KEY(session_id,turn_intent_id)
+             );",
+        )
+        .expect("Turn-intent fixture schema");
         crate::coordination::init_agent_org_schemas(&conn).expect("Agent Org schemas");
         let org = OrgDefinition {
             id: "watchdog-org".into(),
@@ -79,6 +96,48 @@ impl WatchdogFixture {
         )
         .expect("missing formal doorbell")
         .receipt_id
+    }
+
+    pub(super) fn seed_lost_assignment_doorbell(&self, task_id: &str) {
+        let conn = get_connection().expect("watchdog fixture database");
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "INSERT INTO agent_org_runtime_member_materializations(
+                 org_run_id,member_id,agent_id,generation,session_id,
+                 authority_class,status,created_at,updated_at
+             ) VALUES (?1,'worker','worker-agent',1,'watchdog-worker-session',
+                       'formal','succeeded',?2,?2)",
+            rusqlite::params![&self.run_id, &now],
+        )
+        .expect("worker materialization");
+        AgentOrgTaskStore::create(CreateTaskParams {
+            id: task_id.to_string(),
+            org_run_id: self.run_id.clone(),
+            subject: "Repair existing assignment".to_string(),
+            description: "The original TaskAssigned envelope was lost".to_string(),
+            active_form: None,
+            owner: Some("worker".to_string()),
+            status: TaskStatus::Pending,
+            blocks: Vec::new(),
+            blocked_by: Vec::new(),
+            metadata: Some(serde_json::json!({
+                TASK_METADATA_ELIGIBLE_MEMBER_IDS: ["worker"],
+            })),
+        })
+        .expect("assigned pending Task without its doorbell");
+    }
+
+    pub(super) fn set_run_status(&self, status: AgentOrgRunStatus) {
+        let conn = get_connection().expect("watchdog fixture database");
+        conn.execute(
+            "UPDATE agent_org_runtime_runs
+             SET status=?2,
+                 archived_at=CASE WHEN ?2='archived' THEN ?3 ELSE NULL END,
+                 archive_receipt_id=CASE WHEN ?2='archived' THEN 'watchdog-archive-receipt' ELSE NULL END
+             WHERE id=?1",
+            rusqlite::params![&self.run_id, status.as_str(), chrono::Utc::now().to_rfc3339()],
+        )
+        .expect("change watchdog fixture lifecycle state");
     }
 }
 

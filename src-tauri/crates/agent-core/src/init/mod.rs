@@ -199,6 +199,9 @@ pub async fn init_session(
     state: &AgentAppState,
     spec: AgentLaunchSpec,
 ) -> Result<Arc<SessionRuntime>, String> {
+    if state.is_shutting_down() {
+        return Err("app_shutdown_in_progress: refusing to initialize a new Agent session".into());
+    }
     let AgentLaunchSpec {
         session_id,
         definition,

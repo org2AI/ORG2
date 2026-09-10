@@ -66,6 +66,9 @@ describe("OnboardingModal", () => {
     expect(button?.tagName).toBe("BUTTON");
     act(() => button!.click());
   }
+  it("does not contain the wiki", () => {
+    expect(document.querySelector('[aria-label="Search the wiki"]')).toBeNull();
+  });
   it.each([
     ["onboarding-start-session", "openSessionCreatorSpotlight", []],
     [

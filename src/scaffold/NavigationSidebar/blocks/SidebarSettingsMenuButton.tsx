@@ -38,6 +38,7 @@ import {
 import { useAppNavigation } from "@src/hooks/navigation";
 import {
   ArrowRight01Icon,
+  BookOpen01Icon,
   CircleIcon,
   ContrastIcon,
   GaugeIcon,
@@ -63,6 +64,8 @@ import {
   SidebarSettingsMenuSubmenus,
   type SubmenuPosition,
 } from "./SidebarSettingsMenuSubmenus";
+
+const WikiModal = React.lazy(() => import("@src/features/Wiki/WikiModal"));
 
 const MENU_ICON_CLASS_NAME = "shrink-0 text-text-2";
 const MENU_ARROW_CLASS_NAME = "text-text-3";
@@ -104,6 +107,7 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
   const { t: tSettings } = useTranslation("settings");
   const { t: tOnboarding } = useTranslation("onboarding");
   const { goToSettings } = useAppNavigation();
+  const [showWiki, setShowWiki] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
   const signedIn = useAtomValue(org2CloudAuthAtom) !== null;
@@ -364,6 +368,25 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
                   <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
                 </>
               )}
+              <button
+                type="button"
+                className={`${DROPDOWN_CLASSES.menuActionItem} gap-2`}
+                onMouseEnter={() => setActiveSubmenu(null)}
+                onFocus={() => setActiveSubmenu(null)}
+                onClick={() => {
+                  flushSync(closeAll);
+                  setShowWiki(true);
+                }}
+                aria-haspopup="dialog"
+                data-testid="sidebar-menu-wiki"
+              >
+                <HugeiconsIcon
+                  icon={BookOpen01Icon}
+                  size={DROPDOWN_ITEM.iconSize}
+                  className={MENU_ICON_CLASS_NAME}
+                />
+                <span className="truncate">Wiki</span>
+              </button>
               {devModeEnabled && (
                 <button
                   type="button"
@@ -533,6 +556,11 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
           </div>,
           document.body
         )}
+      {showWiki && (
+        <React.Suspense fallback={null}>
+          <WikiModal open onClose={() => setShowWiki(false)} />
+        </React.Suspense>
+      )}
       {showSignInModal && onSignIn && (
         <SignInModal
           onClose={() => setShowSignInModal(false)}

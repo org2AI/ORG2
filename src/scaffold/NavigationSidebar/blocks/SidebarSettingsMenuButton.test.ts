@@ -154,6 +154,40 @@ describe("SidebarSettingsMenuButton", () => {
     expect(adeManagerButton).toBeUndefined();
   });
 
+  it("opens and dismisses the separate wiki outside dev mode without opening onboarding", async () => {
+    act(() => store.set(devModeEnabledAtom, false));
+    const onOnboarding = vi.fn();
+    window.addEventListener(TUTORIALS_OPEN_EVENT, onOnboarding);
+    try {
+      const button = document.querySelector<HTMLButtonElement>(
+        '[data-testid="sidebar-menu-wiki"]'
+      );
+      expect(button?.textContent).toBe("Wiki");
+      await act(async () => {
+        button!.click();
+        await import("@src/features/Wiki/WikiModal");
+      });
+      expect(mocks.closeDropdown).toHaveBeenCalledOnce();
+      expect(
+        document.querySelector('[aria-label="Search the wiki"]')
+      ).not.toBeNull();
+      expect(
+        document.querySelector('[data-testid="onboarding-modal"]')
+      ).toBeNull();
+      expect(onOnboarding).not.toHaveBeenCalled();
+      act(() =>
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+        )
+      );
+      expect(
+        document.querySelector('[aria-label="Search the wiki"]')
+      ).toBeNull();
+    } finally {
+      window.removeEventListener(TUTORIALS_OPEN_EVENT, onOnboarding);
+    }
+  });
+
   it("hides onboarding when dev mode is disabled", () => {
     act(() => store.set(devModeEnabledAtom, false));
     expect(

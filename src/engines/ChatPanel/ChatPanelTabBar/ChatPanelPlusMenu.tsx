@@ -41,13 +41,16 @@ import { CHAT_PANEL_HEADER_NO_DRAG_STYLE } from "../header";
 
 // ─── Plus-menu dropdown ───────────────────────────────────────────────────────
 
-interface PlusMenuContentProps {
+export interface ChatPanelPlusMenuProps {
   onOpenLaunchpad: () => void;
   onOpenKanban: () => void;
   onOpenRuntime: () => void;
   onNewProject: () => void;
   onNewWorkItem: () => void;
   onOpenSideChat: () => void;
+}
+
+interface PlusMenuContentProps extends ChatPanelPlusMenuProps {
   recentTabs: readonly ChatPanelTab[];
   onOpenRecentTab: (tabId: string) => void;
   onClose: () => void;
@@ -204,15 +207,6 @@ export function PlusMenuContent({
 }
 
 // ─── Exported + menu button (placed in header toolbar, left of ...) ───────────
-
-export interface ChatPanelPlusMenuProps {
-  onOpenLaunchpad: () => void;
-  onOpenKanban: () => void;
-  onOpenRuntime: () => void;
-  onNewProject: () => void;
-  onNewWorkItem: () => void;
-  onOpenSideChat: () => void;
-}
 
 export function ChatPanelPlusMenu({
   onOpenLaunchpad,

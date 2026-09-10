@@ -34,7 +34,7 @@ import {
   GENERAL_LAYOUT_TOUR_TARGETS,
 } from "@src/scaffold/Tutorials/generalLayoutTourConfig";
 import { GUIDE_TARGETS } from "@src/scaffold/Tutorials/guideTargets";
-import { resolveChatPanelMaximizedForLayout } from "@src/store/chatPanel/chatPanelTabsModel";
+import { effectiveChatPanelMaximizedAtom } from "@src/store/chatPanel/chatPanelLayoutAtoms";
 import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { useSyncStatusBridge } from "@src/store/sync";
 import { type ChatPanelMode } from "@src/store/ui/chatPanel/selectionAtoms";
@@ -341,10 +341,7 @@ const AppShell = () => {
       ? sidebarWidth || DEFAULT_SIDEBAR_WIDTH
       : 0;
 
-  const effectiveChatFocus = resolveChatPanelMaximizedForLayout(
-    chatPanelMaximized,
-    activeChatPanelTab
-  );
+  const effectiveChatFocus = useAtomValue(effectiveChatPanelMaximizedAtom);
 
   return (
     <BrowserProvider>

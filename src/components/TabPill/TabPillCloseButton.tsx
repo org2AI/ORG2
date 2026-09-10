@@ -1,14 +1,14 @@
 import React from "react";
 
+import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
+
 export interface TabPillCloseButtonProps {
   onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void;
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   title: string;
-  /**
-   * Full `className` for the button: layout (overlay vs in-flow), opacity/pointer-events,
-   * and shared hover/focus styles. Computed by the parent.
-   */
+  /** Placement only; shared appearance and visibility belong to this control. */
   className: string;
+  visible: boolean;
   /** When true, an unsaved dot is shown and swaps to the X per `showX`. */
   hasUnsaved?: boolean;
   /** Whether the X lines are visible. */
@@ -20,13 +20,14 @@ export interface TabPillCloseButtonProps {
 
 /**
  * Close control for pill tabs: 14px X, optional
- * in-flow unsaved dot. Parent supplies merged `className` (absolute vs relative, opacity).
+ * in-flow unsaved dot. Parent supplies placement and visibility.
  */
 export const TabPillCloseButton: React.FC<TabPillCloseButtonProps> = ({
   onPointerDown,
   onClick,
   title,
   className,
+  visible,
   hasUnsaved = false,
   showX,
   tabIndex = -1,
@@ -41,7 +42,7 @@ export const TabPillCloseButton: React.FC<TabPillCloseButtonProps> = ({
     data-action-id={dataActionId}
     onPointerDown={onPointerDown}
     onClick={onClick}
-    className={className}
+    className={`grid place-items-center rounded text-text-3 transition-[opacity,colors,background-color] duration-150 ${SURFACE_TOKENS.hover} hover:text-text-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-6 focus-visible:ring-offset-0 ${className} ${visible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
   >
     <svg
       width="14"

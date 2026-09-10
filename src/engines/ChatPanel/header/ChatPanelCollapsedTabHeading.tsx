@@ -1,60 +1,27 @@
 import { useAtomValue } from "jotai";
 import React, { memo } from "react";
 
-import {
-  DeliveryBox01Icon,
-  GaugeIcon,
-  HugeiconsIcon,
-  InboxIcon,
-  KanbanIcon,
-  ListTodoIcon,
-  MessageAdd02Icon,
-  PencilEdit02Icon,
-  Settings02Icon,
-} from "@src/icons";
 import { type ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
-import {
-  CHAT_PANEL_CREATE_TARGET,
-  chatPanelCreateTargetAtom,
-} from "@src/store/ui/chatPanel/selectionAtoms";
-import { WORK_MANAGEMENT_SECTION } from "@src/store/workstation";
 
+import { ChatPanelTabIcon } from "../ChatPanelTabBar/ChatPanelTabIcon";
 import { useChatPanelTabDisplayTitle } from "../hooks/useChatPanelTabDisplayTitle";
 
 const CollapsedTabHeadingLabel: React.FC<{ tab: ChatPanelTab }> = ({ tab }) => {
   const title = useChatPanelTabDisplayTitle(tab);
-  const createTarget = useAtomValue(chatPanelCreateTargetAtom);
-  const icon =
-    tab.type === "start-page"
-      ? createTarget === CHAT_PANEL_CREATE_TARGET.PROJECT
-        ? DeliveryBox01Icon
-        : createTarget === CHAT_PANEL_CREATE_TARGET.WORK_ITEM
-          ? PencilEdit02Icon
-          : MessageAdd02Icon
-      : tab.type === "runtime"
-        ? GaugeIcon
-        : tab.type === "team-inbox"
-          ? InboxIcon
-          : tab.type === "work-management"
-            ? tab.managementSection === WORK_MANAGEMENT_SECTION.KANBAN
-              ? KanbanIcon
-              : ListTodoIcon
-            : tab.type === "organization"
-              ? Settings02Icon
-              : undefined;
+  // Other surfaces publish their own entity header; preserve their existing
+  // collapsed-heading omission instead of adding a second identity icon.
+  const showIcon = [
+    "start-page",
+    "runtime",
+    "team-inbox",
+    "work-management",
+    "organization",
+  ].includes(tab.type);
 
   return (
     <span className="flex min-w-0 items-center gap-2 px-1 text-[13px] font-medium text-text-1">
-      {icon && (
-        <HugeiconsIcon
-          icon={icon}
-          size={16}
-          strokeWidth={1.75}
-          className="shrink-0"
-          aria-hidden="true"
-        />
-      )}
+      {showIcon && <ChatPanelTabIcon tab={tab} isActive />}
       <span className="truncate">{title}</span>
     </span>
   );

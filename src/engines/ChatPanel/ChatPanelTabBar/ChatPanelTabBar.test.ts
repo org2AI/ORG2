@@ -13,6 +13,7 @@ import {
   chatPanelCreateTargetAtom,
 } from "@src/store/ui/chatPanel/selectionAtoms";
 
+import { ChatPanelCollapsedTabHeading } from "../header/ChatPanelCollapsedTabHeading";
 import { ChatPanelTabBar, PlusMenuContent } from "./index";
 
 vi.mock("react-i18next", () => ({
@@ -90,6 +91,31 @@ vi.mock("@src/components/PrHoverCard", () => ({
 }));
 
 describe("ChatPanelTabBar", () => {
+  it.each([
+    "start-page",
+    "runtime",
+    "team-inbox",
+    "work-management",
+    "organization",
+  ] as const)(
+    "keeps the %s icon identical in expanded and collapsed headers",
+    (type) => {
+      const store = createStore();
+      store.set(chatPanelTabsAtom, {
+        tabs: [{ id: "active", type, title: "Title" }],
+        activeTabId: "active",
+      });
+      const render = (child: ReactNode) =>
+        renderToStaticMarkup(createElement(Provider, { store }, child));
+      const expanded = render(createElement(ChatPanelTabBar));
+      const collapsed = render(createElement(ChatPanelCollapsedTabHeading));
+      const glyph = (markup: string) =>
+        markup.match(/<svg[^>]*>([\s\S]*?)<\/svg>/)?.[1];
+      expect(glyph(collapsed)).toBeTruthy();
+      expect(glyph(collapsed)).toBe(glyph(expanded));
+    }
+  );
+
   it("uses the sidebar new-session icon inside the shared tab surface", () => {
     const store = createStore();
     store.set(chatPanelTabsAtom, {

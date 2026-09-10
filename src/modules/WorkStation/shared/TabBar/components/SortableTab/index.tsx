@@ -12,7 +12,6 @@ import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip"
 import { TabPillCloseButton } from "@src/components/TabPill/TabPillCloseButton";
 import { TabPillSurface } from "@src/components/TabPill/TabPillSurface";
 import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
-import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 import { CODE_EDITOR_TOUR_TARGETS } from "@src/scaffold/Tutorials/codeEditorTourConfig";
 import type { GitFileInfo } from "@src/store/git";
 import type { WorkStationTab } from "@src/store/workstation/tabs";
@@ -173,11 +172,8 @@ export const SortableTab: React.FC<SortableTabProps> = memo(
           }
           hasUnsaved={hasUnsaved}
           showX={showCloseIcon}
-          className={`grid place-items-center rounded text-text-3 transition-[opacity,colors,background-color] duration-150 ${SURFACE_TOKENS.hover} hover:text-text-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-6 focus-visible:ring-offset-0 ${closeButtonLayoutClass} ${
-            showCloseSlot
-              ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0"
-          }`}
+          visible={showCloseSlot}
+          className={closeButtonLayoutClass}
         />
       </TabPillSurface>
     );

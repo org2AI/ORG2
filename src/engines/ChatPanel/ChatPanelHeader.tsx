@@ -340,24 +340,11 @@ export function ChatPanelHeader({
     </span>
   );
 
-  const tabBarToolbar = (
+  const renderTabControls = (collapsed: boolean) => (
     <div
-      className="flex h-9 shrink-0 items-center gap-px"
+      className={`flex ${collapsed ? "h-7" : "h-9"} shrink-0 items-center gap-px`}
       style={CHAT_PANEL_HEADER_NO_DRAG_STYLE}
-    >
-      {tabStripPlus}
-      {chatFocusToggleButton}
-    </div>
-  );
-
-  // The folded tab row's controls, rehomed on the published row. No close
-  // control: closing the pane's last tab only reseeds another one, so it
-  // earned no place in the row it would have crowded.
-  const collapsedTabControls = (
-    <div
-      className="flex h-7 shrink-0 items-center gap-px"
-      style={CHAT_PANEL_HEADER_NO_DRAG_STYLE}
-      data-testid="chat-panel-collapsed-tab-controls"
+      data-testid={collapsed ? "chat-panel-collapsed-tab-controls" : undefined}
     >
       {tabStripPlus}
       {chatFocusToggleButton}
@@ -396,7 +383,7 @@ export function ChatPanelHeader({
               <div className="flex shrink-0 items-center gap-px">
                 {publishedHeaderSlots?.trailing}
                 {sessionPublishedActions}
-                {tabRowCollapsed ? collapsedTabControls : null}
+                {tabRowCollapsed ? renderTabControls(true) : null}
               </div>
             ) : null,
         }
@@ -509,7 +496,7 @@ export function ChatPanelHeader({
         >
           {collapsedSidebarChrome}
           {tabStrip}
-          {tabBarToolbar}
+          {renderTabControls(false)}
         </div>
       )}
       {overlayPublishedHeader && effectivePublishedHeaderSlots ? (

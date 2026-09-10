@@ -2082,7 +2082,8 @@
       "continueWarning": "로컬 실행과 프로세스가 중지된 뒤에만 계속하세요. 이 결정은 알 수 없는 외부 결과를 수락합니다.",
       "keepStoppedWarning": "대체 작업이 취소되고 이전 작업은 재시작되지 않으며 다른 작업은 계속됩니다.",
       "abandonWarning": "이번 실행의 모든 열린 작업이 중지되고 팀 결과는 취소됨으로 표시됩니다.",
-      "handoffResolutionFailed": "작업 인계를 해결하지 못했습니다"
+      "handoffResolutionFailed": "작업 인계를 해결하지 못했습니다",
+      "statusAwaitingApproval": "승인 대기 중"
     },
     "agentOrgOverview": {
       "needsAttention": "확인 필요",
@@ -2127,18 +2128,25 @@
       "viewCoordinatorHistory": "Coordinator 채팅 기록 보기",
       "taskWindowTruncated": "전체 {{total}}개 작업 중 처음 {{visible}}개를 표시합니다. 전체 결과는 작업 세부 정보를 여세요.",
       "planApproval": {
-        "title": "승인 대기 중인 계획",
         "from": "{{member}} 제출",
         "approve": "계획 승인",
-        "approveEdits": "편집 승인",
         "requestChanges": "변경 요청",
-        "sendFeedback": "피드백 보내기",
-        "editLabel": "제출된 계획 편집",
-        "feedbackLabel": "계획 수정 피드백",
-        "feedbackPlaceholder": "Planner에게 정확히 무엇을 바꿔야 하는지 알려주세요…",
+        "sendFeedback": "의견 보내기",
+        "feedbackLabel": "계획 개정 의견",
+        "feedbackPlaceholder": "Planner가 변경해야 할 내용을 정확히 알려 주세요…",
         "paused": "이 계획에 응답하기 전에 실행을 재개하세요.",
-        "staleError": "이 계획은 이미 처리되었거나 교체되었습니다. 새로 고쳐 최신 리비전을 확인하세요",
-        "submitFailed": "계획 응답을 저장할 수 없습니다. 다시 시도해 주세요"
+        "staleError": "이 계획은 이미 처리되었거나 대체되었습니다. 새로 고쳐 최신 버전을 확인하세요.",
+        "submitFailed": "계획 응답을 저장하지 못했습니다.",
+        "historyTitle": "계획 기록",
+        "open": "계획 열기",
+        "taskOutput": "계획 작업 결과가 저장됨",
+        "status": {
+          "pending": "대기 중",
+          "approved": "승인됨",
+          "changes_requested": "변경 요청됨",
+          "superseded": "새 버전으로 대체됨",
+          "cancelled": "취소됨"
+        }
       },
       "phase": {
         "coordinating": "조정 중",
@@ -2153,6 +2161,12 @@
         "idle": "대기 중",
         "archived": "보관됨",
         "draining": "일시 중지됨 · 종료 중"
+      },
+      "finalSummary": {
+        "failedTitle": "최종 보고서가 저장되지 않았습니다",
+        "evidencePreserved": "완료 증거와 작업 결과는 보존됩니다.",
+        "retry": "최종 보고서 다시 시도",
+        "retryFailed": "최종 보고서 재시도를 시작하지 못했습니다."
       }
     },
     "agentOrgIntervention": {

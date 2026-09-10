@@ -2082,7 +2082,8 @@
       "continueWarning": "Continuez uniquement après l’arrêt de l’exécution et des processus locaux. Cette décision accepte tout résultat externe inconnu.",
       "keepStoppedWarning": "Le remplacement sera annulé. L’ancienne tâche ne redémarrera pas et les autres continueront.",
       "abandonWarning": "Toutes les tâches ouvertes seront arrêtées et le résultat de l’équipe sera Annulé.",
-      "handoffResolutionFailed": "Impossible de résoudre le transfert"
+      "handoffResolutionFailed": "Impossible de résoudre le transfert",
+      "statusAwaitingApproval": "En attente d’approbation"
     },
     "agentOrgOverview": {
       "needsAttention": "Action requise",
@@ -2127,18 +2128,25 @@
       "viewCoordinatorHistory": "Voir l’historique du coordinateur",
       "taskWindowTruncated": "Affichage des {{visible}} premières tâches sur {{total}}. Ouvrez le détail d’une tâche pour les résultats complets.",
       "planApproval": {
-        "title": "Plan prêt pour approbation",
         "from": "Soumis par {{member}}",
         "approve": "Approuver le plan",
-        "approveEdits": "Approuver les modifications",
         "requestChanges": "Demander des modifications",
-        "sendFeedback": "Envoyer le retour",
-        "editLabel": "Modifier le plan soumis",
-        "feedbackLabel": "Retour sur la révision du plan",
+        "sendFeedback": "Envoyer les commentaires",
+        "feedbackLabel": "Commentaires sur la révision du plan",
         "feedbackPlaceholder": "Indiquez précisément au Planner ce qui doit changer…",
         "paused": "Reprenez l’exécution avant de répondre à ce plan.",
-        "staleError": "Ce plan a déjà été résolu ou remplacé. Actualisez pour voir la dernière révision",
-        "submitFailed": "La réponse au plan n’a pas pu être enregistrée. Veuillez réessayer"
+        "staleError": "Ce plan a déjà été traité ou remplacé. Actualisez pour voir la dernière révision.",
+        "submitFailed": "La réponse au plan n’a pas pu être enregistrée.",
+        "historyTitle": "Historique du plan",
+        "open": "Ouvrir le plan",
+        "taskOutput": "Résultat de la tâche de planification enregistré",
+        "status": {
+          "pending": "En attente",
+          "approved": "Approuvé",
+          "changes_requested": "Modifications demandées",
+          "superseded": "Remplacé",
+          "cancelled": "Annulé"
+        }
       },
       "phase": {
         "coordinating": "Coordination",
@@ -2153,6 +2161,12 @@
         "idle": "Inactif",
         "archived": "Archivé",
         "draining": "En pause · arrêt en cours"
+      },
+      "finalSummary": {
+        "failedTitle": "Le rapport final n’a pas été enregistré",
+        "evidencePreserved": "Les preuves d’achèvement et les résultats des tâches sont conservés.",
+        "retry": "Réessayer le rapport final",
+        "retryFailed": "La nouvelle tentative du rapport final n’a pas pu démarrer."
       }
     },
     "agentOrgIntervention": {

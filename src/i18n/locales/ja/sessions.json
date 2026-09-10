@@ -2082,7 +2082,8 @@
       "continueWarning": "ローカル実行とプロセスの停止後にのみ続行してください。この判断は不明な外部結果を受け入れます。",
       "keepStoppedWarning": "代替タスクはキャンセルされ、元のタスクは再開せず、他のタスクは続行します。",
       "abandonWarning": "今回のすべての未完了タスクを停止し、チーム結果をキャンセル済みにします。",
-      "handoffResolutionFailed": "引き継ぎを解決できませんでした"
+      "handoffResolutionFailed": "引き継ぎを解決できませんでした",
+      "statusAwaitingApproval": "承認待ち"
     },
     "agentOrgOverview": {
       "needsAttention": "対応が必要",
@@ -2127,18 +2128,25 @@
       "viewCoordinatorHistory": "Coordinator のチャット履歴を表示",
       "taskWindowTruncated": "{{total}} 件中最初の {{visible}} 件のタスクを表示しています。完全な結果はタスクの詳細を開いてください。",
       "planApproval": {
-        "title": "計画の承認待ち",
         "from": "{{member}} が提出",
-        "approve": "計画を承認",
-        "approveEdits": "編集を承認",
-        "requestChanges": "変更をリクエスト",
+        "approve": "プランを承認",
+        "requestChanges": "変更を依頼",
         "sendFeedback": "フィードバックを送信",
-        "editLabel": "提出された計画を編集",
-        "feedbackLabel": "計画修正のフィードバック",
-        "feedbackPlaceholder": "Planner に何を変更すべきか具体的に伝えてください…",
-        "paused": "この計画に応答する前に実行を再開してください。",
-        "staleError": "この計画はすでに解決済みか置き換えられています。更新して最新のリビジョンを確認してください",
-        "submitFailed": "計画への応答を保存できませんでした。もう一度お試しください"
+        "feedbackLabel": "プラン改訂へのフィードバック",
+        "feedbackPlaceholder": "Planner に変更点を具体的に伝えてください…",
+        "paused": "このプランに応答する前に実行を再開してください。",
+        "staleError": "このプランは処理済みか置き換えられています。更新して最新版を確認してください。",
+        "submitFailed": "プランへの応答を保存できませんでした。",
+        "historyTitle": "プラン履歴",
+        "open": "プランを開く",
+        "taskOutput": "計画タスクの結果を保存しました",
+        "status": {
+          "pending": "保留中",
+          "approved": "承認済み",
+          "changes_requested": "変更依頼済み",
+          "superseded": "新しい版に置換",
+          "cancelled": "キャンセル済み"
+        }
       },
       "phase": {
         "coordinating": "調整中",
@@ -2153,6 +2161,12 @@
         "idle": "待機中",
         "archived": "アーカイブ済み",
         "draining": "一時停止中・終了処理中"
+      },
+      "finalSummary": {
+        "failedTitle": "最終レポートを保存できませんでした",
+        "evidencePreserved": "完了証拠とタスク結果は保持されています。",
+        "retry": "最終レポートを再試行",
+        "retryFailed": "最終レポートの再試行を開始できませんでした。"
       }
     },
     "agentOrgIntervention": {

@@ -2082,7 +2082,8 @@
       "continueWarning": "Chỉ tiếp tục sau khi thực thi và tiến trình cục bộ đã dừng. Quyết định này chấp nhận kết quả bên ngoài chưa biết.",
       "keepStoppedWarning": "Nhiệm vụ thay thế sẽ bị hủy. Nhiệm vụ cũ không khởi động lại; các nhiệm vụ khác tiếp tục.",
       "abandonWarning": "Mọi nhiệm vụ đang mở sẽ dừng và kết quả của nhóm là Đã hủy.",
-      "handoffResolutionFailed": "Không thể xử lý bàn giao"
+      "handoffResolutionFailed": "Không thể xử lý bàn giao",
+      "statusAwaitingApproval": "Đang chờ phê duyệt"
     },
     "agentOrgOverview": {
       "needsAttention": "Cần xử lý",
@@ -2127,18 +2128,25 @@
       "viewCoordinatorHistory": "Xem lịch sử trò chuyện của điều phối viên",
       "taskWindowTruncated": "Đang hiển thị {{visible}} nhiệm vụ đầu tiên trên {{total}}. Mở chi tiết nhiệm vụ để xem đầy đủ kết quả.",
       "planApproval": {
-        "title": "Kế hoạch sẵn sàng để phê duyệt",
         "from": "Do {{member}} gửi",
         "approve": "Phê duyệt kế hoạch",
-        "approveEdits": "Phê duyệt bản chỉnh sửa",
-        "requestChanges": "Yêu cầu thay đổi",
+        "requestChanges": "Yêu cầu chỉnh sửa",
         "sendFeedback": "Gửi phản hồi",
-        "editLabel": "Chỉnh sửa kế hoạch đã gửi",
-        "feedbackLabel": "Phản hồi sửa đổi kế hoạch",
-        "feedbackPlaceholder": "Cho Planner biết chính xác điều gì cần thay đổi…",
-        "paused": "Hãy tiếp tục thực thi trước khi phản hồi kế hoạch này.",
-        "staleError": "Kế hoạch này đã được giải quyết hoặc thay thế. Hãy làm mới để xem bản sửa đổi mới nhất",
-        "submitFailed": "Không thể lưu phản hồi kế hoạch. Vui lòng thử lại"
+        "feedbackLabel": "Phản hồi cho bản sửa kế hoạch",
+        "feedbackPlaceholder": "Cho Planner biết chính xác nội dung cần thay đổi…",
+        "paused": "Hãy tiếp tục lượt chạy trước khi phản hồi kế hoạch này.",
+        "staleError": "Kế hoạch này đã được xử lý hoặc thay thế. Hãy làm mới để xem bản mới nhất.",
+        "submitFailed": "Không thể lưu phản hồi kế hoạch.",
+        "historyTitle": "Lịch sử kế hoạch",
+        "open": "Mở kế hoạch",
+        "taskOutput": "Đã lưu kết quả tác vụ lập kế hoạch",
+        "status": {
+          "pending": "Đang chờ",
+          "approved": "Đã phê duyệt",
+          "changes_requested": "Đã yêu cầu chỉnh sửa",
+          "superseded": "Đã được thay thế",
+          "cancelled": "Đã hủy"
+        }
       },
       "phase": {
         "coordinating": "Đang điều phối",
@@ -2153,6 +2161,12 @@
         "idle": "Không hoạt động",
         "archived": "Đã lưu trữ",
         "draining": "Đã tạm dừng · đang kết thúc"
+      },
+      "finalSummary": {
+        "failedTitle": "Báo cáo cuối chưa được lưu",
+        "evidencePreserved": "Bằng chứng hoàn thành và kết quả tác vụ vẫn được giữ nguyên.",
+        "retry": "Thử lại báo cáo cuối",
+        "retryFailed": "Không thể bắt đầu thử lại báo cáo cuối."
       }
     },
     "agentOrgIntervention": {

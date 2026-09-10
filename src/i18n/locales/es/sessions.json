@@ -2082,7 +2082,8 @@
       "continueWarning": "Continúa solo cuando la ejecución y los procesos locales estén detenidos. Esta decisión acepta resultados externos desconocidos.",
       "keepStoppedWarning": "El reemplazo se cancelará. La tarea anterior no se reiniciará y las demás continuarán.",
       "abandonWarning": "Todas las tareas abiertas se detendrán y el resultado del equipo será Cancelado.",
-      "handoffResolutionFailed": "No se pudo resolver la transferencia"
+      "handoffResolutionFailed": "No se pudo resolver la transferencia",
+      "statusAwaitingApproval": "Pendiente de aprobación"
     },
     "agentOrgOverview": {
       "needsAttention": "Requiere atención",
@@ -2127,18 +2128,25 @@
       "viewCoordinatorHistory": "Ver historial del chat del coordinador",
       "taskWindowTruncated": "Mostrando las primeras {{visible}} de {{total}} tareas. Abre el detalle de la tarea para ver los resultados completos.",
       "planApproval": {
-        "title": "Plan listo para aprobación",
         "from": "Enviado por {{member}}",
         "approve": "Aprobar plan",
-        "approveEdits": "Aprobar ediciones",
         "requestChanges": "Solicitar cambios",
         "sendFeedback": "Enviar comentarios",
-        "editLabel": "Editar plan enviado",
-        "feedbackLabel": "Comentarios para revisar el plan",
-        "feedbackPlaceholder": "Dile al Planner exactamente qué debe cambiar…",
+        "feedbackLabel": "Comentarios de revisión del plan",
+        "feedbackPlaceholder": "Indica al Planner exactamente qué debe cambiar…",
         "paused": "Reanuda la ejecución antes de responder a este plan.",
-        "staleError": "Este plan ya se resolvió o se reemplazó. Actualiza para ver la última revisión",
-        "submitFailed": "No se pudo guardar la respuesta al plan. Inténtalo de nuevo"
+        "staleError": "Este plan ya se resolvió o sustituyó. Actualiza para ver la última revisión.",
+        "submitFailed": "No se pudo guardar la respuesta del plan.",
+        "historyTitle": "Historial del plan",
+        "open": "Abrir plan",
+        "taskOutput": "Resultado de la tarea de planificación guardado",
+        "status": {
+          "pending": "Pendiente",
+          "approved": "Aprobado",
+          "changes_requested": "Cambios solicitados",
+          "superseded": "Sustituido",
+          "cancelled": "Cancelado"
+        }
       },
       "phase": {
         "coordinating": "Coordinando",
@@ -2153,6 +2161,12 @@
         "idle": "Inactivo",
         "archived": "Archivado",
         "draining": "En pausa · finalizando"
+      },
+      "finalSummary": {
+        "failedTitle": "No se guardó el informe final",
+        "evidencePreserved": "Las pruebas de finalización y los resultados de las tareas se conservan.",
+        "retry": "Reintentar informe final",
+        "retryFailed": "No se pudo iniciar el reintento del informe final."
       }
     },
     "agentOrgIntervention": {

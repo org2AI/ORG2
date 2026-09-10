@@ -2101,7 +2101,8 @@
       "continueWarning": "Kontynuuj dopiero po zatrzymaniu lokalnego wykonania i procesów. Ta decyzja akceptuje nieznany wynik zewnętrzny.",
       "keepStoppedWarning": "Zastępstwo zostanie anulowane. Stare zadanie nie wróci, a inne będą kontynuowane.",
       "abandonWarning": "Wszystkie otwarte zadania zostaną zatrzymane, a wynik zespołu będzie Anulowany.",
-      "handoffResolutionFailed": "Nie udało się rozwiązać przekazania"
+      "handoffResolutionFailed": "Nie udało się rozwiązać przekazania",
+      "statusAwaitingApproval": "Oczekuje na zatwierdzenie"
     },
     "agentOrgOverview": {
       "needsAttention": "Wymaga uwagi",
@@ -2146,18 +2147,25 @@
       "viewCoordinatorHistory": "Pokaż historię czatu koordynatora",
       "taskWindowTruncated": "Wyświetlono pierwsze {{visible}} z {{total}} zadań. Otwórz szczegóły zadania, aby zobaczyć pełne wyniki.",
       "planApproval": {
-        "title": "Plan gotowy do zatwierdzenia",
-        "from": "Przesłany przez {{member}}",
+        "from": "Przesłane przez {{member}}",
         "approve": "Zatwierdź plan",
-        "approveEdits": "Zatwierdź zmiany",
         "requestChanges": "Poproś o zmiany",
-        "sendFeedback": "Wyślij uwagi",
-        "editLabel": "Edytuj przesłany plan",
-        "feedbackLabel": "Uwagi do rewizji planu",
-        "feedbackPlaceholder": "Powiedz Plannerowi dokładnie, co musi się zmienić…",
-        "paused": "Wznów wykonanie, zanim odpowiesz na ten plan.",
-        "staleError": "Ten plan został już rozstrzygnięty lub zastąpiony. Odśwież, aby zobaczyć najnowszą rewizję",
-        "submitFailed": "Nie udało się zapisać odpowiedzi na plan. Spróbuj ponownie"
+        "sendFeedback": "Wyślij opinię",
+        "feedbackLabel": "Uwagi do wersji planu",
+        "feedbackPlaceholder": "Opisz dokładnie, co Planner ma zmienić…",
+        "paused": "Wznów wykonanie przed odpowiedzią na ten plan.",
+        "staleError": "Ten plan został już rozstrzygnięty lub zastąpiony. Odśwież widok.",
+        "submitFailed": "Nie udało się zapisać odpowiedzi na plan.",
+        "historyTitle": "Historia planu",
+        "open": "Otwórz plan",
+        "taskOutput": "Wynik zadania planowania zapisany",
+        "status": {
+          "pending": "Oczekuje",
+          "approved": "Zatwierdzony",
+          "changes_requested": "Poproszono o zmiany",
+          "superseded": "Zastąpiony",
+          "cancelled": "Anulowany"
+        }
       },
       "phase": {
         "coordinating": "Koordynowanie",
@@ -2172,6 +2180,12 @@
         "idle": "Bezczynny",
         "archived": "Zarchiwizowano",
         "draining": "Wstrzymano · kończenie"
+      },
+      "finalSummary": {
+        "failedTitle": "Raport końcowy nie został zapisany",
+        "evidencePreserved": "Dowody ukończenia i wyniki zadań zostały zachowane.",
+        "retry": "Ponów raport końcowy",
+        "retryFailed": "Nie udało się rozpocząć ponownej próby raportu."
       }
     },
     "agentOrgIntervention": {

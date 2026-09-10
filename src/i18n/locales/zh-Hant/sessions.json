@@ -2082,7 +2082,8 @@
       "continueWarning": "僅在本機執行與程序停止後繼續；此決定表示接受未知的外部結果。",
       "keepStoppedWarning": "替代任務會被取消，舊任務不會恢復，其他任務繼續。",
       "abandonWarning": "本輪所有開放任務都會停止，團隊結果會標記為已取消。",
-      "handoffResolutionFailed": "無法處理任務交接"
+      "handoffResolutionFailed": "無法處理任務交接",
+      "statusAwaitingApproval": "等待審批"
     },
     "agentOrgOverview": {
       "needsAttention": "需要處理",
@@ -2127,18 +2128,25 @@
       "viewCoordinatorHistory": "查看 Coordinator 對話記錄",
       "taskWindowTruncated": "目前顯示前 {{visible}} 個，共 {{total}} 個任務。完整結果請開啟任務詳情。",
       "planApproval": {
-        "title": "計畫等待核准",
         "from": "由 {{member}} 提交",
-        "approve": "核准計畫",
-        "approveEdits": "核准編輯版",
+        "approve": "批准計畫",
         "requestChanges": "要求修改",
-        "sendFeedback": "送出修改意見",
-        "editLabel": "編輯已提交的計畫",
+        "sendFeedback": "傳送修改意見",
         "feedbackLabel": "計畫修改意見",
-        "feedbackPlaceholder": "明確告訴 Planner 哪些地方必須修改…",
-        "paused": "請先恢復本次執行，再回應此計畫。",
-        "staleError": "此計畫已處理或已被新版本取代。請重新整理以查看最新版本",
-        "submitFailed": "計畫回應未能儲存，請再試一次"
+        "feedbackPlaceholder": "清楚告訴 Planner 哪些地方需要修改……",
+        "paused": "請先恢復本次執行，再處理這個計畫。",
+        "staleError": "這份計畫已經處理或被新版本取代。請重新整理後查看最新版本。",
+        "submitFailed": "計畫審批結果未能儲存。",
+        "historyTitle": "計畫版本記錄",
+        "open": "開啟計畫",
+        "taskOutput": "規劃任務結果已儲存",
+        "status": {
+          "pending": "等待審批",
+          "approved": "已批准",
+          "changes_requested": "已要求修改",
+          "superseded": "已被新版本取代",
+          "cancelled": "已取消"
+        }
       },
       "phase": {
         "coordinating": "正在協調",
@@ -2153,6 +2161,12 @@
         "idle": "待命",
         "archived": "已封存",
         "draining": "已暫停 · 正在收尾"
+      },
+      "finalSummary": {
+        "failedTitle": "最終報告未能儲存",
+        "evidencePreserved": "完成憑證、任務結果和產物均已保留。",
+        "retry": "重試最終報告",
+        "retryFailed": "無法啟動最終報告重試。"
       }
     },
     "agentOrgIntervention": {

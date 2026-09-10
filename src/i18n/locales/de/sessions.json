@@ -2082,7 +2082,8 @@
       "continueWarning": "Nur fortsetzen, wenn lokale Ausführung und Prozesse beendet sind. Unbekannte externe Ergebnisse werden akzeptiert.",
       "keepStoppedWarning": "Der Ersatz wird abgebrochen. Die alte Aufgabe startet nicht neu; andere Aufgaben laufen weiter.",
       "abandonWarning": "Alle offenen Aufgaben dieses Durchlaufs werden beendet; das Teamergebnis ist Abgebrochen.",
-      "handoffResolutionFailed": "Die Übergabe konnte nicht gelöst werden"
+      "handoffResolutionFailed": "Die Übergabe konnte nicht gelöst werden",
+      "statusAwaitingApproval": "Wartet auf Genehmigung"
     },
     "agentOrgOverview": {
       "needsAttention": "Aktion erforderlich",
@@ -2127,18 +2128,25 @@
       "viewCoordinatorHistory": "Coordinator-Chatverlauf anzeigen",
       "taskWindowTruncated": "Es werden die ersten {{visible}} von {{total}} Aufgaben angezeigt. Öffne die Aufgabendetails für vollständige Ergebnisse.",
       "planApproval": {
-        "title": "Plan bereit zur Genehmigung",
         "from": "Eingereicht von {{member}}",
         "approve": "Plan genehmigen",
-        "approveEdits": "Änderungen genehmigen",
         "requestChanges": "Änderungen anfordern",
         "sendFeedback": "Feedback senden",
-        "editLabel": "Eingereichten Plan bearbeiten",
-        "feedbackLabel": "Feedback zur Planüberarbeitung",
-        "feedbackPlaceholder": "Sag dem Planner genau, was sich ändern muss…",
-        "paused": "Setze den Lauf fort, bevor du auf diesen Plan antwortest.",
-        "staleError": "Dieser Plan wurde bereits aufgelöst oder ersetzt. Aktualisiere, um die neueste Revision zu sehen",
-        "submitFailed": "Die Antwort auf den Plan konnte nicht gespeichert werden. Bitte erneut versuchen"
+        "feedbackLabel": "Feedback zur Planrevision",
+        "feedbackPlaceholder": "Beschreiben Sie genau, was der Planner ändern soll…",
+        "paused": "Setzen Sie den Lauf fort, bevor Sie auf diesen Plan antworten.",
+        "staleError": "Dieser Plan wurde bereits bearbeitet oder ersetzt. Aktualisieren Sie die Ansicht.",
+        "submitFailed": "Die Planentscheidung konnte nicht gespeichert werden.",
+        "historyTitle": "Planverlauf",
+        "open": "Plan öffnen",
+        "taskOutput": "Ergebnis der Planungsaufgabe gespeichert",
+        "status": {
+          "pending": "Ausstehend",
+          "approved": "Genehmigt",
+          "changes_requested": "Änderungen angefordert",
+          "superseded": "Ersetzt",
+          "cancelled": "Abgebrochen"
+        }
       },
       "phase": {
         "coordinating": "Koordination",
@@ -2153,6 +2161,12 @@
         "idle": "Inaktiv",
         "archived": "Archiviert",
         "draining": "Pausiert · wird beendet"
+      },
+      "finalSummary": {
+        "failedTitle": "Der Abschlussbericht wurde nicht gespeichert",
+        "evidencePreserved": "Abschlussnachweise und Aufgabenergebnisse bleiben erhalten.",
+        "retry": "Abschlussbericht erneut versuchen",
+        "retryFailed": "Der erneute Versuch konnte nicht gestartet werden."
       }
     },
     "agentOrgIntervention": {

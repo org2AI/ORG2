@@ -2082,7 +2082,8 @@
       "continueWarning": "Yalnızca yerel yürütme ve süreçler durduktan sonra devam edin. Bu karar bilinmeyen dış sonuçları kabul eder.",
       "keepStoppedWarning": "Yeni görev iptal edilir. Eski görev yeniden başlamaz, diğerleri devam eder.",
       "abandonWarning": "Tüm açık görevler durur ve ekip sonucu İptal edildi olur.",
-      "handoffResolutionFailed": "Görev devri çözülemedi"
+      "handoffResolutionFailed": "Görev devri çözülemedi",
+      "statusAwaitingApproval": "Onay bekliyor"
     },
     "agentOrgOverview": {
       "needsAttention": "İşlem gerekli",
@@ -2127,18 +2128,25 @@
       "viewCoordinatorHistory": "Koordinatör sohbet geçmişini görüntüle",
       "taskWindowTruncated": "{{total}} görevden ilk {{visible}} tanesi gösteriliyor. Tüm sonuçlar için görev ayrıntısını açın.",
       "planApproval": {
-        "title": "Plan onaya hazır",
         "from": "{{member}} tarafından gönderildi",
         "approve": "Planı onayla",
-        "approveEdits": "Düzenlemeleri onayla",
         "requestChanges": "Değişiklik iste",
         "sendFeedback": "Geri bildirim gönder",
-        "editLabel": "Gönderilen planı düzenle",
         "feedbackLabel": "Plan revizyonu geri bildirimi",
-        "feedbackPlaceholder": "Planner'a tam olarak neyin değişmesi gerektiğini söyleyin…",
-        "paused": "Bu plana yanıt vermeden önce çalıştırmayı devam ettirin.",
-        "staleError": "Bu plan zaten çözüldü veya değiştirildi. En son revizyonu görmek için yenileyin",
-        "submitFailed": "Plan yanıtı kaydedilemedi. Lütfen tekrar deneyin"
+        "feedbackPlaceholder": "Planner’a tam olarak neyin değişmesi gerektiğini söyleyin…",
+        "paused": "Bu plana yanıt vermeden önce çalışmayı sürdürün.",
+        "staleError": "Bu plan zaten çözüldü veya değiştirildi. En son sürüm için yenileyin.",
+        "submitFailed": "Plan yanıtı kaydedilemedi.",
+        "historyTitle": "Plan geçmişi",
+        "open": "Planı aç",
+        "taskOutput": "Planlama görevi çıktısı kaydedildi",
+        "status": {
+          "pending": "Bekliyor",
+          "approved": "Onaylandı",
+          "changes_requested": "Değişiklik istendi",
+          "superseded": "Yeni sürümle değiştirildi",
+          "cancelled": "İptal edildi"
+        }
       },
       "phase": {
         "coordinating": "Koordine ediliyor",
@@ -2153,6 +2161,12 @@
         "idle": "Boşta",
         "archived": "Arşivlendi",
         "draining": "Duraklatıldı · sonlandırılıyor"
+      },
+      "finalSummary": {
+        "failedTitle": "Nihai rapor kaydedilmedi",
+        "evidencePreserved": "Tamamlama kanıtları ve görev çıktıları korundu.",
+        "retry": "Nihai raporu yeniden dene",
+        "retryFailed": "Nihai rapor yeniden denemesi başlatılamadı."
       }
     },
     "agentOrgIntervention": {

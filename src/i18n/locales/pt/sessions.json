@@ -2101,7 +2101,8 @@
       "continueWarning": "Continue apenas após parar a execução e os processos locais. Esta decisão aceita resultados externos desconhecidos.",
       "keepStoppedWarning": "A substituição será cancelada. A tarefa antiga não reiniciará e as demais continuarão.",
       "abandonWarning": "Todas as tarefas abertas serão interrompidas e o resultado da equipe será Cancelado.",
-      "handoffResolutionFailed": "Não foi possível resolver a transferência"
+      "handoffResolutionFailed": "Não foi possível resolver a transferência",
+      "statusAwaitingApproval": "Aguardando aprovação"
     },
     "agentOrgOverview": {
       "needsAttention": "Requer atenção",
@@ -2146,18 +2147,25 @@
       "viewCoordinatorHistory": "Ver histórico do chat do coordenador",
       "taskWindowTruncated": "Mostrando as primeiras {{visible}} de {{total}} tarefas. Abra os detalhes da tarefa para ver os resultados completos.",
       "planApproval": {
-        "title": "Plano pronto para aprovação",
         "from": "Enviado por {{member}}",
         "approve": "Aprovar plano",
-        "approveEdits": "Aprovar edições",
         "requestChanges": "Solicitar alterações",
-        "sendFeedback": "Enviar feedback",
-        "editLabel": "Editar plano enviado",
-        "feedbackLabel": "Feedback de revisão do plano",
-        "feedbackPlaceholder": "Diga ao Planner exatamente o que precisa mudar…",
+        "sendFeedback": "Enviar comentários",
+        "feedbackLabel": "Comentários da revisão do plano",
+        "feedbackPlaceholder": "Diga exatamente ao Planner o que deve mudar…",
         "paused": "Retome a execução antes de responder a este plano.",
-        "staleError": "Este plano já foi resolvido ou substituído. Atualize para ver a revisão mais recente",
-        "submitFailed": "Não foi possível salvar a resposta ao plano. Tente novamente"
+        "staleError": "Este plano já foi resolvido ou substituído. Atualize para ver a revisão mais recente.",
+        "submitFailed": "Não foi possível salvar a resposta do plano.",
+        "historyTitle": "Histórico do plano",
+        "open": "Abrir plano",
+        "taskOutput": "Resultado da tarefa de planejamento salvo",
+        "status": {
+          "pending": "Pendente",
+          "approved": "Aprovado",
+          "changes_requested": "Alterações solicitadas",
+          "superseded": "Substituído",
+          "cancelled": "Cancelado"
+        }
       },
       "phase": {
         "coordinating": "Coordenando",
@@ -2172,6 +2180,12 @@
         "idle": "Inativo",
         "archived": "Arquivado",
         "draining": "Pausado · finalizando"
+      },
+      "finalSummary": {
+        "failedTitle": "O relatório final não foi salvo",
+        "evidencePreserved": "As evidências de conclusão e os resultados das tarefas foram preservados.",
+        "retry": "Tentar relatório final novamente",
+        "retryFailed": "Não foi possível iniciar a nova tentativa do relatório final."
       }
     },
     "agentOrgIntervention": {

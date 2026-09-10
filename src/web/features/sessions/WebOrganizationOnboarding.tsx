@@ -15,7 +15,10 @@ import {
   CloudOrgMembershipActionFailure,
   useCloudOrgMembershipActions,
 } from "@src/features/Org2Cloud/useCloudOrgMembershipActions";
+import { createLogger } from "@src/hooks/logger";
 import { Building02Icon, HugeiconsIcon } from "@src/icons";
+
+const log = createLogger("WebOrganizationOnboarding");
 
 type OrganizationMode = "create" | "join";
 
@@ -187,7 +190,9 @@ export function WebOrganizationOnboarding({
           className="flex w-full flex-col gap-3 text-left"
           onSubmit={(event) => {
             event.preventDefault();
-            void submit();
+            void submit().catch((error) =>
+              log.error("Organization submission handler failed", error)
+            );
           }}
         >
           <label

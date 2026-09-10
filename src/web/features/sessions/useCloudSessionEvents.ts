@@ -12,6 +12,7 @@ import type {
   SessionEventSegmentsSnapshot,
   SessionEventSegmentsSummary,
 } from "@src/features/TeamCollaboration/sync/CollabSyncBackend";
+import { createLogger } from "@src/hooks/logger";
 import { startVisibilityAwarePoller } from "@src/shared/scheduling/visibilityAwarePoller";
 
 import { useFreshWebCloudSession } from "../auth/useFreshWebCloudSession";
@@ -29,6 +30,8 @@ import {
   writeWebCloudSessionEventCache,
 } from "./webCloudSessionEventCache";
 import { cloudSessionEventTarget } from "./webSessionLocation";
+
+const log = createLogger("WebCloudSessionEvents");
 
 /** Poll running sessions lightly while the tab is visible. */
 const RUNNING_SESSION_POLL_MS = 30_000;
@@ -357,7 +360,9 @@ export function useCloudSessionEvents(session: WebSessionListItem | null) {
             error: null,
             progress: null,
           });
-          void writeWebCloudSessionEventCache(cacheKey, merged);
+          void writeWebCloudSessionEventCache(cacheKey, merged).catch((error) =>
+            log.warn("Transcript cache write failed", error)
+          );
         } catch (error) {
           if (controller.signal.aborted || generation !== generationRef.current)
             return;
@@ -408,6 +413,8 @@ export function useCloudSessionEvents(session: WebSessionListItem | null) {
       if (cacheIdentityKey) {
         void deleteWebCloudSessionEventCache(
           buildWebCloudSessionCacheKeyForIdentity(cacheIdentityKey, session)
+        ).catch((error) =>
+          log.error("Transcript cache eviction failed", error)
         );
       }
       return;
@@ -422,7 +429,9 @@ export function useCloudSessionEvents(session: WebSessionListItem | null) {
         totalEvents: session.eventsCount ?? null,
       },
     });
-    void refresh(false, true);
+    void refresh(false, true).catch((error) =>
+      log.error("Transcript refresh failed", error)
+    );
 
     return () => {
       generationRef.current += 1;

@@ -5,8 +5,11 @@ import {
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
 } from "@src/features/Org2Cloud/org2CloudAuthAtom";
+import { createLogger } from "@src/hooks/logger";
 
 import { clearWebCloudSessionEventCache } from "./webCloudSessionEventCache";
+
+const log = createLogger("WebCloudSessionCacheLifecycle");
 
 /**
  * Owns the persisted Web transcript cache's authentication lifecycle.
@@ -32,7 +35,9 @@ export function WebCloudSessionEventCacheLifecycle() {
       previousIdentity !== null &&
       previousIdentity !== identityKey;
     if (signedOut || switchedIdentity) {
-      void clearWebCloudSessionEventCache();
+      void clearWebCloudSessionEventCache().catch((error) =>
+        log.error("Transcript cache clear failed", error)
+      );
     }
   }, [identityKey]);
 

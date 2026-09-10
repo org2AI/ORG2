@@ -87,4 +87,21 @@ describe("WebCloudSessionEventCacheLifecycle", () => {
     await dispatch(() => store.set(org2CloudAuthAtom, null));
     expect(mocks.clearCache).toHaveBeenCalledTimes(2);
   });
+  it("keeps sign-out authoritative when cache cleanup unexpectedly rejects", async () => {
+    mocks.clearCache.mockRejectedValueOnce(new Error("storage unavailable"));
+    const store = createStore();
+    store.set(org2CloudAuthAtom, auth("user-1"));
+    const root = createSmokeRoot();
+    roots.push(root);
+    await root.render(
+      React.createElement(
+        Provider,
+        { store },
+        React.createElement(WebCloudSessionEventCacheLifecycle)
+      )
+    );
+    await dispatch(() => store.set(org2CloudAuthAtom, null));
+    expect(store.get(org2CloudAuthAtom)).toBeNull();
+    expect(mocks.clearCache).toHaveBeenCalledOnce();
+  });
 });

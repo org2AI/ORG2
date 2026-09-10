@@ -1,5 +1,6 @@
 import React from "react";
 
+import { createLogger } from "@src/hooks/logger";
 import { useCollapsedSidebarChromeOffset } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
 import { CHROME_INSET_TRANSITION_CLASSES } from "@src/modules/shared/layouts/viewContainerTokens";
 import { CollapsedSidebarButton } from "@src/scaffold/NavigationSidebar/CollapsedSidebarButton";
@@ -20,6 +21,8 @@ import {
   shouldStartHeaderDragFromTarget,
 } from "./chatPanelHeaderLayout";
 import type { ChatPanelHeaderSlots } from "./chatPanelHeaderSlots";
+
+const log = createLogger("ChatPanelChrome");
 
 export interface ChatPanelChromeProps {
   tabStrip: React.ReactNode;
@@ -66,10 +69,11 @@ export function ChatPanelChrome({
     }
     const maximize = event.detail === 2;
     event.preventDefault();
-    void import("@src/util/platform/ipcRenderer").then(
-      ({ maxWindow, startWindowDrag }) =>
+    void import("@src/util/platform/ipcRenderer")
+      .then(({ maxWindow, startWindowDrag }) =>
         maximize ? maxWindow() : startWindowDrag()
-    );
+      )
+      .catch((error) => log.error("Window chrome action failed", error));
   };
 
   const publishedHeaderRow = tabRowCollapsed ? (

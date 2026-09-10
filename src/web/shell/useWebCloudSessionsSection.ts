@@ -23,6 +23,7 @@ import {
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { org2CloudPresenceAtom } from "@src/features/Org2Cloud/org2CloudPresenceAtom";
 import type { CloudRemoteSessionsFetchState } from "@src/features/Org2Cloud/org2CloudRemoteSessionsAtom";
+import { createLogger } from "@src/hooks/logger";
 import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import {
@@ -41,6 +42,8 @@ import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/typ
 
 import type { WebSessionListItem } from "../features/sessions/useWebSessionRoster";
 import { webSessionPath } from "../features/sessions/webSessionLocation";
+
+const log = createLogger("WebCloudSessionsSection");
 
 const WEB_TEAM_FILTER: CloudSessionFilter = { kind: "all" };
 const EMPTY_LOCAL_SESSIONS = [] as const;
@@ -160,7 +163,9 @@ export function useWebCloudSessionsSection({
   const { spinClass: refreshSpinClass, handleClick: handleRefreshClick } =
     useRefreshSpin(
       () => {
-        void refresh();
+        void Promise.resolve(refresh()).catch((error) =>
+          log.error("Cloud roster refresh failed", error)
+        );
       },
       isRefreshing,
       orgId ? `web-cloud-team-sessions:${orgId}` : undefined

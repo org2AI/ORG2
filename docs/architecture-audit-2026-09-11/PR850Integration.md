@@ -28,3 +28,7 @@ The repair preserves the browser cloud-session viewer while incorporating the cu
 Native instances/provider ingestion are outside this repair. No claims are made for their runtime behavior. Visible/hidden authenticated browser CPU/RSS, live network reconnect, and deployed auth/create/join were not measured; desktop Computer Use is not authorized. Full histories still materialize in memory while open, as documented in the PR.
 
 Performance verdict: blocked for live authenticated measurements; source inspection and unit evidence cover the retained lifecycle invariants, but cannot establish a measured runtime performance verdict.
+
+## Type-aware lint follow-up
+
+The separate typed-lint gate found thirteen unhandled promise sites introduced by the viewer and its shared adapters. Rejection handlers now report unexpected failures through the existing logger; expected errors retain their existing UI handling. Pagination keeps its nullable no-op result, and refresh preserves its synchronous-or-asynchronous contract. No new timer, retry, cache, or subscription is added, and the typed-lint baseline is unchanged. A lifecycle regression forces cache cleanup to reject during sign-out and verifies that authentication still clears without an unhandled rejection.

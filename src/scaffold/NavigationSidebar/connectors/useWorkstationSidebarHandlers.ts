@@ -343,7 +343,7 @@ export function useWorkstationSidebarHandlers({
             const result = await loadMoreCategory(category);
             revealLoadedSessions(result.sessions);
           },
-        });
+        })?.catch((error) => log.error("Session pagination failed", error));
         return;
       }
 

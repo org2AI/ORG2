@@ -10,6 +10,7 @@ import {
   triggerSessionReloadAtom,
 } from "@src/engines/SessionCore";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import { createLogger } from "@src/hooks/logger";
 import { useAgentWorkingRef } from "@src/hooks/streaming/useAgentWorkingRef";
 import { activeSessionIdAtom, sessionByIdAtom } from "@src/store/session";
 import {
@@ -23,6 +24,8 @@ import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 import { useSessionTranscriptRuntime } from "../SessionTranscriptRuntimeContext";
 import { useReplyQuestion } from "../hooks/useReplyQuestion";
 import type { SessionTranscriptPlatformState } from "./sessionTranscriptPlatform.types";
+
+const log = createLogger("SessionTranscriptPlatform");
 
 /** Desktop adapter for the shared transcript. Webpack replaces this module in
  * the browser entry with the Cloud/context-backed implementation. */
@@ -51,7 +54,11 @@ export function useSessionTranscriptPlatform(
 
   const desktopReload = useCallback(() => {
     if (!sessionId) return;
-    eventStoreProxy.evictSession(sessionId);
+    void eventStoreProxy
+      .evictSession(sessionId)
+      .catch((error) =>
+        log.warn("Session eviction before reload failed", error)
+      );
     clearSessionLoadError();
     setLoadStatus("loading");
     setActiveSessionId(sessionId);

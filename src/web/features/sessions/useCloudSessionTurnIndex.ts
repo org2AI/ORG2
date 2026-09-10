@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { TurnSummary } from "@src/engines/SessionCore/storage/sqliteCache";
 import { getSessionTurnIndex } from "@src/features/Org2Cloud/org2CloudSyncClient";
+import { createLogger } from "@src/hooks/logger";
 
 import { useFreshWebCloudSession } from "../auth/useFreshWebCloudSession";
 import { projectCloudTurnSummaries } from "./cloudTurnSummaryProjection";
 import type { WebSessionListItem } from "./useWebSessionRoster";
+
+const log = createLogger("WebCloudSessionTurnIndex");
 
 interface CloudTurnIndexState {
   sessionKey: string | null;
@@ -86,7 +89,9 @@ export function useCloudSessionTurnIndex(
       return;
     }
     queueMicrotask(() => {
-      void load();
+      void load().catch((error) =>
+        log.error("Turn-index loader failed", error)
+      );
     });
     return () => {
       requestIdRef.current += 1;

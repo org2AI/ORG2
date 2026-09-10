@@ -36,6 +36,7 @@ import {
 } from "@src/components/Dropdown/tokens";
 import Message from "@src/components/Message";
 import Tooltip from "@src/components/Tooltip";
+import { createLogger } from "@src/hooks/logger";
 import {
   AtIcon,
   BotIcon,
@@ -71,6 +72,8 @@ import {
   shouldShowAgentSuggestion,
   splitAgentMentionBody,
 } from "./commentAgentAffordances";
+
+const log = createLogger("CommentThreadList");
 
 export type CommentThreadStatus = "active" | CloudCommentResolution;
 
@@ -530,6 +533,8 @@ const CommentRow: React.FC<CommentRowProps> = ({
                     void run(
                       () => onSetStatus(status),
                       "cloud.comments.actionError"
+                    ).catch((error) =>
+                      log.error("Comment status handler failed", error)
                     );
                   }}
                 >

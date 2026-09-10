@@ -2,11 +2,14 @@ import { createRoot } from "react-dom/client";
 
 import { AppProviders } from "@src/app/root/AppProviders";
 import ErrorBoundary from "@src/app/root/components/ErrorBoundary";
+import { createLogger } from "@src/hooks/logger";
 import { i18nReady } from "@src/i18n";
 import "@src/index.scss";
 import { initTheme } from "@src/util/core/init/themeInit";
 
 import { WebApp } from "./WebApp";
+
+const log = createLogger("WebStartup");
 
 async function mountWebApp(): Promise<void> {
   // The tool registry is NOT initialized here: its only consumers are the
@@ -24,4 +27,4 @@ async function mountWebApp(): Promise<void> {
   );
 }
 
-void mountWebApp();
+void mountWebApp().catch((error) => log.error("Web startup failed", error));

@@ -7,11 +7,12 @@
  */
 import type { CursorIdeTurnSummary } from "@src/api/tauri/externalHistory";
 import { PILL_TYPE_LIST } from "@src/config/pillTokens";
-import { formatClockRange } from "@src/util/time/formatClockTime";
+import { formatShortLocalTime24Hour } from "@src/util/data/formatters/date";
 
 import type { ChatGroupMeta } from "../hooks/useChatGroups";
 
 const ROUND_PREVIEW_MAX_LENGTH = 96;
+const MIN_TIME_RANGE_MS = 60_000;
 
 /**
  * Strip the bracket portion of pill serialization syntax (`[type:path]`)
@@ -64,4 +65,24 @@ export function formatTurnPageTimeLabel(metas: ChatGroupMeta[]): string {
   if (startMs === null || endMs === null) return "";
 
   return formatClockRange(startMs, endMs);
+}
+
+function formatClockRange(startMs: number, endMs: number): string {
+  const startClock = formatClockTime(startMs);
+  if (!startClock) return "";
+  if (endMs - startMs < MIN_TIME_RANGE_MS) return startClock;
+
+  const endClock = formatClockTime(endMs);
+  if (!endClock) return "";
+
+  return `${startClock} ~ ${endClock}`;
+}
+
+function formatClockTime(ms: number): string {
+  if (!Number.isFinite(ms)) return "";
+  try {
+    return formatShortLocalTime24Hour(new Date(ms));
+  } catch {
+    return "";
+  }
 }

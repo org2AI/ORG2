@@ -1,4 +1,4 @@
-import { formatClockTime } from "@src/util/time/formatClockTime";
+import { formatShortLocalTime24Hour } from "@src/util/data/formatters/date";
 
 export interface TurnTimingLabels {
   duration: string;
@@ -22,13 +22,23 @@ export function formatTurnDuration(durationMs: number): string {
   return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
+/** Locale-aware 24-hour wall-clock label used by turn summaries. */
+export function formatTurnClockTime(ms: number): string {
+  if (!Number.isFinite(ms)) return "";
+  try {
+    return formatShortLocalTime24Hour(new Date(ms));
+  } catch {
+    return "";
+  }
+}
+
 export function getTurnTimingLabels(
   durationMs: number,
   startMs: number | null,
   endMs: number | null
 ): TurnTimingLabels {
-  const startClock = startMs !== null ? formatClockTime(startMs) : "";
-  const endClock = endMs !== null ? formatClockTime(endMs) : "";
+  const startClock = startMs !== null ? formatTurnClockTime(startMs) : "";
+  const endClock = endMs !== null ? formatTurnClockTime(endMs) : "";
   return {
     duration: formatTurnDuration(durationMs),
     startClock,

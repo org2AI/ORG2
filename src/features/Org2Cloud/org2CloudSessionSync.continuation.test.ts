@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHistory";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import { loadCliTranscriptRevision } from "@src/engines/SessionCore/sync/adapters/cli/cliHistory";
 import { COLLAB_SESSION_ACCESS_MODE } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session";
 
@@ -18,6 +19,10 @@ const mocks = vi.hoisted(() => ({
   canonicalSnapshot: vi.fn(),
   persistedRevision: vi.fn(),
   persistedEvents: vi.fn(),
+}));
+
+vi.mock("@src/engines/SessionCore/sync/adapters/cli/cliHistory", () => ({
+  loadCliTranscriptRevision: vi.fn(async () => undefined),
 }));
 
 vi.mock(
@@ -99,6 +104,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
   afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue(undefined);
     mocks.childRevision.mockResolvedValue("[]");
     mocks.persistedRevision.mockResolvedValue(null);
     mocks.persistedEvents.mockResolvedValue([]);
@@ -115,6 +121,78 @@ describe("Org2CloudSessionSync local continuation replay", () => {
       sync.endPass();
     }
   }
+
+  it("publishes a native root with user/tool history despite an assistant-only cache, and skips unchanged reads", async () => {
+    const store = createStore();
+    const cloud = client();
+    const sync = new Org2CloudSessionSync(() => store, cloud);
+    const complete = [
+      event("user", "question"),
+      event("tool", "read result"),
+      event("assistant", "answer"),
+    ];
+    mocks.persistedEvents.mockResolvedValue([complete[2]]);
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("native-1");
+    mocks.canonicalSnapshot.mockResolvedValue({
+      events: complete,
+      childRevision: "[]",
+    });
+    await pushPass(sync);
+    await pushPass(sync);
+    expect(mocks.canonicalSnapshot).toHaveBeenCalledTimes(1);
+    expect(mocks.persistedEvents).not.toHaveBeenCalled();
+    expect(
+      store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+        ?.pushedCount
+    ).toBe(3);
+
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("native-2");
+    mocks.canonicalSnapshot.mockResolvedValue({
+      events: [...complete, event("next", "reply")],
+      childRevision: "[]",
+    });
+    await pushPass(sync);
+    expect(mocks.canonicalSnapshot).toHaveBeenCalledTimes(2);
+    expect(
+      store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+        ?.pushedCount
+    ).toBe(4);
+  });
+
+  it("refuses a native root that changes during replay materialization", async () => {
+    const sync = new Org2CloudSessionSync(() => createStore(), client());
+    vi.mocked(loadCliTranscriptRevision)
+      .mockResolvedValueOnce("before")
+      .mockResolvedValue("after");
+    mocks.canonicalSnapshot.mockResolvedValue({
+      events: [event("partial", "partial")],
+      childRevision: "[]",
+    });
+    await expect(
+      (
+        sync as unknown as {
+          loadPushEvents(id: string): Promise<SessionEvent[]>;
+        }
+      ).loadPushEvents(SESSION.session_id)
+    ).rejects.toThrow("changed while preparing cloud replay");
+    expect(mocks.persistedEvents).not.toHaveBeenCalled();
+  });
+
+  it("refuses unavailable native roots instead of certifying cached partial output", async () => {
+    const sync = new Org2CloudSessionSync(() => createStore(), client());
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue(null);
+    mocks.canonicalSnapshot.mockResolvedValue({
+      events: [event("partial", "partial")],
+      childRevision: "[]",
+    });
+    await expect(
+      (
+        sync as unknown as {
+          loadPushEvents(id: string): Promise<SessionEvent[]>;
+        }
+      ).loadPushEvents(SESSION.session_id)
+    ).rejects.toThrow("changed while preparing cloud replay");
+  });
 
   it("publishes the verified root-plus-child snapshot through the full replay owner", async () => {
     const store = createStore();
@@ -285,36 +363,49 @@ describe("Org2CloudSessionSync local continuation replay", () => {
     ).toBeGreaterThan(1);
   });
 
-  it("revalidates a persisted continuation cursor across two cold engines without rewriting", async () => {
-    const store = createStore();
-    const cloud = client();
-    const combined = [event("root", "root"), event("child", "child")];
-    mocks.childRevision.mockResolvedValue("stable-1");
-    mocks.canonicalSnapshot.mockResolvedValue({
-      events: combined,
-      childRevision: "stable-1",
-    });
-    await pushPass(new Org2CloudSessionSync(() => store, cloud));
-    const cursorBefore = store.get(org2CloudPushCursorsAtom)[
-      `org-1:${SESSION.session_id}`
-    ];
-    cloud.rewriteSessionEvents.mockClear();
-    cloud.appendSessionEvents.mockClear();
-    mocks.canonicalSnapshot.mockClear();
+  it.each([false, true])(
+    "revalidates a persisted cursor across two cold engines without rewriting (native root: %s)",
+    async (nativeRoot) => {
+      const store = createStore();
+      const cloud = client();
+      const combined = [event("root", "root"), event("child", "child")];
+      mocks.childRevision.mockResolvedValue("stable-1");
+      mocks.canonicalSnapshot.mockResolvedValue({
+        events: combined,
+        childRevision: "stable-1",
+      });
+      if (nativeRoot) {
+        vi.mocked(loadCliTranscriptRevision).mockResolvedValue(
+          "root-native-stable"
+        );
+        mocks.childRevision.mockResolvedValue("[]");
+        mocks.canonicalSnapshot.mockResolvedValue({
+          events: combined,
+          childRevision: "[]",
+        });
+      }
+      await pushPass(new Org2CloudSessionSync(() => store, cloud));
+      const cursorBefore = store.get(org2CloudPushCursorsAtom)[
+        `org-1:${SESSION.session_id}`
+      ];
+      cloud.rewriteSessionEvents.mockClear();
+      cloud.appendSessionEvents.mockClear();
+      mocks.canonicalSnapshot.mockClear();
 
-    for (let boot = 0; boot < 2; boot += 1) {
-      const sync = new Org2CloudSessionSync(() => store, cloud);
-      for (let pass = 0; pass < 3; pass += 1) await pushPass(sync);
+      for (let boot = 0; boot < 2; boot += 1) {
+        const sync = new Org2CloudSessionSync(() => store, cloud);
+        for (let pass = 0; pass < 3; pass += 1) await pushPass(sync);
+      }
+      // Each cold owner really reads the snapshot once; clean later passes are
+      // bounded. Zero mutations are paired with this positive liveness proof.
+      expect(mocks.canonicalSnapshot).toHaveBeenCalledTimes(2);
+      expect(cloud.rewriteSessionEvents).not.toHaveBeenCalled();
+      expect(cloud.appendSessionEvents).not.toHaveBeenCalled();
+      expect(
+        store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+      ).toEqual(cursorBefore);
     }
-    // Each cold owner really reads the snapshot once; clean later passes are
-    // bounded. Zero mutations are paired with this positive liveness proof.
-    expect(mocks.canonicalSnapshot).toHaveBeenCalledTimes(2);
-    expect(cloud.rewriteSessionEvents).not.toHaveBeenCalled();
-    expect(cloud.appendSessionEvents).not.toHaveBeenCalled();
-    expect(
-      store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
-    ).toEqual(cursorBefore);
-  });
+  );
 
   it("refuses unstable child snapshots before any cloud mutation and recovers after stabilization", async () => {
     let now = Date.now();

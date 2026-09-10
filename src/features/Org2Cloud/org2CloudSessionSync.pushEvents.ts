@@ -18,6 +18,7 @@ import {
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { processChunksRust } from "@src/engines/SessionCore/ingestion/rustBridge";
+import { loadCliTranscriptRevision } from "@src/engines/SessionCore/sync/adapters/cli/cliHistory";
 import { createLogger } from "@src/hooks/logger";
 import type { ActivityChunk } from "@src/types/session/session";
 import {
@@ -134,7 +135,15 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
     sessionId: string
   ): Promise<string | null | undefined> {
     const root = this.localConversationRoot(sessionId);
-    return root ? loadLocalExecutionChildrenRevision(root) : undefined;
+    if (!root) return undefined;
+    const childRevision = await loadLocalExecutionChildrenRevision(root);
+    if (!isCliSession(sessionId)) return childRevision;
+    const nativeRevision = await loadCliTranscriptRevision(sessionId);
+    if (nativeRevision === undefined) return childRevision;
+    if (nativeRevision === null || childRevision === null) return null;
+    // A native root can have no continuation children yet. Its transient
+    // EventStore rows are not a complete replay or a durable clean stamp.
+    return JSON.stringify({ childRevision, nativeRevision });
   }
 
   private async loadFullPushEvents(
@@ -151,7 +160,13 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
       const root = this.localConversationRoot(sessionId);
       if (root) {
         const snapshot = await loadLocalCanonicalConversationSnapshot(root);
-        if (snapshot.childRevision === null) {
+        const revisionAfterRead =
+          await this.loadLocalExecutionRevision(sessionId);
+        if (
+          snapshot.childRevision === null ||
+          localExecutionRevision === null ||
+          revisionAfterRead !== localExecutionRevision
+        ) {
           // A repeated partial read is not evidence of an intentional shrink.
           // Refuse it before the planner can replace any cloud segments; the
           // sync engine's existing retry gate handles the transient failure.
@@ -161,7 +176,7 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
         }
         return {
           events: snapshot.events,
-          localExecutionRevision: snapshot.childRevision,
+          localExecutionRevision: revisionAfterRead,
         };
       }
     }

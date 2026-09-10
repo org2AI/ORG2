@@ -108,6 +108,10 @@ vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   },
 }));
 
+vi.mock("@src/engines/SessionCore/sync/adapters/cli/cliHistory", () => ({
+  loadCliTranscriptRevision: vi.fn(async () => undefined),
+}));
+
 vi.mock(
   "@src/engines/SessionCore/conversations/localConversationExecutionTail",
   () => ({

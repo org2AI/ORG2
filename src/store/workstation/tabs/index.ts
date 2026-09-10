@@ -18,6 +18,14 @@ export type {
   PanelState,
   WorkStationLayoutState,
   WorkstationWorkspaceKey,
+  WorkstationWorkspaceId,
+  WorkstationTabPartition,
+  WorkstationTabRef,
+  WorkstationWorkspaceState,
+  WorkstationSharedState,
+  WorkstationTabsStateV4,
+  WorkstationTabOwnership,
+  TimelineDiffCommitInfo,
   // Editor cache types
   EditorRepoCache,
 } from "./types";

@@ -22,7 +22,7 @@ import {
   type WorkStationTab,
   type WorkStationTabType,
   type WorkstationTabOwnership,
-  type WorkstationTabsStateV3,
+  type WorkstationTabsStateV4,
   type WorkstationWorkspaceState,
   closesSharedResourceOnDismiss,
   getWorkstationTabOwnership,
@@ -90,7 +90,7 @@ function workspace(
   };
 }
 
-function stateWithWorkspaces(): WorkstationTabsStateV3 {
+function stateWithWorkspaces(): WorkstationTabsStateV4 {
   const state = emptyWorkstationTabsState();
   state.globalWorkspace = workspace([tab("file:/global.ts")]);
   state.sessionWorkspaces = {

@@ -13,7 +13,7 @@ import {
   workstationTabsStateAtom,
 } from "@src/store/workstation/tabs";
 import {
-  WORKSTATION_V3_SHARED_KEY,
+  WORKSTATION_V4_SHARED_KEY,
   emptyWorkstationTabsState,
 } from "@src/store/workstation/tabs/storage";
 import { workstationNewBrowserSessionRequestAtom } from "@src/store/workstation/workstationTabBarAtoms";
@@ -215,7 +215,7 @@ describe("live shared-resource close semantics", () => {
     ]);
     expect(next.sessionWorkspaces.B.tabOrder).toEqual([]);
     expect(
-      JSON.parse(localStorage.getItem(WORKSTATION_V3_SHARED_KEY) ?? "null")
+      JSON.parse(localStorage.getItem(WORKSTATION_V4_SHARED_KEY) ?? "null")
     ).toEqual({ tabs: [] });
 
     expect(store.get(recentWorkstationTabsAtom)).toEqual([browser]);

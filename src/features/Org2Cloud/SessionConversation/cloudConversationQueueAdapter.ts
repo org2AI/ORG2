@@ -350,6 +350,16 @@ export async function dispatchQueuedCloudConversation(
       freshEndpoint
     );
     requireBoundAuth();
+    const { syncSessionSharedFiles } =
+      await import("../syncSessionSharedFiles");
+    await syncSessionSharedFiles({
+      token: fresh.accessToken,
+      endpoint: { ...freshEndpoint, webOrigin: "", isOfficial: false },
+      orgId,
+      sessionId: rootSessionId,
+      events,
+      assertCurrentIdentity: requireBoundAuth,
+    });
     bumpConversationPlaneSignal(
       (update) => store.set(conversationPlaneSignalAtom, update),
       orgId
@@ -678,6 +688,22 @@ export async function dispatchQueuedCloudConversation(
       );
     }
 
+    const { syncSessionSharedFiles } =
+      await import("../syncSessionSharedFiles");
+    await syncSessionSharedFiles({
+      token: admissionAuth.accessToken,
+      endpoint: {
+        supabaseUrl: admissionAuth.supabaseUrl,
+        anonKey: admissionAuth.supabaseAnonKey,
+        webOrigin: "",
+        isOfficial: false,
+      },
+      orgId,
+      sessionId: rootSessionId,
+      events: userEvents,
+      repoPath: sourceSession?.repoPath,
+      assertCurrentIdentity: requireBoundAuth,
+    });
     let accepted = false;
     const accept = async (sessionId: string) => {
       if (accepted) return;

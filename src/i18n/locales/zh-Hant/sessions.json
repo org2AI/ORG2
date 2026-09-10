@@ -2673,5 +2673,12 @@
     "imagesUnsupported": "團隊聊天訊息不能包含圖片",
     "participantsTooltip": "對話參與者與討論訊息",
     "mentionGroup": "隊友"
+  },
+  "sharedFile": {
+    "title": "共享檔案",
+    "error": "無法開啟檔案，請檢查帳號、伺服器及對話存取權限後重新開啟連結",
+    "downloadPreview": "下載檔案以查看內容",
+    "download": "下載",
+    "loading": "正在載入共享檔案…"
   }
 }

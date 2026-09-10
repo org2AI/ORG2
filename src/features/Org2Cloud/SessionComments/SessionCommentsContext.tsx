@@ -38,6 +38,7 @@ import {
   isTeamChatMentionAudienceWithinLimit,
   resolveTeamChatMentionedUserIds,
 } from "../SessionConversation/teamChatMentions";
+import { SharedSessionFilesProvider } from "../SharedSessionFilesContext";
 import { collectAddressableThreads } from "../addressComments";
 import { addressRunActiveAtom } from "../addressCommentsRun";
 import {
@@ -771,7 +772,21 @@ export const SessionCommentsProvider: React.FC<
 
   return (
     <SessionCommentsContext.Provider value={value}>
-      {children}
+      <SharedSessionFilesProvider
+        scope={
+          target && retryAuth
+            ? {
+                ...target,
+                endpoint:
+                  session?.importedFrom?.sourceEndpointUrl ??
+                  retryAuth.supabaseUrl,
+                repoPath: session?.repoPath,
+              }
+            : null
+        }
+      >
+        {children}
+      </SharedSessionFilesProvider>
     </SessionCommentsContext.Provider>
   );
 };

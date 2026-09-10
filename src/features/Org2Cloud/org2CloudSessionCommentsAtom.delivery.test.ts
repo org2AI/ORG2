@@ -16,6 +16,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   addSessionComment: vi.fn(),
+  prepare: vi.fn(),
   listSessionComments: vi.fn(),
 }));
 
@@ -38,6 +39,10 @@ vi.mock("./org2CloudCommentsBus", async (importOriginal) => {
     await importOriginal<typeof import("./org2CloudCommentsBus")>();
   return { ...actual, broadcastCommentsChangedToPeers: vi.fn() };
 });
+
+vi.mock("./prepareSharedCommentFiles", () => ({
+  prepareSharedCommentFiles: mocks.prepare,
+}));
 
 type CommentsApi = ReturnType<typeof useSessionComments>;
 let api: CommentsApi;
@@ -94,6 +99,46 @@ describe("Team Chat retained delivery", () => {
   });
 
   afterEach(async () => root.unmount());
+
+  it("retains uploaded references for retry after a lost comment response", async () => {
+    const uploadedBody =
+      "[report.md](orgii-file://11111111-1111-4111-8111-111111111111?endpoint=https%3A%2F%2Fcloud.example.com)";
+    mocks.prepare.mockResolvedValue(uploadedBody);
+    mocks.addSessionComment.mockRejectedValueOnce(new Error("response lost"));
+    await act(async () => {
+      await api
+        .addComment({ body: "report.md [file:/repo/report.md]" })
+        .catch(() => {});
+    });
+    const failed = api.comments[0];
+    expect(failed.body).toBe(uploadedBody);
+    expect(failed.clientDeliveryStatus).toBe("failed");
+    expect(mocks.addSessionComment.mock.calls[0][1].body).toBe(uploadedBody);
+    mocks.addSessionComment.mockResolvedValueOnce({
+      ...failed,
+      id: "server-id",
+      clientDeliveryStatus: undefined,
+    });
+    await act(async () => {
+      await api.addComment({ body: failed.body, optimisticId: failed.id });
+    });
+    expect(mocks.prepare).toHaveBeenCalledOnce();
+    expect(mocks.addSessionComment.mock.calls[1][1].clientMessageKey).toBe(
+      failed.id
+    );
+    expect(mocks.addSessionComment.mock.calls[1][1].body).toBe(uploadedBody);
+  });
+  it("does not post a comment when attachment admission fails", async () => {
+    mocks.prepare.mockRejectedValueOnce(new Error("file missing"));
+    await act(async () => {
+      await api
+        .addComment({ body: "report.md [file:/repo/report.md]" })
+        .catch(() => {});
+    });
+    expect(mocks.addSessionComment).not.toHaveBeenCalled();
+    expect(api.comments[0].body).toContain("[file:/repo/report.md]");
+    expect(api.comments[0].clientDeliveryStatus).toBe("failed");
+  });
 
   it("retains a failed row, permits editing, and retries the same row", async () => {
     mocks.addSessionComment.mockRejectedValueOnce(new Error("offline"));

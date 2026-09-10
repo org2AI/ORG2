@@ -18,6 +18,10 @@ import DiffStatsBadge from "@src/components/DiffStatsBadge";
 import ExpandOverlay from "@src/components/ExpandOverlay";
 import { FileTreeHoverPreview } from "@src/components/FileTreePreview/exports";
 import FileTypeIcon from "@src/components/FileTypeIcon";
+import {
+  useIsSessionFileShared,
+  useOpenSessionSharedFile,
+} from "@src/features/Org2Cloud/SharedSessionFilesContext";
 import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
   Copy01Icon,
@@ -28,7 +32,7 @@ import {
   ViewOffIcon,
 } from "@src/icons";
 import { copyText } from "@src/util/data/clipboard";
-import { openFileInEditor } from "@src/util/ui/openFileInEditor";
+import { openFileInEditor as openLocalFileInEditor } from "@src/util/ui/openFileInEditor";
 
 import {
   EVENT_BLOCK_FADE_FROM,
@@ -148,6 +152,14 @@ const ChatCodeBlock: React.FC<ChatCodeBlockProps> = memo(
       handleLocate,
     } = useBlockHeader({ defaultCollapsed, eventId, collapseAllValue: true });
     const { t } = useTranslation("sessions");
+    const openSharedFile = useOpenSessionSharedFile();
+    const shared = useIsSessionFileShared();
+    const openFileInEditor = useCallback(
+      (path: string) => {
+        if (!openSharedFile(path)) openLocalFileInEditor(path);
+      },
+      [openSharedFile]
+    );
     const onCopyContent = useCallback(async () => {
       await copyText(code);
     }, [code]);
@@ -164,7 +176,7 @@ const ChatCodeBlock: React.FC<ChatCodeBlockProps> = memo(
         event.stopPropagation();
         if (filePath) openFileInEditor(filePath);
       },
-      [filePath]
+      [filePath, openFileInEditor]
     );
     const shouldShowCopyButton =
       showCopyButton && hasContent && Boolean(code) && !isCollapsed;
@@ -261,7 +273,7 @@ const ChatCodeBlock: React.FC<ChatCodeBlockProps> = memo(
             {!useTerminalLayout && (
               <>
                 {filePath ? (
-                  showFileTreeHover ? (
+                  showFileTreeHover && !shared ? (
                     <FileTreeHoverPreview
                       path={filePath}
                       itemType="file"

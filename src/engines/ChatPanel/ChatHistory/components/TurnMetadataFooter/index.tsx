@@ -27,6 +27,7 @@ import type {
   TurnSummary,
 } from "@src/engines/SessionCore/storage/sqliteCache";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
+import { useOpenSessionSharedFile } from "@src/features/Org2Cloud/SharedSessionFilesContext";
 import {
   ArrowRight01Icon,
   GitCommitHorizontalIcon,
@@ -180,8 +181,10 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
       setExpanded(false);
     }, []);
 
+    const openSharedFile = useOpenSessionSharedFile();
     const openDiff = useCallback(
       (selectedPath?: string | null) => {
+        if (selectedPath && openSharedFile(selectedPath)) return;
         setDiffScope({
           sessionId,
           turnId,
@@ -197,6 +200,7 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
       },
       [
         files,
+        openSharedFile,
         refreshDiff,
         sessionId,
         setChatPanelMaximized,

@@ -15,6 +15,10 @@ import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import ImagePreviewOverlay from "@src/components/ImagePreviewOverlay";
+import {
+  useIsSessionFileShared,
+  useOpenSessionSharedFile,
+} from "@src/features/Org2Cloud/SharedSessionFilesContext";
 import { HugeiconsIcon, Image01Icon, ImageNotFound01Icon } from "@src/icons";
 import {
   releaseImageUrl,
@@ -103,6 +107,8 @@ function createLocalImageState(sourceKey: string | null): LocalImageState {
 
 const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
   ({ src, alt, workspaceRootPath }) => {
+    const openSharedFile = useOpenSessionSharedFile();
+    const shared = useIsSessionFileShared();
     const source = useMemo(
       () => classifyMarkdownImageSrc(src, workspaceRootPath),
       [src, workspaceRootPath]
@@ -126,7 +132,7 @@ const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
     const { asyncSrc, failed, showOverlay } = nextImageState;
 
     useEffect(() => {
-      if (source.kind !== "local" || !localIsImage) return;
+      if (shared || source.kind !== "local" || !localIsImage) return;
       let cancelled = false;
       // Object URL owned by this effect run; released on teardown so the
       // Blob does not outlive the image it backs.
@@ -157,7 +163,7 @@ const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
         cancelled = true;
         releaseImageUrl(objectUrl);
       };
-    }, [localIsImage, source, sourceKey]);
+    }, [localIsImage, source, sourceKey, shared]);
 
     const handleImageClick = useCallback((event: React.MouseEvent) => {
       containClick(event);
@@ -168,15 +174,27 @@ const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
       (event: React.MouseEvent) => {
         containClick(event);
         if (source.kind !== "local") return;
+        if (openSharedFile(source.path)) return;
         void openLocalMarkdownRef(source.path, source.homeRelative === true);
       },
-      [source]
+      [source, openSharedFile]
     );
 
     const handleClose = useCallback(() => {
       setImageState((current) => ({ ...current, showOverlay: false }));
     }, []);
 
+    if (shared && source.kind === "local") {
+      return (
+        <a
+          href={src}
+          onClick={handleFileChipClick}
+          className="text-primary-6 underline-offset-2 hover:underline"
+        >
+          {imageLabel(alt, source.path)}
+        </a>
+      );
+    }
     if (source.kind === "skip") {
       return alt?.trim() ? (
         <span className="text-text-3">[{alt.trim()}]</span>

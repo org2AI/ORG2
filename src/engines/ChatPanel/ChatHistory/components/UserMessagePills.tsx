@@ -13,6 +13,9 @@ import {
   resolvePostedReferenceHref,
 } from "@src/components/ComposerInput/postedReferenceHref";
 import { PILL_SIZE } from "@src/config/pillTokens";
+import SharedSessionFileLink from "@src/features/Org2Cloud/SharedSessionFileLink";
+import { useOpenSessionSharedFile } from "@src/features/Org2Cloud/SharedSessionFilesContext";
+import { parseSharedSessionFileReference } from "@src/features/Org2Cloud/sharedSessionFileReference";
 import { AtIcon, HugeiconsIcon } from "@src/icons";
 import { openExternalLink } from "@src/util/platform/ipcRenderer";
 
@@ -22,6 +25,7 @@ const ICON_PROPS = { size: PILL_SIZE.iconSize, strokeWidth: 1.75 } as const;
 
 export const InlineReferenceLink: React.FC<{ segment: PillSegment }> = memo(
   ({ segment }) => {
+    const openSharedFile = useOpenSessionSharedFile();
     const href = resolvePostedReferenceHref(
       segment.path,
       segment.pillType,
@@ -88,6 +92,8 @@ export const InlineReferenceLink: React.FC<{ segment: PillSegment }> = memo(
         }
 
         if (isFileReference) {
+          if (segment.pillType === "file" && openSharedFile(segment.path))
+            return;
           document.dispatchEvent(
             new CustomEvent("file-pill-click", {
               detail: {
@@ -99,9 +105,16 @@ export const InlineReferenceLink: React.FC<{ segment: PillSegment }> = memo(
           );
         }
       },
-      [href, isFileReference, isWebReference, segment]
+      [href, isFileReference, isWebReference, segment, openSharedFile]
     );
 
+    const sharedFile = parseSharedSessionFileReference(segment.path);
+    if (sharedFile)
+      return (
+        <SharedSessionFileLink href={segment.path} reference={sharedFile}>
+          {segment.displayName}
+        </SharedSessionFileLink>
+      );
     return isSafePostedReferenceHref(href) ? (
       <a
         href={href}

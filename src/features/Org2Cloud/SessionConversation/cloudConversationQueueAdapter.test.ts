@@ -15,6 +15,7 @@ import { dispatchQueuedCloudConversation } from "./cloudConversationQueueAdapter
 
 const mocks = vi.hoisted(() => ({
   refreshAuth: vi.fn(),
+  syncFiles: vi.fn(),
   listOrgSessions: vi.fn(),
   capabilities: vi.fn(),
   pushEvents: vi.fn(),
@@ -45,6 +46,10 @@ vi.mock(
     listOrgSessions: mocks.listOrgSessions,
   })
 );
+
+vi.mock("../syncSessionSharedFiles", () => ({
+  syncSessionSharedFiles: mocks.syncFiles,
+}));
 
 vi.mock("@src/api/tauri/cloudDevice", () => ({
   cloudDeviceIdentity: mocks.cloudDeviceIdentity,
@@ -437,6 +442,13 @@ describe("dispatchQueuedCloudConversation coordination", () => {
       expect.any(Object)
     );
     expect(mocks.pushEvents).not.toHaveBeenCalled();
+    expect(mocks.syncFiles).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orgId: "org-1",
+        sessionId: "shared-root",
+        events: [expect.objectContaining({ source: "user" })],
+      })
+    );
     expect(mocks.finishTurn).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ status: "completed" }),
@@ -618,6 +630,9 @@ describe("dispatchQueuedCloudConversation coordination", () => {
   it("publishes the provider tail before finishing the Cloud ledger row", async () => {
     enableTurnCoordination();
     const order: string[] = [];
+    mocks.syncFiles.mockImplementation(async ({ events }) => {
+      if (events.includes(ASSISTANT_TAIL_EVENT)) order.push("files");
+    });
     mocks.pushEvents.mockImplementation(async () => {
       order.push("publish");
       return { firstSeq: 2, lastSeq: 2 };
@@ -641,7 +656,7 @@ describe("dispatchQueuedCloudConversation coordination", () => {
       onAccepted: vi.fn(),
     });
 
-    expect(order).toEqual(["publish", "finish"]);
+    expect(order).toEqual(["publish", "files", "finish"]);
   });
 
   it("owns one bounded renewal timer and clears it when the turn finishes", async () => {

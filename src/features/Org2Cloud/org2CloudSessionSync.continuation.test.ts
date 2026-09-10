@@ -16,9 +16,18 @@ import { org2CloudPushCursorsAtom } from "./org2CloudSyncAtoms";
 
 const mocks = vi.hoisted(() => ({
   childRevision: vi.fn(),
+  capabilities: vi.fn(),
+  syncFiles: vi.fn(),
   canonicalSnapshot: vi.fn(),
   persistedRevision: vi.fn(),
   persistedEvents: vi.fn(),
+}));
+
+vi.mock("./org2CloudCapabilities", () => ({
+  getCloudCapabilitiesConfirmed: mocks.capabilities,
+}));
+vi.mock("./syncSessionSharedFiles", () => ({
+  syncSessionSharedFiles: mocks.syncFiles,
 }));
 
 vi.mock("@src/engines/SessionCore/sync/adapters/cli/cliHistory", () => ({
@@ -104,6 +113,8 @@ describe("Org2CloudSessionSync local continuation replay", () => {
   afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.capabilities.mockResolvedValue({ confirmed: true, capabilities: {} });
+    mocks.syncFiles.mockResolvedValue(true);
     vi.mocked(loadCliTranscriptRevision).mockResolvedValue(undefined);
     mocks.childRevision.mockResolvedValue("[]");
     mocks.persistedRevision.mockResolvedValue(null);
@@ -157,6 +168,35 @@ describe("Org2CloudSessionSync local continuation replay", () => {
       store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
         ?.pushedCount
     ).toBe(4);
+  });
+
+  it("backfills files once for an otherwise clean pre-upload cursor", async () => {
+    const store = createStore();
+    const cloud = client();
+    const sync = new Org2CloudSessionSync(() => store, cloud);
+    const events = [event("generated", "[report](/sender/report.md)")];
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("native-1");
+    mocks.canonicalSnapshot.mockResolvedValue({ events, childRevision: "[]" });
+    await pushPass(sync);
+    const key = `org-1:${SESSION.session_id}`;
+    store.set(org2CloudPushCursorsAtom, (current) => ({
+      ...current,
+      [key]: { ...current[key], sharedFilesVersion: undefined },
+    }));
+    mocks.capabilities.mockResolvedValue({
+      confirmed: true,
+      capabilities: { sharedSessionFiles: true },
+    });
+    mocks.syncFiles.mockClear();
+    await pushPass(sync);
+    expect(mocks.canonicalSnapshot).toHaveBeenCalledTimes(2);
+    expect(mocks.syncFiles).toHaveBeenCalledWith(
+      expect.objectContaining({ events })
+    );
+    expect(store.get(org2CloudPushCursorsAtom)[key].sharedFilesVersion).toBe(1);
+    await pushPass(sync);
+    expect(mocks.canonicalSnapshot).toHaveBeenCalledTimes(2);
+    expect(mocks.syncFiles).toHaveBeenCalledTimes(1);
   });
 
   it("refuses a native root that changes during replay materialization", async () => {

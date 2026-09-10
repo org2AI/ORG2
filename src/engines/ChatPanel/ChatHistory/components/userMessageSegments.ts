@@ -12,6 +12,7 @@ import { serializePillNode } from "@src/components/ComposerInput/utils";
 import { PILL_TYPES, PILL_TYPE_LIST } from "@src/config/pillTokens";
 import type { PillType } from "@src/config/pillTokens";
 import { normalizeUserMessageText } from "@src/engines/ChatPanel/ChatItems/normalizeUserMessageText";
+import { parseSharedSessionFileReference } from "@src/features/Org2Cloud/sharedSessionFileReference";
 
 /**
  * Local variant of PILL_REGEX that restricts the display-name capture group
@@ -206,6 +207,9 @@ export function normalizeMarkdownReferencePills(text: string): string {
       const label = rawLabel.trim();
       const destination = rawDestination.trim().replace(/^<|>$/g, "");
 
+      if (parseSharedSessionFileReference(destination)) {
+        return `${label} [file:${destination}]`;
+      }
       const githubReference = parseGitHubPillUrl(destination);
       if (githubReference) {
         return serializePillNode({

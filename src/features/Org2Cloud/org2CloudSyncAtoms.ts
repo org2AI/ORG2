@@ -61,6 +61,8 @@ export interface CollabSessionPushCursor {
    * Unlike Session.updated_at, this changes only when transcript rows change.
    */
   localContentRevision?: number;
+  /** One-time full-history file publication has run on this device. */
+  sharedFilesVersion?: 1;
   /**
    * Local session content version covered by this cursor. On restart, a
    * matching remote summary plus this stamp proves that neither the native
@@ -140,6 +142,7 @@ const CloudPushCursorSchema = z.object({
   frozenChainHash: z.string(),
   tailHash: z.string().nullable(),
   localContentRevision: z.number().int().nonnegative().optional(),
+  sharedFilesVersion: z.literal(1).optional(),
   localContentUpdatedAt: z.string().optional(),
   importedReplay: z
     .object({

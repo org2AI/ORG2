@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { deliverOptimisticOutgoing } from "@src/engines/SessionCore/services/optimisticOutgoingDelivery";
 import { createLogger } from "@src/hooks/logger";
 
+import { getCloudEndpoint } from "./config";
 import {
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
@@ -496,6 +497,33 @@ export function useSessionComments(
     );
   }, []);
 
+  const prepareCommentBody = useCallback(
+    async (body: string, accessToken: string, identityKey: string) => {
+      if (!body.includes("[file:")) return body;
+      if (!orgId || !sessionId) throw new Error("no cloud comment target");
+      const endpoint = getCloudEndpoint();
+      const { prepareSharedCommentFiles } =
+        await import("./prepareSharedCommentFiles");
+      return prepareSharedCommentFiles({
+        body,
+        token: accessToken,
+        endpoint,
+        orgId,
+        sessionId,
+        assertCurrentIdentity: () => {
+          if (
+            !isCurrentIdentity(identityKey) ||
+            getCloudEndpoint().supabaseUrl !== endpoint.supabaseUrl ||
+            authRef.current?.supabaseUrl !== endpoint.supabaseUrl
+          ) {
+            throw new Error("ORG2 Cloud identity changed during file upload");
+          }
+        },
+      });
+    },
+    [orgId, sessionId, isCurrentIdentity]
+  );
+
   const addComment = useCallback(
     async (input: AddCommentInput): Promise<CloudSessionComment> => {
       if (!orgId || !sessionId || !key) {
@@ -541,10 +569,21 @@ export function useSessionComments(
         send: async () => {
           const { accessToken, identityKey } =
             await freshTokenForCurrentIdentity();
+          const body = await prepareCommentBody(
+            input.body,
+            accessToken,
+            identityKey
+          );
+          // Retain uploaded references if the RPC response is lost. Retry sends
+          // these same immutable ids even if the sender changes the local file.
+          if (body !== input.body)
+            patchEntry(key, (comments) =>
+              patchComment(comments, optimistic.id, { body })
+            );
           const comment = await addSessionComment(accessToken, {
             orgId,
             sessionId,
-            body: input.body,
+            body,
             eventId: input.eventId,
             parentId: input.parentId,
             mentionedUserIds: input.mentionedUserIds,
@@ -604,6 +643,7 @@ export function useSessionComments(
       freshTokenForCurrentIdentity,
       isCurrentIdentity,
       patchEntry,
+      prepareCommentBody,
     ]
   );
 
@@ -628,6 +668,7 @@ export function useSessionComments(
         return;
       }
       const { accessToken, identityKey } = await freshTokenForCurrentIdentity();
+      body = await prepareCommentBody(body, accessToken, identityKey);
       const editedAt = await editSessionComment(
         accessToken,
         orgId,
@@ -647,6 +688,7 @@ export function useSessionComments(
       freshTokenForCurrentIdentity,
       isCurrentIdentity,
       patchEntry,
+      prepareCommentBody,
     ]
   );
 

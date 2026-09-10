@@ -14,11 +14,11 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { deleteSession as deleteLocalSession } from "@src/api/tauri/agent";
 import { deleteOrgtrackCollaborationSession } from "@src/api/tauri/lineage";
 import { createLogger } from "@src/hooks/logger";
+import { closeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import {
   activeChatPanelTabAtom,
   chatPanelTabsAtom,
-  closeChatPanelTabAtom,
-} from "@src/store/chatPanel/chatPanelTabsAtom";
+} from "@src/store/chatPanel/chatPanelTabsState";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
 import { removeSession } from "@src/store/session/sessionAtom/mutations";
 import { persistSessions } from "@src/store/session/sessionAtom/persistence";

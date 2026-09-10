@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { readSourceContextUsage } from "@src/api/tauri/session/contextUsage";
 import type { ActivityChunk } from "@src/types/session/session";
 
 export interface CodexAppRecentPath {
@@ -57,4 +58,8 @@ export async function codexAppTurnWindow(args: {
   turnId: string;
 }): Promise<CodexAppTurnWindow> {
   return invoke<CodexAppTurnWindow>("codex_app_turn_window", args);
+}
+
+export function codexAppContextUsage(sessionId: string) {
+  return readSourceContextUsage("codex_app_context_usage", sessionId);
 }

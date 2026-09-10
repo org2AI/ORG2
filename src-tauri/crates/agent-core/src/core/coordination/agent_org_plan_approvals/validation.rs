@@ -4,9 +4,11 @@ use crate::coordination::agent_org_payload_limits::{
 };
 use crate::definitions::orgs::PlanApprovalPolicy;
 
-use super::{AgentOrgPlanDecisionBy, AgentOrgPlanInboxDelivery, CreateAgentOrgPlanApprovalParams};
+use super::{
+    AgentOrgPlanDecisionBy, AgentOrgPlanDecisionDelivery, CreateAgentOrgPlanRevisionParams,
+};
 
-pub(super) fn validate_delivery(delivery: &AgentOrgPlanInboxDelivery) -> Result<(), String> {
+pub(super) fn validate_delivery(delivery: &AgentOrgPlanDecisionDelivery) -> Result<(), String> {
     if delivery.recipient_agent_id.trim().is_empty() || delivery.sender_agent_id.trim().is_empty() {
         Err("plan approval delivery requires non-empty agent ids".to_string())
     } else {
@@ -15,13 +17,14 @@ pub(super) fn validate_delivery(delivery: &AgentOrgPlanInboxDelivery) -> Result<
 }
 
 pub(super) fn validate_create_params(
-    params: &CreateAgentOrgPlanApprovalParams,
+    params: &CreateAgentOrgPlanRevisionParams,
 ) -> Result<(), String> {
     if params.request_id.trim().is_empty()
         || params.org_run_id.trim().is_empty()
         || params.source_task_id.trim().is_empty()
         || params.source_member_id.trim().is_empty()
         || params.source_session_id.trim().is_empty()
+        || params.source_turn_intent_id.trim().is_empty()
         || params.root_session_id.trim().is_empty()
     {
         return Err("plan approval identifiers must not be empty".to_string());
@@ -59,7 +62,7 @@ pub(super) fn authorize_decision(
             )
             | (
                 PlanApprovalPolicy::Automatic,
-                AgentOrgPlanDecisionBy::System
+                AgentOrgPlanDecisionBy::Automatic
             )
     );
     if authorized {

@@ -2,16 +2,16 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
+import {
+  DETAIL_PANEL_TOKENS,
+  STAT_GRID_TOKENS,
+} from "@src/config/detailPanelTokens";
 import { ArrowLeft02Icon, HugeiconsIcon } from "@src/icons";
 import {
   SECTION_GAP_CLASSES,
   SECTION_SUBHEADING_CLASSES,
 } from "@src/modules/shared/layouts/SectionLayout";
-import {
-  PANEL_HEADER_TOKENS,
-  STAT_GRID_TOKENS,
-} from "@src/modules/shared/layouts/blocks";
+import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 
 import BuilderTypeAvatar from "./BuilderTypeAvatar";
 import BuilderTypeDetailModal from "./BuilderTypeDetailPanel";

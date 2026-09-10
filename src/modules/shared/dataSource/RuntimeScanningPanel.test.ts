@@ -16,7 +16,7 @@ vi.mock("@src/components/ModelIcon", () => ({
 }));
 
 describe("RuntimeScanningPanel", () => {
-  it("renders only the demand-loaded scanning inventory", () => {
+  it("keeps the table header and filters visible while inventory loads in the body", () => {
     const markup = renderToStaticMarkup(
       createElement(
         Provider,
@@ -25,11 +25,19 @@ describe("RuntimeScanningPanel", () => {
       )
     );
 
+    expect(markup).toContain('data-testid="runtime-scanning-title"');
+    expect(markup).toContain("views.scanning");
     expect(markup).toContain("table-expanded-no-hover");
     expect(markup).toContain("table-settings-expanded-compact");
     expect(markup).toContain("tabs.all");
     expect(markup).toContain("tabs.apps");
     expect(markup).toContain("tabs.clis");
+    expect(markup).toContain("<thead");
+    const body = markup.match(/<tbody[^>]*>[\s\S]*?<\/tbody>/)?.[0];
+    expect(body).toBeDefined();
+    expect(body).toContain('aria-busy="true"');
+    expect(body).toContain('role="status"');
+    expect(body).not.toContain("tabs.all");
     expect(markup).not.toContain("data-source-view-usage");
     expect(markup).not.toContain("data-source-scroll-region");
   });

@@ -6,10 +6,10 @@
  *
  * This module owns module-level mutable state (`chatWidthSaveTimer`,
  * `lastVisibleChatWidth`) and runs `getInitialChatWidth()` once at import
- * time to seed the CSS variable before any component renders. Keep the whole
- * block together — splitting it would duplicate that initialization.
+ * time to seed the atom. AppProviders explicitly initializes the CSS variable
+ * from its store before rendering children. Keep the storage and atom owner together.
  */
-import { atom } from "jotai";
+import { atom, type createStore } from "jotai";
 import { z } from "zod/v4";
 
 import {
@@ -61,17 +61,10 @@ const getInitialChatWidth = (): number => {
   }
 };
 
-// Initialize CSS variable on module load (before any component renders)
+// Read the persisted width once for the canonical atom.
 const initialChatWidth = getInitialChatWidth();
 lastVisibleChatWidth =
   initialChatWidth > 0 ? initialChatWidth : DEFAULT_CHAT_WIDTH;
-if (typeof document !== "undefined") {
-  document.documentElement.style.setProperty(
-    CHAT_WIDTH_CSS_VAR,
-    `${initialChatWidth}px`
-  );
-}
-
 // Base atom for in-memory state (fast updates, no persistence)
 const chatWidthBaseAtom = atom<number>(initialChatWidth);
 chatWidthBaseAtom.debugLabel = "chatWidthBaseAtom";
@@ -126,3 +119,14 @@ restoreChatWidthAtom.debugLabel = "restoreChatWidthAtom";
  */
 export const chatVisibleAtom = atom((get) => get(chatWidthBaseAtom) > 0);
 chatVisibleAtom.debugLabel = "chatVisibleAtom";
+
+/** Initialize the window CSS from the app store before its children render. */
+export function initializeChatWidthStyles(
+  store: Pick<ReturnType<typeof createStore>, "get">
+): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.style.setProperty(
+    CHAT_WIDTH_CSS_VAR,
+    `${store.get(chatWidthAtom)}px`
+  );
+}

@@ -28,18 +28,20 @@
 
 use std::sync::Arc;
 
+use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Manager};
 use tracing::{info, warn};
 
 use crate::coordination::agent_org_runs::{AgentOrgRunStatus, AgentOrgRunStore};
 use crate::core::session::SessionStatus;
 use crate::state::AgentAppState;
-use crate::tools::impls::orchestration::org_send_message::InboxWakeHook;
+use crate::tools::impls::orchestration::org_send_message::{InboxWakeHook, UserDirectedWake};
 
 /// Production [`InboxWakeHook`] that resolves the recipient session by
 /// canonical `member_id` and, when the session is idle or terminal, fires
-/// `send_message_impl(session_id, "", is_resume=true)` on a detached Tokio
-/// task.
+/// `send_message_impl(session_id, "", is_resume=true)` on Tauri's detached
+/// application runtime. The hook is synchronous and may be called from the
+/// macOS setup thread, where no Tokio reactor is entered yet.
 ///
 /// Failures (DB lookup errors, missing app handle, in-flight session)
 /// are logged at `info!`/`warn!` and swallowed — the persisted inbox
@@ -70,13 +72,132 @@ impl AppHandleInboxWakeHook {
 
 impl InboxWakeHook for AppHandleInboxWakeHook {
     fn wake_member(&self, member_id: &str, org_run_id: &str) {
+        self.spawn_wake(member_id, org_run_id, None);
+    }
+
+    fn wake_member_for_formal_receipts(
+        &self,
+        member_id: &str,
+        org_run_id: &str,
+        receipt_ids: &[String],
+    ) {
+        self.spawn_wake(member_id, org_run_id, Some(receipt_ids.to_vec()));
+    }
+
+    fn wake_user_directed_member(&self, wake: UserDirectedWake) {
+        let app_handle = self.app_handle.clone();
+        tauri::async_runtime::spawn(async move {
+            let Some(state) = app_handle.try_state::<AgentAppState>() else {
+                warn!(
+                    run_id = %wake.org_run_id,
+                    member_id = %wake.recipient_member_id,
+                    "cannot dispatch linked UDW without AgentAppState"
+                );
+                return;
+            };
+            if let Err(error) =
+                crate::state::commands::session::message::send_message_impl_for_user_directed_wake(
+                    &state, wake,
+                )
+                .await
+            {
+                warn!(error = %error, "linked UDW kick failed; startup recovery retains the pending receipt");
+            }
+        });
+    }
+}
+
+impl AppHandleInboxWakeHook {
+    fn spawn_wake(
+        &self,
+        member_id: &str,
+        org_run_id: &str,
+        formal_receipt_ids: Option<Vec<String>>,
+    ) {
         let member = member_id.to_string();
         let run_id = org_run_id.to_string();
         let app_handle = self.app_handle.clone();
-        tokio::spawn(async move {
-            let outcome = wake_one_member(app_handle, &member, &run_id).await;
+        tauri::async_runtime::spawn(async move {
+            let is_repair = formal_receipt_ids.is_some();
+            let formal_receipt_ids = if member
+                == crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID
+                && formal_receipt_ids.is_none()
+            {
+                let pending_receipts = database::db::get_connection()
+                    .map_err(|error| error.to_string())
+                    .and_then(|connection| {
+                        crate::coordination::agent_org_formal_triggers::activity_with_connection(
+                            &connection,
+                            &run_id,
+                            100,
+                        )
+                    });
+                match pending_receipts {
+                    Ok(activity) => Some(activity.pending_receipt_ids),
+                    Err(error) => {
+                        warn!(
+                            run_id = %run_id,
+                            error = %error,
+                            "failed to snapshot exact pending Coordinator formal batch before wake"
+                        );
+                        None
+                    }
+                }
+            } else {
+                formal_receipt_ids
+            };
+            let outcome =
+                wake_one_member(app_handle, &member, &run_id, formal_receipt_ids.as_deref()).await;
+            if member == crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID
+                && matches!(
+                    outcome,
+                    WakeRequestOutcome::Enqueued | WakeRequestOutcome::Coalesced
+                )
+            {
+                let acknowledged = formal_receipt_ids.as_deref().map(|receipt_ids| {
+                    crate::coordination::agent_org_formal_triggers::mark_doorbells_delivered(
+                        receipt_ids,
+                    )
+                });
+                match acknowledged {
+                    None => {}
+                    Some(Ok(0)) if !is_repair => {}
+                    Some(Ok(count)) if is_repair => tracing::info!(
+                        run_id = %run_id,
+                        repaired_receipts = count,
+                        "[agent_org_metric] formal_doorbell_repaired"
+                    ),
+                    Some(Ok(count)) => tracing::debug!(
+                        run_id = %run_id,
+                        acknowledged_receipts = count,
+                        "[agent_org_metric] formal_doorbell_delivered"
+                    ),
+                    Some(Err(error)) => warn!(
+                        run_id = %run_id,
+                        error = %error,
+                        "Coordinator wake was accepted but durable doorbell acknowledgement failed"
+                    ),
+                }
+            }
             info!(run_id = %run_id, member_id = %member, ?outcome, "[inbox_wake] wake request finished");
         });
+    }
+}
+
+#[cfg(test)]
+mod runtime_boundary_tests {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    #[test]
+    fn tauri_runtime_spawn_is_safe_without_an_entered_tokio_reactor() {
+        let (sender, receiver) = mpsc::channel();
+        tauri::async_runtime::spawn(async move {
+            sender.send(()).expect("test receiver remains alive");
+        });
+        receiver
+            .recv_timeout(Duration::from_secs(2))
+            .expect("Tauri runtime should execute work from a synchronous startup thread");
     }
 }
 
@@ -88,6 +209,7 @@ async fn wake_one_member(
     app_handle: AppHandle,
     member_id: &str,
     org_run_id: &str,
+    formal_receipt_ids: Option<&[String]>,
 ) -> WakeRequestOutcome {
     // Only a Running run can dispatch work. Fail closed so a stale wake never
     // resurrects a paused, terminal, missing, or unreadable run.
@@ -138,7 +260,8 @@ async fn wake_one_member(
             info!(
                 run_id = %org_run_id,
                 member_id = %member_id,
-                resume_after = %intervention.resume_after,
+                intervention_receipt_id = %intervention.intervention_receipt_id,
+                intervention_status = %intervention.status.as_str(),
                 "[inbox_wake] member is in direct user intervention; deferring wake"
             );
             return WakeRequestOutcome::DeferredIntervention;
@@ -214,8 +337,10 @@ async fn wake_one_member(
     // the member's broad session status. A newly-arrived unread inbox row gets
     // a new fingerprint and is therefore dispatchable immediately even when a
     // previous wake for the same stopped session is still in backoff.
-    let recovery_fingerprint =
-        match crate::coordination::agent_org_watchdog::member_rewake_fingerprint(
+    let formal_receipt_batch_id = formal_receipt_rewake_fingerprint(formal_receipt_ids);
+    let recovery_fingerprint = match formal_receipt_batch_id.as_ref() {
+        Some(fingerprint) => fingerprint.clone(),
+        None => match crate::coordination::agent_org_watchdog::member_rewake_fingerprint(
             org_run_id,
             member_id,
             info.status,
@@ -230,7 +355,8 @@ async fn wake_one_member(
                 );
                 return WakeRequestOutcome::Failed(err);
             }
-        };
+        },
+    };
 
     wake_session(
         app_handle,
@@ -239,8 +365,32 @@ async fn wake_one_member(
         member_id,
         org_run_id,
         &recovery_fingerprint,
+        formal_receipt_batch_id.as_deref(),
     )
     .await
+}
+
+/// Give every bounded set of exact formal receipts its own recovery episode.
+/// Re-ringing the same receipts therefore respects the existing cooldown,
+/// while a newly committed fact (including an explicit final-summary retry)
+/// can dispatch immediately even when the Coordinator's broad unread Inbox
+/// watermark has not changed.
+fn formal_receipt_rewake_fingerprint(receipt_ids: Option<&[String]>) -> Option<String> {
+    let mut receipt_ids = receipt_ids?
+        .iter()
+        .filter(|receipt_id| !receipt_id.is_empty())
+        .collect::<Vec<_>>();
+    if receipt_ids.is_empty() {
+        return None;
+    }
+    receipt_ids.sort_unstable();
+    receipt_ids.dedup();
+    let mut hasher = Sha256::new();
+    for receipt_id in receipt_ids {
+        hasher.update(receipt_id.len().to_le_bytes());
+        hasher.update(receipt_id.as_bytes());
+    }
+    Some(format!("formal-receipts:{:x}", hasher.finalize()))
 }
 
 async fn wake_session(
@@ -250,6 +400,7 @@ async fn wake_session(
     recipient_member_id: &str,
     org_run_id: &str,
     recovery_fingerprint: &str,
+    formal_receipt_batch_id: Option<&str>,
 ) -> WakeRequestOutcome {
     if !should_dispatch_wake(status) {
         info!(
@@ -323,6 +474,7 @@ async fn wake_session(
         session_id.to_string(),
         org_run_id,
         recipient_member_id,
+        formal_receipt_batch_id,
     )
     .await;
     match result {
@@ -410,3 +562,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "inbox_wake/tests/formal_receipt_wake_tests.rs"]
+mod formal_receipt_wake_tests;

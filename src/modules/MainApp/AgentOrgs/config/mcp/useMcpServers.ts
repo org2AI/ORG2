@@ -79,21 +79,6 @@ export interface McpResource {
   size?: number;
 }
 
-export interface McpResourceTemplate {
-  uriTemplate: string;
-  name: string;
-  description?: string;
-  mimeType?: string;
-}
-
-export interface McpResourceContent {
-  type: "text" | "blob";
-  uri: string;
-  mimeType?: string;
-  text?: string;
-  blob?: string;
-}
-
 interface UseMcpServersOptions {
   workspacePath?: string;
   /** When false, skips the initial server-list fetch and polling (no Tauri IPC on mount). */
@@ -259,13 +244,15 @@ export function useMcpServers(options: UseMcpServersOptions = {}) {
   );
 
   const testServer = useCallback(
-    async (name: string, config: McpServerConfig) => {
+    async (name: string, config: McpServerConfig, scope?: McpConfigScope) => {
       return rpc.mcp.testServer({
         serverName: name,
         config,
+        workspacePath,
+        scope,
       });
     },
-    []
+    [workspacePath]
   );
 
   const reconnect = useCallback(

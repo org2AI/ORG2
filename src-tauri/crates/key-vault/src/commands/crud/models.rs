@@ -51,20 +51,9 @@ pub const CLAUDE_CODE_OAUTH_DEFAULT_ENABLED_MODELS: &[&str] = &[
     "claude-sonnet-4-6",
 ];
 
-pub const CODEX_OAUTH_MODELS: &[&str] = &[
-    "gpt-5.6-sol",
-    "gpt-5.6-terra",
-    "gpt-5.6-luna",
-    "gpt-5.5",
-    "gpt-5.4",
-    "gpt-5.4-mini",
-    "gpt-5.3-codex",
-    "gpt-5.2",
-    "codex-auto-review",
-];
-
+pub const CODEX_OAUTH_MODELS: &[&str] = crate::model_catalog::CODEX_OAUTH_MODELS;
 pub const CODEX_OAUTH_DEFAULT_ENABLED_MODELS: &[&str] =
-    &["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
+    crate::model_catalog::CODEX_OAUTH_DEFAULT_ENABLED_MODELS;
 
 /// Claude models whose Messages requests carry `output_config.effort`.
 pub fn model_supports_output_config_effort(model: &str) -> bool {
@@ -133,7 +122,12 @@ fn effort_variants_for_base_model(
     let mut variants = Vec::new();
     let has_thinking_toggle = claude_model_has_thinking_toggle(base_model);
     let lower = base_model.to_lowercase();
-    let rungs = if lower.contains("fable-5") {
+    // Fable 5.1 documents only low/medium/high/xhigh/max. Do not inherit
+    // Fable 5's legacy ultracode fallback; live discovery still wins.
+    let is_fable_51 = lower
+        .split_once("claude-fable-5-1")
+        .is_some_and(|(_, rest)| rest.is_empty() || rest.starts_with('-') || rest.starts_with(':'));
+    let rungs = if lower.contains("fable-5") && !is_fable_51 {
         FABLE_EFFORT_RUNGS
     } else {
         ANTHROPIC_EFFORT_RUNGS
@@ -166,19 +160,22 @@ fn codex_model_supports_variants(model: &str) -> bool {
 fn codex_model_supports_fast_tier(model: &str) -> bool {
     matches!(
         model,
-        "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna" | "gpt-5.5" | "gpt-5.4"
+        "gpt-6-astra" | "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna" | "gpt-5.5" | "gpt-5.4"
     )
 }
 
 fn codex_model_supports_ultra_tier(model: &str) -> bool {
-    matches!(model, "gpt-5.6-sol" | "gpt-5.6-terra")
+    matches!(model, "gpt-6-astra" | "gpt-5.6-sol" | "gpt-5.6-terra")
 }
 
 fn codex_effort_variants_for_base_model(base_model: &str) -> Vec<ModelVariantInfo> {
     let mut out = Vec::new();
     let supports_fast = codex_model_supports_fast_tier(base_model);
     let mut efforts = vec!["low", "medium", "high", "xhigh"];
-    if matches!(base_model, "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna") {
+    if matches!(
+        base_model,
+        "gpt-6-astra" | "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna"
+    ) {
         efforts.push("max");
     }
     if codex_model_supports_ultra_tier(base_model) {

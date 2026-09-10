@@ -13,11 +13,18 @@ import SettingsTable, {
 import Switch from "@src/components/Switch";
 import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { Add01Icon, Delete02Icon, HugeiconsIcon, Pen01Icon } from "@src/icons";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
+import {
+  Add01Icon,
+  Delete02Icon,
+  HugeiconsIcon,
+  Pen01Icon,
+  Refresh04Icon,
+} from "@src/icons";
+import { KEY_VAULT_STATUS_DOT } from "@src/modules/shared/keyVault/statusColors";
 import { groupModels } from "@src/util/modelGrouping";
 
 import { EnabledFractionText } from "../../../shared/EnabledFractionText";
-import { KEY_VAULT_STATUS_DOT } from "../../statusColors";
 import AccountInlineExpandedCard, {
   ACCOUNT_INLINE_TAB,
   type AccountInlineTab,
@@ -60,7 +67,8 @@ interface MyAccountsTableSectionProps {
   onRefreshAccounts?: () => Promise<void>;
   onRefreshAccountUsage?: (accountId: string) => Promise<void>;
   onRevalidateAccount?: (accountId: string) => Promise<void>;
-  refreshingAccountId?: string | null;
+  refreshingUsageAccountIds?: ReadonlySet<string>;
+  refreshingModelsAccountIds?: ReadonlySet<string>;
   onToggleAccount: (account: KeyVaultAccount, enabled: boolean) => void;
   isAccountEnabled: (account: KeyVaultAccount) => boolean;
   onToggleModel?: (
@@ -116,7 +124,8 @@ export default function MyAccountsTableSection({
   onRefreshAccounts,
   onRefreshAccountUsage,
   onRevalidateAccount,
-  refreshingAccountId,
+  refreshingUsageAccountIds,
+  refreshingModelsAccountIds,
   onToggleAccount,
   isAccountEnabled,
   onToggleModel,
@@ -133,16 +142,12 @@ export default function MyAccountsTableSection({
     string | null
   >(null);
 
-  const setSingleExpandedAccount = useCallback((account: KeyVaultAccount) => {
-    setExpandedAccountKeys((currentKeys) => {
-      const collapsing = currentKeys.includes(account.id);
-      if (collapsing) {
-        setEditRequestedAccountId(null);
-        return [];
-      }
-      return [account.id];
-    });
-  }, []);
+  const {
+    spinClass: refreshSpinClass,
+    handleClick: handleRefreshAccountsClick,
+  } = useRefreshSpin(() => {
+    void onRefreshAccounts?.();
+  }, loading);
 
   const handleEditAccountInline = useCallback(
     (accountId: string) => {
@@ -344,7 +349,8 @@ export default function MyAccountsTableSection({
             : onRefreshAccounts
         }
         onRevalidateAccount={onRevalidateAccount}
-        refreshing={refreshingAccountId === account.id}
+        refreshingUsage={refreshingUsageAccountIds?.has(account.id) ?? false}
+        refreshingModels={refreshingModelsAccountIds?.has(account.id) ?? false}
         onEditSave={onEditAccountSave}
         editRequested={editRequestedAccountId === account.id}
         onEditCancel={handleEditCancel}
@@ -364,7 +370,8 @@ export default function MyAccountsTableSection({
       onToggleModel,
       onUpdateAccountEnabledModels,
       onUpdateAccountDefaultVariant,
-      refreshingAccountId,
+      refreshingUsageAccountIds,
+      refreshingModelsAccountIds,
     ]
   );
 
@@ -383,6 +390,27 @@ export default function MyAccountsTableSection({
     }),
     [expandedAccountKeys, renderExpandedAccountCard]
   );
+
+  const refreshAccountsButton = onRefreshAccounts ? (
+    <Button
+      variant="secondary"
+      size="default"
+      icon={
+        <HugeiconsIcon
+          icon={Refresh04Icon}
+          data-icon="refresh-cw"
+          size={14}
+          className={refreshSpinClass}
+        />
+      }
+      iconOnly
+      onClick={handleRefreshAccountsClick}
+      disabled={loading}
+      aria-label={t("common:actions.refresh")}
+      title={t("common:actions.refresh")}
+      data-testid="key-vault-accounts-refresh-button"
+    />
+  ) : null;
 
   const addKeyButton = (
     <Button
@@ -406,7 +434,6 @@ export default function MyAccountsTableSection({
       rows={accounts}
       getRowKey={(account) => account.id}
       rowDataTestId={(account) => `key-vault-account-row-${account.id}`}
-      onRowClick={setSingleExpandedAccount}
       expandable={expandable}
       headerHeight="tall"
       className="table-expanded-no-hover table-settings-expanded-compact"
@@ -415,7 +442,12 @@ export default function MyAccountsTableSection({
         onSearchChange,
         searchPlaceholder: t("keyVault.searchPlaceholder"),
         allowSearchClear: true,
-        rightContent: addKeyButton,
+        rightContent: (
+          <>
+            {refreshAccountsButton}
+            {addKeyButton}
+          </>
+        ),
       }}
       emptyTitle={t("keyVault.noAccountsFound")}
       emptyAction={{

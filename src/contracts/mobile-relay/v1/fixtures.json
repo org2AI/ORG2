@@ -1,0 +1,377 @@
+[
+  {
+    "name": "native ticket request defaults pairing code",
+    "type": "MobileConnectTicketRequest",
+    "input": {
+      "desktopId": "desktop-1",
+      "deviceToken": "synthetic-device"
+    },
+    "canonical": {
+      "desktopId": "desktop-1",
+      "deviceToken": "synthetic-device",
+      "pairingCode": ""
+    }
+  },
+  {
+    "name": "ticket rejects client supplied identity",
+    "type": "MobileConnectTicketRequest",
+    "input": {
+      "desktopId": "desktop-1",
+      "deviceToken": "synthetic-device",
+      "userId": "attacker"
+    },
+    "reject": true
+  },
+  {
+    "name": "native ticket response distinguishes admission and account expiry",
+    "type": "MobileConnectTicketResponse",
+    "input": {
+      "ticket": "synthetic-ticket",
+      "expiresAtMs": 1800000060000,
+      "authExpiresAtMs": 1800003600000
+    },
+    "canonical": {
+      "ticket": "synthetic-ticket",
+      "expiresAtMs": 1800000060000,
+      "authExpiresAtMs": 1800003600000
+    }
+  },
+  {
+    "name": "read-only enum",
+    "type": "PermissionTier",
+    "input": "read_only",
+    "canonical": "read_only"
+  },
+  {
+    "name": "full enum",
+    "type": "PermissionTier",
+    "input": "full",
+    "canonical": "full"
+  },
+  {
+    "name": "unknown tier",
+    "type": "PermissionTier",
+    "input": "admin",
+    "reject": true
+  },
+  {
+    "name": "default primary and ignored future field",
+    "type": "PairingInitRequest",
+    "input": {
+      "desktopId": "desktop-fixture",
+      "label": "手机",
+      "tier": "full",
+      "futureField": 42
+    },
+    "canonical": {
+      "desktopId": "desktop-fixture",
+      "label": "手机",
+      "tier": "full",
+      "isPrimary": false
+    }
+  },
+  {
+    "name": "explicit primary",
+    "type": "PairingInitRequest",
+    "input": {
+      "desktopId": "desktop-fixture",
+      "label": "Phone",
+      "tier": "read_only",
+      "isPrimary": true
+    },
+    "canonical": {
+      "desktopId": "desktop-fixture",
+      "label": "Phone",
+      "tier": "read_only",
+      "isPrimary": true
+    }
+  },
+  {
+    "name": "null is not boolean default",
+    "type": "PairingInitRequest",
+    "input": {
+      "desktopId": "d",
+      "label": "p",
+      "tier": "full",
+      "isPrimary": null
+    },
+    "reject": true
+  },
+  {
+    "name": "missing tier",
+    "type": "PairingInitRequest",
+    "input": {
+      "desktopId": "d",
+      "label": "p"
+    },
+    "reject": true
+  },
+  {
+    "name": "request camelCase required",
+    "type": "RevokeDeviceRequest",
+    "input": {
+      "device_id": "device-fixture"
+    },
+    "reject": true
+  },
+  {
+    "name": "revoke request",
+    "type": "RevokeDeviceRequest",
+    "input": {
+      "deviceId": "device-fixture"
+    },
+    "canonical": {
+      "deviceId": "device-fixture"
+    }
+  },
+  {
+    "name": "primary request",
+    "type": "SetPrimaryDesktopRequest",
+    "input": {
+      "desktopId": "desktop-fixture"
+    },
+    "canonical": {
+      "desktopId": "desktop-fixture"
+    }
+  },
+  {
+    "name": "pair approval",
+    "type": "PairingCompleteRequest",
+    "input": {
+      "pairingCode": "FIXTURE",
+      "tier": "read_only"
+    },
+    "canonical": {
+      "pairingCode": "FIXTURE",
+      "tier": "read_only"
+    }
+  },
+  {
+    "name": "pair response",
+    "type": "PairingInitResponse",
+    "input": {
+      "pairingCode": "FIXTURE",
+      "confirmationPhrase": "amber-birch-coral",
+      "qrPayload": "https://relay.example/orgii/mobile#pair=fixture",
+      "expiresInSeconds": 120
+    },
+    "canonical": {
+      "pairingCode": "FIXTURE",
+      "confirmationPhrase": "amber-birch-coral",
+      "qrPayload": "https://relay.example/orgii/mobile#pair=fixture",
+      "expiresInSeconds": 120
+    }
+  },
+  {
+    "name": "negative ttl",
+    "type": "PairingInitResponse",
+    "input": {
+      "pairingCode": "x",
+      "confirmationPhrase": "x",
+      "qrPayload": "x",
+      "expiresInSeconds": -1
+    },
+    "reject": true
+  },
+  {
+    "name": "optional lastSeen serializes null",
+    "type": "PairedDeviceInfo",
+    "input": {
+      "deviceId": "device-fixture",
+      "desktopId": "desktop-fixture",
+      "label": "手机",
+      "tier": "full",
+      "isPrimary": false,
+      "pairedAtMs": 1788600000000
+    },
+    "canonical": {
+      "deviceId": "device-fixture",
+      "desktopId": "desktop-fixture",
+      "label": "手机",
+      "tier": "full",
+      "isPrimary": false,
+      "pairedAtMs": 1788600000000,
+      "lastSeenMs": null
+    }
+  },
+  {
+    "name": "fractional timestamp",
+    "type": "PairedDeviceInfo",
+    "input": {
+      "deviceId": "d",
+      "desktopId": "d",
+      "label": "p",
+      "tier": "full",
+      "isPrimary": false,
+      "pairedAtMs": 1.5,
+      "lastSeenMs": null
+    },
+    "reject": true
+  },
+  {
+    "name": "registered snake fields",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "desktop_registered",
+      "desktop_id": "desktop-fixture",
+      "protocol_version": 1
+    },
+    "canonical": {
+      "type": "desktop_registered",
+      "desktop_id": "desktop-fixture",
+      "protocol_version": 1
+    }
+  },
+  {
+    "name": "wrong outer casing",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "desktop_registered",
+      "desktopId": "d",
+      "protocolVersion": 1
+    },
+    "reject": true
+  },
+  {
+    "name": "version u32 overflow",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "desktop_registered",
+      "desktop_id": "d",
+      "protocol_version": 4294967296
+    },
+    "reject": true
+  },
+  {
+    "name": "negative version",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "desktop_registered",
+      "desktop_id": "d",
+      "protocol_version": -1
+    },
+    "reject": true
+  },
+  {
+    "name": "connected mixed nesting",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "mobile_connected",
+      "connection_id": "connection-fixture",
+      "device": {
+        "deviceId": "device-fixture",
+        "desktopId": "desktop-fixture",
+        "label": "Phone",
+        "tier": "read_only",
+        "isPrimary": true,
+        "pairedAtMs": 1788600000000,
+        "lastSeenMs": 1788600000010
+      }
+    },
+    "canonical": {
+      "type": "mobile_connected",
+      "connection_id": "connection-fixture",
+      "device": {
+        "deviceId": "device-fixture",
+        "desktopId": "desktop-fixture",
+        "label": "Phone",
+        "tier": "read_only",
+        "isPrimary": true,
+        "pairedAtMs": 1788600000000,
+        "lastSeenMs": 1788600000010
+      }
+    }
+  },
+  {
+    "name": "disconnect",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "mobile_disconnected",
+      "connection_id": "connection-fixture"
+    },
+    "canonical": {
+      "type": "mobile_disconnected",
+      "connection_id": "connection-fixture"
+    }
+  },
+  {
+    "name": "opaque mobile payload",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "mobile_frame",
+      "connection_id": "connection-fixture",
+      "payload": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "session/send",
+        "params": {
+          "text": "你好",
+          "nested": [
+            null,
+            false,
+            1,
+            {
+              "future": true
+            }
+          ]
+        }
+      }
+    },
+    "canonical": {
+      "type": "mobile_frame",
+      "connection_id": "connection-fixture",
+      "payload": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "session/send",
+        "params": {
+          "text": "你好",
+          "nested": [
+            null,
+            false,
+            1,
+            {
+              "future": true
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "null desktop payload",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "desktop_frame",
+      "connection_id": "connection-fixture",
+      "payload": null
+    },
+    "canonical": {
+      "type": "desktop_frame",
+      "connection_id": "connection-fixture",
+      "payload": null
+    }
+  },
+  {
+    "name": "error",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "error",
+      "code": "fixture_error",
+      "message": "Fixture only"
+    },
+    "canonical": {
+      "type": "error",
+      "code": "fixture_error",
+      "message": "Fixture only"
+    }
+  },
+  {
+    "name": "unknown frame",
+    "type": "RelayWireFrame",
+    "input": {
+      "type": "future_frame"
+    },
+    "reject": true
+  }
+]

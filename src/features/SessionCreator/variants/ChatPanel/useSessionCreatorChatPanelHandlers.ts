@@ -14,7 +14,7 @@ import {
   showDesktopOperationVisibilityTest,
   wingmanListMonitors,
 } from "@src/api/tauri/agent";
-import { KEY_SOURCE } from "@src/api/tauri/session";
+import { resolveAgentRuntimeSelection } from "@src/features/SessionCreator/agentRuntimeConfig";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import {
   createSystemPathSessionSource,
@@ -22,11 +22,8 @@ import {
   getSystemPathSourcePath,
   isSystemPathSourceId,
 } from "@src/features/SessionCreator/utils/systemPathSource";
-import {
-  isSourceCompatibleWithAgent,
-  useAgentCompatibility,
-} from "@src/hooks/models/useAgentCompatibility";
-import { useWorkspaceForm } from "@src/scaffold/GlobalSpotlight/hooks/forms";
+import { useAgentCompatibility } from "@src/hooks/models/useAgentCompatibility";
+import { useWorkingDirectoryForm } from "@src/scaffold/GlobalSpotlight/hooks/forms";
 import type { AgentSelection } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette";
 import type { RepoItem } from "@src/scaffold/GlobalSpotlight/types";
 import { REPO_KIND, type RepoKind } from "@src/store/repo/types";
@@ -73,10 +70,10 @@ export function useSessionCreatorChatPanelHandlers({
   const { registry } = useAgentCompatibility();
   const setCreatorState = useSetAtom(sessionCreatorStateAtom);
   const setSessionSource = useSetAtom(sessionSourceAtom);
-  const { handleImportWorkspace } = useWorkspaceForm({
-    onSuccess: async (workspaceId?: string) => {
+  const { handleImportWorkingDirectory } = useWorkingDirectoryForm({
+    onSuccess: async (repoId?: string) => {
       await forceRefreshRepos();
-      if (workspaceId) selectRepo(workspaceId);
+      if (repoId) selectRepo(repoId);
     },
   });
 
@@ -167,18 +164,18 @@ export function useSessionCreatorChatPanelHandlers({
           })
         );
         if (repoPath) {
-          void handleImportWorkspace(repoPath, {
+          void handleImportWorkingDirectory(repoPath, {
             promptForGitInit: false,
-          }).then((workspaceId) => {
-            if (!workspaceId) return;
+          }).then((repoId) => {
+            if (!repoId) return;
             // Align the repo-selection store with the imported workspace.
             // Without this, selectedRepoId keeps pointing at the previous
             // repo, useChatPanelBranchSync bails on the repoId mismatch, and
             // the branch pill stays icon-only until an unrelated refresh.
-            selectRepo(workspaceId);
+            selectRepo(repoId);
             setSessionSource({
               type: "local",
-              repoId: workspaceId,
+              repoId,
               repoName: repo.name,
               repoPath,
               branch: undefined,
@@ -196,7 +193,13 @@ export function useSessionCreatorChatPanelHandlers({
         branch: undefined,
       });
     },
-    [handleImportWorkspace, onRepoScopeChange, selectRepo, setSessionSource, t]
+    [
+      handleImportWorkingDirectory,
+      onRepoScopeChange,
+      selectRepo,
+      setSessionSource,
+      t,
+    ]
   );
 
   // ── Agent category selection ──────────────────────────────────────────────
@@ -217,42 +220,18 @@ export function useSessionCreatorChatPanelHandlers({
       }));
 
       if (selection.category === "human_session") return;
-
-      const newCliType = selection.cliAgentType;
-      const hasModel = Boolean(
-        advancedConfig.model || advancedConfig.listingModel
-      );
-      const hasSource = Boolean(advancedConfig.selectedSourceModelType);
-      const isHosted = advancedConfig.keySource === KEY_SOURCE.HOSTED;
-
-      const isSourceCompatible =
-        !hasSource ||
-        isHosted ||
-        !newCliType ||
-        isSourceCompatibleWithAgent(
-          registry,
-          selection.category,
-          newCliType,
-          advancedConfig.selectedSourceModelType!
-        );
-
-      if (!isSourceCompatible) {
-        setAdvancedConfig({
-          ...advancedConfig,
-          keySource: advancedConfig.keySource,
-          cliAgentType: newCliType,
-        });
-        setRequestModelOpen(true);
-      } else if (!hasModel || !hasSource) {
-        if (newCliType) {
-          setAdvancedConfig({ ...advancedConfig, cliAgentType: newCliType });
-        }
-        setRequestModelOpen(true);
-      } else {
-        if (newCliType) {
-          setAdvancedConfig({ ...advancedConfig, cliAgentType: newCliType });
-        }
+      const resolution = resolveAgentRuntimeSelection({
+        selection,
+        candidates: [advancedConfig],
+        registry,
+        allowHosted: true,
+        allowAmbientClaude: false,
+      });
+      if (resolution.status === "ready") {
+        setAdvancedConfig(resolution.config);
+        return;
       }
+      setRequestModelOpen(true);
     },
     [setCreatorState, setAdvancedConfig, advancedConfig, registry]
   );

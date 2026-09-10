@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -7,9 +7,9 @@ import Message from "@src/components/Message";
 import { ROUTES } from "@src/config/routes";
 import { useAppNavigation } from "@src/hooks/navigation/useAppNavigation";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
-import { Search01Icon } from "@src/icons";
 import { teamInboxUnreadCountAtom } from "@src/modules/MainApp/TeamInbox/store";
 import { useTeamInboxDataSource } from "@src/modules/MainApp/TeamInbox/useTeamInboxDataSource";
+import { openAgentSessionSearchSpotlight } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import {
   activeSessionCreatorDraftIdAtom,
   deleteSessionCreatorDraftAtom,
@@ -20,26 +20,23 @@ import {
   visitedSessionsAtom,
   workstationActiveSessionIdAtom,
 } from "@src/store/session";
-import { CHAT_PANEL_SURFACE_KIND } from "@src/store/ui/chatPanelAtom";
 import {
   clearSessionSidebarRevealAtom,
   sessionSidebarRevealRequestAtom,
   sidebarCollapsedAtom,
 } from "@src/store/ui/sidebarAtom";
+import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 
 import { SidebarBottomBar } from "../../blocks";
 import SidebarSettingsMenuButton from "../../blocks/SidebarSettingsMenuButton";
 import NavigationSidebar from "../../variants/NavigationSidebar";
 import SidebarAccountButton from "../SidebarAccountButton";
-import SidebarGuideButton from "../SidebarGuideButton";
+import { NEW_SESSION_MENU_ITEM_ID } from "../sidebarConnectorUtils";
 import type { SidebarTabDisposition } from "../sidebarTabNavigation";
-import { useSessionMenuItems } from "../useSessionMenuItems";
+import { useSessionMenuItems } from "../useSessionMenuItems/index";
 import { DEFAULT_COLLAPSED_SECTION_IDS } from "../workstationSidebarData";
+import { SessionSidebarViewSwitcher } from "./SessionSidebarViewSwitcher";
 import { SidebarDialogs } from "./SidebarDialogs";
-import {
-  type WorkstationSidebarViewKey,
-  WorkstationSidebarViewSwitcher,
-} from "./WorkstationSidebarViewSwitcher";
 import { openNewChatFromSidebar } from "./sessionEntryActions";
 import { useWorkstationSidebarBottomActions } from "./sidebarConnector.bottomActions";
 import { useWorkstationSidebarChatPanelAtoms } from "./sidebarConnector.chatPanelAtoms";
@@ -53,10 +50,10 @@ import { useWorkstationSidebarScopeAndPagination } from "./sidebarConnector.scop
 import { useWorkstationSidebarSelectionAndCollapse } from "./sidebarConnector.selectionAndCollapse";
 import { useWorkstationSidebarSessionInteractionHandlers } from "./sidebarConnector.sessionInteractionHandlers";
 import { useSidebarSessionRefreshAction } from "./sidebarSessionRefresh";
-import { SidebarSearchShortcutTooltip } from "./sidebarTabs";
-import type { WorkstationSidebarKey } from "./types";
+import type { SessionSidebarView } from "./types";
+import { useMobileSidebarSessions } from "./useMobileSidebarSessions";
+import { useSessionSidebarOrdering } from "./useSessionSidebarOrdering";
 import { useSessionSidebarRowActions } from "./useSessionSidebarRowActions";
-import { useSidebarGuide } from "./useSidebarGuide";
 import { useSidebarStationNavigation } from "./useSidebarStationNavigation";
 import { useWorkItemsSidebarSurface } from "./useWorkItemsSidebarSurface";
 import { useWorkspaceGroupActions } from "./useWorkspaceGroupActions";
@@ -64,7 +61,7 @@ import { useWorkspaceGroupActions } from "./useWorkspaceGroupActions";
 /**
  * Owns organization scope, cross-surface reveal/selection, and shared sidebar chrome.
  * Work-item state/actions, channel scope composition, session row actions/dialogs,
- * and guide workflows have dedicated owners. Every controller remains mounted
+ * workflows have dedicated owners. Every controller remains mounted
  * with this connector; switching views only changes the existing visibility gates.
  */
 export const WorkstationSidebarConnector: React.FC = () => {
@@ -128,30 +125,10 @@ export const WorkstationSidebarConnector: React.FC = () => {
   const { openSession } = useSessionView();
   const activeSessionId = useAtomValue(workstationActiveSessionIdAtom) ?? "";
   const { goToNewSession, navigateTo } = useAppNavigation();
-  const [activeSidebarKey, setActiveSidebarKey] =
-    useState<WorkstationSidebarKey>("workstation");
-  const [sessionSearchQuery, setSessionSearchQuery] = useState("");
-  const [sessionSearchVisible, setSessionSearchVisible] = useState(false);
-  const handleOpenSessionSearch = useCallback(() => {
-    setSessionSearchVisible(true);
-  }, []);
-  const [channelsOpen, setChannelsOpen] = useState(false);
-  const [workItemsOpen, setWorkItemsOpen] = useState(false);
-  const workItemsContentVisible =
-    activeSidebarKey === "workstation" && workItemsOpen;
-  const channelSidebarVisible =
-    activeSidebarKey === "workstation" && channelsOpen;
-  const handleViewChange = useCallback((key: WorkstationSidebarViewKey) => {
-    setActiveSidebarKey("workstation");
-    setChannelsOpen(key === "channels");
-    setWorkItemsOpen(key === "work-items");
-  }, []);
-  const activeViewKey: WorkstationSidebarViewKey =
-    activeSidebarKey === "projects" || workItemsContentVisible
-      ? "work-items"
-      : channelSidebarVisible
-        ? "channels"
-        : "sessions";
+  const [activeViewKey, setActiveViewKey] =
+    useState<SessionSidebarView>("sessions");
+  const workItemsContentVisible = activeViewKey === "work-items";
+  const channelSidebarVisible = activeViewKey === "channels";
 
   const {
     sortedSessions,
@@ -349,7 +326,6 @@ export const WorkstationSidebarConnector: React.FC = () => {
     repoPathToName,
     groupByMode,
     untitledSession,
-    searchQuery: sessionSearchQuery,
     selectedOrgIds: sessionFilterOrgIds,
     extraSessionIds: cloudScopedExtraSessionIds,
     excludedSessionIds: sessionListExcludedIds,
@@ -379,7 +355,7 @@ export const WorkstationSidebarConnector: React.FC = () => {
     sessionSearchLabel: t("sidebar.search.sessions"),
     sessionRefreshLabel: tCommon("actions.refresh"),
     sessionRefreshIconClassName: refreshSpinClass,
-    onSessionSearch: handleOpenSessionSearch,
+    onSessionSearch: openAgentSessionSearchSpotlight,
     onSessionRefresh: handleRefreshSessions,
     createProjectLabel,
     createWorkItemLabel,
@@ -477,8 +453,16 @@ export const WorkstationSidebarConnector: React.FC = () => {
     cloudMySessionsVisibleCount,
   });
 
+  useMobileSidebarSessions({
+    scope: activeOrgId,
+    loading: sessionsLoading || orgSelectorLoading,
+    items: sessionMenuItems,
+    sessionMap,
+    repoPathToName,
+  });
+
   const workItems = useWorkItemsSidebarSurface({
-    enabled: activeSidebarKey === "projects" || workItemsContentVisible,
+    enabled: workItemsContentVisible,
     activeProjectOrgId,
     activateMyStationRouteForProjectTabContent,
     resetWorkManagementStateForProjectsContent,
@@ -488,7 +472,7 @@ export const WorkstationSidebarConnector: React.FC = () => {
     useWorkstationSidebarSelectionAndCollapse({
       activeSessionCreatorDraftId,
       highlightedSessionId,
-      activeSidebarKey,
+      activeViewKey,
       activeChatPanelTabType: activeChatPanelTab?.type ?? null,
       chatPanelContentMode,
       chatPanelCreateTarget,
@@ -496,7 +480,6 @@ export const WorkstationSidebarConnector: React.FC = () => {
       chatPanelSelectedWorkItem,
       projectsSelectedMenuItemId: workItems.selectedMenuItemId,
       sessionCreatorDrafts,
-      workItemsContentVisible,
       activeWorkManagementSection,
       workManagementProjectsView,
       setGroupVisibleCounts,
@@ -507,26 +490,38 @@ export const WorkstationSidebarConnector: React.FC = () => {
       setCollapsedSectionIds,
     });
 
-  const projectsVisible =
-    activeSidebarKey === "projects" || workItemsContentVisible;
-  const sidebarMenuItems = projectsVisible
+  const sidebarMenuItems = workItemsContentVisible
     ? workItems.menuItems
     : channelSidebarVisible
       ? channelMenuItems
       : sessionMenuItems;
-  const resolvedCollapsedSectionIds = projectsVisible
+  const sidebarScrollLayout = useMemo(() => {
+    if (activeViewKey !== "sessions") {
+      return { pinnedMenuItems, menuItems: sidebarMenuItems };
+    }
+    return {
+      pinnedMenuItems: pinnedMenuItems.filter(
+        (item) => item.id === NEW_SESSION_MENU_ITEM_ID
+      ),
+      menuItems: [
+        ...pinnedMenuItems.filter(
+          (item) => item.id !== NEW_SESSION_MENU_ITEM_ID
+        ),
+        ...sidebarMenuItems,
+      ],
+    };
+  }, [activeViewKey, pinnedMenuItems, sidebarMenuItems]);
+  const resolvedCollapsedSectionIds = workItemsContentVisible
     ? workItems.collapsedSectionIds
     : collapsedSectionIds;
-  const resolvedOnCollapsedSectionIdsChange = projectsVisible
+  const resolvedOnCollapsedSectionIdsChange = workItemsContentVisible
     ? workItems.onCollapsedSectionIdsChange
     : handleSessionCollapsedSectionIdsChange;
 
   useWorkstationSidebarRevealNavigationEffects({
     sessionSidebarRevealRequest,
     setSidebarCollapsed,
-    setActiveSidebarKey,
-    setWorkItemsOpen,
-    setChannelsOpen,
+    setActiveViewKey,
     setSelectedOrgId,
     setExpandedSubagentParentIds,
     activeSessionSidebarRevealRequest,
@@ -535,7 +530,6 @@ export const WorkstationSidebarConnector: React.FC = () => {
   });
 
   const {
-    handleOpenSpotlight,
     sidebarOrgSelector,
     resolvedMenuItemClick,
     resolvedMenuItemContextMenu,
@@ -548,8 +542,7 @@ export const WorkstationSidebarConnector: React.FC = () => {
     cloudSignedIn: cloudSignedInIdentity !== null,
     manageOrgLabel,
     handleCloudSignIn,
-    activeSidebarKey,
-    workItemsContentVisible,
+    activeViewKey,
     handleMenuItemContextMenu,
     activateMyStationRouteForProjectTabContent,
     t,
@@ -581,9 +574,7 @@ export const WorkstationSidebarConnector: React.FC = () => {
       sidebarMenuItems,
       resolvedOnCollapsedSectionIdsChange,
       sessions,
-      workItemsContentVisible,
-      channelSidebarVisible,
-      activeSidebarKey,
+      activeViewKey,
       projectsWorkItemsLoading: workItems.loading,
       projectsSidebarMenuItems: workItems.menuItems,
       sessionsLoading,
@@ -606,93 +597,70 @@ export const WorkstationSidebarConnector: React.FC = () => {
       pinnedMenuItems,
     });
 
-  const guide = useSidebarGuide({
-    t,
-    guideCloudOrg: manageableCloudOrg,
-    activeOrgId,
-    orgSelectorOptions,
-    sessionCount: sessions.length,
-    runtimeLabel,
+  const ordering = useSessionSidebarOrdering({
+    enabled: activeViewKey === "sessions",
+    items: sidebarMenuItems,
+    sessionMap,
+    onTogglePin: handleTogglePin,
   });
+  const wrapOrderedRow = ordering.wrap;
+  const renderOrderedMenuItem = useCallback(
+    (
+      item: Parameters<NonNullable<typeof resolvedRenderMenuItemWrapper>>[0],
+      node: React.ReactElement
+    ) =>
+      wrapOrderedRow(
+        item,
+        resolvedRenderMenuItemWrapper
+          ? resolvedRenderMenuItemWrapper(item, node)
+          : node
+      ),
+    [wrapOrderedRow, resolvedRenderMenuItemWrapper]
+  );
 
   return (
     <>
       <NavigationSidebar
-        items={[]}
-        activeKey={activeSidebarKey}
-        onChange={() => undefined}
-        menuItems={sidebarMenuItems}
-        pinnedMenuItems={pinnedMenuItems}
+        menuItems={sidebarScrollLayout.menuItems}
+        pinnedMenuItems={sidebarScrollLayout.pinnedMenuItems}
         selectedKey={resolvedSelectedMenuItemId}
         onMenuItemClick={resolvedMenuItemClick}
         onMenuItemContextMenu={resolvedMenuItemContextMenu}
-        renderMenuItemWrapper={resolvedRenderMenuItemWrapper}
-        hostTopBarLeadingContent={sidebarOrgSelector}
-        macTopBarFollowingContent={
+        renderMenuItemWrapper={renderOrderedMenuItem}
+        topBarFollowingContent={
           <div className="shrink-0 px-3 pt-1">{sidebarOrgSelector}</div>
         }
-        search={
-          activeViewKey === "sessions" && sessionSearchVisible
-            ? {
-                value: sessionSearchQuery,
-                onChange: setSessionSearchQuery,
-                placeholder: t("sidebar.search.sessions"),
-                noResultsTitle: t("sidebar.empty.noResultsFor", {
-                  query: sessionSearchQuery,
-                }),
-                autoFocus: true,
-                filterPinnedItems: false,
-              }
-            : undefined
-        }
         preListContent={
-          <WorkstationSidebarViewSwitcher
+          <SessionSidebarViewSwitcher
             activeKey={activeViewKey}
-            onChange={handleViewChange}
+            onChange={setActiveViewKey}
           />
         }
-        onAddNew={
-          activeViewKey === "sessions"
-            ? handleOpenSessionSearch
-            : handleOpenSpotlight
-        }
-        addIcon={Search01Icon}
-        addLabel={tCommon("actions.search")}
-        addTooltipContent={
-          activeViewKey === "sessions" ? undefined : (
-            <SidebarSearchShortcutTooltip
-              searchLabel={tCommon("actions.search")}
-            />
-          )
-        }
-        listTopPadding
+        listTopPadding={activeViewKey === "sessions" ? "row" : true}
         bottomContent={
-          <SidebarBottomBar
-            leftContent={
-              <SidebarSettingsMenuButton
-                onSignIn={
-                  cloudSignedInIdentity === null ? handleCloudSignIn : undefined
-                }
-                renderTrigger={({ isOpen, onClick }) => (
-                  <SidebarAccountButton
-                    identity={cloudSignedInIdentity}
-                    avatarUrl={cloudSignedInAvatarUrl}
-                    menuOpen={isOpen}
-                    onClick={onClick}
-                  />
-                )}
-              />
-            }
-            rightActions={
-              <>
-                <SidebarGuideButton
-                  {...guide}
-                  onStartSession={handleGoToNewSession}
+          <>
+            {ordering.unpinDropZone}
+            <SidebarBottomBar
+              leftContent={
+                <SidebarSettingsMenuButton
+                  onSignIn={
+                    cloudSignedInIdentity === null
+                      ? handleCloudSignIn
+                      : undefined
+                  }
+                  renderTrigger={({ isOpen, onClick }) => (
+                    <SidebarAccountButton
+                      identity={cloudSignedInIdentity}
+                      avatarUrl={cloudSignedInAvatarUrl}
+                      menuOpen={isOpen}
+                      onClick={onClick}
+                    />
+                  )}
                 />
-                {sidebarBottomRightActions}
-              </>
-            }
-          />
+              }
+              rightActions={sidebarBottomRightActions}
+            />
+          </>
         }
         isLoading={isLoading}
         collapsibleSections
@@ -709,6 +677,7 @@ export const WorkstationSidebarConnector: React.FC = () => {
             : undefined
         }
       />
+      {ordering.insertionLine}
       <SidebarDialogs
         cloudChannelsDialogs={cloudChannelsDialogs}
         localChannelsDialogs={localChannelsDialogs}

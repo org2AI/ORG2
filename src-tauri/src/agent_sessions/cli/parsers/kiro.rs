@@ -22,7 +22,7 @@ use core_types::activity::ActivityChunk;
 struct KiroAcpAdapter;
 
 impl AcpAgentAdapter for KiroAcpAdapter {
-    fn map_tool_kind(&self, kind: &str, raw_input: &Value) -> String {
+    fn map_tool_kind(&self, kind: &str, _title: &str, raw_input: &Value) -> String {
         // Kiro sometimes sends tool name in `name` field instead of using standard ACP kinds.
         // Check raw_input for a `name` or `tool` field that overrides the kind.
         let name = raw_input
@@ -80,6 +80,7 @@ pub async fn run_acp_protocol(
     resume_session_id: Option<&str>,
     chunk_tx: mpsc::Sender<ActivityChunk>,
     image_paths: Vec<String>,
+    mcp_servers: Vec<serde_json::Value>,
 ) -> Result<AcpSessionResult, String> {
     acp_common::run_acp_protocol(
         KiroAcpAdapter,
@@ -91,6 +92,7 @@ pub async fn run_acp_protocol(
         resume_session_id,
         chunk_tx,
         image_paths,
+        mcp_servers,
     )
     .await
 }

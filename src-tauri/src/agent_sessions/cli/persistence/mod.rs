@@ -17,3 +17,6 @@ mod resume_state_tests;
 
 #[cfg(test)]
 mod create_session_input_guards;
+
+mod native_commands;
+pub use native_commands::{load_native_commands_for_provider, record_native_commands};

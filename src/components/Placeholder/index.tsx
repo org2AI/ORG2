@@ -17,7 +17,7 @@
 import React, { memo, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
+import Button, { type ButtonProps } from "@src/components/Button";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import { TYPOGRAPHY } from "@src/config/workstation/tokens";
 import { HugeiconsIcon, Loading03Icon } from "@src/icons";
@@ -74,12 +74,10 @@ interface PlaceholderProps {
   /** Secondary message */
   subtitle?: string;
   /** Optional action button */
-  action?: {
+  action?: Omit<ButtonProps, "children"> & {
     label: string;
-    onClick: () => void;
-    /** Button variant — defaults to "secondary" */
-    variant?: "primary" | "secondary";
-    disabled?: boolean;
+    /** Wrap the shared button in a menu or other action control. */
+    renderButton?: (button: React.ReactElement<ButtonProps>) => React.ReactNode;
     dataTestId?: string;
   };
   /** Shortcut: retry handler for error variant */
@@ -149,13 +147,32 @@ export const Placeholder: React.FC<PlaceholderProps> = memo(
     const isError = variant === "error";
     const isLoading = variant === "loading";
 
-    const resolvedAction =
+    const resolvedAction: PlaceholderProps["action"] =
       action ??
       (onRetry && isError
         ? { label: t("actions.retry"), onClick: onRetry }
         : undefined);
 
     const isDetailPanel = resolvedPlacement === "detail-panel";
+    const {
+      label: actionLabel,
+      renderButton,
+      dataTestId,
+      className: actionClassName = "",
+      ...buttonProps
+    } = resolvedAction ?? {};
+    const actionButton = resolvedAction ? (
+      <Button
+        size="default"
+        {...buttonProps}
+        className={`${isDetailPanel ? "mt-3" : "mt-2"} ${actionClassName}`.trim()}
+        data-testid={dataTestId}
+      >
+        {actionLabel}
+      </Button>
+    ) : null;
+    const renderedAction =
+      actionButton && renderButton ? renderButton(actionButton) : actionButton;
     const titleClass = isDetailPanel
       ? TYPOGRAPHY.contentTitle
       : TYPOGRAPHY.panelTitle;
@@ -208,18 +225,7 @@ export const Placeholder: React.FC<PlaceholderProps> = memo(
                 {resolvedSubtitle}
               </div>
             )}
-            {resolvedAction && (
-              <Button
-                variant={resolvedAction.variant ?? "secondary"}
-                size="small"
-                className="mt-3"
-                onClick={resolvedAction.onClick}
-                disabled={resolvedAction.disabled}
-                data-testid={resolvedAction.dataTestId}
-              >
-                {resolvedAction.label}
-              </Button>
-            )}
+            {renderedAction}
           </div>
         </div>
       );
@@ -239,18 +245,7 @@ export const Placeholder: React.FC<PlaceholderProps> = memo(
           </span>
         )}
 
-        {resolvedAction && (
-          <Button
-            variant={resolvedAction.variant ?? "secondary"}
-            size="small"
-            className="mt-2"
-            onClick={resolvedAction.onClick}
-            disabled={resolvedAction.disabled}
-            data-testid={resolvedAction.dataTestId}
-          >
-            {resolvedAction.label}
-          </Button>
-        )}
+        {renderedAction}
       </div>
     );
   }

@@ -30,6 +30,13 @@ function readNestedString(
   return readString(parent as Record<string, unknown>, childKey);
 }
 
+export function getPrAuthor(detail: Record<string, unknown>) {
+  return {
+    login: readNestedString(detail, "user", "login"),
+    avatarUrl: readNestedString(detail, "user", "avatar_url"),
+  };
+}
+
 function readNumber(
   source: Record<string, unknown>,
   key: string

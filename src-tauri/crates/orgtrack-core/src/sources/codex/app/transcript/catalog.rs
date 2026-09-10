@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
@@ -35,67 +34,27 @@ pub(super) fn load_codex_turn_catalog(
     path: &Path,
     signature: CodexTranscriptSignature,
 ) -> Result<Vec<CodexTurnCatalogEntry>, String> {
-    let previous = {
+    {
         let mut cache = codex_turn_catalog_cache()
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         if let Some(entries) = cache.exact(path, signature) {
             return Ok(entries);
         }
-        cache.latest_for_path(path)
-    };
-
-    let entries = if let Some((previous_signature, previous_entries)) = previous {
-        if signature.size_bytes > previous_signature.size_bytes {
-            // The active Codex writer appends to its rollout. Re-read a bounded
-            // overlap so a line that straddled the previous EOF can be
-            // completed, then merge by byte offset. This keeps a live 1+ GiB
-            // session from rescanning its entire transcript on every refresh.
-            let overlap_start = previous_signature
-                .size_bytes
-                .saturating_sub(CODEX_REVERSE_SCAN_MAX_LINE_BYTES as u64);
-            let appended = find_codex_user_offsets_in_range(
-                path,
-                signature.size_bytes,
-                overlap_start,
-                CODEX_INITIAL_TURN_LIMIT,
-            )?;
-            merge_codex_turn_catalog(previous_entries, appended)
-        } else {
-            // Truncation or an in-place rewrite invalidates byte offsets.
-            find_codex_user_offsets_in_range(
-                path,
-                signature.size_bytes,
-                0,
-                CODEX_INITIAL_TURN_LIMIT,
-            )?
-        }
-    } else {
-        find_codex_user_offsets_in_range(path, signature.size_bytes, 0, CODEX_INITIAL_TURN_LIMIT)?
-    };
+    }
+    // Growth is not proof of append: rotation and in-place rewrites can both
+    // produce a larger file at this path. Rebuild changed catalogs from the
+    // source instead of retaining offsets/previews from an older revision.
+    // The reverse scanner still bounds the catalog and skips body decoding;
+    // unchanged revisions retain the exact-signature cache fast path.
+    let entries =
+        find_codex_user_offsets_in_range(path, signature.size_bytes, 0, CODEX_INITIAL_TURN_LIMIT)?;
 
     codex_turn_catalog_cache()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .insert(path.to_path_buf(), signature, entries.clone());
     Ok(entries)
-}
-
-fn merge_codex_turn_catalog(
-    previous: Vec<CodexTurnCatalogEntry>,
-    appended: Vec<CodexTurnCatalogEntry>,
-) -> Vec<CodexTurnCatalogEntry> {
-    let mut by_offset = previous
-        .into_iter()
-        .map(|entry| (entry.byte_offset, entry))
-        .collect::<HashMap<_, _>>();
-    for entry in appended {
-        by_offset.insert(entry.byte_offset, entry);
-    }
-    let mut entries = by_offset.into_values().collect::<Vec<_>>();
-    entries.sort_unstable_by_key(|entry| std::cmp::Reverse(entry.byte_offset));
-    entries.truncate(CODEX_INITIAL_TURN_LIMIT);
-    entries
 }
 
 pub(super) fn find_recent_codex_user_offsets(

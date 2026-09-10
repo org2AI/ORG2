@@ -3,7 +3,7 @@
  *
  * For messages that belong to a whole surface rather than one control: a failed
  * detail fetch, a degraded connection, a blocked operation. Distinct from
- * `InlineAlert`, which is a padded card that sits in content flow.
+ * `PageNotice`, which is a padded card that sits in content flow.
  *
  * A banner reporting a failure must outlive the state that produced it —
  * background refreshes routinely clear the error the moment they succeed, which

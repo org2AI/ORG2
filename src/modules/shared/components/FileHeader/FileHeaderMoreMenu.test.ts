@@ -140,7 +140,6 @@ describe("FileHeaderMoreMenu", () => {
       "settings:editor.wordWrap",
       "settings:editor.minimap",
       "settings:editor.highlightActiveLine",
-      "Git Blame",
     ]);
     expect(switches[0].getAttribute("aria-checked")).toBe("true");
     act(() => switches[0].click());
@@ -152,11 +151,6 @@ describe("FileHeaderMoreMenu", () => {
     );
     expect(props.onWordWrapChange).toHaveBeenCalledOnce();
     expect(props.onWordWrapChange).toHaveBeenCalledWith(true);
-    expect(switches[4].disabled).toBe(true);
-    act(() =>
-      switches[4].closest<HTMLElement>('[role="menuitemcheckbox"]')!.click()
-    );
-    expect(props.onGitBlameChange).not.toHaveBeenCalled();
     expect(props.setMenuVisible).not.toHaveBeenCalled();
     expect(element("file-header-ui-settings-submenu-panel")).toBe(panel);
 
@@ -192,7 +186,7 @@ describe("FileHeaderMoreMenu", () => {
     expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 
-  it("preserves disabled actions while loading without disabling display settings", () => {
+  it("hides unavailable actions while keeping available display settings", () => {
     render({ loading: true, showSearchAction: false });
     const menu = element("file-header-more-menu");
     for (const label of [
@@ -204,8 +198,7 @@ describe("FileHeaderMoreMenu", () => {
       const row = [
         ...menu.querySelectorAll<HTMLElement>('[role="menuitem"]'),
       ].find((item) => item.textContent?.includes(label))!;
-      expect(row.getAttribute("aria-disabled")).toBe("true");
-      act(() => row.click());
+      expect(row).toBeUndefined();
     }
     expect(props.onSaveClick).not.toHaveBeenCalled();
     expect(props.onDiscardClick).not.toHaveBeenCalled();

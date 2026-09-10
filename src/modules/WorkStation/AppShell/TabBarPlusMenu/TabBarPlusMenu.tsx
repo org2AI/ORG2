@@ -15,17 +15,19 @@ import {
   DROPDOWN_CLASSES,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import { RecentlyClosedTabsMenuSection } from "@src/components/RecentlyClosedTabsMenuSection";
+import { RecentTabsMenuSection } from "@src/components/RecentTabsMenuSection";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
+import { CHROME_TOOLTIP_HOVER_DELAY } from "@src/config/tooltip";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
-import { SessionIdentityIconById } from "@src/engines/ChatPanel/components/SessionIdentityIcon";
 import { useActiveRepoRef } from "@src/hooks/git/useActiveRepoRef";
 import { useWorkingTreeDiffTotals } from "@src/hooks/git/useWorkingTreeDiffTotals";
 import { Add01Icon, HugeiconsIcon } from "@src/icons";
+import { WorkstationTabIcon } from "@src/modules/WorkStation/shared/TabBar/components/WorkstationTabIcon";
 import { CODE_EDITOR_TOUR_TARGETS } from "@src/scaffold/Tutorials/codeEditorTourConfig";
+import { shouldShowInRecentTabsMenu } from "@src/shared/tabs/recentTabsMenu";
 import {
-  recentlyClosedWorkstationTabsAtom,
-  restoreRecentlyClosedWorkstationTabAtom,
+  openRecentWorkstationTabAtom,
+  recentWorkstationTabsAtom,
 } from "@src/store/workstation";
 
 import {
@@ -54,8 +56,8 @@ const TabBarPlusMenuComponent: React.FC<TabBarPlusMenuProps> = ({
   const { repoId, repoPath } = useActiveRepoRef();
   const { additions, deletions } = useWorkingTreeDiffTotals(repoId, repoPath);
   const [menuVisible, setMenuVisible] = useState(false);
-  const recentlyClosedTabs = useAtomValue(recentlyClosedWorkstationTabsAtom);
-  const restoreTab = useSetAtom(restoreRecentlyClosedWorkstationTabAtom);
+  const recentTabs = useAtomValue(recentWorkstationTabsAtom);
+  const openRecentTab = useSetAtom(openRecentWorkstationTabAtom);
 
   // ⌘T (`new_tab`) is exclusively bound to opening this menu. Only one
   // TabBarPlusMenu is mounted at a time per surface, so there is no double-fire.
@@ -69,6 +71,10 @@ const TabBarPlusMenuComponent: React.FC<TabBarPlusMenuProps> = ({
     () => actions.filter((action) => items.includes(action.id)),
     [actions, items]
   );
+  const visibleRecentTabs = useMemo(
+    () => recentTabs.filter(shouldShowInRecentTabsMenu),
+    [recentTabs]
+  );
   const triggerLabel = t("workstation.plusMenu.title");
   const droplist = (
     <div
@@ -81,28 +87,16 @@ const TabBarPlusMenuComponent: React.FC<TabBarPlusMenuProps> = ({
           deletions={deletions}
           onActionComplete={() => setMenuVisible(false)}
         />
-        <RecentlyClosedTabsMenuSection
-          tabs={recentlyClosedTabs.map((tab) => {
-            const sessionId =
-              tab.type === "chat-session" &&
-              typeof tab.data.sessionId === "string"
-                ? tab.data.sessionId
-                : null;
-            return {
-              id: tab.id,
-              title: tab.title,
-              leadingIcon: sessionId ? (
-                <SessionIdentityIconById
-                  sessionId={sessionId}
-                  isSelected={false}
-                />
-              ) : undefined,
-            };
-          })}
-          label={t("workstation.plusMenu.recentlyClosed")}
-          onRestore={(tabId) => {
+        <RecentTabsMenuSection
+          tabs={visibleRecentTabs.map((tab) => ({
+            id: tab.id,
+            title: tab.title,
+            leadingIcon: <WorkstationTabIcon tab={tab} isActive={false} />,
+          }))}
+          label={t("workstation.plusMenu.recent")}
+          onOpen={(tabId) => {
             setMenuVisible(false);
-            restoreTab(tabId);
+            openRecentTab(tabId);
           }}
         />
       </div>
@@ -126,6 +120,7 @@ const TabBarPlusMenuComponent: React.FC<TabBarPlusMenuProps> = ({
         <TabBarTrailingIconButton
           title={triggerLabel}
           shortcutId="new_tab"
+          tooltipMouseEnterDelay={CHROME_TOOLTIP_HOVER_DELAY}
           tooltipDisabled={menuVisible}
           active={menuVisible}
           className="shrink-0"

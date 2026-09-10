@@ -476,3 +476,20 @@
   color: var(--color-text-3);
   white-space: nowrap;
 }
+
+// Native date/time segments share a primary selection, including AM/PM.
+// Keep these selectors separate: unsupported native pseudo-elements must not
+// invalidate selection styling on engines that expose a different set.
+.input:is([type="date"], [type="time"], [type="datetime-local"]) {
+  &::selection {
+    background-color: var(--color-primary-6);
+    color: #fff;
+  }
+
+  @each $segment in day, month, year, hour, minute, second, millisecond, ampm {
+    &::-webkit-datetime-edit-#{$segment}-field:focus {
+      background-color: var(--color-primary-6);
+      color: #fff;
+    }
+  }
+}

@@ -19,17 +19,27 @@
 //! historical `…::session::org_tasks::<name>` path.
 
 mod context;
+mod final_summary;
+mod group_actions;
 mod group_chat;
+mod group_projection;
+mod handoff;
 mod intervention;
 mod lifecycle;
 mod plan_approval;
 mod run_view;
+mod task_pages;
 
 #[cfg(test)]
 mod tests;
 
+pub use final_summary::*;
+pub use group_actions::*;
 pub use group_chat::*;
+pub use group_projection::*;
+pub use handoff::*;
 pub use intervention::*;
 pub use lifecycle::*;
 pub use plan_approval::*;
 pub use run_view::*;
+pub use task_pages::*;

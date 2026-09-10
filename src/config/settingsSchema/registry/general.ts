@@ -174,6 +174,20 @@ export const GENERAL_SETTINGS_REGISTRY = {
       monochrome: "Monochrome",
     },
   },
+  "general.dockIcon": {
+    schema: z.enum(["dark", "light", "rainbow"]),
+    default: "dark",
+    description:
+      "Icon the running app shows in the macOS Dock and app switcher, or the Windows/Linux taskbar. " +
+      "dark is the bundled icon (dark tile, light mark); light is its inverse; rainbow uses a multicolor tile. " +
+      "Per-process only: the installed bundle keeps its signed icon in Finder and Launchpad.",
+    category: "general",
+    enumLabels: {
+      dark: "Dark",
+      light: "Light",
+      rainbow: "Rainbow",
+    },
+  },
   "general.uiScale": {
     schema: z.number().min(75).max(150),
     default: 100,
@@ -317,7 +331,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
     schema: SidebarGuideProgressSchema,
     default: DEFAULT_SIDEBAR_GUIDE_PROGRESS,
     description:
-      "Completed milestones for the optional sidebar guide. The legacy setting key is retained so existing progress survives upgrades",
+      "Retired sidebar-guide progress, retained only to read existing settings. The onboarding discovery modal does not read or write this value",
     category: "general",
   },
   "general.githubStarPromptCompleted": {

@@ -36,7 +36,7 @@ const SessionRawTranscriptDialog: React.FC<SessionRawTranscriptDialogProps> =
         bodyClassName="flex min-h-0 flex-col p-0"
         style={{ height: "min(760px, 84vh)" }}
         footer={
-          <div className="flex items-center justify-end gap-2 px-4 py-3">
+          <div className="flex items-center justify-end gap-2 px-3 py-3">
             <Button
               size="small"
               icon={

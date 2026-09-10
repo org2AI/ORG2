@@ -1,0 +1,30 @@
+name: Targeted mutation tests
+on:
+  pull_request:
+    paths:
+      - "src/engines/SessionCore/control/sessionTimelineBoundaryHelpers.ts"
+      - "src/engines/SessionCore/control/__tests__/sessionTimelineBoundaryHelpers.test.ts"
+      - "config/stryker.config.mjs"
+      - "config/vitest.mutation.config.ts"
+      - ".github/workflows/targeted-mutation.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mutation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  timeline-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:mutation

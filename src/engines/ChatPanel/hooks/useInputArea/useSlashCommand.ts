@@ -5,8 +5,8 @@
  * When the user types "/" at position 0 in an empty input, shows available
  * built-in slash actions in a filterable dropdown.
  */
-import { useAtomValue, useSetAtom } from "jotai";
-import { type RefObject, useCallback, useMemo, useRef } from "react";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
+import { type RefObject, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ComposerInputRef } from "@src/components/ComposerInput";
@@ -22,12 +22,14 @@ import {
   buildSlashActionCommand,
   insertAtomicSlashActionPill,
 } from "@src/engines/ChatPanel/InputArea/components/SlashCommandPortal/slashItemUtils";
+import { eventsAtom } from "@src/engines/SessionCore";
 import {
   useSessionComposerModeFields,
   useSessionExecModeField,
 } from "@src/hooks/session/useSessionPatch";
 import { creatorDefaultExecModeAtom } from "@src/store/session/creatorDefaultExecModeAtom";
 import { creatorDefaultProductModeAtom } from "@src/store/session/creatorDefaultProductModeAtom";
+import { sessionByIdAtom } from "@src/store/session/sessionAtom/atoms";
 import type { SlashItem } from "@src/types/extensions";
 import {
   isAgentSession,
@@ -35,7 +37,14 @@ import {
 } from "@src/util/session/sessionDispatch";
 
 import { buildBuiltinSlashItems } from "./builtinSlashItems";
+import {
+  COMPOSER_COMMAND_ACTIONS,
+  buildNativeSlashItems,
+  composerActionFor,
+  nativeSlashNames,
+} from "./nativeSlashCommands";
 import { useSlashItemsCache } from "./useSlashItemsCache";
+import { useWorkItemQuickActions } from "./workItemQuickActions";
 
 interface UseSlashCommandOptions {
   composerInputRef: RefObject<ComposerInputRef | null>;
@@ -151,8 +160,15 @@ export function useSlashCommand(
   );
 
   const queryRef = useRef("");
+  const store = useStore();
+  const [nativeCatalog, setNativeCatalog] = useState<{
+    sessionId: string;
+    names: string[];
+    provider?: string;
+  } | null>(null);
 
   const { t } = useTranslation("sessions");
+  const scopedSession = useAtomValue(sessionByIdAtom(sessionId ?? ""));
   const builtinSlashItems = useMemo<SlashItem[]>(
     () =>
       buildBuiltinSlashItems({
@@ -166,33 +182,120 @@ export function useSlashCommand(
   );
 
   const {
-    filteredItems,
-    loading: slashLoading,
+    filteredItems: discoveredItems,
+    loading: discoveredItemsLoading,
     prefetch,
   } = useSlashItemsCache({
     builtinItems: builtinSlashItems,
     workspacePaths,
   });
 
-  const handleSlashCommand = useCallback(
-    (query: string) => {
-      queryRef.current = query;
-      setSlashQuery(query);
-      setShowSlashMenu(true);
-      prefetch(query);
-    },
-    [setShowSlashMenu, setSlashQuery, prefetch]
-  );
-
-  const handleSlashCommandClose = useCallback(() => {
+  const closeSlashMenu = useCallback(() => {
     setShowSlashMenu(false);
     setSlashQuery("");
     queryRef.current = "";
   }, [setShowSlashMenu, setSlashQuery]);
+  const {
+    items: workItemQuickActionItems,
+    loading: workItemQuickActionsLoading,
+    prefetch: prefetchWorkItemQuickActions,
+    handleSelect: handleWorkItemQuickActionSelect,
+  } = useWorkItemQuickActions(
+    isInSession ? (scopedSession ?? null) : null,
+    closeSlashMenu
+  );
+  const filteredItems = useMemo(() => {
+    // Creator variants opt in through their existing extraSlashItems seam.
+    // Other editors (human notes, Inbox and batch launch) do not own these controls.
+    if (!sessionId) return [...workItemQuickActionItems, ...discoveredItems];
+    const provider = scopedSession?.cliAgentType;
+    const names = [
+      ...new Set([
+        ...Object.keys(COMPOSER_COMMAND_ACTIONS),
+        "model",
+        "effort",
+        "fast",
+        "plan",
+        ...(sessionId ? ["rename", "status"] : []),
+        ...(nativeCatalog &&
+        nativeCatalog.sessionId === sessionId &&
+        nativeCatalog?.provider === provider
+          ? nativeCatalog.names
+          : nativeSlashNames(provider, sessionId ?? "", [])),
+      ]),
+    ];
+    const nativeItems = buildNativeSlashItems(
+      names,
+      (name) =>
+        t("input.nativeCommandDescription", {
+          command: `/${name}`,
+          provider:
+            composerActionFor(name) ||
+            ["model", "effort", "fast", "plan", "rename", "status"].includes(
+              name
+            )
+              ? "ORG2"
+              : provider === "codex"
+                ? "Codex"
+                : "Claude Code",
+        }),
+      provider ?? "builtin"
+    );
+    const reserved = new Set(names);
+    return [
+      ...workItemQuickActionItems,
+      ...nativeItems,
+      ...discoveredItems.filter((item) => !reserved.has(item.name)),
+    ];
+  }, [
+    discoveredItems,
+    workItemQuickActionItems,
+    scopedSession?.cliAgentType,
+    sessionId,
+    nativeCatalog,
+    t,
+  ]);
+  const slashLoading = discoveredItemsLoading || workItemQuickActionsLoading;
+  const handleSlashCommand = useCallback(
+    (query: string) => {
+      if (!query || queryRef.current === "") {
+        if (sessionId)
+          setNativeCatalog({
+            sessionId,
+            provider: scopedSession?.cliAgentType,
+            names: nativeSlashNames(
+              scopedSession?.cliAgentType,
+              sessionId,
+              store.get(eventsAtom)
+            ),
+          });
+      }
+      queryRef.current = query;
+      setSlashQuery(query);
+      setShowSlashMenu(true);
+      prefetch(query);
+      prefetchWorkItemQuickActions();
+    },
+    [
+      setShowSlashMenu,
+      setSlashQuery,
+      prefetch,
+      prefetchWorkItemQuickActions,
+      sessionId,
+      scopedSession?.cliAgentType,
+      store,
+    ]
+  );
+
+  const handleSlashCommandClose = useCallback(() => {
+    closeSlashMenu();
+  }, [closeSlashMenu]);
 
   const handleSlashSelect = useCallback(
     (item: SlashItem) => {
       if (!composerInputRef.current) return;
+
+      if (handleWorkItemQuickActionSelect(item)) return;
 
       if (item.category === "skill") {
         const skillToken = `/${item.skillName ?? item.name}`;
@@ -222,6 +325,8 @@ export function useSlashCommand(
 
       if (
         item.category === "action" &&
+        item.source !== "codex" &&
+        item.source !== "claude_code" &&
         insertAtomicSlashActionPill(composerInputRef.current, item.name)
       ) {
         setShowSlashMenu(false);
@@ -237,7 +342,12 @@ export function useSlashCommand(
       setSlashQuery("");
       queryRef.current = "";
     },
-    [composerInputRef, setShowSlashMenu, setSlashQuery]
+    [
+      composerInputRef,
+      setShowSlashMenu,
+      setSlashQuery,
+      handleWorkItemQuickActionSelect,
+    ]
   );
 
   const handleModeSelect = useCallback(

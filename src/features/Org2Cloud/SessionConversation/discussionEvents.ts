@@ -1,3 +1,7 @@
+import {
+  CONVERSATION_SENDER_ARG,
+  type ConversationSenderStamp,
+} from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import type { CloudSessionComment } from "../org2CloudCommentsClient";
@@ -5,10 +9,6 @@ import type {
   CommentThread,
   GroupedCommentThreads,
 } from "../org2CloudSessionCommentsAtom.types";
-import {
-  CONVERSATION_SENDER_ARG,
-  type ConversationSenderStamp,
-} from "./continuationEvents";
 
 export const SESSION_DISCUSSION_EVENT = "session_discussion";
 
@@ -75,37 +75,53 @@ function commentToDiscussionEvent(
     sessionId,
     createdAt: comment.createdAt,
     displayText: body,
-    displayStatus: "completed",
+    displayStatus:
+      comment.clientDeliveryStatus === "pending"
+        ? "pending"
+        : comment.clientDeliveryStatus === "failed"
+          ? "failed"
+          : "completed",
     displayVariant: "message",
     activityStatus: "agent",
     payloadRefs: [],
   };
-  if (
-    payload.kind === "user" &&
-    !payload.anchorLocalEventId &&
-    !payload.anchorOrphaned
-  ) {
-    // Plain Team chat: a first-class user message in the stream — same
-    // bubble, same turn grouping, attribution via the sender stamp.
+  if (payload.kind === "user") {
+    // Every human discussion message is part of the canonical conversation,
+    // including comments anchored to an earlier event. Plain Team Chat uses
+    // the ordinary bubble; anchored comments keep the richer card renderer,
+    // while both retain user role + sender provenance for native replay.
     const stamp: ConversationSenderStamp = {
       userId: comment.authorUserId,
-      displayName: comment.authorDisplayName?.trim() || comment.authorUserId,
+      ...(comment.authorDisplayName?.trim()
+        ? { displayName: comment.authorDisplayName.trim() }
+        : {}),
     };
     return {
       ...base,
       functionName: SESSION_DISCUSSION_EVENT,
-      uiCanonical: "user_message",
+      uiCanonical:
+        !payload.anchorLocalEventId && !payload.anchorOrphaned
+          ? "user_message"
+          : SESSION_DISCUSSION_EVENT,
       actionType: "raw",
       args: {
         sessionDiscussion: payload,
         [CONVERSATION_SENDER_ARG]: stamp,
       },
-      result: { type: "user", message: { content: body, role: "user" } },
+      result: {
+        type: "user",
+        message: { content: body, role: "user" },
+        ...(comment.clientDeliveryStatus
+          ? { deliveryStatus: comment.clientDeliveryStatus }
+          : {}),
+        ...(comment.clientDeliveryError
+          ? { deliveryError: comment.clientDeliveryError }
+          : {}),
+      },
       source: "user",
     } as SessionEvent;
   }
-  // Anchored threads and agent reports keep the card renderer: they carry
-  // context (turn reference, agent provenance) a plain bubble cannot show.
+  // Agent reports remain system cards rather than portable human prompts.
   return {
     ...base,
     functionName: SESSION_DISCUSSION_EVENT,

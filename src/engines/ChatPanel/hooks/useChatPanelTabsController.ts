@@ -3,12 +3,14 @@ import { useCallback } from "react";
 
 import {
   activateChatPanelTabAtom,
-  activeChatPanelTabAtom,
   addChatPanelTerminalTabAtom,
-  chatPanelTabsAtom,
   openOrFocusChatPanelStartPageTabAtom,
   openWorkManagementChatPanelTabAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
+import {
+  activeChatPanelTabAtom,
+  chatPanelTabsAtom,
+} from "@src/store/chatPanel/chatPanelTabsState";
 import { createChatPanelTerminalAtom } from "@src/store/chatPanel/chatPanelTerminalAtom";
 import { WORK_MANAGEMENT_SECTION } from "@src/store/workstation";
 import { terminalSessionsAtom } from "@src/store/workstation/codeEditor/terminal";

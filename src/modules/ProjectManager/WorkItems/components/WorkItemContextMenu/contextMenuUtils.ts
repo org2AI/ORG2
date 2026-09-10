@@ -1,3 +1,4 @@
+import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
 import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import type { ContextMenuItem } from "@src/types/core/shared";
 
@@ -56,11 +57,7 @@ export function matchesContextShortcut(
   item: ContextMenuItem,
   event: KeyboardEvent
 ): boolean {
-  if (
-    item.shortcutId &&
-    matchesDisplayedShortcut(getShortcutKeys(item.shortcutId), event)
-  )
-    return true;
+  if (item.shortcutId) return matchesShortcut(event, item.shortcutId);
   const shortcut = getContextMenuShortcut(item);
   if (!shortcut) return false;
   const normalized = shortcut.toLowerCase();

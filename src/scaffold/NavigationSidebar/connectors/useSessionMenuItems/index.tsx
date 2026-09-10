@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AgentLiveStatus } from "@src/api/tauri/rpc/schemas/agentOrgs";
-import { useFilteredItems } from "@src/hooks/search";
+import { sessionMatchesOrgFilter } from "@src/features/Organizations/sessionOrgScope";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import {
   type Session,
@@ -16,7 +16,6 @@ import {
 import { agentLiveStatusAtom } from "@src/store/session/agentLiveStatusAtom";
 import { sessionBranchTagsVisibleAtom } from "@src/store/ui/sidebarAtom";
 import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
-import { getSessionSearchText } from "@src/util/session/sessionSearch";
 import { isPrimarySessionListSession } from "@src/util/session/sessionVisibility";
 
 import {
@@ -30,7 +29,6 @@ import {
   buildByTimeMenuItems,
   buildByWorkspaceMenuItems,
 } from "./menuSectionBuilders";
-import { sessionMatchesOrgFilter } from "./orgFilter";
 import {
   type SessionPaginationPlan,
   appendSessionGroup,
@@ -164,7 +162,6 @@ export function useSessionMenuItems({
   repoPathToName,
   groupByMode,
   untitledSession,
-  searchQuery = "",
   selectedOrgIds,
   extraSessionIds,
   excludedSessionIds,
@@ -376,20 +373,14 @@ export function useSessionMenuItems({
     [excludedSessionIds, visibleSessions]
   );
 
-  const { filteredItems: searchedSessions, isFiltering } = useFilteredItems({
-    items: listedSessions,
-    searchQuery,
-    getSearchText: (session) => getSessionSearchText(session, untitledSession),
-  });
-
   const pinnedSessions = useMemo(
-    () => searchedSessions.filter((session) => session.pinned),
-    [searchedSessions]
+    () => listedSessions.filter((session) => session.pinned),
+    [listedSessions]
   );
 
   const unpinnedSessions = useMemo(
-    () => searchedSessions.filter((session) => !session.pinned),
-    [searchedSessions]
+    () => listedSessions.filter((session) => !session.pinned),
+    [listedSessions]
   );
 
   const sessionMap = useMemo(() => {
@@ -461,13 +452,12 @@ export function useSessionMenuItems({
   );
 
   const trailingLoadMoreItems = useMemo<NavigationMenuItem[]>(() => {
-    if (isFiltering) return [];
     const plan = getUnifiedPaginationPlan(
       pagination,
       listedSessions.length > 0
     );
     return plan ? [unifiedLoadMoreRow(plan, paginationLabelFor(plan))] : [];
-  }, [isFiltering, listedSessions.length, pagination, paginationLabelFor]);
+  }, [listedSessions.length, pagination, paginationLabelFor]);
 
   const appendTrailingLoadMoreItems = useCallback(
     (items: NavigationMenuItem[]) => {
@@ -484,10 +474,9 @@ export function useSessionMenuItems({
       groupId: string,
       groupSessions: readonly Session[]
     ): boolean => {
-      const visibleCount =
-        isFiltering || showAllLoadedGroupSessions
-          ? groupSessions.length
-          : (groupVisibleCounts.get(groupId) ?? defaultGroupVisibleCount);
+      const visibleCount = showAllLoadedGroupSessions
+        ? groupSessions.length
+        : (groupVisibleCounts.get(groupId) ?? defaultGroupVisibleCount);
       const revealedIndex = groupSessions.reduce(
         (lastIndex, session, index) =>
           revealedSessionIds.has(session.session_id) ? index : lastIndex,
@@ -506,7 +495,6 @@ export function useSessionMenuItems({
       buildSessionRow,
       defaultGroupVisibleCount,
       groupVisibleCounts,
-      isFiltering,
       revealedSessionIds,
       showAllLoadedGroupSessions,
       tCommon,
@@ -566,13 +554,12 @@ export function useSessionMenuItems({
         unpinnedSessions,
         appendPinnedSessions,
         appendGroupSessions,
-        loadMoreRowFor: isFiltering ? () => null : loadMoreRowFor,
+        loadMoreRowFor,
       }),
     [
       unpinnedSessions,
       appendPinnedSessions,
       appendGroupSessions,
-      isFiltering,
       loadMoreRowFor,
     ]
   );
@@ -605,6 +592,16 @@ export function useSessionMenuItems({
   );
   const baseMenuItems = useMemo<NavigationMenuItem[]>(() => {
     switch (groupByMode) {
+      case "none": {
+        const items: NavigationMenuItem[] = [];
+        const hiddenPinned = appendPinnedSessions(items, false);
+        items.push(
+          separator("sessions", tCommon("sessions:chat.history", "Sessions"))
+        );
+        const hidden = appendGroupSessions(items, "sessions", unpinnedSessions);
+        if (!hidden && !hiddenPinned) appendTrailingLoadMoreItems(items);
+        return items;
+      }
       case "byAgent":
         return byAgentMenuItems;
       case "byWorkspace":
@@ -613,7 +610,17 @@ export function useSessionMenuItems({
       default:
         return byTimeMenuItems;
     }
-  }, [groupByMode, byTimeMenuItems, byAgentMenuItems, byWorkspaceMenuItems]);
+  }, [
+    groupByMode,
+    byTimeMenuItems,
+    byAgentMenuItems,
+    byWorkspaceMenuItems,
+    appendPinnedSessions,
+    appendGroupSessions,
+    appendTrailingLoadMoreItems,
+    unpinnedSessions,
+    tCommon,
+  ]);
 
   const menuItems = useMemo<NavigationMenuItem[]>(
     () =>

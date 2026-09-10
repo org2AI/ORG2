@@ -88,5 +88,3 @@ export const LayoutButtons: React.FC<LayoutButtonsProps> = memo(
 );
 
 LayoutButtons.displayName = "LayoutButtons";
-
-export default LayoutButtons;

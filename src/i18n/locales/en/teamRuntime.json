@@ -6,7 +6,6 @@
     "today": "Today",
     "everyone": "Everyone",
     "activeMembers": "Active members",
-    "systemsCurrent": "{{current}} of {{total}} systems current",
     "usageByAgent": "Usage by agent",
     "recentSessions": "Latest shared sessions",
     "recentLoading": "Loading shared sessions…",
@@ -22,17 +21,17 @@
     "action": "Sign in"
   },
   "noOrgs": {
-    "title": "No cloud organization yet",
-    "subtitle": "Join or create an organization and your teammates will show up here."
+    "title": "No cloud workspace yet",
+    "subtitle": "Join or create a workspace and your teammates will show up here."
   },
   "unsupported": {
     "title": "Backend needs upgrading",
-    "subtitle": "This organization's cloud backend doesn't support team runtime sharing yet."
+    "subtitle": "This workspace's cloud backend doesn't support team runtime sharing yet."
   },
   "disabled": {
     "title": "Team runtime sharing is off",
-    "subtitle": "An org admin can turn it on in the organization settings.",
-    "adminSubtitle": "You can turn it on in the organization settings."
+    "subtitle": "A workspace admin can turn it on in the workspace settings.",
+    "adminSubtitle": "You can turn it on in the workspace settings."
   },
   "empty": {
     "title": "No member data yet",
@@ -72,13 +71,9 @@
     "totalSessions": "Total sessions",
     "lastSynced": "Last synced"
   },
-  "selfService": {
-    "hint": "Your own runtime is shared with this organization while sharing is on.",
-    "action": "Stop sharing & remove my data"
-  },
   "orgSettings": {
     "label": "Team runtime sharing",
-    "help": "Members' machine load, usage totals, and builder profile are shared with the org at this interval. Aggregates only — never transcripts, repos, or titles.",
+    "help": "Members' machine load, usage totals, and builder profile are shared with the workspace at this interval. Aggregates only — never transcripts, repos, or titles.",
     "memberNote": "Enabled by an admin. Interval: {{interval}}.",
     "off": "Off",
     "interval": {

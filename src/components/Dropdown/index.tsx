@@ -7,6 +7,8 @@
  * 2. **options mode** (new) — pass `options[]` for built-in rendering with
  *    search, keyboard navigation, multi-select, loading/empty states
  *
+ * Options mode includes the themed panel surface by default. Width and layout
+ * remain caller-controlled. Custom droplist content owns its own surface.
  * When `options` is provided, droplist is ignored.
  *
  * @example
@@ -52,7 +54,7 @@ import {
   calculateDropdownPosition,
   resolveVerticalFit,
 } from "./positioning";
-import { DROPDOWN_PANEL } from "./tokens";
+import { DROPDOWN_CLASSES, DROPDOWN_PANEL } from "./tokens";
 import type {
   DropdownOption,
   DropdownOptionGroup,
@@ -486,7 +488,9 @@ const Dropdown: React.FC<DropdownProps> = ({
         dropdownRef={dropdownRef}
         position={verticalFit.position}
         maxHeight={verticalFit.constrained ? verticalFit.maxHeight : undefined}
-        className={className}
+        className={
+          isOptionsMode ? `${DROPDOWN_CLASSES.panel} ${className}` : className
+        }
         style={style}
         dropdownPosition={dropdownPosition}
         trigger={trigger}

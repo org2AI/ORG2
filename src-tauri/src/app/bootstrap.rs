@@ -8,6 +8,8 @@
 use crate::runtime_instance;
 use crate::setup::*;
 
+use std::sync::{Mutex, OnceLock};
+
 #[cfg(target_os = "macos")]
 use crate::single_instance_focus;
 
@@ -25,6 +27,25 @@ fn write_panic_report_to_stderr(report: &str) {
 
 pub(crate) fn dev_startup_debug_enabled() -> bool {
     std::env::var("ORGII_DEV_STARTUP_DEBUG").as_deref() == Ok("true")
+}
+
+static TRACING_WORKER_GUARD: OnceLock<Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>> =
+    OnceLock::new();
+
+/// Flush the non-blocking file appender before the process exits.
+///
+/// Keeping the guard in a takeable process-global slot preserves logging for
+/// the whole app lifetime while still allowing the final shutdown metrics to
+/// reach disk before Tauri calls `std::process::exit`.
+pub(crate) fn flush_tracing_for_shutdown() {
+    let Some(slot) = TRACING_WORKER_GUARD.get() else {
+        return;
+    };
+    let guard = slot
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .take();
+    drop(guard);
 }
 
 /// Linux-only env guards that cap WebKitGTK CPU during streaming/output (issue
@@ -198,9 +219,7 @@ pub(crate) fn bootstrap(identifier: &str) {
         std::fs::create_dir_all(&log_dir).ok();
 
         let file_appender = tracing_appender::rolling::daily(&log_dir, "orgii.log");
-        let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-        // Leak the guard so it lives for the entire process lifetime
-        std::mem::forget(_guard);
+        let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
         let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
             EnvFilter::new(
@@ -224,6 +243,7 @@ pub(crate) fn bootstrap(identifier: &str) {
                     .with_writer(non_blocking),
             )
             .init();
+        let _ = TRACING_WORKER_GUARD.set(Mutex::new(Some(guard)));
 
         tracing::info!(
             "Tracing initialized — log file: {}/orgii.log",

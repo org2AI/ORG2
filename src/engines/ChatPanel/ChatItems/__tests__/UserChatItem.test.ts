@@ -3,14 +3,18 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import {
+  CONVERSATION_SENDER_ARG,
+  type ConversationViewerState,
+} from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
+import {
   makeChatItem,
   makeSessionEvent,
 } from "@src/engines/SessionCore/rendering/props/__tests__/fixtures";
 import { namespaceCopyEventId } from "@src/features/TeamCollaboration/copyEventId";
 import type { Session } from "@src/store/session";
 
+import { ConversationSenderMetadataProvider } from "../ConversationSenderMetadataContext";
 import { ParentAgentSenderProvider } from "../ParentAgentSenderContext";
-import { SharedConversationSenderProvider } from "../SharedConversationSenderContext";
 import UserChatItem from "../UserChatItem";
 
 function renderMessage(id: string): string {
@@ -27,11 +31,15 @@ function renderMessage(id: string): string {
 
   return renderToStaticMarkup(
     createElement(
-      SharedConversationSenderProvider,
+      ConversationSenderMetadataProvider,
       {
         value: {
-          displayName: "Ada Lovelace",
-          avatarUrl: "https://example.com/ada.png",
+          viewer: { status: "known", userId: "viewer-user" },
+          resolveSender: () => ({
+            userId: "ada-user",
+            displayName: "Ada Lovelace",
+            avatarUrl: "https://example.com/ada.png",
+          }),
         },
       },
       createElement(UserChatItem, { chatItem: makeChatItem(event) })
@@ -40,6 +48,32 @@ function renderMessage(id: string): string {
 }
 
 describe("UserChatItem shared sender presentation", () => {
+  it("renders a timestamp and the turn's provider-recorded model in its hover row", () => {
+    const event = makeSessionEvent({
+      id: "user-message-metadata",
+      sessionId: "agentsession-local",
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayText: "Hello from the conversation owner",
+      displayVariant: "message",
+      createdAt: "2026-09-06T01:09:00.000Z",
+    });
+
+    const markup = renderToStaticMarkup(
+      createElement(UserChatItem, {
+        chatItem: makeChatItem(event),
+        modelId: "gpt-5.3-codex-high",
+        onEditSubmit: () => undefined,
+      })
+    );
+
+    expect(markup).toContain('data-testid="chat-message-timestamp"');
+    expect(markup).toContain('dateTime="2026-09-06T01:09:00.000Z"');
+    expect(markup).toContain('data-testid="chat-message-model"');
+    expect(markup).toContain("GPT 5.3 Codex · High");
+  });
+
   it("shows the owner avatar beside a copied remote message", () => {
     const sessionId = "agentsession-local";
     const markup = renderMessage(
@@ -50,9 +84,9 @@ describe("UserChatItem shared sender presentation", () => {
     expect(markup).toContain('data-testid="shared-message-sender-avatar"');
     expect(markup).toContain('title="Ada Lovelace"');
     expect(markup).toContain('src="https://example.com/ada.png"');
-    // Same 28px circle the shared PersonAvatar draws everywhere else, rather
+    // Same 24px circle the shared PersonAvatar draws everywhere else, rather
     // than a locally styled one-off.
-    expect(markup).toContain("width:28px;height:28px");
+    expect(markup).toContain("width:24px;height:24px");
     expect(markup).toContain(
       "inline-flex shrink-0 overflow-hidden rounded-full"
     );
@@ -63,13 +97,189 @@ describe("UserChatItem shared sender presentation", () => {
 
     expect(markup).toContain('data-message-side="right"');
     expect(markup).not.toContain("shared-message-sender-avatar");
+    expect(markup).not.toContain("Ada Lovelace");
   });
 
-  it("does not render message-level copy or timestamp controls", () => {
+  it("keeps the viewer's stamped plane row on the right without an alias", () => {
+    const event = makeSessionEvent({
+      id: "convplane-self",
+      sessionId: "agentsession-local",
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayText: "Optimistic self message",
+      displayVariant: "message",
+      args: {
+        [CONVERSATION_SENDER_ARG]: {
+          userId: "viewer-user",
+          displayName: "Viewer Name",
+        },
+      },
+    });
+    const markup = renderToStaticMarkup(
+      createElement(
+        ConversationSenderMetadataProvider,
+        {
+          value: {
+            viewer: { status: "known", userId: "viewer-user" },
+            resolveSender: (_event, stamp) => stamp,
+          },
+        },
+        createElement(UserChatItem, { chatItem: makeChatItem(event) })
+      )
+    );
+
+    expect(markup).toContain('data-message-side="right"');
+    expect(markup).not.toContain("Viewer Name");
+    expect(markup).not.toContain("shared-message-sender-avatar");
+  });
+
+  it("resolves a known remote account without inventing a fallback label", () => {
+    const event = makeSessionEvent({
+      id: "convplane-remote",
+      sessionId: "agentsession-local",
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayText: "Remote account message",
+      displayVariant: "message",
+      args: {
+        [CONVERSATION_SENDER_ARG]: { userId: "remote-user" },
+      },
+    });
+    const markup = renderToStaticMarkup(
+      createElement(
+        ConversationSenderMetadataProvider,
+        {
+          value: {
+            viewer: { status: "known", userId: "viewer-user" },
+            resolveSender: (_event, stamp) =>
+              stamp?.userId === "remote-user"
+                ? {
+                    userId: stamp.userId,
+                    displayName: "Grace Hopper",
+                    avatarUrl: "https://example.com/grace.png",
+                  }
+                : stamp,
+          },
+        },
+        createElement(UserChatItem, { chatItem: makeChatItem(event) })
+      )
+    );
+
+    expect(markup).toContain('data-message-side="left"');
+    expect(markup).toContain("Grace Hopper");
+    expect(markup).toContain('src="https://example.com/grace.png"');
+    expect(markup).not.toContain("Shared user");
+  });
+  it("does not render a message-level copy control", () => {
     const markup = renderMessage("user-message-without-footer");
 
     expect(markup).not.toContain('data-icon="copy"');
-    expect(markup).not.toContain("<time");
+  });
+
+  it("keeps a stamped local self twin on the right before and after auth hydration", () => {
+    const event = makeSessionEvent({
+      id: "user-message-local-self",
+      sessionId: "agentsession-local",
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayText: "Local self while auth hydrates",
+      displayVariant: "message",
+      args: {
+        [CONVERSATION_SENDER_ARG]: {
+          userId: "viewer-user",
+          displayName: "Viewer Name",
+        },
+      },
+    });
+    const renderWithViewer = (viewer: ConversationViewerState) =>
+      renderToStaticMarkup(
+        createElement(
+          ConversationSenderMetadataProvider,
+          {
+            value: {
+              viewer,
+              resolveSender: (_event, stamp) => stamp,
+            },
+          },
+          createElement(UserChatItem, { chatItem: makeChatItem(event) })
+        )
+      );
+
+    const loading = renderWithViewer({ status: "loading" });
+    const hydrated = renderWithViewer({
+      status: "known",
+      userId: "viewer-user",
+    });
+    for (const markup of [loading, hydrated]) {
+      expect(markup).toContain('data-message-side="right"');
+      expect(markup).not.toContain("shared-message-sender-avatar");
+      expect(markup).not.toContain("Shared user");
+    }
+  });
+
+  it("keeps stamped remote provenance left while auth hydrates without inventing a name", () => {
+    const sessionId = "agentsession-local";
+    const event = makeSessionEvent({
+      id: namespaceCopyEventId(sessionId, "user-message-remote-stamped"),
+      sessionId,
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayText: "Remote while auth hydrates",
+      displayVariant: "message",
+      args: {
+        [CONVERSATION_SENDER_ARG]: { userId: "remote-user" },
+      },
+    });
+    const renderWithViewer = (viewer: ConversationViewerState) =>
+      renderToStaticMarkup(
+        createElement(
+          ConversationSenderMetadataProvider,
+          {
+            value: {
+              viewer,
+              resolveSender: (_event, stamp) => stamp,
+            },
+          },
+          createElement(UserChatItem, { chatItem: makeChatItem(event) })
+        )
+      );
+
+    const loading = renderWithViewer({ status: "loading" });
+    const hydrated = renderWithViewer({
+      status: "known",
+      userId: "viewer-user",
+    });
+    for (const markup of [loading, hydrated]) {
+      expect(markup).toContain('data-message-side="left"');
+      expect(markup).toContain("Remote while auth hydrates");
+      expect(markup).not.toContain("shared-message-sender-avatar");
+      expect(markup).not.toContain("Shared user");
+    }
+  });
+
+  it("does not invent a Shared user while remote provenance hydrates", () => {
+    const sessionId = "agentsession-local";
+    const event = makeSessionEvent({
+      id: namespaceCopyEventId(sessionId, "user-message-remote"),
+      sessionId,
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayText: "Loading provenance",
+      displayVariant: "message",
+    });
+    const markup = renderToStaticMarkup(
+      createElement(UserChatItem, { chatItem: makeChatItem(event) })
+    );
+
+    expect(markup).toContain('data-message-side="left"');
+    expect(markup).toContain("Loading provenance");
+    expect(markup).not.toContain("Shared user");
+    expect(markup).not.toContain("shared-message-sender-avatar");
   });
 });
 
@@ -126,6 +336,35 @@ describe("UserChatItem raw prompt affordance", () => {
   });
 });
 
+describe("UserChatItem delivery failure", () => {
+  it("renders provider details in a default session-body alert", () => {
+    const event = makeSessionEvent({
+      id: "user-message-failed",
+      sessionId: "agentsession-local",
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayText: "Continue this conversation",
+      displayVariant: "message",
+      displayStatus: "failed",
+      result: {
+        deliveryStatus: "failed",
+        deliveryError:
+          "provider-native transcript is not a semantic prefix of the canonical conversation",
+      },
+    });
+
+    const markup = renderToStaticMarkup(
+      createElement(UserChatItem, { chatItem: makeChatItem(event) })
+    );
+
+    expect(markup).toContain('data-testid="chat-message-delivery-failed"');
+    expect(markup).toContain(
+      "provider-native transcript is not a semantic prefix of the canonical conversation"
+    );
+  });
+});
+
 describe("UserChatItem parent-agent attribution", () => {
   const parentSession = {
     session_id: "agentsession-root",
@@ -171,6 +410,7 @@ describe("UserChatItem parent-agent attribution", () => {
     expect(markup).toContain('data-message-side="left"');
     expect(markup).toContain('data-testid="parent-agent-sender-avatar"');
     expect(markup).toContain('title="Key trading VM launch"');
+    expect(markup).toContain("flex h-6 w-6 items-center justify-center");
     // The viewer's own avatar must not stand in for the parent agent.
     expect(markup).not.toContain("shared-message-sender-avatar");
   });
@@ -207,4 +447,43 @@ describe("UserChatItem parent-agent attribution", () => {
     expect(markup).toContain('data-message-side="right"');
     expect(markup).not.toContain("parent-agent-sender-avatar");
   });
+});
+
+describe("stamped user message editing", () => {
+  it.each([
+    [{ status: "known", userId: "viewer-user" }, true],
+    [{ status: "known", userId: "other-user" }, false],
+    [{ status: "loading" }, false],
+  ] as const)(
+    "keeps editing scoped to the known author: %j",
+    (viewer, editable) => {
+      const event = makeSessionEvent({
+        id: "native-replay-user",
+        sessionId: "agentsession-local",
+        source: "user",
+        actionType: "raw",
+        functionName: "user_message",
+        displayText: "Keep the title search scope visible",
+        displayVariant: "message",
+        args: { [CONVERSATION_SENDER_ARG]: { userId: "viewer-user" } },
+      });
+      const markup = renderToStaticMarkup(
+        createElement(
+          ConversationSenderMetadataProvider,
+          { value: { viewer, resolveSender: (_event, stamp) => stamp } },
+          createElement(UserChatItem, {
+            chatItem: makeChatItem(event),
+            onEditSubmit: () => undefined,
+            onRestoreCheckpoint: () => undefined,
+          })
+        )
+      );
+      expect(
+        markup.includes('data-testid="chat-message-user-edit-button"')
+      ).toBe(editable);
+      expect(
+        markup.includes('data-testid="chat-message-restore-checkpoint"')
+      ).toBe(editable);
+    }
+  );
 });

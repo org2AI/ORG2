@@ -32,7 +32,7 @@ import type {
   NavDestinationGroup,
 } from "./navDestinationsTypes";
 
-export type { NavDestination, NavDestinationGroup };
+export type { NavDestination };
 
 // ============================================================================
 // Helpers
@@ -154,11 +154,11 @@ const SETTINGS: NavDestination[] = [
     }
   ),
   dest(
-    "nav-settings-monitor",
-    buildSettingsPath({ section: "monitor" }),
+    "nav-settings-storage",
+    buildSettingsPath({ section: "general", tab: "storage" }),
     "settings",
     {
-      keywords: ["monitor", "resources", "network", "storage"],
+      keywords: ["storage", "disk", "cleanup"],
     }
   ),
 ];

@@ -20,7 +20,6 @@ import {
 } from "@/src/store/git";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, {
-  createContext,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -29,7 +28,6 @@ import React, {
   useState,
 } from "react";
 
-import { setGitOperationAtom } from "@src/store/git";
 import {
   repoMapAtom,
   selectedRepoAtom,
@@ -45,6 +43,7 @@ import type {
 } from "@src/types/session/steps";
 
 import { REPO_SWITCH_DEBOUNCE_MS } from "./constants";
+import { GitStatusContext } from "./context";
 import { useGitEventListeners } from "./hooks/useGitEventListeners";
 import { useGitStatusFetch } from "./hooks/useGitStatusFetch";
 import { useWatcherRegistration } from "./hooks/useWatcherRegistration";
@@ -54,13 +53,7 @@ import type {
   StartupState,
 } from "./types";
 
-// ============================================
-// Context
-// ============================================
-
-export const GitStatusContext = createContext<GitStatusContextValue | null>(
-  null
-);
+export { GitStatusContext } from "./context";
 
 // ============================================
 // Provider
@@ -80,9 +73,6 @@ export const GitStatusProvider: React.FC<{ children: React.ReactNode }> = ({
   const setGitStatusAtom = useSetAtom(gitStatusAtom);
   const setScopedGitStatusAtom = useSetAtom(scopedGitStatusAtom);
   const setGitSuggestedActionAtom = useSetAtom(gitSuggestedActionAtom);
-
-  // Git operation broadcasting (for Output panel)
-  const setGitOperation = useSetAtom(setGitOperationAtom);
 
   // Check if repos are loaded OR we have cached repo data
   const reposLoaded = repoMap.size > 0 || !!currentRepo;
@@ -235,7 +225,6 @@ export const GitStatusProvider: React.FC<{ children: React.ReactNode }> = ({
     setGitSuggestedAction,
     setGitStatusAtom,
     setGitSuggestedActionAtom,
-    setGitOperation,
   });
 
   // ============================================

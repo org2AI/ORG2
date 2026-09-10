@@ -12,27 +12,7 @@
  * - Call forceRefresh() after mutations (save, stage, commit)
  * - NEVER create their own event listeners
  */
-import { useContext } from "react";
-
-import { DeferredGitStatusProvider } from "./DeferredGitStatusProvider";
-import { GitStatusContext, GitStatusProvider } from "./GitStatusProvider";
-import type { GitStatusContextValue } from "./types";
-
-// ============================================
-// Hook
-// ============================================
-
-export function useGitStatus(): GitStatusContextValue {
-  const context = useContext(GitStatusContext);
-  if (!context) {
-    throw new Error("useGitStatus must be used within GitStatusProvider");
-  }
-  return context;
-}
-
-// ============================================
-// Exports
-// ============================================
-
-export { DeferredGitStatusProvider, GitStatusProvider, GitStatusContext };
-export type { GitStatusContextValue };
+export { DeferredGitStatusProvider } from "./DeferredGitStatusProvider";
+export { GitStatusContext } from "./context";
+export { useGitStatus } from "./useGitStatus";
+export type { GitStatusContextValue } from "./types";

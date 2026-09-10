@@ -8,7 +8,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import {
   type RawEventInput,
   useNormalizedEventProps,
@@ -28,9 +28,9 @@ export const RateLimitHintEvent: React.FC<RateLimitHintEventProps> = (
   if (!normalizedProps) return null;
 
   return (
-    <InlineAlert type="warning" title={t("chat.rateLimitHintTitle")}>
+    <PageNotice type="warning" title={t("chat.rateLimitHintTitle")}>
       {t("chat.rateLimitHintBody")}
-    </InlineAlert>
+    </PageNotice>
   );
 };
 

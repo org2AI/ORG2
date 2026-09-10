@@ -21,6 +21,7 @@
  */
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
+import { z } from "zod/v4";
 
 import {
   DEFAULT_KANBAN_TIME_FILTER,
@@ -31,6 +32,7 @@ import {
   type KanbanSidebarFilter,
   type KanbanTimeFilter,
 } from "@src/features/TaskKanban/config";
+import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
 const AGENT_TYPE_FILTER_STORAGE_KEY = "orgii:kanbanAgentTypeFilter";
 const SIDEBAR_FILTER_STORAGE_KEY = "orgii:kanbanSidebarFilter";
@@ -39,192 +41,35 @@ const AUTO_ARCHIVE_TTL_STORAGE_KEY = "orgii:kanbanAutoArchiveTtl";
 const MANUAL_ARCHIVED_STORAGE_KEY = "orgii:kanbanManualArchivedSessions";
 const MAX_MANUAL_ARCHIVED_SESSION_IDS = 1000;
 
-const KNOWN_KANBAN_SIDEBAR_FILTERS = new Set<KanbanSidebarFilter>([
-  KANBAN_SIDEBAR_FILTER.ALL,
-  KANBAN_SIDEBAR_FILTER.TODO,
-  KANBAN_SIDEBAR_FILTER.IN_PROGRESS,
-  KANBAN_SIDEBAR_FILTER.BLOCKING,
-  KANBAN_SIDEBAR_FILTER.TURN_FINISHED,
-  KANBAN_SIDEBAR_FILTER.ARCHIVED,
-]);
+const StoredAgentTypeFilterSchema = z.string().min(1);
 
-const KNOWN_TIME_FILTERS = new Set<KanbanTimeFilter>([
-  "12h",
-  "24h",
-  "3d",
-  "7d",
-]);
+const StoredSidebarFilterSchema = z.enum(Object.values(KANBAN_SIDEBAR_FILTER));
 
-const KNOWN_AUTO_ARCHIVE_TTLS = new Set<KanbanAutoArchiveTtl>([
-  "never",
-  "12h",
-  "24h",
-  "3d",
-  "7d",
-]);
+const StoredTimeFilterSchema = z.enum(["12h", "24h", "3d", "7d"]);
 
-function isKanbanAgentTypeFilter(
-  value: unknown
-): value is KanbanAgentTypeFilter {
-  return typeof value === "string" && value.length > 0;
-}
+const StoredAutoArchiveTtlSchema = z.enum(["never", "12h", "24h", "3d", "7d"]);
 
-function isKanbanSidebarFilter(value: unknown): value is KanbanSidebarFilter {
-  return (
-    typeof value === "string" &&
-    KNOWN_KANBAN_SIDEBAR_FILTERS.has(value as KanbanSidebarFilter)
+const StoredManualArchivedSessionIdsSchema = z
+  .array(z.unknown())
+  .transform((value) =>
+    value
+      .filter((item): item is string => typeof item === "string")
+      .slice(0, MAX_MANUAL_ARCHIVED_SESSION_IDS)
   );
-}
-
-function isKanbanTimeFilter(value: unknown): value is KanbanTimeFilter {
-  return (
-    typeof value === "string" &&
-    KNOWN_TIME_FILTERS.has(value as KanbanTimeFilter)
-  );
-}
-
-function isKanbanAutoArchiveTtl(value: unknown): value is KanbanAutoArchiveTtl {
-  return (
-    typeof value === "string" &&
-    KNOWN_AUTO_ARCHIVE_TTLS.has(value as KanbanAutoArchiveTtl)
-  );
-}
-
-function parseStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === "string");
-}
-
-const kanbanAgentTypeFilterStorage = {
-  getItem(
-    key: string,
-    initialValue: KanbanAgentTypeFilter
-  ): KanbanAgentTypeFilter {
-    if (typeof window === "undefined") return initialValue;
-    try {
-      const stored = window.localStorage.getItem(key);
-      if (stored == null) return initialValue;
-      const parsed: unknown = JSON.parse(stored);
-      return isKanbanAgentTypeFilter(parsed) ? parsed : initialValue;
-    } catch {
-      return initialValue;
-    }
-  },
-  setItem(key: string, value: KanbanAgentTypeFilter) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(value));
-  },
-  removeItem(key: string) {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
-  },
-};
-
-const kanbanSidebarFilterStorage = {
-  getItem(key: string, initialValue: KanbanSidebarFilter): KanbanSidebarFilter {
-    if (typeof window === "undefined") return initialValue;
-    try {
-      const stored = window.localStorage.getItem(key);
-      if (stored == null) return initialValue;
-      const parsed: unknown = JSON.parse(stored);
-      return isKanbanSidebarFilter(parsed) ? parsed : initialValue;
-    } catch {
-      return initialValue;
-    }
-  },
-  setItem(key: string, value: KanbanSidebarFilter) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(value));
-  },
-  removeItem(key: string) {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
-  },
-};
-
-const timeFilterStorage = {
-  getItem(key: string, initialValue: KanbanTimeFilter): KanbanTimeFilter {
-    if (typeof window === "undefined") return initialValue;
-    try {
-      const stored = window.localStorage.getItem(key);
-      if (stored == null) return initialValue;
-      const parsed: unknown = JSON.parse(stored);
-      return isKanbanTimeFilter(parsed) ? parsed : initialValue;
-    } catch {
-      return initialValue;
-    }
-  },
-  setItem(key: string, value: KanbanTimeFilter) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(value));
-  },
-  removeItem(key: string) {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
-  },
-};
-
-const autoArchiveTtlStorage = {
-  getItem(
-    key: string,
-    initialValue: KanbanAutoArchiveTtl
-  ): KanbanAutoArchiveTtl {
-    if (typeof window === "undefined") return initialValue;
-    try {
-      const stored = window.localStorage.getItem(key);
-      if (stored == null) return initialValue;
-      const parsed: unknown = JSON.parse(stored);
-      return isKanbanAutoArchiveTtl(parsed) ? parsed : initialValue;
-    } catch {
-      return initialValue;
-    }
-  },
-  setItem(key: string, value: KanbanAutoArchiveTtl) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(value));
-  },
-  removeItem(key: string) {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
-  },
-};
-
-const manualArchivedSessionIdsStorage = {
-  getItem(key: string, initialValue: string[]): string[] {
-    if (typeof window === "undefined") return initialValue;
-    try {
-      const stored = window.localStorage.getItem(key);
-      if (stored == null) return initialValue;
-      const parsed: unknown = JSON.parse(stored);
-      return parseStringArray(parsed).slice(0, MAX_MANUAL_ARCHIVED_SESSION_IDS);
-    } catch {
-      return initialValue;
-    }
-  },
-  setItem(key: string, value: string[]) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      key,
-      JSON.stringify(value.slice(0, MAX_MANUAL_ARCHIVED_SESSION_IDS))
-    );
-  },
-  removeItem(key: string) {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
-  },
-};
 
 export const kanbanAgentTypeFilterAtom = atomWithStorage<KanbanAgentTypeFilter>(
   AGENT_TYPE_FILTER_STORAGE_KEY,
   KANBAN_AGENT_TYPE_FILTER.ALL,
-  kanbanAgentTypeFilterStorage
+  createZodJsonStorage(StoredAgentTypeFilterSchema),
+  { getOnInit: true }
 );
 kanbanAgentTypeFilterAtom.debugLabel = "kanban/agentTypeFilter";
 
 export const kanbanSidebarFilterAtom = atomWithStorage<KanbanSidebarFilter>(
   SIDEBAR_FILTER_STORAGE_KEY,
   KANBAN_SIDEBAR_FILTER.ALL,
-  kanbanSidebarFilterStorage
+  createZodJsonStorage(StoredSidebarFilterSchema),
+  { getOnInit: true }
 );
 kanbanSidebarFilterAtom.debugLabel = "kanban/sidebarFilter";
 
@@ -232,21 +77,27 @@ kanbanSidebarFilterAtom.debugLabel = "kanban/sidebarFilter";
 export const kanbanTimeFilterAtom = atomWithStorage<KanbanTimeFilter>(
   TIME_FILTER_STORAGE_KEY,
   DEFAULT_KANBAN_TIME_FILTER,
-  timeFilterStorage
+  createZodJsonStorage(StoredTimeFilterSchema),
+  { getOnInit: true }
 );
 kanbanTimeFilterAtom.debugLabel = "kanban/timeFilter";
 
 export const kanbanAutoArchiveTtlAtom = atomWithStorage<KanbanAutoArchiveTtl>(
   AUTO_ARCHIVE_TTL_STORAGE_KEY,
   "24h",
-  autoArchiveTtlStorage
+  createZodJsonStorage(StoredAutoArchiveTtlSchema),
+  { getOnInit: true }
 );
 kanbanAutoArchiveTtlAtom.debugLabel = "kanban/autoArchiveTtl";
 
 export const kanbanManualArchivedSessionIdsAtom = atomWithStorage<string[]>(
   MANUAL_ARCHIVED_STORAGE_KEY,
   [],
-  manualArchivedSessionIdsStorage
+  createZodJsonStorage(StoredManualArchivedSessionIdsSchema, {
+    serialize: (value) =>
+      JSON.stringify(value.slice(0, MAX_MANUAL_ARCHIVED_SESSION_IDS)),
+  }),
+  { getOnInit: true }
 );
 kanbanManualArchivedSessionIdsAtom.debugLabel =
   "kanban/manualArchivedSessionIds";

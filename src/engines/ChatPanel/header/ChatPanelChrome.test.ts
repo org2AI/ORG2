@@ -17,7 +17,7 @@ describe("ChatPanelChrome", () => {
       })
     );
 
-    expect(markup).toContain('data-testid="chat-panel-header-glass"');
+    expect(markup).toContain('data-testid="chat-panel-header-surface"');
     expect(markup).toContain('data-testid="chat-panel-header"');
     expect(markup).toContain('data-testid="chat-panel-published-header"');
     expect(markup).toContain("workspace-header header-tab-group");
@@ -35,5 +35,17 @@ describe("ChatPanelChrome", () => {
 
     expect(markup).not.toContain('data-testid="chat-panel-published-header"');
     expect(markup).toContain("height:44px");
+  });
+  it("preserves the desktop pinned-control reservation in the shared frame", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(ChatPanelChrome, {
+        tabStrip: "Tabs",
+        trailingInsetPx: 96,
+        tabRowCollapsed: true,
+        publishedHeaderSlots: { content: "Session" },
+      })
+    );
+    expect(markup).toContain("padding-right:96px");
+    expect(markup).toContain('data-testid="chat-panel-collapsed-header"');
   });
 });

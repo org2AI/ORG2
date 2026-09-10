@@ -23,6 +23,7 @@ import {
   CheckmarkCircle01Icon,
   Loading03Icon,
 } from "@src/icons";
+import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import type { SpotlightItem } from "@src/scaffold/GlobalSpotlight/types";
 import { collectAdeContext } from "@src/services/context/collectors";
 import { adeManagerPaletteAtom } from "@src/store/session/adeManagerPaletteAtom";
@@ -35,7 +36,6 @@ import { adeManagerEnabledAtom } from "@src/store/ui/uiAtom";
 import { invokeTauri } from "@src/util/platform/tauri";
 import { BUILTIN_ADE_MANAGER_DEF_ID } from "@src/util/session/sessionDispatch";
 
-import { useSelectorKernel } from "../core";
 import {
   ADE_MANAGER_SESSION_NAME,
   ADE_MANAGER_SUBMIT_EVENT,

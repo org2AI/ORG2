@@ -34,8 +34,7 @@ import {
 } from "@src/icons";
 import {
   NoTabsPlaceholder,
-  SimulatorReplayChrome,
-  WorkStationShell,
+  ReplayShellLayout,
   buildConsolidatedSessionReplayDiffSectionItems,
   buildPrimarySidebarConfig,
   useSimulatorAwaitingAgentCaption,
@@ -446,7 +445,7 @@ const SessionReplayDiff: React.FC<SimulatorAppProps> = ({
     !hasActiveCommitDetail
   ) {
     return (
-      <SimulatorReplayChrome
+      <ReplayShellLayout
         tabs={tabs}
         activeEventId={TAB_IDS[activeTab]}
         onTabClick={handleTabClick}
@@ -466,30 +465,23 @@ const SessionReplayDiff: React.FC<SimulatorAppProps> = ({
             />
           )}
         </div>
-      </SimulatorReplayChrome>
+      </ReplayShellLayout>
     );
   }
 
   return (
-    <SimulatorReplayChrome
+    <ReplayShellLayout
       tabs={tabs}
       activeEventId={TAB_IDS[activeTab]}
       onTabClick={handleTabClick}
+      workstation={{
+        primarySidebarConfig,
+        layoutMode: primarySidebarPosition === "right" ? "right" : "left",
+        appClassName: "session-replay-diff",
+      }}
     >
-      <div className="flex min-h-0 flex-1">
-        <WorkStationShell
-          primarySidebarConfig={primarySidebarConfig}
-          content={
-            <div className="flex h-full min-h-0 w-full flex-col">
-              {detailContent}
-            </div>
-          }
-          statusBar={null}
-          layoutMode={primarySidebarPosition === "right" ? "right" : "left"}
-          appClassName="session-replay-diff"
-        />
-      </div>
-    </SimulatorReplayChrome>
+      <div className="flex h-full min-h-0 w-full flex-col">{detailContent}</div>
+    </ReplayShellLayout>
   );
 };
 export { finalDiffToSection } from "./diffSessionReplay.finalDiffSection";

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { InlineBanner } from "@src/components/InlineBanner";
+import { ORG2_CLOUD_OFFICIAL_WEB_ORIGIN } from "@src/features/Org2Cloud/config";
 import { ArrowRight02Icon, HugeiconsIcon, Unlink02Icon } from "@src/icons";
 import {
   SECTION_VALUE_SMALL_MUTED_CLASSES,
@@ -13,11 +14,13 @@ import {
 import { useMobileRemote } from "../../app";
 import { useMobileAuth } from "../../auth/MobileAuthContext";
 import { MobileTopBar } from "../../components/MobileTopBar";
+import { MobileConfirmModal } from "../../components/modals/MobileConfirmModal";
 import { buildMobileWsUrl } from "../../connection/buildMobileWsUrl";
 import type {
   MobileConnectionConfig,
   MobilePermissionTier,
 } from "../../connection/types";
+import { useMobileRemotePlatform } from "../../platform";
 
 export function resolveRelayLabel(
   config: MobileConnectionConfig | null,
@@ -83,6 +86,27 @@ export function SettingsTab({
   const { t } = useTranslation("mobileRemote");
   const { connection, connectionConfig } = useMobileRemote();
   const { session, signOut, isDevelopmentBypass } = useMobileAuth();
+  const [confirmSignOut, setConfirmSignOut] = React.useState(false);
+  const platform = useMobileRemotePlatform();
+  const [opening, setOpening] = React.useState(false);
+  const [openFailed, setOpenFailed] = React.useState(false);
+  const openingRef = React.useRef(false);
+  const openCloudPage = async (path: "/account" | "/legal/privacy") => {
+    if (openingRef.current) return;
+    openingRef.current = true;
+    setOpening(true);
+    setOpenFailed(false);
+    try {
+      await platform.openExternal(
+        new URL(path, ORG2_CLOUD_OFFICIAL_WEB_ORIGIN).href
+      );
+    } catch {
+      setOpenFailed(true);
+    } finally {
+      openingRef.current = false;
+      setOpening(false);
+    }
+  };
 
   const relayLabel = resolveRelayLabel(connectionConfig, connection.demoMode);
 
@@ -97,6 +121,17 @@ export function SettingsTab({
   return (
     <>
       <MobileTopBar title={t("settings.title")} />
+      {confirmSignOut && !isDevelopmentBypass ? (
+        <MobileConfirmModal
+          title={t("settings.signOutConfirmTitle")}
+          description={t("settings.signOutConfirmBody")}
+          cancelLabel={t("settings.cancel")}
+          confirmLabel={t("settings.signOut")}
+          danger
+          onDismiss={() => setConfirmSignOut(false)}
+          onConfirm={signOut}
+        />
+      ) : null}
       {connection.demoMode ? (
         <InlineBanner tone="info">{t("settings.demoBanner")}</InlineBanner>
       ) : null}
@@ -115,11 +150,38 @@ export function SettingsTab({
               }
             />
             {!isDevelopmentBypass ? (
-              <SettingsActionRow
-                label={t("settings.signOut")}
-                danger
-                onClick={signOut}
-              />
+              <>
+                <SectionRow showHeader={false}>
+                  <p className="text-sm text-text-2">
+                    {t("settings.accountWebHint")}
+                  </p>
+                </SectionRow>
+                <SettingsActionRow
+                  label={t("settings.manageAccount")}
+                  disabled={opening}
+                  onClick={() => void openCloudPage("/account")}
+                />
+                <SettingsActionRow
+                  label={t("settings.deleteAccount")}
+                  disabled={opening}
+                  onClick={() => void openCloudPage("/account")}
+                />
+                <SettingsActionRow
+                  label={t("settings.signOut")}
+                  danger
+                  onClick={() => setConfirmSignOut(true)}
+                />
+              </>
+            ) : null}
+            <SettingsActionRow
+              label={t("settings.privacyPolicy")}
+              disabled={opening}
+              onClick={() => void openCloudPage("/legal/privacy")}
+            />
+            {openFailed ? (
+              <InlineBanner tone="info">
+                {t("settings.openFailed")}
+              </InlineBanner>
             ) : null}
           </SectionContainer>
 
@@ -195,12 +257,14 @@ function SettingsValueRow({ label, value }: SettingsRowProps) {
 interface SettingsActionRowProps {
   label: string;
   danger?: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }
 
 function SettingsActionRow({
   label,
   danger = false,
+  disabled,
   onClick,
 }: SettingsActionRowProps) {
   return (
@@ -220,6 +284,7 @@ function SettingsActionRow({
         iconPosition="right"
         className="justify-between !px-0 font-normal"
         onClick={onClick}
+        disabled={disabled}
       >
         {label}
       </Button>

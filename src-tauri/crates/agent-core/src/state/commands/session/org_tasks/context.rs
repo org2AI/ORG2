@@ -24,10 +24,8 @@ pub(super) async fn session_org_read_context(
 ) -> Result<Option<SessionOrgReadContext>, String> {
     let runtime_context = match state.get_session(session_id).await {
         Some(session) => session
-            .runtime
-            .read()
+            .get_runtime()
             .await
-            .as_ref()
             .and_then(|runtime| runtime.agent_org_context.clone()),
         None => None,
     };
@@ -66,10 +64,7 @@ pub(super) async fn session_org_read_context(
         let context = match runtime_context {
             Some(context) => Some(context),
             None => match org_store {
-                Some(store) => AgentOrgRunStore::context_for_session_with_parent_walk(
-                    &session_id,
-                    store.as_ref(),
-                )?,
+                Some(_) => AgentOrgRunStore::context_for_session_with_parent_walk(&session_id)?,
                 None => None,
             },
         };

@@ -13,7 +13,7 @@ import "@src/engines/ChatPanel/ChatHistory/index.scss";
 
 import "./ToolEventPreview.scss";
 import { SessionLinkCardPreview, ToolDefinitionPreview } from "./previews";
-import { SingleEventPreview } from "./single-event";
+import { SingleEventPreview } from "./single-event/SingleEventPreview";
 import type { PreviewMode } from "./types";
 
 export function ToolEventPreview() {

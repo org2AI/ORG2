@@ -3,7 +3,7 @@ import React, { memo } from "react";
 
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip, { type TooltipProps } from "@src/components/Tooltip";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 
 export interface ToolbarTooltipProps {
   label: ReactNode;
@@ -25,9 +25,8 @@ export const ToolbarTooltip: React.FC<ToolbarTooltipProps> = memo(
     disabled = false,
     children,
   }) => {
-    const resolvedShortcut = shortcutId
-      ? getShortcutKeys(shortcutId)
-      : shortcut;
+    const customizedShortcut = useShortcutKeys(shortcutId ?? "");
+    const resolvedShortcut = shortcutId ? customizedShortcut : shortcut;
 
     return (
       <Tooltip

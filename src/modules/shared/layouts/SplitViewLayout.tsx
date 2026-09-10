@@ -7,6 +7,7 @@ import PageBreadcrumb from "@/src/modules/shared/layouts/blocks/PageBreadcrumb";
 import { useAtomValue } from "jotai";
 import React, { memo, useCallback, useEffect, useState } from "react";
 
+import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
 import { ResizableSplitPanel } from "@src/scaffold/Resize";
 import { sidebarCollapsedAtom } from "@src/store/ui/sidebarAtom";
 
@@ -62,7 +63,7 @@ const SplitViewLayout: React.FC<SplitViewLayoutProps> = ({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Cmd+B on Mac, Ctrl+B on Windows/Linux
-      if ((event.metaKey || event.ctrlKey) && event.key === "b") {
+      if (matchesShortcut(event, "toggle_sidebar")) {
         event.preventDefault();
         toggleCollapse();
       }

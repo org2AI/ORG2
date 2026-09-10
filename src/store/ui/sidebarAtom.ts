@@ -15,6 +15,8 @@ export const DEFAULT_SIDEBAR_WIDTH = 240;
 export const MIN_SIDEBAR_WIDTH = 200;
 export const MAX_SIDEBAR_WIDTH = 320;
 export const COLLAPSED_SIDEBAR_WIDTH = 0;
+/** Matches the app's lg breakpoint. Narrow windows temporarily hide the sidebar. */
+export const SIDEBAR_COLLAPSE_BREAKPOINT_PX = 960;
 export const SESSION_BRANCH_TAGS_VISIBLE_STORAGE_KEY =
   "orgii:sidebar:sessionBranchTagsVisible";
 
@@ -51,10 +53,34 @@ sidebarWidthAtom.debugLabel = "sidebarWidthAtom";
 const sidebarCollapsedBaseAtom = atom<boolean>(getStoredCollapsed());
 sidebarCollapsedBaseAtom.debugLabel = "sidebarCollapsedBaseAtom";
 
-/** Shared main sidebar collapsed state for Settings and session surfaces. */
+const sidebarNarrowAtom = atom(
+  typeof window !== "undefined" &&
+    window.innerWidth < SIDEBAR_COLLAPSE_BREAKPOINT_PX
+);
+const sidebarNarrowOverrideAtom = atom<boolean | null>(null);
+
+/** Update once per breakpoint crossing, preserving the saved wide-window preference. */
+export const updateSidebarViewportAtom = atom(
+  null,
+  (get, set, width: number) => {
+    const narrow = width < SIDEBAR_COLLAPSE_BREAKPOINT_PX;
+    if (get(sidebarNarrowAtom) === narrow) return;
+    set(sidebarNarrowAtom, narrow);
+    set(sidebarNarrowOverrideAtom, null);
+  }
+);
+
+/** Shared effective collapse state, with a temporary narrow-window override. */
 export const sidebarCollapsedAtom = atom(
-  (get) => get(sidebarCollapsedBaseAtom),
-  (_get, set, value: boolean) => {
+  (get) =>
+    get(sidebarNarrowAtom)
+      ? (get(sidebarNarrowOverrideAtom) ?? true)
+      : get(sidebarCollapsedBaseAtom),
+  (get, set, value: boolean) => {
+    if (get(sidebarNarrowAtom)) {
+      set(sidebarNarrowOverrideAtom, value);
+      return;
+    }
     set(sidebarCollapsedBaseAtom, value);
     persistSidebarCollapsed(value);
   }

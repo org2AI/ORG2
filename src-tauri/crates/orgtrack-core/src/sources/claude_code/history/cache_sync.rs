@@ -53,7 +53,7 @@ fn sync_claude_code_history_cache(conn: &mut Connection) -> Result<(), String> {
         SOURCE_CLAUDE_CODE,
     )?;
     for record in &mut discovered {
-        managed_mirror::append_managed_fingerprint(
+        managed_mirror::append_managed_origin_fingerprint(
             &mut record.source_fingerprint,
             managed_ids.contains(&record.source_session_id),
         );
@@ -95,11 +95,10 @@ fn sync_claude_code_history_cache(conn: &mut Connection) -> Result<(), String> {
             &parse.watermark,
         )?;
         if let Some(mut meta) = parse.meta {
-            let is_managed_history_mirror = managed_ids.contains(&meta.source_session_id);
             reparsed_ids.push(meta.session_id.clone());
             rounds.append(&mut meta.rounds);
             let mut input = session_meta_to_cache_input(meta);
-            input.listable = input.listable && !is_managed_history_mirror;
+            managed_mirror::apply_managed_history_mirror(&mut input, &managed_ids);
             inputs.push(input);
         }
     }
@@ -109,6 +108,10 @@ fn sync_claude_code_history_cache(conn: &mut Connection) -> Result<(), String> {
         imported_cache::live_ids_from_signatures(&signatures),
         inputs,
     )?;
+    // Provenance is stored in the transcript and therefore outlives the
+    // local binding ledger. Repair older cached mirrors even when their files
+    // are unchanged and the incremental parser correctly skipped them.
+    managed_mirror::demote_org2_origin_mirrors_from_conn(conn, SOURCE_CLAUDE_CODE)?;
     imported_cache::write_session_rounds_from_conn(conn, &reparsed_ids, &rounds)?;
     // Context-window continuations rewrite the conversation into a new
     // session file with the same first-user-message uuid; keep only the

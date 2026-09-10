@@ -1,5 +1,6 @@
 import React, { Suspense, useMemo } from "react";
 
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import {
   PROJECT_ORG_SURFACE_VIEW,
@@ -11,7 +12,7 @@ import {
 import type { LinearProjectSelection } from "../../Panels/ProjectManagerSidebar/content/WorkspaceTreeContent";
 import { useProjectOrgCatalogData } from "../hooks/useProjectOrgCatalogData";
 import type { ExpandWorkItemToTabHandler } from "../types";
-import { STORY_MANAGER_SUSPENSE_LOADING_FALLBACK } from "./ProjectManagerContentRouter";
+import { STORY_MANAGER_SUSPENSE_LOADING_FALLBACK } from "./ProjectManagerLoadingFallback";
 import { ProjectOrgHubHeader } from "./ProjectOrgHubHeader";
 import { ProjectOrgSettingsPane } from "./ProjectOrgSettingsPane";
 import { ProjectOrgSurfacePillSwitch } from "./ProjectOrgSurfacePillSwitch";
@@ -154,9 +155,9 @@ export const ProjectOrgHubContent: React.FC<ProjectOrgHubContentProps> = ({
     if (catalog.loadError) {
       return (
         <div className="flex h-full items-center justify-center p-6">
-          <div className="max-w-md rounded-lg border border-danger-6/30 bg-danger-2/20 px-4 py-3 text-sm text-danger-6">
+          <PageNotice type="danger" role="alert" className="max-w-md">
             {catalog.loadError}
-          </div>
+          </PageNotice>
         </div>
       );
     }

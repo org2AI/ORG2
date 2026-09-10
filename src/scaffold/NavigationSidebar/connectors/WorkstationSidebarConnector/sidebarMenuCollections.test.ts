@@ -6,7 +6,7 @@ import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/compone
 import { addActionsToFirstSessionSection } from "./sidebarMenuCollections";
 
 describe("addActionsToFirstSessionSection", () => {
-  it("adds search before refresh on the first regular session header only", () => {
+  it("adds search and refresh after existing actions on the first regular session header only", () => {
     const onSearch = vi.fn();
     const onRefresh = vi.fn();
     const existingAction = vi.fn();
@@ -44,27 +44,29 @@ describe("addActionsToFirstSessionSection", () => {
     expect(result[2]).toMatchObject({
       id: "separator-today",
       rowActions: [
+        expect.objectContaining({ label: "Existing" }),
         expect.objectContaining({
           label: "Search sessions",
           dataIcon: "search",
+          showOnSidebarHover: true,
           dataTestId: "sidebar-sessions-search",
         }),
         expect.objectContaining({
           label: "Refresh",
           dataIcon: "refresh-cw",
+          showOnSidebarHover: true,
           iconClassName: "animate-spin",
           dataTestId: "sidebar-sessions-refresh",
         }),
-        expect.objectContaining({ label: "Existing" }),
       ],
     });
     expect(result[4]?.rowActions).toBeUndefined();
 
-    result[2]?.rowActions?.[0]?.onClick(
+    result[2]?.rowActions?.[1]?.onClick(
       {} as React.MouseEvent<HTMLButtonElement>
     );
     expect(onSearch).toHaveBeenCalledOnce();
-    result[2]?.rowActions?.[1]?.onClick(
+    result[2]?.rowActions?.[2]?.onClick(
       {} as React.MouseEvent<HTMLButtonElement>
     );
     expect(onRefresh).toHaveBeenCalledOnce();

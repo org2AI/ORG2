@@ -18,22 +18,29 @@ import * as client from "./client";
 export * from "./types";
 export type {
   PortableRoutineSummary,
-  ProjectScopeOptions,
   RoutineRunStatus,
   RoutineRunSummary,
   WorkItemReadBucket,
-  WorkItemsReadOptions,
 } from "./client";
-export type {
-  AdapterAuthMethod,
-  AdapterDescriptor,
-  OAuthDeviceFlow,
-  OAuthFlowKind,
-  OAuthFlowStart,
-  OAuthRedirectFlow,
-  SyncStatusReport,
-} from "./sync";
+export {
+  propertyDefinitionsCacheKey,
+  quickActionsCacheKey,
+  statusDefinitionsCacheKey,
+} from "./client";
+export type { OAuthFlowStart } from "./sync";
 export { OAUTH_FLOW_KIND, projectSyncApi } from "./sync";
+export {
+  PROJECT_ROSTER_CHANGED_EVENT,
+  PROJECT_STATUS_DEFINITIONS_CHANGED_EVENT,
+  emitProjectRosterChanged,
+  emitProjectStatusDefinitionsChanged,
+  notifyProjectRosterChanged,
+  notifyProjectStatusDefinitionsChanged,
+} from "./events";
+export type {
+  ProjectRosterChangedPayload,
+  ProjectStatusDefinitionsChangedPayload,
+} from "./events";
 
 export {
   buildLabelMap,
@@ -41,10 +48,17 @@ export {
   enrichedWorkItemToUI,
   projectDataToUI,
   standaloneWorkItemDataToEnriched,
+  uiWorkItemToFrontmatter,
+  workItemCommentToEntry,
   workItemDataToUI,
 } from "./adapters";
 
 export { invalidateCache as invalidateProjectCache } from "./cache";
+export {
+  REVISION_CONFLICT_CODE,
+  parseRevisionConflict,
+} from "./revisionConflict";
+export type { RevisionConflictDetails } from "./revisionConflict";
 
 export const projectApi = {
   // Init
@@ -100,6 +114,8 @@ export const projectApi = {
   retryLatestWorkItemRun: client.retryLatestWorkItemRun,
   previewDiscussionTrigger: client.previewDiscussionTrigger,
   postDiscussionComment: client.postDiscussionComment,
+  editDiscussionComment: client.editDiscussionComment,
+  deleteDiscussionComment: client.deleteDiscussionComment,
   resolveDiscussionThread: client.resolveDiscussionThread,
   reopenDiscussionThread: client.reopenDiscussionThread,
   listWorkItemSubscriptions: client.listWorkItemSubscriptions,
@@ -109,6 +125,8 @@ export const projectApi = {
   upsertPropertyDefinition: client.upsertPropertyDefinition,
   archivePropertyDefinition: client.archivePropertyDefinition,
   listWorkItemPropertyValues: client.listWorkItemPropertyValues,
+  listScopePropertyValues: client.listScopePropertyValues,
+  batchSetWorkItemPropertyValue: client.batchSetWorkItemPropertyValue,
   setWorkItemPropertyValue: client.setWorkItemPropertyValue,
   updateStandaloneWorkItemPartial: client.updateStandaloneWorkItemPartial,
   transitionWorkItemHandoff: client.transitionWorkItemHandoff,
@@ -136,6 +154,19 @@ export const projectApi = {
   // Batch
   batchDeleteWorkItems: client.batchDeleteWorkItems,
   batchUpdateWorkItems: client.batchUpdateWorkItems,
+  // Quick actions
+  listQuickActions: client.listQuickActions,
+  upsertQuickAction: client.upsertQuickAction,
+  archiveQuickAction: client.archiveQuickAction,
+  invokeQuickAction: client.invokeQuickAction,
+  // Saved views
+  listSavedViews: client.listSavedViews,
+  upsertSavedView: client.upsertSavedView,
+  archiveSavedView: client.archiveSavedView,
+  // Custom statuses
+  listStatusDefinitions: client.listStatusDefinitions,
+  upsertStatusDefinition: client.upsertStatusDefinition,
+  setStatusDefinitionArchived: client.setStatusDefinitionArchived,
   // Assets
   saveAsset: client.saveAsset,
   deleteAsset: client.deleteAsset,

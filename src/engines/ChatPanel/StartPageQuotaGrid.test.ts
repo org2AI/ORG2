@@ -25,6 +25,7 @@ const keyVaultMocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   refreshAccount: vi.fn(),
   resetTime: null as string | null,
+  entryCount: 5,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -48,10 +49,11 @@ vi.mock("@src/components/ModelIcon", () => ({
 
 vi.mock("@src/hooks/keyVault/accountQuotaDisplay", () => ({
   collectAccountQuotaCards: () =>
-    Array.from({ length: 5 }, (_, index) => ({
+    Array.from({ length: keyVaultMocks.entryCount }, (_, index) => ({
       id: `account-${index + 1}`,
       accountName: index === 0 ? "Codex account" : `Account ${index + 1}`,
       accountPlan: "Plus",
+      quotaMessage: index === 0 ? "3 resets available" : null,
       modelType: "codex",
       metrics: [
         ...(index === 0
@@ -90,6 +92,7 @@ afterEach(() => {
   vi.clearAllMocks();
   keyVaultMocks.accounts = [];
   keyVaultMocks.resetTime = null;
+  keyVaultMocks.entryCount = 5;
 });
 
 afterAll(() => {
@@ -109,28 +112,34 @@ describe("StartPageQuotaGrid", () => {
     expect(quotaCardIndex).toBeGreaterThan(refreshIndex);
     expect(markup).toContain('data-testid="quota-refresh-controls"');
     expect(markup).toContain(
-      'class="sticky top-0 z-20 -mx-4 bg-chat-pane px-4 pb-1"'
+      'class="flex min-h-9 items-center justify-between gap-3 -mx-4 bg-chat-pane px-4 pt-2 pb-1"'
     );
     expect(markup).toContain("flex flex-col gap-3 @container/quota");
     expect(markup).toContain("kanban.dataSource.views.quota");
     expect(markup).toContain("flex min-h-9 items-center justify-between gap-3");
     expect(markup).toContain("border-0 bg-transparent text-text-2");
     expect(markup).toContain(
-      "truncate text-xs leading-4 font-semibold text-text-1"
+      "truncate text-sm leading-5 font-semibold text-text-1"
     );
-    expect(markup).toContain("truncate text-[11px] leading-4 text-text-3");
-    expect(markup).toContain("min-w-0 p-3 rounded-lg");
-    expect(markup).toContain("mb-2 flex min-w-0 items-center gap-2");
-    expect(markup).toContain("space-y-2.5");
+    expect(markup).toContain("truncate text-xs leading-5 text-text-3");
+    expect(markup).toContain("min-w-0 p-4 rounded-lg");
+    expect(markup).toContain("mb-3 flex min-w-0 items-center gap-2");
+    expect(markup).toContain("space-y-3");
     expect(markup).toContain("Balance");
     expect(markup).toContain("$12.34");
+    expect(markup).toContain('class="flex min-w-0 flex-col gap-1"');
+    expect(markup).toContain(
+      "text-2xl leading-8 font-semibold break-words text-text-1 tabular-nums"
+    );
+    expect(markup).toContain(">75%</span>");
+    expect(markup).not.toContain("keyVault.quota.percentLeft");
     expect(markup).toContain('class="space-y-1"');
     expect(markup).toContain(
       "grid grid-cols-1 gap-3 @[640px]/quota:grid-cols-2"
     );
     expect(markup).not.toContain("grid gap-2");
     expect(markup).toContain(
-      "flex items-center justify-between gap-2 text-[11px] leading-4"
+      "flex items-center justify-between gap-2 text-xs leading-4"
     );
   });
 
@@ -141,6 +150,36 @@ describe("StartPageQuotaGrid", () => {
     expect(markup).not.toContain("chat.startPage.hints.previous");
     expect(markup).not.toContain("chat.startPage.hints.next");
     expect(markup).not.toContain("1 / 2");
+  });
+
+  it("can move refresh controls into an owning modal header", async () => {
+    const onRefreshControlChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(StartPageQuotaGrid, {
+          showHeader: false,
+          onRefreshControlChange,
+        })
+      );
+    });
+
+    expect(
+      container.querySelector('[data-testid="quota-refresh-controls"]')
+    ).toBeNull();
+    expect(onRefreshControlChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        disabled: false,
+        onRefresh: expect.any(Function),
+        refreshing: false,
+      })
+    );
+
+    act(() => root.unmount());
+    container.remove();
   });
 
   it("bounds account refreshes and stops queued work when unmounted", async () => {
@@ -278,4 +317,97 @@ describe("StartPageQuotaGrid", () => {
     act(() => root.unmount());
     container.remove();
   });
+});
+
+it("renders provider reset-credit details", () => {
+  const html = renderToStaticMarkup(createElement(StartPageQuotaGrid));
+  expect(html).toContain(" · 3 resets available");
+  expect(html).not.toContain("tag-pill");
+});
+
+it("pages four cards at a time, clamps after removal, and resets on remount", () => {
+  keyVaultMocks.entryCount = 9;
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  let root = createRoot(container);
+  const render = () =>
+    root.render(createElement(StartPageQuotaGrid, { paginate: true }));
+  const previous = () =>
+    container.querySelector<HTMLButtonElement>(
+      '[aria-label="actions.previous"]'
+    )!;
+  const next = () =>
+    container.querySelector<HTMLButtonElement>('[aria-label="actions.next"]')!;
+  act(render);
+  expect(container.textContent).toContain("Account 4");
+  expect(container.textContent).not.toContain("Account 5");
+  expect(previous().disabled).toBe(true);
+  expect(next().disabled).toBe(false);
+  act(() => next().click());
+  expect(container.textContent).toContain("Account 5");
+  expect(container.textContent).toContain("Account 8");
+  expect(container.textContent).not.toContain("Account 9");
+  act(() => next().click());
+  expect(container.textContent).toContain("Account 9");
+  expect(next().disabled).toBe(true);
+  act(() => previous().click());
+  expect(container.textContent).toContain("Account 5");
+  keyVaultMocks.entryCount = 2;
+  keyVaultMocks.accounts = [];
+  act(render);
+  expect(container.textContent).toContain("Codex account");
+  expect(previous().disabled).toBe(true);
+  expect(next().disabled).toBe(true);
+  keyVaultMocks.entryCount = 9;
+  keyVaultMocks.accounts = [];
+  act(render);
+  act(() => next().click());
+  act(() => root.unmount());
+  root = createRoot(container);
+  act(render);
+  expect(container.textContent).toContain("Codex account");
+  expect(previous().disabled).toBe(true);
+  act(() => root.unmount());
+  container.remove();
+});
+
+it("always displays disabled paging controls for an empty quota list", () => {
+  keyVaultMocks.entryCount = 0;
+  const markup = renderToStaticMarkup(
+    createElement(StartPageQuotaGrid, { paginate: true })
+  );
+  expect(markup).toContain('data-testid="quota-pagination"');
+  expect(markup.match(/disabled=""/g)).toHaveLength(3);
+});
+
+it("renders paging controls in the header slot instead of below the cards", () => {
+  const container = document.createElement("div");
+  const headerSlot = document.createElement("div");
+  document.body.append(container, headerSlot);
+  const root = createRoot(container);
+  act(() =>
+    root.render(
+      createElement(StartPageQuotaGrid, {
+        paginate: true,
+        paginationContainer: headerSlot,
+      })
+    )
+  );
+  expect(
+    container.querySelector('[data-testid="quota-pagination"]')
+  ).toBeNull();
+  expect(
+    headerSlot.querySelector('[data-testid="quota-pagination"]')
+  ).not.toBeNull();
+  act(() =>
+    headerSlot
+      .querySelector<HTMLButtonElement>('[aria-label="actions.next"]')!
+      .click()
+  );
+  expect(container.textContent).toContain("Account 5");
+  expect(container.textContent).not.toContain("Codex account");
+  act(() => root.unmount());
+  expect(headerSlot.childElementCount).toBe(0);
+  container.remove();
+  headerSlot.remove();
 });

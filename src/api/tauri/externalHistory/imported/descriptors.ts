@@ -84,14 +84,14 @@ export const IMPORTED_HISTORY_SOURCE_DESCRIPTORS: readonly ImportedHistorySource
       listCategory: "external_history:cursor_cli",
       prefix: "cursorcliapp-",
       iconId: "cursor",
-      displayName: "Cursor CLI",
-      groupLabel: "Cursor CLI",
+      displayName: "Cursor",
+      groupLabel: "Cursor",
       listable: true,
       replayable: true,
       supportsWindowedReplay: true,
       cliResume: {
         agentType: "cursor_cli",
-        displayName: "Cursor CLI",
+        displayName: "Cursor",
       },
     },
     {
@@ -240,7 +240,7 @@ export const IMPORTED_HISTORY_SOURCE_DESCRIPTORS: readonly ImportedHistorySource
       supportsWindowedReplay: true,
       cliResume: {
         agentType: "mimo_code",
-        displayName: "MiMo Code",
+        displayName: "Mimo Code",
       },
     },
     {
@@ -296,14 +296,14 @@ export const IMPORTED_HISTORY_SOURCE_DESCRIPTORS: readonly ImportedHistorySource
       listCategory: "external_history:kimi",
       prefix: "kimihistoryapp-",
       iconId: "kimi",
-      displayName: "Kimi",
-      groupLabel: "Kimi",
+      displayName: "Kimi Code CLI",
+      groupLabel: "Kimi Code CLI",
       listable: true,
       replayable: true,
       supportsWindowedReplay: true,
       cliResume: {
         agentType: "kimi_cli",
-        displayName: "Kimi",
+        displayName: "Kimi Code CLI",
       },
     },
     {
@@ -311,14 +311,14 @@ export const IMPORTED_HISTORY_SOURCE_DESCRIPTORS: readonly ImportedHistorySource
       listCategory: "external_history:copilot",
       prefix: "copilotapp-",
       iconId: "copilot",
-      displayName: "Copilot CLI",
-      groupLabel: "Copilot CLI",
+      displayName: "GitHub Copilot",
+      groupLabel: "GitHub Copilot",
       listable: true,
       replayable: true,
       supportsWindowedReplay: true,
       cliResume: {
         agentType: "copilot",
-        displayName: "Copilot CLI",
+        displayName: "GitHub Copilot",
       },
     },
   ];

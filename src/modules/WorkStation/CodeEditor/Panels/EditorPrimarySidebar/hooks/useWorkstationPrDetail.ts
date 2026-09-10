@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getGitRemotes } from "@src/api/http/git/remotes";
 import type { GitHubIssueUser } from "@src/api/tauri/github";
+import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 import {
   getCachedPrDetail,
   isPrDetailStale,
@@ -68,12 +69,7 @@ export function useWorkstationPrDetail({
   }, [scopeKey]);
 
   const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  useMountedCleanup(mountedRef);
 
   // Freshest PR head SHA, kept in a ref so inline-comment creation can read it
   // without re-subscribing its callback on every atom write.

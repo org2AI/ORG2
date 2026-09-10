@@ -22,7 +22,7 @@ import {
   type WorkStationTab,
   type WorkStationTabType,
   type WorkstationTabOwnership,
-  type WorkstationTabsStateV3,
+  type WorkstationTabsStateV4,
   type WorkstationWorkspaceState,
   closesSharedResourceOnDismiss,
   getWorkstationTabOwnership,
@@ -35,7 +35,6 @@ const EXPECTED_OWNERSHIP: Record<WorkStationTabType, WorkstationTabOwnership> =
     explorer: "workspace-local",
     "git-diff": "workspace-local",
     "source-control": "workspace-local",
-    "timeline-diff": "workspace-local",
     "git-log": "workspace-local",
     "git-commit-detail": "workspace-local",
     "git-stash-detail": "workspace-local",
@@ -43,7 +42,6 @@ const EXPECTED_OWNERSHIP: Record<WorkStationTabType, WorkstationTabOwnership> =
     "dom-component-preview": "workspace-local",
     terminal: "shared-resource",
     search: "workspace-local",
-    "ai-impact": "workspace-local",
     "search-sessions": "workspace-local",
     "url-preview": "workspace-local",
     "browser-session": "shared-resource",
@@ -91,7 +89,7 @@ function workspace(
   };
 }
 
-function stateWithWorkspaces(): WorkstationTabsStateV3 {
+function stateWithWorkspaces(): WorkstationTabsStateV4 {
   const state = emptyWorkstationTabsState();
   state.globalWorkspace = workspace([tab("file:/global.ts")]);
   state.sessionWorkspaces = {
@@ -115,7 +113,7 @@ describe("WorkStation tab ownership policy", () => {
       })
     );
 
-    expect(results).toHaveLength(35);
+    expect(results).toHaveLength(33);
     expect(results.every(({ actual, expected }) => actual === expected)).toBe(
       true
     );

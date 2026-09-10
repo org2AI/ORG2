@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import { Copy01Icon, HugeiconsIcon, Tick01Icon } from "@src/icons";
 import { copyText } from "@src/util/data/clipboard";
 
@@ -38,7 +39,6 @@ export const EditableStyleRow: React.FC<EditableStyleRowProps> = memo(
   ({ property, propertyKey, value, onChange, disabled = false }) => {
     const { t } = useTranslation();
     const [editingValue, setEditingValue] = useState<string | null>(null);
-    const [copied, setCopied] = useState(false);
 
     const isEditing = editingValue !== null;
 
@@ -70,12 +70,13 @@ export const EditableStyleRow: React.FC<EditableStyleRowProps> = memo(
       []
     );
 
-    const handleCopy = useCallback(() => {
-      void copyText(`${property}: ${value};`).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      });
-    }, [property, value]);
+    const copyDeclaration = useCallback(
+      () => copyText(`${property}: ${value};`),
+      [property, value]
+    );
+    const { copied, handleCopy } = useCopyCheck(copyDeclaration, {
+      durationMs: 1500,
+    });
 
     // Truncate long values for display
     const displayValue =

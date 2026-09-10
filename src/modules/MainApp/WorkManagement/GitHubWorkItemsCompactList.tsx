@@ -144,7 +144,7 @@ const GitHubWorkItemsCompactList: React.FC<GitHubWorkItemsCompactListProps> = ({
     [items, onSelectItem]
   );
   const title = t(
-    scope === "pr" ? "sidebar.githubPrs" : "sidebar.githubIssues"
+    scope === "pr" ? "kanban.sidebar.githubPrs" : "kanban.sidebar.githubIssues"
   );
 
   return (

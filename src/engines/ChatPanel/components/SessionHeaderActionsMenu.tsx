@@ -22,6 +22,7 @@ import { useCopySessionReference } from "@src/features/Org2Cloud/useCopySessionR
 import type { DropdownEnginePosition } from "@src/hooks/dropdown";
 import {
   AppWindowMacIcon,
+  ArrowBigRightDashIcon,
   Copy01Icon,
   CursorInWindowIcon,
   DeliveryBox01Icon,
@@ -31,8 +32,6 @@ import {
   Link01Icon,
   Link02Icon,
   MoreHorizontalIcon,
-  PanelLeftIcon,
-  PanelRightIcon,
   Refresh04Icon,
   Search01Icon,
   Share02Icon,
@@ -41,7 +40,7 @@ import {
 import { sessionByIdAtom, upsertSession } from "@src/store/session";
 import { pinnedActionsVisibleAtom } from "@src/store/session/pinnedActionsVisibleAtom";
 import { openSessionInNewWindowAtom } from "@src/store/session/sessionTabPlacementAtom";
-import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanelAtom";
+import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import { isAgentSession } from "@src/util/session/sessionDispatch";
 
 import { SessionOpenInAppMenuItem } from "./SessionOpenInAppMenuItem";
@@ -52,6 +51,8 @@ export interface SessionHeaderActionsMenuProps {
   activeSessionExists: boolean;
   copyEventJsonLabel: "idle" | "copied" | "failed";
   currentSessionId: string | null;
+  /** Existing binding owner selected by the canonical conversation resolver. */
+  appOpenSessionId?: string | null;
   displayMode: ChatHistoryDisplayMode;
   eventsLength: number;
   handleCompactDisplayModeToggle: (checked: boolean) => void;
@@ -91,6 +92,7 @@ export const SessionHeaderActionsMenu: React.FC<
   activeSessionExists,
   copyEventJsonLabel,
   currentSessionId,
+  appOpenSessionId,
   displayMode,
   eventsLength,
   handleCompactDisplayModeToggle,
@@ -293,21 +295,12 @@ export const SessionHeaderActionsMenu: React.FC<
                         : "move-session-to-chat-panel"
                     }
                     icon={
-                      moveToWorkstation ? (
-                        <HugeiconsIcon
-                          icon={PanelLeftIcon}
-                          data-icon="panel-left"
-                          size={DROPDOWN_ITEM.iconSize}
-                          strokeWidth={1.75}
-                        />
-                      ) : (
-                        <HugeiconsIcon
-                          icon={PanelRightIcon}
-                          data-icon="panel-right"
-                          size={DROPDOWN_ITEM.iconSize}
-                          strokeWidth={1.75}
-                        />
-                      )
+                      <HugeiconsIcon
+                        icon={ArrowBigRightDashIcon}
+                        data-icon="arrow-big-right-dash"
+                        size={DROPDOWN_ITEM.iconSize}
+                        strokeWidth={1.75}
+                      />
                     }
                   >
                     {moveToWorkstation
@@ -488,8 +481,9 @@ export const SessionHeaderActionsMenu: React.FC<
               </DropdownItem>
             </ActionSubmenu>
             <SessionOpenInAppMenuItem
-              key={currentSessionId}
+              key={`${currentSessionId ?? ""}:${appOpenSessionId ?? ""}`}
               sessionId={currentSessionId}
+              appOpenSessionId={appOpenSessionId}
               onCloseMenu={toggleHeaderActionsMenu}
             />
             {showTranscriptActions && (

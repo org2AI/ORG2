@@ -7,7 +7,6 @@
  *
  * This should be called once in a root-level component or provider.
  */
-import { listen } from "@tauri-apps/api/event";
 import i18n from "i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
@@ -19,6 +18,8 @@ import {
   normalizeGlobalThemePreference,
   resolveGlobalThemePreference,
 } from "@src/config/appearance/globalThemes";
+import { createLogger } from "@src/hooks/logger";
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 import {
   LANGUAGE_PREFERENCE,
   type LanguagePreference,
@@ -36,6 +37,8 @@ import {
   settingsAtom,
   settingsLoadedAtom,
 } from "./settingsAtom";
+
+const log = createLogger("useSettingsSync");
 
 /** Tauri event names (must match the Rust constants) */
 const SETTINGS_CHANGED_EVENT = "settings-file-changed";
@@ -63,32 +66,20 @@ export function useSettingsSync(): void {
   const setSystemColorScheme = useSetAtom(systemColorSchemeAtom);
 
   useEffect(() => {
-    let cancelled = false;
-
     initSettings();
+  }, [initSettings]);
 
-    const unlistenChange = listen<Record<string, unknown>>(
-      SETTINGS_CHANGED_EVENT,
-      (event) => {
-        if (cancelled) return;
-        // Echoes of this window's own writes are neutralized inside
-        // `handleExternalChange`, which knows which keys are still in flight.
-        // A flag here could only ever suppress one event and was never armed.
-        handleExternalChange(event.payload);
-      }
-    );
-
-    const unlistenDelete = listen(SETTINGS_DELETED_EVENT, () => {
-      if (cancelled) return;
-      handleFileDeleted();
+  // Echoes of this window's own writes are neutralized inside
+  // `handleExternalChange`, which knows which keys are still in flight.
+  useTauriListen<Record<string, unknown>>(
+    SETTINGS_CHANGED_EVENT,
+    handleExternalChange
+  );
+  useTauriListen(SETTINGS_DELETED_EVENT, () => {
+    handleFileDeleted().catch((error: unknown) => {
+      log.error("[Settings] Failed to handle deleted settings file:", error);
     });
-
-    return () => {
-      cancelled = true;
-      unlistenChange.then((unlisten) => unlisten());
-      unlistenDelete.then((unlisten) => unlisten());
-    };
-  }, [initSettings, handleExternalChange, handleFileDeleted]);
+  });
 
   // Sync theme to resolved CSS after settings load from disk or external edits.
   useEffect(() => {

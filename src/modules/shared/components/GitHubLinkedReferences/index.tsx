@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { getIssueLocal } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import PrStatusBadge from "@src/components/PrStatusBadge";
 import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
@@ -304,7 +304,7 @@ const GitHubLinkedReferences: React.FC<GitHubLinkedReferencesProps> = ({
         ) : (
           <>
             {unresolved ? (
-              <InlineAlert
+              <PageNotice
                 type="warning"
                 role="status"
                 dataTestId="github-linked-references-unresolved-alert"
@@ -319,7 +319,7 @@ const GitHubLinkedReferences: React.FC<GitHubLinkedReferencesProps> = ({
                   defaultValue_other:
                     "{{count}} related items could not be resolved",
                 })}
-              </InlineAlert>
+              </PageNotice>
             ) : null}
             <section data-testid="github-linked-references-timeline">
               <div className="flex h-5 items-center gap-2 text-[12px] font-medium text-text-2">

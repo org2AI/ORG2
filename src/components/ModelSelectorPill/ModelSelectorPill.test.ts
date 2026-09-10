@@ -37,8 +37,8 @@ vi.mock("react-i18next", () => ({
 vi.mock("@src/hooks/models", () => ({
   useModelAccountLookup: () => ({ accounts: [] }),
   resolveModelDisplaySelection: (selection: unknown) => selection,
-  useModelPillLabel: () => ({
-    label: "GPT 5.6 Sol",
+  useModelPillLabel: (selection: unknown, defaultLabel: string) => ({
+    label: selection ? "GPT 5.6 Sol" : defaultLabel,
     title: "GPT 5.6 Sol",
     displayParts: { label: "GPT 5.6 Sol" },
   }),
@@ -46,13 +46,13 @@ vi.mock("@src/hooks/models", () => ({
     selection,
     onApply,
   }: {
-    selection: { model: string };
+    selection: { model: string } | null;
     onApply?: (model: string) => void;
   }) => ({
     editable: fixture.models.length > 1 && Boolean(onApply),
     effortLabel: "Extra High",
     effortAriaLabel: "Effort",
-    modelId: selection.model,
+    modelId: selection?.model,
     variantOptions: buildVariantEditOptions(fixture.models),
     handleApply: onApply,
   }),
@@ -90,7 +90,48 @@ describe("ModelSelectorPill combined settings", () => {
     Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
   });
 
-  function render(initial = "gpt-5.6-sol-xhigh", editable = true) {
+  it("disables model and effort selection while explaining the prerequisite on focus", () => {
+    act(() =>
+      root.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(ModelSelectorPill, {
+            selection: null,
+            defaultLabel: "Select model",
+            active: false,
+            onClick: openModel,
+            onVariantApply: apply,
+            disabled: true,
+            disabledTooltip: "Select agent first",
+            dataTestId: "model-pill",
+          })
+        )
+      )
+    );
+    const button = element("model-pill") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent).toBe("Select model");
+    act(() => button.click());
+    expect(openModel).not.toHaveBeenCalled();
+    expect(
+      container.querySelector('[data-testid="chat-model-pill-effort"]')
+    ).toBeNull();
+    const explanation = container.querySelector<HTMLElement>(
+      '[tabindex="0"][aria-disabled="true"]'
+    )!;
+    act(() => explanation.focus());
+    act(() => vi.advanceTimersByTime(500));
+    expect(document.body.textContent).toContain("Select agent first");
+    act(() => explanation.blur());
+    act(() => vi.runOnlyPendingTimers());
+  });
+
+  function render(
+    initial = "gpt-5.6-sol-xhigh",
+    editable = true,
+    defaultAdvanced = false
+  ) {
     function Harness() {
       const [model, setModel] = useState(initial);
       return React.createElement(ModelSelectorPill, {
@@ -105,6 +146,7 @@ describe("ModelSelectorPill combined settings", () => {
               setModel(next);
             }
           : undefined,
+        settingsMenuDefaultAdvanced: defaultAdvanced,
         dataTestId: "model-pill",
         effortDataTestId: "effort-pill",
       });
@@ -129,7 +171,6 @@ describe("ModelSelectorPill combined settings", () => {
   }
   function open() {
     openCompact();
-    click("model-settings-advanced");
   }
   function key(value: string) {
     act(() =>
@@ -149,7 +190,7 @@ describe("ModelSelectorPill combined settings", () => {
       );
   }
 
-  it("renders one transparent pill and opens settings before the model picker", () => {
+  it("renders one transparent pill and opens the model picker directly", () => {
     render();
     expect(container.querySelectorAll("button")).toHaveLength(1);
     expect(element("model-pill").textContent).toBe("GPT 5.6 SolExtra High");
@@ -167,20 +208,15 @@ describe("ModelSelectorPill combined settings", () => {
         '[data-icon="chevron-down"]'
       )
     ).not.toBeNull();
-    open();
-    expect(openModel).not.toHaveBeenCalled();
-    expect(element("model-settings-effort").textContent).toContain(
-      "Extra High"
-    );
-    expect(element("model-settings-speed").textContent).toContain("Standard");
-    click("model-settings-model");
+    openCompact();
+    click("model-settings-switch-model");
     expect(openModel).toHaveBeenCalledOnce();
-    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(apply).not.toHaveBeenCalled();
   });
 
   it("renders single-line, untitled submenus and marks the model row as a search", () => {
-    render();
+    render("gpt-5.6-sol-xhigh", true, true);
     open();
 
     const modelRow = element("model-settings-model");
@@ -217,10 +253,10 @@ describe("ModelSelectorPill combined settings", () => {
     expect(slider.getAttribute("aria-valuetext")).toBe("Extra High");
     expect(panel.textContent).toBe("Switch model");
     // Tertiary: borderless and quieter than the outlined secondary default.
-    const advanced = element("model-settings-advanced").className;
-    expect(advanced).toContain("border-0");
-    expect(advanced).toContain("bg-transparent");
-    expect(advanced).toContain("text-text-2");
+    const switchModel = element("model-settings-switch-model").className;
+    expect(switchModel).toContain("border-0");
+    expect(switchModel).toContain("bg-transparent");
+    expect(switchModel).toContain("text-text-2");
     // The Fast toggle sits beside it at the same 28px height; both corners
     // must read as one control pair (Button renders an 8px radius).
     expect(element("model-settings-fast-toggle").className).toContain(
@@ -240,12 +276,11 @@ describe("ModelSelectorPill combined settings", () => {
       element("model-settings-fast-toggle").getAttribute("aria-pressed")
     ).toBe("true");
     expect(document.querySelector('[role="dialog"]')).toBe(panel);
-    click("model-settings-advanced");
-    expect(document.querySelector('[role="dialog"]')).toBe(panel);
-    click("model-settings-advanced");
+    click("model-settings-switch-model");
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(openModel).toHaveBeenCalledOnce();
     key("Escape");
     expect(document.querySelector('[role="dialog"]')).toBeNull();
-    expect(document.activeElement).toBe(anchor.current);
     expect(apply).toHaveBeenCalledOnce();
   });
 
@@ -290,7 +325,7 @@ describe("ModelSelectorPill combined settings", () => {
   });
 
   it("applies Max, Ultra, and speed to the same pill immediately", () => {
-    render();
+    render("gpt-5.6-sol-xhigh", true, true);
     open();
     click("model-settings-effort");
     click("model-settings-effort-max");
@@ -326,7 +361,7 @@ describe("ModelSelectorPill combined settings", () => {
       "gpt-5.6-sol-high-fast",
       "gpt-5.6-sol-ultra",
     ];
-    render("gpt-5.6-sol-high-fast");
+    render("gpt-5.6-sol-high-fast", true, true);
     open();
     click("model-settings-effort");
     click("model-settings-effort-ultra");
@@ -340,7 +375,7 @@ describe("ModelSelectorPill combined settings", () => {
   });
 
   it("keeps Max selectable after moving between Max and Ultra", () => {
-    render("gpt-5.6-sol-max");
+    render("gpt-5.6-sol-max", true, true);
     open();
     click("model-settings-effort");
     expect(
@@ -355,7 +390,7 @@ describe("ModelSelectorPill combined settings", () => {
   });
 
   it("uses keyboard submenus and restores focus without saving on dismissal", () => {
-    render();
+    render("gpt-5.6-sol-xhigh", true, true);
     open();
     key("ArrowDown");
     key("ArrowDown");
@@ -372,21 +407,17 @@ describe("ModelSelectorPill combined settings", () => {
     expect(apply).toHaveBeenCalledOnce();
   });
 
-  it("collapses advanced settings without changing the saved selection", () => {
-    render();
+  it("returns from mobile advanced settings to the compact model switcher", () => {
+    render("gpt-5.6-sol-xhigh", true, true);
     open();
     click("model-settings-advanced");
-    expect(
-      element("model-settings-advanced").getAttribute("aria-expanded")
-    ).toBe("false");
     expect(
       document.querySelector('[data-testid="model-settings-effort"]')
     ).toBeNull();
     expect(apply).not.toHaveBeenCalled();
-    click("model-settings-advanced");
-    expect(element("model-settings-effort").textContent).toContain(
-      "Extra High"
-    );
+    click("model-settings-switch-model");
+    expect(openModel).toHaveBeenCalledOnce();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it("releases menu listeners and overlays across repeated view changes", () => {
@@ -394,12 +425,9 @@ describe("ModelSelectorPill combined settings", () => {
     const add = vi.spyOn(document, "addEventListener");
     const remove = vi.spyOn(document, "removeEventListener");
     for (let cycle = 0; cycle < 3; cycle++) {
-      open();
+      openCompact();
       expect(store.get(activeOverlayCountAtom)).toBe(1);
-      click("model-settings-effort");
-      click("model-settings-advanced");
-      expect(document.querySelector('[role="menu"]')).toBeNull();
-      click("model-pill");
+      click("model-settings-switch-model");
       act(() => vi.advanceTimersByTime(32));
       expect(store.get(activeOverlayCountAtom)).toBe(0);
     }

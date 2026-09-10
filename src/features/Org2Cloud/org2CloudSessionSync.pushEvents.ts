@@ -10,12 +10,19 @@
  */
 import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHistory";
 import { rpc } from "@src/api/tauri/rpc";
+import type { ConversationRootLocator } from "@src/engines/SessionCore/conversations/conversationTypes";
+import {
+  loadLocalCanonicalConversationSnapshot,
+  loadLocalExecutionChildrenRevision,
+} from "@src/engines/SessionCore/conversations/localConversationExecutionTail";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { processChunksRust } from "@src/engines/SessionCore/ingestion/rustBridge";
+import { loadCliTranscriptRevision } from "@src/engines/SessionCore/sync/adapters/cli/cliHistory";
 import { createLogger } from "@src/hooks/logger";
 import type { ActivityChunk } from "@src/types/session/session";
 import {
+  isAgentSession,
   isCliSession,
   isImportedHistorySession,
 } from "@src/util/session/sessionDispatch";
@@ -71,6 +78,7 @@ interface ImportedReplayAnchorDraft {
 interface LoadedPushEvents {
   events: SessionEvent[];
   localContentRevision?: number;
+  localExecutionRevision?: string | null;
   anchorDraft?: ImportedReplayAnchorDraft;
   precomputedEventHashes?: string[];
   precomputedLocalFrozenEventCount?: number;
@@ -100,19 +108,88 @@ function lastUserChunkIndex(chunks: readonly ActivityChunk[]): number {
 }
 
 export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
-  private async loadFullPushEvents(
+  private localConversationRoot(
     sessionId: string
+  ): ConversationRootLocator | null {
+    const importedSource = getImportedHistorySourceBySessionId(sessionId);
+    if (importedSource) {
+      return {
+        authority: "imported-history",
+        authorityScope: [importedSource.sourceId],
+        conversationId: sessionId,
+      };
+    }
+    // A recognized imported id without a mounted source cannot be assigned a
+    // stable execution-parent identity. Keep its existing source-reader
+    // fallback rather than accidentally probing the local-session namespace.
+    if (isImportedHistorySession(sessionId)) return null;
+    if (!isCliSession(sessionId) && !isAgentSession(sessionId)) return null;
+    return {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: sessionId,
+    };
+  }
+
+  protected async loadLocalExecutionRevision(
+    sessionId: string
+  ): Promise<string | null | undefined> {
+    const root = this.localConversationRoot(sessionId);
+    if (!root) return undefined;
+    const childRevision = await loadLocalExecutionChildrenRevision(root);
+    if (!isCliSession(sessionId)) return childRevision;
+    const nativeRevision = await loadCliTranscriptRevision(sessionId);
+    if (nativeRevision === undefined) return childRevision;
+    if (nativeRevision === null || childRevision === null) return null;
+    // A native root can have no continuation children yet. Its transient
+    // EventStore rows are not a complete replay or a durable clean stamp.
+    return JSON.stringify({ childRevision, nativeRevision });
+  }
+
+  private async loadFullPushEvents(
+    sessionId: string,
+    knownLocalExecutionRevision?: string | null
   ): Promise<LoadedPushEvents> {
+    const localExecutionRevision =
+      knownLocalExecutionRevision ??
+      (await this.loadLocalExecutionRevision(sessionId));
+    if (
+      localExecutionRevision !== undefined &&
+      localExecutionRevision !== "[]"
+    ) {
+      const root = this.localConversationRoot(sessionId);
+      if (root) {
+        const snapshot = await loadLocalCanonicalConversationSnapshot(root);
+        const revisionAfterRead =
+          await this.loadLocalExecutionRevision(sessionId);
+        if (
+          snapshot.childRevision === null ||
+          localExecutionRevision === null ||
+          revisionAfterRead !== localExecutionRevision
+        ) {
+          // A repeated partial read is not evidence of an intentional shrink.
+          // Refuse it before the planner can replace any cloud segments; the
+          // sync engine's existing retry gate handles the transient failure.
+          throw new Error(
+            `Native conversation ${sessionId} changed while preparing cloud replay`
+          );
+        }
+        return {
+          events: snapshot.events,
+          localExecutionRevision: revisionAfterRead,
+        };
+      }
+    }
     if (isImportedHistorySession(sessionId)) {
       const source = getImportedHistorySourceBySessionId(sessionId);
-      if (!source) return { events: [] };
+      if (!source) return { events: [], localExecutionRevision };
       const chunks = await source.loadFullTranscriptChunks(sessionId);
       if (!Array.isArray(chunks) || chunks.length === 0) {
-        return { events: [] };
+        return { events: [], localExecutionRevision };
       }
       const events = await processChunksRust(chunks, sessionId);
       if (!source.loadCloudTurnIds || !source.loadCloudTurnWindows) {
-        return { events };
+        return { events, localExecutionRevision };
       }
       try {
         // Source turn ids are provider-native seek cursors. They intentionally
@@ -154,6 +231,7 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
             ) {
               return {
                 events,
+                localExecutionRevision,
                 anchorDraft: {
                   turnIds,
                   lastTurnStartEventIndex,
@@ -170,7 +248,7 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
           error
         );
       }
-      return { events };
+      return { events, localExecutionRevision };
     }
     const revisionBefore =
       await eventStoreProxy.getPersistedEventRevision(sessionId);
@@ -185,7 +263,11 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
         ? revisionAfter.revision
         : undefined;
     if (persisted.length > 0 || !isCliSession(sessionId)) {
-      return { events: persisted, localContentRevision };
+      return {
+        events: persisted,
+        localContentRevision,
+        localExecutionRevision,
+      };
     }
     // Live CLI sessions keep their transcript of record in the CLI's native
     // store (account-profile aware) and never write the events cache, so a
@@ -193,8 +275,13 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
     // and the pass then stamps the event plane clean. Load the full native
     // transcript through the same command the session-resume path uses.
     const chunks = (await rpc.cli.chunks({ sessionId })) as ActivityChunk[];
-    if (!Array.isArray(chunks) || chunks.length === 0) return { events: [] };
-    return { events: await processChunksRust(chunks, sessionId) };
+    if (!Array.isArray(chunks) || chunks.length === 0) {
+      return { events: [], localExecutionRevision };
+    }
+    return {
+      events: await processChunksRust(chunks, sessionId),
+      localExecutionRevision,
+    };
   }
 
   /** Authoritative complete loader retained for first anchor and recovery. */
@@ -472,6 +559,7 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
       mode,
       baseEventCount,
       localContentRevision: loaded.localContentRevision,
+      localExecutionRevision: loaded.localExecutionRevision,
       events,
       plan,
     };
@@ -536,7 +624,15 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
     if (cached) return cached;
     const prepared = (async (): Promise<PreparedPushEvents> => {
       const stampAtRead = this.eventActivityStamps.get(sessionId) ?? 0;
-      if (!forceFull && cursor && isImportedHistorySession(sessionId)) {
+      const localExecutionRevision =
+        await this.loadLocalExecutionRevision(sessionId);
+      if (
+        !forceFull &&
+        cursor &&
+        isImportedHistorySession(sessionId) &&
+        (localExecutionRevision === undefined ||
+          localExecutionRevision === "[]")
+      ) {
         try {
           const incremental = await this.tryLoadIncrementalImportedPushEvents(
             sessionId,
@@ -547,7 +643,7 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
               stampAtRead,
               "incremental",
               incremental.baseEventCount,
-              incremental,
+              { ...incremental, localExecutionRevision },
               cursor
             );
           }
@@ -563,7 +659,7 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
         stampAtRead,
         "full",
         0,
-        await this.loadFullPushEvents(sessionId)
+        await this.loadFullPushEvents(sessionId, localExecutionRevision)
       );
     })();
     this.cachePreparedPushEvents(prepareKey, prepared);

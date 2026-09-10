@@ -64,28 +64,3 @@ export interface CodeMirrorConflictEditorProps {
   /** Callback when focused conflict changes */
   onFocusConflictChange?: (index: number) => void;
 }
-
-/**
- * Return type for useConflictMarkers hook
- */
-export interface UseConflictMarkersResult {
-  /** Parsed conflict blocks */
-  conflicts: ConflictBlock[];
-  /** Whether the content has any unresolved conflicts */
-  hasConflicts: boolean;
-  /** Total number of conflicts */
-  conflictCount: number;
-  /** Number of resolved conflicts */
-  resolvedCount: number;
-  /** Apply a resolution to a conflict */
-  resolveConflict: (
-    conflictId: string,
-    choice: ConflictResolutionChoice
-  ) => string;
-  /** Get content with a specific conflict resolved */
-  getResolvedContent: (
-    content: string,
-    conflictId: string,
-    choice: ConflictResolutionChoice
-  ) => string;
-}

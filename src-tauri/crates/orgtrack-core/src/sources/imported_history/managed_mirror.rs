@@ -17,6 +17,9 @@ use std::collections::HashSet;
 
 use rusqlite::Connection;
 
+use super::client_origin::ImportedClientOrigin;
+use super::metadata::ImportedHistoryCacheInput;
+
 fn table_exists(conn: &Connection, name: &str) -> bool {
     conn.query_row(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1",
@@ -103,6 +106,70 @@ pub fn is_managed_source_session_id(
     })
 }
 
+/// Whether an imported transcript is only the native-provider mirror of a
+/// session ORGII already owns.
+///
+/// The binding ledger is the strongest signal, but it cannot be the only
+/// signal: an isolated test home, a moved profile, or a rebuilt local DB can
+/// leave an ORGII-authored transcript in the provider's real native store
+/// after the ledger row is gone. Both Codex (`originator`) and Claude
+/// (`entrypoint` / managed profile path) persist ORGII provenance in the
+/// transcript itself, so that provenance is the durable fallback.
+pub fn is_managed_history_mirror(
+    managed_ids: &HashSet<String>,
+    source_session_id: &str,
+    client_origin: Option<ImportedClientOrigin>,
+) -> bool {
+    is_managed_source_session_id(managed_ids, source_session_id)
+        || client_origin == Some(ImportedClientOrigin::Org2)
+}
+
+/// Apply durable managed ownership before persisting an imported projection.
+pub fn apply_managed_history_mirror(
+    input: &mut ImportedHistoryCacheInput,
+    managed_ids: &HashSet<String>,
+) {
+    let managed = is_managed_history_mirror(
+        managed_ids,
+        &input.source_session_id,
+        input.client_origin,
+    );
+    if managed {
+        input.listable = false;
+        // Provider apps can rewrite their header after a managed launch. The
+        // durable binding still owns the conversation. Preserve the raw header
+        // for diagnostics, but exact-ID hydration must carry the same ownership
+        // as the primary-list decision or it becomes independently publishable.
+        input.client_origin = Some(ImportedClientOrigin::Org2);
+    }
+}
+
+/// Invalidate only ledger-managed cached rows from before origin propagation.
+/// Ordinary native histories keep their existing fingerprint and parse budget.
+pub fn append_managed_origin_fingerprint(fingerprint: &mut String, is_managed: bool) {
+    append_managed_fingerprint(fingerprint, is_managed);
+    if is_managed {
+        fingerprint.push_str("|managed-origin=org2-v1");
+    }
+}
+
+/// Repair already-cached ORGII mirrors without requiring their native file to
+/// change and trigger a reparse. New parses are hidden by
+/// [`is_managed_history_mirror`]; this closes the same invariant for cache rows
+/// written by an older build or by a process whose binding ledger disappeared.
+pub fn demote_org2_origin_mirrors_from_conn(
+    conn: &Connection,
+    source: &str,
+) -> Result<usize, String> {
+    conn.execute(
+        "UPDATE imported_history_session_cache
+         SET listable = 0
+         WHERE source = ?1 AND client_origin = 'org2' AND listable != 0",
+        [source],
+    )
+    .map_err(|err| format!("Failed to demote ORGII history mirrors: {err}"))
+}
+
 /// Fold the managed verdict into a discovery fingerprint so a session that
 /// becomes managed (or stops being) re-parses on the next scan and its
 /// `listable` flag flips.
@@ -139,6 +206,86 @@ mod tests {
         assert!(!is_managed_source_session_id(&ids, "xx019f6e88-3bc8-77b3"));
         assert!(!is_managed_source_session_id(&ids, "019f6e88"));
         assert!(!is_managed_source_session_id(&HashSet::new(), "anything"));
+    }
+
+    #[test]
+    fn org2_provenance_survives_a_missing_binding_ledger() {
+        let no_ids = HashSet::new();
+        assert!(is_managed_history_mirror(
+            &no_ids,
+            "native-id-from-an-isolated-run",
+            Some(ImportedClientOrigin::Org2),
+        ));
+        assert!(!is_managed_history_mirror(
+            &no_ids,
+            "ordinary-cli-session",
+            Some(ImportedClientOrigin::Cli),
+        ));
+        assert!(!is_managed_history_mirror(
+            &no_ids,
+            "unknown-origin-session",
+            None,
+        ));
+    }
+
+    #[test]
+    fn repairs_cached_org2_mirror_without_hiding_other_clients() {
+        let conn = Connection::open_in_memory().expect("open");
+        conn.execute_batch(
+            "CREATE TABLE imported_history_session_cache (
+                 source TEXT NOT NULL,
+                 source_session_id TEXT NOT NULL,
+                 client_origin TEXT NOT NULL,
+                 listable INTEGER NOT NULL
+             );
+             INSERT INTO imported_history_session_cache VALUES
+                 ('claude_code', 'org2-copy', 'org2', 1),
+                 ('claude_code', 'terminal-session', 'cli', 1),
+                 ('codex_app', 'other-source', 'org2', 1);",
+        )
+        .expect("seed");
+
+        assert_eq!(
+            demote_org2_origin_mirrors_from_conn(&conn, "claude_code").expect("demote"),
+            1
+        );
+        let rows = conn
+            .prepare(
+                "SELECT source_session_id, listable
+                 FROM imported_history_session_cache ORDER BY source_session_id",
+            )
+            .expect("prepare")
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })
+            .expect("query")
+            .collect::<Result<Vec<_>, _>>()
+            .expect("rows");
+        assert_eq!(
+            rows,
+            vec![
+                ("org2-copy".to_string(), 0),
+                ("other-source".to_string(), 1),
+                ("terminal-session".to_string(), 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn origin_upgrade_invalidates_only_managed_cache_fingerprints() {
+        let mut old_managed = "native-file-unchanged".to_string();
+        append_managed_fingerprint(&mut old_managed, true);
+        let mut upgraded = "native-file-unchanged".to_string();
+        append_managed_origin_fingerprint(&mut upgraded, true);
+        assert_ne!(old_managed, upgraded);
+        let mut next_scan = "native-file-unchanged".to_string();
+        append_managed_origin_fingerprint(&mut next_scan, true);
+        assert_eq!(upgraded, next_scan);
+        let mut ordinary_old = "native-file-unchanged".to_string();
+        append_managed_fingerprint(&mut ordinary_old, false);
+        let mut ordinary_new = "native-file-unchanged".to_string();
+        append_managed_origin_fingerprint(&mut ordinary_new, false);
+        assert_eq!(ordinary_old, ordinary_new);
     }
 
     #[test]

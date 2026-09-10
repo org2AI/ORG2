@@ -1,6 +1,7 @@
-import React, { Suspense, lazy } from "react";
+import React from "react";
+import { useTranslation } from "react-i18next";
 
-import { Placeholder } from "@src/components/Placeholder";
+import TabPill from "@src/components/TabPill";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
@@ -9,8 +10,7 @@ import {
 } from "@src/modules/shared/layouts/blocks";
 
 import { ThirdPartyDisclaimer } from "../Tables/TrademarkDisclaimer";
-
-const DependenciesPage = lazy(() => import("./DependenciesPage"));
+import DependenciesPage from "./DependenciesPage";
 
 /**
  * Dev Tools category — Dependencies only.
@@ -20,11 +20,27 @@ const DependenciesPage = lazy(() => import("./DependenciesPage"));
  * and lint tools are now an agent-only capability.
  */
 const DevToolsCategoryView: React.FC = () => {
+  const { t } = useTranslation("settings");
   const depsRefreshRef = React.useRef<(() => Promise<void>) | null>(null);
 
   return (
     <DetailPanelContainer>
       <InternalHeader
+        tabs={
+          <TabPill
+            tabs={[
+              {
+                key: "dependencies",
+                label: t("dependencies.systemDependencies"),
+              },
+            ]}
+            activeTab="dependencies"
+            onChange={() => {}}
+            variant="simple"
+            fillWidth={false}
+            size="large"
+          />
+        }
         noPanelHeader
         contentPadding
         className={DETAIL_PANEL_TOKENS.headerWidth}
@@ -32,13 +48,7 @@ const DevToolsCategoryView: React.FC = () => {
       <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>
           <div className="flex flex-col gap-3">
-            <Suspense
-              fallback={
-                <Placeholder variant="loading" placement="detail-panel" />
-              }
-            >
-              <DependenciesPage refreshRef={depsRefreshRef} />
-            </Suspense>
+            <DependenciesPage refreshRef={depsRefreshRef} />
             <ThirdPartyDisclaimer />
           </div>
         </div>

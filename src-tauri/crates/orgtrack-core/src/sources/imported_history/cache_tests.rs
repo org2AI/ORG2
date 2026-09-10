@@ -1101,3 +1101,35 @@ fn a_source_wide_prune_does_not_erase_pins() {
         "a prune of the rebuildable projection must not take user pin state with it"
     );
 }
+
+#[test]
+fn managed_native_origin_survives_exact_id_cache_hydration() {
+    use crate::sources::imported_history::client_origin::ImportedClientOrigin;
+    use crate::sources::imported_history::managed_mirror::apply_managed_history_mirror;
+    use std::collections::HashSet;
+
+    let mut conn = fixture_conn();
+    let mut managed = input(SOURCE_CODEX_APP, "rollout-date-native-uuid", 300);
+    managed.client_origin = Some(ImportedClientOrigin::OfficialApp);
+    managed.client_origin_raw = Some("Codex Desktop".to_string());
+    let mut ordinary = input(SOURCE_CODEX_APP, "ordinary-native-app", 200);
+    ordinary.client_origin = Some(ImportedClientOrigin::OfficialApp);
+    let ids = HashSet::from(["native-uuid".to_string()]);
+    apply_managed_history_mirror(&mut managed, &ids);
+    apply_managed_history_mirror(&mut ordinary, &ids);
+    let managed_id = managed.session_id.clone();
+    let ordinary_id = ordinary.session_id.clone();
+    upsert_imported_session_cache_from_conn(&mut conn, &[managed, ordinary]).expect("persist");
+    let (_, hydrated) = query_cached_session_by_session_id_from_conn(&conn, &managed_id)
+        .expect("exact id read").expect("mirror remains readable");
+    assert_eq!(hydrated.client_origin, Some(ImportedClientOrigin::Org2));
+    let raw: String = conn.query_row(
+        "SELECT client_origin_raw FROM imported_history_session_cache WHERE session_id = ?1",
+        [&managed_id], |row| row.get(0),
+    ).expect("retain native header provenance");
+    assert_eq!(raw, "Codex Desktop");
+    let page = query_imported_session_page_from_conn(&conn, SOURCE_CODEX_APP, 10, 0).expect("list");
+    assert_eq!(page.sessions.len(), 1);
+    assert_eq!(page.sessions[0].session_id, ordinary_id);
+    assert_eq!(page.sessions[0].client_origin, Some(ImportedClientOrigin::OfficialApp));
+}

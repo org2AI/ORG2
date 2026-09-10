@@ -1,15 +1,11 @@
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
   ProviderEndpoint,
   ProviderProtocol,
 } from "@src/api/tauri/rpc/schemas/validation";
+import TabPill from "@src/components/TabPill";
 import { SectionRow } from "@src/modules/shared/layouts/SectionLayout";
-import {
-  SelectionGrid,
-  type SelectionGridOption,
-} from "@src/scaffold/WizardSystem/primitives";
 
 import {
   getOfficialBaseUrl,
@@ -43,15 +39,6 @@ export function ProviderEndpointSectionRow({
 }: ProviderEndpointSectionRowProps) {
   const { t } = useTranslation("integrations");
 
-  const options = useMemo<SelectionGridOption<string>[]>(
-    () =>
-      endpoints.map((endpoint) => ({
-        key: endpoint.id,
-        label: endpoint.label,
-      })),
-    [endpoints]
-  );
-
   if (!hasEndpointChoice(endpoints)) return null;
 
   const handleEndpointSelect = (endpointId: string) => {
@@ -77,12 +64,18 @@ export function ProviderEndpointSectionRow({
       layout="vertical"
       required
     >
-      <SelectionGrid
-        options={options}
-        selected={selectedEndpointId ?? null}
-        onSelect={handleEndpointSelect}
-        cardVariant="subtle"
-      />
+      <div className="max-w-full overflow-x-auto">
+        <TabPill
+          tabs={endpoints.map((endpoint) => ({
+            key: endpoint.id,
+            label: endpoint.label,
+          }))}
+          activeTab={selectedEndpointId ?? ""}
+          onChange={handleEndpointSelect}
+          buttonStyle
+          height={36}
+        />
+      </div>
     </SectionRow>
   );
 }

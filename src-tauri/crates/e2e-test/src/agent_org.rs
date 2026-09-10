@@ -12,11 +12,9 @@
 //! Pairing strategy: positive AND negative pins per behavior. Every
 //! successful send is followed by a `list-by-run` read so a future
 //! refactor of either side surfaces here, not just in unit tests.
-//! Production caller-path coverage lives in
-//! `production_return_to_work_drains_inbox_into_member_transcript` below. It
-//! launches a real materialized member and uses the debug-only deterministic
-//! provider; full live-provider coordinator behavior belongs in rendered UI
-//! E2E, not this deterministic runtime contract suite.
+//! User-visible Direct work and Return to Work coverage lives in packaged,
+//! rendered UI E2E. This deterministic suite does not expose an HTTP action
+//! bridge that could substitute for the product controls.
 
 use super::config::Config;
 use super::harness;
@@ -28,14 +26,14 @@ const CHECK_MEMBER_SPAWN_GATE_PATH: &str = "/agent/test/agent-org/check-member-s
 const POST_MEMBER_IDLE_PATH: &str = "/agent/test/agent-org/post-member-idle";
 const SEED_ORG_PATH: &str = "/agent/test/agent-org/seed";
 const LAUNCH_COORDINATOR_PATH: &str = "/agent/test/agent-org/launch-coordinator";
-const SESSION_RETURN_TO_WORK_PATH: &str = "/agent/test/agent-org/session-return-to-work";
-const TASK_TOOL_DIRECT_PATH: &str = "/agent/test/agent-org/task-tool-direct";
 const RUN_SEED_PATH: &str = "/agent/test/agent-org/run/seed";
 const E2E_RUN_FIXTURE_ORG_PREFIX: &str = "e2e-agent-org-fixture:";
 const RUN_VIEW_PATH: &str = "/agent/test/agent-org/run-view";
 const DURABLE_INVARIANTS_PATH: &str = "/agent/test/agent-org/durable-invariants";
 const FIND_WORKER_SESSION_PATH: &str = "/agent/test/agent-org/find-worker-session";
 const SEED_CLI_MEMBER_RUN_PATH: &str = "/agent/test/agent-org/stale-workers/seed-cli-member";
+const SEED_CRASHED_TASK_EXECUTION_PATH: &str =
+    "/agent/test/agent-org/startup-recovery/seed-crashed-task";
 const TASKS_SEED_PATH: &str = "/agent/test/agent-org/tasks/seed";
 const PAUSE_RUN_PATH: &str = "/agent/test/agent-org/run/pause";
 const RESUME_RUN_PATH: &str = "/agent/test/agent-org/run/resume";
@@ -600,328 +598,6 @@ pub async fn launch_materializes_member_sessions_in_run_view(cfg: &Config) -> bo
             (
                 "Bob member row has sessionRuntime.sessionId",
                 member_runtime_ok("m-bob"),
-            ),
-        ],
-    )
-}
-
-/// Production caller-path pin for Agent Org wake delivery.
-///
-/// Debug helpers establish only the durable preconditions: a real org/run,
-/// a materialized member session, and an assigned task. The action under test
-/// is `session-return-to-work`, which invokes the same implementation as the
-/// Tauri command. It must traverse the production idempotent scheduler,
-/// initialize the member runtime, drain the inbox inside
-/// `UnifiedMessageProcessor`, call the deterministic debug provider, persist
-/// the visible inbox transcript, and mark the source row read. The scenario
-/// never calls the helper-only `drain-inbox` endpoint.
-pub async fn production_return_to_work_drains_inbox_into_member_transcript(cfg: &Config) -> bool {
-    let label = "Agent-Org: production return-to-work drains visible member input";
-    let fixture_suffix = unique_run_id("production-wake");
-    let org_id = format!("e2e-agent-org-fixture:{fixture_suffix}");
-    let coordinator_agent_id = "builtin:sde";
-    let worker_agent_id = "builtin:explore";
-    let worker_member_id = "m-production-worker";
-    let task_id = format!("task-{fixture_suffix}");
-    let task_subject = "Production wake delivery marker";
-    let fake_model = format!("e2e-fake-provider-agent-org-wake-{fixture_suffix}");
-
-    let seed_resp = match post_agent_org_json(
-        cfg,
-        SEED_ORG_PATH,
-        serde_json::json!({
-            "id": org_id,
-            "name": "Production Wake E2E Org",
-            "coordinator_agent_id": coordinator_agent_id,
-            "members": [{
-                "id": worker_member_id,
-                "name": "Wake Worker",
-                "role": "implementer",
-                "agent_id": worker_agent_id
-            }]
-        }),
-    )
-    .await
-    {
-        Ok(response) => response,
-        Err(error) => return harness::print_error(label, &error),
-    };
-    if seed_resp.get("ok").and_then(serde_json::Value::as_bool) != Some(true) {
-        return harness::print_error(label, &seed_resp.to_string());
-    }
-
-    let launch_resp = match post_agent_org_json(
-        cfg,
-        LAUNCH_COORDINATOR_PATH,
-        serde_json::json!({
-            "agent_org_id": org_id,
-            "workspace_path": tmp_agent_org_workspace("production-wake"),
-            "content": "",
-            "model": fake_model,
-            "sync_turn": false,
-            "name": "Production Wake E2E"
-        }),
-    )
-    .await
-    {
-        Ok(response) => response,
-        Err(error) => return harness::print_error(label, &error),
-    };
-    let root_session_id = match launch_resp
-        .get("session_id")
-        .and_then(serde_json::Value::as_str)
-    {
-        Some(value) if !value.is_empty() => value.to_string(),
-        _ => return harness::print_error(label, &launch_resp.to_string()),
-    };
-    let org_run_id = match launch_resp
-        .get("agent_org_run_id")
-        .and_then(serde_json::Value::as_str)
-    {
-        Some(value) if !value.is_empty() => value.to_string(),
-        _ => return harness::print_error(label, &launch_resp.to_string()),
-    };
-
-    // Member materialization is intentionally background work in production.
-    // Poll the production lookup rather than assuming it completed before the
-    // launch HTTP response returned.
-    let materialization_started = std::time::Instant::now();
-    let worker_session_id = loop {
-        let lookup = match post_agent_org_json(
-            cfg,
-            FIND_WORKER_SESSION_PATH,
-            serde_json::json!({
-                "org_run_id": org_run_id,
-                "member_id": worker_member_id
-            }),
-        )
-        .await
-        {
-            Ok(response) => response,
-            Err(error) => return harness::print_error(label, &error),
-        };
-        if let Some(session_id) = lookup
-            .get("session_id")
-            .and_then(serde_json::Value::as_str)
-            .filter(|value| !value.is_empty())
-        {
-            break session_id.to_string();
-        }
-        if materialization_started.elapsed() >= std::time::Duration::from_secs(15) {
-            return harness::print_error(
-                label,
-                &format!("member materialization timed out: {lookup}"),
-            );
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    };
-
-    // Use the production task tool to create the canonical task and its
-    // TaskAssigned outbox row. This endpoint installs a Noop wake hook so the
-    // row remains unread until the return-to-work action below.
-    let task_create_resp = match post_agent_org_json(
-        cfg,
-        TASK_TOOL_DIRECT_PATH,
-        serde_json::json!({
-            "org_run_id": org_run_id,
-            "org_id": org_id,
-            "org_name": "Production Wake E2E Org",
-            "org_role": "coordinator",
-            "coordinator_agent_id": coordinator_agent_id,
-            "coordinator_name": "Coordinator",
-            "coordinator_role": "coordinator",
-            "members": [{
-                "member_id": worker_member_id,
-                "name": "Wake Worker",
-                "role": "implementer",
-                "agent_id": worker_agent_id
-            }],
-            "sender_agent_id": coordinator_agent_id,
-            "sender_member_id": "coordinator",
-            "operation": "create",
-            "params": {
-                "id": task_id,
-                "subject": task_subject,
-                "description": "This exact task must become visible in the member transcript.",
-                "owner_member_id": worker_member_id,
-                "dispatch_policy": "immediate",
-                "execution_mode": "build"
-            }
-        }),
-    )
-    .await
-    {
-        Ok(response) => response,
-        Err(error) => return harness::print_error(label, &error),
-    };
-    if task_create_resp
-        .get("ok")
-        .and_then(serde_json::Value::as_bool)
-        != Some(true)
-    {
-        return harness::print_error(label, &task_create_resp.to_string());
-    }
-
-    let before_inbox = match list_inbox(cfg, &org_run_id).await {
-        Ok(response) => response,
-        Err(error) => return harness::print_error(label, &error),
-    };
-    let source_row_before = messages_array(&before_inbox).ok().and_then(|messages| {
-        messages.iter().find(|row| {
-            row.get("payload_kind").and_then(serde_json::Value::as_str) == Some("task_assigned")
-                && row
-                    .get("recipient_member_id")
-                    .and_then(serde_json::Value::as_str)
-                    == Some(worker_member_id)
-                && row
-                    .get("payload_decoded")
-                    .and_then(|payload| payload.get("task_id"))
-                    .and_then(serde_json::Value::as_str)
-                    == Some(task_id.as_str())
-        })
-    });
-    let assignment_was_unread = source_row_before
-        .and_then(|row| row.get("read_at"))
-        .is_some_and(serde_json::Value::is_null);
-
-    let wake_url = format!("{}{}", cfg.base_url, SESSION_RETURN_TO_WORK_PATH);
-    let wake_resp = match reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
-        .build()
-        .expect("return-to-work client")
-        .post(wake_url)
-        .json(&serde_json::json!({ "session_id": worker_session_id }))
-        .send()
-        .await
-    {
-        Ok(response) => match response.json::<serde_json::Value>().await {
-            Ok(json) => json,
-            Err(error) => return harness::print_error(label, &error.to_string()),
-        },
-        Err(error) => return harness::print_error(label, &error.to_string()),
-    };
-
-    let after_inbox = match list_inbox(cfg, &org_run_id).await {
-        Ok(response) => response,
-        Err(error) => return harness::print_error(label, &error),
-    };
-    let assignment_marked_read = messages_array(&after_inbox)
-        .ok()
-        .and_then(|messages| {
-            messages.iter().find(|row| {
-                row.get("payload_kind").and_then(serde_json::Value::as_str) == Some("task_assigned")
-                    && row
-                        .get("recipient_member_id")
-                        .and_then(serde_json::Value::as_str)
-                        == Some(worker_member_id)
-                    && row
-                        .get("payload_decoded")
-                        .and_then(|payload| payload.get("task_id"))
-                        .and_then(serde_json::Value::as_str)
-                        == Some(task_id.as_str())
-            })
-        })
-        .and_then(|row| row.get("read_at"))
-        .and_then(serde_json::Value::as_str)
-        .is_some_and(|value| !value.is_empty());
-
-    let transcript_url = format!(
-        "{}/agent/test/sde/transcript/{}",
-        cfg.base_url,
-        urlencoding::encode(&worker_session_id)
-    );
-    let transcript = match http_client().get(transcript_url).send().await {
-        Ok(response) => match response.json::<serde_json::Value>().await {
-            Ok(json) => json,
-            Err(error) => return harness::print_error(label, &error.to_string()),
-        },
-        Err(error) => return harness::print_error(label, &error.to_string()),
-    };
-    let transcript_messages = transcript
-        .get("messages")
-        .and_then(serde_json::Value::as_array);
-    let visible_assignment_inputs = transcript_messages
-        .map(|messages| {
-            messages
-                .iter()
-                .filter(|message| {
-                    message.get("role").and_then(serde_json::Value::as_str) == Some("user")
-                        && message.to_string().contains(task_subject)
-                        && message.to_string().contains(&task_id)
-                })
-                .count()
-        })
-        .unwrap_or_default();
-    let fake_provider_replied = transcript_messages.is_some_and(|messages| {
-        messages.iter().any(|message| {
-            message.get("role").and_then(serde_json::Value::as_str) == Some("assistant")
-                && message.to_string().contains("E2E_FAKE_PROVIDER_REPLY")
-        })
-    });
-
-    // A second return-to-work with no new durable input must be a NoWork
-    // result, not a second empty provider turn or duplicate visible message.
-    let second_wake_resp = match reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .expect("second return-to-work client")
-        .post(format!("{}{}", cfg.base_url, SESSION_RETURN_TO_WORK_PATH))
-        .json(&serde_json::json!({ "session_id": worker_session_id }))
-        .send()
-        .await
-    {
-        Ok(response) => response
-            .json::<serde_json::Value>()
-            .await
-            .unwrap_or_default(),
-        Err(error) => return harness::print_error(label, &error.to_string()),
-    };
-    let second_wake_was_noop = second_wake_resp
-        .get("ok")
-        .and_then(serde_json::Value::as_bool)
-        == Some(true)
-        && second_wake_resp
-            .get("woke")
-            .and_then(serde_json::Value::as_bool)
-            == Some(false);
-
-    let details = serde_json::json!({
-        "root_session_id": root_session_id,
-        "worker_session_id": worker_session_id,
-        "org_run_id": org_run_id,
-        "task_create": task_create_resp,
-        "before_inbox": before_inbox,
-        "wake": wake_resp,
-        "after_inbox": after_inbox,
-        "transcript": transcript,
-        "second_wake": second_wake_resp,
-    });
-
-    harness::print_result(
-        label,
-        &details.to_string(),
-        &[
-            ("TaskAssigned precondition is unread", assignment_was_unread),
-            (
-                "production return-to-work enqueued and completed a wake",
-                wake_resp.get("ok").and_then(serde_json::Value::as_bool) == Some(true)
-                    && wake_resp.get("woke").and_then(serde_json::Value::as_bool) == Some(true),
-            ),
-            (
-                "production drain acknowledged the source inbox row",
-                assignment_marked_read,
-            ),
-            (
-                "member transcript contains exactly one visible assignment input",
-                visible_assignment_inputs == 1,
-            ),
-            (
-                "deterministic provider completed the real member turn",
-                fake_provider_replied,
-            ),
-            (
-                "return-to-work without new durable input is a no-op",
-                second_wake_was_noop,
             ),
         ],
     )
@@ -3229,27 +2905,20 @@ pub async fn run_pause_resume_toggles_status(cfg: &Config) -> bool {
     )
 }
 
-/// Verify that `mark_all_running_as_paused_on_startup` transitions all
-/// `running` org runs to `paused` so that the UI can show the overview
-/// panel and Resume button after an app restart.
-///
-/// Invariants checked:
-/// - Before restart: seeded run is `running`
-/// - After simulated restart: run is `paused` (non-terminal, resumable)
-/// - `reconcile_run_finality` is a no-op for `paused` runs (run stays paused)
-/// - After user resumes: run is `running` again (full lifecycle round-trip)
-/// - Active interventions are cleared on startup (no stale intervention banner)
-pub async fn app_restart_transitions_running_runs_to_paused(cfg: &Config) -> bool {
-    let label = "app-restart-transitions-running-runs-to-paused";
+/// Production-caller-path restart pin for one interrupted TaskExecution.
+/// The debug helper establishes only the crash-cut precondition; the restart
+/// endpoint executes the same recovery owner and exact receipt dispatch as
+/// application startup.
+pub async fn app_restart_recovers_exact_task_execution_once(cfg: &Config) -> bool {
+    let label = "app-restart-recovers-exact-task-execution-once";
+    let crashed_task_id = unique_run_id("restart-crashed-task");
 
-    // (1) Seed a fresh running org run.
     let seed_resp = match post_agent_org_json(
         cfg,
-        SEED_CLI_MEMBER_RUN_PATH,
+        SEED_CRASHED_TASK_EXECUTION_PATH,
         serde_json::json!({
-            "cli_agent_type": "claude_code",
             "member_id": "m-restart",
-            "status": "idle"
+            "task_id": crashed_task_id,
         }),
     )
     .await
@@ -3266,20 +2935,17 @@ pub async fn app_restart_transitions_running_runs_to_paused(cfg: &Config) -> boo
         Some(value) if !value.is_empty() => value.to_string(),
         _ => return harness::print_error(label, "seed did not return root_session_id"),
     };
-    if let Err(err) = seed_task(
-        cfg,
-        &org_run_id,
-        &format!("restart-keep-open-{org_run_id}"),
-        "Keep restart fixture open",
-        "m-restart",
-        TASK_STATUS_PENDING,
-    )
-    .await
-    {
-        return harness::print_error(label, &err);
-    }
+    let crashed_session_id = seed_resp
+        .get("crashed_session_id")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let crashed_turn_intent_id = seed_resp
+        .get("crashed_turn_intent_id")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .to_string();
 
-    // (2) Confirm run starts as `running`.
     let inv_before_restart = match post_agent_org_json(
         cfg,
         DURABLE_INVARIANTS_PATH,
@@ -3295,19 +2961,62 @@ pub async fn app_restart_transitions_running_runs_to_paused(cfg: &Config) -> boo
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
-    // (3) Simulate app restart.
-    let restart_resp =
+    let first_restart =
         match post_agent_org_json(cfg, SIMULATE_APP_RESTART_PATH, serde_json::json!({})).await {
             Err(err) => return harness::print_error(label, &err),
             Ok(json) => json,
         };
-    let restart_ok = restart_resp.get("ok").and_then(|v| v.as_bool()) == Some(true);
-    let runs_paused_count = restart_resp
-        .get("runs_paused")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
+    let recovered = first_restart
+        .get("recovery_plan")
+        .and_then(|value| value.get("recoveredTasks"))
+        .and_then(serde_json::Value::as_array)
+        .and_then(|items| {
+            items.iter().find(|item| {
+                item.get("task")
+                    .and_then(|task| task.get("id"))
+                    .and_then(serde_json::Value::as_str)
+                    == Some(crashed_task_id.as_str())
+            })
+        });
+    let exact_recovery_ok = recovered.is_some_and(|recovery| {
+        recovery
+            .get("task")
+            .and_then(|task| task.get("status"))
+            .and_then(serde_json::Value::as_str)
+            == Some("pending")
+            && recovery
+                .get("task")
+                .and_then(|task| task.get("owner"))
+                .is_some_and(serde_json::Value::is_null)
+            && recovery
+                .get("previousOwnerMemberId")
+                .and_then(serde_json::Value::as_str)
+                == Some("m-restart")
+            && recovery
+                .get("failedSessionId")
+                .and_then(serde_json::Value::as_str)
+                == Some(crashed_session_id.as_str())
+            && recovery
+                .get("failedTurnIntentId")
+                .and_then(serde_json::Value::as_str)
+                == Some(crashed_turn_intent_id.as_str())
+            && recovery
+                .get("receiptId")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|value| !value.is_empty())
+    });
 
-    // (4) Confirm run is now `paused` (non-terminal).
+    let second_restart =
+        match post_agent_org_json(cfg, SIMULATE_APP_RESTART_PATH, serde_json::json!({})).await {
+            Err(err) => return harness::print_error(label, &err),
+            Ok(json) => json,
+        };
+    let third_restart =
+        match post_agent_org_json(cfg, SIMULATE_APP_RESTART_PATH, serde_json::json!({})).await {
+            Err(err) => return harness::print_error(label, &err),
+            Ok(json) => json,
+        };
+
     let inv_after_restart = match post_agent_org_json(
         cfg,
         DURABLE_INVARIANTS_PATH,
@@ -3322,88 +3031,98 @@ pub async fn app_restart_transitions_running_runs_to_paused(cfg: &Config) -> boo
         .get("runStatus")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
-
-    // (5) Reconcile should be a no-op for paused runs (status stays paused,
-    //     run is NOT auto-terminated even though sessions are now abandoned).
-    let run_view_resp = match post_agent_org_json(
-        cfg,
-        RUN_VIEW_PATH,
-        serde_json::json!({ "session_id": root_session_id }),
-    )
-    .await
-    {
+    let inbox = match list_inbox(cfg, &org_run_id).await {
         Err(err) => return harness::print_error(label, &err),
         Ok(json) => json,
     };
-    let run_status_after_view_poll = run_view_resp
-        .get("view")
-        .and_then(|value| value.get("runStatus"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-
-    // (6) User can resume from UI — full round trip.
-    let resume_resp = match post_agent_org_json(
-        cfg,
-        RESUME_RUN_PATH,
-        serde_json::json!({ "org_run_id": org_run_id }),
-    )
-    .await
-    {
-        Err(err) => return harness::print_error(label, &err),
-        Ok(json) => json,
-    };
-    let resume_ok = resume_resp.get("ok").and_then(|v| v.as_bool()) == Some(true);
-    let resume_transitioned =
-        resume_resp.get("transitioned").and_then(|v| v.as_bool()) == Some(true);
-
-    let inv_after_resume = match post_agent_org_json(
-        cfg,
-        DURABLE_INVARIANTS_PATH,
-        serde_json::json!({ "org_run_id": org_run_id, "root_session_id": root_session_id }),
-    )
-    .await
-    {
-        Err(err) => return harness::print_error(label, &err),
-        Ok(json) => json,
-    };
-    let run_status_after_resume = inv_after_resume
-        .get("runStatus")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    let matching_recovery_inbox_count = inbox
+        .get("messages")
+        .and_then(serde_json::Value::as_array)
+        .map(|messages| {
+            messages
+                .iter()
+                .filter(|message| {
+                    message
+                        .get("payload_kind")
+                        .and_then(serde_json::Value::as_str)
+                        == Some("member_idle")
+                        && message
+                            .get("payload_decoded")
+                            .and_then(|payload| payload.get("reason"))
+                            .and_then(serde_json::Value::as_str)
+                            == Some("failed")
+                        && message
+                            .get("payload_decoded")
+                            .and_then(|payload| payload.get("unfinished_task_ids"))
+                            .and_then(serde_json::Value::as_array)
+                            .is_some_and(|ids| {
+                                ids.iter()
+                                    .any(|id| id.as_str() == Some(crashed_task_id.as_str()))
+                            })
+                })
+                .count()
+        })
+        .unwrap_or(0);
 
     harness::print_result(
         label,
         &serde_json::json!({
             "seed": seed_resp,
-            "restart": restart_resp,
+            "first_restart": first_restart,
+            "second_restart": second_restart,
+            "third_restart": third_restart,
             "inv_before_restart": inv_before_restart,
             "inv_after_restart": inv_after_restart,
-            "run_view_after_restart": run_view_resp,
-            "resume": resume_resp,
-            "inv_after_resume": inv_after_resume,
+            "inbox": inbox,
         })
         .to_string(),
         &[
             ("seed ok", seed_ok),
             (
+                "crash fixture has exact session",
+                !crashed_session_id.is_empty(),
+            ),
+            (
+                "crash fixture has exact Turn",
+                !crashed_turn_intent_id.is_empty(),
+            ),
+            (
                 "run status before restart is 'running'",
                 run_status_before == "running",
             ),
-            ("simulate-app-restart endpoint ok", restart_ok),
-            ("at least one run was paused", runs_paused_count >= 1),
             (
-                "run status after restart is 'paused'",
-                run_status_after_restart == "paused",
+                "first restart endpoint ok",
+                first_restart.get("ok").and_then(serde_json::Value::as_bool) == Some(true),
             ),
             (
-                "run view poll does not auto-terminate paused run",
-                run_status_after_view_poll == "paused",
+                "exact TaskExecution became safe ownerless Pending",
+                exact_recovery_ok,
             ),
-            ("resume endpoint ok", resume_ok),
-            ("resume transitioned=true", resume_transitioned),
             (
-                "run status after resume is 'running'",
-                run_status_after_resume == "running",
+                "one typed Coordinator recovery inbox fact exists",
+                matching_recovery_inbox_count == 1,
+            ),
+            (
+                "running Team lifecycle is preserved",
+                run_status_after_restart == "running",
+            ),
+            (
+                "no ownerless in-progress Task remains",
+                inv_after_restart
+                    .get("ownerlessInProgressCount")
+                    .and_then(serde_json::Value::as_u64)
+                    == Some(0),
+            ),
+            (
+                "second and third restart are idempotent",
+                second_restart
+                    .get("tasks_requeued")
+                    .and_then(serde_json::Value::as_u64)
+                    == Some(0)
+                    && third_restart
+                        .get("tasks_requeued")
+                        .and_then(serde_json::Value::as_u64)
+                        == Some(0),
             ),
         ],
     )

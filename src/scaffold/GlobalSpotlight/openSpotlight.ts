@@ -30,7 +30,7 @@ export function createEditorSpotlightRequest(
   };
 }
 
-function createWorkspaceSpotlightRequest(
+function createWorkingDirectorySpotlightRequest(
   mode: "switch" | "open" | "add" | "create"
 ): SpotlightInitialQuery {
   return {
@@ -57,8 +57,13 @@ export function createGitHubIssuesImportSpotlightRequest(
   };
 }
 
-function createBranchSpotlightRequest(): SpotlightInitialQuery {
-  return { query: "", layer: { kind: "branch" } };
+export function createBranchSpotlightRequest(
+  repoId?: string
+): SpotlightInitialQuery {
+  return {
+    query: "",
+    layer: { kind: "branch", ...(repoId ? { repoId } : {}) },
+  };
 }
 
 function createWorktreeSpotlightRequest(): SpotlightInitialQuery {
@@ -104,12 +109,15 @@ export function openEditorSpotlight(
   store.set(spotlightOpenAtom, true);
 }
 
-export function openWorkspaceSpotlight(
+export function openWorkingDirectorySpotlight(
   mode: "switch" | "open" | "add" | "create"
 ): void {
   if (!isStoreInitialized()) return;
   const store = getInstrumentedStore();
-  store.set(spotlightInitialQueryAtom, createWorkspaceSpotlightRequest(mode));
+  store.set(
+    spotlightInitialQueryAtom,
+    createWorkingDirectorySpotlightRequest(mode)
+  );
   store.set(spotlightOpenAtom, true);
 }
 
@@ -137,10 +145,10 @@ export function openGitHubIssuesImportSpotlight(
   store.set(spotlightOpenAtom, true);
 }
 
-export function openBranchSpotlight(): void {
+export function openBranchSpotlight(repoId?: string): void {
   if (!isStoreInitialized()) return;
   const store = getInstrumentedStore();
-  store.set(spotlightInitialQueryAtom, createBranchSpotlightRequest());
+  store.set(spotlightInitialQueryAtom, createBranchSpotlightRequest(repoId));
   store.set(spotlightOpenAtom, true);
 }
 
@@ -182,5 +190,15 @@ export function openSessionCreatorSpotlight(): void {
   if (!isStoreInitialized()) return;
   const store = getInstrumentedStore();
   store.set(spotlightInitialQueryAtom, createSessionCreatorSpotlightRequest());
+  store.set(spotlightOpenAtom, true);
+}
+
+export function openSessionImportSpotlight(): void {
+  if (!isStoreInitialized()) return;
+  const store = getInstrumentedStore();
+  store.set(spotlightInitialQueryAtom, {
+    query: "",
+    layer: { kind: "sessionImport" },
+  });
   store.set(spotlightOpenAtom, true);
 }

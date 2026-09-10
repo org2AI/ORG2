@@ -8,6 +8,7 @@ import {
 } from "@src/api/http/project";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import {
   DEFAULT_PERSONAL_PROJECT_ORG_ID,
   canDeleteLocalProjectOrg,
@@ -130,9 +131,9 @@ const SyncMethodsSection: React.FC<{
         </SectionRow>
         {error && (
           <SectionRow label="" indent showHeader={false}>
-            <div className="rounded-md border border-danger-6/30 bg-danger-2/20 px-3 py-2 text-xs text-danger-6">
+            <PageNotice type="danger" role="alert">
               {error}
-            </div>
+            </PageNotice>
           </SectionRow>
         )}
       </SectionContainer>
@@ -294,5 +295,3 @@ export const ProjectOrgSettingsPane: React.FC<ProjectOrgSettingsPaneProps> = ({
     </div>
   );
 };
-
-export default ProjectOrgSettingsPane;

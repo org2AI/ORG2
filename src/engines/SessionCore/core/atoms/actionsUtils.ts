@@ -14,7 +14,7 @@ import { clearFileReviewAtom } from "@src/store/session/fileReviewAtom";
 import {
   replayDisplayValueAtom,
   replayIsDraggingAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/miscAtoms";
 import { selectedExecutionThreadAtom } from "@src/store/ui/sessionPaginationAtom";
 import {
   simulatorEffectiveDockAppAtom,

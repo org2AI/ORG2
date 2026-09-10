@@ -5,16 +5,16 @@ import { IFRAME_STYLE_NONCE } from "@src/util/iframeCspNonce";
 export const STATIC_HTML_STYLES = `
   :host{display:block;height:100%;min-width:0;overflow:hidden;background:var(--color-bg-1);color:var(--color-text-1);font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.6;}
   *,*::before,*::after{box-sizing:border-box;}
+  *{scrollbar-gutter:auto;scrollbar-width:thin;scrollbar-color:var(--scrollbar-thumb-color,rgba(128,128,128,.72)) transparent;}
   a{color:var(--color-primary-6);text-decoration:none;}
   a:hover{text-decoration:underline;}
   pre,code{font-family:monospace;background:var(--color-fill-2);padding:2px 5px;border-radius:4px;font-size:.875em;}
   pre{padding:12px 16px;overflow-x:auto;border-radius:6px;border:1px solid var(--color-border-1);}
   pre code{background:none;padding:0;}
   img{max-width:100%;height:auto;border-radius:4px;}
-  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar{width:var(--scrollbar-hit-area-size,12px);height:var(--scrollbar-hit-area-size,12px);}
   ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb-color);border-radius:3px;}
-  ::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover-color);}
+  ::-webkit-scrollbar-thumb,::-webkit-scrollbar-thumb:hover,::-webkit-scrollbar-thumb:active{background:var(--scrollbar-thumb-color,rgba(128,128,128,.72));background-clip:padding-box;border:var(--scrollbar-edge-inset,3px) solid transparent;border-radius:calc(var(--scrollbar-hit-area-size,12px)/2);}
 `;
 
 export const STATIC_HTML_CONTAINMENT_STYLES = `

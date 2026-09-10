@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   browserStatusBarCallbacksAtom,
   browserStatusBarStateAtom,
-} from "@src/store/ui/workStationAtom";
+} from "@src/store/ui/workStationLayout/statusBarAtoms";
 
 export interface UseBrowserAddToConversationActionReturn {
   showAddToConversation: boolean;

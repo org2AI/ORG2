@@ -42,6 +42,18 @@ describe("global settings search catalog", () => {
     expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
   });
 
+  it("keeps HTTP version searchable outside developer mode", () => {
+    const items = buildGlobalSettingsSearchGroups(
+      translate,
+      buildSettingsNavigationGroups(translate, false)
+    ).flatMap((group) => group.items);
+    expect(
+      items.find((item) => item.key === "network.httpVersion")
+    ).toMatchObject({
+      path: "/orgii/app/settings/app/general/general",
+    });
+  });
+
   it("localizes global results and sends appearance controls to their tab", () => {
     const navigationGroups = buildSettingsNavigationGroups(translate, true);
     const items = buildGlobalSettingsSearchGroups(
@@ -55,6 +67,11 @@ describe("global settings search catalog", () => {
       label: "浅色强调色",
       path: "/orgii/app/settings/app/appearance/app",
       searchTerms: expect.arrayContaining(["强调色"]),
+    });
+    expect(
+      items.find((item) => item.key === "network.httpVersion")
+    ).toMatchObject({
+      path: "/orgii/app/settings/app/general/general",
     });
     expect(items.find((item) => item.key === "editor.fontSize")).toMatchObject({
       label: "字体大小",

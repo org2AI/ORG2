@@ -1,0 +1,13 @@
+# Chat tab action cleanup UI audit
+
+| Line                                                              | Element              | Verdict          | Reason                                                                                              | Suggested change                                                                                     |
+| ----------------------------------------------------------------- | -------------------- | ---------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `src/engines/ChatPanel/ChatPanelTabBar/ChatPanelPlusMenu.tsx:215` | Action forwarding    | fix              | The connected wrapper forwarded six unchanged callback props individually.                          | Implemented: forward the typed actions object; keep explicit recent-tab and dismiss props afterward. |
+| `src/engines/ChatPanel/ChatPanelTabBar/ChatPanelPlusMenu.tsx:237` | Dropdown and trigger | keep with reason | Existing dropdown tokens and TabBarTrailingIconButton own appearance; no visual changes are needed. | Preserve existing markup, classes, positioning and dismissal behavior.                               |
+| `src/engines/ChatPanel/ChatPanelTabBar/index.tsx:109`             | Drop target          | keep with reason | The target already accepts the atom setter's exact boolean-returning signature.                     | Removed the pass-through callback; retain shared drop target and all drag lifecycle handlers.        |
+
+Verdict totals: **1 fix**, **2 keep with reason**, **0 abstract**.
+
+The separate shortcut cleanup removes two helper functions used only by their own tests; live dispatch still uses matchesShortcut. Architecture coverage: compilation checked; dead-code call paths traced and swept; obsolete helper names removed; exact forwards distinguished from return-value adapters; defaults and callback ordering preserved; shared shortcut ownership unchanged; simpler call chain; no wire changes; keyboard/drop/menu entry behavior preserved; no multi-field resolver changes. Backend/wire tests are inapplicable. No listeners, timers, retained state, or resource lifecycle behavior changed; no runtime performance improvement claimed.
+
+Validation: 21 rendered shortcut/tab-bar tests after integrating the latest develop, typecheck, scoped ESLint and diff check. Screenshots are not useful for this internal deletion/forwarding-only change; visible markup/styles remain the same. No live desktop or drag E2E verification was run.

@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
+import PageNotice from "@src/components/PageNotice";
 import { Copy01Icon, HugeiconsIcon, Tick01Icon } from "@src/icons";
 import type { Session } from "@src/store/session/sessionAtom/types";
 import { formatSmartDateTime } from "@src/util/data/formatters/date";
@@ -221,12 +222,13 @@ function OrgShareSection({
           </div>
         )}
         {model.sharesError ? (
-          <div
-            className="rounded-lg bg-danger-1 px-3 py-2 text-[11px] text-danger-6"
-            data-testid="cloud-session-share-error"
+          <PageNotice
+            type="danger"
+            role="alert"
+            dataTestId="cloud-session-share-error"
           >
             {t("cloud.share.sharesError")}: {model.sharesError}
-          </div>
+          </PageNotice>
         ) : null}
       </div>
     </section>

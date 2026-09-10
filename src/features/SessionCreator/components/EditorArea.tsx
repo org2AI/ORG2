@@ -8,7 +8,7 @@
  */
 import { type MenuItemId } from "@/src/scaffold/ContextMenu/config";
 import { useAtomValue } from "jotai";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import ComposerBar from "@src/components/ComposerBar";
@@ -28,6 +28,7 @@ import SlashCommandPortal from "@src/engines/ChatPanel/InputArea/components/Slas
 import { useExternalFileDragOver } from "@src/engines/ChatPanel/InputArea/hooks/useContainerDrag";
 import { useTabDragHover } from "@src/engines/ChatPanel/InputArea/hooks/useTabDragHover";
 import { type VoiceInputError, useVoiceInput } from "@src/hooks/voice";
+import { useVoiceShortcut } from "@src/hooks/voice/useVoiceShortcut";
 import i18n from "@src/i18n";
 import {
   clearReferenceDragData,
@@ -398,37 +399,8 @@ const EditorArea: React.FC<EditorAreaProps> = ({
   const showVoiceUi =
     voiceFeatureEnabled && voice.isRecording && !hideLaunchButton;
 
-  // Ctrl+M acts as push-to-talk while focus is inside this composer container.
-  useEffect(() => {
-    if (!voiceFeatureEnabled) return;
-    const node = editorContainerRef.current;
-    if (!node) return;
-    let shortcutActive = false;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
-        return;
-      }
-      if (event.key.toLowerCase() !== "m" || event.repeat) return;
-      event.preventDefault();
-      event.stopPropagation();
-      shortcutActive = true;
-      voice.start();
-    };
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (!shortcutActive) return;
-      if (event.key.toLowerCase() !== "m" && event.key !== "Control") return;
-      event.preventDefault();
-      event.stopPropagation();
-      shortcutActive = false;
-      voice.stop();
-    };
-    node.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp, true);
-    return () => {
-      node.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp, true);
-    };
-  }, [voice, voiceFeatureEnabled]);
+  // Push-to-talk is scoped to this composer container.
+  useVoiceShortcut(editorContainerRef, voiceFeatureEnabled, voice);
 
   const handleAtMention = useCallback(
     (query: string, position: { x: number; y: number }) => {
@@ -592,9 +564,7 @@ const EditorArea: React.FC<EditorAreaProps> = ({
           <SlashCommandPortal
             visible={showSlashMenu}
             {...menuPortalFrame}
-            items={filteredSlashItems.filter(
-              (item) => item.category === "skill"
-            )}
+            items={filteredSlashItems}
             loading={slashLoading}
             searchQuery={slashQuery}
             onClose={() => onSlashCommandClose?.()}

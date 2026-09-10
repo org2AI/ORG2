@@ -3,13 +3,15 @@
  * (`cloudSessionsSection.tsx`): the portal-rendered option list (everyone /
  * directly shared with me / each roster member, with online dot + "viewing"
  * subtitle) plus the "show hidden" reveal row, and the state/handlers that
- * back it (escape-to-close, filter selection, hidden-row count).
+ * back it (filter selection and hidden-row count). Search, keyboard navigation,
+ * dismissal and scrolling use the shared Dropdown options API.
  */
 import type { TFunction } from "i18next";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 
+import Dropdown from "@src/components/Dropdown";
 import DropdownItem from "@src/components/Dropdown/DropdownItem";
 import {
   DROPDOWN_CLASSES,
@@ -65,20 +67,6 @@ export function useCloudMemberFilterDropdown({
     () => setMemberMenu(null),
     [setMemberMenu]
   );
-  // Escape dismisses the member-filter panel. Document-level because the
-  // panel's rows are DropdownItem divs (not focus targets) — keyboard users
-  // must be able to bail without picking an option.
-  useEffect(() => {
-    if (!memberMenu) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        setMemberMenu(null);
-      }
-    };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [memberMenu, setMemberMenu]);
   const handleFilterSelect = useCallback(
     (nextFilter: CloudSessionFilter) => {
       onFilterChange(nextFilter);
@@ -111,132 +99,129 @@ export function useCloudMemberFilterDropdown({
     setMemberMenu(null);
   }, [orgId, setHiddenRemoteSessionIds, setMemberMenu]);
 
-  // Same DropdownMenu look as SessionFilterButton, but anchored to the
-  // section header's action button (rendered by NavigationSidebar), so the
-  // panel is positioned from the click target instead of a local triggerRef.
-  const cloudMemberFilterDropdown = memberMenu
-    ? createPortal(
-        <>
-          <div
-            className="fixed inset-0"
-            style={{ zIndex: DROPDOWN_PANEL.zIndex - 1 }}
-            onMouseDown={closeMemberMenu}
-          />
-          <div
-            className={`${DROPDOWN_CLASSES.panelAnimated} ${DROPDOWN_WIDTHS.sidebarMenuClass} fixed`}
-            style={{ top: memberMenu.top, left: memberMenu.left }}
-            data-testid="sidebar-cloud-member-filter"
-            // Keyboard focus may be parked in another pane (chat composer /
-            // terminal), where the document-level Escape listener never
-            // fires. Own the focus while open and handle Escape locally too.
-            tabIndex={-1}
-            ref={(node) => node?.focus({ preventScroll: true })}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.stopPropagation();
-                closeMemberMenu();
-              }
-            }}
-          >
-            <div
-              className={DROPDOWN_CLASSES.itemsColumnPadded}
-              role="listbox"
-              aria-label={t("cloud.sidebar.sessionFilter")}
-            >
-              <div className={DROPDOWN_CLASSES.sectionLabel}>
-                {t("cloud.sidebar.sessionFilter")}
-              </div>
-              {[
-                {
-                  key: "everyone",
-                  filter: { kind: "all" } as CloudSessionFilter,
-                  displayName: t("cloud.sidebar.everyone"),
-                  userId: null as string | null,
-                },
-                {
-                  key: "directly-shared-with-me",
-                  filter: {
-                    kind: "directlySharedWithMe",
-                  } as CloudSessionFilter,
-                  displayName: t("cloud.sidebar.directlySharedWithMe"),
-                  userId: null as string | null,
-                },
-                ...memberOptions.map((option) => ({
-                  key: `member-${option.userId}`,
-                  filter: {
-                    kind: "member",
-                    ownerUserId: option.userId,
-                  } as CloudSessionFilter,
-                  ...option,
-                })),
-              ].map((option) => {
-                const active =
-                  option.filter.kind === filter.kind &&
-                  (option.filter.kind !== "member" ||
-                    (filter.kind === "member" &&
-                      option.filter.ownerUserId === filter.ownerUserId));
-                const presenceEntry = option.userId
-                  ? (orgId ? presenceMap[orgId] : undefined)?.[option.userId]
-                  : undefined;
-                const viewingRow = presenceEntry?.viewingSessionId
-                  ? rows.find(
-                      (row) =>
-                        row.sourceSessionId === presenceEntry.viewingSessionId
-                    )
-                  : undefined;
-                const viewingTitle = viewingRow
-                  ? viewingRow.title.replace(/^(?:⑂\s*)+/u, "")
-                  : undefined;
-                return (
-                  // DropdownItem carries the option semantics itself
-                  // (role="option" + aria-selected + selected check).
-                  <DropdownItem
-                    key={option.key}
-                    dataTestId={`sidebar-cloud-filter-${option.key}`}
-                    selected={active}
-                    onClick={() => handleFilterSelect(option.filter)}
-                  >
-                    <span className="flex min-w-0 flex-col">
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        {presenceEntry && (
-                          <span
-                            data-testid="member-online-dot"
-                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-success-6"
-                          />
-                        )}
-                        <span className="min-w-0 truncate">
-                          {option.displayName}
-                        </span>
-                      </span>
-                      {viewingTitle && (
-                        <span className="min-w-0 truncate pl-3 text-[10px] text-text-3">
-                          {t("cloud.sidebar.memberViewing", {
-                            title: viewingTitle,
-                          })}
-                        </span>
-                      )}
-                    </span>
-                  </DropdownItem>
-                );
-              })}
-              {hiddenCountForOrg > 0 && (
-                <>
-                  <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-                  <DropdownItem onClick={handleShowHidden}>
-                    <span className="min-w-0 truncate">
-                      {t("cloud.sidebar.showHidden", {
-                        count: hiddenCountForOrg,
-                      })}
-                    </span>
-                  </DropdownItem>
-                </>
-              )}
-            </div>
-          </div>
-        </>,
-        document.body
-      )
-    : null;
+  if (!memberMenu) return null;
 
-  return cloudMemberFilterDropdown;
+  const filterOptions = [
+    {
+      key: "everyone",
+      filter: { kind: "all" } as CloudSessionFilter,
+      displayName: t("cloud.sidebar.everyone"),
+      userId: null as string | null,
+    },
+    {
+      key: "directly-shared-with-me",
+      filter: {
+        kind: "directlySharedWithMe",
+      } as CloudSessionFilter,
+      displayName: t("cloud.sidebar.directlySharedWithMe"),
+      userId: null as string | null,
+    },
+    ...memberOptions.map((option) => ({
+      key: `member-${option.userId}`,
+      filter: {
+        kind: "member",
+        ownerUserId: option.userId,
+      } as CloudSessionFilter,
+      ...option,
+    })),
+  ];
+  const options = filterOptions.map((option) => {
+    const presenceEntry = option.userId
+      ? (orgId ? presenceMap[orgId] : undefined)?.[option.userId]
+      : undefined;
+    const viewingRow = presenceEntry?.viewingSessionId
+      ? rows.find(
+          (row) => row.sourceSessionId === presenceEntry.viewingSessionId
+        )
+      : undefined;
+    const viewingTitle = viewingRow
+      ? viewingRow.title.replace(/^(?:⑂\s*)+/u, "")
+      : undefined;
+
+    return {
+      value: option.key,
+      triggerLabel: option.displayName,
+      dataTestId: `sidebar-cloud-filter-${option.key}`,
+      label: (
+        <span className="flex min-w-0 flex-col">
+          <span className="flex min-w-0 items-center gap-1.5">
+            {presenceEntry && (
+              <span
+                data-testid="member-online-dot"
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-success-6"
+              />
+            )}
+            <span className="min-w-0 truncate">{option.displayName}</span>
+          </span>
+          {viewingTitle && (
+            <span className="min-w-0 truncate pl-3 text-[10px] text-text-3">
+              {t("cloud.sidebar.memberViewing", {
+                title: viewingTitle,
+              })}
+            </span>
+          )}
+        </span>
+      ),
+    };
+  });
+  const selectedValue =
+    filter.kind === "member"
+      ? `member-${filter.ownerUserId}`
+      : filter.kind === "directlySharedWithMe"
+        ? "directly-shared-with-me"
+        : "everyone";
+
+  return createPortal(
+    <div
+      // Fixed positioning creates a stacking context; the portal root must
+      // own the overlay layer so its child panel can appear above the app.
+      className={`fixed flex ${DROPDOWN_PANEL.zIndexClass}`}
+      style={{ top: memberMenu.top, left: memberMenu.left }}
+      data-testid="sidebar-cloud-member-filter"
+    >
+      <Dropdown
+        popupVisible
+        onVisibleChange={(visible) => {
+          if (!visible) closeMemberMenu();
+        }}
+        position="bottom-start"
+        className={`${DROPDOWN_CLASSES.panelAnimated} ${DROPDOWN_WIDTHS.sidebarMenuClass} flex flex-col`}
+        // memberMenu already includes the gap below the real filter button.
+        style={{ maxHeight: DROPDOWN_PANEL.maxHeight, marginTop: 0 }}
+        showSearch
+        options={options}
+        value={selectedValue}
+        filterOption={(query, option) =>
+          String(option.triggerLabel)
+            .toLocaleLowerCase()
+            .includes(query.trim().toLocaleLowerCase())
+        }
+        onSelect={(value) => {
+          const option = filterOptions.find((entry) => entry.key === value);
+          if (option) handleFilterSelect(option.filter);
+        }}
+        dropdownRender={(menu) => (
+          <>
+            {menu}
+            {hiddenCountForOrg > 0 && (
+              <div className="shrink-0">
+                <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
+                <DropdownItem onClick={handleShowHidden}>
+                  <span className="min-w-0 truncate">
+                    {t("cloud.sidebar.showHidden", {
+                      count: hiddenCountForOrg,
+                    })}
+                  </span>
+                </DropdownItem>
+              </div>
+            )}
+          </>
+        )}
+      >
+        {/* A block anchor has no inline line box to push the panel down. */}
+        <span aria-hidden="true" className="block size-0" />
+      </Dropdown>
+    </div>,
+    document.body
+  );
 }

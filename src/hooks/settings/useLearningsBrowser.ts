@@ -6,7 +6,6 @@
  * the `rpc.learning.*` procedures — no cross-module business logic,
  * so the hook lives under `src/hooks/settings/` (single-module use).
  */
-import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 
 import { rpc } from "@src/api/tauri/rpc";
@@ -15,10 +14,8 @@ import type {
   LearningRecord,
   LearningSourceValue,
   LearningStatusValue,
-  LearningsStatusReport,
   SettableLearningStatusValue,
 } from "@src/api/tauri/rpc/schemas/learning";
-import { learningsBrowserInitialFilterAtom } from "@src/store";
 
 export interface LearningsBrowserFilters {
   agentScope?: string;
@@ -40,7 +37,6 @@ export interface UseLearningsBrowserReturn {
   loading: boolean;
   error: string | null;
   filters: LearningsBrowserFilters;
-  status: LearningsStatusReport | null;
   setFilters: (next: LearningsBrowserFilters) => void;
   refresh: () => Promise<void>;
   setStatus: (id: string, next: SettableLearningStatusValue) => Promise<void>;
@@ -51,23 +47,9 @@ export function useLearningsBrowser(
   options: UseLearningsBrowserOptions = {}
 ): UseLearningsBrowserReturn {
   const [items, setItems] = useState<LearningRecord[]>([]);
-  const [status, setStatusReport] = useState<LearningsStatusReport | null>(
-    null
-  );
   const [filters, setFiltersState] = useState<LearningsBrowserFilters>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [initialFilter, setInitialFilter] = useAtom(
-    learningsBrowserInitialFilterAtom
-  );
-
-  useEffect(() => {
-    if (initialFilter) {
-      setFiltersState((prev) => ({ ...prev, status: initialFilter }));
-      setInitialFilter(null);
-    }
-  }, [initialFilter, setInitialFilter]);
-
   const fetchAll = useCallback(
     async (current: LearningsBrowserFilters) => {
       setLoading(true);
@@ -96,22 +78,17 @@ export function useLearningsBrowser(
             rowB.updated_at.localeCompare(rowA.updated_at)
           );
           setItems(merged);
-          setStatusReport(null);
           return;
         }
 
-        const [list, report] = await Promise.all([
-          rpc.learning.browseList({
-            agentScope: current.agentScope,
-            status: current.status,
-            source: current.source,
-            category: current.category,
-            search: current.search,
-          }),
-          rpc.learning.getStatus({ agentScope: current.agentScope }),
-        ]);
+        const list = await rpc.learning.browseList({
+          agentScope: current.agentScope,
+          status: current.status,
+          source: current.source,
+          category: current.category,
+          search: current.search,
+        });
         setItems(list);
-        setStatusReport(report);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -155,12 +132,9 @@ export function useLearningsBrowser(
     loading,
     error,
     filters,
-    status,
     setFilters,
     refresh,
     setStatus,
     remove,
   };
 }
-
-export default useLearningsBrowser;

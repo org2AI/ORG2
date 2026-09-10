@@ -40,7 +40,10 @@ import type {
 } from "./spotlightActionDefinitions";
 import { EDITOR_ACTIONS } from "./spotlightActionDefinitions";
 
-export type Translator = (key: string) => string;
+export type Translator = (
+  key: string,
+  values?: Record<string, string>
+) => string;
 
 // ============================================
 // Header & label helpers
@@ -78,9 +81,18 @@ function namespaceSectionItems(
 
 export function buildActionItems(
   onSelectAction: (action: ActionDefinition) => void,
-  translate: Translator
+  translate: Translator,
+  group?: "workspace" | "view"
 ): SpotlightItem[] {
-  return ACTIONS.map((action) => ({
+  const actions = group
+    ? ACTIONS.filter((action) =>
+        group === "workspace"
+          ? action.requiredParams.includes("repo")
+          : !action.requiredParams.includes("repo")
+      )
+    : ACTIONS;
+
+  return actions.map((action) => ({
     id: action.id,
     label: resolveActionLabel(action, translate),
     icon: action.icon,
@@ -117,7 +129,7 @@ export function buildStaticActionItems(
 ): SpotlightItem[] {
   return actions.map((action) => ({
     id: action.id,
-    label: translate(action.labelKey),
+    label: translate(action.labelKey, action.labelValues),
     icon: action.icon,
     type: "action" as const,
     shortcut: action.shortcut,
@@ -315,6 +327,7 @@ export function buildGroupedDefaultItems(
   recentItems: SpotlightItem[],
   agentSessionItems: SpotlightItem[],
   workspaceItems: SpotlightItem[],
+  organizationItems: SpotlightItem[],
   quickNavigationItems: SpotlightItem[],
   editorItems: SpotlightItem[],
   viewItems: SpotlightItem[],
@@ -345,7 +358,12 @@ export function buildGroupedDefaultItems(
       "workspace",
       translate("selectors.spotlight.groups.workspace")
     ),
-    ...namespaceSectionItems("workspace", workspaceItems)
+    ...namespaceSectionItems("workspace", workspaceItems),
+    buildSectionHeader(
+      "organization",
+      translate("selectors.spotlight.groups.organization")
+    ),
+    ...namespaceSectionItems("organization", organizationItems)
   );
 
   const quickNavigationGroupItems = [...quickNavigationItems, ...editorItems];

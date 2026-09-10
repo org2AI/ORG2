@@ -55,7 +55,7 @@ describe("keyHelpers", () => {
         quota_info: undefined,
         available_models: ["composer-2", "claude-sonnet-4-6"],
         model_context_lengths: {},
-        enabled_models: ["claude-sonnet-4-6", "composer-2"],
+        enabled_models: ["composer-2"],
         validated: true,
       },
     ]);

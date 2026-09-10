@@ -10,8 +10,16 @@ use serde_json::Value;
 pub const RELAY_PROTOCOL_VERSION: u32 = 1;
 pub const DESKTOP_WS_PATH: &str = "/v1/desktop/ws";
 pub const MOBILE_WS_PATH: &str = "/v1/mobile/ws";
+pub const MOBILE_CONNECT_TICKET_PATH: &str = "/v1/mobile/auth/connect-ticket";
+pub const PAIRINGS_PATH: &str = "/v1/pairings";
+pub const PAIRING_COMPLETE_PATH: &str = "/v1/pairings/complete";
+pub const DEVICES_PATH: &str = "/v1/devices";
+pub const DEVICE_REVOKE_PATH: &str = "/v1/devices/revoke";
+pub const PRIMARY_DESKTOP_PATH: &str = "/v1/desktops/primary";
+pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum PermissionTier {
     ReadOnly,
@@ -28,6 +36,7 @@ impl PermissionTier {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct PairingInitRequest {
     pub desktop_id: String,
@@ -38,6 +47,7 @@ pub struct PairingInitRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct PairingInitResponse {
     pub pairing_code: String,
@@ -47,6 +57,7 @@ pub struct PairingInitResponse {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct PairingCompleteRequest {
     pub pairing_code: String,
@@ -54,18 +65,41 @@ pub struct PairingCompleteRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct RevokeDeviceRequest {
     pub device_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct SetPrimaryDesktopRequest {
     pub desktop_id: String,
 }
 
+/// Cloud Bearer travels in the HTTP header, never in this body or a WS URL.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MobileConnectTicketRequest {
+    pub desktop_id: String,
+    pub device_token: String,
+    #[serde(default)]
+    pub pairing_code: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MobileConnectTicketResponse {
+    pub ticket: String,
+    pub expires_at_ms: i64,
+    pub auth_expires_at_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct PairedDeviceInfo {
     pub device_id: String,
@@ -80,10 +114,12 @@ pub struct PairedDeviceInfo {
 /// Frames used only between the relay and the desktop outbound connection.
 /// `payload` remains the existing OrgiiMobile JSON-RPC envelope.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "contract-export", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RelayWireFrame {
     DesktopRegistered {
         desktop_id: String,
+        #[cfg_attr(feature = "contract-export", schemars(range(max = "u32::MAX")))]
         protocol_version: u32,
     },
     MobileConnected {

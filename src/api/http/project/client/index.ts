@@ -17,13 +17,12 @@ export * from "./members";
 export * from "./milestones";
 export * from "./orgs";
 export * from "./projects";
+export * from "./quickActions";
 export * from "./routineWebhooks";
 export * from "./routines";
+export * from "./savedViews";
+export * from "./statusDefinitions";
 export * from "./workItemProperties";
 export * from "./workItems";
 export * from "./workRuns";
-export type {
-  ProjectScopeOptions,
-  WorkItemReadBucket,
-  WorkItemsReadOptions,
-} from "./scope";
+export type { WorkItemReadBucket } from "./scope";

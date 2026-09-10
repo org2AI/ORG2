@@ -3,31 +3,46 @@
 //! A run records that an Agent Org launched through the normal Rust session
 //! stack, while the root session remains the transcript source of truth.
 
-mod finality;
 mod helpers;
+mod materialization;
 mod progress;
+mod quiescence;
+mod rollout;
 mod store;
 mod worker;
 
 #[cfg(test)]
+mod quiescence_blocking_inbox_tests;
+#[cfg(test)]
 mod tests;
 
-pub(crate) use finality::guaranteed_current_turn_effects_with_connection;
-pub use finality::{
-    AgentOrgFinalityAssessment, AgentOrgFinalityBlocker, AgentOrgFinalityDecision,
-    AgentOrgFinalityFacts, AgentOrgFinalityProjection, AgentOrgFinalitySessionFact,
-    AgentOrgGuaranteedTurnEffects,
+pub(crate) use helpers::{context_for_run_record, row_to_run};
+pub use materialization::{
+    AgentOrgInitialInput, AgentOrgInitialInputStatus, AgentOrgMaterializationAuthority,
+    AgentOrgMaterializationIntent, AgentOrgMaterializationStatus, CreateAgentOrgInitialInput,
+    CreateAgentOrgMaterializationIntent,
 };
-pub(crate) use progress::bump_work_revision_in_tx;
 pub use progress::AgentOrgRunProgress;
+pub(crate) use progress::{bump_work_revision_in_tx, current_work_revision_in_tx};
+pub(crate) use quiescence::guaranteed_current_turn_effects_with_connection;
+pub use quiescence::{
+    AgentOrgGuaranteedTurnEffects, AgentOrgQuiescenceAssessment, AgentOrgQuiescenceBlocker,
+    AgentOrgQuiescenceDecision, AgentOrgQuiescenceFacts, AgentOrgQuiescenceProjection,
+    AgentOrgQuiescenceSessionFact,
+};
+pub use rollout::{
+    enable_for_webdriver_test as enable_agent_org_for_webdriver_test,
+    is_enabled as agent_org_redesign_enabled, require_enabled as require_agent_org_redesign,
+};
 pub use store::AgentOrgRunStore;
-pub(crate) use worker::recovery_dispatch_recipient_is_available;
 pub use worker::{WorkerSessionInfo, WorkerSessionRuntime};
 
 use rusqlite::{Connection, Result as SqliteResult};
 use serde::Serialize;
 
-use crate::definitions::orgs::{HierarchyMode, OrgDefinition, PlanApprovalPolicy};
+use crate::definitions::orgs::{
+    AgentOrgCapabilityIndex, AgentOrgLaunchSnapshot, PlanApprovalPolicy,
+};
 
 pub const COORDINATOR_MEMBER_ID: &str = "coordinator";
 pub(crate) const DEFAULT_COORDINATOR_DISPLAY_NAME: &str = "Coordinator";
@@ -62,55 +77,54 @@ impl std::fmt::Display for AgentOrgRunEntryMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentOrgRunStatus {
+    Starting,
     Running,
-    /// User-initiated pause. Non-terminal: the run can be resumed via
-    /// `AgentOrgRunStore::mark_resumed`. Polling and member switching remain
-    /// available while paused; the coordinator and members simply stop
-    /// receiving new dispatch until resumed.
     Paused,
-    Completed,
+    Idle,
     Failed,
-    Cancelled,
-    Abandoned,
+    Archived,
 }
 
 impl AgentOrgRunStatus {
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::Starting => "starting",
             Self::Running => "running",
             Self::Paused => "paused",
-            Self::Completed => "completed",
+            Self::Idle => "idle",
             Self::Failed => "failed",
-            Self::Cancelled => "cancelled",
-            Self::Abandoned => "abandoned",
+            Self::Archived => "archived",
         }
     }
 
     pub fn parse(value: &str) -> Option<Self> {
         match value {
+            "starting" => Some(Self::Starting),
             "running" => Some(Self::Running),
             "paused" => Some(Self::Paused),
-            "completed" => Some(Self::Completed),
+            "idle" => Some(Self::Idle),
             "failed" => Some(Self::Failed),
-            "cancelled" => Some(Self::Cancelled),
-            "abandoned" => Some(Self::Abandoned),
+            "archived" => Some(Self::Archived),
             _ => None,
         }
-    }
-
-    /// Whether this status represents a terminal state (no further transitions
-    /// possible). `Paused` is explicitly non-terminal.
-    pub fn is_terminal(self) -> bool {
-        matches!(
-            self,
-            Self::Completed | Self::Failed | Self::Cancelled | Self::Abandoned
-        )
     }
 }
 
 impl std::fmt::Display for AgentOrgRunStatus {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(self.as_str())
+    }
+}
+
+/// Stable write-fence error shared by every Agent Org commit boundary.
+/// Archived is product-visible and irreversible, so it receives its own
+/// machine-readable prefix; other lifecycle states retain the existing
+/// not-mutable contract.
+pub(crate) fn mutation_blocked_error(run_id: &str, status: &str) -> String {
+    if status == AgentOrgRunStatus::Archived.as_str() {
+        format!("team_archived: Agent Org run {run_id} is read-only")
+    } else {
+        format!("agent_org_run_not_mutable: run {run_id} is {status}")
     }
 }
 
@@ -121,12 +135,6 @@ pub struct AgentOrgContextMember {
     pub name: String,
     pub role: String,
     pub agent_id: String,
-    /// `id` of the member this one reports to in `OrgDefinition.children`.
-    /// `None` means the member sits directly under the coordinator.
-    /// Used by the LLM system prompt to render reports-to relationships
-    /// (in `Soft`/`Strict` modes) and by the runtime to enforce routing
-    /// rules when `HierarchyMode::Strict` is in effect.
-    pub parent_member_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -134,14 +142,13 @@ pub struct AgentOrgContextMember {
 pub struct AgentOrgParticipant {
     pub member_id: String,
     pub agent_id: String,
-    pub parent_member_id: Option<String>,
     pub is_coordinator: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "outcome", rename_all = "snake_case")]
 pub enum AgentOrgCompletionRequestOutcome {
-    Recorded { progress: AgentOrgRunProgress },
+    Recorded { progress: Box<AgentOrgRunProgress> },
     OpenTasks { unresolved_task_ids: Vec<String> },
 }
 
@@ -166,12 +173,13 @@ pub struct AgentOrgRunContext {
     /// logic explicitly considers `{coordinator} ∪ members` as the
     /// eligible recipient set.
     pub members: Vec<AgentOrgContextMember>,
-    /// How the coordinator → members → reports-to relationship should be
-    /// surfaced in the LLM system prompt and enforced by
-    /// `org_send_message`. Mirror of `OrgDefinition.hierarchy_mode`.
-    pub hierarchy_mode: HierarchyMode,
     /// Plan-approval policy captured in the launch snapshot.
     pub plan_approval_policy: PlanApprovalPolicy,
+    /// Compiled capability facts frozen at Team launch. Writer authority is
+    /// resolved from this snapshot; mutable prompts, links, and definitions
+    /// cannot grant it to an already-running Team.
+    #[serde(skip)]
+    pub capability_index: AgentOrgCapabilityIndex,
     /// Session ID of the coordinator (root) session for this run. Used by
     /// the frontend to navigate directly to the coordinator's chat history
     /// when the run is paused or the coordinator is not the active session.
@@ -180,12 +188,6 @@ pub struct AgentOrgRunContext {
     pub root_session_id: Option<String>,
 }
 
-/// Outcome of [`AgentOrgRunContext::check_routing`].
-///
-/// `Allowed` means the send is legitimate under the current
-/// `HierarchyMode`. `Blocked` carries an LLM-readable hint that names
-/// the legitimate routing options (immediate manager + the coordinator
-/// escape hatch) so the model can self-correct without retrying blind.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RoutingDecision {
     Allowed,
@@ -197,7 +199,6 @@ impl AgentOrgRunContext {
         AgentOrgParticipant {
             member_id: COORDINATOR_MEMBER_ID.to_string(),
             agent_id: self.coordinator_agent_id.clone(),
-            parent_member_id: None,
             is_coordinator: true,
         }
     }
@@ -208,7 +209,6 @@ impl AgentOrgRunContext {
         participants.extend(self.members.iter().map(|member| AgentOrgParticipant {
             member_id: member.member_id.clone(),
             agent_id: member.agent_id.clone(),
-            parent_member_id: member.parent_member_id.clone(),
             is_coordinator: false,
         }));
         participants
@@ -224,7 +224,6 @@ impl AgentOrgRunContext {
             .map(|member| AgentOrgParticipant {
                 member_id: member.member_id.clone(),
                 agent_id: member.agent_id.clone(),
-                parent_member_id: member.parent_member_id.clone(),
                 is_coordinator: false,
             })
     }
@@ -267,82 +266,61 @@ impl AgentOrgRunContext {
             return Vec::new();
         }
 
-        let mut allowed = match self.hierarchy_mode {
-            HierarchyMode::Flat | HierarchyMode::Soft => self
-                .participants()
-                .into_iter()
-                .map(|participant| participant.member_id)
-                .filter(|member_id| member_id != sender_member_id)
-                .collect::<Vec<_>>(),
-            HierarchyMode::Strict => {
-                if sender_member_id == COORDINATOR_MEMBER_ID {
-                    self.members
-                        .iter()
-                        .map(|member| member.member_id.clone())
-                        .collect::<Vec<_>>()
-                } else {
-                    let mut ids = Vec::new();
-                    ids.push(COORDINATOR_MEMBER_ID.to_string());
-                    if let Some(sender) = self
-                        .members
-                        .iter()
-                        .find(|member| member.member_id == sender_member_id)
-                    {
-                        if let Some(parent_member_id) = sender.parent_member_id.as_ref() {
-                            ids.push(parent_member_id.clone());
-                        }
-                        ids.extend(
-                            self.members
-                                .iter()
-                                .filter(|member| {
-                                    member
-                                        .parent_member_id
-                                        .as_deref()
-                                        .is_some_and(|parent| parent == sender.member_id)
-                                })
-                                .map(|member| member.member_id.clone()),
-                        );
-                    }
-                    ids.into_iter()
-                        .filter(|member_id| member_id != sender_member_id)
-                        .collect::<Vec<_>>()
-                }
-            }
+        let mut allowed = if sender_member_id == COORDINATOR_MEMBER_ID {
+            self.members
+                .iter()
+                .map(|member| member.member_id.clone())
+                .collect::<Vec<_>>()
+        } else {
+            vec![COORDINATOR_MEMBER_ID.to_string()]
         };
         allowed.sort();
         allowed.dedup();
         allowed
     }
 
-    /// Member ids that `manager_member_id` may directly supervise on the
-    /// shared task board. Task authority deliberately differs from message
-    /// routing: unrestricted peer discussion in `Soft` mode does not make
-    /// every peer every other peer's manager. `Flat` drops the hierarchy, so
-    /// only the coordinator has cross-member task authority in that mode.
-    pub fn direct_report_member_ids_for(&self, manager_member_id: &str) -> Vec<String> {
-        if self.hierarchy_mode == HierarchyMode::Flat
-            || manager_member_id == COORDINATOR_MEMBER_ID
-            || self.participant_by_member_id(manager_member_id).is_none()
-        {
+    /// Static schema surface for `org_send_message`. Member tools expose the
+    /// Coordinator plus peers linked in the immutable launch snapshot; the
+    /// exact persisted Turn still decides which subset is legal at execution.
+    pub fn user_directed_recipient_member_ids_for(&self, sender_member_id: &str) -> Vec<String> {
+        if self.participant_by_member_id(sender_member_id).is_none() {
             return Vec::new();
         }
+        if sender_member_id == COORDINATOR_MEMBER_ID {
+            return self.allowed_recipient_member_ids_for(sender_member_id);
+        }
+        let mut allowed = vec![COORDINATOR_MEMBER_ID.to_string()];
+        allowed.extend(
+            self.members
+                .iter()
+                .filter(|member| {
+                    member.member_id != sender_member_id
+                        && self
+                            .capability_index
+                            .members_can_communicate(sender_member_id, &member.member_id)
+                })
+                .map(|member| member.member_id.clone()),
+        );
+        allowed.sort();
+        allowed.dedup();
+        allowed
+    }
 
-        let mut direct_reports = self
-            .members
+    pub fn user_directed_can_message(
+        &self,
+        sender_member_id: &str,
+        recipient_member_id: &str,
+    ) -> bool {
+        self.user_directed_recipient_member_ids_for(sender_member_id)
             .iter()
-            .filter(|member| member.parent_member_id.as_deref() == Some(manager_member_id))
-            .map(|member| member.member_id.clone())
-            .collect::<Vec<_>>();
-        direct_reports.sort();
-        direct_reports.dedup();
-        direct_reports
+            .any(|member_id| member_id == recipient_member_id)
     }
 
     /// Task assignees that `caller_member_id` is authorized to manage.
     ///
     /// - coordinator: itself plus every roster member;
-    /// - ordinary member: itself;
-    /// - manager member in Soft/Strict: itself plus direct reports.
+    /// - configured graph writer: itself plus every roster member;
+    /// - ordinary member: itself.
     ///
     /// This is the task-governance source of truth. It must not be replaced by
     /// `allowed_recipient_member_ids_for`: permission to talk to a peer is not
@@ -352,15 +330,15 @@ impl AgentOrgRunContext {
             return Vec::new();
         }
 
-        let mut allowed = if caller_member_id == COORDINATOR_MEMBER_ID {
+        let mut allowed = if caller_member_id == COORDINATOR_MEMBER_ID
+            || self.capability_index.is_additional_writer(caller_member_id)
+        {
             self.participants()
                 .into_iter()
                 .map(|participant| participant.member_id)
                 .collect::<Vec<_>>()
         } else {
-            let mut member_ids = vec![caller_member_id.to_string()];
-            member_ids.extend(self.direct_report_member_ids_for(caller_member_id));
-            member_ids
+            vec![caller_member_id.to_string()]
         };
         allowed.sort();
         allowed.dedup();
@@ -383,7 +361,7 @@ impl AgentOrgRunContext {
         }
 
         RoutingDecision::Blocked(format!(
-            "recipient_member_id '{to_member_id}' is not currently routable from sender_member_id '{from_member_id}'. Allowed recipient_member_id values: {}",
+            "recipient_member_id '{to_member_id}' is not currently routable from sender_member_id '{from_member_id}'; member peer delivery is not enabled until the peer-send phase. Allowed recipient_member_id values: {}",
             self.allowed_recipient_member_ids_for(from_member_id).join(", ")
         ))
     }
@@ -399,14 +377,47 @@ pub struct AgentOrgRunRecord {
     pub org_snapshot_json: Option<String>,
     pub entry_mode: AgentOrgRunEntryMode,
     pub status: AgentOrgRunStatus,
+    pub activation_generation: i64,
+    pub has_initial_work: bool,
     pub work_item_id: Option<String>,
     pub project_slug: Option<String>,
     pub routine_fire_id: Option<String>,
     pub summary: Option<String>,
     pub last_error: Option<String>,
+    pub failure_json: Option<String>,
+    pub last_activity_outcome: Option<String>,
     pub created_at: String,
     pub updated_at: String,
-    pub completed_at: Option<String>,
+    pub idled_at: Option<String>,
+    pub archived_at: Option<String>,
+    pub archive_receipt_id: Option<String>,
+}
+
+/// One-shot persisted work produced before AgentAppState is installed.
+/// Only the exact receipt IDs in this plan may ring a post-init doorbell.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOrgStartupRecoveryPlan {
+    pub inspected_runs: usize,
+    pub inspected_terminal_members: usize,
+    pub skipped_without_unique_execution: usize,
+    pub recovered_tasks: Vec<crate::coordination::agent_org_tasks::TaskExecutionRecovery>,
+    pub failures: Vec<AgentOrgStartupRecoveryFailure>,
+}
+
+impl AgentOrgStartupRecoveryPlan {
+    pub fn recovered_task_count(&self) -> usize {
+        self.recovered_tasks.len()
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOrgStartupRecoveryFailure {
+    pub org_run_id: String,
+    pub session_id: String,
+    pub member_id: Option<String>,
+    pub error: String,
 }
 
 #[derive(Debug, Clone)]
@@ -414,7 +425,7 @@ pub struct CreateAgentOrgRunParams {
     pub org_id: String,
     pub coordinator_agent_id: String,
     pub root_session_id: Option<String>,
-    pub org_snapshot: OrgDefinition,
+    pub org_snapshot: AgentOrgLaunchSnapshot,
     pub entry_mode: AgentOrgRunEntryMode,
     pub status: AgentOrgRunStatus,
     pub work_item_id: Option<String>,
@@ -422,35 +433,89 @@ pub struct CreateAgentOrgRunParams {
     pub routine_fire_id: Option<String>,
 }
 
-/// Initialize runtime Agent Org tables in `sessions.db`.
+#[derive(Debug, Clone)]
+pub struct CreateStartingAgentOrgRunParams {
+    pub org_id: String,
+    pub coordinator_agent_id: String,
+    pub root_session_id: String,
+    pub org_snapshot: AgentOrgLaunchSnapshot,
+    pub entry_mode: AgentOrgRunEntryMode,
+    pub work_item_id: Option<String>,
+    pub project_slug: Option<String>,
+    pub routine_fire_id: Option<String>,
+    pub materialization_intents: Vec<CreateAgentOrgMaterializationIntent>,
+    pub initial_input: Option<CreateAgentOrgInitialInput>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOrgStartingFailure {
+    pub code: String,
+    pub message: String,
+}
+
+impl AgentOrgStartingFailure {
+    pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            code: code.into(),
+            message: message.into(),
+        }
+    }
+}
+
+/// Initialize the redesigned runtime run envelope in an already-isolated
+/// namespace. Production startup uses the complete schema coordinator; this
+/// narrower entry point remains available to focused unit tests.
 pub fn init_schema(conn: &Connection) -> SqliteResult<()> {
+    create_schema(conn)
+}
+
+pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runs (
+        "CREATE TABLE IF NOT EXISTS agent_org_runtime_runs (
             id TEXT PRIMARY KEY,
             org_id TEXT NOT NULL,
             coordinator_agent_id TEXT NOT NULL,
             root_session_id TEXT,
             org_snapshot_json TEXT,
             entry_mode TEXT NOT NULL,
-            status TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN (
+                'starting', 'running', 'paused', 'idle', 'failed', 'archived'
+            )),
+            activation_generation INTEGER NOT NULL DEFAULT 1
+                CHECK(activation_generation >= 1),
+            has_initial_work INTEGER NOT NULL DEFAULT 0
+                CHECK(has_initial_work IN (0, 1)),
             work_item_id TEXT,
             project_slug TEXT,
             routine_fire_id TEXT,
             summary TEXT,
             last_error TEXT,
+            failure_json TEXT,
+            last_activity_outcome TEXT CHECK(last_activity_outcome IN (
+                'completed', 'failed', 'cancelled'
+            )),
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
-            completed_at TEXT
+            idled_at TEXT,
+            archived_at TEXT,
+            archive_receipt_id TEXT UNIQUE,
+            CHECK(
+                (status='archived' AND archived_at IS NOT NULL AND archive_receipt_id IS NOT NULL)
+                OR
+                (status<>'archived' AND archived_at IS NULL AND archive_receipt_id IS NULL)
+            )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runs_org_updated
-            ON agent_org_runs(org_id, updated_at);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runs_root_session
-            ON agent_org_runs(root_session_id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runs_work_item
-            ON agent_org_runs(work_item_id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runs_status
-            ON agent_org_runs(status);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_runs_org_updated
+            ON agent_org_runtime_runs(org_id, updated_at);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_runs_root_session
+            ON agent_org_runtime_runs(root_session_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_runs_work_item
+            ON agent_org_runtime_runs(work_item_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_runs_status
+            ON agent_org_runtime_runs(status);",
     )?;
+    materialization::init_schema(conn)?;
     progress::init_schema(conn)?;
     Ok(())
 }

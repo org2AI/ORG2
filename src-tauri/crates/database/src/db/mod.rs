@@ -37,15 +37,24 @@
 //! proj.execute("SELECT * FROM projects", [])?;
 //! ```
 
+mod checkpoint;
 mod connection;
 mod shell_replay_schema;
 mod writer;
 
+pub use checkpoint::{
+    checkpoint_database, checkpoint_projects_for_shutdown, checkpoint_sessions_for_shutdown,
+    checkpoint_sessions_if_wal_exceeds, wal_bytes, wal_path, WalCheckpointMode,
+    WalCheckpointReport, WalMaintenanceOutcome,
+};
 pub use connection::{
-    configure_connection, get_connection, get_db_path, get_projects_connection,
-    register_projects_init, register_sessions_init, reset_connection_pool, PooledConnection,
+    begin_connection_pool_shutdown, configure_connection, connection_pool_metrics, get_connection,
+    get_db_path, get_projects_connection, register_projects_init, register_sessions_init,
+    reset_connection_pool, ConnectionPoolDrainReport, ConnectionPoolMetrics,
+    ConnectionPoolPathMetrics, PooledConnection,
 };
 pub use shell_replay_schema::init_shell_replay_tables;
 pub use writer::{
-    begin_immediate, sessions_writer_guard, with_sessions_writer, SessionsWriterGuard,
+    begin_immediate, sessions_writer_guard, try_with_sessions_writer, with_sessions_writer,
+    SessionsWriterGuard,
 };

@@ -35,7 +35,7 @@ import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut
 import { Placeholder } from "@src/components/Placeholder";
 import TabPill, { type TabPillItem } from "@src/components/TabPill";
 import Tooltip from "@src/components/Tooltip";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import {
   SETTINGS_ROUTE_ROOT,
   type SettingsRouteRoot,
@@ -70,7 +70,7 @@ import { AgentOrgsPage, MyRolePage } from "@src/router/lazy/pages";
 import { VerticalResizeHandle } from "@src/scaffold/Resize";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import { resolvedBackgroundConfigAtom } from "@src/store/ui/backgroundConfigAtom";
-import { toggleChatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { toggleChatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { settingsReturnPathAtom } from "@src/store/ui/settingsNavigationAtom";
 import { sidebarCollapsedAtom } from "@src/store/ui/sidebarAtom";
 import type { ChatPanelPosition } from "@src/store/ui/workStationLayout/chatPositionAtoms";
@@ -301,7 +301,7 @@ const SettingsSlot: React.FC<SettingsSlotProps> = ({
   const maximizeLabel = maximized
     ? t("sessions:chat.restoreSplitView", { defaultValue: "Show Workstation" })
     : t("panel.maximizeSettings", { defaultValue: "Maximize Settings" });
-  const maximizeShortcut = getShortcutKeys(
+  const maximizeShortcut = useShortcutKeys(
     maximized ? "maximize_work_station" : "maximize_chat"
   );
   const maximizeTooltip = (

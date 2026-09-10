@@ -20,6 +20,7 @@ import { collectRunGroupSessionIds } from "@src/features/SessionCreator/multiRun
 import { createLogger } from "@src/hooks/logger";
 import { useAgentDefinitions } from "@src/modules/MainApp/AgentOrgs/hooks/useAgentDefinitions";
 import { useCliAgents } from "@src/modules/MainApp/Integrations/KeyVault/CliClients/hooks/useCliAgents";
+import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import {
   openOrFocusChatPanelStartPageTabAtom,
   openOrFocusSessionInChatPanelTabAtom,
@@ -93,11 +94,12 @@ export function RunGroupPanelView({
   // static list and has no reason to re-render once a second forever.
   useEffect(() => {
     if (!hasLiveRuns) return undefined;
-    const intervalId = window.setInterval(
+    const intervalId = startVisibilityAwareInterval(
+      document,
       () => setNowMs(Date.now()),
       ELAPSED_TICK_MS
     );
-    return () => window.clearInterval(intervalId);
+    return () => intervalId();
   }, [hasLiveRuns]);
 
   const handleOpen = useCallback(

@@ -15,6 +15,8 @@
 # whole-repo: both have cross-file failure modes that a per-file diff cannot
 # bound.
 #
+# Gitleaks independently scans full HEAD history against an exact reviewed baseline.
+#
 # Mirrors the toolchain versions used in release.yaml (Node 20, pnpm 9,
 # Rust stable, swatinem/rust-cache) so CI and release builds stay in sync.
 
@@ -29,7 +31,39 @@ concurrency:
   group: ci-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
+  # ── Secret scan ────────────────────────────────────────────────────────────
+  gitleaks:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Test secret scanning policy
+        env:
+          GITLEAKS_DOCKER_IMAGE: ghcr.io/gitleaks/gitleaks:v8.24.3
+        run: node --test scripts/security/gitleaks.test.cjs
+
+      - name: Scan git history for secrets
+        run: >
+          docker run --rm
+          -v "$PWD:/repo"
+          -e GIT_CONFIG_COUNT=1
+          -e GIT_CONFIG_KEY_0=safe.directory
+          -e GIT_CONFIG_VALUE_0=/repo
+          ghcr.io/gitleaks/gitleaks:v8.24.3
+          git /repo --log-opts=HEAD --no-banner --redact --verbose
+          --config /repo/.gitleaks.toml
+          --gitleaks-ignore-path /repo/.gitleaksignore
+
   # ── Change scope ────────────────────────────────────────────────────────────
   changes:
     name: Detect CI scope
@@ -154,6 +188,29 @@ jobs:
       # test-placement conventions within a day of the 53-directory cleanup.
       - name: Test placement
         run: pnpm run check:test-placement
+
+      # Missing / unused translation keys can enter from either side of the
+      # boundary (a new t() call or a locale edit), so the gate fires on any
+      # frontend source or locale change and skips Rust/docs/tooling diffs.
+      # Deletions count: removing the last t("key") makes that key unused.
+      - name: Detect i18n scope
+        id: i18n_scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          i18n_required="$(
+            git diff --name-only -z "${BASE_SHA}...${HEAD_SHA}" |
+              node scripts/ci/detect-i18n-changes.cjs
+          )"
+          echo "i18n_required=${i18n_required}" >> "${GITHUB_OUTPUT}"
+          echo "i18n check required: ${i18n_required}"
+
+      - name: i18n keys (missing · unused · locale gaps)
+        if: steps.i18n_scope.outputs.i18n_required == 'true'
+        run: |
+          pnpm run test:i18n-keys
+          pnpm run check:i18n-keys
 
       - name: Unit tests
         run: pnpm run test

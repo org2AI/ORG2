@@ -5,17 +5,17 @@
  * browser / launchpad / kanban / agent surface actually renders) is
  * too narrow to be usable.
  *
- * The breakpoint deliberately tracks the workbench width, NOT the OS
- * window width and NOT the full content column to the right of the
- * sidebar. So:
+ * The breakpoint tracks the available workbench width. This hook changes
+ * chat maximization only; responsive sidebar visibility is managed separately.
+ *
+ * Workbench width changes with the surrounding layout:
  *
  * - Dragging the chat handle wider shrinks the workbench → can flip
  *   into a maximized chat slot once it crosses below the breakpoint.
  * - Collapsing the sidebar widens the workbench → can flip the chat
  *   slot back out of maximized.
- * - Resizing the OS window changes everything proportionally, so it
- *   feels "window-driven" too — but only because the workbench is a
- *   downstream of those layout choices.
+ * - Resizing the OS window changes the available workbench width and
+ *   can cross this breakpoint as well as the separate sidebar breakpoint.
  *
  * Below `NARROW_CHAT_FOCUS_BREAKPOINT_PX`, `chatPanelMaximizedAtom`
  * is forced to `true` (the same maximized layout the toolbar's
@@ -41,12 +41,12 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import {
   chatPanelDraggingAtom,
-  chatPanelMaximizedAtom,
   chatVisibleAtom,
   chatWidthAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/widthAtoms";
 
 /**
  * Below this *workbench* width the chat panel takes over the entire

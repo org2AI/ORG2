@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { updateKeyHealth } from "@src/api/services/keyValidation";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import { SECTION_SUBHEADING_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
 import DeploymentModelInput from "@src/scaffold/WizardSystem/variants/KeyVault/components/DeploymentModelInput";
@@ -59,14 +59,14 @@ export const AccountInlineDeploymentSection: React.FC<
   return (
     <div className="flex min-w-0 flex-col gap-2">
       {alertMessages.map((msg) => (
-        <InlineAlert
+        <PageNotice
           key={msg.id}
           type={msg.type}
           onClose={() => setSaveError(null)}
           closeAriaLabel={tCommon("actions.close")}
         >
           {msg.text}
-        </InlineAlert>
+        </PageNotice>
       ))}
       <div className={SECTION_SUBHEADING_CLASSES}>
         {t("keyVault.deploymentModels.sectionTitle")}

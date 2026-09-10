@@ -2,6 +2,8 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHistory";
+import { useSessionId } from "@src/engines/SessionCore/hooks/session";
 import { useKeyVault } from "@src/hooks/keyVault";
 import { useValidatedLastPair } from "@src/hooks/models/useValidatedLastPair";
 import type { ContextUsageSnapshot } from "@src/store/session/cliSessionStatusAtom";
@@ -9,7 +11,53 @@ import {
   sessionContextTokensAtom,
   sessionContextUsageAtom,
 } from "@src/store/session/cliSessionStatusAtom";
-import { getModelInfo } from "@src/util/modelInfo";
+import { getModelInfo } from "@src/types/model/info";
+import {
+  type ResolvedModelVariantFields,
+  getModelVariantBaseModel,
+} from "@src/util/modelVariants";
+import { isCliSession } from "@src/util/session/sessionDispatch";
+
+type ContextWindowVariant = Pick<
+  ResolvedModelVariantFields,
+  "model" | "base_model" | "context_window"
+>;
+
+function positiveContextWindow(
+  variant: ContextWindowVariant | undefined
+): number | null {
+  const contextWindow = variant?.context_window;
+  return typeof contextWindow === "number" && contextWindow > 0
+    ? contextWindow
+    : null;
+}
+
+/**
+ * Resolve provider metadata for an ORG2 model variant. A variant-specific
+ * value wins; otherwise synthetic effort variants inherit the base model's
+ * provider-reported window.
+ */
+export function resolveAccountContextWindow(
+  modelName: string,
+  variants: readonly ContextWindowVariant[] | undefined
+): number | null {
+  if (!modelName || !variants) return null;
+
+  const exactVariant = variants.find((variant) => variant.model === modelName);
+  const exactContextWindow = positiveContextWindow(exactVariant);
+  if (exactContextWindow !== null) return exactContextWindow;
+
+  const metadataBaseModel = exactVariant?.base_model;
+  const baseModel =
+    metadataBaseModel && metadataBaseModel !== modelName
+      ? metadataBaseModel
+      : getModelVariantBaseModel(modelName);
+  if (baseModel === modelName) return null;
+
+  return positiveContextWindow(
+    variants.find((variant) => variant.model === baseModel)
+  );
+}
 
 export interface ContextUsageInfo {
   percentage: number;
@@ -57,8 +105,23 @@ export function computeCacheHitRate(
   return Math.max(0, cacheReadTokens) / denom;
 }
 
+/** External sources must supply their own window; the composer's model is unrelated. */
+export function resolveContextMaxTokens(
+  reported: number | null | undefined,
+  modelMaxTokens: number,
+  external: boolean
+): number {
+  if (typeof reported === "number" && Number.isFinite(reported) && reported > 0)
+    return reported;
+  return external ? 0 : modelMaxTokens;
+}
+
 export function useContextUsageInfo(): ContextUsageInfo {
   const { t } = useTranslation();
+  const { sessionId } = useSessionId();
+  const external =
+    !!getImportedHistorySourceBySessionId(sessionId) ||
+    (!!sessionId && isCliSession(sessionId));
   const sessionTokens = useAtomValue(sessionContextTokensAtom);
   const contextUsage = useAtomValue(sessionContextUsageAtom);
   const lastModel = useValidatedLastPair();
@@ -73,16 +136,15 @@ export function useContextUsageInfo(): ContextUsageInfo {
     const accountId = lastModel?.selectedAccountId;
     if (!modelName || !accountId) return null;
     const account = accounts.find((entry) => entry.id === accountId);
-    const contextWindow = account?.modelVariants?.find(
-      (variant) => variant.model === modelName
-    )?.context_window;
-    return typeof contextWindow === "number" && contextWindow > 0
-      ? contextWindow
-      : null;
+    return resolveAccountContextWindow(modelName, account?.modelVariants);
   }, [accounts, lastModel?.selectedAccountId, modelName]);
   const contextWindowK = modelInfo?.contextWindow ?? 200;
   const modelMaxTokens = accountContextWindow ?? contextWindowK * 1000;
-  const maxTokens = contextUsage?.maxTokens ?? modelMaxTokens;
+  const maxTokens = resolveContextMaxTokens(
+    contextUsage?.maxTokens,
+    modelMaxTokens,
+    external
+  );
   const snapshotTokens = contextUsage?.usedTokens ?? 0;
   const displayTokens = sessionTokens > 0 ? sessionTokens : snapshotTokens;
   const hasFreshSnapshot = contextUsage?.usedTokens === displayTokens;
@@ -94,7 +156,10 @@ export function useContextUsageInfo(): ContextUsageInfo {
         : 0;
   const clampedPercentage = Math.min(percentage, 100);
 
-  const tokenLabel = `${percentage.toFixed(1)}% · ${formatTokenCount(displayTokens)} / ${formatTokenCount(maxTokens)} ${t("contextInfo.contextUsed")}`;
+  const tokenLabel =
+    external && (!contextUsage || !maxTokens)
+      ? `${t("common:status.unknown")} · ${contextUsage ? formatTokenCount(displayTokens) : "—"} / — ${t("contextInfo.contextUsed")}`
+      : `${percentage.toFixed(1)}% · ${formatTokenCount(displayTokens)} / ${formatTokenCount(maxTokens)} ${t("contextInfo.contextUsed")}`;
 
   const cacheReadTokens = contextUsage?.cacheReadTokens ?? 0;
   const cacheWriteTokens = contextUsage?.cacheWriteTokens ?? 0;

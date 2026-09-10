@@ -52,10 +52,11 @@ export function TabBarPlusMenuItems({
                 />
               ) : null}
             </span>
-            {action.shortcut ? (
+            {action.shortcutId ? (
               <KeyboardShortcut
-                shortcut={action.shortcut}
+                shortcutId={action.shortcutId}
                 variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
+                size="sm"
               />
             ) : null}
           </button>

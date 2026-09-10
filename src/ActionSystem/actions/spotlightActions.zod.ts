@@ -23,7 +23,8 @@ import {
   openCollabOrgSpotlight,
   openEditorSpotlight,
   openSessionCreatorSpotlight,
-  openWorkspaceSpotlight,
+  openSessionImportSpotlight,
+  openWorkingDirectorySpotlight,
 } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import { spotlightOpenAtom } from "@src/store/ui/uiAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
@@ -32,7 +33,12 @@ import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 // Actions
 // ============================================
 
-const workspacePickerModeSchema = z.enum(["switch", "open", "add", "create"]);
+const workingDirectoryPickerModeSchema = z.enum([
+  "switch",
+  "open",
+  "add",
+  "create",
+]);
 const collabOrgContextSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("create"),
@@ -51,7 +57,9 @@ const spotlightOpen = defineZodAction(
     description: "Open the global spotlight search",
     params: z.object({}),
     layer: "gui",
-    shortcut: getShortcutKeys("spotlight_open"),
+    get shortcut() {
+      return getShortcutKeys("spotlight_open");
+    },
     examples: ["open spotlight", "search anything", "quick search"],
   },
   async () => {
@@ -83,7 +91,9 @@ const spotlightToggle = defineZodAction(
     description: "Toggle the global spotlight search",
     params: z.object({}),
     layer: "gui",
-    shortcut: getShortcutKeys("spotlight_open"),
+    get shortcut() {
+      return getShortcutKeys("spotlight_open");
+    },
   },
   async () => {
     const store = getInstrumentedStore();
@@ -96,27 +106,32 @@ const spotlightToggle = defineZodAction(
   }
 );
 
-const spotlightOpenWorkspacePicker = defineZodAction(
+const spotlightOpenWorkingDirectoryPicker = defineZodAction(
   {
     id: ACTION_ID.SPOTLIGHT_OPEN_WORKSPACE_PICKER,
     category: "spotlight",
-    description: "Open Spotlight's workspace picker flow",
+    description: "Open Spotlight's working-directory picker flow",
     params: z.object({
-      mode: workspacePickerModeSchema.describe(
-        "Workspace picker mode: switch, open, add, or create"
+      mode: workingDirectoryPickerModeSchema.describe(
+        "Working-directory picker mode: switch, open, add, or create"
       ),
     }),
     layer: "gui",
     examples: [
+      "switch working directory",
+      "add working directory",
+      "create Multi-repo Working Directory",
       "switch workspace",
       "open folder",
       "add workspace",
-      "create Multi-repo Workspace",
     ],
   },
   async ({ mode }) => {
-    openWorkspaceSpotlight(mode);
-    return { success: true, message: `Opened workspace picker: ${mode}` };
+    openWorkingDirectorySpotlight(mode);
+    return {
+      success: true,
+      message: `Opened working-directory picker: ${mode}`,
+    };
   }
 );
 
@@ -125,12 +140,12 @@ const spotlightOpenBranchPicker = defineZodAction(
     id: ACTION_ID.SPOTLIGHT_OPEN_BRANCH_PICKER,
     category: "spotlight",
     description: "Open Spotlight's branch picker flow",
-    params: z.object({}),
+    params: z.object({ repoId: z.string().optional() }),
     layer: "gui",
     examples: ["switch branch", "open branch picker", "checkout branch"],
   },
-  async () => {
-    openBranchSpotlight();
+  async ({ repoId }) => {
+    openBranchSpotlight(repoId);
     return { success: true, message: "Opened branch picker" };
   }
 );
@@ -142,7 +157,9 @@ const spotlightOpenEditorFile = defineZodAction(
     description: "Open Spotlight's Code Editor file search flow",
     params: z.object({}),
     layer: "gui",
-    shortcut: getShortcutKeys("quick_open"),
+    get shortcut() {
+      return getShortcutKeys("quick_open");
+    },
     examples: ["open file", "quick open file", "find file"],
   },
   async () => {
@@ -158,7 +175,9 @@ const spotlightOpenEditorCommand = defineZodAction(
     description: "Open Spotlight's Code Editor command flow",
     params: z.object({}),
     layer: "gui",
-    shortcut: getShortcutKeys("spotlight_open"),
+    get shortcut() {
+      return getShortcutKeys("spotlight_open");
+    },
     examples: ["open command palette", "run editor command"],
   },
   async () => {
@@ -174,7 +193,9 @@ const spotlightOpenEditorSymbol = defineZodAction(
     description: "Open Spotlight's Code Editor symbol search flow",
     params: z.object({}),
     layer: "gui",
-    shortcut: getShortcutKeys("go_to_symbol"),
+    get shortcut() {
+      return getShortcutKeys("go_to_symbol");
+    },
     examples: ["go to symbol", "open symbol search", "find editor symbol"],
   },
   async () => {
@@ -190,7 +211,9 @@ const spotlightOpenAgentSessionSearch = defineZodAction(
     description: "Open Spotlight's Agent session search flow",
     params: z.object({}),
     layer: "gui",
-    shortcut: getShortcutKeys("agent_session_search"),
+    get shortcut() {
+      return getShortcutKeys("agent_session_search");
+    },
     examples: ["search agent sessions", "open session", "find session"],
   },
   async () => {
@@ -225,12 +248,29 @@ const spotlightOpenAgentControl = defineZodAction(
     description: "Open Spotlight's Agent Control flow",
     params: z.object({}),
     layer: "gui",
-    shortcut: getShortcutKeys("toggle_ade_manager"),
+    get shortcut() {
+      return getShortcutKeys("toggle_ade_manager");
+    },
     examples: ["ade manager", "open ADE Manager", "manage agents"],
   },
   async () => {
     openAgentControlSpotlight();
     return { success: true, message: "Opened Agent Control" };
+  }
+);
+
+const spotlightImportSession = defineZodAction(
+  {
+    id: ACTION_ID.SPOTLIGHT_IMPORT_SESSION,
+    category: "spotlight",
+    description: "Open Spotlight's shared session import form",
+    params: z.object({}),
+    layer: "gui",
+    examples: ["import session", "import shared session"],
+  },
+  async () => {
+    openSessionImportSpotlight();
+    return { success: true, message: "Opened session import" };
   }
 );
 
@@ -241,7 +281,9 @@ const spotlightOpenSessionCreator = defineZodAction(
     description: "Open Spotlight's inline session creator",
     params: z.object({}),
     layer: "gui",
-    shortcut: getShortcutKeys("new_session"),
+    get shortcut() {
+      return getShortcutKeys("new_session");
+    },
     examples: ["new session", "create session", "open session creator"],
   },
   async () => {
@@ -254,7 +296,7 @@ const spotlightOpenCollabOrg = defineZodAction(
   {
     id: ACTION_ID.SPOTLIGHT_OPEN_COLLAB_ORG,
     category: "spotlight",
-    description: "Open Spotlight's organization create or join flow",
+    description: "Open Spotlight's workspace create or join flow",
     params: collabOrgContextSchema,
     layer: "gui",
     examples: [
@@ -284,7 +326,7 @@ export const spotlightZodActions: ZodAction<ZodTypeAny>[] = [
   spotlightOpen,
   spotlightClose,
   spotlightToggle,
-  spotlightOpenWorkspacePicker,
+  spotlightOpenWorkingDirectoryPicker,
   spotlightOpenBranchPicker,
   spotlightOpenEditorFile,
   spotlightOpenEditorCommand,
@@ -293,6 +335,7 @@ export const spotlightZodActions: ZodAction<ZodTypeAny>[] = [
   spotlightOpenAllSessionsSearch,
   spotlightOpenAgentControl,
   spotlightOpenSessionCreator,
+  spotlightImportSession,
   spotlightOpenCollabOrg,
 ];
 

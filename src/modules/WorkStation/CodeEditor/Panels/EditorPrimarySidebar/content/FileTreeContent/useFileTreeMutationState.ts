@@ -21,6 +21,7 @@ import type { VirtuosoHandle } from "react-virtuoso";
 
 import type { TreePanelNode } from "@src/components/TreePanelSidebar/types";
 import type { FlattenedTreeNode } from "@src/components/VirtualizedStickyTree";
+import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
 
 import type { CreatingNewState, DispatchFn, FlattenedNode } from "./types";
@@ -229,27 +230,19 @@ export function useFileTreeMutationState({
     async (event: KeyboardEvent) => {
       if (!selectedPath || renamingPath) return;
 
-      switch (event.key) {
-        case "F2":
-        case "Enter":
-          event.preventDefault();
-          setRenamingPath(selectedPath);
-          break;
-        case "Delete":
-        case "Backspace":
-          if (event.metaKey || event.ctrlKey) {
-            event.preventDefault();
-            const fileName = selectedPath.split("/").pop() || "";
-            const confirmed = await confirmDestructiveAction({
-              title: t("actions.confirmDeleteTitle", { name: fileName }),
-              message: t("confirmation.delete"),
-              okLabel: t("actions.delete"),
-              cancelLabel: t("actions.cancel"),
-            });
-            if (!confirmed) break;
-            dispatch("file.delete", { path: selectedPath }, "user");
-          }
-          break;
+      if (matchesShortcut(event.nativeEvent, "file_menu_rename")) {
+        event.preventDefault();
+        setRenamingPath(selectedPath);
+      } else if (matchesShortcut(event.nativeEvent, "file_menu_delete")) {
+        event.preventDefault();
+        const fileName = selectedPath.split("/").pop() || "";
+        const confirmed = await confirmDestructiveAction({
+          title: t("actions.confirmDeleteTitle", { name: fileName }),
+          message: t("confirmation.delete"),
+          okLabel: t("actions.delete"),
+          cancelLabel: t("actions.cancel"),
+        });
+        if (confirmed) dispatch("file.delete", { path: selectedPath }, "user");
       }
     },
     [selectedPath, renamingPath, dispatch, t]

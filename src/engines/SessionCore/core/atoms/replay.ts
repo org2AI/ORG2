@@ -96,15 +96,6 @@ export const replayTimeRangeAtom = atom<ReplayTimeRange>({
 replayTimeRangeAtom.debugLabel = "session/replayTimeRange";
 
 /**
- * Whether time range is valid (has both start and end).
- */
-export const replayTimeRangeValidAtom = atom((get) => {
-  const range = get(replayTimeRangeAtom);
-  return Boolean(range.start && range.end && range.start !== range.end);
-});
-replayTimeRangeValidAtom.debugLabel = "session/replayTimeRangeValid";
-
-/**
  * Current replay mode.
  * - "follow": Following latest events (auto-scroll to new events)
  * - "replay": Viewing historical event (no auto-scroll)

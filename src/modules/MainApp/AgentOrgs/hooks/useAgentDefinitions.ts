@@ -17,15 +17,14 @@
  * outside this hook (e.g. the agent editing its own definition) propagate
  * without manual refresh calls.
  */
-import { listen } from "@tauri-apps/api/event";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { rpc } from "@src/api/tauri/rpc";
 import { useMounted } from "@src/hooks/lifecycle/useMounted";
 import { createLogger } from "@src/hooks/logger";
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 
-import { INTERNAL_AGENT_IDS } from "../config/agentConstants";
 import {
   agentDefsLoadErrorAtom,
   agentDefsLoadedAtom,
@@ -55,10 +54,9 @@ async function fetchAllDefs(forceFresh = false): Promise<AgentDefinition[]> {
 }
 
 export function useAgentDefinitions() {
-  const allDefs = useAtomValue(allAgentDefsAtom);
+  const builtInAgents = useAtomValue(builtInAgentsAtom);
+  const agents = useAtomValue(customAgentsAtom);
   const setAllDefs = useSetAtom(allAgentDefsAtom);
-  const setBuiltInAgents = useSetAtom(builtInAgentsAtom);
-  const setCustomAgents = useSetAtom(customAgentsAtom);
   const setAgentDefsLoaded = useSetAtom(agentDefsLoadedAtom);
   const loaded = useAtomValue(agentDefsLoadedAtom);
   const loadError = useAtomValue(agentDefsLoadErrorAtom);
@@ -70,22 +68,10 @@ export function useAgentDefinitions() {
   const applyResult = useCallback(
     (result: AgentDefinition[]) => {
       setAllDefs(result);
-      setBuiltInAgents(
-        result.filter(
-          (agent) => agent.builtIn && !INTERNAL_AGENT_IDS.has(agent.id)
-        )
-      );
-      setCustomAgents(result.filter((agent) => !agent.builtIn));
       setAgentDefsLoaded(true);
       setLoadError(null);
     },
-    [
-      setAllDefs,
-      setBuiltInAgents,
-      setCustomAgents,
-      setAgentDefsLoaded,
-      setLoadError,
-    ]
+    [setAllDefs, setAgentDefsLoaded, setLoadError]
   );
 
   const refresh = useCallback(
@@ -118,11 +104,22 @@ export function useAgentDefinitions() {
   }, [loaded, refresh]);
 
   // Backend-driven invalidation: any store mutation (including LLM-tool
-  // writes that never touch this hook) re-syncs the atoms.
+  // writes that never touch this hook) re-syncs the atoms. The first mounted
+  // instance claims the single listener slot; it is released on unmount.
+  const [ownsChangeListener, setOwnsChangeListener] = useState(false);
   useEffect(() => {
     if (changeListenerInstalled) return;
     changeListenerInstalled = true;
-    const unlistenPromise = listen("orgii-agent-defs-changed", () => {
+    setOwnsChangeListener(true);
+    return () => {
+      changeListenerInstalled = false;
+      setOwnsChangeListener(false);
+    };
+  }, []);
+
+  useTauriListen(
+    "orgii-agent-defs-changed",
+    () => {
       void fetchAllDefs(true)
         .then((result) => applyResult(result))
         .catch((error) => {
@@ -131,24 +128,8 @@ export function useAgentDefinitions() {
             error
           );
         });
-    });
-    return () => {
-      changeListenerInstalled = false;
-      void unlistenPromise.then((unlisten) => unlisten());
-    };
-  }, [applyResult]);
-
-  const builtInAgents = useMemo(
-    () =>
-      allDefs.filter(
-        (agent) => agent.builtIn && !INTERNAL_AGENT_IDS.has(agent.id)
-      ),
-    [allDefs]
-  );
-
-  const agents = useMemo(
-    () => allDefs.filter((agent) => !agent.builtIn),
-    [allDefs]
+    },
+    { enabled: ownsChangeListener }
   );
 
   const addAgent = useCallback(
@@ -178,9 +159,6 @@ export function useAgentDefinitions() {
         setAllDefs((current) =>
           current.filter((agent) => agent.id !== agentId)
         );
-        setCustomAgents((current) =>
-          current.filter((agent) => agent.id !== agentId)
-        );
         setAgentDefsLoaded(true);
         setLoadError(null);
       } catch (error) {
@@ -190,7 +168,7 @@ export function useAgentDefinitions() {
         if (mountedRef.current) setLoading(false);
       }
     },
-    [mountedRef, setAgentDefsLoaded, setAllDefs, setCustomAgents, setLoadError]
+    [mountedRef, setAgentDefsLoaded, setAllDefs, setLoadError]
   );
 
   return {

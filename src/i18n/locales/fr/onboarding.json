@@ -1,7 +1,5 @@
 {
   "tutorials": {
-    "modalTitle": "Tutoriels",
-    "start": "Démarrer",
     "chrome": {
       "stepProgress": "Étape {{current}} sur {{total}}",
       "close": "Fermer",
@@ -16,7 +14,7 @@
     },
     "generalLayout": {
       "title": "Visite générale de la présentation",
-      "description": "Découvrez la barre latérale de session, le panneau de discussion, le sélecteur de mode de station, le poste de travail, le dock et les zones d'application.",
+      "description": "Découvrez le panneau de discussion, Runtime, le sélecteur de mode et le dock.",
       "duration": "1 minute",
       "steps": {
         "chat-panel": {
@@ -25,7 +23,7 @@
         },
         "runtime": {
           "title": "Exécution",
-          "body": "Consultez ici votre utilisation et l’état d’exécution. Dans une organisation, vous pouvez aussi vérifier la synchronisation des membres et ouvrir leurs détails d’utilisation de Codex, Claude et Cursor."
+          "body": "Consultez ici votre utilisation et l’état d’exécution. Dans un espace de travail, vous pouvez aussi vérifier la synchronisation des membres et ouvrir leurs détails d’utilisation de Codex, Claude et Cursor."
         },
         "station-mode-pill": {
           "title": "Changer de station modes",
@@ -34,41 +32,17 @@
         "dock": {
           "title": "Dock Agent Station",
           "body": "Le dock change d'application à l'intérieur de la station. La visite guidée désactive temporairement le masquage automatique afin que ces contrôles restent visibles."
-        },
-        "all-tabs": {
-          "title": "Tous les onglets",
-          "body": "La première icône du Dock affiche tous les onglets ouverts ensemble, quelle que soit l'application du poste de travail qui les possède."
-        },
-        "code-editor": {
-          "title": "Éditeur de code",
-          "body": "Utilisez l'éditeur de code pour les fichiers, les différences, les terminaux, le contrôle de source et les modifications de codage apportées au cours d'une session."
-        },
-        "browser": {
-          "title": "Navigateur",
-          "body": "Utilisez le navigateur pour les pages Web, les aperçus, les tests d'applications et les enquêtes basées sur le navigateur parallèlement au chat."
-        },
-        "projects": {
-          "title": "Projets",
-          "body": "Utilisez Projets pour suivre les éléments de travail, les plans et l'état du projet connectés à l'espace de travail actuel."
         }
       }
     },
     "codeEditor": {
       "title": "Visite de l'éditeur de code",
-      "description": "Découvrez les onglets, le changement de dépôt et de branche, le contrôle de source, l'historique Git et le tableau de bord du projet.",
+      "description": "Découvrez les onglets, l’espace de travail de l’éditeur, le contrôle de source et l’historique Git.",
       "duration": "2 minutes",
       "steps": {
         "tabs": {
           "title": "Onglets de l'éditeur de code",
           "body": "Les onglets collectent les fichiers, les différences, les terminaux, les vues de contrôle de source et les tableaux de bord que vous ouvrez lorsque vous travaillez. le dépôt."
-        },
-        "repo-selector": {
-          "title": "Créer ou changer de dépôt",
-          "body": "Utilisez le sélecteur de dépôt pour changer de dépôt actif ou ajouter un autre dépôt ou espace de travail."
-        },
-        "branch-selector": {
-          "title": "Changer de branche",
-          "body": "Le sélecteur de branche affiche la branche Git actuelle et ouvre le commutateur de branche ou crée un flux pour ce dépôt."
         },
         "editor-surface": {
           "title": "Espace de travail de l'éditeur",
@@ -85,12 +59,15 @@
         "git-history": {
           "title": "Historique Git",
           "body": "L'historique Git fait passer le contrôle de source en mode historique des validations afin que vous puissiez inspecter les validations précédentes et les modifications associées."
-        },
-        "dashboard": {
-          "title": "Tableau de bord de l'éditeur de code",
-          "body": "Le tableau de bord est l'onglet d'accueil de l'éditeur de code pour les espaces de travail. Utilisez-le pour ajouter des dépôts, ouvrir les détails du dépôt et vous lancer dans le travail du projet."
         }
       }
     }
+  },
+  "discovery": {
+    "title": "Prise en main et nouveautés",
+    "getStarted": "Bien démarrer",
+    "newFeatures": "Nouveautés",
+    "branchesTitle": "Branches du dépôt",
+    "branchesDescription": "Changez de branche de dépôt directement depuis Spotlight."
   }
 }

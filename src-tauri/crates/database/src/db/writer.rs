@@ -58,6 +58,7 @@
 //! contention is limited to manual `sqlite3` inspection.
 
 use std::cell::Cell;
+use std::time::Duration;
 
 use parking_lot::Mutex;
 use rusqlite::{Connection, Result as SqliteResult, Transaction, TransactionBehavior};
@@ -112,6 +113,17 @@ impl SessionsWriterGuard {
         };
         Self { _outer: outer }
     }
+
+    fn try_acquire_for(timeout: Duration) -> Option<Self> {
+        let depth = SESSIONS_WRITER_DEPTH.with(Cell::get);
+        let outer = if depth == 0 {
+            Some(sessions_writer_mutex().try_lock_for(timeout)?)
+        } else {
+            None
+        };
+        SESSIONS_WRITER_DEPTH.with(|cell| cell.set(depth.saturating_add(1)));
+        Some(Self { _outer: outer })
+    }
 }
 
 impl Drop for SessionsWriterGuard {
@@ -145,6 +157,17 @@ where
 {
     let _guard = SessionsWriterGuard::acquire();
     func()
+}
+
+/// Run a write-excluding maintenance closure only when the writer lock can be
+/// acquired inside a small explicit budget. Runtime WAL maintenance uses this
+/// to remain invisible to foreground Agent writes.
+pub fn try_with_sessions_writer<F, T>(timeout: Duration, func: F) -> Option<T>
+where
+    F: FnOnce() -> T,
+{
+    let _guard = SessionsWriterGuard::try_acquire_for(timeout)?;
+    Some(func())
 }
 
 /// Begin an IMMEDIATE-mode transaction on `conn`.

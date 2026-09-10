@@ -8,8 +8,7 @@
  *  - Menu actions            — Search / Go to line / Copy relative path / Reload.
  *  - UI settings submenu     — Editor display switches / More settings.
  *
- * Menu entries are always rendered for stable discoverability. Entries whose
- * backing action is not available in the current context are disabled.
+ * Unavailable actions are omitted from the current file context.
  */
 import React, { useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -34,7 +33,7 @@ import {
 import Switch from "@src/components/Switch";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
 import Tooltip from "@src/components/Tooltip";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import {
@@ -54,6 +53,7 @@ import {
 import { getFileManagerRevealLabelKey } from "@src/util/platform/fileManagerLabels";
 
 export interface FileHeaderMoreMenuProps {
+  renderFileActions?: (close: () => void) => React.ReactNode;
   // Visibility flags
   showReloadButton: boolean;
   showSearchAction: boolean;
@@ -101,6 +101,7 @@ export interface FileHeaderMoreMenuProps {
 }
 
 export const FileHeaderMoreMenu: React.FC<FileHeaderMoreMenuProps> = ({
+  renderFileActions,
   showReloadButton,
   showSearchAction,
   showGoToLineAction,
@@ -149,9 +150,9 @@ export const FileHeaderMoreMenu: React.FC<FileHeaderMoreMenuProps> = ({
       autoKeyboardNavigation: false,
       closeOnEsc: false,
     });
-  const searchShortcut = getShortcutKeys("find");
-  const goToLineShortcut = getShortcutKeys("go_to_line");
-  const saveShortcut = getShortcutKeys("save_file");
+  const searchShortcut = useShortcutKeys("find");
+  const goToLineShortcut = useShortcutKeys("go_to_line");
+  const saveShortcut = useShortcutKeys("save_file");
   const revealInFileManagerLabelKey = getFileManagerRevealLabelKey();
   const fileChangeActionsDisabled = !hasUnsavedChanges || loading;
   const saveDisabled = !showSaveAction || fileChangeActionsDisabled;
@@ -174,6 +175,7 @@ export const FileHeaderMoreMenu: React.FC<FileHeaderMoreMenuProps> = ({
       enabled: boolean;
       onChange: (enabled: boolean) => void;
     }) => {
+      if (!enabled) return null;
       const handleToggle = (event: React.MouseEvent | React.KeyboardEvent) => {
         event.preventDefault();
         event.stopPropagation();
@@ -264,228 +266,263 @@ export const FileHeaderMoreMenu: React.FC<FileHeaderMoreMenuProps> = ({
               zIndex: DROPDOWN_PANEL.zIndex,
             }}
           >
-            <DropdownItem
-              role="menuitem"
-              fullWidth
-              tabIndex={0}
-              icon={
-                <HugeiconsIcon
-                  icon={FloppyDiskIcon}
-                  data-icon="save"
-                  size={HEADER_ICON_SIZE.sm}
-                />
-              }
-              disabled={saveDisabled}
-              suffix={
-                saveShortcut ? (
-                  <KeyboardShortcut
-                    shortcut={saveShortcut}
-                    variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
-                  />
-                ) : undefined
-              }
-              onClick={onSaveClick}
-            >
-              {t("common:actions.save")}
-            </DropdownItem>
-
-            <DropdownItem
-              role="menuitem"
-              fullWidth
-              tabIndex={0}
-              icon={
-                <HugeiconsIcon
-                  icon={Undo02Icon}
-                  data-icon="undo-2"
-                  size={HEADER_ICON_SIZE.sm}
-                />
-              }
-              disabled={discardDisabled}
-              onClick={onDiscardClick}
-            >
-              {t("common:workstation.discardChanges")}
-            </DropdownItem>
-
-            <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-
-            <DropdownItem
-              role="menuitem"
-              fullWidth
-              tabIndex={0}
-              icon={
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  data-icon="search"
-                  size={HEADER_ICON_SIZE.sm}
-                />
-              }
-              disabled={searchDisabled}
-              suffix={
-                searchShortcut ? (
-                  <KeyboardShortcut
-                    shortcut={searchShortcut}
-                    variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
-                  />
-                ) : undefined
-              }
-              onClick={onSearchClick}
-            >
-              {t("actions.search")}
-            </DropdownItem>
-
-            <DropdownItem
-              role="menuitem"
-              fullWidth
-              tabIndex={0}
-              icon={
-                <HugeiconsIcon
-                  icon={HashtagIcon}
-                  data-icon="hash"
-                  size={HEADER_ICON_SIZE.sm}
-                />
-              }
-              disabled={goToLineDisabled}
-              suffix={
-                goToLineShortcut ? (
-                  <KeyboardShortcut
-                    shortcut={goToLineShortcut}
-                    variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
-                  />
-                ) : undefined
-              }
-              onClick={onGoToLineClick}
-            >
-              {t("selectors.editorSpotlight.modes.goToLine.label")}
-            </DropdownItem>
-
-            <DropdownItem
-              role="menuitem"
-              fullWidth
-              tabIndex={0}
-              icon={
-                <HugeiconsIcon
-                  icon={Copy01Icon}
-                  data-icon="copy"
-                  size={HEADER_ICON_SIZE.sm}
-                />
-              }
-              disabled={copyRelativePathDisabled}
-              onClick={onCopyRelativePathClick}
-            >
-              {t("common:actions.copyRelativePath")}
-            </DropdownItem>
-
-            <DropdownItem
-              role="menuitem"
-              fullWidth
-              tabIndex={0}
-              icon={
-                <HugeiconsIcon
-                  icon={FolderOpenIcon}
-                  data-icon="folder-open"
-                  size={HEADER_ICON_SIZE.sm}
-                />
-              }
-              disabled={revealInFileManagerDisabled}
-              onClick={onRevealInFileManagerClick}
-            >
-              {t(revealInFileManagerLabelKey)}
-            </DropdownItem>
-
-            <DropdownItem
-              role="menuitem"
-              fullWidth
-              tabIndex={0}
-              icon={
-                <HugeiconsIcon
-                  icon={Refresh04Icon}
-                  data-icon="refresh-cw"
-                  size={HEADER_ICON_SIZE.sm}
-                  className={reloadSpinClass}
-                />
-              }
-              disabled={reloadDisabled}
-              onClick={onReloadClick}
-            >
-              {t("common:actions.refresh")}
-            </DropdownItem>
-
-            <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-
-            <ActionSubmenu
-              label={t("common:actions.uiSettings")}
-              icon={
-                <HugeiconsIcon
-                  icon={Layers01Icon}
-                  size={DROPDOWN_ITEM.iconSize}
-                  strokeWidth={1.75}
-                />
-              }
-              dataTestId="file-header-ui-settings-submenu"
-            >
-              {renderToggleRow({
-                label: t("settings:editor.lineNumbers"),
-                checked: lineNumbersEnabled,
-                enabled: showLineNumbersToggle,
-                onChange: onLineNumbersChange,
-              })}
-
-              {renderToggleRow({
-                label: t("settings:editor.wordWrap"),
-                checked: wordWrapEnabled,
-                enabled: showWordWrapToggle,
-                onChange: onWordWrapChange,
-              })}
-
-              {renderToggleRow({
-                label: t("settings:editor.minimap"),
-                checked: minimapEnabled,
-                enabled: showMinimapToggle,
-                onChange: onMinimapChange,
-              })}
-
-              {renderToggleRow({
-                label: t("settings:editor.highlightActiveLine"),
-                checked: highlightActiveLineEnabled,
-                enabled: showHighlightActiveLineToggle,
-                onChange: onHighlightActiveLineChange,
-              })}
-
-              {renderToggleRow({
-                label: "Git Blame",
-                checked: gitBlameEnabled,
-                enabled: showGitBlameToggle,
-                onChange: onGitBlameChange,
-              })}
-
-              <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-
+            {!saveDisabled && (
               <DropdownItem
                 role="menuitem"
                 fullWidth
                 tabIndex={0}
                 icon={
                   <HugeiconsIcon
-                    icon={Settings01Icon}
-                    data-icon="settings"
+                    icon={FloppyDiskIcon}
+                    data-icon="save"
                     size={HEADER_ICON_SIZE.sm}
                   />
                 }
-                disabled={!showMoreSettingsAction}
-                onClick={onMoreSettingsClick}
+                disabled={saveDisabled}
                 suffix={
+                  saveShortcut ? (
+                    <KeyboardShortcut
+                      shortcut={saveShortcut}
+                      variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
+                    />
+                  ) : undefined
+                }
+                onClick={onSaveClick}
+              >
+                {t("common:actions.save")}
+              </DropdownItem>
+            )}
+
+            {!discardDisabled && (
+              <DropdownItem
+                role="menuitem"
+                fullWidth
+                tabIndex={0}
+                icon={
                   <HugeiconsIcon
-                    icon={ArrowUpRight01Icon}
-                    data-icon="arrow-up-right"
-                    size={DROPDOWN_ITEM.iconSize}
-                    strokeWidth={1.75}
-                    aria-hidden="true"
+                    icon={Undo02Icon}
+                    data-icon="undo-2"
+                    size={HEADER_ICON_SIZE.sm}
                   />
                 }
+                disabled={discardDisabled}
+                onClick={onDiscardClick}
               >
-                {t("common:actions.moreSettings")}
+                {t("common:workstation.discardChanges")}
               </DropdownItem>
-            </ActionSubmenu>
+            )}
+
+            {(!saveDisabled || !discardDisabled) && (
+              <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
+            )}
+
+            {!searchDisabled && (
+              <DropdownItem
+                role="menuitem"
+                fullWidth
+                tabIndex={0}
+                icon={
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    data-icon="search"
+                    size={HEADER_ICON_SIZE.sm}
+                  />
+                }
+                disabled={searchDisabled}
+                suffix={
+                  searchShortcut ? (
+                    <KeyboardShortcut
+                      shortcut={searchShortcut}
+                      variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
+                    />
+                  ) : undefined
+                }
+                onClick={onSearchClick}
+              >
+                {t("actions.search")}
+              </DropdownItem>
+            )}
+
+            {!goToLineDisabled && (
+              <DropdownItem
+                role="menuitem"
+                fullWidth
+                tabIndex={0}
+                icon={
+                  <HugeiconsIcon
+                    icon={HashtagIcon}
+                    data-icon="hash"
+                    size={HEADER_ICON_SIZE.sm}
+                  />
+                }
+                disabled={goToLineDisabled}
+                suffix={
+                  goToLineShortcut ? (
+                    <KeyboardShortcut
+                      shortcut={goToLineShortcut}
+                      variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
+                    />
+                  ) : undefined
+                }
+                onClick={onGoToLineClick}
+              >
+                {t("selectors.editorSpotlight.modes.goToLine.label")}
+              </DropdownItem>
+            )}
+
+            {!copyRelativePathDisabled && (
+              <DropdownItem
+                role="menuitem"
+                fullWidth
+                tabIndex={0}
+                icon={
+                  <HugeiconsIcon
+                    icon={Copy01Icon}
+                    data-icon="copy"
+                    size={HEADER_ICON_SIZE.sm}
+                  />
+                }
+                disabled={copyRelativePathDisabled}
+                onClick={onCopyRelativePathClick}
+              >
+                {t("common:actions.copyRelativePath")}
+              </DropdownItem>
+            )}
+
+            {!revealInFileManagerDisabled && (
+              <DropdownItem
+                role="menuitem"
+                fullWidth
+                tabIndex={0}
+                icon={
+                  <HugeiconsIcon
+                    icon={FolderOpenIcon}
+                    data-icon="folder-open"
+                    size={HEADER_ICON_SIZE.sm}
+                  />
+                }
+                disabled={revealInFileManagerDisabled}
+                onClick={onRevealInFileManagerClick}
+              >
+                {t(revealInFileManagerLabelKey)}
+              </DropdownItem>
+            )}
+
+            {!reloadDisabled && (
+              <DropdownItem
+                role="menuitem"
+                fullWidth
+                tabIndex={0}
+                icon={
+                  <HugeiconsIcon
+                    icon={Refresh04Icon}
+                    data-icon="refresh-cw"
+                    size={HEADER_ICON_SIZE.sm}
+                    className={reloadSpinClass}
+                  />
+                }
+                disabled={reloadDisabled}
+                onClick={onReloadClick}
+              >
+                {t("common:actions.refresh")}
+              </DropdownItem>
+            )}
+
+            {(showLineNumbersToggle ||
+              showWordWrapToggle ||
+              showMinimapToggle ||
+              showHighlightActiveLineToggle ||
+              showGitBlameToggle ||
+              showMoreSettingsAction) && (
+              <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
+            )}
+
+            {renderFileActions?.(close)}
+            {(showLineNumbersToggle ||
+              showWordWrapToggle ||
+              showMinimapToggle ||
+              showHighlightActiveLineToggle ||
+              showGitBlameToggle ||
+              showMoreSettingsAction) && (
+              <ActionSubmenu
+                label={t("common:actions.uiSettings")}
+                icon={
+                  <HugeiconsIcon
+                    icon={Layers01Icon}
+                    size={DROPDOWN_ITEM.iconSize}
+                    strokeWidth={1.75}
+                  />
+                }
+                dataTestId="file-header-ui-settings-submenu"
+              >
+                {renderToggleRow({
+                  label: t("settings:editor.lineNumbers"),
+                  checked: lineNumbersEnabled,
+                  enabled: showLineNumbersToggle,
+                  onChange: onLineNumbersChange,
+                })}
+
+                {renderToggleRow({
+                  label: t("settings:editor.wordWrap"),
+                  checked: wordWrapEnabled,
+                  enabled: showWordWrapToggle,
+                  onChange: onWordWrapChange,
+                })}
+
+                {renderToggleRow({
+                  label: t("settings:editor.minimap"),
+                  checked: minimapEnabled,
+                  enabled: showMinimapToggle,
+                  onChange: onMinimapChange,
+                })}
+
+                {renderToggleRow({
+                  label: t("settings:editor.highlightActiveLine"),
+                  checked: highlightActiveLineEnabled,
+                  enabled: showHighlightActiveLineToggle,
+                  onChange: onHighlightActiveLineChange,
+                })}
+
+                {renderToggleRow({
+                  label: "Git Blame",
+                  checked: gitBlameEnabled,
+                  enabled: showGitBlameToggle,
+                  onChange: onGitBlameChange,
+                })}
+
+                {showMoreSettingsAction && (
+                  <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
+                )}
+
+                {showMoreSettingsAction && (
+                  <DropdownItem
+                    role="menuitem"
+                    fullWidth
+                    tabIndex={0}
+                    icon={
+                      <HugeiconsIcon
+                        icon={Settings01Icon}
+                        data-icon="settings"
+                        size={HEADER_ICON_SIZE.sm}
+                      />
+                    }
+                    disabled={!showMoreSettingsAction}
+                    onClick={onMoreSettingsClick}
+                    suffix={
+                      <HugeiconsIcon
+                        icon={ArrowUpRight01Icon}
+                        data-icon="arrow-up-right"
+                        size={DROPDOWN_ITEM.iconSize}
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                      />
+                    }
+                  >
+                    {t("common:actions.moreSettings")}
+                  </DropdownItem>
+                )}
+              </ActionSubmenu>
+            )}
           </ActionMenuSurface>,
           document.body
         )}

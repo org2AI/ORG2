@@ -1,0 +1,26 @@
+name: Type-aware lint
+on:
+  pull_request:
+  push:
+    branches: [develop]
+permissions:
+  contents: read
+concurrency:
+  group: typed-lint-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  typed-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:typed-lint
+      - run: pnpm check:typed-lint
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144

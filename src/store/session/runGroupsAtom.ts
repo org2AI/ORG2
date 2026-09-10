@@ -115,25 +115,6 @@ export const upsertRunGroupAtom = atom(null, (get, set, group: RunGroup) => {
 });
 upsertRunGroupAtom.debugLabel = "upsertRunGroupAtom";
 
-/** Replace one entry in place — used when a failed runner is retried. */
-export const replaceRunGroupEntryAtom = atom(
-  null,
-  (get, set, input: { groupId: string; entry: RunGroupEntry }) => {
-    const group = get(runGroupsAtom)[input.groupId];
-    if (!group) return;
-    set(runGroupsAtom, {
-      ...get(runGroupsAtom),
-      [input.groupId]: {
-        ...group,
-        entries: group.entries.map((entry) =>
-          entry.ordinal === input.entry.ordinal ? input.entry : entry
-        ),
-      },
-    });
-  }
-);
-replaceRunGroupEntryAtom.debugLabel = "replaceRunGroupEntryAtom";
-
 const _runGroupByIdCache = new Map<string, Atom<RunGroup | undefined>>();
 
 export const removeRunGroupAtom = atom(null, (get, set, groupId: string) => {

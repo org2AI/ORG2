@@ -1,10 +1,10 @@
 /**
- * Public compatibility surface for Chat Panel tab state.
+ * Public Chat Panel tab API.
  *
- * The implementation is split by responsibility so persistence, presentation
- * synchronization, tab creation, and lifecycle mutations remain independently
- * understandable. Keep consumers importing this module so atom identities and
- * the public API stay centralized.
+ * Command consumers use this boundary for opening, closing and navigating tabs.
+ * Model, factory and state readers should import their owning modules directly.
+ * Existing exports remain available for API compatibility; atom identity comes
+ * from the single definition in each owner, not from this forwarding module.
  */
 export {
   clearChatPanelTabCliCommandAtom,
@@ -15,9 +15,9 @@ export {
   closeOtherThanActiveChatPanelTabsAtom,
   closeProjectOrgChatPanelTabsAtom,
   closeRevokedCloudChannelChatPanelTabsAtom,
+  closeSessionChatPanelTabsAtom,
   closeWorkItemChatPanelTabAtom,
   nextChatPanelTabAtom,
-  patchChatPanelWorkItemTabAtom,
   prevChatPanelTabAtom,
   reconcileDiscussionChannelTabsAtom,
   reorderChatPanelTabsAtom,
@@ -27,26 +27,32 @@ export {
   type ReconcileDiscussionChannelTabsInput,
 } from "./chatPanelTabLifecycleAtoms";
 export {
-  addChatPanelLaunchpadTabAtom,
-  addChatPanelTerminalTabAtom,
   openChannelInChatPanelTabAtom,
-  openOrganizationInChatPanelTabAtom,
-  openCreateTargetInChatPanelStartPageAtom,
-  openExploreInChatPanelTabAtom,
   openGitHubIssueInChatPanelTabAtom,
   openGitHubPrInChatPanelTabAtom,
-  openWorkManagementChatPanelTabAtom,
-  openOrFocusChatPanelStartPageTabAtom,
-  openRuntimeInChatPanelTabAtom,
   openTeamInboxInChatPanelTabAtom,
+} from "./chatPanelTabOpen/integrations";
+export {
+  addChatPanelTerminalTabAtom,
+  openRuntimeInChatPanelTabAtom,
   openOrFocusSessionInChatPanelTabAtom,
   openOrReplaceSessionInChatPanelTabAtom,
-  openProjectInChatPanelTabAtom,
   openRunGroupInChatPanelTabAtom,
   openSessionInNewChatTabAtom,
+} from "./chatPanelTabOpen/session";
+export {
+  addChatPanelLaunchpadTabAtom,
+  openCreateTargetInChatPanelStartPageAtom,
+  openExploreInChatPanelTabAtom,
+  openOrFocusChatPanelStartPageTabAtom,
+} from "./chatPanelTabOpen/startPage";
+export {
+  openOrganizationInChatPanelTabAtom,
+  openWorkManagementChatPanelTabAtom,
+  openProjectInChatPanelTabAtom,
   openWorkItemInChatPanelTabAtom,
   openWorkspaceOverviewInChatPanelTabAtom,
-} from "./chatPanelTabOpenAtoms";
+} from "./chatPanelTabOpen/workManagement";
 export {
   buildChannelTabKey,
   buildDefaultLaunchpadTab,
@@ -75,6 +81,16 @@ export {
   toggleActiveChatPanelMaximizedAtom,
 } from "./chatPanelTabPresentationAtoms";
 export {
+  activeChatPanelTabCanGoBackAtom,
+  activeChatPanelTabCanGoForwardAtom,
+  activeChatPanelTabHistoryAtom,
+  chatPanelTabHistoriesAtom,
+  goBackChatPanelTabAtom,
+  goForwardChatPanelTabAtom,
+  navigateChatPanelTabToSessionAtom,
+  type ChatPanelTabHistory,
+} from "./chatPanelTabNavigationAtoms";
+export {
   isChatPanelTabStationAvailable,
   normalizePersistedChatPanelTabsState,
   resolveChatPanelMaximizedForLayout,
@@ -97,7 +113,8 @@ export {
   moveWorkstationPrTabToChatPanelAtom,
 } from "./chatPanelTabPlacementAtom";
 export {
-  recentlyClosedChatPanelTabsAtom,
-  recordRecentlyClosedChatPanelTabsAtom,
-  restoreRecentlyClosedChatPanelTabAtom,
-} from "./chatPanelRecentlyClosedTabs";
+  openRecentChatPanelTabAtom,
+  recentChatPanelTabsAtom,
+} from "./chatPanelRecentTabs";
+
+export { openChatPanelCreateTargetAtom } from "./openChatPanelCreateTargetAtom";

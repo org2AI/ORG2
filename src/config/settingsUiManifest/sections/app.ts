@@ -66,7 +66,6 @@ const EDITOR_SECTION_KEYS = keysByPrefixes([
   "workspace.",
   "git.",
 ]);
-const MONITOR_SECTION_KEYS = keysByPrefixes(["network."]);
 const MOBILE_REMOTE_SECTION_KEYS = keysByPrefixes(["mobileRemote."]);
 export const APP_SETTINGS_UI_SECTIONS: SettingsSectionDefinition[] = [
   {
@@ -117,12 +116,12 @@ export const APP_SETTINGS_UI_SECTIONS: SettingsSectionDefinition[] = [
     coveredKeys: MOBILE_REMOTE_SECTION_KEYS,
   },
   {
-    id: "monitor",
+    id: "harness-connections",
     tab: "app",
-    labelKey: "monitor",
-    headingTitleKey: "sections.monitor",
-    icon: iconForSegment("monitor"),
-    customSectionSlotId: SETTINGS_SECTION_SLOT_IDS.APP_MONITOR,
-    coveredKeys: MONITOR_SECTION_KEYS,
+    labelKey: "sections.harnessConnections",
+    headingTitleKey: "sections.harnessConnections",
+    icon: iconForSegment("harness-connections"),
+    customSectionSlotId: SETTINGS_SECTION_SLOT_IDS.APP_HARNESS_CONNECTIONS,
+    coveredKeys: [],
   },
 ];

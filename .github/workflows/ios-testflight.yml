@@ -1,0 +1,148 @@
+name: Build iOS release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Marketing version, for example 0.1.0"
+        required: true
+        type: string
+      build_number:
+        description: "Unique increasing build number, never reuse after upload"
+        required: true
+        type: string
+      upload_testflight:
+        description: "Upload to App Store Connect (does not submit review or invite testers)"
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 60
+    # Configure required reviewers and allowed branches BEFORE adding secrets.
+    environment: ios-release
+    env:
+      IOS_VERSION: ${{ inputs.version }}
+      IOS_BUILD_NUMBER: ${{ inputs.build_number }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Check credentials and reviewed source before installing dependencies
+        env:
+          HAS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE != '' }}
+          HAS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD != '' }}
+          HAS_PROFILE: ${{ secrets.IOS_MOBILE_PROVISION != '' }}
+          HAS_TEAM: ${{ secrets.APPLE_TEAM_ID != '' }}
+          HAS_API_KEY: ${{ secrets.ASC_PRIVATE_KEY != '' }}
+          HAS_API_KEY_ID: ${{ secrets.ASC_KEY_ID != '' }}
+          HAS_ISSUER: ${{ secrets.ASC_ISSUER_ID != '' }}
+          UPLOAD: ${{ inputs.upload_testflight }}
+          APPROVED_SHA: ${{ vars.IOS_RELEASE_APPROVED_SHA }}
+        run: |
+          set -euo pipefail
+          for name in HAS_CERTIFICATE HAS_CERTIFICATE_PASSWORD HAS_PROFILE HAS_TEAM; do
+            if [[ "${!name}" != true ]]; then
+              echo "::error::Missing iOS signing configuration: $name (see docs/releases/ios-launch-readiness.md)"
+              exit 1
+            fi
+          done
+          if [[ "$UPLOAD" == true ]]; then
+            for name in HAS_API_KEY HAS_API_KEY_ID HAS_ISSUER; do
+              [[ "${!name}" == true ]] || { echo "::error::Missing upload configuration: $name"; exit 1; }
+            done
+            [[ "$APPROVED_SHA" == "$GITHUB_SHA" ]] || { echo '::error::Complete the release checklist and approve this exact commit before uploading'; exit 1; }
+          fi
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Validate release input and installed toolchain
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          node scripts/ios-release/readiness.mjs config > "$RUNNER_TEMP/ios-release-config.json"
+          xcodebuild -version
+          major=$(xcodebuild -version | awk '/Xcode/{split($2,v,".");print v[1]}')
+          [[ "$major" -ge 26 ]] || { echo '::error::Select a runner with Xcode 26 or newer'; exit 1; }
+          node --test scripts/ios-release/readiness.test.mjs
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          rustup target add aarch64-apple-ios
+          command -v xcodegen >/dev/null || brew install xcodegen
+
+      - name: Run mobile regression checks
+        run: |
+          pnpm exec tsc --noEmit
+          pnpm test src/modules/MobileRemote
+          # The native crate embeds frontendDist with its default custom-protocol feature.
+          # Plain cargo does not run Tauri's beforeBuildCommand.
+          pnpm build:mobile-native
+          cargo check --locked --manifest-path apps/remote-ios/src-tauri/Cargo.toml --target aarch64-apple-ios
+
+      - name: Build signed release with bundled frontend
+        env:
+          IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          pnpm tauri:ios:build --ci --export-method app-store-connect --config "$RUNNER_TEMP/ios-release-config.json"
+
+      - name: Validate the exported IPA, not just source configuration
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          ipa='apps/remote-ios/src-tauri/gen/apple/build/arm64/ORG2 Remote.ipa'
+          test -s "$ipa"
+          inspection=$(mktemp -d "$RUNNER_TEMP/ios-ipa-inspection.XXXXXX")
+          ditto -x -k "$ipa" "$inspection"
+          node scripts/ios-release/readiness.mjs app "$inspection/Payload/ORG2 Remote.app"
+          shasum -a 256 "$ipa" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Source: %s\nVersion: %s (%s)\n' "$GITHUB_SHA" "$IOS_VERSION" "$IOS_BUILD_NUMBER" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain only the signed candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release-candidate-${{ inputs.version }}-${{ inputs.build_number }}
+          path: apps/remote-ios/src-tauri/gen/apple/build/arm64/ORG2 Remote.ipa
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Validate and upload to App Store Connect
+        if: inputs.upload_testflight
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo 'Invalid API key ID format'; exit 1; }
+          export API_PRIVATE_KEYS_DIR
+          API_PRIVATE_KEYS_DIR=$(mktemp -d "$RUNNER_TEMP/ios-upload-key.XXXXXX")
+          key_file="$API_PRIVATE_KEYS_DIR/AuthKey_$ASC_KEY_ID.p8"
+          trap 'rm -f "$key_file"; rmdir "$API_PRIVATE_KEYS_DIR"' EXIT
+          printf '%s' "$ASC_PRIVATE_KEY" > "$key_file"
+          ipa='apps/remote-ios/src-tauri/gen/apple/build/arm64/ORG2 Remote.ipa'
+          xcrun altool --validate-app -f "$ipa" --type ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+          xcrun altool --upload-app -f "$ipa" --type ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+          echo 'Upload accepted. Processing, export-compliance questions, tester access and review are separate App Store Connect steps.' >> "$GITHUB_STEP_SUMMARY"

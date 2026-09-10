@@ -8,7 +8,7 @@
 //! - `spawn_retry`          — transient subprocess-spawn retry helpers
 //! - `skills_resolve`       — built-in SDE agent skills-config resolution
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::process::Stdio;
 use std::sync::Arc;
 
@@ -17,7 +17,7 @@ use tokio::process::Command;
 use tokio::sync::Mutex;
 
 use crate::api::websocket_handler;
-use agent_core::session::AgentExecMode;
+use agent_core::session::{AgentExecMode, IdeContext};
 use key_vault::key_store::{KeyService, ModelType, KEY_SERVICE};
 
 use super::super::launch_profile_store::resolve_cli_launch_profile;
@@ -26,11 +26,12 @@ use super::super::types::KeySource;
 use super::command::{
     build_command_with_launch_profile, launch_profile_env, CliCommandBuildRequest,
 };
-use super::helpers::{emit_chunk, persist_attached_images, strip_ide_context};
+use super::helpers::{emit_chunk, persist_attached_images};
 use super::oauth_setup::{
     is_cli_oauth_retry_eligible, refresh_cli_oauth_for_retry, sanitize_cli_oauth_env_for_child,
 };
 
+mod mcp_inject;
 mod skills_resolve;
 mod spawn_retry;
 mod transport_acp;
@@ -45,10 +46,115 @@ const OVERLOAD_RETRY_BASE_DELAY_SECS: u64 = 2;
 
 const MAX_STDERR_LINES: usize = 20;
 
+/// Routing/auth variables owned by an explicit Claude account selection.
+/// `tokio::process::Command` inherits the desktop process environment, so a
+/// variable that is absent from the newly selected account must be explicitly
+/// removed or a prior shell/launcher setting can silently reroute the child.
+const CLAUDE_ACCOUNT_ENV_KEYS: &[&str] = &[
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_BASE_URL",
+    "ANTHROPIC_MODEL",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+    "DISABLE_INTERLEAVED_THINKING",
+    "CLAUDE_CONFIG_DIR",
+];
+
+fn merge_launch_profile_environment(
+    agent: &ModelType,
+    has_explicit_account: bool,
+    selected_environment: &mut HashMap<String, String>,
+    profile_environment: HashMap<String, String>,
+) {
+    for (key, value) in profile_environment {
+        // A stored launch profile is a runtime default, never a credential or
+        // routing authority. In particular, after selecting a Claude account,
+        // absent account-owned keys must remain absent so apply_child_environment
+        // can remove stale ambient Atlas/Anthropic routing.
+        if has_explicit_account
+            && matches!(agent, ModelType::ClaudeCode)
+            && CLAUDE_ACCOUNT_ENV_KEYS.contains(&key.as_str())
+        {
+            continue;
+        }
+        selected_environment.entry(key).or_insert(value);
+    }
+}
+
 /// How long to keep waiting for the stderr reader once the child is gone. A
 /// CLI that hands its stderr to a surviving grandchild keeps the pipe open
 /// forever, and no diagnostic is worth hanging the turn on.
 const STDERR_DRAIN_TIMEOUT: tokio::time::Duration = tokio::time::Duration::from_secs(3);
+
+fn redacted_secret(value: &str) -> String {
+    let char_count = value.chars().count();
+    if char_count <= 10 {
+        return "<redacted>".to_string();
+    }
+    let prefix = value.chars().take(6).collect::<String>();
+    let suffix = value
+        .chars()
+        .skip(char_count.saturating_sub(4))
+        .collect::<String>();
+    format!("{prefix}...{suffix}")
+}
+
+fn environment_key_is_sensitive(key: &str) -> bool {
+    let key = key.to_ascii_lowercase();
+    [
+        "token",
+        "key",
+        "secret",
+        "password",
+        "passwd",
+        "credential",
+        "authorization",
+        "cookie",
+    ]
+    .iter()
+    .any(|marker| key.contains(marker))
+}
+
+fn apply_child_environment(
+    command: &mut Command,
+    agent: &ModelType,
+    has_explicit_account: bool,
+    env_vars: &HashMap<String, String>,
+) {
+    // An ambient Claude launch intentionally inherits the user's shell/CLI
+    // profile. Once the composer selects an ORGII account, however, that
+    // account is the complete routing source and absent keys must stay absent.
+    if has_explicit_account && matches!(agent, ModelType::ClaudeCode) {
+        for key in CLAUDE_ACCOUNT_ENV_KEYS {
+            if !env_vars.contains_key(*key) {
+                command.env_remove(key);
+            }
+        }
+    }
+    command.envs(env_vars);
+}
+
+fn redacted_command_parts(cmd_parts: &[String]) -> Vec<String> {
+    cmd_parts
+        .iter()
+        .enumerate()
+        .map(|(idx, part)| {
+            let previous = idx.checked_sub(1).and_then(|prev| cmd_parts.get(prev));
+            if previous.is_some_and(|flag| flag == "--api-key" || flag == "--market-token") {
+                redacted_secret(part)
+            } else if previous.is_some_and(|flag| flag == "-c") && part.starts_with("mcp_servers.")
+            {
+                let key = part.split_once('=').map_or(part.as_str(), |(key, _)| key);
+                format!("{key}=<redacted>")
+            } else {
+                part.clone()
+            }
+        })
+        .collect()
+}
 
 /// The child's stderr, collected by a background reader.
 ///
@@ -76,12 +182,19 @@ impl CliStderrCollector {
         Arc::clone(&self.lines)
     }
 
-    fn attach(&mut self, stderr: tokio::process::ChildStderr, session_id: String) {
+    fn attach(
+        &mut self,
+        stderr: tokio::process::ChildStderr,
+        session_id: String,
+        environment_secrets: Arc<Vec<String>>,
+        mcp_servers: Arc<mcp_inject::SessionMcpServers>,
+    ) {
         let sink = Arc::clone(&self.lines);
         self.reader = Some(tokio::spawn(async move {
             use tokio::io::AsyncBufReadExt;
             let mut reader = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = reader.next_line().await {
+                let line = redact_cli_stderr_line(&line, &environment_secrets, &mcp_servers);
                 tracing::warn!("[CodeSession][stderr][{}] {}", session_id, line);
                 let mut buf = sink.lock().await;
                 if buf.len() >= MAX_STDERR_LINES {
@@ -119,6 +232,20 @@ impl CliStderrCollector {
             let _ = reader.await;
         }
     }
+}
+
+fn redact_cli_stderr_line(
+    line: &str,
+    environment_secrets: &[String],
+    mcp_servers: &mcp_inject::SessionMcpServers,
+) -> String {
+    let mut redacted = terminal::redaction::redact_terminal_text(line);
+    for secret in environment_secrets {
+        if !secret.is_empty() {
+            redacted = redacted.replace(secret, "[REDACTED_SECRET]");
+        }
+    }
+    mcp_servers.redact_secrets_from_text(&redacted)
 }
 
 fn terminal_cli_error_from_chunk(chunk: &core_types::activity::ActivityChunk) -> Option<String> {
@@ -208,6 +335,39 @@ fn resolve_session_model(
     }
 }
 
+/// Claude Code accepts provider-specific model ids (for example Atlas Cloud's
+/// `zai-org/glm-5.1`) through its Anthropic-compatible environment, not the
+/// CLI's `--model` validator. `KeyService::get_env_for_agent` supplies a safe
+/// account-level fallback, but the session's explicit model selection must win
+/// whenever one is present.
+fn apply_claude_cross_type_session_model(
+    agent: &ModelType,
+    key_model_type: Option<&ModelType>,
+    session_model: Option<&str>,
+    env_vars: &mut HashMap<String, String>,
+) {
+    let is_cross_type_key = key_model_type.is_some_and(|key_type| key_type != agent);
+    if !matches!(agent, ModelType::ClaudeCode) || !is_cross_type_key {
+        return;
+    }
+
+    let Some(model) = session_model
+        .map(str::trim)
+        .filter(|model| !model.is_empty())
+    else {
+        return;
+    };
+
+    for key in [
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    ] {
+        env_vars.insert(key.to_string(), model.to_string());
+    }
+}
+
 fn resolve_cli_effective_mode(
     product_mode: Option<&str>,
     requested_mode: Option<&str>,
@@ -223,6 +383,29 @@ fn resolve_cli_effective_mode(
     }
 }
 
+fn scope_codex_transport_to_turn(
+    agent: &ModelType,
+    launch_profile: &mut super::launch_profiles::ResolvedCliLaunchProfile,
+) {
+    if matches!(agent, ModelType::Codex) {
+        launch_profile.transport =
+            Some(super::launch_profiles::CLI_TRANSPORT_APP_SERVER.to_string());
+    }
+}
+
+fn scope_native_codex_store(
+    command: &mut Vec<String>,
+    binary: &std::path::Path,
+    native_home: &std::path::Path,
+) {
+    command[0] = binary.to_string_lossy().into_owned();
+    command.push("-c".into());
+    command.push(format!(
+        "sqlite_home={}",
+        serde_json::to_string(&native_home.to_string_lossy()).expect("path serializes")
+    ));
+}
+
 /// Run a code session: spawn CLI, parse stdout, broadcast events.
 ///
 /// This is spawned as a background Tokio task.
@@ -235,6 +418,36 @@ pub async fn run_session(
     mode: Option<&str>,
     images: Option<Vec<String>>,
     turn_intent_id: Option<&str>,
+    allow_native_context_recovery: bool,
+) -> Result<(), String> {
+    run_session_with_ide_context(
+        session_id,
+        user_input,
+        None,
+        cli_resume_id,
+        mode,
+        images,
+        turn_intent_id,
+        allow_native_context_recovery,
+    )
+    .await
+}
+
+/// Run a CLI turn while preserving the IDE snapshot as provider-only context.
+///
+/// The public `run_session` wrapper remains for non-UI callers that do not
+/// carry IDE state. UI run/message commands use this path so the snapshot can
+/// be encoded in a native system/developer channel instead of the user row.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn run_session_with_ide_context(
+    session_id: String,
+    user_input: String,
+    ide_context: Option<IdeContext>,
+    cli_resume_id: Option<String>,
+    mode: Option<&str>,
+    images: Option<Vec<String>>,
+    turn_intent_id: Option<&str>,
+    allow_native_context_recovery: bool,
 ) -> Result<(), String> {
     let session = persistence::get_session(&session_id)
         .map_err(|e| format!("DB error: {}", e))?
@@ -317,9 +530,9 @@ pub async fn run_session(
             .is_some_and(|session_token| !session_token.trim().is_empty());
         if !has_api_key {
             let reason = if has_session_token {
-                "Cursor CLI agent requires a Cursor API key or Cursor Agent CLI login state. The saved native session token only works for the native/Rust Cursor provider and cannot authenticate cursor-agent directly."
+                "Cursor agent requires a Cursor API key or Cursor login state. The saved native session token only works for the native/Rust Cursor provider and cannot authenticate cursor-agent directly."
             } else {
-                "Cursor CLI agent requires a Cursor API key or Cursor Agent CLI login state before launching cursor-agent."
+                "Cursor agent requires a Cursor API key or Cursor login state before launching cursor-agent."
             };
             return Err(reason.to_string());
         }
@@ -378,10 +591,14 @@ pub async fn run_session(
 
     let run_started_at = chrono::Utc::now();
 
-    // Resolved early: the experimental codex app-server transport gate
+    // Resolved early: the codex app-server transport gate
     // changes prompt assembly (images travel as native localImage inputs)
     // as well as argv and the stdout-processing branch below.
-    let launch_profile = resolve_cli_launch_profile(&agent)?;
+    let mut launch_profile = resolve_cli_launch_profile(&agent)?;
+    // Codex Desktop excludes exec-origin threads from its default catalog.
+    // Create and resume all managed Codex turns through the native transport;
+    // context recovery remains a separate per-episode capability.
+    scope_codex_transport_to_turn(&agent, &mut launch_profile);
     let use_codex_app_server =
         super::launch_profiles::uses_codex_app_server(&agent, &launch_profile);
 
@@ -397,8 +614,14 @@ pub async fn run_session(
     )
     .await;
 
-    let mut effective_input = super::input_assembly::build_effective_input(
+    let status_catalog = if session.product_mode.as_deref() == Some("project") {
+        project_management::work_item_features::render_status_catalog(Some(&session.org_id))
+    } else {
+        None
+    };
+    let mut turn = super::input_assembly::build_turn_envelope(
         &user_input,
+        ide_context.as_ref(),
         Some(effective_mode_str),
         session.product_mode.as_deref(),
         session.project_slug.as_deref(),
@@ -411,12 +634,13 @@ pub async fn run_session(
         Some(working_dir),
         skills_cfg.enabled,
         &skills_cfg.disabled,
+        status_catalog.as_deref(),
     );
     if let Some(context) = lifecycle_hook_context {
-        effective_input = format!(
-            "<orgii_hook_context event=\"session_start\">\n{}\n</orgii_hook_context>\n\n{}",
-            context, effective_input
-        );
+        turn.prepend_provider_context(format!(
+            "<orgii_hook_context event=\"session_start\">\n{}\n</orgii_hook_context>",
+            context
+        ));
     }
 
     // Build CLI command
@@ -436,18 +660,74 @@ pub async fn run_session(
             None
         };
     let additional_dirs: &[String] = session.additional_directories.as_deref().unwrap_or(&[]);
+
+    let session_mcp =
+        mcp_inject::SessionMcpServers::resolve(working_dir, session.agent_definition_id.as_deref())
+            .map_err(|err| format!("Failed to resolve external CLI MCP policy: {err}"))?;
+    // Keep the guard alive through spawn, transport retries, and finalization.
+    // Its TempPath removes the secret-bearing file on success, error, or
+    // cancellation when this run future exits.
+    let claude_mcp_config = if matches!(agent, ModelType::ClaudeCode) {
+        Some(session_mcp.write_claude_mcp_config().map_err(|err| {
+            format!("{err}; refusing to launch Claude without the strict resolved MCP boundary")
+        })?)
+    } else {
+        None
+    };
+    let claude_mcp_config_path = claude_mcp_config
+        .as_ref()
+        .map(|file| file.path().to_string_lossy().into_owned());
+    // Codex's MCP env/header values are secrets. Materialize them in a
+    // random owner-only profile layer and pass only the non-secret profile
+    // name in argv. The guard stays alive through every transport retry and
+    // finalization, then removes the profile on return/cancellation.
+    let codex_mcp_profile = if matches!(agent, ModelType::Codex) && !use_codex_app_server {
+        let codex_home =
+            super::env_setup::codex_home_for_session(&session, account_id, &session_id)?;
+        session_mcp
+            .write_codex_mcp_profile(&codex_home)
+            .map_err(|err| {
+                format!("{err}; refusing to launch Codex with an incomplete MCP profile")
+            })?
+    } else {
+        None
+    };
+    let codex_app_server_config = if matches!(agent, ModelType::Codex) && use_codex_app_server {
+        session_mcp.codex_app_server_config()
+    } else {
+        None
+    };
+    let acp_mcp_servers = session_mcp.acp_servers();
+    let stderr_mcp_servers = Arc::new(session_mcp);
+
     let mut cmd_parts = build_command_with_launch_profile(CliCommandBuildRequest {
         agent: &agent,
         launch_profile: &launch_profile,
         model: model.as_deref(),
-        task: &effective_input,
+        turn: &turn,
         resume_id: cli_resume_id.as_deref(),
         api_key: api_key_for_cli,
         endpoint: endpoint_for_cli,
         mode: Some(effective_mode_str),
         repo_path: Some(working_dir),
         additional_dirs,
+        mcp_config_path: claude_mcp_config_path.as_deref(),
+        codex_mcp_profile: codex_mcp_profile
+            .as_ref()
+            .map(|profile| profile.profile_name()),
     });
+
+    if use_codex_app_server {
+        // Native rollouts and their pagination index belong to the same store.
+        // Keep CODEX_HOME account-scoped for auth/config, but use the native
+        // catalog's binary and SQLite home so an App migration cannot leave
+        // the runner reading a stale legacy index through its profile symlink.
+        scope_native_codex_store(
+            &mut cmd_parts,
+            &super::super::parsers::codex_app_server::native_codex_app_server_command(),
+            &app_paths::native_transcript_home_dir().join(".codex"),
+        );
+    }
 
     if matches!(agent, ModelType::Codex) && session.key_source == KeySource::HostedKey {
         if use_codex_app_server {
@@ -467,23 +747,7 @@ pub async fn run_session(
 
     // Log the full command for debugging (redact sensitive values)
     {
-        let redacted_args: Vec<String> = cmd_parts
-            .iter()
-            .enumerate()
-            .map(|(idx, part)| {
-                if idx > 0
-                    && (cmd_parts[idx - 1] == "--api-key" || cmd_parts[idx - 1] == "--market-token")
-                {
-                    format!(
-                        "{}...{}",
-                        &part[..part.len().min(6)],
-                        &part[part.len().saturating_sub(4)..]
-                    )
-                } else {
-                    part.clone()
-                }
-            })
-            .collect();
+        let redacted_args = redacted_command_parts(&cmd_parts);
         tracing::info!(
             "[CodeSession] Command: {} (resume_id={:?})",
             redacted_args.join(" "),
@@ -508,7 +772,19 @@ pub async fn run_session(
         KEY_SERVICE.get_env_for_agent(&agent, account_id)
     };
 
-    env_vars.extend(launch_profile_env(&launch_profile));
+    apply_claude_cross_type_session_model(
+        &agent,
+        key_model_type.as_ref(),
+        session.model.as_deref(),
+        &mut env_vars,
+    );
+
+    merge_launch_profile_environment(
+        &agent,
+        account_id.is_some(),
+        &mut env_vars,
+        launch_profile_env(&launch_profile),
+    );
 
     // Inherited by the CLI child and, transitively, by its hook subprocesses:
     // lets live-status hook posts attribute directly to this managed session
@@ -529,8 +805,9 @@ pub async fn run_session(
         env_vars.insert("CURSOR_CLI_COMPAT".to_string(), "1".to_string());
     }
 
-    // Store user input (without IDE context)
-    let display_input = strip_ide_context(&user_input);
+    // Store only the literal user-authored input. IDE and other provider
+    // context live in the typed turn envelope and never enter this row.
+    let display_input = user_input.clone();
     {
         let conn = session_persistence::get_connection().map_err(|e| format!("DB: {}", e))?;
         conn.execute(
@@ -568,17 +845,19 @@ pub async fn run_session(
 
     sanitize_cli_oauth_env_for_child(&agent, &mut env_vars);
 
+    let mut stderr_environment_secrets = env_vars
+        .iter()
+        .filter(|(key, value)| environment_key_is_sensitive(key) && !value.is_empty())
+        .map(|(_, value)| value.clone())
+        .collect::<Vec<_>>();
+    stderr_environment_secrets.sort_by_key(|secret| std::cmp::Reverse(secret.len()));
+    stderr_environment_secrets.dedup();
+    let stderr_environment_secrets = Arc::new(stderr_environment_secrets);
+
     // Log environment variables for debugging (redact token values)
     for (key, value) in &env_vars {
-        let display_val = if key.to_lowercase().contains("token")
-            || key.to_lowercase().contains("key")
-            || key.to_lowercase().contains("secret")
-        {
-            format!(
-                "{}...{}",
-                &value[..value.len().min(6)],
-                &value[value.len().saturating_sub(4)..]
-            )
+        let display_val = if environment_key_is_sensitive(key) {
+            redacted_secret(value)
         } else {
             value.clone()
         };
@@ -590,7 +869,7 @@ pub async fn run_session(
     // ── Spawn subprocess ──
     let is_acp_agent = matches!(
         agent,
-        ModelType::Copilot | ModelType::Kiro | ModelType::OpenCode
+        ModelType::Copilot | ModelType::Kiro | ModelType::OpenCode | ModelType::DeepseekHarness
     );
 
     let mut stderr_lines: Arc<Mutex<VecDeque<String>>>;
@@ -659,19 +938,53 @@ pub async fn run_session(
 
     let mut cli_session_id_out: Option<String> = None;
     let mut cli_plan_approval_gate_reached = false;
-    // App-server transport: whether the turn reached a non-failed
-    // `turn/completed` (drives final status like exit_code does for exec).
+    // Project registration belongs to the native Desktop catalog. Resolve only
+    // for fresh threads; resumes retain their existing project assignment.
+    let codex_project_id = if use_codex_app_server && cli_resume_id.is_none() {
+        let native_home = app_paths::native_transcript_home_dir().join(".codex");
+        let project_root = std::path::PathBuf::from(base_working_dir);
+        Some(
+            tokio::task::spawn_blocking(move || {
+                super::super::parsers::codex_app_server::ensure_project(&native_home, &project_root)
+            })
+            .await
+            .map_err(|error| format!("Codex project registration task failed: {error}"))??,
+        )
+    } else {
+        None
+    };
+
+    // Whether the native turn completed successfully, independent of child exit.
     let mut codex_app_server_turn_ok = false;
 
     let session_timeout = tokio::time::Duration::from_secs(4 * 60 * 60);
+    let _worktree_lock =
+        git::worktree::session_worktree_root_for_path(std::path::Path::new(working_dir)).and_then(
+            |root| match git::worktree::try_acquire_worktree_lock(&root) {
+                Ok(guard) => guard,
+                Err(err) => {
+                    tracing::warn!(
+                        "[CodeSession] Failed to lock worktree {}: {}",
+                        root.display(),
+                        err
+                    );
+                    None
+                }
+            },
+        );
 
     loop {
         let mut attempt_stderr = CliStderrCollector::new();
         stderr_lines = attempt_stderr.lines();
         let mut spawn_cmd = Command::new(program);
+        spawn_cmd.args(args);
+        apply_child_environment(
+            &mut spawn_cmd,
+            &agent,
+            session.key_source == KeySource::HostedKey || account_id.is_some(),
+            &env_vars,
+        );
         spawn_cmd
-            .args(args)
-            .envs(&env_vars)
             .current_dir(working_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -727,6 +1040,8 @@ pub async fn run_session(
         attempt_stderr.attach(
             child.stderr.take().expect("stderr was piped"),
             session_id.clone(),
+            Arc::clone(&stderr_environment_secrets),
+            Arc::clone(&stderr_mcp_servers),
         );
 
         let retryable_oauth_message: Option<String>;
@@ -738,11 +1053,14 @@ pub async fn run_session(
                 session_id.clone(),
                 account_id,
                 oauth_retry_eligible,
-                effective_input.clone(),
+                turn.user_text().to_string(),
+                turn.provider_context(),
                 working_dir,
+                codex_project_id.clone(),
                 cli_resume_id.clone(),
                 model.as_deref(),
                 &launch_profile,
+                codex_app_server_config.clone(),
                 image_paths.clone(),
                 session_timeout,
                 pre_message_snapshot_id.clone(),
@@ -751,6 +1069,8 @@ pub async fn run_session(
                 &mut sequence,
                 codex_app_server_turn_ok,
                 &mut attempt_stderr,
+                allow_native_context_recovery,
+                turn_intent_id,
             )
             .await?;
             exit_code = outcome.exit_code;
@@ -764,17 +1084,20 @@ pub async fn run_session(
             let outcome = transport_acp::run_acp_branch(
                 child,
                 session_id.clone(),
-                effective_input.clone(),
+                turn.merged_for_legacy(),
                 working_dir,
                 cli_resume_id.clone(),
                 agent.clone(),
                 image_paths.clone(),
+                model.clone(),
+                acp_mcp_servers.clone(),
                 session_timeout,
                 pre_message_snapshot_id.clone(),
                 snapshot_working_dir.clone(),
                 cli_session_id_out,
                 &mut sequence,
                 &env_vars,
+                turn_intent_id,
             )
             .await?;
             exit_code = outcome.exit_code;
@@ -798,6 +1121,7 @@ pub async fn run_session(
                 cli_session_id_out,
                 &mut sequence,
                 &mut attempt_stderr,
+                turn_intent_id,
             )
             .await;
             exit_code = outcome.exit_code;
@@ -865,7 +1189,7 @@ pub async fn run_session(
                     terminal_message,
                 );
                 terminal_error_message = Some(terminal_message);
-                emit_chunk(&chunk, &session_id, &mut sequence).await;
+                emit_chunk(&chunk, &session_id, &mut sequence, turn_intent_id).await;
                 break;
             }
             let delay_secs = OVERLOAD_RETRY_BASE_DELAY_SECS * (1u64 << overload_retry_count);

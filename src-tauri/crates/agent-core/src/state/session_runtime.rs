@@ -2,7 +2,7 @@
 
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::definitions::AgentDefinition;
 use crate::definitions::SessionMode;
@@ -29,8 +29,10 @@ use crate::session::workspace::SessionWorkspace;
 use crate::session::{DialogScheduler, DialogTurn, DialogTurnState, TurnStats};
 use crate::specialization::policies::activation::SessionScopedContextActivator;
 use crate::state::control_flow::CancelReason;
+use crate::tools::call_context::{TurnProcessControl, TurnProcessOwner};
 use crate::tools::policy::ResolvedToolPolicy;
 use crate::tools::registry::ToolRegistry;
+use tokio_util::sync::CancellationToken;
 
 /// Runtime resources for a single agent session.
 ///
@@ -96,6 +98,59 @@ pub struct SessionRuntime {
     pub agent_definition_id: Option<String>,
 }
 
+/// One installed runtime generation for a Session.
+///
+/// The lease changes whenever initialization replaces the runtime. Lifecycle
+/// cleanup must present the lease it originally observed, so delayed Pause
+/// teardown cannot clear a runtime installed by a later Resume.
+#[derive(Clone)]
+struct RuntimeSlot {
+    lease_id: String,
+    runtime: Arc<SessionRuntime>,
+}
+
+/// A prepared direct-Member turn pins one exact runtime lease until the
+/// scheduler either starts that turn or rejects it.  The durable admission
+/// row is written only after this token exists, so a competing initializer
+/// cannot replace the Provider between database acceptance and execution.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RuntimeAdmissionReservation {
+    pub reservation_id: String,
+    pub runtime_lease_id: String,
+    pub turn_intent_id: String,
+}
+
+#[derive(Debug)]
+struct RuntimeAdmissionSlot {
+    reservation: RuntimeAdmissionReservation,
+    holders: usize,
+}
+
+/// Exact in-memory identity of the Turn currently using a runtime lease.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RuntimeTurnIdentity {
+    pub runtime_lease_id: String,
+    pub dialog_turn_generation: String,
+    pub turn_intent_id: Option<String>,
+}
+
+/// Exact lease snapshot used by Archive. Unlike Pause, Archive must also
+/// release an initialized Provider that currently has no active Turn.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RuntimeLeaseIdentity {
+    pub runtime_lease_id: String,
+    pub dialog_turn_generation: Option<String>,
+    pub turn_intent_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ActiveTurnIdentity {
+    runtime_lease_id: Option<String>,
+    dialog_turn_generation: String,
+    turn_intent_id: Option<String>,
+    process_control: Option<TurnProcessControl>,
+}
+
 /// An active agent session — the single source of truth for all per-session state.
 ///
 /// All sub-resources (runtime, managers, locks) live here. `AgentAppState`
@@ -113,7 +168,15 @@ pub struct AgentSession {
     ///
     /// `None` briefly while the session is being registered before
     /// `ensure_session_initialized` completes.
-    pub runtime: tokio::sync::RwLock<Option<Arc<SessionRuntime>>>,
+    runtime: tokio::sync::RwLock<Option<RuntimeSlot>>,
+    /// Prepared direct-Member runtime admissions. Access always precedes the
+    /// runtime-slot lock, making reservation/install/release one CAS domain.
+    runtime_admissions: tokio::sync::Mutex<Vec<RuntimeAdmissionSlot>>,
+    /// In-memory half of the Team Delete fence. The Archived database gate
+    /// prevents normal initialization, while this flag closes the final race
+    /// between Delete's last lease check and a stale initializer installing
+    /// its already-built runtime.
+    runtime_install_blocked: AtomicBool,
 
     // ── Execution Control ─────────────────────────────────────────────────
     /// Cancellation flag — set to `true` to abort the active turn.
@@ -183,6 +246,12 @@ pub struct AgentSession {
     /// Synchronous mirror of `active_turn.turn_id` for non-async event-store
     /// write guards on hot paths.
     pub active_turn_generation: Arc<parking_lot::RwLock<Option<String>>>,
+    /// Persisted Turn intent paired with the dialog generation above.
+    active_turn_identity: parking_lot::RwLock<Option<ActiveTurnIdentity>>,
+    /// Single-value revision channel for event-driven handoffs waiting on an
+    /// exact Turn boundary. It retains no Turn payload and is dropped with the
+    /// Session; callers never need a polling timer.
+    turn_end_revision: tokio::sync::watch::Sender<u64>,
     /// Per-session FIFO message queue.
     ///
     /// All incoming messages are enqueued here and processed one at a time
@@ -263,6 +332,7 @@ impl AgentSession {
         // waits (see *Manager::with_cancel_flag). Must be built before the
         // managers that observe it.
         let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (turn_end_revision, _) = tokio::sync::watch::channel(0);
 
         let permission_manager = Arc::new(AgentPermissionManager::for_agent_with_cancel_flag(
             &definition.id,
@@ -297,6 +367,8 @@ impl AgentSession {
             id,
             definition,
             runtime: tokio::sync::RwLock::new(None),
+            runtime_admissions: tokio::sync::Mutex::new(Vec::new()),
+            runtime_install_blocked: AtomicBool::new(false),
             compaction: tokio::sync::Mutex::new(CompactionState::default()),
             last_context_tokens: Arc::new(AtomicI64::new(0)),
             permission_manager,
@@ -315,6 +387,8 @@ impl AgentSession {
             last_active_at: tokio::sync::Mutex::new(Instant::now()),
             active_turn: tokio::sync::Mutex::new(None),
             active_turn_generation: Arc::new(parking_lot::RwLock::new(None)),
+            active_turn_identity: parking_lot::RwLock::new(None),
+            turn_end_revision,
             scheduler: DialogScheduler::new(session_id_for_scheduler, 32),
             steering_queue: Arc::new(tokio::sync::Mutex::new(Vec::new())),
             sm_state: Arc::new(tokio::sync::Mutex::new(SessionMemoryState::default())),
@@ -336,13 +410,299 @@ impl AgentSession {
     }
 
     /// Attach (or replace) the runtime after initialization completes.
-    pub async fn set_runtime(&self, runtime: Arc<SessionRuntime>) {
-        *self.runtime.write().await = Some(runtime);
+    pub async fn set_runtime(&self, runtime: Arc<SessionRuntime>) -> Result<String, String> {
+        let lease_id = uuid::Uuid::new_v4().to_string();
+        let admissions = self.runtime_admissions.lock().await;
+        let mut slot = self.runtime.write().await;
+        if self.runtime_install_blocked.load(Ordering::SeqCst) {
+            return Err("team_runtime_delete_in_progress: runtime installation is closed".into());
+        }
+        if !admissions.is_empty() {
+            if let Some(current) = slot.as_ref() {
+                if Arc::ptr_eq(&current.runtime, &runtime) {
+                    return Ok(current.lease_id.clone());
+                }
+            }
+            return Err(
+                "agent_org_runtime_admission_conflict: a prepared Member turn pins the current runtime"
+                    .to_string(),
+            );
+        }
+        *slot = Some(RuntimeSlot {
+            lease_id: lease_id.clone(),
+            runtime,
+        });
+        Ok(lease_id)
+    }
+
+    /// Rebind the same warm runtime after an exact intervention handoff
+    /// released its old lease. If another runtime already owns the slot, fail
+    /// closed instead of replacing it or creating a parallel lane.
+    pub(crate) async fn attach_warm_runtime_if_empty(
+        &self,
+        runtime: Arc<SessionRuntime>,
+    ) -> Result<String, String> {
+        let admissions = self.runtime_admissions.lock().await;
+        let mut slot = self.runtime.write().await;
+        if self.runtime_install_blocked.load(Ordering::SeqCst) {
+            return Err("team_runtime_delete_in_progress: runtime installation is closed".into());
+        }
+        if let Some(current) = slot.as_ref() {
+            if Arc::ptr_eq(&current.runtime, &runtime) {
+                return Ok(current.lease_id.clone());
+            }
+            return Err(
+                "user_directed_runtime_conflict: a different runtime already owns the Session slot"
+                    .to_string(),
+            );
+        }
+        if !admissions.is_empty() {
+            return Err(
+                "agent_org_runtime_admission_stale: prepared runtime lease disappeared".to_string(),
+            );
+        }
+        let lease_id = uuid::Uuid::new_v4().to_string();
+        *slot = Some(RuntimeSlot {
+            lease_id: lease_id.clone(),
+            runtime,
+        });
+        Ok(lease_id)
+    }
+
+    /// Close runtime installation before Team Delete checks the current slot.
+    /// Storing the fence before taking the read lock makes it race-safe with
+    /// `set_runtime`: either the installer wins and Delete observes its slot,
+    /// or Delete wins and the installer is rejected while holding the slot
+    /// write lock.
+    pub(crate) async fn begin_team_delete_runtime_fence(&self) {
+        self.runtime_install_blocked.store(true, Ordering::SeqCst);
+        // Synchronize with an installer that may already hold the write lock.
+        // The caller performs the complete runtime/turn/scheduler check after
+        // every Team session has installed this fence.
+        drop(self.runtime.read().await);
+    }
+
+    pub(crate) fn clear_team_delete_runtime_fence(&self) {
+        self.runtime_install_blocked.store(false, Ordering::SeqCst);
     }
 
     /// Return the current runtime, if initialized.
     pub async fn get_runtime(&self) -> Option<Arc<SessionRuntime>> {
-        self.runtime.read().await.clone()
+        self.runtime
+            .read()
+            .await
+            .as_ref()
+            .map(|slot| Arc::clone(&slot.runtime))
+    }
+
+    /// Prepare an exact runtime lease before durable DirectMember admission.
+    /// Exact retries reuse their token; a different runtime or missing slot
+    /// fails closed before any database row claims that the turn was accepted.
+    pub(crate) async fn reserve_runtime_admission(
+        &self,
+        runtime: &Arc<SessionRuntime>,
+        turn_intent_id: &str,
+    ) -> Result<RuntimeAdmissionReservation, String> {
+        let mut admissions = self.runtime_admissions.lock().await;
+        let slot = self.runtime.read().await;
+        let current = slot.as_ref().ok_or_else(|| {
+            "agent_org_runtime_admission_stale: no runtime is installed".to_string()
+        })?;
+        if !Arc::ptr_eq(&current.runtime, runtime) {
+            return Err(
+                "agent_org_runtime_admission_stale: initialized runtime no longer owns the Session slot"
+                    .to_string(),
+            );
+        }
+        if let Some(existing) = admissions
+            .iter_mut()
+            .find(|slot| slot.reservation.turn_intent_id == turn_intent_id)
+        {
+            if existing.reservation.runtime_lease_id == current.lease_id {
+                existing.holders += 1;
+                return Ok(existing.reservation.clone());
+            }
+            return Err(
+                "agent_org_runtime_admission_stale: retry references a replaced runtime lease"
+                    .to_string(),
+            );
+        }
+        let reservation = RuntimeAdmissionReservation {
+            reservation_id: format!("runtime_admission_{}", uuid::Uuid::new_v4()),
+            runtime_lease_id: current.lease_id.clone(),
+            turn_intent_id: turn_intent_id.to_string(),
+        };
+        admissions.push(RuntimeAdmissionSlot {
+            reservation: reservation.clone(),
+            holders: 1,
+        });
+        Ok(reservation)
+    }
+
+    /// Verify that a prepared token still pins the same installed Provider.
+    /// The caller performs this check immediately before the transaction that
+    /// promotes the turn to Running.
+    pub(crate) async fn runtime_admission_is_current(
+        &self,
+        reservation: &RuntimeAdmissionReservation,
+        runtime: &Arc<SessionRuntime>,
+    ) -> bool {
+        let admissions = self.runtime_admissions.lock().await;
+        if !admissions
+            .iter()
+            .any(|slot| slot.reservation == *reservation)
+        {
+            return false;
+        }
+        self.runtime.read().await.as_ref().is_some_and(|slot| {
+            slot.lease_id == reservation.runtime_lease_id && Arc::ptr_eq(&slot.runtime, runtime)
+        })
+    }
+
+    pub(crate) async fn release_runtime_admission(
+        &self,
+        reservation: &RuntimeAdmissionReservation,
+    ) -> bool {
+        let mut admissions = self.runtime_admissions.lock().await;
+        release_runtime_admission_slot(&mut admissions, reservation)
+    }
+
+    /// Clear whichever runtime is current. This remains the ordinary SDE
+    /// invalidation path; Pause uses the conditional lease method below.
+    pub(crate) async fn invalidate_runtime(&self) {
+        let admissions = self.runtime_admissions.lock().await;
+        if !admissions.is_empty() {
+            tracing::info!(
+                session_id = %self.id,
+                prepared_admission_count = admissions.len(),
+                "preserving runtime pinned by prepared Agent Org admissions"
+            );
+            return;
+        }
+        *self.runtime.write().await = None;
+    }
+
+    /// Return the exact runtime/Turn pair currently active in this Session.
+    pub(crate) async fn runtime_turn_identity(&self) -> Option<RuntimeTurnIdentity> {
+        let turn = self.active_turn_identity.read().clone()?;
+        Some(RuntimeTurnIdentity {
+            runtime_lease_id: turn.runtime_lease_id?,
+            dialog_turn_generation: turn.dialog_turn_generation,
+            turn_intent_id: turn.turn_intent_id,
+        })
+    }
+
+    /// Return the exact, level-triggered process control for the active Turn.
+    /// Direct/maintenance turns without a durable intent or runtime lease do
+    /// not own detachable shell work through the Agent Org Pause protocol.
+    pub(crate) fn turn_process_control(&self) -> Option<TurnProcessControl> {
+        self.active_turn_identity
+            .read()
+            .as_ref()
+            .and_then(|turn| turn.process_control.clone())
+    }
+
+    pub(crate) async fn runtime_lease_identity(&self) -> Option<RuntimeLeaseIdentity> {
+        let slot = self.runtime.read().await;
+        let lease_id = slot.as_ref()?.lease_id.clone();
+        let turn = self.active_turn_identity.read().clone();
+        Some(RuntimeLeaseIdentity {
+            runtime_lease_id: lease_id,
+            dialog_turn_generation: turn.as_ref().and_then(|turn| {
+                (turn.runtime_lease_id.as_deref() == Some(slot.as_ref()?.lease_id.as_str()))
+                    .then(|| turn.dialog_turn_generation.clone())
+            }),
+            turn_intent_id: turn.and_then(|turn| {
+                (turn.runtime_lease_id.as_deref() == Some(slot.as_ref()?.lease_id.as_str()))
+                    .then_some(turn.turn_intent_id)
+                    .flatten()
+            }),
+        })
+    }
+
+    /// Release an idle or already-cancelled runtime only when the exact lease
+    /// captured by Archive is still current. A late Archive completion cannot
+    /// clear a replacement runtime.
+    pub(crate) async fn release_runtime_lease_if_current(&self, runtime_lease_id: &str) -> bool {
+        let admissions = self.runtime_admissions.lock().await;
+        if !admissions.is_empty() {
+            return false;
+        }
+        let mut slot = self.runtime.write().await;
+        if runtime_lease_identity_matches(
+            slot.as_ref().map(|current| current.lease_id.as_str()),
+            runtime_lease_id,
+        ) {
+            *slot = None;
+            return true;
+        }
+        false
+    }
+
+    /// Release a yielded runtime after its exact-owner background work emits
+    /// terminal evidence. The lease must still be current and no newer Turn
+    /// may be using it; otherwise the late completion is a no-op.
+    pub(crate) async fn release_yielded_runtime_if_idle(&self, runtime_lease_id: &str) -> bool {
+        let admissions = self.runtime_admissions.lock().await;
+        if self.active_turn_identity.read().is_some() {
+            return false;
+        }
+        if !admissions.is_empty() {
+            return self.runtime.read().await.as_ref().is_some_and(|slot| {
+                runtime_lease_identity_matches(Some(slot.lease_id.as_str()), runtime_lease_id)
+            });
+        }
+        let mut slot = self.runtime.write().await;
+        if runtime_lease_identity_matches(
+            slot.as_ref().map(|current| current.lease_id.as_str()),
+            runtime_lease_id,
+        ) {
+            *slot = None;
+            return true;
+        }
+        false
+    }
+
+    /// Release only the runtime generation and dialog Turn captured by Pause.
+    /// A stale completion is deliberately a no-op.
+    pub(crate) async fn release_runtime_if_current(
+        &self,
+        runtime_lease_id: &str,
+        dialog_turn_generation: &str,
+    ) -> bool {
+        let admissions = self.runtime_admissions.lock().await;
+        let mut slot = self.runtime.write().await;
+        let current_lease = slot.as_ref().map(|current| current.lease_id.as_str());
+        let turn = self.active_turn_identity.read();
+        let current_turn_lease = turn
+            .as_ref()
+            .and_then(|turn| turn.runtime_lease_id.as_deref());
+        let current_generation = turn
+            .as_ref()
+            .map(|turn| turn.dialog_turn_generation.as_str());
+        if runtime_release_identity_matches(
+            current_lease,
+            current_turn_lease,
+            current_generation,
+            runtime_lease_id,
+            dialog_turn_generation,
+        ) {
+            // A prepared direct successor deliberately inherits this warm
+            // Provider after the exact formal owner yields. Returning true
+            // lets the durable handoff advance while the lease stays pinned.
+            if !admissions.is_empty() {
+                return true;
+            }
+            *slot = None;
+            return true;
+        }
+        false
+    }
+
+    pub(crate) async fn runtime_agent_definition_id(&self) -> Option<String> {
+        self.get_runtime()
+            .await
+            .and_then(|runtime| runtime.agent_definition_id.clone())
     }
 
     pub async fn invalidate_prompt_cache(&self, reason: PromptCacheInvalidationReason) {
@@ -404,8 +764,41 @@ impl AgentSession {
     /// Returns the stable `turn_id` so the caller can embed it in events
     /// without holding the `active_turn` lock for the duration of processing.
     pub async fn begin_turn(&self, user_input: String) -> String {
+        self.begin_turn_with_intent(user_input, None).await
+    }
+
+    /// Start a dialog Turn and bind it to its durable intent when one exists.
+    pub async fn begin_turn_with_intent(
+        &self,
+        user_input: String,
+        turn_intent_id: Option<String>,
+    ) -> String {
+        let runtime_lease_id = self
+            .runtime
+            .read()
+            .await
+            .as_ref()
+            .map(|slot| slot.lease_id.clone());
         let turn = DialogTurn::new(user_input, Arc::clone(&self.cancel_flag));
         let turn_id = turn.turn_id.clone();
+        let process_control = runtime_lease_id.as_ref().zip(turn_intent_id.as_ref()).map(
+            |(runtime_lease_id, turn_intent_id)| TurnProcessControl {
+                owner: TurnProcessOwner {
+                    session_id: self.id.clone(),
+                    turn_intent_id: turn_intent_id.clone(),
+                    runtime_lease_id: runtime_lease_id.clone(),
+                    dialog_turn_generation: turn_id.clone(),
+                },
+                background_cancel: CancellationToken::new(),
+                require_owned_job_finality: false,
+            },
+        );
+        *self.active_turn_identity.write() = Some(ActiveTurnIdentity {
+            runtime_lease_id,
+            dialog_turn_generation: turn_id.clone(),
+            turn_intent_id,
+            process_control,
+        });
         *self.active_turn_generation.write() = Some(turn_id.clone());
         *self.active_turn.lock().await = Some(turn);
         turn_id
@@ -421,7 +814,39 @@ impl AgentSession {
             turn.finalize(turn_state, stats);
         }
         *guard = None;
+        *self.active_turn_identity.write() = None;
         *self.active_turn_generation.write() = None;
+        self.turn_end_revision
+            .send_modify(|revision| *revision = revision.wrapping_add(1));
+    }
+
+    /// Wait for one exact persisted Turn identity to leave the active slot.
+    /// The watch revision closes the completion-before-subscribe race without
+    /// a recurring timer or retained waiter after the deadline.
+    pub(crate) async fn wait_for_turn_end(&self, turn_intent_id: &str, max_wait: Duration) -> bool {
+        let mut revision = self.turn_end_revision.subscribe();
+        let deadline = tokio::time::Instant::now() + max_wait;
+        loop {
+            let still_active = self
+                .active_turn_identity
+                .read()
+                .as_ref()
+                .and_then(|identity| identity.turn_intent_id.as_deref())
+                == Some(turn_intent_id);
+            if !still_active {
+                return true;
+            }
+            let Some(remaining) = deadline.checked_duration_since(tokio::time::Instant::now())
+            else {
+                return false;
+            };
+            if tokio::time::timeout(remaining, revision.changed())
+                .await
+                .is_err()
+            {
+                return false;
+            }
+        }
     }
 
     /// Return the `turn_id` of the currently executing turn, if any.
@@ -465,6 +890,25 @@ impl AgentSession {
             crate::tools::impls::coding::exec::registry::cancel_subagents_for_session(&self.id);
         }
 
+        match shell_cancellation_scope(reason) {
+            ShellCancellationScope::ActiveTurn => {
+                if let Some(control) = self.turn_process_control() {
+                    control.background_cancel.cancel();
+                }
+            }
+            ShellCancellationScope::Session => {
+                // Cancel the active Turn token to close the foreground→background
+                // race, then fan out to background jobs from earlier Turns in
+                // the same ordinary SDE Session. ForceSend deliberately does
+                // neither: it preserves intentional background processes.
+                if let Some(control) = self.turn_process_control() {
+                    control.background_cancel.cancel();
+                }
+                crate::tools::impls::coding::exec::registry::cancel_shells_for_session(&self.id);
+            }
+            ShellCancellationScope::None => {}
+        }
+
         let guard: tokio::sync::MutexGuard<'_, Option<DialogTurn>> = self.active_turn.lock().await;
         if let Some(ref turn) = *guard {
             turn.cancel();
@@ -478,5 +922,250 @@ impl AgentSession {
                 plan_approval_manager.clear_silently().await;
             }
         }
+    }
+
+    /// Cancel only when the live DialogTurn still belongs to the requested
+    /// durable intent. This prevents a delayed Group Stop from touching the
+    /// next FIFO item after the requested Turn has already finalized.
+    pub(crate) async fn cancel_active_turn_if_intent(
+        &self,
+        expected_turn_intent_id: &str,
+        reason: CancelReason,
+    ) -> bool {
+        let guard = self.active_turn.lock().await;
+        let identity = self.active_turn_identity.read().clone();
+        let Some((turn, identity)) = guard.as_ref().zip(identity) else {
+            return false;
+        };
+        if identity.turn_intent_id.as_deref() != Some(expected_turn_intent_id)
+            || identity.dialog_turn_generation != turn.turn_id
+        {
+            return false;
+        }
+
+        let effect = reason.boundary_effect();
+        self.suppress_next_crash_repair
+            .store(!effect.allow_crash_repair_on_next_turn, Ordering::SeqCst);
+        self.persist_next_cancel_marker
+            .store(effect.persist_cancel_marker, Ordering::SeqCst);
+        if let Some(control) = identity.process_control {
+            control.background_cancel.cancel();
+        }
+        if effect.cancel_background_workers {
+            crate::tools::impls::coding::exec::registry::cancel_subagents_for_session(&self.id);
+        }
+        turn.cancel();
+        drop(guard);
+        if effect.clear_pending_approvals {
+            if let Some(ref plan_approval_manager) = self.plan_approval_manager {
+                plan_approval_manager.clear_silently().await;
+            }
+        }
+        true
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShellCancellationScope {
+    None,
+    ActiveTurn,
+    Session,
+}
+
+const fn shell_cancellation_scope(reason: CancelReason) -> ShellCancellationScope {
+    match reason {
+        CancelReason::UserStop | CancelReason::OrgArchive => ShellCancellationScope::Session,
+        CancelReason::OrgPause
+        | CancelReason::UserIntervention
+        | CancelReason::UserDirectedStop
+        | CancelReason::OrgTaskHandoff => ShellCancellationScope::ActiveTurn,
+        CancelReason::ForceSend
+        | CancelReason::AgentOrgDelete
+        | CancelReason::ProgrammaticShutdown
+        | CancelReason::SessionEviction
+        | CancelReason::ModeSwitchAbort => ShellCancellationScope::None,
+    }
+}
+
+fn runtime_release_identity_matches(
+    current_lease_id: Option<&str>,
+    active_turn_lease_id: Option<&str>,
+    current_turn_generation: Option<&str>,
+    expected_lease_id: &str,
+    expected_turn_generation: &str,
+) -> bool {
+    current_lease_id == Some(expected_lease_id)
+        && active_turn_lease_id == Some(expected_lease_id)
+        && current_turn_generation == Some(expected_turn_generation)
+}
+
+fn release_runtime_admission_slot(
+    admissions: &mut Vec<RuntimeAdmissionSlot>,
+    reservation: &RuntimeAdmissionReservation,
+) -> bool {
+    let Some(index) = admissions
+        .iter()
+        .position(|slot| slot.reservation == *reservation)
+    else {
+        return false;
+    };
+    if admissions[index].holders > 1 {
+        admissions[index].holders -= 1;
+    } else {
+        admissions.remove(index);
+    }
+    true
+}
+
+fn runtime_lease_identity_matches(current_lease_id: Option<&str>, expected_lease_id: &str) -> bool {
+    current_lease_id == Some(expected_lease_id)
+}
+
+#[cfg(test)]
+mod runtime_lease_tests {
+    use std::time::Duration;
+
+    use super::{
+        release_runtime_admission_slot, runtime_lease_identity_matches,
+        runtime_release_identity_matches, shell_cancellation_scope, DialogTurnState,
+        RuntimeAdmissionReservation, RuntimeAdmissionSlot, ShellCancellationScope,
+    };
+    use crate::state::control_flow::CancelReason;
+    use crate::{definitions::AgentDefinition, session::TurnStats, state::AgentSession};
+
+    #[test]
+    fn shell_cancellation_preserves_stop_force_send_and_pause_boundaries() {
+        assert_eq!(
+            shell_cancellation_scope(CancelReason::UserStop),
+            ShellCancellationScope::Session
+        );
+        assert_eq!(
+            shell_cancellation_scope(CancelReason::OrgPause),
+            ShellCancellationScope::ActiveTurn
+        );
+        assert_eq!(
+            shell_cancellation_scope(CancelReason::UserIntervention),
+            ShellCancellationScope::ActiveTurn
+        );
+        assert_eq!(
+            shell_cancellation_scope(CancelReason::UserDirectedStop),
+            ShellCancellationScope::ActiveTurn
+        );
+        assert_eq!(
+            shell_cancellation_scope(CancelReason::OrgArchive),
+            ShellCancellationScope::Session
+        );
+        assert_eq!(
+            shell_cancellation_scope(CancelReason::ForceSend),
+            ShellCancellationScope::None
+        );
+        assert_eq!(
+            shell_cancellation_scope(CancelReason::AgentOrgDelete),
+            ShellCancellationScope::None
+        );
+    }
+
+    #[test]
+    fn archive_release_never_clears_a_replacement_runtime_lease() {
+        assert!(runtime_lease_identity_matches(Some("lease-a"), "lease-a"));
+        assert!(!runtime_lease_identity_matches(Some("lease-b"), "lease-a"));
+        assert!(!runtime_lease_identity_matches(None, "lease-a"));
+    }
+
+    #[test]
+    fn release_requires_the_same_runtime_lease_and_dialog_generation() {
+        assert!(runtime_release_identity_matches(
+            Some("lease-a"),
+            Some("lease-a"),
+            Some("turn-1"),
+            "lease-a",
+            "turn-1"
+        ));
+        assert!(!runtime_release_identity_matches(
+            Some("lease-b"),
+            Some("lease-a"),
+            Some("turn-1"),
+            "lease-a",
+            "turn-1"
+        ));
+        assert!(!runtime_release_identity_matches(
+            Some("lease-a"),
+            Some("lease-b"),
+            Some("turn-1"),
+            "lease-a",
+            "turn-1"
+        ));
+        assert!(!runtime_release_identity_matches(
+            Some("lease-a"),
+            Some("lease-a"),
+            Some("turn-2"),
+            "lease-a",
+            "turn-1"
+        ));
+        assert!(!runtime_release_identity_matches(
+            None,
+            Some("lease-a"),
+            Some("turn-1"),
+            "lease-a",
+            "turn-1"
+        ));
+    }
+
+    #[test]
+    fn duplicate_runtime_admission_holders_cannot_unpin_each_other() {
+        let reservation = RuntimeAdmissionReservation {
+            reservation_id: "reservation-1".to_string(),
+            runtime_lease_id: "lease-1".to_string(),
+            turn_intent_id: "turn-1".to_string(),
+        };
+        let mut admissions = vec![RuntimeAdmissionSlot {
+            reservation: reservation.clone(),
+            holders: 2,
+        }];
+
+        assert!(release_runtime_admission_slot(
+            &mut admissions,
+            &reservation
+        ));
+        assert_eq!(admissions.len(), 1);
+        assert_eq!(admissions[0].holders, 1);
+        assert!(release_runtime_admission_slot(
+            &mut admissions,
+            &reservation
+        ));
+        assert!(admissions.is_empty());
+        assert!(!release_runtime_admission_slot(
+            &mut admissions,
+            &reservation
+        ));
+    }
+
+    #[tokio::test]
+    async fn exact_turn_end_wait_is_event_driven_and_race_safe() {
+        let session = std::sync::Arc::new(AgentSession::new(
+            "turn-end-wait".to_string(),
+            AgentDefinition::default(),
+        ));
+        session
+            .begin_turn_with_intent("formal work".to_string(), Some("formal-turn".to_string()))
+            .await;
+        let waiter = {
+            let session = std::sync::Arc::clone(&session);
+            tokio::spawn(async move {
+                session
+                    .wait_for_turn_end("formal-turn", Duration::from_secs(1))
+                    .await
+            })
+        };
+        tokio::task::yield_now().await;
+        session
+            .end_turn(DialogTurnState::Cancelled, TurnStats::default())
+            .await;
+        assert!(waiter.await.expect("turn-end waiter"));
+        assert!(
+            session
+                .wait_for_turn_end("formal-turn", Duration::ZERO)
+                .await
+        );
     }
 }

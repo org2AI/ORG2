@@ -9,11 +9,14 @@ mod reader;
 mod tool_calls;
 
 const CODEX_PROVIDER_SLUG: &str = "codex";
+const NATIVE_SOURCE_EVENT_ID_ARG: &str = "__orgiiSourceEventId";
+const NATIVE_SOURCE_EVENT_ID_PREFIX: &str = "orgii_evt_";
 
 pub use reader::{
     load_codex_app_from_path, load_codex_app_initial_window_from_path,
     load_codex_app_mobile_tail_window_from_path, load_codex_app_turn_from_path,
-    CodexAppInitialWindow, CodexAppTurnWindow,
+    load_codex_app_window_turn_from_path, visit_codex_app_from_path, CodexAppInitialWindow,
+    CodexAppTurnWindow,
 };
 
 pub(super) use messages::user_message_text_from_line;

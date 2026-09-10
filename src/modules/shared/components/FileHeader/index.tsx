@@ -25,9 +25,9 @@ import Message from "@src/components/Message";
 import TabPill from "@src/components/TabPill";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import type { WorkstationTabHeaderHost } from "@src/hooks/tabHost/useWorkstationTabHeader";
-import { useRefreshSpin } from "@src/hooks/ui";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { Cancel01Icon, FileSymlinkIcon, HugeiconsIcon } from "@src/icons";
-import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader";
+import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 import type { DiffViewMode } from "@src/types/git/types";
 import { copyText } from "@src/util/data/clipboard";
 
@@ -72,6 +72,7 @@ export interface FileHeaderProps {
   additions?: number;
   /** Optional deletions count (for diffs) */
   deletions?: number;
+  renderFileActions?: (close: () => void) => React.ReactNode;
   /** Extra actions to render on the right */
   extraActions?: React.ReactNode;
   /** Optional control rendered immediately before the trailing more menu. */
@@ -181,6 +182,7 @@ export const FileHeader: React.FC<FileHeaderProps> = memo(
     additions,
     deletions,
     extraActions,
+    renderFileActions,
     beforeMoreMenuSlot,
     viewMode,
     onViewModeChange,
@@ -355,6 +357,7 @@ export const FileHeader: React.FC<FileHeaderProps> = memo(
     const showHighlightActiveLineToggle = !!onHighlightActiveLineChange;
     const showMoreSettingsAction = !!onMoreSettings;
     const showMoreMenu =
+      !!renderFileActions ||
       showReloadButton ||
       showSearchAction ||
       showGoToLineAction ||
@@ -534,6 +537,7 @@ export const FileHeader: React.FC<FileHeaderProps> = memo(
                 {/* More actions */}
                 {showMoreMenu && (
                   <FileHeaderMoreMenu
+                    renderFileActions={renderFileActions}
                     showReloadButton={showReloadButton}
                     showSearchAction={showSearchAction}
                     showGoToLineAction={showGoToLineAction}

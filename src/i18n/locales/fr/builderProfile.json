@@ -11,7 +11,6 @@
   "secondaryNote": "— la plupart des vérifications ne laissent aucune trace, d'où une confiance faible.",
   "byTool": "Par outil",
   "byToolHint": "Les points neutres sont identiques partout : ces lignes sont comparables. Une lettre vraie dans un seul outil mérite le doute.",
-  "sessionCount": "{{count}} sessions",
   "overTime": "Dans le temps",
   "overTimeHint": "Fenêtres glissantes, les plus récentes d'abord.",
   "status": "État",
@@ -47,7 +46,6 @@
   },
   "types": {
     "title": "Types de builder",
-    "subtitle": "Découvrez les 16 façons de travailler avec des agents de programmation.",
     "howTitle": "Comment lire le code",
     "howBody": "Quatre préférences observées composent un type de builder. Ces lettres décrivent un mode de travail, pas une identité figée : elles peuvent évoluer avec vos habitudes et vos outils.",
     "galleryTitle": "Les 16 types",

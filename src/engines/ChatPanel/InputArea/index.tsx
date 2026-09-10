@@ -2,8 +2,14 @@ import { useAtom, useAtomValue } from "jotai";
 import React, { memo, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ComposerInputRef } from "@src/components/ComposerInput";
+import type { SessionFollowUpSuggestion } from "@src/api/services/sessionFollowUpSuggestions";
+import type {
+  ComposerInputRef,
+  ComposerSnapshot,
+} from "@src/components/ComposerInput";
 import ComposerShell from "@src/components/ComposerShell";
+import Message from "@src/components/Message";
+import { useConversationExecutionBinding } from "@src/engines/ChatPanel/ConversationExecutionBindingContext";
 import { useInputArea } from "@src/engines/ChatPanel/hooks/useInputArea";
 import type {
   CustomMentionOption,
@@ -24,6 +30,7 @@ import type { SlashItemCategory } from "@src/types/extensions";
 import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 
 import EditModeHeader from "./components/EditModeHeader";
+import FollowUpSuggestionBar from "./components/FollowUpSuggestionBar";
 import {
   EditImagePreviews,
   InputAreaTopRows,
@@ -55,7 +62,11 @@ interface InputAreaProps {
   placeholder?: string;
   isEditMode?: boolean;
   initialContent?: string;
-  onEditSubmit?: (text: string, imageDataUrls?: string[]) => void;
+  onEditSubmit?: (
+    text: string,
+    imageDataUrls?: string[],
+    composerSnapshot?: ComposerSnapshot
+  ) => void;
   onEditSendNow?: (text: string, imageDataUrls?: string[]) => void;
   onEditCancel?: () => void;
   editLabel?: string;
@@ -68,11 +79,15 @@ interface InputAreaProps {
   omitChatHeader?: boolean;
   chatPanelPosition?: "left" | "right";
   sessionId?: string;
+  /** Optional native execution episode for Stop/status; messages stay on sessionId. */
+  controlSessionId?: string | null;
   onSubmitOverride?: (input: SubmitOverrideInput) => Promise<boolean>;
   customMentionOptions?: ReadonlyArray<CustomMentionOption>;
   topRowPills?: React.ReactNode;
   topRowTrailingContent?: React.ReactNode;
   statusBanners?: React.ReactNode;
+  followUpSuggestions?: ReadonlyArray<SessionFollowUpSuggestion>;
+  onFollowUpSuggestionSent?: () => void;
   composerShellRef?: React.Ref<HTMLDivElement>;
   /**
    * Mirror of the live editor handle for surfaces that insert into this
@@ -142,11 +157,14 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
     surfaceBg = false,
     omitChatHeader = false,
     sessionId: propSessionId,
+    controlSessionId,
     onSubmitOverride,
     customMentionOptions,
     topRowPills,
     topRowTrailingContent,
     statusBanners,
+    followUpSuggestions = [],
+    onFollowUpSuggestionSent,
     composerShellRef,
     composerInputRef: externalComposerInputRef,
     acceptDraggedPills = true,
@@ -160,6 +178,7 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
     slashItemCategories,
     presentation = "default",
   }) => {
+    const conversationExecutionBinding = useConversationExecutionBinding();
     const { t } = useTranslation("sessions");
 
     const { sessionId } = useSessionId({ propSessionId });
@@ -189,10 +208,18 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
     const mergedCustomMentionOptions = useMemo(
       () => [
         ...openedTabMentionOptions,
-        ...(customMentionOptions ?? []),
+        // Agent/Agent Org audience pills are a different address space from
+        // Cloud members. They must not enter a Team Chat snapshot where an
+        // identically-shaped id could be persisted as a human recipient.
+        ...(teamChatActive ? [] : (customMentionOptions ?? [])),
         ...teamChatMentionOptions,
       ],
-      [openedTabMentionOptions, customMentionOptions, teamChatMentionOptions]
+      [
+        openedTabMentionOptions,
+        customMentionOptions,
+        teamChatActive,
+        teamChatMentionOptions,
+      ]
     );
 
     const {
@@ -257,15 +284,25 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
     } = useInputArea({
       placeholder,
       sessionId: propSessionId,
+      controlSessionId,
       sessionScope,
       submitDisabled,
       onSubmitOverride: conversationSubmitOverride,
       customMentionOptions: mergedCustomMentionOptions,
-      enableAgentInterceptors,
+      // Team Chat is a human comment surface. It keeps shared composer
+      // validation/attachments, but Agent-only slash commands, pending
+      // questions, MCP prompts, and skill expansion must not mutate or consume
+      // the backing Agent transcript before the comment router sees the text.
+      enableAgentInterceptors: enableAgentInterceptors && !teamChatActive,
+      executionControlsEnabled: !teamChatActive,
     });
 
     const currentTextEmpty = isInputEmpty();
     const currentInputEmpty = currentTextEmpty && !hasImages;
+    // Canonical conversations own resume/retry through the canonical queue;
+    // the generic CLI Resume action would target the hidden runner directly.
+    const genericResumeAvailable =
+      canResume && !teamChatActive && conversationExecutionBinding === null;
     const stopSuppressedForEmptyInput =
       disableStopWhenEmpty && currentInputEmpty && !isWpGeneWorking;
     const voiceFeatureEnabled = useAtomValue(voiceInputEnabledAtom);
@@ -400,9 +437,23 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
     // turn-lifecycle FSM — the composer just forwards the captured text.
     const submitMessage = useCallback(
       (capturedText?: string) => {
-        void handleDivSubmit({ capturedText });
+        void handleDivSubmit({ capturedText }).catch((error: unknown) => {
+          Message.error(String(error));
+        });
       },
       [handleDivSubmit]
+    );
+    const submitFollowUpSuggestion = useCallback(
+      (suggestion: SessionFollowUpSuggestion) => {
+        void handleDivSubmit({
+          capturedText: suggestion.prompt,
+          source: "explicit-action",
+          onSubmitted: onFollowUpSuggestionSent,
+        }).catch((error: unknown) => {
+          Message.error(String(error));
+        });
+      },
+      [handleDivSubmit, onFollowUpSuggestionSent]
     );
 
     return (
@@ -442,6 +493,14 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
             editLabel={editLabel}
           />
           {!isEditMode && statusBanners}
+
+          {!isEditMode && (
+            <FollowUpSuggestionBar
+              suggestions={followUpSuggestions}
+              disabled={submitDisabled || isWpGeneWorking || isPendingCancel}
+              onSelect={submitFollowUpSuggestion}
+            />
+          )}
 
           <ComposerShell
             ref={isEditMode ? editContainerRef : composerShellRef}
@@ -516,7 +575,7 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
                 hasImages={hasImages}
                 isHosted={isHosted}
                 canStopAgent={canStopAgent}
-                canResume={canResume}
+                canResume={genericResumeAvailable}
                 onInterrupt={interruptSession}
                 onResume={resumeSession}
                 isCursorIde={isCursorIde}
@@ -553,7 +612,7 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
                 modelPill={modelPill}
                 isHosted={isHosted}
                 canStopAgent={canStopAgent}
-                canResume={canResume}
+                canResume={genericResumeAvailable}
                 onInterrupt={interruptSession}
                 onResume={resumeSession}
                 isCursorIde={isCursorIde}
@@ -562,7 +621,10 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
                 currentRepoPath={currentRepoPath}
                 contextualPanel={isContextualPanel}
                 inlineLeadingContent={isContextual ? topRowPills : undefined}
-                placeholder={placeholder}
+                placeholder={
+                  teamChatActive ? t("input.commentPlaceholder") : placeholder
+                }
+                commentMode={teamChatActive}
                 trailingHint={
                   compactHintVisible
                     ? t("input.compactArgHint")

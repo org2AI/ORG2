@@ -1,26 +1,33 @@
 {
+  "tray": {
+    "markAllRead": "Отметить всё как прочитанное",
+    "showKanban": "Показать Канбан",
+    "showRuntime": "Показать Runtime",
+    "pinned": "Закреплённые",
+    "unread": "Непрочитанные",
+    "running": "Выполняются",
+    "recent": "Недавние",
+    "empty": "Нет сеансов — Открыть приложение",
+    "quit": "Выйти из ORG2"
+  },
   "toolUsage": {
-    "estimatedContext": "{{tokenCount}} Token контекста",
-    "followup": "{{tokenCount}} Token follow-up",
-    "decision": "{{tokenCount}} Token решения",
     "tooltip": "Оценочная атрибуция инструмента. Метод: {{method}}. Ввод: {{inputBytes}} bytes. Вывод: {{outputBytes}} bytes. Решение: {{decisionTokens}} Token. Контекст: {{contextTokens}} Token. Follow-up: {{followupTokens}} Token. Связанный LLM cache read: {{cacheReadTokens}} Token. Связанный LLM cache write: {{cacheWriteTokens}} Token."
   },
   "humanSession": {
-    "titlePlaceholder": "Название (необязательно)"
+    "titlePlaceholder": "Название (необязательно)",
+    "createPlaceholder": "Добавьте первую заметку… Введите / для Skills или @, чтобы упомянуть сессию.",
+    "createAction": "Создать рабочий журнал",
+    "entryLabel": "Запись рабочего журнала",
+    "appendPlaceholder": "Добавьте заметку… Введите / для Skills, @ для упоминания сессии или перетащите её сюда.",
+    "loading": "Загрузка рабочего журнала",
+    "createFailed": "Не удалось создать рабочий журнал",
+    "loadFailed": "Не удалось загрузить рабочий журнал",
+    "appendFailed": "Не удалось добавить заметку"
   },
   "history": {
     "untitledSession": "Session без названия",
-    "prStatus": {
-      "merged": "Объединён",
-      "open": "Открыт",
-      "draft": "Черновик"
-    },
     "detail": {
-      "sessionInfo": "Информация о Session",
-      "repository": "Репо",
-      "branch": "Ветка",
       "created": "Создано",
-      "updated": "Обновлено",
       "lastUpdated": "Последнее обновление",
       "external": "Внешняя",
       "internal": "Внутренняя",
@@ -28,70 +35,17 @@
       "roundCount_one": "{{count}} раунд",
       "roundCount_other": "{{count}} раундов",
       "agentWorked": "Agent работал",
-      "reasoningModel": "Reasoning Model",
-      "codingModel": "Coding Model",
-      "sessionMode": "Режим Session",
-      "fileChanges": "Изменения файлов",
-      "filesChanged": "Изменённые файлы",
-      "files": "файлов",
-      "summary": "Сводка",
-      "workflow": "Workflow",
-      "agent": "Agent:",
-      "pilotSession": "Pilot Session",
-      "openSession": "Открыть Session",
-      "viewPR": "Посмотреть PR",
-      "rawData": "Необработанные данные",
-      "analytics": {
-        "title": "Event Analytics",
-        "toolUsage": "Использование инструментов",
-        "filesTouched": "Затронутые файлы",
-        "conversation": "Диалог",
-        "tokenUsage": "Использование Token",
-        "errors": "Ошибки",
-        "duration": "Длительность",
-        "events": "События",
-        "toolCalls": "Вызовы инструментов",
-        "files": "Файлы",
-        "tool": "Инструмент",
-        "calls": "Вызовы",
-        "done": "Завершено",
-        "userMessages": "Сообщения пользователя",
-        "assistantMessages": "Сообщения агента",
-        "userChars": "Символы пользователя",
-        "assistantChars": "Символы агента",
-        "avgResponseTime": "Среднее время ответа",
-        "thinkingEvents": "События размышления",
-        "inputTokens": "Входные Token",
-        "outputTokens": "Выходные Token",
-        "totalTokens": "Всего Token",
-        "model": "Модель",
-        "input": "Вход",
-        "output": "Выход",
-        "totalErrors": "Ошибки",
-        "totalFailures": "Сбои",
-        "errorRate": "Частота ошибок"
-      },
-      "impact": {
-        "title": "Impact Graph",
-        "files": "Файлы",
-        "functions": "Функции",
-        "commits": "Commit",
-        "lines": "Строки",
-        "filesTouched": "Затронутые файлы",
-        "functionsCreated": "Созданные функции",
-        "commitsInfluenced": "Связанные Commit"
-      }
+      "cliNativeStore": "Нативное хранилище CLI",
+      "sessionId": "ID сессии"
     }
   },
   "kanban": {
     "card": {
       "openAsFloatingPane": "Открыть во всплывающей панели"
     },
-    "sessions": "Session",
     "view": {
       "list": "Список",
       "diary": "Дневник",
-      "kanban": "Kanban",
       "dataSource": "Источники данных"
     },
     "dataSource": {
@@ -157,7 +111,16 @@
           "24h": "24 часа",
           "7d": "7 дней",
           "30d": "30 дней",
-          "all": "За всё время"
+          "all": "За всё время",
+          "custom": "Свой период…"
+        },
+        "customRange": {
+          "start": "Начало",
+          "end": "Конец",
+          "hint": "Местное время · {{zone}} · До секунды, включая конечную секунду",
+          "invalid": "Конец не может быть раньше начала",
+          "apply": "Применить период",
+          "cancel": "Отмена"
         },
         "bucket": {
           "claude": "Claude",
@@ -239,8 +202,6 @@
         "loadError": "Не удалось загрузить данные об использовании"
       },
       "sessions_one": "{{count}} сессия",
-      "sessions_few": "{{count}} сессии",
-      "sessions_many": "{{count}} сессий",
       "sessions_other": "{{count}} сессии",
       "details": {
         "path": "Путь",
@@ -257,15 +218,15 @@
         "installed": "Установлено",
         "notInstalled": "Не обнаружено",
         "disabled": "Отключено"
-      }
+      },
+      "rescanUpdate": "Обновить",
+      "rescanClear": "Очистить и пересканировать",
+      "externalSessionsToggle": "Внешние сессии",
+      "externalSessionsToggleDesc": "Когда выключено, внешние источники не сканируются и их сессии не загружаются"
     },
     "list": {
-      "updated": "Обновлено",
-      "timeRange": "Диапазон времени",
       "started": "Начато",
       "lastUpdated": "Последнее обновление",
-      "agentModel": "Agent · Модель",
-      "searchPlaceholder": "Search sessions...",
       "emptyTitle": "Нет сессий, соответствующих этим фильтрам",
       "emptyDescription": "Попробуйте другой статус, тип Agent или период."
     },
@@ -281,7 +242,6 @@
     },
     "autoArchive": {
       "label": "Автоархив",
-      "shortLabel": "Архив",
       "never": "Никогда",
       "12h": "12ч",
       "24h": "24ч",
@@ -293,9 +253,7 @@
       "inProgress": "В процессе",
       "blocking": "Блокировка",
       "turnFinished": "Ход завершён",
-      "archived": "В архиве",
-      "yourTurn": "Ваш ход",
-      "finished": "Завершено"
+      "archived": "В архиве"
     },
     "boardColumns": {
       "todo": "К выполнению",
@@ -307,43 +265,20 @@
       "cancelled": "Неудачно"
     },
     "sidebar": {
-      "agentTypes": "Типы Agent",
-      "manageItems": "Управление элементами",
-      "sessionsView": "Sessions View",
-      "workitemView": "Workitem View",
-      "views": "Представления",
-      "cliAgent": "CLI Agent",
-      "rustAgent": "Rust Agent",
       "removeDraft": "Удалить черновик",
       "showSubagents": "Показать subagents",
-      "hideSubagents": "Скрыть subagents"
-    },
-    "resultStatus": {
-      "completed": "Завершено",
-      "failed": "Неудачно",
-      "archived": "Архивировано"
+      "hideSubagents": "Скрыть subagents",
+      "githubIssues": "GitHub Issues",
+      "githubPrs": "GitHub PR",
+      "runs": "Запуски"
     },
     "detail": {
       "title": "Название",
-      "tags": "Теги",
-      "description": "Описание",
-      "status": "Статус"
+      "tags": "Теги"
     },
-    "addContent": "Добавить контент",
     "merge": {
       "conflictsIn": "Конфликты в: {{files}}",
       "failed": "Ошибка слияния",
-      "failedToLoadDiff": "Не удалось загрузить diff",
-      "noChanges": "Нет изменений",
-      "worktree": "Worktree",
-      "branch": "Ветка:",
-      "base": "База:",
-      "mergeLabel": "Слияние:",
-      "statusPending": "Ожидание",
-      "statusMerged": "Объединено",
-      "statusConflict": "Конфликт",
-      "statusSkipped": "Пропущено",
-      "statusFailed": "Ошибка",
       "retryMerge": "Повторить слияние",
       "dirtyRepo": "Слияние невозможно: в репозитории есть незафиксированные изменения. Сначала зафиксируйте или спрячьте их.",
       "strategyLabel": "Стратегия слияния",
@@ -351,133 +286,41 @@
       "strategyFf": "Перемотка вперёд",
       "strategyLeave": "Оставить как ветку",
       "discardConfirmTitle": "Удалить Worktree?",
-      "discardConfirmMessage": "Ветка и все изменения будут удалены без возможности восстановления.",
-      "merge": "Слить",
-      "merging": "Слияние…",
-      "merged": "Слито"
-    },
-    "discard": {
-      "discard": "Отменить",
-      "discarding": "Отмена…",
-      "confirmMessage": "Отменить все изменения в этом worktree? Это действие нельзя отменить."
+      "discardConfirmMessage": "Ветка и все изменения будут удалены без возможности восстановления."
     },
     "diary": {
-      "title": "Дневник",
       "previousDay": "Предыдущий день",
       "nextDay": "Следующий день",
-      "subtitle": "Ежедневная активность Agent",
-      "engineeringHours": "Инженерные часы",
-      "engineeringHoursHint": "Накопленное время Agent",
-      "onlineHours": "Онлайн-часы",
-      "onlineHoursHint": "Параллельное время без дублей",
-      "activeSessions": "Активные Sessions",
-      "completedSessions": "Завершено",
-      "timeline": "Лента событий",
       "commits": "Commits",
       "emptyTitle": "Нет событий дневника",
       "emptySubtitle": "Активность Agent за этот день появится здесь.",
-      "event": {
-        "started": "Session запущена",
-        "completed": "Session завершена",
-        "stillWorking": "Всё ещё работает"
-      },
       "commitsTo": "Commits в {{repo}}",
       "commitsToMultiple": "Commits в {{repos}}"
-    },
-    "orgtrack": {
-      "filesChanged_one": "{{count}} файл",
-      "filesChanged_other": "{{count}} файлов",
-      "commits_one": "{{count}} commit",
-      "commits_other": "{{count}} commits",
-      "committedRateShort": "{{percent}}% закоммичено"
     },
     "detailView": {
       "trajectory": "Trajectory",
       "touchedFiles": "Touched files",
       "noTouchedFiles": "No files touched"
-    }
-  },
-  "changes": {
-    "scope": {
-      "thisSession": "Эта Session",
-      "allUncommitted": "Все незафиксированные"
     },
-    "empty": {
-      "workingTreeClean": "Рабочее дерево чистое",
-      "noChangesYet": "Изменений пока нет",
-      "noUncommittedChanges": "Нет незафиксированных изменений в репо",
-      "changesWillAppear": "Изменения, сделанные ИИ, появятся здесь"
-    },
-    "noChangesToReview": "Нет изменений для проверки"
-  },
-  "sync": {
-    "preparing": "Подготовка файлов...",
-    "uploading": "Синхронизация файлов...",
-    "processing": "Обработка на маркетплейсе...",
-    "complete": "Файлы успешно синхронизированы!",
-    "error": "Ошибка синхронизации",
-    "default": "Синхронизация...",
-    "files": "{{count}} файлов"
+    "openRoutineWorkItemError": "Не удалось открыть рабочий элемент",
+    "runsEmpty": "Запусков Routine пока нет"
   },
   "simulator": {
     "captionBarToggleTooltip": "Показать панель сообщений Agent",
-    "parentSession": "Основной Agent",
-    "backgroundTasks": "Background Tasks",
-    "backgroundTasksEmpty": "Нет Background Tasks",
     "noActiveSession": "Нет активной сессии",
     "tabs": {
-      "desktop": "Рабочий стол",
-      "tasks": "Задачи",
-      "kanban": "Канбан",
-      "changes": "Изменения",
-      "conflicts": "Конфликты",
-      "plan": "План"
-    },
-    "settings": {
-      "title": "Просмотр Simulator",
-      "showDock": "Показать Dock",
-      "playback": "Воспроизведение",
-      "speed": "Скорость",
-      "autoScroll": "Автопрокрутка"
-    },
-    "tasks": {
-      "noTasksFound": "Задачи не найдены",
-      "tasksWillAppear": "Задачи появятся здесь при запуске",
-      "selectTask": "Выберите задачу для просмотра действий"
-    },
-    "kanban": {
-      "noTasksYet": "Задач пока нет",
-      "tasksWillAppear": "Задачи появятся здесь, когда над этой сессией начнётся работа"
+      "kanban": "Канбан"
     },
     "replay": {
-      "following": "Слежение",
-      "freeBrowsing": "Свободный просмотр",
-      "replaying": "Воспроизведение",
       "freeBrowse": "Свободный просмотр",
       "follow": "Следовать",
       "dockShowChatInput": "Показать поле ввода чата",
-      "dockHideChatInput": "Скрыть поле ввода чата",
-      "bottomPanel": {
-        "tabTrajectory": "Trajectory",
-        "tabTodo": "Todo",
-        "expandPanel": "Показать панель trajectory и todo",
-        "placeholderTrajectoryTitle": "Пока нет событий",
-        "placeholderTrajectorySubtitle": "Активность сессии появится здесь после запуска Agent",
-        "placeholderTodoTitle": "Нет списков задач",
-        "placeholderTodoSubtitle": "Обновления todo появятся, когда Agent запишет задачи"
-      },
       "previousEvent": "Предыдущее событие",
       "nextEvent": "Следующее событие",
       "play": "Воспроизведение",
       "pause": "Пауза",
-      "playbackSpeed": "Скорость воспроизведения",
-      "noEvents": "Нет событий",
-      "agentHasNotUsedTool": "Agent ещё не использовал этот инструмент",
       "browser": {
         "tabs": {
-          "browser": "Браузер",
-          "search": "Поиск",
-          "fetch": "Загрузка",
           "agentBrowser": "Браузер Agent",
           "searchFetch": "Поиск и загрузка"
         },
@@ -491,8 +334,7 @@
           "noBrowserActivity": "Нет активности браузера",
           "noBrowserInteractions": "Нет взаимодействий браузера",
           "noWebSearches": "Нет веб-поиска",
-          "noPagesFetched": "Нет загруженных страниц",
-          "noBrowserActivityYet": "Пока нет активности браузера"
+          "noPagesFetched": "Нет загруженных страниц"
         },
         "header": {
           "categoryBrowser": "Браузер",
@@ -510,17 +352,12 @@
           "exitCode": "[код выхода: {{code}}]"
         },
         "codePanel": {
-          "hiddenLines": "{{count}} скрытых строк",
           "editHeader": "Правка {{index}}",
           "startingAtLine": "(начиная со строки {{line}})",
           "fileEditedSuccess": "✓ Файл успешно отредактирован",
           "truncatedSuffix": "\n... (обрезано)",
-          "headerDirectory": "Каталог",
-          "headerSearchPrefix": "Поиск: {{query}}",
           "searchResultLinePrefix": "L{{line}}",
           "resultCount_one": "{{count}} результат",
-          "resultCount_few": "{{count}} результата",
-          "resultCount_many": "{{count}} результатов",
           "resultCount_other": "{{count}} результатов",
           "lspNoDiagnostics": "Диагностика не возвращена",
           "loadEarlierEdits": "Загрузить предыдущие правки: {{count}}"
@@ -538,23 +375,12 @@
           "emptyNoFilesEdited": "Нет изменённых файлов",
           "emptyNoExploreOperations": "Нет исследований",
           "emptyNoCommands": "Нет команд",
-          "emptyNoToolCalls": "Нет вызовов инструментов",
-          "searchDisplayListDir": "list_dir",
-          "searchDisplaySearch": "Поиск",
-          "searchSecondaryResults": "{{count}} результатов"
-        },
-        "terminal": {
-          "tabTerminal": "Терминал",
-          "viewStructured": "Структурировано",
-          "viewRaw": "Сырое",
-          "emptySelectCommand": "Выберите команду для просмотра"
+          "emptyNoToolCalls": "Нет вызовов инструментов"
         }
       },
       "diffApp": {
-        "allTabLabel": "Все",
         "tabLabel": "Diff",
         "emptyForFilter": "Diff пока нет",
-        "emptyDetail": "Выберите изменение, чтобы посмотреть Diff.",
         "submissions": {
           "tabLabel": "Отправки",
           "commits": "Commits",
@@ -562,57 +388,25 @@
           "empty": "Отправок пока нет",
           "selectSubmission": "Выберите отправку, чтобы посмотреть детали",
           "noCommits": "Commits пока нет",
-          "noPullRequests": "Pull Requests пока нет"
+          "noPullRequests": "Pull Requests пока нет",
+          "labels": {
+            "created": {
+              "commit": "Создан коммит",
+              "pullRequest": "Создан PR"
+            },
+            "mentioned": {
+              "commit": "Упомянут коммит",
+              "pullRequest": "Упомянут PR"
+            }
+          }
         }
       },
       "channelsSidebar": {
-        "chatHistoryTab": "История чата",
         "messages": "Сообщения",
         "interactions": "Взаимодействия",
-        "todoList": "Список задач",
-        "kanban": "Канбан",
-        "todoUpdate": "Обновление задач",
-        "noMessages": "Сообщений пока нет",
-        "noInteractions": "Взаимодействий пока нет",
-        "noTodos": "Событий задач пока нет",
-        "interactionAskQuestion": "Вопрос",
-        "interactionAskPermission": "Запрос разрешения",
-        "interactionModeSwitch": "Смена режима",
-        "interactionPlanDoc": "Документ плана",
-        "interactionGeneric": "Взаимодействие"
+        "kanban": "Канбан"
       },
       "messages": {
-        "viewer": {
-          "think": {
-            "title": "Внутренний диалог",
-            "subtitle_one": "Показана {{count}} мысль",
-            "subtitle_other": "Показано мыслей: {{count}}"
-          },
-          "todo": {
-            "title": "Список задач",
-            "subtitle": "Последний список задач"
-          },
-          "chat": {
-            "title": "Чат с пользователем",
-            "subtitle_one": "{{count}} сообщение",
-            "subtitle_other": "Сообщений: {{count}}"
-          },
-          "interaction": {
-            "title": "Взаимодействия",
-            "subtitle_one": "{{count}} взаимодействие",
-            "subtitle_other": "Взаимодействий: {{count}}"
-          }
-        },
-        "empty": {
-          "think": {
-            "title": "Пока нет мыслей",
-            "subtitle": "Мысли Agent появятся здесь"
-          },
-          "todo": {
-            "title": "Пока нет списков задач",
-            "subtitle": "Списки задач появятся здесь"
-          }
-        },
         "bubble": {
           "smartDateYesterday": "Вчера",
           "senderTitle": {
@@ -627,7 +421,15 @@
             "requestedInput": "{{subject}} запросил ввод",
             "sentTo": "{{subject}} отправил сообщение {{recipient}}",
             "sentBroadcast": "{{subject}} отправил сообщение нескольким Agent",
-            "sentMessage": "{{subject}} отправил сообщение"
+            "sentMessage": "{{subject}} отправил сообщение",
+            "taskCreateRunning": "{{subject}} создаёт задачу",
+            "taskCreateRejected": "Создание задачи от {{subject}} требует исправления",
+            "taskCreateFailed": "{{subject}} не удалось создать задачу",
+            "taskOperationRunning": "{{subject}} выполняет операцию с задачей",
+            "taskOperationRejected": "Операция с задачей от {{subject}} требует исправления",
+            "taskOperationFailed": "Операция с задачей от {{subject}} не выполнена",
+            "turnLoading": "Сообщение от {{subject}} загружается…",
+            "taskOperationDeferred": "{{subject}} отложил завершение задачи до окончания очистки"
           }
         },
         "divider": {
@@ -647,21 +449,12 @@
             "Нет вывода. Иногда тишина. [Нет превью мысли]",
             "Сообщения нет. Превью не дошло. [Нет превью мысли]"
           ],
-          "labelLatest": "Последняя мысль",
           "labelThought": "Мысль"
+        },
+        "unloadedTurn": {
+          "loadingBody": "Загрузка сообщения…",
+          "retryBody": "Сообщение не загрузилось — нажмите, чтобы повторить"
         }
-      },
-      "database": {
-        "operation": {
-          "explore": "Обзор",
-          "runSql": "Выполнить SQL"
-        },
-        "row": {
-          "tablePrefix": "Таблица: {{name}}",
-          "resultErrorPrefix": "Ошибка: ",
-          "resultArrowPrefix": "→ "
-        },
-        "headerTitle": "Операции с базой данных"
       },
       "project": {
         "operation": {
@@ -686,12 +479,6 @@
           "list_contributors": "Список контрибьюторов",
           "add_delegation": "Добавить делегирование"
         },
-        "row": {
-          "projectPrefix": "Project: {{name}}",
-          "workItemPrefix": "Задача: {{title}}",
-          "resultErrorPrefix": "Ошибка: ",
-          "resultArrowPrefix": "→ "
-        },
         "headerTitle": "Операции с Projectми"
       },
       "canvas": {
@@ -702,34 +489,22 @@
         "tooltipCloseCanvas": "Закрыть холст",
         "iframeTitle": "Agent Canvas"
       },
-      "trajectory": {
-        "closeSidebar": "Закрыть боковую панель",
-        "toggleSidebar": "Переключить боковую панель траектории",
-        "fallbackUnknownStep": "Неизвестный шаг",
-        "stepHeader": {
-          "actionsCount": "Действий: {{count}}"
-        },
-        "event": {
-          "unknownFile": "Неизвестный файл",
-          "noCommand": "Нет команды",
-          "todoMoreSuffix": "{{first}} (+ещё {{count}})",
-          "todosCount": "Задач: {{count}}",
-          "todosUpdated": "Обновлено задач: {{count}}",
-          "noQuery": "Нет запроса",
-          "activityFallback": "Активность",
-          "processing": "Обработка...",
-          "messageEllipsis": "Сообщение...",
-          "readUserMessage": "Прочитать сообщение пользователя",
-          "sessionFallback": "Session"
-        }
-      },
-      "followingApp": "Отслеживание: {{appName}}",
       "followingAgent": "Отслеживание Agent",
       "trajectoryAgent": "Следовать траектории Agent",
       "trajectoryThisApp": "Следовать за этим приложением",
-      "followAgent": "Следовать за Agent",
-      "followThisApp": "Отслеживать это приложение",
-      "followApp": "Отслеживать {{appName}}"
+      "filters": {
+        "tooltip": "Фильтр событий",
+        "allEvents": "Все события",
+        "keyInteractions": "Ключевые взаимодействия",
+        "fileChanges": "Изменения файлов",
+        "terminalEvents": "События терминала",
+        "explore": "Исследование",
+        "other": "Другое",
+        "selectedCount": "Фильтров: {{count}}"
+      },
+      "next": "Следующее событие",
+      "previous": "Предыдущее событие",
+      "scrub": "Полоса прокрутки реплея"
     },
     "codeEditor": {
       "switchToListView": "Переключить на список",
@@ -743,42 +518,17 @@
       "title": "Загрузка системы",
       "subtitle": "Инициализация рабочей среды..."
     },
-    "awaitingActivity": "Ожидание активности...",
-    "askUser": {
-      "agentQuestion": "Вопрос от Agent",
-      "submitResponse": "Отправить ответ",
-      "responseReceived": "Ответ получен",
-      "optional": "Необязательно",
-      "defaultQuestion": "Agent хочет задать вам вопрос",
-      "enterField": "Введите {{field}}..."
-    },
-    "askUserPending": {
-      "incomingRequest": "Входящий запрос",
-      "respondInChat": "Пожалуйста, ответьте на запрос Agent в чате"
-    },
     "titleBar": {
-      "switchToRight": "Переключить на правый режим",
-      "switchToLeft": "Переключить на левый режим",
       "showSidebar": "Показать боковую панель",
       "hideSidebar": "Скрыть боковую панель",
-      "showBottomPanel": "Показать нижнюю панель",
-      "hideBottomPanel": "Скрыть нижнюю панель"
+      "showBottomPanel": "Показать нижнюю панель"
     },
     "multiTask": {
       "monitoringProgress": "Отслеживание прогресса {{count}} subagents",
-      "expandView": "Развернуть",
-      "compactView": "Компактный вид",
       "closePanel": "Закрыть панель Subagent",
-      "minimizePanel": "Свернуть в режим картинка-в-картинке",
-      "expandPanel": "Развернуть панель",
-      "moreTasks": "ещё {{count}}"
+      "minimizePanel": "Свернуть в режим картинка-в-картинке"
     },
     "gridCell": {
-      "copyEventsJson": "Копировать события JSON",
-      "detachedTooltip": "Отключен от главного курсора — нажмите для синхронизации",
-      "syncedTooltip": "Синхронизирован с главным курсором",
-      "detached": "Отключён",
-      "live": "Прямой",
       "expand": "Развернуть",
       "collapse": "Свернуть"
     },
@@ -786,7 +536,9 @@
       "waitingForActivity": "Ожидание активности…",
       "viewTaskPrompt": "Показать запрос задачи",
       "taskPromptTitle": "Запрос задачи",
-      "newEventDivider": "Новое событие"
+      "newEventDivider": "Новое событие",
+      "loadingHistory": "Загрузка истории…",
+      "retryHistory": "Не удалось загрузить историю — Повторить"
     },
     "dock": {
       "switchTo": "Переключиться на",
@@ -825,7 +577,7 @@
   "input": {
     "editPlaceholder": "Редактировать сообщение...",
     "defaultPlaceholder": "Чат с Agent",
-    "finishNextStep": "Готово. Следующий шаг!",
+    "commentPlaceholder": "Оставьте комментарий…",
     "editingQueuedMessage": "Редактирование сообщения в очереди",
     "editingSentMessage": "Редактирование отправленного сообщения",
     "voiceErrorPermission": "Доступ к микрофону запрещён. Включите его в настройках системы.",
@@ -841,14 +593,19 @@
       "insert": "Вставить"
     },
     "compactArgHint": "<необязательный фокус резюме>",
+    "nativeCommandDescription": "Выполнить {{command}} в {{provider}}",
     "compactCommandDescription": "Обобщить старый контекст, чтобы освободить место. Необязательно: /compact <фокус резюме>",
     "canvasCommandDescription": "Создать новый интерактивный Canvas. Необязательно: /canvas <что создать>",
     "canvasArgHint": "что создать",
-    "newCanvasAction": "Новый Canvas"
-  },
-  "listPanel": {
-    "showingOf": "Показано {{filtered}} из {{total}}",
-    "selectedOf": "Выбрано {{selected}} из {{total}}"
+    "newCanvasAction": "Новый Canvas",
+    "pr": {
+      "open": "Открыть PR"
+    },
+    "followUpSuggestions": {
+      "label": "Предлагаемые следующие шаги"
+    },
+    "voicePermissionSheetRetry": "Попробовать снова",
+    "voicePermissionSheetTitle": "Требуется доступ к микрофону"
   },
   "chat": {
     "planApprovedLabel": "Выполняется утверждённый план",
@@ -899,8 +656,8 @@
       "addApiKey": {
         "title": "Добавить API key"
       },
-      "showRuntime": {
-        "title": "Показать среду выполнения"
+      "showQuota": {
+        "title": "Показать квоту"
       },
       "installLatestUpdate": {
         "title": "Установить последнее обновление"
@@ -1004,7 +761,9 @@
     "tabs": {
       "newTerminal": "Новый Терминал",
       "newTab": "Новая вкладка",
-      "terminals": "Терминалы"
+      "terminals": "Терминалы",
+      "goBack": "Назад",
+      "goForward": "Вперёд"
     },
     "sideChat": {
       "title": "Боковой чат",
@@ -1161,7 +920,8 @@
         "cli": "CLI Agent",
         "rust": "Rust Agent",
         "cursorIde": "Cursor IDE",
-        "externalHistory": "Внешняя история"
+        "externalHistory": "Внешняя история",
+        "human": "Рабочий журнал"
       },
       "fields": {
         "session": "Session",
@@ -1184,31 +944,19 @@
       "editsTab": "Правки",
       "readsTab": "Чтения",
       "files_one": "{{count}} файл",
-      "files_few": "{{count}} файла",
-      "files_many": "{{count}} файлов",
       "files_other": "{{count}} файлов",
       "reads_one": "{{count}} чтение",
-      "reads_few": "{{count}} чтения",
-      "reads_many": "{{count}} чтений",
       "reads_other": "{{count}} чтений",
       "searches_one": "{{count}} поиск",
-      "searches_few": "{{count}} поиска",
-      "searches_many": "{{count}} поисков",
       "searches_other": "{{count}} поисков",
       "failed": "Ошибка",
       "commits_one": "{{count}} коммит",
-      "commits_few": "{{count}} коммита",
-      "commits_many": "{{count}} коммитов",
       "commits_other": "{{count}} коммитов",
       "pullRequests_one": "{{count}} PR",
-      "pullRequests_few": "{{count}} PR",
-      "pullRequests_many": "{{count}} PR",
       "pullRequests_other": "{{count}} PR",
       "review": "Просмотреть",
       "showLess": "Показать меньше",
       "showMore_one": "Показать ещё {{count}}",
-      "showMore_few": "Показать ещё {{count}}",
-      "showMore_many": "Показать ещё {{count}}",
       "showMore_other": "Показать ещё {{count}}"
     },
     "manageIssues": {
@@ -1247,7 +995,17 @@
         "assignedToMe": "Назначенные мне",
         "createdByMe": "Созданные мной",
         "filters": "Filters",
-        "openInGitHub": "Open in GitHub"
+        "openInGitHub": "Open in GitHub",
+        "pullRequests": {
+          "reviewRequested": "Запрошено ревью",
+          "authoredByMe": "Созданные мной",
+          "otherTodos": "Другие задачи"
+        },
+        "assigneeUpdateNotApplied": "GitHub не применил изменение исполнителя",
+        "assigneeUpdateSuccess": "Исполнители обновлены на GitHub",
+        "updateIssueFailed": "Не удалось обновить issue GitHub",
+        "refreshIssues": "Обновить задачи",
+        "refreshPullRequests": "Обновить пул-реквесты"
       }
     },
     "sessionViews": {
@@ -1262,34 +1020,26 @@
       "fileCount_one": "{{count}} файл",
       "fileCount_other": "{{count}} файлов",
       "turnCount_one": "{{count}} раунд",
-      "turnCount_other": "{{count}} раундов"
+      "turnCount_other": "{{count}} раундов",
+      "inferredTiming": "Окончание определено по следующему раунду"
     },
-    "parentAgentSender": "Родительский агент"
-  },
-  "chatStatus": {
-    "approved": "Одобрено",
-    "skipped": "Пропущено",
-    "responded": "Отвечено",
-    "ignored": "Проигнорировано",
-    "pending": "Ожидание",
-    "denied": "Отклонено"
-  },
-  "conflicts": {
-    "title": "Конфликты",
-    "noConflicts": "Нет конфликтов",
-    "noMergeConflicts": "Нет конфликтов слияния",
-    "cleanState": "Ваш репо в чистом состоянии без конфликтов для разрешения.",
-    "detecting": "Обнаружение конфликтов...",
-    "allResolved": "Все конфликты в этом файле разрешены",
-    "saveAndMark": "Сохранить и отметить как разрешённый для продолжения",
-    "keepCurrent": "Оставить текущее",
-    "keepIncoming": "Оставить входящее",
-    "keepBoth": "Оставить оба",
-    "aiResolve": "AI разрешить",
-    "previousConflict": "Предыдущий конфликт (⌘↑)",
-    "nextConflict": "Следующий конфликт (⌘↓)",
-    "abort": "Прервать",
-    "complete": "Завершить"
+    "parentAgentSender": "Родительский агент",
+    "restoreCheckpoint": "Восстановить контрольную точку",
+    "trackAsProject": {
+      "menuItem": "Отслеживать как Project",
+      "success": "Сессия теперь отслеживается как Project"
+    },
+    "permissionDismiss": "Скрыть на этом устройстве",
+    "remoteExecutionNotice": "Это действие будет выполнено на {{desktopName}}.",
+    "conversationNavigator": "Навигатор по разговору",
+    "goToConversationTurn": "Перейти к раунду {{current}} из {{total}}: {{preview}}",
+    "send": "Отправить",
+    "sendFailed": "Не удалось отправить сообщение",
+    "sending": "Отправка…",
+    "typeMessage": "Введите сообщение…",
+    "session": "Сессия",
+    "history": "Сессии",
+    "agentFallback": "Agent"
   },
   "tools": {
     "noResultsFound": "Результатов не найдено",
@@ -1326,13 +1076,13 @@
       "play": "Воспроизвести",
       "duration": "{{value}}",
       "toolCalls_one": "{{count}} вызов инструмента",
-      "toolCalls_few": "{{count}} вызова инструментов",
-      "toolCalls_many": "{{count}} вызовов инструментов",
       "toolCalls": "{{count}} вызовов инструментов",
       "filesChanged_one": "{{count}} файл изменён",
-      "filesChanged_few": "{{count}} файла изменены",
-      "filesChanged_many": "{{count}} файлов изменены",
-      "filesChanged": "{{count}} файлов изменены"
+      "filesChanged": "{{count}} файлов изменены",
+      "segmentAria": "Раунд реплея {{number}}",
+      "turnBreakpointsAria": "Точки останова раундов реплея",
+      "segmentTooltip": "Раунд {{number}} · {{duration}} · {{start}}–{{end}}",
+      "segmentTooltipNoRange": "Раунд {{number}} · {{duration}}"
     },
     "turnCollapse": {
       "agentWorkedFor": "Agent работал {{value}}",
@@ -1376,12 +1126,8 @@
     "editFiles": "Редактировать файлы",
     "editSummary": {
       "edit_one": "{{count}} изменение",
-      "edit_few": "{{count}} изменения",
-      "edit_many": "{{count}} изменений",
       "edit_other": "{{count}} изменения",
       "read_one": "{{count}} чтение",
-      "read_few": "{{count}} чтения",
-      "read_many": "{{count}} чтений",
       "read_other": "{{count}} чтения",
       "separator": ", "
     },
@@ -1392,20 +1138,12 @@
     "runCommands": "Выполнить команды",
     "terminalSummary": {
       "command_one": "{{count}} команда",
-      "command_few": "{{count}} команды",
-      "command_many": "{{count}} команд",
       "command_other": "{{count}} команды",
       "mcp_one": "{{count}} вызов MCP",
-      "mcp_few": "{{count}} вызова MCP",
-      "mcp_many": "{{count}} вызовов MCP",
       "mcp_other": "{{count}} вызова MCP",
       "wait_one": "{{count}} ожидание",
-      "wait_few": "{{count}} ожидания",
-      "wait_many": "{{count}} ожиданий",
       "wait_other": "{{count}} ожидания",
       "check_one": "{{count}} проверка",
-      "check_few": "{{count}} проверки",
-      "check_many": "{{count}} проверок",
       "check_other": "{{count}} проверки",
       "separator": ", "
     },
@@ -1449,24 +1187,14 @@
     "explore": "Обзор",
     "exploreSummary": {
       "read_one": "{{count}} файл",
-      "read_few": "{{count}} файла",
-      "read_many": "{{count}} файлов",
       "read_other": "{{count}} файла",
       "search_one": "{{count}} поиск",
-      "search_few": "{{count}} поиска",
-      "search_many": "{{count}} поисков",
       "search_other": "{{count}} поиска",
       "glob_one": "{{count}} glob-запрос",
-      "glob_few": "{{count}} glob-запроса",
-      "glob_many": "{{count}} glob-запросов",
       "glob_other": "{{count}} glob-запроса",
       "ls_one": "ls {{count}} папка",
-      "ls_few": "ls {{count}} папки",
-      "ls_many": "ls {{count}} папок",
       "ls_other": "ls {{count}} папки",
       "lsp_one": "{{count}} LSP-запрос",
-      "lsp_few": "{{count}} LSP-запроса",
-      "lsp_many": "{{count}} LSP-запросов",
       "lsp_other": "{{count}} LSP-запроса",
       "separator": ", "
     },
@@ -1530,9 +1258,6 @@
     "awaitOutputKilled": "Остановлено",
     "awaitOutputNotFound": "Фоновая задача не отслеживается",
     "awaitOutputExitCode": "exit {{exitCode}}",
-    "skillLoading": "Reading skill",
-    "skillLoaded": "Skill loaded",
-    "skillFailed": "Skill not found",
     "killProcessRunning": "Завершение процесса",
     "killProcessDone": "Процесс завершён",
     "killProcessFailed": "Не удалось завершить процесс",
@@ -2132,15 +1857,9 @@
     "nFiles_one": "{{count}} файл",
     "nFiles_other": "{{count}} файлов"
   },
-  "hoverCard": {
-    "commits": "Коммиты",
-    "filesChanged_one": "{{count}} файл изменён",
-    "filesChanged_few": "{{count}} файла изменено",
-    "filesChanged_other": "{{count}} файлов изменено",
-    "branchesTouched": "Ветки"
-  },
   "modelPill": {
-    "immutableInSession": "Источник ключа, тип Agent и тарифный уровень фиксируются при запуске сессии. Чтобы изменить их, начните новую сессию."
+    "immutableInSession": "Источник ключа, тип Agent и тарифный уровень фиксируются при запуске сессии. Чтобы изменить их, начните новую сессию.",
+    "appliesNextTurn": "Аккаунт переключён. Текущий ответ по-прежнему выполняется на предыдущем аккаунте; новый аккаунт вступит в силу со следующего раунда."
   },
   "creator": {
     "repoChromeMenu": {
@@ -2150,26 +1869,20 @@
       "hidePinnedActions": "Скрыть закреплённые действия"
     },
     "createTarget": {
-      "agentSession": "Сессия Agent",
       "project": "Создать проект",
       "parallelRun": "Параллельный запуск",
       "workItem": "Создать Work Item"
     },
     "worktreeSource": {
       "title": "Создать рабочее дерево",
-      "confirm": "Использовать рабочее дерево",
       "resolving": "Определение PR…",
       "selectRepository": "Выберите репозиторий перед выбором источника рабочего дерева.",
       "sourceTabs": "Источник рабочего дерева",
       "tabs": {
-        "smart": "Умный",
         "github": "GitHub",
         "branch": "Ветка",
-        "name": "Имя"
+        "pr": "PR"
       },
-      "smartPlaceholder": "Имя, #1234, ветка или URL GitHub/GitLab",
-      "smartAria": "Введите имя, номер PR, ветку или URL GitHub/GitLab",
-      "smartHint": "Введите имя, номер PR, ветку или вставьте URL PR/MR.",
       "refreshGithub": "Обновить список GitHub",
       "githubSearch": "Поиск PR и задач GitHub",
       "githubSearchAria": "Поиск pull request и задач GitHub",
@@ -2184,13 +1897,11 @@
       "branchNoMatches": "Подходящих веток нет.",
       "branchUseAsRef": "Использовать «{{value}}» как ref",
       "branchCustomRefHint": "Тег, коммит или любой Git ref",
-      "worktreeLabel": "Метка рабочего дерева",
-      "namePlaceholder": "имя-функции",
-      "nameBase": "База: {{branch}}",
-      "nameBaseHead": "База: HEAD"
+      "sourceTypeAria": "Выберите ветку или pull request",
+      "prSearch": "Поиск pull requests",
+      "prSearchAria": "Поиск pull requests",
+      "prNoMatches": "Подходящих pull requests нет."
     },
-    "searchModels": "Поиск моделей...",
-    "newItem": "Новый элемент",
     "solveWorkItem": "Решить рабочий элемент",
     "launchpadQuestion": "Что вы хотите создать с помощью",
     "launchpadQuestionSuffix": "?",
@@ -2199,39 +1910,24 @@
     "planLaunchpadQuestionSuffix": "?",
     "manualPlanLaunchpadQuestion": "Что вы хотите запланировать?",
     "start": "Начать",
-    "assign": "Назначить",
-    "send": "Отправить",
     "missingGit": {
       "title": "Git отсутствует",
       "body": "Git не установлен или не найден. Попросите ADE Manager или SDE Agent установить Git на этот компьютер, затем перезапустите ORGII."
     },
-    "noProvidersAvailable": "Нет доступных провайдеров",
-    "enterPublicRepoUrl": "Введите URL публичного репо",
-    "repoUrlPlaceholder": "https://github.com/owner/repo",
-    "noModelsMatchSearch": "Модели не найдены по вашему запросу",
-    "noModelsAvailable": "Нет доступных моделей",
-    "noTiersAvailable": "Нет доступных уровней",
     "model": "Модель",
-    "source": "Аккаунт",
-    "addContext": "Добавить контекст",
     "contextMenu": {
       "filesAndFolders": "Файлы и папки",
-      "agentSession": "Сеанс агента",
       "workItems": "Рабочие элементы",
       "back": "Назад",
       "recent": "Недавние",
-      "showMore": "Показать ещё: {{remaining}}"
+      "showMore": "Показать ещё: {{remaining}}",
+      "session": "Сессия"
     },
-    "slashSearchPlaceholder": "Поиск команд…",
     "slashMenu": {
-      "image": "Изображение",
-      "uploadImage": "Загрузить изображение",
+      "commands": "Команды",
       "mode": "Режим",
-      "models": "Модели",
-      "skills": "Skills",
       "workspaceSkills": "Workspace Skills",
-      "userSkills": "User Skills",
-      "commands": "Команды"
+      "userSkills": "User Skills"
     },
     "diffMenu": {
       "gitActions": "Действия GIT",
@@ -2244,13 +1940,6 @@
     },
     "osAgent": "OS Agent",
     "agent": "SDE Agent",
-    "cliAgent": "CLI Agent",
-    "cliAgentDesc": "Подключение к CLI Agent",
-    "agentDesc": "Запустить сессию Agent для кодирования",
-    "osAgentDesc": "Agent автоматизации компьютера",
-    "categoryLabel": "Категория сессии",
-    "categoryTemplate": "Выбрать {category}",
-    "categoryPlaceholder": "Agent",
     "builtIns": "Встроенные",
     "humanSession": {
       "name": "Журнал работы"
@@ -2260,81 +1949,31 @@
     "agentOrgs": "Команды Agent",
     "orgMembers": {
       "configButton": "Управлять участниками",
-      "count": "Участников: {{count}}",
-      "defaultColumn": "Модель",
       "empty": "В этой команде пока нет участников",
       "selectAgent": "Выбрать Agent",
       "applyForFutureLabel": "Применять для будущих использований",
       "selectBaseAgentForRole": "Выберите базовый Agent для {{role}}"
     },
     "externalIdes": "Внешний Agent",
-    "cursorIde": {
-      "label": "Cursor IDE"
-    },
-    "addModel": "Добавить модель",
-    "myAgents": "Мои Agents",
-    "session": "Session",
-    "cloneFromGitHub": "Клонировать с GitHub",
-    "repoUrl": "URL репо",
-    "pleaseEnterGitHubUrl": "Пожалуйста, введите URL GitHub",
-    "pleaseEnterValidGitHubUrl": "Пожалуйста, введите корректный URL репо GitHub",
-    "cloning": "Клонирование...",
-    "cloneRepo": "Клонировать репо",
-    "repoCloneHelperText": "Репо будет клонирован во временное рабочее пространство для вашей Session.",
-    "yourPrice": "Ваша цена",
-    "inputPerM": "Ввод /M",
-    "outputPerM": "Вывод /M",
-    "continueWithTier": "Продолжить с {{tier}}",
-    "quota": "Квота: {{value}}",
-    "officialApiPrice": "Официальная цена API",
-    "input": "Ввод",
-    "output": "Вывод",
-    "marketPrice": "Рыночная цена",
-    "yourPriceType": "Ваша цена ({{type}})",
-    "cacheRead": "Cache Read",
-    "cacheWrite": "Cache Write",
-    "saveDiscount": "Экономия {{discount}}",
-    "standard": "Standard",
-    "global": "Global",
-    "goldUnlocksGlobal": "Gold+ разблокирует цены Global",
-    "limitReached": "Лимит достигнут",
-    "remainingLimit": "Осталось {{remaining}}/{{limit}}",
-    "busy": "Занято",
-    "ofOfficialPrice": "от официальной цены",
     "shortInputTitle": "Короткий ввод",
     "shortInputMessage": "Ваш ввод кажется очень коротким. Вы уверены, что хотите начать сессию с этим?",
     "selectModel": "Выбрать модель",
+    "selectAgentFirst": "Сначала выберите агента",
     "switchModel": "Сменить модель",
-    "switchSource": "Сменить аккаунт",
-    "switchRunner": "Сменить Runner",
-    "runnerLockedToWorktree": "Привязано к Worktree — Runner нельзя сменить после запуска",
     "switchMode": "Сменить режим",
     "switchAgent": "Сменить Agent",
-    "manageKeys": "Управление Keys",
-    "manageModels": "Управление моделями",
-    "changeSource": "Изменить аккаунт",
-    "clearSelection": "Очистить выбор",
     "toolbar": {
       "bold": "Жирный (⌘B)",
       "italic": "Курсив (⌘I)",
       "strikethrough": "Зачёркнутый",
-      "underline": "Подчёркнутый (⌘U)",
       "link": "Ссылка",
-      "enterUrl": "Введите URL...",
       "quote": "Цитата",
-      "clearFormatting": "Очистить форматирование",
       "inlineCode": "Встроенный код",
-      "highlight": "Выделение",
-      "insertImage": "Вставить изображение",
-      "lists": "Списки",
-      "normalText": "Обычный текст",
-      "heading1": "Заголовок 1",
       "heading2": "Заголовок 2",
-      "heading3": "Заголовок 3",
       "bulletList": "Маркированный список",
       "numberedList": "Нумерованный список",
       "taskList": "Список задач",
-      "divider": "Разделитель"
+      "formatting": "Форматирование текста"
     },
     "regionNoticeTitle": "Возможные региональные ограничения",
     "regionNoticeBodyProvider": "Вы находитесь в {{location}}. Некоторые модели могут быть недоступны в вашем регионе.",
@@ -2342,38 +1981,11 @@
     "regionNoticeBodyBoth": "Вы находитесь в {{location}}. Некоторые модели и сервисы вроде GitHub, npm и Docker Hub могут быть недоступны из-за региональной политики и торговых ограничений.",
     "selectAgent": "Выберите агент",
     "placeholderDefault": "Введите сообщение, @ чтобы добавить файлы, / чтобы использовать skills",
-    "agentHeaderPromptVariants": [
-      {
-        "before": "Над чем будем работать с",
-        "after": "?"
-      },
-      {
-        "before": "С чем",
-        "after": "должен помочь сегодня?"
-      },
-      {
-        "before": "За что",
-        "after": "должен взяться сначала?"
-      }
-    ],
     "wingmanPlaceholder": "Опишите вашу миссию — за чем должен следить Wingman?",
     "screenPicker": {
       "title": "Выберите экран",
-      "screen": "Экран {{index}}",
-      "primary": "(основной)",
-      "cancel": "Отмена"
+      "primary": "(основной)"
     },
-    "viewDiff": "Показать diff",
-    "contextBar": {
-      "thisMac": "Этот Mac",
-      "worktree": "Worktree",
-      "lockedHint": "Worktree заблокирован для этой сессии"
-    },
-    "skillsAndTools": "Skills и инструменты",
-    "agentSpotlightViewMode": "Режим просмотра Agent",
-    "agentSpotlightListView": "Список",
-    "agentSpotlightCardView": "Карточка",
-    "agentSpotlightCardHint": "Используйте ←/→ или ↑/↓, чтобы переключать Agent. Нажмите Enter для выбора.",
     "multiRunner": {
       "exit": "Вернуться к одному агенту",
       "addRunner": "Добавить раннер",
@@ -2396,137 +2008,212 @@
         "noRepo": "Выберите репозиторий — каждому раннеру нужно собственное рабочее дерево",
         "notEnoughRunners": "Настройте не менее двух готовых к запуску раннеров"
       }
-    }
+    },
+    "cliVersionOutdated": {
+      "title": "{{cli}} требует обновления ({{installed}} > {{latest}})",
+      "muteUntilNextVersion": "Не уведомлять до следующей версии",
+      "refresh": "Перепроверить версию {{cli}} CLI",
+      "unknownVersion": "неизвестно"
+    },
+    "mode": "Режим редактора"
   },
   "planner": {
-    "tabs": {
-      "plan": "План",
-      "timeline": "Хронология"
-    },
     "modes": {
       "build": "Build",
       "ask": "Ask",
       "plan": "Plan",
-      "debug": "Debug",
-      "review": "Review",
-      "wingman": "Напарник"
+      "project": "Project"
     },
     "runningLocation": {
       "local": "This Mac",
-      "worktree": "New Worktree",
-      "cloud": "Cloud"
+      "worktree": "New Worktree"
     },
     "plan": {
-      "stepsCompleted": "{{completed}} из {{total}} шагов выполнено",
-      "noStepsYet": "Нет шагов плана",
       "executePlan": "Выполнить план",
-      "noActiveSession": "Нет активной сессии Agent",
-      "replan": "Перепланировать",
-      "viewPlan": "Просмотр плана",
-      "saveToWorkspace": "Сохранить в рабочую область",
-      "savedToWorkspace": "План сохранён в рабочую область",
-      "noRepoOpen": "Репозиторий не открыт",
-      "collapse": "Свернуть",
-      "expand": "Развернуть"
+      "noActiveSession": "Нет активной сессии Agent"
     },
     "todoList": {
       "title": "To-do",
       "completedCount": "{{completed}}/{{total}} задач",
       "countOnly": "{{total}} задач",
-      "doneOf": "{{done}} из {{total}} выполнено",
-      "createdAt": "Создано {{time}}",
-      "updatedAt": "Обновлено {{time}}",
       "justNow": "только что",
       "minutesAgo": "{{count}} мин назад",
       "yesterday": "Вчера",
       "columnOpen": "Открытые",
       "status": {
-        "pending": "Ожидает",
-        "in_progress": "В работе",
         "completed": "Выполнено",
         "cancelled": "Отменено"
       }
     },
     "agentOrgTasks": {
-      "title": "Задачи команды",
-      "doneOf": "{{done}} из {{total}} выполнено",
       "owner": "Owner: {{owner}}",
       "ownerNoSession": "{{owner}} has no visible member session yet",
-      "loadFailed": "Не удалось загрузить задачи",
       "statusPending": "В ожидании",
-      "statusAssigned": "Назначено",
       "statusInProgress": "В работе",
       "statusCompleted": "Готово",
-      "statusBlocked": "Заблокировано"
+      "statusBlocked": "Заблокировано",
+      "statusFailed": "Ошибка",
+      "statusCancelled": "Отменено",
+      "currentWork": "Текущая работа",
+      "currentEmpty": "Нет текущей работы",
+      "history": "История",
+      "historyFilter": "Фильтр истории задач",
+      "historyEmpty": "Нет задач для этого фильтра",
+      "loadingHistory": "Загрузка истории…",
+      "historyLoadFailed": "Не удалось загрузить историю",
+      "previousPage": "Назад",
+      "nextPage": "Далее",
+      "details": "Подробности",
+      "loadingDetails": "Загрузка подробностей…",
+      "detailLoadFailed": "Не удалось загрузить подробности",
+      "output": "Результат",
+      "annotations": "Ход работы и аудит",
+      "loadMoreAnnotations": "Загрузить ещё",
+      "reassign": "Переназначить",
+      "cancelTask": "Отменить задачу",
+      "reassignTitle": "Переназначить эту задачу?",
+      "cancelTitle": "Отменить эту задачу?",
+      "reassignWarning": "Текущее выполнение должно остановиться до запуска замены.",
+      "cancelWarning": "Задача будет удалена из объёма этой поставки. Текущее выполнение остановится, а для зависимых задач потребуется отдельное явное решение.",
+      "replacementOwner": "Новый исполнитель",
+      "handoffFailed": "Не удалось безопасно обновить задачу",
+      "handoffNeedsDecision": "Передача задачи требует решения",
+      "handoffStopping": "Остановка предыдущего выполнения",
+      "handoffApplyingDecision": "Применяется: {{decision}}",
+      "handoffDecisionFailed": "Для принятого решения требуется повторная очистка",
+      "retryHandoffDecision": "Повторить решение",
+      "handoffEvidence": "Предыдущий исполнитель: {{owner}} · {{state}} · локальные записи: {{count}}",
+      "continueReplacement": "Продолжить замену",
+      "keepStopped": "Оставить остановленным",
+      "abandonEpisode": "Отказаться от этапа",
+      "resolveHandoffTitle": "Разрешить передачу?",
+      "continueWarning": "Продолжайте только после остановки локального выполнения и процессов. Это решение принимает неизвестный внешний результат.",
+      "keepStoppedWarning": "Замена будет отменена. Старая задача не возобновится, остальные продолжатся.",
+      "abandonWarning": "Все открытые задачи будут остановлены, результат команды — Отменено.",
+      "handoffResolutionFailed": "Не удалось разрешить передачу",
+      "statusAwaitingApproval": "Ожидает утверждения"
     },
     "agentOrgOverview": {
+      "needsAttention": "Требует внимания",
+      "coordinatorWorkState": {
+        "active": "Координатор активен",
+        "waiting_for_org_event": "Координатор ожидает событие",
+        "inactive": "Координатор неактивен"
+      },
+      "outcome": {
+        "delivered": "Доставлено",
+        "cancelled": "Отменено",
+        "failed": "Ошибка"
+      },
       "title": "Обзор Команды Agent",
-      "summary": "{{active}} активны · {{unread}} непрочитано",
+      "summary": "{{active}} активны · {{pending}} требуют обработки",
       "loadFailed": "Не удалось загрузить обзор команды",
       "tasks": "Задачи",
       "doneOf": "{{done}} / {{total}} выполнено",
       "members": "Участники",
+      "directActivity": "Прямая работа участников",
       "activeOf": "{{active}} / {{total}} активны",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} непрочитано",
-      "coordinator": "Координатор",
-      "currentSession": "Текущая",
-      "inProgressTasks": "{{count}} задач в работе",
-      "pendingTasks": "{{count}} ожидающих задач",
-      "unreadMessages": "{{count}} непрочитанных сообщений",
-      "taskBoard": "Доска задач",
-      "memberSessions": "Сессии участников",
       "pauseRun": "Приостановить выполнение",
       "resumeRun": "Возобновить выполнение",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "archiveRun": "Архивировать команду",
+      "archiveTitle": "Архивировать эту команду?",
+      "archiveWorkingWarning": "Архивирование необратимо. Выполняемые задачи будут отменены, а команда перейдет в режим только для чтения.",
+      "archiveWarning": "Архивирование необратимо. Команда перейдет в режим только для чтения, возобновить ее будет нельзя.",
+      "archivedReadOnly": "В архиве — история только для чтения",
+      "archiveFailed": "Не удалось архивировать команду",
+      "archiveTeardownPending": "Команда архивирована. Среды выполнения еще завершаются в фоне.",
+      "archiveTeardownRetained": "Команда архивирована, но не удалось освободить {{count}} среду. Удаление по-прежнему заблокировано.",
+      "archiveTeardownQuiesced": "Команда архивирована и полностью остановлена. Теперь доступно окончательное удаление.",
+      "dangerZone": "Опасная зона",
+      "deleteDescription": "Окончательно удалить эту команду, все ее сеансы и историю.",
+      "deleteTeam": "Удалить команду",
+      "deleteTitle": "Окончательно удалить эту команду?",
+      "deleteWarning": "Все сеансы и история команды будут удалены навсегда. Это действие нельзя отменить.",
+      "deleteAcknowledge": "Я понимаю, что удаление необратимо.",
+      "deleteFailed": "Не удалось удалить команду",
+      "viewCoordinatorHistory": "Показать историю чата координатора",
+      "taskWindowTruncated": "Показаны первые {{visible}} из {{total}} задач. Откройте детали задачи для полных результатов.",
       "planApproval": {
-        "title": "План готов к утверждению"
-      }
-    },
-    "agentOrgInbox": {
-      "title": "Сообщения Agent",
-      "unreadCount": "{{count}} непрочитано",
-      "from": "От {{sender}}",
-      "kindFallback": "Сообщение {{kind}}",
-      "loadFailed": "Не удалось загрузить сообщения",
-      "overviewOnly": "{{count}} непрочитанных сообщений команды. Подробная история доступна в replay run."
+        "from": "Отправил {{member}}",
+        "approve": "Утвердить план",
+        "requestChanges": "Запросить изменения",
+        "sendFeedback": "Отправить отзыв",
+        "feedbackLabel": "Отзыв о редакции плана",
+        "feedbackPlaceholder": "Точно укажите Planner, что нужно изменить…",
+        "paused": "Возобновите выполнение перед ответом на этот план.",
+        "staleError": "Этот план уже обработан или заменён. Обновите данные.",
+        "submitFailed": "Не удалось сохранить ответ по плану.",
+        "historyTitle": "История плана",
+        "open": "Открыть план",
+        "taskOutput": "Результат задачи планирования сохранён",
+        "status": {
+          "pending": "Ожидает",
+          "approved": "Утверждён",
+          "changes_requested": "Запрошены изменения",
+          "superseded": "Заменён",
+          "cancelled": "Отменён"
+        }
+      },
+      "phase": {
+        "coordinating": "Координация",
+        "dispatching": "Распределение",
+        "members_working": "Участники работают",
+        "waiting": "Ожидание работы",
+        "awaiting_plan_approval": "Ожидание утверждения плана",
+        "finalizing": "Завершение",
+        "paused": "Приостановлено",
+        "failed": "Ошибка",
+        "starting": "Запуск",
+        "idle": "Ожидание",
+        "archived": "В архиве",
+        "draining": "Приостановлено · завершение"
+      },
+      "finalSummary": {
+        "failedTitle": "Итоговый отчёт не сохранён",
+        "evidencePreserved": "Доказательства завершения и результаты задач сохранены.",
+        "retry": "Повторить итоговый отчёт",
+        "retryFailed": "Не удалось запустить повтор итогового отчёта."
+      },
+      "idleWithLatestOutcome": "{{phase}} · Последний эпизод: {{outcome}}",
+      "pendingInboxCount": "{{count}} требуют обработки",
+      "activeMembers": "Активные участники",
+      "inFlightTurns": "Выполняемые ходы",
+      "openTasks": "Открытые задачи",
+      "blockingInbox": "Блокирующие входящие сообщения",
+      "blockersTitle": "Что ещё мешает завершению",
+      "unknownBlocker": "Неизвестная системная блокировка"
     },
     "agentOrgIntervention": {
-      "title": "Чат с {{member}}",
-      "description": "Сообщения Inbox и новые задачи приостановлены до возобновления работы",
+      "directTitle": "Прямая работа с {{member}}",
+      "writerBadge": "Writer",
+      "directNotice": "Прямая работа не попадает на доску задач, кроме изменений разрешённым инструментом графа",
+      "directPaused": "Прямая побочная работа доступна; формальная работа команды остаётся на паузе",
+      "directUnknown": "Прямая работа неожиданно завершилась; перед возвратом проверьте возможные побочные эффекты",
+      "unavailableStarting": "Прямая работа станет доступна после запуска команды",
+      "unavailableFailed": "Прямая работа недоступна, пока команда в состоянии ошибки",
       "returnToWork": "Возобновить работу",
       "returning": "Возобновление…",
-      "loadFailed": "Не удалось загрузить состояние вмешательства",
+      "endDirectWork": "Завершить прямую работу",
+      "endingDirectWork": "Завершение…",
+      "directReady": "Прямая работа завершена; отправьте уточнение или завершите эту ветку прямой работы",
+      "stopping": "Остановка…",
+      "actionFailed": "Не удалось выполнить действие прямой работы. Повторите попытку.",
       "busyShort": "Чат пользователя",
-      "teammateBusy": "Этот teammate находится в прямом чате с пользователем"
-    },
-    "timeline": {
-      "askUser": "Спросить пользователя",
-      "noQuestionProvided": "Вопрос не задан.",
-      "action": "Действие",
-      "thought": "Мысль:",
-      "arguments": "Аргументы:",
-      "content": "Содержание:",
-      "resultLabel": "Результат:",
-      "createFile": "Создать файл",
-      "fileDiff": "Разница файлов",
-      "planHint": "Подсказка плана",
-      "readFile": "Прочитать файл",
-      "runCommandLine": "Запустить командную строку",
-      "searchInFile": "Поиск в файле",
-      "searchCodebase": "Поиск по коду",
-      "searchDirectory": "Поиск в каталоге",
-      "searchLabel": "Поиск:",
-      "inDirectory": "в {{directory}}",
-      "foundResults": "Найдено {{count}} результатов в {{files}} файлах",
-      "lineRange": "Строка {{start}}-{{end}}",
-      "clickToViewContent": "Нажмите для просмотра",
-      "noResult": "нет результатов",
-      "event": "Событие",
-      "functionLabel": "Функция:",
-      "noTimelineEvents": "Нет событий хронологии",
-      "file": "Файл",
-      "atlas": "Atlas"
+      "teammateBusy": "Этот teammate находится в прямом чате с пользователем",
+      "activity": {
+        "yielding": "Безопасная передача формальной работы…",
+        "user_intervention": "Ожидание возобновления формальной работы",
+        "side_quest": "Прямых ходов в работе или очереди: {{count}}",
+        "yield_timeout": "Всё ещё ожидается безопасная передача"
+      },
+      "outcome": {
+        "restoredTask": "Исходная задача возобновлена",
+        "clearedPaused": "Прямая работа завершена; команда остаётся на паузе",
+        "clearedIdle": "Прямая работа завершена; команда остаётся бездействующей",
+        "directEnded": "Прямая работа завершена",
+        "noLongerNeeded": "Прямая работа завершена; исходная работа завершена или переназначена"
+      }
     },
     "agentOrgMemberStatus": {
       "idle": "Ожидает",
@@ -2537,10 +2224,10 @@
       "cancelled": "Отменено",
       "userIntervention": "Чат с пользователем",
       "noTasks": "Нет задач"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
-    "plan": "План",
     "untitled": "План без названия",
     "drafting": "Создание плана…",
     "readyForReview": "Готов к проверке",
@@ -2555,9 +2242,6 @@
     "emptyPlan": "(план пуст)",
     "edit": "Редактировать",
     "cancelEdit": "Отмена",
-    "editAndBuild": "Редактировать и собрать",
-    "openInSimulator": "Открыть в Simulator",
-    "close": "Закрыть",
     "collapse": "Свернуть"
   },
   "workspace": {
@@ -2568,12 +2252,10 @@
     "errorOccurred": "Произошла ошибка",
     "failedToSendMessage": "Не удалось отправить сообщение",
     "noSessionIdFound": "ID Session не найден",
-    "failedToContinue": "Не удалось продолжить Session",
     "failedToResume": "Не удалось возобновить Session",
-    "failedToInterrupt": "Не удалось прервать Session",
-    "failedToStop": "Не удалось остановить Agent",
     "failedToCheckChanges": "Не удалось проверить изменения файлов. Будет выполнен откат.",
-    "insufficientBalance": "Недостаточно средств для использования хостингового сервиса ORGII. Пополните счёт на orgii.ai/wallet."
+    "insufficientBalance": "Недостаточно средств для использования хостингового сервиса ORGII. Пополните счёт на orgii.ai/wallet.",
+    "runQueuedBehindCheckout": "В очереди: этот checkout занят другим запуском. Запуск начнётся, как только он завершится."
   },
   "planning": {
     "agentTyping": "Agent печатает...",
@@ -2582,12 +2264,6 @@
       "Обдумываем...",
       "Работаем над этим...",
       "Решаем, что делать дальше..."
-    ],
-    "nextStepSlowVariants": [
-      "Планируем следующий шаг, занимает больше времени, чем обычно...",
-      "Всё ещё обдумываем, занимает больше времени, чем обычно...",
-      "Работаем над этим, занимает больше времени, чем обычно...",
-      "Решаем, что делать дальше, занимает больше времени, чем обычно..."
     ],
     "compacting": "Сжатие контекста...",
     "statusTrail": {
@@ -2607,41 +2283,14 @@
     "keepChanges": "Сохранить изменения"
   },
   "controlTower": {
-    "welcomeMessages": [
-      "Что строим сегодня?",
-      "Что выпускаем сегодня?",
-      "Что решаем сегодня?",
-      "Что будем строить дальше?",
-      "Какой следующий шаг?"
-    ],
-    "quickActions": "Быстрые действия",
-    "recentSessions": "Недавние сессии",
-    "viewAllSessions": "Все сессии",
-    "noSessionsYet": "Пока нет сессий",
     "myAgents": "Мои Agent ({{count}})",
-    "myAgentOrgs": "Мои Команды Agent: {{count}}",
     "noAgentsAvailable": "Нет доступных Agent",
     "newAgentSession": "Новая сессия {{agent}}",
     "addAgent": "Добавить Agent",
     "myApiKeys": "Мои Key ({{count}})",
     "addApiKey": "Добавить API Key",
-    "noRepoSelected": "Репозиторий не выбран",
     "diff": {
-      "untitledSession": "Безымянная сессия",
-      "singleFile": "Один файл",
-      "unified": "Единый вид",
-      "allChanges": "Все изменения",
-      "failedToLoadDiffFor": "Не удалось загрузить diff для {{path}}",
-      "failedToLoadFileContent": "Не удалось загрузить содержимое файла",
-      "binaryFile": "Двоичный файл",
-      "selectFileToView": "Выберите файл для просмотра diff",
-      "openProjectToViewDiff": "Откройте Project для просмотра diff",
-      "failedToLoadDiff": "Не удалось загрузить diff",
-      "changes": "Изменения",
-      "refresh": "Обновить",
-      "noUncommittedChanges": "Нет незафиксированных изменений",
-      "noSessionChanges": "Нет незафиксированных изменений для этой сессии",
-      "fileCount": "{{count}} файлов"
+      "refresh": "Обновить"
     },
     "git": {
       "filterUncommitted": "Незафиксированные",
@@ -2649,77 +2298,39 @@
       "filterStaged": "Индексированные",
       "filterStashed": "Спрятанные",
       "filterCountLabel_one": "{{count}} {{label}} изменение",
-      "filterCountLabel_other": "{{count}} {{label}} изменений",
-      "failedToLoad": "Не удалось загрузить статус Git",
-      "noBranchChanges": "Нет неотправленных коммитов",
-      "unknownAuthor": "Неизвестно"
-    },
-    "groups": {
-      "home": "Главная",
-      "sessions": "Сессии",
-      "git": "Git",
-      "terminal": "Терминал"
+      "filterCountLabel_other": "{{count}} {{label}} изменений"
     },
     "history": {
-      "wingmanAgent": "Wingman Agent",
       "agentFallback": "Agent"
     },
     "sidebar": {
       "stopAgentProcess": "Остановить процесс Agent",
-      "closeSession": "Закрыть сессию",
-      "openInBrowser": "Открыть в браузере",
-      "closeTab": "Закрыть вкладку",
-      "private": "приватный",
-      "newTab": "Новая вкладка",
-      "overview": "Обзор",
-      "homeBrowsers": "Вкладки браузера",
-      "homeTerminals": "Сеансы терминала",
-      "openInMyStation": "Открыть в My Station",
-      "openInTerminalTab": "Открыть во вкладке Terminal"
-    },
-    "workspaceTools": {
-      "title": "Инструменты workspace",
-      "description": "Проверяет рекомендованные LSP servers и lint-инструменты для этого workspace.",
-      "summary": "{{ready}}/{{total}} готово",
-      "noRecommendations": "Нет рекомендованных инструментов",
-      "refresh": "Обновить",
-      "lsp": "LSP servers",
-      "lint": "Lint-инструменты",
-      "ready": "Все {{total}} рекомендованных инструментов готовы",
-      "needsSetup": "{{ready}} из {{total}} рекомендованных инструментов готовы",
-      "notApplicable": "Нет рекомендаций для этого workspace",
-      "missing": "Отсутствует",
-      "disabled": "Отключено"
+      "openInMyStation": "Открыть в My Station"
     }
   },
   "groupChat": {
-    "senderTitle": {
-      "message": "{{sender}} отправил сообщение",
-      "said": "{{sender}} сказал"
-    },
     "taskHeader": {
       "createWithOwner": "{{sender}} назначил задачу {{ownerName}}",
       "create": "{{sender}} назначил задачу",
       "updateStatus": "{{sender}} обновил статус задачи",
       "updateDetail": "{{sender}} обновил детали задачи",
       "get": "{{sender}} просмотрел детали задачи",
-      "list": "{{sender}} просмотрел список задач"
-    },
-    "messageHeader": {
-      "running": "{{sender}} пишет {{recipient}}",
-      "done": "{{sender}} написал {{recipient}}",
-      "failed": "{{sender}} не удалось написать {{recipient}}",
-      "broadcastRunning": "{{sender}} пишет нескольким agents",
-      "broadcastDone": "{{sender}} написал нескольким agents",
-      "broadcastFailed": "{{sender}} не удалось написать нескольким agents"
+      "list": "{{sender}} просмотрел список задач",
+      "createRunning": "{{sender}} создаёт задачу",
+      "createRejected": "Создание задачи от {{sender}} требует исправления",
+      "createFailed": "{{sender}} не удалось создать задачу",
+      "updateRunning": "{{sender}} обновляет задачу",
+      "updateRejected": "Обновление задачи от {{sender}} требует исправления",
+      "updateFailed": "{{sender}} не удалось обновить задачу",
+      "updateDeferred": "{{sender}} отложил завершение задачи до окончания очистки"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator прочитал сообщения, отправленные другими agents"
     },
     "userMessagePending": "{{member}} принимает ваше сообщение",
     "pausedBanner": {
-      "title": "Новая работа приостановлена",
-      "body": "Пауза останавливает активные ответы, отправьте сообщение или нажмите Возобновить, чтобы продолжить",
+      "title": "Формальная работа приостановлена",
+      "body": "Возобновите работу с Координатором. Для побочной задачи по-прежнему можно указать @Member.",
       "resume": "Возобновить"
     },
     "toolUseSummary": {
@@ -2734,18 +2345,74 @@
       "explorations_other": "{{count}} исследований",
       "otherTools_one": "{{count}} другой вызов инструмента",
       "otherTools_other": "{{count}} других вызовов инструментов"
+    },
+    "triggerLabel": "Групповой чат",
+    "userMessageOutcomeUnknown": "Результат доставки неизвестен. Повторите исходную доставку.",
+    "coordinatorLabel": "Координатор",
+    "youLabel": "Вы",
+    "retry": "Повторить",
+    "memberCount_one": "{{count}} участник",
+    "memberCount_other": "{{count}} участников",
+    "memberFallback": "Участник",
+    "retryPossibleDuplicateConfirm": "Результат этой доставки неизвестен. Повтор может продублировать действия. Всё равно создать новый Turn?",
+    "mixedTargetError": "Отправляйте сообщения Coordinator и Member отдельно.",
+    "submitError": "Не удалось отправить групповое сообщение. Повторите попытку.",
+    "projection": {
+      "title": "Групповой разговор Team",
+      "queueGuidance": "По умолчанию сообщения ставятся в очередь. Для немедленного исправления откройте отдельную страницу Member.",
+      "archived": "Этот Team архивирован. История группы доступна только для чтения.",
+      "loadOlder": "Загрузить более ранние сообщения",
+      "loadError": "Не удалось загрузить сообщения группы.",
+      "actionError": "Не удалось выполнить это действие в группе. Повторите попытку.",
+      "loading": "Загрузка сообщений группы…",
+      "empty": "В группе пока нет сообщений.",
+      "unavailable": "Это сообщение недоступно.",
+      "stop": "Остановить",
+      "retryDelivery": "Повторить доставку",
+      "retryNewTurn": "Повторить как новый Turn",
+      "activity": {
+        "taskFallback": "Задача без названия",
+        "task_created": "Задача создана: {{task}} · {{member}}",
+        "task_started": "{{member}} начал: {{task}}",
+        "task_completed": "{{member}} завершил: {{task}}",
+        "task_failed": "{{member}} не смог завершить: {{task}}",
+        "task_cancelled": "Задача отменена: {{task}}",
+        "task_reassigned": "Задача передана от {{previousMember}} к {{member}}: {{task}}",
+        "task_replacement_created": "Создана замещающая задача для {{replacedTask}}: {{task}} · {{member}}",
+        "team_paused": "Команда приостановлена",
+        "team_resumed": "Работа команды возобновлена",
+        "member_returned": "{{member}} вернулся к работе команды",
+        "completion_certified": "Завершение команды подтверждено: {{outcome}}",
+        "final_report_failed": "Не удалось сохранить итоговый отчет",
+        "team_archived": "Команда архивирована"
+      },
+      "state": {
+        "queued": "В очереди",
+        "running": "Выполняется",
+        "answered": "Отвечено",
+        "failed": "Ошибка",
+        "cancelled": "Отменено",
+        "unknown": "Результат неизвестен"
+      }
     }
   },
   "orgTask": {
     "create": {
       "title": "Задача назначена",
-      "titleWithOwner": "Назначить задачу: {{ownerName}}"
+      "titleWithOwner": "Назначить задачу: {{ownerName}}",
+      "runningTitle": "Создание задачи",
+      "rejectedTitle": "Создание задачи требует исправления",
+      "failedTitle": "Не удалось создать задачу"
     },
     "update": {
       "titleStatus": "Обновить статус задачи",
       "titleDetail": "Обновить детали задачи",
       "markedAs": "Отмечено как {{status}}",
-      "title": "Задача обновлена"
+      "title": "Задача обновлена",
+      "runningTitle": "Обновление задачи",
+      "rejectedTitle": "Обновление задачи требует исправления",
+      "failedTitle": "Не удалось обновить задачу",
+      "deferredTitle": "Завершение задачи отложено до окончания очистки"
     },
     "get": {
       "title": "Просмотр деталей задачи"
@@ -2753,7 +2420,8 @@
     "list": {
       "title": "Просмотр списка задач",
       "count": "{{taskCount}} задач",
-      "empty": "Нет задач"
+      "empty": "Нет задач",
+      "countLabel": "Задачи"
     },
     "statusLabel": "Статус",
     "assignedBadge": "Назначено",
@@ -2763,10 +2431,18 @@
       "pending": "Ожидает",
       "in_progress": "В работе",
       "completed": "Завершена"
-    }
-  },
-  "manageProject": {
-    "inProject": "в {{project}}"
+    },
+    "outcome": {
+      "pending": "В работе",
+      "rejected": "Требует исправления",
+      "failed": "Ошибка",
+      "deferred": "Завершение отложено · ожидание очистки"
+    },
+    "unassignedOwner": "Не назначено",
+    "currentRecordUnavailable": "Текущее состояние недоступно",
+    "currentStatusLabel": "Текущий статус",
+    "currentOwnerLabel": "Текущий исполнитель",
+    "replacementLabel": "Замена"
   },
   "manageAgentDef": {
     "action": {
@@ -2782,23 +2458,11 @@
       "get_org": "Орг получена"
     }
   },
-  "cursorIde": {
-    "restart": {
-      "title": "Перезапустить Cursor для управления ORGII?",
-      "message": "ORGII нужно перезапустить Cursor с включённым удалённым управлением, чтобы follow-ups попадали в тот же разговор Cursor. Cursor будет закрыт и снова открыт скрыто с --remote-debugging-port=9230.",
-      "okLabel": "Перезапустить Cursor",
-      "success": "Cursor скрыто перезапущен с включённым удалённым управлением. Повторяем…",
-      "failed": "Не удалось перезапустить Cursor: {{reason}}"
-    }
-  },
   "cards": {
     "openFile": "Открыть в редакторе",
     "openLink": "Открыть ссылку",
-    "broadcast": "→ Все агенты",
     "agentMessage": {
       "fallbackTitle": "Сообщение",
-      "accepted": "Принято",
-      "rejected": "Отклонено",
       "empty": "(пустое сообщение)",
       "status": {
         "sending": "Отправка…",
@@ -2811,7 +2475,8 @@
       "meta": {
         "sender": "От",
         "recipient": "Кому",
-        "subject": "Тема"
+        "subject": "Тема",
+        "status": "Статус"
       },
       "broadcastTitle": {
         "running": "Отправка сообщения нескольким агентам",
@@ -2820,43 +2485,27 @@
       },
       "emailBubble": {
         "noSubject": "(без темы)",
-        "expand": "Показать полное сообщение",
-        "collapse": "Скрыть сообщение",
         "userInbox": "Входящие пользователя",
         "currentChannel": "Текущий канал",
-        "subagentMessages": "Сообщения subagent",
-        "readMessagesFromSubagents": "{{agent}} прочитал сообщения subagent"
+        "subagentMessages": "Сообщения subagent"
       }
     },
     "actions": {
       "moreOpenOptions": "Другие параметры открытия",
       "openAsPullRequest": "Вкладка PR",
       "openAsWebPage": "Веб-страница",
-      "openInApp": "Открыть в приложении",
-      "openWithDefaultBrowser": "Открыть в браузере по умолчанию",
-      "revealInFinder": "Показать в Finder",
-      "revealInExplorer": "Показать в Explorer",
-      "revealInFileManager": "Показать в файловом менеджере"
+      "openWithDefaultBrowser": "Открыть в браузере по умолчанию"
     },
     "url": {
-      "open": "Открыть",
+      "changesCount_one": "{{count}} изменение",
+      "changesCount_other": "{{count}} изменения",
       "copyUrl": "Скопировать URL",
       "copied": "URL скопирован",
       "openExternalFailed": "Не удалось открыть URL в браузере по умолчанию",
-      "openPullRequestFailed": "Не удалось открыть вкладку pull request",
-      "groupTitle": "Веб-страницы"
+      "openPullRequestFailed": "Не удалось открыть вкладку pull request"
     },
     "path": {
-      "open": "Открыть",
-      "copyPath": "Скопировать путь",
-      "copied": "Путь скопирован",
-      "copyFailed": "Не удалось скопировать путь",
       "openFailed": "Не удалось открыть путь",
-      "revealFailed": "Не удалось показать путь в файловом менеджере",
-      "name": "Имя",
-      "type": "Тип",
-      "directory": "Каталог",
-      "file": "Файл",
       "emptyDirectory": "Пустой каталог"
     }
   },
@@ -2877,12 +2526,12 @@
     "titleA2ui": "Предпросмотр Agent",
     "reload": "Перезагрузить",
     "openExternal": "Открыть в браузере",
-    "expand": "Развернуть",
-    "shrink": "Свернуть",
-    "close": "Закрыть",
-    "summarize": "Обобщить с Agent",
     "waiting": "Ожидание контента…",
-    "empty": "Нет содержимого"
+    "empty": "Нет содержимого",
+    "openUrlDescription": "Внешние URL не встраиваются, чтобы избежать расхода памяти на iframe.",
+    "openUrlTitle": "Предпросмотр не встроен",
+    "streaming": "потоковая передача",
+    "titleReact": "Предпросмотр React"
   },
   "runGroup": {
     "open": "Открыть",
@@ -2911,5 +2560,113 @@
   "titleBar": {
     "showDevTools": "Показать DevTools",
     "hideDevTools": "Скрыть DevTools"
+  },
+  "canvasApp": {
+    "empty": "Canvas ещё не отрисован",
+    "sidebarTitle": "Canvas",
+    "noCanvases": "Canvas пока нет",
+    "revisionCanvas": "Canvas",
+    "revisionTitle": "Обновление {{title}}",
+    "revisionReceiving": "Генерация изменения · {{amount}} символов",
+    "revisionApplying": "Применение проверенного изменения…",
+    "revisionDoneTitle": "Обновлено: {{title}}",
+    "revisionFailedTitle": "Не удалось обновить {{title}}",
+    "revisionTargetedSummary": "Точечные изменения: {{amount}} · тот же Canvas",
+    "revisionTargetedSummary_one": "{{count}} точечное изменение · тот же Canvas",
+    "revisionTargetedSummary_other": "{{count}} точечных изменений · тот же Canvas",
+    "revisionReplacementSummary": "Полная замена · {{amount}} символов · тот же Canvas",
+    "revisionUrlSummary": "URL обновлён · тот же Canvas",
+    "revisionGenericSummary": "Существующий Canvas обновлён на месте",
+    "revisionStepsLabel": "Ход обновления Canvas",
+    "compareToggle": "Сравнить",
+    "compareMark": "и",
+    "compareHint": "Выбрано 2 — показан diff",
+    "design": "Дизайн",
+    "designHint": "Выберите элемент для изменения",
+    "designUnavailable": "Дизайн недоступен",
+    "designPromptLabel": "Опишите изменение Canvas",
+    "designPromptPlaceholder": "Опишите, что изменить…",
+    "clearDesignSelection": "Снять выделение в Canvas",
+    "compareTooLarge": "Эти версии слишком велики для сравнения",
+    "revisionReceivingLabel": "Генерация изменения…",
+    "designHoverHint": "Нажмите, чтобы выбрать; перетащите, чтобы нарисовать",
+    "share": "Поделиться",
+    "shareHint": "Поделиться снимком этого Canvas",
+    "shareWaitForRevision": "Дождитесь завершения обновления Canvas",
+    "shareLocalUrlUnavailable": "Локальные URL не могут быть открыты другими людьми",
+    "shareTooLarge": "Этот Canvas слишком велик для ссылки-приглашения",
+    "shareEmpty": "В этом Canvas нет содержимого для публикации",
+    "shareDialogTitle": "Поделиться Canvas",
+    "shareDialogScope": "Включён только снимок этого Canvas. Разговор, репозиторий, сессия и последующие ревизии не публикуются.",
+    "shareDialogPreparing": "Создание ссылки…",
+    "shareDialogLink": "Ссылка на Canvas",
+    "shareDialogCopyFailed": "Не удалось скопировать. Выделите ссылку и скопируйте её вручную.",
+    "shareDialogPublic": "Любой, у кого есть эта ссылка, может просмотреть снимок.",
+    "shareDialogShortExpiry": "Короткая ссылка · действует до {{date}}",
+    "shareDialogFallback": "Сервис коротких ссылок недоступен, поэтому вместо неё создана полная ссылка.",
+    "shareDialogOpen": "Открыть",
+    "shareDialogCopied": "Скопировано",
+    "shareDialogCopy": "Копировать ссылку",
+    "shareDialogTooLarge": "Этот Canvas слишком велик для надёжной автономной ссылки.",
+    "shareDialogShortUnavailable": "Сервис публикации временно недоступен, а этот Canvas слишком велик для автономной ссылки. Повторите попытку чуть позже.",
+    "shareDialogUnsupported": "Эта версия приложения не может создавать сжатые ссылки на Canvas.",
+    "shareDialogInvalid": "Этот Canvas не содержит снимка, пригодного для публикации.",
+    "shareDialogError": "Не удалось создать ссылку на Canvas.",
+    "shareDialogRetryShort": "Повторить короткую ссылку",
+    "shareDialogRetryingShort": "Повтор…",
+    "retry": "Повторить",
+    "reactArtifactFrame": "Предпросмотр React canvas"
+  },
+  "domSelection": {
+    "previewTitle": "Предпросмотр выделения в Canvas",
+    "elementsCount_one": "{{count}} элемент",
+    "elementsCount_other": "{{count}} элементов",
+    "regionLabel": "Область · {{label}}"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "empty": "Routine пока нет — сначала примените одну из CLI",
+    "notInstalled": "Не установлен",
+    "enabled": "Включён",
+    "disabled": "Отключён",
+    "paused": "Приостановлен после {{count}} сбоев",
+    "install": "Установить Webhook",
+    "rotate": "Сменить секрет",
+    "enable": "Включить",
+    "disable": "Отключить",
+    "secretHint": "Секрет",
+    "secretShownOnce": "Секрет показывается один раз — сохраните его у провайдера сейчас.",
+    "noDeliveries": "Доставок ещё не было",
+    "replay": "Повторить",
+    "replayQueued": "Доставка повторена",
+    "copied": "Скопировано",
+    "copyFailed": "Не удалось скопировать"
+  },
+  "conversation": {
+    "promptMode": "Agent",
+    "teamChatMode": "Чат команды",
+    "promptTooltip": "Отправить агенту",
+    "teamChatTooltip": "Сообщение коллегам — не запускает агента",
+    "imagesUnsupported": "Сообщения чата команды не могут содержать изображения",
+    "participantsTooltip": "Участники разговора и сообщения обсуждения",
+    "mentionGroup": "Коллеги"
+  },
+  "weeklyQuotaHistory": {
+    "previousWeek": "Предыдущая неделя",
+    "nextWeek": "Следующая неделя",
+    "emptyWeek": "Нет данных за эту неделю",
+    "title": "История недельной квоты",
+    "error": "История квоты недоступна. Попытка повторится, когда вы вернётесь в это окно",
+    "empty": "Подключите аккаунт Claude Code, Codex или OpenCode Go в Key Vault, чтобы начать отслеживание",
+    "loading": "Загрузка истории квоты…",
+    "unsupported": "Этот аккаунт не сообщает недельную квоту",
+    "unavailable": "Последний замер недоступен; проверьте подключение аккаунта в Key Vault",
+    "pending": "Ожидание следующего ежечасного замера",
+    "remaining": "Остаток, %",
+    "refresh": "Обновить",
+    "account": "Аккаунт",
+    "stale": "Последнему замеру больше двух часов",
+    "disabled": "Замеры приостановлены для этого отключённого аккаунта",
+    "limit": "Показано до 128 аккаунтов"
   }
 }

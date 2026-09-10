@@ -1,7 +1,5 @@
 {
   "tutorials": {
-    "modalTitle": "Hướng dẫn",
-    "start": "Bắt đầu",
     "chrome": {
       "stepProgress": "Bước {{current}} / {{total}}",
       "close": "Đóng",
@@ -16,7 +14,7 @@
     },
     "generalLayout": {
       "title": "Tham quan bố cục chung",
-      "description": "Tìm hiểu thanh bên Phiên, Bảng trò chuyện, trình chuyển đổi chế độ trạm, Máy trạm, đế và các khu vực ứng dụng.",
+      "description": "Tìm hiểu bảng trò chuyện, Runtime, bộ chuyển chế độ và thanh dock.",
       "duration": "1 phút",
       "steps": {
         "chat-panel": {
@@ -25,7 +23,7 @@
         },
         "runtime": {
           "title": "Thời gian chạy",
-          "body": "Xem mức sử dụng và trạng thái chạy của bạn tại đây. Trong tổ chức, bạn cũng có thể kiểm tra trạng thái đồng bộ của thành viên và mở chi tiết sử dụng Codex, Claude và Cursor."
+          "body": "Xem mức sử dụng và trạng thái chạy của bạn tại đây. Trong không gian làm việc, bạn cũng có thể kiểm tra trạng thái đồng bộ của thành viên và mở chi tiết sử dụng Codex, Claude và Cursor."
         },
         "station-mode-pill": {
           "title": "Chuyển trạm chế độ",
@@ -34,41 +32,17 @@
         "dock": {
           "title": "Đế trạm đại lý",
           "body": "Đế cắm chuyển đổi các ứng dụng bên trong trạm. Chuyến tham quan tạm thời vô hiệu hóa tính năng tự động ẩn để các điều khiển này vẫn hiển thị."
-        },
-        "all-tabs": {
-          "title": "Tất cả các tab",
-          "body": "Biểu tượng dock đầu tiên hiển thị tất cả các tab đang mở cùng nhau, bất kể ứng dụng máy trạm nào sở hữu chúng."
-        },
-        "code-editor": {
-          "title": "Trình chỉnh sửa mã",
-          "body": "Sử dụng Trình chỉnh sửa mã cho các tệp, điểm khác biệt, thiết bị đầu cuối, kiểm soát nguồn và các thay đổi mã hóa được thực hiện trong quá trình tham quan phiên."
-        },
-        "browser": {
-          "title": "Trình duyệt",
-          "body": "Sử dụng Trình duyệt cho các trang web, bản xem trước, thử nghiệm ứng dụng và điều tra dựa trên trình duyệt cùng với cuộc trò chuyện."
-        },
-        "projects": {
-          "title": "Dự án",
-          "body": "Sử dụng Dự án để theo dõi các mục công việc, kế hoạch và trạng thái dự án được kết nối với không gian làm việc hiện tại."
         }
       }
     },
     "codeEditor": {
       "title": "Chuyến tham quan Trình chỉnh sửa mã",
-      "description": "Tìm hiểu các tab, kho lưu trữ và chuyển nhánh, Kiểm soát nguồn, Lịch sử Git và trang tổng quan dự án.",
+      "description": "Tìm hiểu các tab, không gian trình soạn thảo, quản lý mã nguồn và lịch sử Git.",
       "duration": "2 phút",
       "steps": {
         "tabs": {
           "title": "tab Trình chỉnh sửa mã",
           "body": "Các tab thu thập các tệp, khác biệt, thiết bị đầu cuối, chế độ xem kiểm soát nguồn và trang tổng quan bạn mở khi làm việc trong repo."
-        },
-        "repo-selector": {
-          "title": "Tạo hoặc chuyển đổi kho lưu trữ",
-          "body": "Sử dụng bộ chọn kho lưu trữ để chuyển đổi kho lưu trữ đang hoạt động hoặc thêm một kho lưu trữ hoặc không gian làm việc khác."
-        },
-        "branch-selector": {
-          "title": "Thay đổi nhánh",
-          "body": "Bộ chọn nhánh hiển thị nhánh Git hiện tại và mở nút chuyển nhánh hoặc tạo luồng cho kho lưu trữ này."
         },
         "editor-surface": {
           "title": "Không gian làm việc của Trình chỉnh sửa",
@@ -85,12 +59,15 @@
         "git-history": {
           "title": "Lịch sử Git",
           "body": "Lịch sử Git chuyển Kiểm soát nguồn sang chế độ lịch sử cam kết để bạn có thể kiểm tra các cam kết trước đó và các thay đổi liên quan."
-        },
-        "dashboard": {
-          "title": "Trang tổng quan của Code Editor",
-          "body": "Trang tổng quan là tab trang chủ của Code Editor dành cho không gian làm việc. Sử dụng nó để thêm kho lưu trữ, mở chi tiết kho lưu trữ và bắt tay vào công việc dự án."
         }
       }
     }
+  },
+  "discovery": {
+    "title": "Hướng dẫn bắt đầu và tính năng mới",
+    "getStarted": "Bắt đầu",
+    "newFeatures": "Tính năng mới",
+    "branchesTitle": "Nhánh kho mã",
+    "branchesDescription": "Chuyển nhánh kho mã trực tiếp từ Spotlight."
   }
 }

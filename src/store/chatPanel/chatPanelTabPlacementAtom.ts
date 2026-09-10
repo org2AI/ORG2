@@ -1,7 +1,8 @@
 import { atom } from "jotai";
 
+import { openGitHubPrInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpen/integrations";
 import { openSessionInWorkstationAtom } from "@src/store/session/sessionTabPlacementAtom";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {
   type WorkStationTab,
@@ -15,7 +16,6 @@ import {
 import type { GitHubPrDetailTabData } from "@src/types/githubDetail";
 
 import { closeChatPanelTabAtom } from "./chatPanelTabLifecycleAtoms";
-import { openGitHubPrInChatPanelTabAtom } from "./chatPanelTabOpenAtoms";
 import type { ChatPanelTab, ChatPanelTabType } from "./chatPanelTabsModel";
 import { chatPanelTabsAtom } from "./chatPanelTabsState";
 

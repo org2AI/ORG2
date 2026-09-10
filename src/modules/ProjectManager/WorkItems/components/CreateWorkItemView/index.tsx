@@ -1,4 +1,5 @@
 import { emit } from "@tauri-apps/api/event";
+import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -22,7 +23,11 @@ import {
   CreatorContentLayout,
   PANEL_HEADER_TOKENS,
 } from "@src/modules/shared/layouts/blocks";
-import type { WorkItemDraft } from "@src/store/workstation/projectManager";
+import { manualCreatorAtom } from "@src/store/ui/manualCreatorAtom";
+import {
+  MANUAL_WORK_ITEM_CREATOR_DRAFT_ID,
+  type WorkItemDraft,
+} from "@src/store/workstation/projectManager";
 import type { Person } from "@src/types/core/shared";
 import type {
   WorkItemLabel,
@@ -50,6 +55,7 @@ const CREATE_WORK_ITEM_HEADER_ACTION_ACTIVE_CLASS =
 export type { CreatedWorkItemResult };
 
 interface CreateWorkItemViewProps {
+  layout?: "page" | "spotlight";
   projectId?: string;
   projectSlug?: string;
   projectName?: string;
@@ -99,6 +105,7 @@ interface CreateWorkItemViewProps {
 const logger = createLogger("CreateWorkItemView");
 
 const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
+  layout = "page",
   projectId,
   projectSlug,
   projectName,
@@ -129,6 +136,7 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
   defaultAiExecutionTarget = null,
 }) => {
   const { t } = useTranslation("projects");
+  const manualCreator = useAtomValue(manualCreatorAtom);
   const [saving, setSaving] = useState(false);
   const [createMore, setCreateMore] = useState(false);
   const [localAiGenerateMode, setLocalAiGenerateMode] = useState(true);
@@ -139,6 +147,8 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
     controlledAiGenerateMode ?? localAiGenerateMode;
 
   const inlineFields = useInlineCreateWorkItemFields({
+    draftId:
+      layout === "spotlight" ? MANUAL_WORK_ITEM_CREATOR_DRAFT_ID : undefined,
     aiGenerateMode: resolvedAiGenerateMode,
     availableLabels,
     availableMembers,
@@ -146,7 +156,7 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
     availableProjects,
     chatPanelFooter,
     defaultProjectId: projectId,
-    dockedComposer: Boolean(renderAgentComposer),
+    dockedComposer: layout === "spotlight" || Boolean(renderAgentComposer),
     onDraftChange,
     onSetUnsaved,
     orgId,
@@ -271,7 +281,10 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
 
   useKeyboardSave(
     handleCreate,
-    !resolvedAiGenerateMode && !saving && !!draft.name.trim()
+    (layout === "spotlight" || !manualCreator) &&
+      !resolvedAiGenerateMode &&
+      !saving &&
+      !!draft.name.trim()
   );
 
   const composerHeaderContent = (
@@ -286,6 +299,43 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
       {inlineFields.inlinePropertyPills}
     </CreateComposerPinnedActions>
   );
+
+  const manualComposer = (
+    <ManualCreateComposer
+      spotlight={layout === "spotlight"}
+      dataTestId="create-work-item-manual-composer"
+      editorRef={editorRef}
+      headerContent={composerHeaderContent}
+      editorContent={inlineFields.descriptionSection}
+      pinnedActionsContent={workItemPropertyPills}
+      pills={
+        <MarkdownEditorModeSwitch
+          mode={inlineFields.editorMode}
+          onModeChange={inlineFields.setEditorMode}
+          disabled={saving}
+          dataTestId="create-work-item-description-mode-switch"
+        />
+      }
+      submitButton={
+        <>
+          {layout === "spotlight" && (
+            <Button variant="secondary" size="small" onClick={onCancel}>
+              {t("common:actions.cancel")}
+            </Button>
+          )}
+          <LaunchButton
+            ariaLabel={t("common:actions.save")}
+            disabled={!draft.name.trim() || saving}
+            loading={saving}
+            onClick={() => {
+              void handleCreate();
+            }}
+          />
+        </>
+      }
+    />
+  );
+  if (layout === "spotlight") return manualComposer;
 
   return (
     <DetailSplitLayout
@@ -380,31 +430,7 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
           {resolvedAiGenerateMode && renderAgentComposer ? (
             renderAgentComposer(composerHeaderContent, workItemPropertyPills)
           ) : renderAgentComposer ? (
-            <ManualCreateComposer
-              dataTestId="create-work-item-manual-composer"
-              editorRef={editorRef}
-              headerContent={composerHeaderContent}
-              editorContent={inlineFields.descriptionSection}
-              pinnedActionsContent={workItemPropertyPills}
-              pills={
-                <MarkdownEditorModeSwitch
-                  mode={inlineFields.editorMode}
-                  onModeChange={inlineFields.setEditorMode}
-                  disabled={saving}
-                  dataTestId="create-work-item-description-mode-switch"
-                />
-              }
-              submitButton={
-                <LaunchButton
-                  ariaLabel={t("common:actions.save")}
-                  disabled={!draft.name.trim() || saving}
-                  loading={saving}
-                  onClick={() => {
-                    void handleCreate();
-                  }}
-                />
-              }
-            />
+            manualComposer
           ) : (
             <div className={`${DETAIL_PANEL_TOKENS.headerWidth} h-full px-4`}>
               <InlineCreateWorkItemFields state={inlineFields} />
@@ -415,6 +441,7 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
       rightContent={
         resolvedPropertiesOpen ? (
           <WorkItemProperties
+            statusOrgId={inlineFields.statusOrgId}
             workItem={inlineFields.stubWorkItem}
             onUpdate={inlineFields.handlePropertyUpdate}
             availableProjects={inlineFields.resolvedProjects}

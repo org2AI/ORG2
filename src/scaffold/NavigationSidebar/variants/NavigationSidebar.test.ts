@@ -41,9 +41,6 @@ describe("NavigationSidebar", () => {
   it("renders separators in pinned items as standard section headers", () => {
     const markup = renderToStaticMarkup(
       createElement(NavigationSidebar, {
-        items: [],
-        activeKey: "",
-        onChange: vi.fn(),
         menuItems: [],
         pinnedMenuItems: [
           { id: "create", key: "create", label: "Create" },
@@ -58,10 +55,10 @@ describe("NavigationSidebar", () => {
     );
 
     expect(markup).toContain(
-      'class="mb-2 flex items-center gap-1.5 px-2 text-[11px] font-medium tracking-wider text-text-2 uppercase"'
+      'class="mb-1 flex items-center gap-1.5 px-2 text-[11px] font-medium tracking-wider text-text-2 uppercase"'
     );
     expect(markup).toContain('<span class="min-w-0 truncate">Browse</span>');
-    expect(markup).toContain('class="flex flex-col gap-3 px-3 pt-1"');
+    expect(markup).toContain('class="flex flex-col gap-2 px-3 pt-1"');
     expect(markup).toContain('data-sidebar-section-id="work-items-browse"');
     expect(markup).not.toContain(
       'data-test-menu-item="separator-work-items-browse"'
@@ -71,9 +68,6 @@ describe("NavigationSidebar", () => {
   it("allows titled pinned sections to be collapsed", () => {
     const markup = renderToStaticMarkup(
       createElement(NavigationSidebar, {
-        items: [],
-        activeKey: "",
-        onChange: vi.fn(),
         menuItems: [],
         pinnedMenuItems: [
           { id: "create", key: "create", label: "Create" },
@@ -99,9 +93,6 @@ describe("NavigationSidebar", () => {
   it("renders actions on an existing session section header", () => {
     const markup = renderToStaticMarkup(
       createElement(NavigationSidebar, {
-        items: [],
-        activeKey: "",
-        onChange: vi.fn(),
         menuItems: [
           {
             id: "separator-today",
@@ -109,12 +100,19 @@ describe("NavigationSidebar", () => {
             label: "Today",
             rowActions: [
               {
+                label: "More",
+                dataTestId: "section-more",
+                onClick: vi.fn(),
+              },
+              {
                 label: "Search sessions",
+                showOnSidebarHover: true,
                 dataTestId: "sidebar-sessions-search",
                 onClick: vi.fn(),
               },
               {
                 label: "Refresh",
+                showOnSidebarHover: true,
                 dataTestId: "sidebar-sessions-refresh",
                 onClick: vi.fn(),
               },
@@ -132,52 +130,48 @@ describe("NavigationSidebar", () => {
     expect(markup).toContain('title="Search sessions"');
     expect(markup).toContain('data-testid="sidebar-sessions-refresh"');
     expect(markup).toContain('title="Refresh"');
+    expect(markup).toContain(
+      '<span class="hidden group-hover/section-title:inline-flex group-focus-visible/section-title:inline-flex group-has-[:focus-visible]/section-title:inline-flex"><button type="button" aria-label="More"'
+    );
+    expect(markup.indexOf('data-testid="section-more"')).toBeLessThan(
+      markup.indexOf('data-testid="sidebar-sessions-search"')
+    );
+    expect(markup.match(/group-hover\/sidebar:inline-flex/g)).toHaveLength(2);
     expect(
       markup.indexOf('data-testid="sidebar-sessions-search"')
     ).toBeLessThan(markup.indexOf('data-testid="sidebar-sessions-refresh"'));
   });
 
-  it("autofocuses inline search while keeping fixed navigation visible", () => {
+  it("keeps every header action visible when the filter is active outside sidebar hover", () => {
     const markup = renderToStaticMarkup(
       createElement(NavigationSidebar, {
-        items: [],
-        activeKey: "",
-        onChange: vi.fn(),
-        pinnedMenuItems: [
-          { id: "new-session", key: "new-session", label: "New session" },
-        ],
         menuItems: [
           {
-            id: "separator-today",
-            key: "separator-today",
-            label: "Today",
+            id: "separator-team",
+            key: "separator-team",
+            label: "Team",
+            rowActions: ["Search", "Refresh", "Filter"].map((label) => ({
+              label,
+              active: label === "Filter",
+              showOnSidebarHover: true,
+              onClick: vi.fn(),
+            })),
           },
-          { id: "match", key: "match", label: "Matching session" },
-          { id: "other", key: "other", label: "Unrelated task" },
         ],
-        search: {
-          value: "matching",
-          onChange: vi.fn(),
-          placeholder: "Search sessions...",
-          autoFocus: true,
-          filterPinnedItems: false,
-        },
+        collapsibleSections: true,
       })
     );
-
-    expect(markup).toContain('placeholder="Search sessions..."');
-    expect(markup).toContain('autofocus=""');
-    expect(markup).toContain('data-test-menu-item="new-session"');
-    expect(markup).toContain('data-test-menu-item="match"');
-    expect(markup).not.toContain('data-test-menu-item="other"');
+    for (const label of ["Search", "Refresh", "Filter"]) {
+      expect(markup).toContain(
+        `<span class="inline-flex"><button type="button" aria-label="${label}"`
+      );
+    }
+    expect(markup).not.toContain("group-hover/sidebar:inline-flex");
   });
 
   it("renders the standard loading state without dummy rows", () => {
     const markup = renderToStaticMarkup(
       createElement(NavigationSidebar, {
-        items: [],
-        activeKey: "",
-        onChange: vi.fn(),
         menuItems: [],
         isLoading: true,
       })
@@ -190,9 +184,6 @@ describe("NavigationSidebar", () => {
   it("lets browser-hosted sidebars remove native window chrome spacing", () => {
     const markup = renderToStaticMarkup(
       createElement(NavigationSidebar, {
-        items: [],
-        activeKey: "",
-        onChange: vi.fn(),
         menuItems: [],
         includeTrafficLightSpace: false,
       })

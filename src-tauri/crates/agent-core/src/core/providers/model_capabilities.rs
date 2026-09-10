@@ -8,10 +8,11 @@
 //!
 //! # Resolution chain
 //!
-//! 1. **KeyVault** (`KEY_SERVICE`): the user's own model registry. A
-//!    `ModelVariant { reasoning: Some(_) }` row for this model means the
-//!    user (or the behavioral-observation writeback in `side_query.rs`)
-//!    has marked it as a reasoning model.
+//! 1. **KeyVault** (`KEY_SERVICE`): the user's own model registry. An exact
+//!    variant's context window wins; otherwise it inherits the parsed
+//!    base-model row. A `ModelVariant { reasoning: Some(_) }` row for the exact
+//!    model means the user (or the behavioral-observation writeback in
+//!    `side_query.rs`) has marked it as a reasoning model.
 //! 2. **Built-in family table** ([`FAMILY_RULES`]): declarative, one row
 //!    per model family. The ONLY place family substring patterns live.
 //! 3. **Conservative defaults**: unknown models get a 200K window and
@@ -37,6 +38,8 @@ use std::collections::HashSet;
 use std::sync::RwLock;
 
 use key_vault::key_store::{ModelVariant, KEY_SERVICE};
+
+use super::model_variant::parse_model_variant_id;
 
 /// Process-level set of models observed to REJECT the `temperature` request
 /// param outright (Anthropic's newer models — e.g. `claude-opus-4-8` — return
@@ -245,6 +248,12 @@ const FAMILY_RULES: &[FamilyRule] = &[
         thinking: ThinkingSupport::AlwaysOn,
     },
     // ── OpenAI ──
+    // https://developers.openai.com/api/docs/models/gpt-6-astra
+    FamilyRule {
+        pattern: "gpt-6-astra",
+        context_window: 1_050_000,
+        thinking: ThinkingSupport::AlwaysOn,
+    },
     FamilyRule {
         pattern: "gpt-5.6",
         context_window: 1_050_000,
@@ -423,8 +432,15 @@ const FAMILY_RULES: &[FamilyRule] = &[
         context_window: 128_000,
         thinking: ThinkingSupport::No,
     },
-    // glm-5.2: 1M context window — only the 5.2 release reached 1M;
-    // 5 / 5.1 / 5-turbo stay at 200K. Must come BEFORE glm-5.
+    // Known GLM 5.2/5.3 releases have 1M context windows. GLM-5.3 reference:
+    // https://docs.z.ai/guides/llm/glm-5.3
+    // Keep exact release rows before the conservative glm-5 fallback. Future
+    // releases must be added explicitly instead of inheriting an unverified 1M.
+    FamilyRule {
+        pattern: "glm-5.3",
+        context_window: 1_000_000,
+        thinking: ThinkingSupport::Optional,
+    },
     FamilyRule {
         pattern: "glm-5.2",
         context_window: 1_000_000,
@@ -558,18 +574,24 @@ const FAMILY_RULES: &[FamilyRule] = &[
     },
 ];
 
+/// Fable 5.1 request compatibility, including qualified ids and snapshots.
+pub(crate) fn is_claude_fable_5_1(model: &str) -> bool {
+    model
+        .to_ascii_lowercase()
+        .split_once("claude-fable-5-1")
+        .is_some_and(|(_, rest)| rest.is_empty() || rest.starts_with('-') || rest.starts_with(':'))
+}
+
 /// Resolve capabilities for `model`, optionally consulting the KeyVault
 /// entry for `account_id`.
 ///
 /// Resolution chain for the context window:
-/// 1. **Static family table** ([`FAMILY_RULES`]) — the model's nominal
-///    capability (e.g. opus-4.6 = 1M).
-/// 2. **KeyVault override** — if the provider's `/v1/models` reported a
-///    `context_length` for this model on this account (stored as
-///    `ModelVariant.context_window`), it overrides the static value. This is
-///    what makes a proxy that caps a 1M model at 256K show the *real* limit
-///    instead of the nominal one. Absent (official OpenAI/Anthropic, which
-///    don't expose `context_length`) → keep the static value.
+/// 1. **Static family table** ([`FAMILY_RULES`]) — the parsed base model's
+///    nominal capability (e.g. `glm-5.3` = 1M).
+/// 2. **KeyVault base-model override** — a provider-reported
+///    `context_length` applies to ORG2's synthetic effort variants too.
+/// 3. **KeyVault exact-variant override** — if present, it wins over the base
+///    row. This lets a proxy publish a variant-specific cap.
 ///
 /// Thinking support is upgraded only (a KeyVault `reasoning` row beats the
 /// family guess); context window can be either raised or lowered by the
@@ -601,15 +623,26 @@ pub fn resolve_effective_context_window(
 }
 
 fn apply_keyvault_overrides(caps: &mut ModelCapabilities, model: &str, variants: &[ModelVariant]) {
-    let Some(variant) = variants.iter().find(|v| v.model == model) else {
-        return;
-    };
+    let exact_variant = variants.iter().find(|variant| variant.model == model);
+    let parsed_id = parse_model_variant_id(model);
+    let base_model = exact_variant
+        .map(|variant| variant.base_model.as_str())
+        .filter(|base_model| !base_model.is_empty() && *base_model != model)
+        .unwrap_or(&parsed_id.base_model);
+    let base_variant = variants
+        .iter()
+        .find(|variant| variant.model == base_model && variant.model != model);
 
-    if let Some(ctx) = variant.context_window.filter(|ctx| *ctx > 0) {
+    if let Some(ctx) = exact_variant
+        .and_then(|variant| variant.context_window.filter(|ctx| *ctx > 0))
+        .or_else(|| base_variant.and_then(|variant| variant.context_window.filter(|ctx| *ctx > 0)))
+    {
         caps.context_window = ctx as usize;
     }
 
-    if let Some(vault_thinking) = resolve_thinking_from_variant(variant) {
+    // Reasoning metadata may be variant-specific, so preserve the existing
+    // exact-only behavior instead of inheriting it from the base row.
+    if let Some(vault_thinking) = exact_variant.and_then(resolve_thinking_from_variant) {
         caps.thinking = vault_thinking;
     }
 }
@@ -622,7 +655,8 @@ fn resolve_with_keyvault_variants(model: &str, variants: &[ModelVariant]) -> Mod
 }
 
 fn resolve_from_family_table(model: &str) -> ModelCapabilities {
-    let normalized = super::model_hints::normalize_claude_shorthand(model);
+    let base_model = parse_model_variant_id(model).base_model;
+    let normalized = super::model_hints::normalize_claude_shorthand(&base_model);
     let model_lower = normalize_claude_release_separators(&normalized.to_lowercase());
     for rule in FAMILY_RULES {
         if model_lower.contains(rule.pattern) {
@@ -692,6 +726,7 @@ pub enum ModelFamily {
 const FAMILY_TABLE: &[(&str, ModelFamily)] = &[
     ("claude", ModelFamily::Anthropic),
     ("glm", ModelFamily::Zhipu),
+    ("gpt-6-astra", ModelFamily::OpenAi),
     ("gpt-5", ModelFamily::OpenAi),
     ("o1", ModelFamily::OpenAi),
     ("o3", ModelFamily::OpenAi),

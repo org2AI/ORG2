@@ -4,13 +4,6 @@ import React from "react";
 // Lazy page components
 // ============================================
 
-export const SelectRepoPage = React.lazy(
-  () =>
-    import(
-      /* webpackChunkName: "workspace" */ "@src/modules/MainApp/SelectRepo"
-    )
-);
-
 export const AgentOrgsPage = React.lazy(
   () =>
     import(/* webpackChunkName: "mainapp" */ "@src/modules/MainApp/AgentOrgs")
@@ -38,13 +31,6 @@ export const LoginPage = React.lazy(
 // surface with no app shell. Opened by `open_session_window` (Rust).
 export const SessionWindowPage = React.lazy(
   () => import(/* webpackChunkName: "workspace" */ "@src/modules/SessionWindow")
-);
-
-export const FlowAwarenessTestPage = React.lazy(
-  () =>
-    import(
-      /* webpackChunkName: "dev-tools" */ "@src/components/FlowAwarenessTest"
-    )
 );
 
 export const MobileRemotePage = React.lazy(

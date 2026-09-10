@@ -10,10 +10,8 @@ import { describe, expect, it } from "vitest";
 
 import { getPrStatusVariant } from "@src/shared/pr/prStatus";
 
-import {
-  type PullRequestSubmission,
-  SubmissionPullRequestsContent,
-} from "../SubmissionsContent";
+import { SubmissionPullRequestsContent } from "../SubmissionsContent";
+import type { PullRequestSubmission } from "../submissionsData";
 
 const NEUTRAL = getPrStatusVariant("unknown");
 const OPEN = getPrStatusVariant("open");

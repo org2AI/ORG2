@@ -2,16 +2,6 @@ import { atom } from "jotai";
 
 import { getStoredValue } from "./storage";
 
-function getStoredTitleBarHidden(): boolean {
-  const stored = getStoredValue("title_bar_hidden");
-  return stored === "true";
-}
-
-export const workStationTitleBarHiddenAtom = atom<boolean>(
-  getStoredTitleBarHidden()
-);
-workStationTitleBarHiddenAtom.debugLabel = "workStationTitleBarHiddenAtom";
-
 function getStoredStatusBarHidden(): boolean {
   const stored = getStoredValue("status_bar_hidden");
   return stored === "true";

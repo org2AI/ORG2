@@ -37,34 +37,33 @@ vi.mock("@src/store/settings", () => ({
   ],
 }));
 
-vi.mock("@src/store/ui/notificationAtom", () => ({
-  notificationSettingsAtom: {},
-}));
-
-vi.mock("jotai", () => ({
-  useAtomValue: () => ({
-    enabled: true,
-    systemNotificationEnabled: false,
-    dockBadgeEnabled: false,
-    soundEnabled: false,
-    soundPreset: "classic",
-    soundVolume: 70,
-    criticalOnly: false,
-    quietHours: {
-      enabled: false,
-      start: "23:00",
-      end: "08:00",
-      allowCritical: true,
-    },
-    backgroundCompletionSummary: true,
-    categories: {
-      taskCompletion: true,
-      agentApproval: true,
-      errors: true,
-      teamInbox: true,
-    },
-  }),
-}));
+vi.mock("@src/store/ui/notificationAtom", async () => {
+  const { atom } = await import("jotai");
+  return {
+    notificationSettingsAtom: atom({
+      enabled: true,
+      systemNotificationEnabled: false,
+      dockBadgeEnabled: false,
+      soundEnabled: false,
+      soundPreset: "classic",
+      soundVolume: 70,
+      criticalOnly: false,
+      quietHours: {
+        enabled: false,
+        start: "23:00",
+        end: "08:00",
+        allowCritical: true,
+      },
+      backgroundCompletionSummary: true,
+      categories: {
+        taskCompletion: true,
+        agentApproval: true,
+        errors: true,
+        teamInbox: true,
+      },
+    }),
+  };
+});
 
 vi.mock("@src/api/services/notification", () => ({
   checkNotificationPermission: mocks.checkPermission,

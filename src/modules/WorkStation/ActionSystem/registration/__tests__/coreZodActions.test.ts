@@ -25,7 +25,7 @@ import {
   ORGANIZATION_ACTIONS,
   QUICK_NAVIGATION_ACTIONS,
   STATION_MODE_ACTIONS,
-  WORKSPACE_ACTIONS,
+  WORKING_DIRECTORY_ACTIONS,
   buildChatPanelSettingsActions,
   buildViewActions,
 } from "@src/scaffold/GlobalSpotlight/hooks/features/spotlightActionDefinitions";
@@ -46,7 +46,7 @@ const SPOTLIGHT_EDITOR_ACTION_IDS = {
 function getRepresentativeSpotlightActionIds(): Set<string> {
   return new Set([
     ...AGENT_SESSION_ACTIONS.map((action) => action.actionId),
-    ...WORKSPACE_ACTIONS.map((action) => action.actionId),
+    ...WORKING_DIRECTORY_ACTIONS.map((action) => action.actionId),
     ...ORGANIZATION_ACTIONS.map((action) => action.actionId),
     ...buildChatPanelSettingsActions({
       chatPanelPosition: "left",

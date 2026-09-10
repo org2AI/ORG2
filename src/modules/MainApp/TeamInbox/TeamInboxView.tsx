@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
+import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
 import {
   type ManagedPrItem,
@@ -38,6 +39,7 @@ import {
   type TeamInboxItemFocusRequest,
   type TeamInboxViewState,
 } from "./store";
+import { useTeamInboxMutePreferences } from "./useTeamInboxMutePreferences";
 import { useTeamInboxPagination } from "./useTeamInboxPagination";
 import { useTeamInboxReadActions } from "./useTeamInboxReadActions";
 
@@ -97,31 +99,19 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
     },
     [t]
   );
-  const {
-    items,
-    setItems,
-    authoritativeUnreadCounts,
-    loadState,
-    setLoadState,
-    initialLoading: inboxInitialLoading,
-    reloadRevision,
-    hasMore,
-    loadingMore,
-    handleLoadMore,
-    handleRefresh,
-  } = useTeamInboxPagination({
-    dataSource,
-    pageSize,
-    issueMessage,
-    t,
-    onRefreshPullRequests,
-  });
   const [internalViewState, setInternalViewState] =
     useState<TeamInboxViewState>(() => ({
       ...INITIAL_TEAM_INBOX_VIEW_STATE,
       filter: initialFilter,
     }));
   const viewState = controlledViewState ?? internalViewState;
+  const focusRequestActive =
+    focusRequest !== null &&
+    focusRequest.requestId !== viewState.supersededFocusRequestId;
+  const listMode =
+    !focusRequestActive && viewState.filter === "archived"
+      ? "archived"
+      : "active";
   const updateViewState = useCallback(
     (update: React.SetStateAction<TeamInboxViewState>) => {
       if (controlledViewState) {
@@ -134,20 +124,63 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
     },
     [controlledViewState, onViewStateChange]
   );
+  const {
+    items,
+    setItems,
+    itemsMode,
+    authoritativeUnreadCounts,
+    loadState,
+    setLoadState,
+    initialLoading: inboxInitialLoading,
+    reloadRevision,
+    hasMore,
+    loadingMore,
+    handleLoadMore,
+    handleRefresh,
+  } = useTeamInboxPagination({
+    dataSource,
+    listMode,
+    pageSize,
+    issueMessage,
+    t,
+    onRefreshPullRequests,
+  });
+  const {
+    mutedKinds,
+    mutePreferencesLoading,
+    handleLoadMutePreferences,
+    handleSetKindMuted,
+  } = useTeamInboxMutePreferences({ dataSource, t, setLoadState });
+  const [dispositionPendingKey, setDispositionPendingKey] = useState<
+    string | null
+  >(null);
   const [dismissedLoadNoticeKey, setDismissedLoadNoticeKey] = useState<
     string | null
   >(null);
-  const [listFullscreen, setListFullscreen] = useState(false);
+  const focusRequestId = focusRequest?.requestId ?? null;
+  // Full-list presentation belongs to the current explicit selection. A new
+  // notification reveals its detail; users can still expand the list afterward.
+  const [fullscreenSelection, setFullscreenSelection] = useState<{
+    focusRequestId: number | null;
+  } | null>(null);
+  const listFullscreen = fullscreenSelection?.focusRequestId === focusRequestId;
+  const setListFullscreen = useCallback(
+    (enabled: boolean) =>
+      setFullscreenSelection(enabled ? { focusRequestId } : null),
+    [focusRequestId]
+  );
   const initialCombinedLoadPending =
     inboxInitialLoading || pullRequestsInitialLoading;
   const presentedItems = useMemo(
-    () => (initialCombinedLoadPending ? [] : items),
-    [initialCombinedLoadPending, items]
+    () => (initialCombinedLoadPending || itemsMode !== listMode ? [] : items),
+    [initialCombinedLoadPending, items, itemsMode, listMode]
   );
   const presentedPullRequests = useMemo(
     () => (initialCombinedLoadPending ? [] : pullRequests),
     [initialCombinedLoadPending, pullRequests]
   );
+  const mountedRef = useRef(true);
+  useMountedCleanup(mountedRef);
 
   const loadNoticeKey =
     (loadState.status === "error" || loadState.status === "warning") &&
@@ -159,9 +192,6 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
     setDismissedLoadNoticeKey(loadNoticeKey);
   }, [loadNoticeKey]);
 
-  const focusRequestActive =
-    focusRequest !== null &&
-    focusRequest.requestId !== viewState.supersededFocusRequestId;
   const visibleFilter = focusRequestActive ? "all" : viewState.filter;
   const visibleQuery = focusRequestActive ? "" : viewState.query;
   const requestedItemId = focusRequestActive
@@ -184,12 +214,18 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
     : (authoritativeUnreadCounts ?? loadedUnreadCounts);
   const selectedPullRequest = useMemo(
     () =>
-      presentedPullRequests.find(
-        (pullRequest) =>
-          getManagedPullRequestKey(pullRequest) ===
-          viewState.selectedPullRequestKey
-      ) ?? null,
-    [presentedPullRequests, viewState.selectedPullRequestKey]
+      focusRequestActive
+        ? null
+        : (presentedPullRequests.find(
+            (pullRequest) =>
+              getManagedPullRequestKey(pullRequest) ===
+              viewState.selectedPullRequestKey
+          ) ?? null),
+    [
+      focusRequestActive,
+      presentedPullRequests,
+      viewState.selectedPullRequestKey,
+    ]
   );
   const selectedPullRequestIdentity = useMemo<PrIdentity | null>(
     () =>
@@ -248,7 +284,12 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
         supersededFocusRequestId: focusRequest?.requestId ?? null,
       }));
     },
-    [focusRequest?.requestId, focusRequestActive, updateViewState]
+    [
+      focusRequest?.requestId,
+      focusRequestActive,
+      setListFullscreen,
+      updateViewState,
+    ]
   );
 
   const handleQueryChange = useCallback(
@@ -274,7 +315,7 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
         supersededFocusRequestId: focusRequest?.requestId ?? null,
       }));
     },
-    [focusRequest?.requestId, updateViewState]
+    [focusRequest?.requestId, setListFullscreen, updateViewState]
   );
   const handleCloseDetail = useCallback(() => {
     setListFullscreen(false);
@@ -284,7 +325,7 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
       supersededFocusRequestId:
         focusRequest?.requestId ?? current.supersededFocusRequestId,
     }));
-  }, [focusRequest?.requestId, updateViewState]);
+  }, [focusRequest?.requestId, setListFullscreen, updateViewState]);
   const detailPaneOpen =
     focusRequestActive || viewState.detailPaneOpen !== false;
   const isListOnly = !detailPaneOpen || listFullscreen;
@@ -297,10 +338,59 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
       }));
       return;
     }
-    setListFullscreen((current) => !current);
-  }, [detailPaneOpen, updateViewState]);
+    setListFullscreen(!listFullscreen);
+  }, [detailPaneOpen, listFullscreen, setListFullscreen, updateViewState]);
   // Every split presentation owns its controls in the left-column header.
   const useSplitListHeader = detailPaneOpen && !listFullscreen;
+
+  const handleDisposition = useCallback(
+    (item: TeamInboxItem, archived: boolean) => {
+      const mutate = archived
+        ? dataSource.archiveItem
+        : dataSource.unarchiveItem;
+      if (!mutate || dispositionPendingKey) return;
+      const itemKey = getTeamInboxItemKey(item);
+      setDispositionPendingKey(itemKey);
+      void mutate(item)
+        .then(() => {
+          if (!mountedRef.current) return;
+          setItems((current) =>
+            current.filter(
+              (candidate) => getTeamInboxItemKey(candidate) !== itemKey
+            )
+          );
+          updateViewState((current) => ({
+            ...current,
+            selectedItemId:
+              current.selectedItemId === itemKey
+                ? null
+                : current.selectedItemId,
+          }));
+        })
+        .catch(() => {
+          if (!mountedRef.current) return;
+          setLoadState({
+            status: "error",
+            message: t(
+              archived
+                ? "teamInbox.errors.archive"
+                : "teamInbox.errors.unarchive"
+            ),
+          });
+        })
+        .finally(() => {
+          if (mountedRef.current) setDispositionPendingKey(null);
+        });
+    },
+    [
+      dataSource,
+      dispositionPendingKey,
+      setItems,
+      setLoadState,
+      t,
+      updateViewState,
+    ]
+  );
 
   const handleWorkItemUpdated = useCallback(
     (sourceItem: TeamInboxItem, workItem: WorkItem) => {
@@ -347,6 +437,9 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
       onRefresh={handleRefresh}
       onClose={handleCloseDetail}
       onWorkItemUpdated={handleWorkItemUpdated}
+      archived={listMode === "archived"}
+      dispositionPendingKey={dispositionPendingKey}
+      onDisposition={handleDisposition}
     />
   );
 
@@ -355,7 +448,7 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
     loadNoticeKey &&
     dismissedLoadNoticeKey !== loadNoticeKey &&
     (presentedItems.length > 0 || presentedPullRequests.length > 0) ? (
-      <InlineAlert
+      <PageNotice
         type={loadState.status === "warning" ? "warning" : "danger"}
         hideIcon
         onClose={dismissLoadNotice}
@@ -368,7 +461,7 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
         }`}
       >
         {loadState.message}
-      </InlineAlert>
+      </PageNotice>
     ) : null;
 
   const listHeaderControls = useMemo(
@@ -393,19 +486,37 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
         }
         onQueryChange={handleQueryChange}
         onRefresh={handleRefresh}
-        onMarkAllRead={dataSource.markAllRead ? handleMarkAllRead : undefined}
+        onMarkAllRead={
+          visibleFilter !== "archived" && dataSource.markAllRead
+            ? handleMarkAllRead
+            : undefined
+        }
+        mutedKinds={mutedKinds}
+        mutePreferencesLoading={mutePreferencesLoading}
+        onLoadMutePreferences={
+          dataSource.listMutedKinds ? handleLoadMutePreferences : undefined
+        }
+        onSetKindMuted={
+          dataSource.setKindMuted ? handleSetKindMuted : undefined
+        }
       />
     ),
     [
       dataSource.markAllRead,
+      dataSource.listMutedKinds,
+      dataSource.setKindMuted,
+      handleLoadMutePreferences,
       handleMarkAllRead,
       handleQueryChange,
       handleRefresh,
+      handleSetKindMuted,
       handleToggleListPresentation,
       initialCombinedLoadPending,
       isListOnly,
       loadState.status,
       loadingMore,
+      mutePreferencesLoading,
+      mutedKinds,
       pullRequestsLoading,
       unreadCounts,
       useSplitListHeader,
@@ -483,22 +594,42 @@ const TeamInboxView: React.FC<TeamInboxViewProps> = ({
             loading={
               initialCombinedLoadPending ||
               loadState.status === "loading" ||
-              pullRequestsLoading
+              (listMode === "active" && pullRequestsLoading)
             }
             pullRequests={presentedPullRequests}
             pullRequestsLoading={pullRequestsLoading}
             pullRequestsError={pullRequestsError}
-            selectedPullRequestKey={viewState.selectedPullRequestKey}
+            selectedPullRequestKey={
+              focusRequestActive ? null : viewState.selectedPullRequestKey
+            }
             onQueryChange={handleQueryChange}
             onSelectItem={handleSelect}
             onSelectPullRequest={handleSelectPullRequest}
             onRefresh={handleRefresh}
             onMarkAllRead={
-              dataSource.markAllRead ? handleMarkAllRead : undefined
+              visibleFilter !== "archived" && dataSource.markAllRead
+                ? handleMarkAllRead
+                : undefined
+            }
+            mutedKinds={mutedKinds}
+            mutePreferencesLoading={mutePreferencesLoading}
+            onLoadMutePreferences={
+              dataSource.listMutedKinds ? handleLoadMutePreferences : undefined
+            }
+            onSetKindMuted={
+              dataSource.setKindMuted ? handleSetKindMuted : undefined
             }
             hasMore={hasMore}
             loadingMore={loadingMore}
-            onLoadMore={dataSource.loadMore ? handleLoadMore : undefined}
+            onLoadMore={
+              listMode === "archived"
+                ? dataSource.listArchivedPage
+                  ? handleLoadMore
+                  : undefined
+                : dataSource.loadMore
+                  ? handleLoadMore
+                  : undefined
+            }
             showControls={false}
           />
         </div>

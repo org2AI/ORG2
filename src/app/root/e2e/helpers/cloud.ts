@@ -80,7 +80,7 @@ import { activeSessionIdAtom } from "@src/store/session/viewAtom";
 import {
   chatPanelSelectedCloudOrgAtom,
   chatPanelSelectedWorkItemAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 import { isTerminalStatus } from "@src/types/session/session";
 
 import { asError } from "../result";
@@ -528,6 +528,8 @@ export function createCloudHelpers({ store }: CloudHelperDeps) {
                   body: comment.body,
                   editedAt: comment.editedAt ?? null,
                   deletedAt: comment.deletedAt ?? null,
+                  clientDeliveryStatus: comment.clientDeliveryStatus ?? null,
+                  clientDeliveryError: comment.clientDeliveryError ?? null,
                 })),
                 addressableHeadIds: addressableThreads.map(
                   (thread) => thread.headId

@@ -19,7 +19,7 @@
  * cwd are the same target.
  */
 import type { TerminalSession } from "@src/engines/TerminalCore/types";
-import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
 export interface CliTerminalLaunchTarget {
   cliAgentType?: TerminalSession["cliAgentType"];

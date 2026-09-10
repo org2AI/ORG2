@@ -561,6 +561,7 @@ impl Tool for RenderInlineCanvasTool {
         params: Value,
         ctx: &crate::tools::traits::CallContext,
     ) -> Result<String, ToolError> {
+        ctx.require_tool_authority(self.name())?;
         validate_canvas_payload(&params, false)?;
 
         // Return a concise confirmation — the actual content is not echoed back
@@ -629,6 +630,7 @@ impl Tool for ReviseInlineCanvasTool {
         params: Value,
         ctx: &crate::tools::traits::CallContext,
     ) -> Result<String, ToolError> {
+        ctx.require_tool_authority(self.name())?;
         validate_canvas_payload(&params, true)?;
 
         let target_event_id = params
@@ -647,7 +649,8 @@ impl Tool for ReviseInlineCanvasTool {
                 "Canvas revision requires a dispatching session id".into(),
             ));
         }
-        if !ctx.call_id.is_empty() && target_event_id == tool_names::tool_call_event_id(&ctx.call_id)
+        if !ctx.call_id.is_empty()
+            && target_event_id == tool_names::tool_call_event_id(&ctx.call_id)
         {
             return Err(ToolError::InvalidParams(
                 "target_event_id cannot identify the revision call itself".into(),

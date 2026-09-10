@@ -5,7 +5,9 @@ use super::super::env_setup::{
     validate_codex_own_key_provider,
 };
 use super::super::input_assembly::cli_exec_mode_bridge;
-use super::super::oauth_setup::{is_api_overloaded_message, is_retryable_overloaded_chunk};
+use super::super::oauth_setup::{
+    is_api_overloaded_message, is_retryable_cli_oauth_failure_chunk, is_retryable_overloaded_chunk,
+};
 use super::super::plan_approval::{
     create_plan_content_from_chunk, looks_like_buildable_plan_body,
     plan_content_from_successful_write_chunk, synthetic_cli_plan_path,
@@ -17,6 +19,84 @@ use key_vault::key_store::{AuthMethod, ModelKey};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
+
+#[test]
+fn codex_turns_always_use_the_desktop_visible_native_transport() {
+    for saved_transport in [None, Some("app-server"), Some("legacy")] {
+        let mut profile = super::super::launch_profiles::ResolvedCliLaunchProfile {
+            permission_mode: super::super::launch_profiles::CliPermissionMode::Manual,
+            command: "codex".to_string(),
+            args: vec!["exec".to_string()],
+            env: HashMap::new(),
+            transport: saved_transport.map(str::to_string),
+        };
+        let mut claude = profile.clone();
+        scope_codex_transport_to_turn(&ModelType::Codex, &mut profile);
+        assert!(super::super::launch_profiles::uses_codex_app_server(
+            &ModelType::Codex,
+            &profile
+        ));
+        scope_codex_transport_to_turn(&ModelType::ClaudeCode, &mut claude);
+        assert_eq!(claude.transport.as_deref(), saved_transport);
+    }
+}
+
+#[test]
+fn command_logging_redacts_mcp_config_values() {
+    let raw = vec![
+        "codex".to_string(),
+        "-c".to_string(),
+        "mcp_servers.docs.env={API_TOKEN = \"stdio-secret\"}".to_string(),
+        "-c".to_string(),
+        "model_reasoning_effort=\"medium\"".to_string(),
+        "task".to_string(),
+    ];
+
+    let redacted = redacted_command_parts(&raw);
+    assert_eq!(
+        redacted[2], "mcp_servers.docs.env=<redacted>",
+        "MCP config can contain stdio env and HTTP header secrets"
+    );
+    assert_eq!(redacted[4], "model_reasoning_effort=\"medium\"");
+    assert!(
+        !redacted.join(" ").contains("stdio-secret"),
+        "command logs must not retain MCP secret values"
+    );
+}
+
+#[test]
+fn command_logging_redacts_short_and_unicode_secrets_without_panicking() {
+    let raw = vec![
+        "cursor-agent".to_string(),
+        "--api-key".to_string(),
+        "short".to_string(),
+        "--market-token".to_string(),
+        "密钥-abcd-efgh-ijkl".to_string(),
+    ];
+
+    let redacted = redacted_command_parts(&raw);
+    assert_eq!(redacted[2], "<redacted>");
+    assert_ne!(redacted[4], raw[4]);
+    assert!(!redacted.join(" ").contains("密钥-abcd-efgh-ijkl"));
+    assert!(environment_key_is_sensitive("HTTP_AUTHORIZATION"));
+    assert!(environment_key_is_sensitive("database_password"));
+    assert!(environment_key_is_sensitive("session_cookie"));
+    assert!(!environment_key_is_sensitive("HTTP_PROXY"));
+}
+
+#[test]
+fn stderr_redaction_covers_resolved_environment_secrets() {
+    let mcp_servers = mcp_inject::SessionMcpServers::empty_for_test();
+    let redacted = redact_cli_stderr_line(
+        "provider echoed arbitrary-token-value and OPENAI_API_KEY=sk-abcdefghijklmnopqrstuvwxyz",
+        &["arbitrary-token-value".to_string()],
+        &mcp_servers,
+    );
+
+    assert!(!redacted.contains("arbitrary-token-value"));
+    assert!(!redacted.contains("sk-abcdefghijklmnopqrstuvwxyz"));
+    assert!(redacted.contains("[REDACTED_SECRET]"));
+}
 
 #[test]
 fn project_is_always_build_execution_while_ordinary_modes_stay_distinct() {
@@ -663,6 +743,61 @@ fn atlas_model_string_is_preserved_before_the_codex_provider_gate_rejects_it() {
 }
 
 #[test]
+fn claude_cross_type_session_model_overrides_the_account_fallback() {
+    let mut env = HashMap::from([
+        ("ANTHROPIC_MODEL".to_string(), "zai-org/glm-5.1".to_string()),
+        (
+            "ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(),
+            "zai-org/glm-5.1".to_string(),
+        ),
+        (
+            "ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(),
+            "zai-org/glm-5.1".to_string(),
+        ),
+        (
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(),
+            "zai-org/glm-5.1".to_string(),
+        ),
+    ]);
+
+    apply_claude_cross_type_session_model(
+        &ModelType::ClaudeCode,
+        Some(&ModelType::AtlascloudApi),
+        Some("deepseek-ai/deepseek-v3.2"),
+        &mut env,
+    );
+
+    for key in [
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    ] {
+        assert_eq!(
+            env.get(key).map(String::as_str),
+            Some("deepseek-ai/deepseek-v3.2"),
+        );
+    }
+}
+
+#[test]
+fn claude_native_session_keeps_its_cli_model_path() {
+    let mut env = HashMap::from([("ANTHROPIC_MODEL".to_string(), "account-default".to_string())]);
+
+    apply_claude_cross_type_session_model(
+        &ModelType::ClaudeCode,
+        Some(&ModelType::ClaudeCode),
+        Some("claude-opus-4-8"),
+        &mut env,
+    );
+
+    assert_eq!(
+        env.get("ANTHROPIC_MODEL").map(String::as_str),
+        Some("account-default"),
+    );
+}
+
+#[test]
 fn codex_rejects_chat_only_providers_and_zenmux_preserves_aggregator_namespace() {
     for provider in [ModelType::ZhipuApi, ModelType::AtlascloudApi] {
         let key = ModelKey::new(provider);
@@ -777,6 +912,95 @@ fn child_env_sanitization_keeps_runtime_tokens_out_of_subprocess_env() {
 }
 
 #[test]
+fn explicit_claude_account_clears_inherited_routing_not_owned_by_source() {
+    let selected = HashMap::from([
+        (
+            "ANTHROPIC_AUTH_TOKEN".to_string(),
+            "selected-oauth".to_string(),
+        ),
+        (
+            "CLAUDE_CONFIG_DIR".to_string(),
+            "/selected/profile".to_string(),
+        ),
+    ]);
+    let mut command = Command::new("claude");
+    apply_child_environment(&mut command, &ModelType::ClaudeCode, true, &selected);
+
+    let explicit = command
+        .as_std()
+        .get_envs()
+        .map(|(key, value)| {
+            (
+                key.to_string_lossy().into_owned(),
+                value.map(|value| value.to_string_lossy().into_owned()),
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    assert_eq!(
+        explicit.get("ANTHROPIC_AUTH_TOKEN"),
+        Some(&Some("selected-oauth".to_string()))
+    );
+    assert_eq!(explicit.get("ANTHROPIC_API_KEY"), Some(&None));
+    assert_eq!(explicit.get("ANTHROPIC_BASE_URL"), Some(&None));
+    assert_eq!(explicit.get("ANTHROPIC_MODEL"), Some(&None));
+    assert_eq!(
+        explicit.get("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"),
+        Some(&None)
+    );
+}
+
+#[test]
+fn explicit_claude_account_wins_over_stale_launch_profile_routing() {
+    let mut selected = HashMap::from([
+        (
+            "ANTHROPIC_AUTH_TOKEN".to_string(),
+            "anthropic-1-oauth".to_string(),
+        ),
+        (
+            "CLAUDE_CONFIG_DIR".to_string(),
+            "/accounts/anthropic-1".to_string(),
+        ),
+    ]);
+    let stale_profile = HashMap::from([
+        (
+            "ANTHROPIC_BASE_URL".to_string(),
+            "https://api.atlascloud.ai".to_string(),
+        ),
+        ("ANTHROPIC_MODEL".to_string(), "zai-org/glm-5.2".to_string()),
+        (
+            "ANTHROPIC_AUTH_TOKEN".to_string(),
+            "stale-atlas-token".to_string(),
+        ),
+        ("PATH".to_string(), "/custom/bin".to_string()),
+    ]);
+
+    merge_launch_profile_environment(&ModelType::ClaudeCode, true, &mut selected, stale_profile);
+
+    assert_eq!(
+        selected.get("ANTHROPIC_AUTH_TOKEN").map(String::as_str),
+        Some("anthropic-1-oauth")
+    );
+    assert_eq!(
+        selected.get("CLAUDE_CONFIG_DIR").map(String::as_str),
+        Some("/accounts/anthropic-1")
+    );
+    assert!(!selected.contains_key("ANTHROPIC_BASE_URL"));
+    assert!(!selected.contains_key("ANTHROPIC_MODEL"));
+    assert_eq!(
+        selected.get("PATH").map(String::as_str),
+        Some("/custom/bin")
+    );
+}
+
+#[test]
+fn ambient_claude_profile_keeps_shell_environment_available() {
+    let mut command = Command::new("claude");
+    apply_child_environment(&mut command, &ModelType::ClaudeCode, false, &HashMap::new());
+
+    assert!(command.as_std().get_envs().next().is_none());
+}
+
+#[test]
 fn overloaded_error_detection() {
     assert!(is_api_overloaded_message("overloaded_error"));
     assert!(is_api_overloaded_message(
@@ -829,6 +1053,35 @@ fn overloaded_chunk_detection() {
     assert!(is_retryable_overloaded_chunk(&no_error).is_none());
 }
 
+#[test]
+fn retry_detection_requires_explicit_provider_failure() {
+    for action in [
+        "assistant", "assistant_delta", "message", "tool_call", "user", "session_end",
+    ] {
+        let mut chunk = core_types::activity::ActivityChunk::new("s", action, "message");
+        chunk.result = serde_json::json!({
+            "success": true,
+            "message": "SessionFilterButton 第 429–444 行；529 overloaded；OAuth access token expired",
+            "error": "429 is an example in a tool result"
+        });
+        assert!(is_retryable_overloaded_chunk(&chunk).is_none(), "{action}");
+        assert!(
+            is_retryable_cli_oauth_failure_chunk(true, &chunk).is_none(),
+            "{action}"
+        );
+    }
+    for action in ["error", "session_end"] {
+        let mut chunk = core_types::activity::ActivityChunk::new("s", action, action);
+        chunk.result = serde_json::json!({"success": false, "error_message": "429 Too Many Requests"});
+        assert!(is_retryable_overloaded_chunk(&chunk).is_some(), "{action}");
+        chunk.result = serde_json::json!({"success": false, "error_message": "OAuth access token expired"});
+        assert!(
+            is_retryable_cli_oauth_failure_chunk(true, &chunk).is_some(),
+            "{action}"
+        );
+    }
+}
+
 /// The whole point of the collector: a child can exit with its stderr still
 /// sitting unread in the pipe, and every consumer of the buffer runs after
 /// `wait()`. Reading without draining is how a session that failed loudly
@@ -863,6 +1116,8 @@ async fn stderr_collector_has_the_whole_output_once_drained() {
     collector.attach(
         child.stderr.take().expect("stderr was piped"),
         "test-session".to_string(),
+        Arc::new(Vec::new()),
+        Arc::new(mcp_inject::SessionMcpServers::empty_for_test()),
     );
 
     let status = child.wait().await.expect("wait for stderr writer");
@@ -908,6 +1163,8 @@ async fn a_reader_the_grandchild_holds_open_is_aborted_not_detached() {
     collector.attach(
         child.stderr.take().expect("stderr was piped"),
         "test-session".to_string(),
+        Arc::new(Vec::new()),
+        Arc::new(mcp_inject::SessionMcpServers::empty_for_test()),
     );
     assert!(child
         .wait()
@@ -948,6 +1205,8 @@ async fn draining_the_stderr_collector_twice_is_a_no_op() {
     collector.attach(
         child.stderr.take().expect("stderr was piped"),
         "test-session".to_string(),
+        Arc::new(Vec::new()),
+        Arc::new(mcp_inject::SessionMcpServers::empty_for_test()),
     );
     let _ = child.wait().await;
 
@@ -972,4 +1231,33 @@ async fn draining_an_unattached_stderr_collector_returns_immediately() {
         .await
         .expect("drain of an unattached collector must not block");
     assert!(collector.lines().lock().await.is_empty());
+}
+
+#[test]
+fn native_codex_store_uses_catalog_binary_and_index_without_changing_auth_home() {
+    let mut command = vec![
+        "codex".into(),
+        "app-server".into(),
+        "-c".into(),
+        "model_reasoning_effort=\"low\"".into(),
+    ];
+    scope_native_codex_store(
+        &mut command,
+        Path::new("/Applications/Codex.app/codex"),
+        Path::new("/native home/.codex"),
+    );
+    assert_eq!(
+        command,
+        vec![
+            "/Applications/Codex.app/codex",
+            "app-server",
+            "-c",
+            "model_reasoning_effort=\"low\"",
+            "-c",
+            "sqlite_home=\"/native home/.codex\"",
+        ]
+    );
+    assert!(!command
+        .iter()
+        .any(|arg| arg.contains("CODEX_HOME") || arg.contains("auth")));
 }

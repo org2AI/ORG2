@@ -2,7 +2,7 @@
  * Unified logging system - the single frontend logging facade.
  *
  * Responsibilities:
- * - Provide one set of `Logger` instances (`createLogger(ns)` / `useLogger(ns)`)
+ * - Provide one set of `Logger` instances (`createLogger(ns)`)
  *   and a global `logger`.
  * - Gate devtools output by a single `currentLevel` (default DEBUG in dev,
  *   WARN in prod). The legacy `consoleManager` is folded into this gate.
@@ -25,14 +25,13 @@
  *   log.perfStart("load"); ...; log.perfEnd("load");
  *
  * React API (same instance, memoized per context):
- *   const log = useLogger("MyComponent");
+ *   const log = createLogger("MyComponent");
  *
  * Level control:
  *   setLogLevel(LogLevel.INFO);   // tweak at runtime
  *   logger.setLevel(LogLevel.WARN);
  */
 import { invoke } from "@tauri-apps/api/core";
-import { useMemo } from "react";
 
 // ============================================================================
 // Types & level table
@@ -397,10 +396,6 @@ function makeLogger(namespace: string): Logger {
 
 export function createLogger(namespace: string): Logger {
   return makeLogger(namespace);
-}
-
-export function useLogger(namespace: string): Logger {
-  return useMemo(() => makeLogger(namespace), [namespace]);
 }
 
 /** Global, namespace-less logger for ad-hoc call sites. */

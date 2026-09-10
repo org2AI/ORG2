@@ -14,7 +14,7 @@ import {
   HugeiconsIcon,
 } from "@src/icons";
 import { CODE_EDITOR_TOUR_TARGETS } from "@src/scaffold/Tutorials/codeEditorTourConfig";
-import { workStationPrimarySidebarCollapsedPersistAtom } from "@src/store/ui/workStationAtom";
+import { workStationPrimarySidebarCollapsedPersistAtom } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import { activeStatusBarAppAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 import {

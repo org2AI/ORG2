@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { rpc } from "@src/api/tauri/rpc";
 import type { CliAgentType, NativeHarnessType } from "@src/api/types/keys";
+import { requireAgentOrgRedesign } from "@src/config/agentOrgRedesign";
 import type { OrgMemberLaunchOverride } from "@src/modules/MainApp/AgentOrgs/types";
 import type { WorkspaceSnapshot } from "@src/services/context/workspaceSnapshot";
 import type { SessionStatus } from "@src/types/session/session";
@@ -237,8 +238,8 @@ export async function respondPermission(
 /**
  * Resolve a permission request parked on the CLI side: a managed
  * session's PermissionRequest hook (`origin: "cli_hook"`) or an ACP
- * agent's `session/request_permission` (`origin: "acp"`) on the
- * `agent-permission-request` event. Routes to
+ * agent's `session/request_permission` (`origin: "acp"`) from the
+ * session-scoped permission request store. Routes to
  * `cli_agent_approval_response`, which checks the hook registry first
  * and falls back to the ACP registry by `requestId`. For hooks,
  * `always_allow` is treated as a plain allow — persistent rules stay
@@ -282,7 +283,7 @@ export async function respondModeSwitch(
  * Used on session mount/switch to rehydrate `pendingPlanApprovalsAtom`
  * after a page refresh or window re-focus.
  */
-export async function getPendingPlanApproval(sessionId: string): Promise<{
+export interface PendingPlanApprovalSnapshot {
   sessionId: string;
   planPath: string;
   planTitle: string;
@@ -292,8 +293,24 @@ export async function getPendingPlanApproval(sessionId: string): Promise<{
   planRevisionId?: string;
   originToolCallId?: string;
   autoApproveAt?: number | null;
-} | null> {
+}
+
+export async function getPendingPlanApproval(
+  sessionId: string
+): Promise<PendingPlanApprovalSnapshot | null> {
   return rpc.agentSession.getPendingPlanApproval({ sessionId });
+}
+
+export async function updatePendingPlanContent(
+  sessionId: string,
+  content: string,
+  planRevisionId?: string
+): Promise<PendingPlanApprovalSnapshot> {
+  return rpc.agentSession.updatePendingPlanContent({
+    sessionId,
+    content,
+    planRevisionId,
+  });
 }
 
 /**
@@ -520,6 +537,7 @@ export interface SessionLaunchResult {
 export async function sessionLaunch(
   params: SessionLaunchParams
 ): Promise<SessionLaunchResult> {
+  if (params.agentOrgId) requireAgentOrgRedesign();
   return rpc.agentSession.sessionLaunch({
     params,
   }) as Promise<SessionLaunchResult>;

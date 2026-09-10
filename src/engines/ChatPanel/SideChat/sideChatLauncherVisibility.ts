@@ -12,7 +12,7 @@
  * tab switches — it is a picture-in-picture window the user placed, not a
  * property of the surface underneath it.
  */
-import type { ChatPanelTabType } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTabType } from "@src/store/chatPanel/chatPanelTabsModel";
 
 const LAUNCHER_HIDDEN_TAB_TYPES: ReadonlySet<ChatPanelTabType> = new Set([
   "start-page",

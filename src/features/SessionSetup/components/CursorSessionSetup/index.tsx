@@ -17,13 +17,13 @@ import React, {
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import PageNotice from "@src/components/PageNotice";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import { useCursorSessionCapture } from "@src/features/SessionSetup/hooks/useCursorSessionCapture";
 import { useWebviewPositionSync } from "@src/features/SessionSetup/hooks/useWebviewPositionSync";
 import {
   AlertCircleIcon,
   Cancel01Icon,
-  CheckmarkCircle01Icon,
   HugeiconsIcon,
   Loading03Icon,
   Refresh04Icon,
@@ -204,24 +204,13 @@ const CursorSessionSetup: React.FC<CursorSessionSetupProps> = ({
           </SectionContainer>
 
           {sessionToken && (
-            <div className="rounded-lg border border-success-3 bg-success-1 px-3 py-2">
-              <div className="flex items-start gap-2">
-                <HugeiconsIcon
-                  icon={CheckmarkCircle01Icon}
-                  data-icon="check-circle"
-                  size={15}
-                  className="mt-0.5 shrink-0 text-success-6"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="text-success-7 text-[12px] font-medium">
-                    {t("keyVault.cursorLoginReadyTitle")}
-                  </div>
-                  <div className="mt-0.5 text-[11px] leading-4 text-text-2">
-                    {t("keyVault.cursorLoginReadyDesc")}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <PageNotice
+              type="success"
+              role="status"
+              title={t("keyVault.cursorLoginReadyTitle")}
+            >
+              {t("keyVault.cursorLoginReadyDesc")}
+            </PageNotice>
           )}
         </div>
       ) : (

@@ -302,7 +302,7 @@ describe("SettingsSearchDropdown", () => {
     );
     expect(input).not.toBeNull();
     expect(
-      input?.closest(".input-wrapper")?.classList.contains("input-size-default")
+      input?.closest(".input-wrapper")?.classList.contains("input-size-small")
     ).toBe(true);
     expect(input?.closest(".input-inner")?.classList.contains("bg-bg-2")).toBe(
       true

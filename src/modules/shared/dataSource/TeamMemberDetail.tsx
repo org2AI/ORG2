@@ -26,6 +26,7 @@ import { Placeholder } from "@src/components/Placeholder";
 import ProgressBar from "@src/components/ProgressBar";
 import Select from "@src/components/Select";
 import TabPill, { type TabPillItem } from "@src/components/TabPill";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import { getMemberUsage } from "@src/features/Org2Cloud/memberRuntime/memberRuntimeClient";
 import type {
   MemberRuntimeListEntry,
@@ -265,7 +266,7 @@ export default function TeamMemberDetail({
       {profile && builderType ? (
         <>
           <section
-            className="rounded-xl border border-border-1 bg-primary-container p-4"
+            className={DETAIL_PANEL_TOKENS.primaryContainer}
             data-testid="team-member-profile"
           >
             <div className="flex items-center gap-4">

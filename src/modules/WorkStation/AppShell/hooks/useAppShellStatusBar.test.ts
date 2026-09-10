@@ -6,7 +6,7 @@
  * Launchpad (`hostMountPolicy.ts`). These pin the affordances to the shell so
  * the workspace button keeps opening GlobalSpotlight with no host mounted.
  */
-import { Provider } from "jotai";
+import { Provider, useAtomValue } from "jotai";
 import React from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -15,7 +15,7 @@ import {
   spotlightInitialQueryAtom,
   spotlightOpenAtom,
 } from "@src/store/ui/uiAtom";
-import { perAppStatusBarCallbacksAtom } from "@src/store/ui/workStationAtom";
+import { perAppStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import { createInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 import { createSmokeRoot, dispatch } from "../../../../test/reactSmokeHarness";
@@ -30,14 +30,21 @@ const panels = {
   bottomPanelCollapsed: false,
 } as unknown as ReturnType<typeof useWorkStationPanels>;
 
+const handleOpenSettings = () => {};
+
 function Harness() {
   useAppShellStatusBar({
     primaryPanelCollapsed: false,
     showSettingsButton: false,
-    handleOpenSettings: () => {},
+    handleOpenSettings,
     workStationPanels: panels,
   });
-  return null;
+  const callbacks = useAtomValue(perAppStatusBarCallbacksAtom).code;
+  return React.createElement(
+    "button",
+    { onClick: callbacks.onBranchClick },
+    "Switch branch"
+  );
 }
 
 async function mountShell() {
@@ -70,6 +77,21 @@ describe("useAppShellStatusBar", () => {
     });
 
     await root.unmount();
+  });
+
+  it("opens the branch route from a React click without treating the event as a repo ID", async () => {
+    const root = await mountShell();
+    try {
+      await dispatch(() => root.container.querySelector("button")!.click());
+      expect(store.get(spotlightOpenAtom)).toBe(true);
+      const request = store.get(spotlightInitialQueryAtom);
+      expect(request?.layer?.kind).toBe("branch");
+      expect(typeof (request?.layer as { repoId?: unknown }).repoId).toBe(
+        "undefined"
+      );
+    } finally {
+      await root.unmount();
+    }
   });
 
   it("registers the branch and worktree openers alongside it", async () => {

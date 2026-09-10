@@ -1,3 +1,5 @@
+@use "./styles/mixins/scrollbar";
+
 // Tailwind v4 entry (plain CSS, passed through Sass verbatim and resolved by
 // @tailwindcss/postcss). Theme tokens, keyframes, and v3-preflight
 // compatibility shims live in tailwind.css; do not add a second import.
@@ -27,15 +29,18 @@
 @import "./styles/prism-tokens";
 @import "./styles/chat-search-highlight";
 
+:root {
+  // The 12px overlay hit area contains a 6px thumb with 3px breathing room
+  // from the window/content edge. These stay fixed across interaction states.
+  --scrollbar-size: 6px;
+  --scrollbar-hit-area-size: 12px;
+  --scrollbar-edge-inset: 3px;
+}
+
 body {
   --scrollbar-thumb-color: color-mix(
     in srgb,
-    var(--color-fill-2) 58%,
-    transparent
-  );
-  --scrollbar-thumb-hover-color: color-mix(
-    in srgb,
-    var(--color-fill-3) 72%,
+    var(--color-text-3) 72%,
     transparent
   );
 }
@@ -329,27 +334,14 @@ html[data-window-focused="false"] *::after {
   }
 }
 
-// Global scrollbar styles
-*::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb-color);
-  border-radius: 2px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover-color);
-}
-
-*::-webkit-scrollbar-corner {
-  background: transparent;
+// Global scrollbar styles are a base default. Keep them in the base layer so
+// explicit surface policies such as `scrollbar-hide` (chat panes, tab strips,
+// breadcrumbs, and 36px title bars) and `scrollbar-overlay` (dropdowns,
+// editors, and other opted-in content scrollers) win the cascade.
+@layer base {
+  * {
+    @include scrollbar.scrollbar-unified;
+  }
 }
 
 // Settings surfaces (SettingsSlot body + SettingsSidebar) hide all
@@ -369,30 +361,30 @@ html[data-window-focused="false"] *::after {
   display: none;
 }
 
-// Keep CodeMirror on the same visible scrollbar treatment as the rest of the app.
-.cm-scroller {
-  scrollbar-width: thin !important;
-  scrollbar-color: var(--scrollbar-thumb-color) transparent !important;
+// xterm 6 renders its own absolute slider instead of a native scrollbar.
+// Gate its visibility with the same activity attribute as native surfaces so
+// xterm's built-in mouseover reveal cannot create a second behavior.
+.xterm .xterm-scrollable-element > .scrollbar {
+  width: var(--scrollbar-hit-area-size) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 
-  &::-webkit-scrollbar {
-    width: 4px !important;
-    height: 4px !important;
-    background: transparent !important;
-  }
+.xterm-terminal-container[data-scrollbar-scrolling]
+  .xterm
+  .xterm-scrollable-element
+  > .scrollbar {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
 
-  &::-webkit-scrollbar-track,
-  &::-webkit-scrollbar-corner {
-    background: transparent !important;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb-color) !important;
-    border-radius: 2px !important;
-  }
-
-  &::-webkit-scrollbar-thumb:hover {
-    background: var(--scrollbar-thumb-hover-color) !important;
-  }
+.xterm .xterm-scrollable-element > .scrollbar > .slider,
+.xterm .xterm-scrollable-element > .scrollbar > .slider:hover,
+.xterm .xterm-scrollable-element > .scrollbar > .slider.active {
+  width: var(--scrollbar-size) !important;
+  left: var(--scrollbar-edge-inset) !important;
+  background: var(--scrollbar-thumb-color) !important;
+  border-radius: calc(var(--scrollbar-size) / 2);
 }
 
 #root {
@@ -402,7 +394,17 @@ html[data-window-focused="false"] *::after {
   // Use overflow: clip as a defensive measure against scrollIntoView calls
   // on hidden components that could scroll the root element
   overflow: clip;
-  background: var(--color-bg-2);
+  // Fallback: see the html/body rules below — the theme stylesheet that
+  // defines --color-bg-2 attaches at runtime.
+  background: var(--color-bg-2, var(--splash-bg));
+}
+
+// Browser mode uses the Linux host profile. Both use the selected solid color
+// as their root backdrop; macOS and Windows keep their native material rules.
+html[data-host-desktop="linux"],
+html[data-host-desktop="linux"] body,
+html[data-host-desktop="linux"] #root {
+  background: var(--app-solid-background, var(--color-bg-2, var(--splash-bg)));
 }
 
 // Remove border radius in fullscreen mode
@@ -582,15 +584,22 @@ textarea,
   background: color-mix(in srgb, var(--color-primary-6) 82%, black) !important;
   color: white !important;
 }
+// `--color-bg-2` comes from the theme stylesheet (public/orgii_{main,dark}.css),
+// which initTheme() attaches at runtime — so it is undefined for the frames
+// between this stylesheet landing and that <link> loading. `var()` with an
+// undefined name is invalid at computed-value time and paints transparent,
+// not the previous cascade, so every root surface falls back to `--splash-bg`
+// (the same colour, mirrored by public/index.html before the bundle runs).
+// Without it the root flips tint → transparent → tint across that gap.
 html {
   overscroll-behavior-x: none;
-  background: var(--color-bg-2);
+  background: var(--color-bg-2, var(--splash-bg));
 }
 body {
   overscroll-behavior-x: none;
   border-radius: var(--border-radius-window);
   overflow: hidden;
-  background: var(--color-bg-2);
+  background: var(--color-bg-2, var(--splash-bg));
 }
 
 // macOS paints native Menu vibrancy underneath the transparent webview.
@@ -600,7 +609,11 @@ body {
 html[data-host-desktop="macos"],
 html[data-host-desktop="macos"] body,
 html[data-host-desktop="macos"] #root {
-  background: color-mix(in srgb, var(--color-bg-2) 15%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-bg-2, var(--splash-bg)) 15%,
+    transparent
+  );
 }
 
 // Once the frontend has mirrored the composite of the three tints above into
@@ -628,7 +641,7 @@ html[data-host-desktop="macos"] .sidebar-base {
 // windowChromeRadius.ts.
 html[data-host-desktop="windows"] body,
 html[data-host-desktop="windows"] #root {
-  background: var(--color-bg-2);
+  background: var(--color-bg-2, var(--splash-bg));
 }
 
 html[data-host-desktop="windows"] .sidebar-base {
@@ -692,25 +705,7 @@ html[data-host-desktop="windows"] [data-windows-top-bar="true"] {
 }
 
 .custom-scrollbar {
-  scrollbar-width: 2px !important; // for Firefox, always thin but invisible
-  scrollbar-color: transparent transparent !important; // for Firefox, transparent scrollbar
-
-  &::-webkit-scrollbar {
-    width: 1px !important; // for Chrome, Safari, and Opera, always 8px but invisible
-    background: transparent !important; // initially transparent
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background-color: transparent !important; // initially transparent
-  }
-
-  &:hover {
-    scrollbar-color: var(--scrollbar-thumb-color) transparent !important; // for Firefox, visible on hover
-
-    &::-webkit-scrollbar-thumb {
-      background-color: transparent !important; // for Chrome, Safari, and Opera, visible on hover
-    }
-  }
+  @include scrollbar.scrollbar-unified;
 }
 .allow-select {
   -moz-user-select: text !important; /* Firefox */
@@ -746,52 +741,6 @@ html[data-host-desktop="windows"] [data-windows-top-bar="true"] {
   -ms-user-select: none !important;
   user-select: none !important;
 }
-.GloballightBg {
-  background-image: url("./assets/bg/bamboo-blue.jpg");
-}
-.GlobalDarkBg {
-  background-image: url('data:image/svg+xml,<svg width="1440" height="960" viewBox="0 0 1440 960" fill="none " xmlns="http://www.w3.org/2000/svg"><g clip-path="url(%23clip0_1705_676)"><rect width="1440" height="960" fill="black"/><g filter="url(%23filter0_f_1705_676)"><path d="M1106.33 18.0475L-11.7564 736.314C-45.9596 801.182 -115.781 933.749 -121.442 945.072C-127.104 956.394 180.489 1013.48 334.993 1040.6C745.431 1012.3 1566.31 950.733 1566.31 930.919C1566.31 906.151 1608.77 18.0475 1601.69 3.89447C1596.03 -7.42796 1269.09 8.61215 1106.33 18.0475Z" fill="%23060286"/></g><g filter="url(%23filter1_f_1705_676)"><ellipse cx="1333.67" cy="847.596" rx="410.127" ry="452.658" fill="%23311432"/></g><g filter="url(%23filter2_f_1705_676)"><ellipse cx="960.876" cy="971.448" rx="410.438" ry="382.132" fill="%23F3F5FC"/></g><g filter="url(%23filter3_f_1705_676)"><ellipse cx="610.631" cy="1023.8" rx="507.342" ry="306.835" fill="%23001f3f"/></g><g style="mix-blend-mode:overlay" filter="url(%23filter4_f_1705_676)"><ellipse cx="247.21" cy="-68.3783" rx="1118.45" ry="517.173" transform="rotate(-17.7477 247.21 -68.3783)" fill="black"/></g></g><defs><filter id="filter0_f_1705_676" x="-546.836" y="-425.316" width="2574.64" height="1891.24" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur stdDeviation="212.658" result="effect1_foregroundBlur_1705_676"/></filter><filter id="filter1_f_1705_676" x="631.897" y="103.292" width="1403.55" height="1488.61" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur stdDeviation="145.823" result="effect1_foregroundBlur_1705_676"/></filter><filter id="filter2_f_1705_676" x="258.792" y="297.671" width="1404.17" height="1347.56" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur stdDeviation="145.823" result="effect1_foregroundBlur_1705_676"/></filter><filter id="filter3_f_1705_676" x="-188.357" y="425.317" width="1597.97" height="1196.96" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur stdDeviation="145.823" result="effect1_foregroundBlur_1705_676"/></filter><filter id="filter4_f_1705_676" x="-1121.4" y="-959.119" width="2737.22" height="1781.48" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur stdDeviation="145.823" result="effect1_foregroundBlur_1705_676"/></filter><clipPath id="clip0_1705_676"><rect width="1440" height="960" fill="white"/></clipPath></defs></svg>');
-}
-body.drag-over::after {
-  content: "Drop image to upload";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: white;
-  font-size: 24px;
-  z-index: 9999;
-  pointer-events: none;
-}
-
-/* Show horizontal scrollbar only on hover */
-.scrollbar-x-hover {
-  overflow-x: auto;
-  scrollbar-width: none; /* Firefox: hidden by default */
-  padding-bottom: 4px; /* Ensure content is not covered by scrollbar */
-}
-.scrollbar-x-hover::-webkit-scrollbar {
-  height: 2px;
-  background: transparent;
-  display: none;
-}
-.scrollbar-x-hover:hover {
-  scrollbar-width: thin; /* Firefox: show thin scrollbar on hover */
-}
-.scrollbar-x-hover:hover::-webkit-scrollbar {
-  display: block;
-  background: transparent;
-}
-.scrollbar-x-hover::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb-color);
-  border-radius: 2px;
-}
-
 /* Auto-discover dropdown keyboard highlight.
  * Applied by dropdown keyboard utilities to the row that's currently
  * keyboard-focused inside any open dropdown panel. Mirrors the :hover fill
@@ -836,32 +785,6 @@ body.drag-over::after {
     0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
   --shadow-dropdown-soft:
     0 4px 16px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
-}
-
-/* Native overlay scrollbar for dropdown option lists (Settings > Timezone,
- * table selectors, etc.). In WebKit/Tauri, `scrollbar-width` opts back into
- * the platform scrollbar: it overlays the list without reserving a gutter and
- * auto-hides when scrolling stops. The pseudo rules remain as a fallback for
- * engines that do not support `scrollbar-width`. */
-.dropdown-options-scrollbar {
-  scrollbar-width: thin;
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb-color);
-    border-radius: 3px;
-  }
-
-  &::-webkit-scrollbar-thumb:hover {
-    background: var(--scrollbar-thumb-hover-color);
-  }
 }
 
 /* Generic hover shadow effect */
@@ -946,54 +869,6 @@ body.drag-over::after {
 }
 .ansi-white-bg {
   background-color: var(--ansi-white);
-}
-
-/* ============================================
- * Adaptive Colors for Custom Backgrounds
- * Uses Contrast.js to automatically adjust text/icon colors
- * based on background brightness
- * ============================================ */
-
-/* Base adaptive text class */
-.adaptive-text {
-  transition: color 0.2s ease;
-}
-
-/* Adaptive text variants */
-.adaptive-text-1 {
-  @extend .adaptive-text;
-  color: var(--color-text-1);
-}
-
-.adaptive-text-2 {
-  @extend .adaptive-text;
-  color: var(--color-text-2);
-}
-
-.adaptive-text-3 {
-  @extend .adaptive-text;
-  color: var(--color-text-3);
-}
-
-/* Adaptive icon class */
-.adaptive-icon {
-  transition:
-    filter 0.2s ease,
-    color 0.2s ease;
-}
-
-/* Sidebar-specific adaptive text */
-.sidebar-adaptive-text {
-  @extend .adaptive-text;
-}
-
-/* Dark mode icon invert - for monochrome black icons */
-.dark-mode-icon-invert {
-  transition: filter 0.2s ease;
-}
-
-[data-theme="dark"] .dark-mode-icon-invert {
-  filter: invert(1) brightness(0.9);
 }
 
 /* Simulator compact mode - hides sidebar and reduces padding for multi-task grid */
@@ -1089,37 +964,6 @@ body.drag-over::after {
     pre {
       padding: 0.5em !important;
       margin: 0.5em 0 !important;
-    }
-  }
-}
-
-/* Compact diff styles for multi-task grid view - smaller gutter area */
-.compact-diff {
-  .diff-line {
-    min-height: 20px !important;
-  }
-
-  .diff-line-gutter {
-    width: 18px !important;
-    padding: 0 4px !important;
-    font-size: 10px !important;
-    backdrop-filter: blur(8px);
-  }
-
-  .diff-line-indicator {
-    width: 16px !important;
-    backdrop-filter: blur(8px);
-  }
-
-  .diff-line-content {
-    font-size: 11px !important;
-  }
-
-  /* Ensure context lines have solid background instead of transparent */
-  .diff-line-context {
-    .diff-line-gutter,
-    .diff-line-indicator {
-      background: var(--color-bg-2);
     }
   }
 }

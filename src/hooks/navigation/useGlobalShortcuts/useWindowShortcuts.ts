@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 
 import { createLogger } from "@src/hooks/logger";
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 import {
   isAppQuittingAtom,
   quitConfirmationModalOpenAtom,
@@ -63,31 +64,17 @@ export function useWindowShortcuts() {
     getInstrumentedStore().set(quitConfirmationModalOpenAtom, true);
   }, []);
 
+  const isTauri = isTauriDesktop();
+
+  useTauriListen("native-quit-confirmation-open", openQuitConfirmation, {
+    enabled: isTauri,
+  });
+  useTauriListen("native-quit-confirmation-close", setQuitConfirmationClosed, {
+    enabled: isTauri,
+  });
+
   useEffect(() => {
-    if (!isTauriDesktop()) return;
-
-    let cancelled = false;
-    const unlisteners: Array<() => void> = [];
-
-    const setupListeners = async () => {
-      const { listen } = await import("@tauri-apps/api/event");
-
-      const unlistenStart = await listen(
-        "native-quit-confirmation-open",
-        () => {
-          if (!cancelled) openQuitConfirmation();
-        }
-      );
-      unlisteners.push(unlistenStart);
-
-      const unlistenCancel = await listen(
-        "native-quit-confirmation-close",
-        () => {
-          if (!cancelled) setQuitConfirmationClosed();
-        }
-      );
-      unlisteners.push(unlistenCancel);
-    };
+    if (!isTauri) return;
 
     const handleFocusLoss = () => closeQuitConfirmation();
     const handleVisibilityChange = () => {
@@ -97,16 +84,12 @@ export function useWindowShortcuts() {
     window.addEventListener("blur", handleFocusLoss);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    void setupListeners();
-
     return () => {
-      cancelled = true;
       window.removeEventListener("blur", handleFocusLoss);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      unlisteners.forEach((unlisten) => unlisten());
       closeQuitConfirmation();
     };
-  }, [closeQuitConfirmation, openQuitConfirmation]);
+  }, [closeQuitConfirmation, isTauri]);
 
   const handleHideWindow = useCallback(async () => {
     if (!isTauriDesktop()) return;

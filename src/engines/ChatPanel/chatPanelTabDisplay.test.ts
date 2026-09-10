@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 import type { Session } from "@src/store/session";
 import { WORK_MANAGEMENT_SECTION } from "@src/store/workstation";
 

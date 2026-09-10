@@ -11,7 +11,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { codeStatusBarStateAtom } from "@src/store/ui/workStationAtom";
+import { codeStatusBarStateAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import {
   activeWorkStationFilePathAtom,
   activeWorkStationTabAtom,

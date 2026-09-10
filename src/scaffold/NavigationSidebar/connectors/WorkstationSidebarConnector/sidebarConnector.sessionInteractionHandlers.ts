@@ -10,10 +10,8 @@ import { useCallback } from "react";
 import Message from "@src/components/Message";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import { loadMoreCategory } from "@src/store/session";
-import {
-  CHAT_PANEL_SURFACE_KIND,
-  type ChatPanelNavigateCommand,
-} from "@src/store/ui/chatPanelAtom";
+import { type ChatPanelNavigateCommand } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 import {
   getChatPanelTabIdFromTuiSessionId,
   isChatPanelTuiSessionId,

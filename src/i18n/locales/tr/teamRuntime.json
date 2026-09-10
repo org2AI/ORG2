@@ -6,7 +6,6 @@
     "today": "Bugün",
     "everyone": "Herkes",
     "activeMembers": "Aktif üyeler",
-    "systemsCurrent": "{{total}} sistemin {{current}} tanesi güncel",
     "usageByAgent": "Aracıya göre kullanım",
     "recentSessions": "Son paylaşılan oturumlar",
     "recentLoading": "Paylaşılan oturumlar yükleniyor…",
@@ -22,17 +21,17 @@
     "action": "Giriş yap"
   },
   "noOrgs": {
-    "title": "Henüz bulut organizasyonu yok",
-    "subtitle": "Bir organizasyona katılın veya oluşturun; ekip arkadaşlarınız burada görünecek."
+    "title": "Henüz bulut çalışma alanını yok",
+    "subtitle": "Bir çalışma alanına katılın veya oluşturun; ekip arkadaşlarınız burada görünecek."
   },
   "unsupported": {
     "title": "Arka ucun yükseltilmesi gerekiyor",
-    "subtitle": "Bu organizasyonun bulut arka ucu ekip çalışma zamanı paylaşımını henüz desteklemiyor."
+    "subtitle": "Bu çalışma alanının bulut arka ucu ekip çalışma zamanı paylaşımını henüz desteklemiyor."
   },
   "disabled": {
     "title": "Ekip çalışma zamanı paylaşımı kapalı",
-    "subtitle": "Bir organizasyon yöneticisi bunu organizasyon ayarlarından açabilir.",
-    "adminSubtitle": "Bunu organizasyon ayarlarından açabilirsiniz."
+    "subtitle": "Bir çalışma alanı yöneticisi bunu çalışma alanı ayarlarından açabilir.",
+    "adminSubtitle": "Bunu çalışma alanı ayarlarından açabilirsiniz."
   },
   "empty": {
     "title": "Henüz üye verisi yok",
@@ -72,13 +71,9 @@
     "totalSessions": "Toplam oturum",
     "lastSynced": "Son eşitleme"
   },
-  "selfService": {
-    "hint": "Paylaşım açıkken kendi çalışma zamanınız bu organizasyonla paylaşılır.",
-    "action": "Paylaşımı durdur ve verilerimi kaldır"
-  },
   "orgSettings": {
     "label": "Ekip çalışma zamanı paylaşımı",
-    "help": "Üyelerin makine yükü, kullanım toplamları ve geliştirici profili bu aralıkla organizasyonla paylaşılır. Yalnızca toplu veriler — asla transkriptler, depolar veya başlıklar değil.",
+    "help": "Üyelerin makine yükü, kullanım toplamları ve geliştirici profili bu aralıkla çalışma alanıla paylaşılır. Yalnızca toplu veriler — asla transkriptler, depolar veya başlıklar değil.",
     "memberNote": "Bir yönetici tarafından etkinleştirildi. Aralık: {{interval}}.",
     "off": "Kapalı",
     "interval": {

@@ -27,6 +27,7 @@ import {
 } from "@src/api/http/project/sync";
 import Button from "@src/components/Button";
 import { Message } from "@src/components/Message";
+import PageNotice from "@src/components/PageNotice";
 import StatusDot from "@src/components/StatusDot";
 import { Copy01Icon, HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import { SectionRow } from "@src/modules/shared/layouts/SectionLayout";
@@ -286,29 +287,32 @@ const InstallInfoModal: React.FC<InstallInfoModalProps> = ({
 }) => {
   const { t } = useTranslation("projects");
   return (
-    <div className="mt-3 flex flex-col gap-2 rounded-lg border border-warning-3 bg-warning-1 p-3">
-      <div className="text-[13px] font-semibold text-warning-6">
-        {t("settings.sync.webhook.secretTitle")}
+    <PageNotice
+      type="warning"
+      className="mt-3"
+      title={t("settings.sync.webhook.secretTitle")}
+    >
+      <div className="flex flex-col gap-2">
+        <p>{t("settings.sync.webhook.secretDescription")}</p>
+        <code className="rounded bg-fill-2 px-2 py-1 text-[12px] break-all text-text-1">
+          {info.secret_hex}
+        </code>
+        <div className="flex items-center gap-2">
+          <Button
+            size="mini"
+            icon={
+              <HugeiconsIcon icon={Copy01Icon} data-icon="copy" size={12} />
+            }
+            onClick={onCopySecret}
+          >
+            {t("settings.sync.webhook.copySecret")}
+          </Button>
+          <Button variant="primary" size="mini" onClick={onClose}>
+            {t("settings.sync.webhook.dismissSecret")}
+          </Button>
+        </div>
       </div>
-      <div className="text-[12px] text-text-2">
-        {t("settings.sync.webhook.secretDescription")}
-      </div>
-      <code className="rounded bg-fill-2 px-2 py-1 text-[12px] break-all text-text-1">
-        {info.secret_hex}
-      </code>
-      <div className="flex items-center gap-2">
-        <Button
-          size="mini"
-          icon={<HugeiconsIcon icon={Copy01Icon} data-icon="copy" size={12} />}
-          onClick={onCopySecret}
-        >
-          {t("settings.sync.webhook.copySecret")}
-        </Button>
-        <Button variant="primary" size="mini" onClick={onClose}>
-          {t("settings.sync.webhook.dismissSecret")}
-        </Button>
-      </div>
-    </div>
+    </PageNotice>
   );
 };
 

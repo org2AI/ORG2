@@ -5,7 +5,7 @@ import type { WorkItemData as WorkItemDataPayload } from "@src/api/http/project"
 import { useResizeHandle } from "@src/hooks/ui/useResizeHandle";
 import type {
   AgentDefinition,
-  OrgMember,
+  OrgDefinition,
 } from "@src/modules/MainApp/AgentOrgs/types";
 import {
   PropertiesPanel,
@@ -31,6 +31,7 @@ import type {
 import WorkItemContent from "../WorkItemContent";
 import WorkItemProperties from "../WorkItemProperties";
 import type { WorkItemExternalStatusConfig } from "../WorkItemProperties/types";
+import { routeWorkItemUpdate } from "./hooks/usePendingWorkItemUpdates";
 
 const WORK_ITEM_INFO_PANEL_MIN_WIDTH = 200;
 const WORK_ITEM_INFO_PANEL_MAX_WIDTH = 280;
@@ -48,7 +49,7 @@ interface WorkItemDetailBodyProps {
   availableMembers: Person[];
   externalStatusConfig?: WorkItemExternalStatusConfig;
   availableAgents: AgentDefinition[];
-  availableOrgs: OrgMember[];
+  availableOrgs: OrgDefinition[];
   showTime: boolean;
   repoPath?: string | null;
   projectSlug?: string | null;
@@ -113,8 +114,14 @@ export function WorkItemDetailBody({
         headerVariant="workstation-trail"
       >
         <WorkItemProperties
+          statusOrgId={orgId ?? "personal-org"}
           workItem={displayWorkItem}
-          onUpdate={onUpdateWorkItem}
+          onUpdate={(updates) =>
+            routeWorkItemUpdate(updates, {
+              local: onUpdateWorkItem,
+              immediate: onUpdateWorkItemImmediate,
+            })
+          }
           availableProjects={availableProjects}
           availableMilestones={availableMilestones}
           availableLabels={availableLabels}

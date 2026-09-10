@@ -5,13 +5,13 @@
  * JS/TS are loaded synchronously (always bundled), other languages are lazy-loaded.
  */
 import { Extension } from "@codemirror/state";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { getLanguageKey } from "../../shared/languageDetection";
 import {
   getLanguageExtensionSync,
-  getLanguageKey,
   loadLanguageExtension,
-} from "../../shared/languageExtensions";
+} from "../../shared/lazyLanguageExtensions";
 
 export interface UseLazyLanguageExtensionOptions {
   /** File path for language detection */
@@ -50,24 +50,21 @@ export function useLazyLanguageExtension(
   const [loadedData, setLoadedData] = useState<LoadedExtensionData | null>(
     null
   );
-  const loadingLangKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Skip if no language key or sync extension exists
     if (!langKey || syncExtension) return;
 
-    // Skip if already loading this language
-    if (loadingLangKeyRef.current === langKey) return;
-    loadingLangKeyRef.current = langKey;
-
-    // Lazy load the language extension
-    const currentLangKey = langKey;
-    loadLanguageExtension(currentLangKey).then((ext) => {
-      // Only update if still the same language being loaded
-      if (loadingLangKeyRef.current === currentLangKey && ext) {
-        setLoadedData({ langKey: currentLangKey, extension: ext });
+    // Each effect owns its completion, including StrictMode replay and A → B → A.
+    let active = true;
+    loadLanguageExtension(langKey).then((ext) => {
+      if (active && ext) {
+        setLoadedData({ langKey, extension: ext });
       }
     });
+    return () => {
+      active = false;
+    };
   }, [langKey, syncExtension]);
 
   // Only use async extension if it matches the current language key

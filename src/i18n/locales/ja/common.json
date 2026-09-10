@@ -7,20 +7,22 @@
     "allRead": "すべて確認済み",
     "loadMore": "さらに読み込む",
     "filters": {
-      "all": "すべて",
       "mentions": "メンション",
       "assigned": "自分の担当"
     },
     "sections": {
       "reviewRequested": "レビュー依頼",
-      "authoredByMe": "自分が作成"
+      "authoredByMe": "自分が作成",
+      "updates": "更新"
     },
     "status": {
       "read": "既読",
       "unread": "未読"
     },
     "row": {
-      "ariaLabel": "{{title}}、{{status}}"
+      "ariaLabel": "{{title}}、{{status}}",
+      "issueSource": "{{repository}} の issue",
+      "issueSourceFallback": "Issue"
     },
     "empty": {
       "title": "まだ何もありません",
@@ -38,6 +40,10 @@
       "noResults": {
         "title": "一致する項目がありません",
         "subtitle": "「{{query}}」に一致する項目はありません。"
+      },
+      "archived": {
+        "title": "アーカイブ済みの項目はありません",
+        "subtitle": "アーカイブした項目がここに表示されます。"
       }
     },
     "loading": "チーム受信トレイを読み込んでいます…",
@@ -87,7 +93,18 @@
       "identityUnavailable": "チームでの本人確認ができませんでした。返信する前にプロジェクトのプロフィールを確認してください。",
       "rowPending": "{{name}} から · 返信待ち",
       "rowAccepted": "引き継ぎ受諾済み · {{status}} · {{priority}}",
-      "rowReturned": "{{name}} が差し戻し · {{status}} · {{priority}}"
+      "rowReturned": "{{name}} が差し戻し · {{status}} · {{priority}}",
+      "destination": "送信先",
+      "chooseDestination": "送信先を選択",
+      "cloudDestination": "{{name}} · チーム受信トレイ",
+      "todoCount_one": "To-do {{count}} 件",
+      "validation": {
+        "title_required": "作業項目のタイトルを入力してください。",
+        "project_required": "送信先を選択してください。",
+        "project_unavailable": "この送信先は利用できなくなりました。別の送信先を選択してください。",
+        "recipient_required": "受信者を選択してください。",
+        "recipient_unavailable": "この受信者は利用できなくなりました。別の受信者を選択してください。"
+      }
     },
     "errors": {
       "loadTitle": "チーム受信トレイを読み込めませんでした",
@@ -103,20 +120,26 @@
       "pullRequestsPartialLoadHelp": "利用可能な項目は引き続き表示されます。更新して不足している pull request の再読み込みを試してください",
       "workItemContext": "一部のプロジェクト情報が利用できません。作業項目は引き続き使用できます。",
       "workItemLoad": "この作業項目を読み込めませんでした。再試行してください。",
+      "githubIssueLoad": "この作業項目の GitHub issue を読み込めませんでした。ローカルの作業項目情報は引き続き表示されます。",
       "workItemUpdate": "作業項目への最新の変更を保存できませんでした。再試行してください。",
-      "githubIssueLoad": "この作業項目の GitHub issue を読み込めませんでした。ローカルの作業項目情報は引き続き表示されます。"
+      "archive": "この項目をアーカイブできませんでした。再試行してください。",
+      "unarchive": "この項目を復元できませんでした。再試行してください。",
+      "mutePreferences": "通知カテゴリを更新できませんでした。再試行してください。"
     },
     "detail": {
       "assignedSubtitle": "割り当てられた作業項目",
       "standaloneProject": "単独",
       "mentionSubtitle": "コメントでメンションされました",
       "mentionedYou": "があなたをメンションしました",
-      "threadComments_other": "このスレッドには {{count}} 件のコメントがあります"
+      "threadComments_other": "このスレッドには {{count}} 件のコメントがあります",
+      "threadComments_one": "このスレッドには {{count}} 件のコメントがあります"
     },
     "actions": {
       "markRead": "既読にする",
       "markUnread": "未読にする",
-      "openWorkItem": "作業項目を開く"
+      "openWorkItem": "作業項目を開く",
+      "archive": "アーカイブ",
+      "unarchive": "受信トレイに戻す"
     },
     "workItemStatus": {
       "backlog": "バックログ",
@@ -133,6 +156,26 @@
       "medium": "中",
       "high": "高",
       "urgent": "緊急"
+    },
+    "notifications": {
+      "assignmentTitle": "新しい作業項目が割り当てられました",
+      "mentionTitle": "{{name}} があなたをメンションしました",
+      "handoffTitle": "{{name}} からの引き継ぎ",
+      "multipleTitle": "チーム受信トレイに {{count}} 件の新しい更新",
+      "multipleBody": "チーム受信トレイを開いて割り当てとメンションを確認してください。"
+    },
+    "mute": {
+      "title": "更新カテゴリをミュート"
+    },
+    "events": {
+      "mention": "コメントでメンションされました",
+      "discussion_updated": "ディスカッションが更新されました",
+      "run_failed": "実行が失敗しました",
+      "status_changed": "ステータスが変更されました",
+      "assignee_changed": "担当者が変更されました",
+      "priority_changed": "優先度が変更されました",
+      "dates_changed": "日付が変更されました",
+      "child_completed": "子作業項目が完了しました"
     }
   },
   "windowChrome": {
@@ -160,7 +203,7 @@
       "commandPalette": "コマンドパレット",
       "goToFile": "ファイルに移動...",
       "selectModel": "モデルを選択...",
-      "switchWorkspace": "ワークスペースを切り替え...",
+      "switchWorkspace": "作業ディレクトリを切り替え...",
       "switchBranch": "ブランチを切り替え...",
       "switchRunningLocation": "実行場所を切り替え...",
       "settings": "設定...",
@@ -183,26 +226,25 @@
     "replyEmpty": "返信を入力してください",
     "sessionNotFound": "セッションが見つかりません",
     "answerSubmitted": "回答を送信しました",
-    "answerFailed": "回答の送信に失敗しました。もう一度お試しください。",
     "replyError": "返信の送信中にエラーが発生しました",
     "questionIgnored": "質問を無視しました",
     "addedAsContext": "{{name}} をコンテキストに追加しました",
     "addedFilesAsContext": "{{count}} 個のファイルをコンテキストに追加しました",
+    "chooseExecutionAgentAi": "AI で作成する前に担当エージェントを選択してください。",
+    "autoExecuteRequiresExecutionAgent": "自動実行には担当エージェントが必要です。",
     "openSessionBeforeLinking": "作業項目をリンクする前にセッションを開いてください。",
     "sessionLinkedToWorkItem": "セッションを作業項目にリンクしました。",
     "sessionLinkFailed": "セッションのリンクに失敗しました：{{message}}",
-    "chooseFolderNewWorkspace": "ワークスペースを作成するフォルダーを選択",
-    "chooseExistingWorkspace": "既存のワークスペースを選択",
+    "chooseFolderNewWorkspace": "作業ディレクトリの親フォルダーを選択",
+    "chooseExistingWorkspace": "既存の作業ディレクトリを選択",
     "selectDirectoryFailed": "ディレクトリの選択に失敗しました",
-    "workspaceCreated": "ワークスペースを作成しました",
-    "workspaceCreateFailed": "ワークスペースの作成に失敗しました",
-    "workspaceImported": "ワークスペースをインポートしました",
-    "workspaceImportFailed": "ワークスペースのインポートに失敗しました",
+    "workspaceCreated": "作業ディレクトリを作成しました",
+    "workspaceCreateFailed": "作業ディレクトリの作成に失敗しました",
+    "workspaceImported": "作業ディレクトリをインポートしました",
+    "workspaceImportFailed": "作業ディレクトリのインポートに失敗しました",
     "chooseFolderCloneRepo": "リポジトリをクローンするフォルダーを選択",
     "repositoryCloned": "リポジトリをクローンしました",
-    "repositoryCloneFailed": "リポジトリのクローンに失敗しました",
-    "chooseExecutionAgentAi": "AI で作成する前に担当エージェントを選択してください。",
-    "autoExecuteRequiresExecutionAgent": "自動実行には担当エージェントが必要です。"
+    "repositoryCloneFailed": "リポジトリのクローンに失敗しました"
   },
   "previews": {
     "noCanvasAvailable": "キャンバスがありません",
@@ -252,12 +294,10 @@
     "save": "保存",
     "cancel": "キャンセル",
     "delete": "削除",
-    "deleteCount": "削除 ({{count}})",
     "removeFromOrgii": "ORGII から削除",
     "removeFromOrgiiCount": "ORGII から削除 ({{count}})",
     "edit": "編集",
     "write": "書き込み",
-    "reply": "返信",
     "close": "閉じる",
     "expand": "展開",
     "confirm": "確認",
@@ -267,16 +307,13 @@
     "add": "追加",
     "remove": "削除",
     "create": "作成",
-    "update": "更新",
     "submit": "送信",
     "loadMore": "もっと読み込む",
-    "load": "読み込む",
     "back": "戻る",
     "next": "次へ",
     "previous": "前へ",
     "done": "完了",
     "retry": "再試行",
-    "regenerate": "再生成",
     "refresh": "更新",
     "rescan": "再スキャン",
     "reload": "再読み込み",
@@ -284,35 +321,20 @@
     "reviewPreviousFile": "前のファイルをレビュー",
     "copy": "コピー",
     "paste": "貼り付け",
-    "cut": "切り取り",
     "undo": "元に戻す",
-    "redo": "やり直し",
-    "keep": "保持",
-    "reject": "拒否",
-    "accept": "承認",
     "review": "レビュー",
     "undoAll": "すべて元に戻す",
-    "redoAll": "すべてやり直す",
-    "keepAll": "すべて保持",
-    "select": "選択",
     "selectAll": "すべて選択",
     "unselectAll": "すべて選択解除",
     "clear": "クリア",
     "open": "開く",
     "view": "表示",
-    "openInApp": "App で開く",
     "openToRight": "右側で開く",
-    "new": "新規",
     "rename": "名前を変更",
     "duplicate": "複製",
-    "export": "エクスポート",
-    "import": "インポート",
     "download": "ダウンロード",
     "upload": "アップロード",
-    "insertImage": "画像を挿入",
     "browse": "参照",
-    "discover": "探索",
-    "discoverTests": "テストを検出",
     "newFile": "新規ファイル",
     "newFolder": "新規フォルダ",
     "copyPath": "パスをコピー",
@@ -332,16 +354,9 @@
     "configure": "設定",
     "manage": "管理",
     "uninstall": "アンインストール",
-    "connect": "接続",
-    "customize": "カスタマイズ",
-    "goToSettings": "設定へ移動",
     "restart": "再起動",
     "switchToStation": "{{station}}に切り替え",
-    "rate": "評価",
-    "openInTab": "タブで開く",
-    "insert": "挿入",
     "discard": "破棄",
-    "disable": "無効にする",
     "run": "実行",
     "clone": "クローン",
     "send": "送信",
@@ -353,20 +368,12 @@
     "filter": "フィルター",
     "loading": "読み込み中...",
     "replace": "置換",
-    "publish": "Publish",
-    "acceptAll": "すべて承認",
-    "rejectAll": "すべて拒否",
-    "install": "インストール",
-    "expandAll": "すべて展開",
     "collapseAll": "すべて折りたたむ",
     "viewOnGitHub": "GitHub で表示",
     "selectRepository": "リポジトリを選択",
     "all": "すべて",
     "collapse": "折りたたむ",
     "toggle": "スレッドを開閉",
-    "addRepo": "リポジトリを追加",
-    "addFolder": "フォルダを追加",
-    "resume": "再開",
     "yes": "はい",
     "more": "その他の操作",
     "advanced": "詳細設定",
@@ -374,22 +381,20 @@
     "moreSettings": "その他の設定",
     "sort": "並べ替え",
     "openFolder": "フォルダを開く",
-    "addWorkspace": "Workspace を追加",
-    "openSpotlight": "Spotlight を開く",
-    "openWorkspace": "Workspace を開く",
-    "skipThisVersion": "このバージョンをスキップ",
+    "addWorkspace": "作業ディレクトリを追加",
+    "openWorkspace": "作業ディレクトリを開く",
     "later": "後で",
     "link": "リンク",
     "copyName": "名前をコピー",
     "switchMethod": "方法を切り替える",
     "dismiss": "閉じる",
-    "comingSoon": "近日公開",
     "clearSelection": "選択をクリア",
     "uiSettings": "UI 設定",
-    "clearAll": "すべてクリア"
-  },
-  "refreshToast": {
-    "successName": "{{name}} を更新しました"
+    "clearAll": "すべてクリア",
+    "openOnGitHub": "GitHub で開く",
+    "createPullRequest": "Pull request を作成",
+    "expandView": "ビューを展開",
+    "restoreSplitView": "分割ビューに戻す"
   },
   "status": {
     "yes": "はい",
@@ -465,18 +470,13 @@
     "lastPage": "最後のページ",
     "selectPage": "ページを選択",
     "title": "ページネーション",
-    "roundOf": "Round {{current}} / {{total}}",
     "round": "Round {{current}}",
     "previousRound": "前のRound",
     "nextRound": "次のRound",
-    "latestRound": "最新のRound",
-    "searchRounds": "Round を検索"
+    "latestRound": "最新のRound"
   },
   "optional": "任意",
   "common": {
-    "yes": "はい",
-    "no": "いいえ",
-    "ok": "OK",
     "on": "オン",
     "off": "オフ",
     "default": "デフォルト",
@@ -485,32 +485,20 @@
     "s": "s",
     "multiplier": "倍",
     "spaces": "スペース",
-    "font": "フォント",
     "name": "名前",
     "description": "説明",
     "type": "タイプ",
     "date": "日付",
     "time": "時刻",
-    "size": "サイズ",
-    "path": "パス",
     "status": "ステータス",
     "actions": "アクション",
-    "options": "オプション",
     "details": "詳細",
     "more": "もっと見る",
-    "less": "折りたたむ",
-    "all": "すべて",
     "none": "なし",
-    "selected": "選択済み",
-    "items": "件",
-    "item": "件",
-    "empty": "空",
     "noResults": "結果が見つかりません",
     "searchPlaceholder": "検索...",
     "properties": "プロパティ",
     "overview": "概要",
-    "appearance": "外観",
-    "theme": "テーマ",
     "timezone": "タイムゾーン",
     "language": "言語",
     "preview": "プレビュー",
@@ -518,17 +506,11 @@
     "sourceCode": "ソースコード",
     "raw": "未加工",
     "table": "テーブル",
-    "filter": "フィルター",
-    "filters": "フィルター",
     "selectDate": "日付を選択",
-    "files": "ファイル",
-    "required": "必須",
-    "pending": "保留",
     "error": "エラー",
     "pid": "PID",
     "shell": "Shell",
-    "source": "ソース",
-    "filterByLanguage": "言語でフィルター"
+    "source": "ソース"
   },
   "labels": {
     "accounts": "アカウント",
@@ -646,19 +628,36 @@
     "noAppliedCommit": "No linked commit yet",
     "noSessionsForFile": "No sessions found for this file",
     "committedRate": "コミット済み",
-    "email": "メール"
+    "email": "メール",
+    "noPullRequestForBranch": "このブランチにはまだ pull request がありません。",
+    "creatingPullRequest": "作成中…",
+    "failedToLoadPullRequest": "pull request を読み込めませんでした",
+    "noCommitsInPullRequest": "この pull request にはコミットがありません",
+    "prStatus": {
+      "open": "オープン",
+      "merged": "マージ済み",
+      "closed": "クローズ",
+      "draft": "下書き",
+      "unknown": "不明"
+    },
+    "sendingNow": "送信中…",
+    "issues": "Issues",
+    "noIssues": "issue はありません",
+    "openIssues": "オープン",
+    "closedIssues": "クローズ",
+    "issueComments": "{{count}} 件のコメント",
+    "issueComments_one": "1 件のコメント",
+    "issueComments_other": "{{count}} 件のコメント",
+    "tokens": "トークン",
+    "actions": "操作",
+    "all": "すべて"
   },
   "searchModes": {},
   "tabs": {
     "terminal": "Terminal",
-    "problems": "問題",
-    "output": "出力",
-    "testResults": "テスト結果",
     "explorer": "エクスプローラー",
     "search": "検索",
     "sourceControl": "ソース管理",
-    "testing": "テスト",
-    "extensions": "拡張機能",
     "sessions": "Session",
     "myTabs": "自分のタブ（{{count}}）",
     "design": "デザイン",
@@ -667,23 +666,12 @@
     "console": "コンソール",
     "network": "ネットワーク",
     "css": "CSS",
-    "source": "ソース",
-    "connections": "接続",
-    "queryHistory": "クエリ履歴",
-    "table": "テーブル",
-    "sql": "SQL",
-    "tools": "ツール",
-    "overview": "概要"
+    "source": "ソース"
   },
   "errors": {
     "generic": "問題が発生しました",
-    "networkError": "ネットワークエラー。接続を確認してください。",
     "notFound": "見つかりません",
-    "unauthorized": "認証が必要です。ログインしてください。",
     "forbidden": "アクセスが拒否されました",
-    "serverError": "サーバーエラー。後でもう一度お試しください。",
-    "timeout": "リクエストがタイムアウトしました",
-    "validation": "検証エラー",
     "pageNotFound": "ページが見つかりません",
     "failedToLoadComponent": "コンポーネントの読み込みに失敗しました",
     "networkErrorShort": "ネットワークエラー",
@@ -692,13 +680,11 @@
     "couldntConnect": "サーバーに接続できませんでした。インターネット接続を確認してください。",
     "failedToLoadProperly": "コンポーネントを正しく読み込めませんでした。",
     "requiredFileCouldntLoad": "必要なファイルを読み込めませんでした。再起動で通常解決します。",
-    "failedToRenderActivity": "アクティビティのレンダリングに失敗しました",
-    "failedToRenderEvent": "イベントのレンダリングに失敗しました",
     "unknown": "不明なエラー",
     "agentRequestFailed": "Agent リクエスト失敗",
     "codexLoginExpired": "Codex のサインイン期限が切れました",
     "codexLoginExpiredDescription": "このアカウントを修復するには Codex に再接続してください。新しいサインインを保存すると、このセッションに戻ります",
-    "reconnectCodex": "Codex に再接続",
+    "reconnectCodex": "再接続",
     "technicalDetails": "技術的な詳細",
     "failedToCopy": "コピーに失敗しました",
     "api": {
@@ -739,14 +725,14 @@
       },
       "workflow": "ワークフローサービスは一時的に利用できません。後で再試行してください。"
     },
-    "imageUploadFailed": "画像のアップロードに失敗しました",
-    "imageTooLarge": "画像が大きすぎます",
     "failedToLoad": "読み込みに失敗しました",
-    "unknownError": "不明なエラーが発生しました"
+    "unknownError": "不明なエラーが発生しました",
+    "componentLoadingFailed": "コンポーネントの読み込みに失敗しました",
+    "noLocalPath": "ローカルパスがありません",
+    "openInFinderFailed": "Finder で開けませんでした"
   },
   "confirmation": {
     "delete": "本当に削除しますか？",
-    "discard": "変更を破棄しますか？",
     "removeTitle": "「{{name}}」を ORGII から削除しますか？",
     "removeMessage": "ORGII との関連付けのみを削除します。ディスクからは何も削除されません。",
     "deleteWorkspaceTitle": "Workspace「{{name}}」を削除しますか？",
@@ -764,32 +750,14 @@
     "unsavedCloseMultipleMessage": "{{count}} 個のファイルに未保存の変更があります。それでも閉じますか？",
     "undoAllChanges": "Agent が行った {{count}} 件のファイル変更をすべて元に戻します。この操作は取り消せません。続行しますか？"
   },
-  "dateRange": {
-    "1d": "1日",
-    "7d": "7日",
-    "1w": "1週",
-    "30d": "30日",
-    "1m": "1ヶ月",
-    "3m": "3ヶ月",
-    "1y": "1年"
-  },
   "filters": {
     "all": "すべて",
     "source": "ソース",
-    "local": "ローカル",
     "member": "メンバー",
-    "model": "モデル",
-    "custom": "カスタム",
     "tokenMarket": "Token Market",
-    "market": "マーケット",
-    "agentOrAgentOrg": "Session agent",
     "searchAgentOrOrg": "Agent または Agent チームを選択...",
-    "tplSelectAgentOrOrg": "{agent} を選択",
-    "cliAgent": "CLI Agent",
     "searchModel": "モデルを検索...",
-    "searchModelFor": "{{target}} のモデルを選択...",
-    "tplSelectModel": "{model} を選択",
-    "tplSelectModelFor": "{{target}} の {model} を選択"
+    "searchModelFor": "{{target}} のモデルを選択..."
   },
   "prerequisite": {
     "missingTitle": "前提条件が不足しています",
@@ -799,29 +767,14 @@
     "agent": "Agent",
     "you": "あなた",
     "session": "Session",
-    "agentSession": "Agent Session",
     "workStation": "Workstation",
-    "osAgent": "OS Agent",
-    "coding": "Coding",
     "agentTerminal": "Agent ターミナル",
     "myStation": "自分のステーション",
     "agentStation": "Agent のステーション",
-    "projectManager": "Project マネージャー",
-    "myTerminal": "My Terminal",
-    "myTerminalInfo": "My Terminal 情報"
-  },
-  "pageSearch": {
-    "placeholder": "ページを検索...",
-    "tooltip": "ページを検索",
-    "categories": {
-      "workspace": "ワークスペース",
-      "tools": "ツール",
-      "market": "マーケット"
-    }
+    "myTerminal": "My Terminal"
   },
   "tooltips": {
     "closeEsc": "閉じる (Esc)",
-    "hidePanel": "パネルを非表示 (⌘J)",
     "refreshTree": "ツリーを更新",
     "copy": "コピー",
     "previous": "前へ",
@@ -832,7 +785,7 @@
     "openInEditorTab": "エディタタブで開く",
     "openFile": "ファイルを開く",
     "openNativeDevTools": "ネイティブブラウザの開発者ツールを開く",
-    "captureScreenshot": "ページをスクリーンショットしてチャットに添付",
+    "captureScreenshot": "スクリーンショット",
     "enableInspectMode": "要素を検証",
     "disableInspectMode": "検証を終了 (Esc)",
     "killTerminal": "Terminal を終了",
@@ -859,24 +812,20 @@
     "searchInOpenEditors": "開いているエディタのみで検索",
     "replace": "置換 (Ctrl+Shift+1)",
     "replaceAll": "すべて置換 (Ctrl+Alt+Enter)",
-    "uninstall": "アンインストール",
-    "dismiss": "無視",
     "moreActions": "その他の操作...",
     "formatSql": "SQL をフォーマット",
     "queryHistory": "クエリ履歴",
-    "executeQuery": "クエリを実行 (Ctrl+Enter)",
+    "executeQuery": "クエリを実行 ({{shortcut}})",
     "startVoiceInput": "音声入力を開始",
     "cancelRecording": "録音をキャンセル",
     "stopAndTranscribe": "停止して文字起こし",
     "htmlPreview": "HTML プレビュー",
     "manual": "手動",
-    "scrollLeft": "タブを左にスクロール",
     "toggleFileFilters": "ファイルフィルターを切り替え",
     "closeDevTools": "開発者ツールを閉じる",
     "movePanelToRight": "パネルを右側に移動",
     "movePanelToBottom": "パネルを下部に移動",
     "domTree": "DOM ツリー",
-    "clearUiIndex": "コンポーネントインデックスをクリア",
     "closeSession": "Sessionを閉じる",
     "clearNetworkLogs": "ネットワークログをクリア",
     "clearConsole": "コンソールをクリア",
@@ -892,6 +841,8 @@
     "copyValueRightClickForPath": "クリックで値をコピー、右クリックでパスをコピー"
   },
   "placeholders": {
+    "enterFileName": "ファイル名を入力",
+    "enterFolderName": "フォルダー名を入力",
     "loading": "読み込み中...",
     "selectToViewConfig": "{{type}} を選択して表示または設定",
     "selectToViewConfigSubtitle": "左のリストから項目を選んでください",
@@ -911,7 +862,6 @@
     "failedToParseSymbols": "シンボルの解析に失敗しました",
     "outlineParseError": "このファイルのアウトラインは利用できません",
     "runQueryToSeeResults": "結果を表示するにはクエリを実行してください",
-    "noProjectsFound": "Project が見つかりません",
     "failedToLoad": "読み込みに失敗しました",
     "noItems": "表示する項目がありません",
     "nothingHereYet": "表示する項目がありません",
@@ -942,7 +892,6 @@
     "chatHistoryAgentWorkingHint": "最初の応答でメッセージが表示されます。それまではツールバーがアイドル表示になる場合があります",
     "pleaseSelect": "選択してください",
     "noSessionsFound": "Sessionが見つかりません",
-    "noBrowsingHistory": "閲覧履歴がありません",
     "typeToSearchFiles": "ファイルを検索するには入力...",
     "selectFileToViewChanges": "ファイルを選択して変更を表示",
     "failedToLoadHistory": "履歴の読み込みに失敗しました",
@@ -980,16 +929,9 @@
     "noStyles": "スタイルがありません",
     "noDomTree": "DOM ツリーがありません",
     "noSourceDetected": "ソースコードが検出されませんでした",
-    "notIndexed": "まだ Index",
-    "indexedInspectElement": "インデックス済み、要素を検査してください",
-    "buildIndexToStart": "インデックスを構築して開始",
     "noMatchingFilesFound": "一致するファイルが見つかりません",
-    "scanning": "スキャン中...",
-    "retryToScanAgain": "再試行してスキャン",
-    "noTokensFound": "Token が見つかりません",
-    "addCssVariables": "プロジェクトに CSS 変数を追加してください",
-    "noWorkspaceExplorerTitle": "Workspace が開かれていません",
-    "noWorkspaceExplorerSubtitle": "Workspace を開いてファイルを表示",
+    "noWorkspaceExplorerTitle": "作業ディレクトリが開かれていません",
+    "noWorkspaceExplorerSubtitle": "作業ディレクトリを開いてファイルを表示",
     "cannotFindRepo": "{{repoName}} が見つかりません",
     "lastSeenAtPath": "最後に確認されたパス: {{path}}",
     "unsupportedFileType": "サポートされていないファイル形式",
@@ -1014,61 +956,45 @@
     "noRepoSelected": "No repository selected",
     "previewUnavailable": "プレビューを利用できません",
     "selectRepositoryFromWorkspace": "ワークスペースのリポジトリを選択",
-    "noData": "データなし"
+    "noData": "データなし",
+    "noResults": "結果なし",
+    "noSessionHistoryForFile": "{{file}} のセッションアクティビティは見つかりません",
+    "noSessionHistory": "セッション履歴はありません"
   },
   "inbox": {
-    "searchPlaceholder": "メッセージを検索...",
-    "channels": {
-      "title": "チャンネル",
-      "git": "Git",
-      "workItems": "作業項目",
-      "promotions": "プロモーション"
-    },
-    "selectChannel": "チャンネルを選択",
-    "noMessages": "メッセージはまだありません",
-    "noMessagesSubtitle": "イベントが発生するとここにメッセージが表示されます",
-    "composerPlaceholder": "メモを書く…",
     "scrollToBottom": "一番下へ",
-    "markAllAsRead": "すべて既読にする",
-    "scrollToUnread": "未読へ移動"
+    "markAllAsRead": "すべて既読にする"
   },
   "placeholderTypes": {
     "mcpServer": "MCP サーバー",
-    "connection": "接続",
-    "policy": "ポリシー",
-    "skill": "skill",
-    "message": "メッセージ"
+    "connection": "接続"
   },
   "workstation": {
     "expandReplace": "置換を展開",
     "collapseReplace": "置換を折りたたむ",
     "tooltipRefreshExplorer": "エクスプローラーを更新",
-    "refreshFiles": "ファイルを更新",
-    "deleteSelectedRows": "{{count}} 行を削除",
     "agentBrowser": "Agent Browser",
     "userInControl": "User in control",
     "agentControlling": "Agent controlling",
     "returnToAgent": "Return to Agent",
     "takeOver": "Take Over",
-    "chromeInForeground": "Chrome window is in the foreground — interact directly",
     "chromeWindowOpen": "Chrome ウィンドウが開いています — 直接操作してから Agent に戻ってください",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
     "split": "Split",
-    "reloadFromDiskConfirm": "Reload from disk (will prompt to confirm)",
-    "reloadFromDisk": "Reload from disk",
     "publishingBranch": "Publishing...",
-    "refreshGitStatus": "Refresh git status",
     "notGitInitialized": "Git 未初期化",
-    "notGitInitializedTooltip": "この Workspace にはまだ .git ディレクトリがありません。",
+    "notGitInitializedTooltip": "この作業ディレクトリにはまだ .git ディレクトリがありません。",
     "publishBranchToOrigin": "Publish branch \"{{branch}}\" to origin",
-    "syncWithRemote": "Sync with remote ({{behind}} to pull, {{ahead}} to push)",
     "scanningFiles": "Scanning files...",
-    "branchTooltip": "ブランチ: {{branch}}",
     "branchTooltipSwitching": "ブランチ: {{branch}}（切り替え中…）",
-    "switchWorkspaceTooltip": "Workspace を切り替え",
+    "switchWorkspaceTooltip": "作業ディレクトリを切り替え",
     "switchWorktreeTooltip": "Worktree を切り替え",
     "switchBranchTooltip": "ブランチを切り替え",
+    "switchLocalBranchTooltip": "ローカルブランチを切り替え",
+    "sessionEnvCloud": "クラウド",
+    "sessionEnvLocal": "ローカル",
+    "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Git アクション",
     "switchToSessionRepo": "{{name}} に切り替え",
     "embeddingProgress": "Embedding: {{count}} チャンク処理済み",
@@ -1077,83 +1003,45 @@
     "embeddingLabel": "Embedding",
     "indexingProgress": "インデックス中: {{processed}}/{{total}} ファイル ({{percent}}%)",
     "indexingProgressWithFile": "インデックス中: {{processed}}/{{total}} ファイル ({{percent}}%)\n現在: {{file}}",
-    "languageServices": "Language Services",
     "ports": {
       "workspaceSection": "現在のワークスペース",
       "externalSection": "外部",
-      "tooltip": "ポート: Workspace {{workspace}}、外部 {{external}}",
       "viewPortsTooltip": "使用中のポートを表示",
       "noWorkspacePorts": "Workspace ポートは検出されませんでした",
-      "externalLabel": "外部",
       "unknownProcess": "不明なプロセス",
       "pidLabel": "PID {{pid}}",
       "openInBrowser": "ブラウザで開く",
-      "openAddress": "{{address}} を開く",
       "copyAddress": "アドレスをコピー",
       "stopProcess": "プロセスを停止",
       "searchPlaceholder": "ポートを検索…",
       "noSearchResults": "一致するポートがありません",
+      "openAddress": "{{address}} を開く",
       "rescan": "再スキャン",
       "rescanning": "スキャン中…",
       "rescanTooltip": "待ち受けポートを再検出します",
       "lastScannedAt": "最終スキャン {{time}}"
     },
-    "noLanguageServicesActive": "No language services active",
     "linesSelected": "{{count}} lines selected",
     "charsSelected": "{{count}} selected",
     "nLines": "{{count}} lines",
-    "blameOn": "Blame: On",
-    "blameOff": "Blame: Off",
     "hideFilter": "Hide filter",
     "filterFilesAction": "Filter files",
     "switchToTreeView": "Switch to tree view",
     "switchToListView": "Switch to list view",
     "discardChanges": "Discard Changes",
-    "stagedChangesCount": "{{count}} Staged Changes",
-    "changesCount": "{{count}} Changes",
-    "acceptAllMergeChanges": "Accept All Merge Changes (Stage resolved files)",
     "toOrigin": "to origin",
     "discardChangesConfirm": "Discard changes to {{files}}? This cannot be undone.",
     "discardAllUnstagedConfirm": "Discard all unstaged changes? This cannot be undone.",
     "addedToAgent": "{{fileName}} added to agent",
-    "privateBrowsing": "Private",
-    "standardBrowsing": "標準",
-    "openNativeDevTools": "Open native browser DevTools (Safari Inspector / Edge DevTools)",
-    "extractingProps": "Extracting props...",
-    "initializingPreview": "Initializing preview...",
-    "buildUiIndex": "Build component index",
     "componentLabel": "Component",
     "definitionLabel": "Definition",
     "findSource": "Find Source",
     "preserveConsole": "Preserve",
     "consoleShowStackTrace": "スタックトレースを表示",
     "consoleHideStackTrace": "スタックトレースを非表示",
-    "loadingData": "Loading data...",
-    "noData": "No data",
-    "tokenName": "token-name",
-    "manualMode": "Manual",
-    "position": "Position",
-    "flow": "Flow",
-    "size": "Size",
-    "paddingLabel": "Padding",
-    "marginLabel": "Margin",
-    "boxModel": "Box Model",
-    "opacityLabel": "Opacity",
-    "cornersLabel": "Corners",
-    "textLabel": "Text",
-    "weightLabel": "Weight",
-    "lineLabel": "Line",
-    "borderLabel": "Border",
-    "widthLabel": "Width",
-    "heightLabel": "Height",
-    "colorLabel": "Color",
-    "shadowAndBlur": "Shadow & Blur",
-    "blurLabel": "Blur",
-    "spreadLabel": "Spread",
     "styleEditsCount_one": "{{count}} 件の編集",
     "styleEditsCount_other": "{{count}} 件の編集",
     "sendStyleEdits": "送信",
-    "addToChat": "チャットに追加",
     "browserCore": {
       "desktopOnlyTitle": "ブラウザはデスクトップアプリでのみ利用できます",
       "desktopOnlyBody": "埋め込みブラウザは Tauri デスクトップアプリでのみ利用できます。",
@@ -1161,32 +1049,32 @@
       "debugTauriInternals": "__TAURI_INTERNALS__: {{value}}",
       "debugTauriIpc": "__TAURI_IPC__: {{value}}",
       "debugTauri": "__TAURI__: {{value}}",
-      "privateBrowsingLabel": "プライベートブラウジング:",
       "enterUrlToStart": "URL を入力して開始",
       "privateBrowsingEmptyTitle": "プライベートブラウジング: URL を入力して開始",
       "simulatorBrowserNotice": "このブラウザはセッション再生専用です。継続的な閲覧はメインアプリのブラウザ（ツール → ブラウザ）を使用してください。",
       "tlsDevNote": "注: GitHub など一部の HTTPS サイトは開発モードで証明書検証により TLS エラーが出ることがあります。HTTP や example.com などのシンプルな HTTPS を試してください。",
       "siteUnreachableTitle": "このサイトにアクセスできません",
-      "errorTls": "このサイトへの接続は安全ではありません。開発モードでは HTTPS サイトでよく発生します。",
-      "errorTimeout": "接続がタイムアウトしました。サーバーの応答に時間がかかりすぎました。",
-      "errorDns": "サーバーの DNS アドレスが見つかりません。URL の誤りを確認してください。",
-      "errorRefused": "サーバーが接続を拒否しました。",
-      "errorGeneric": "サーバーに接続できません。サイトがダウンしているか、ネットワークの問題がある可能性があります。",
-      "technicalDetails": "技術的な詳細",
-      "tryHeading": "試す:",
-      "tryCheckConnection": "インターネット接続を確認する",
-      "tryVerifyUrl": "URL が正しいか確認する",
-      "tryAgainLater": "後でもう一度試す",
       "webviewHiddenTitle": "Web ビューを一時的に非表示",
-      "webviewHiddenBody": "メニューまたはダイアログを閉じると再表示されます。"
+      "webviewHiddenBody": "メニューまたはダイアログを閉じると再表示されます。",
+      "embeddedFallbackTitle": "このサイトは埋め込みブラウザでは動作しない可能性があります",
+      "embeddedFallbackBody": "一部のサイトはアプリの WebView 内での表示をブロックしたり、正しく描画できなかったりします。ページが空白のままの場合はシステムブラウザで開いてください。",
+      "currentUrl": "現在の URL"
     },
     "unsavedChangesTitle": "Unsaved Changes",
-    "prkPlaceholder": "PRJ",
-    "gitSyncMenuTitle": "Git sync actions",
-    "switchLocalBranchTooltip": "ローカルブランチを切り替え",
-    "sessionEnvCloud": "クラウド",
-    "sessionEnvLocal": "ローカル",
-    "sessionHarness": "{{name}} Harness"
+    "ci": {
+      "openPullRequest": "GitHub で pull request を開く",
+      "viewDetails": "チェックの詳細を表示",
+      "refresh": "チェックを更新",
+      "refreshing": "更新中…",
+      "lastFetchedAt": "最終取得 {{time}}",
+      "unavailable": "チェックを読み取れませんでした",
+      "sections": {
+        "failed": "失敗",
+        "running": "実行中",
+        "skipped": "スキップ",
+        "passed": "成功"
+      }
+    }
   },
   "git": {
     "loading": "Git ステータスを読み込み中...",
@@ -1227,10 +1115,6 @@
       "compareBranch": "ブランチを比較"
     },
     "rail": {
-      "openTabs": "開いているタブ",
-      "closeItem": "{{label}} を閉じる",
-      "expand": "ワークステーション情報を展開",
-      "collapse": "ワークステーション情報を折りたたむ",
       "subagents": "subagent",
       "subagentsCount_one": "subagent {{count}}件",
       "subagentsCount_other": "subagents {{count}}件",
@@ -1239,6 +1123,10 @@
       "subagentPending": "待機中",
       "subagentCompleted": "完了",
       "subagentFailed": "失敗",
+      "openTabs": "開いているタブ",
+      "closeItem": "{{label}} を閉じる",
+      "expand": "ワークステーション情報を展開",
+      "collapse": "ワークステーション情報を折りたたむ",
       "restoreWidth": "元の幅に戻す（{{width}}px）",
       "setMinimumWidth": "現在の幅を最小値に設定（{{width}}px）",
       "widerWidth": "広げる（{{width}}px）",
@@ -1280,40 +1168,11 @@
         "approved": "変更を承認しました",
         "changesRequested": "変更をリクエストしました",
         "reviewDismissed": "レビューを却下しました",
-        "reviewed": "レビューしました"
+        "reviewed": "レビューしました",
+        "appendedSession": "セッションを追加しました"
       },
       "summary": {
         "label": "pull request の概要"
-      },
-      "flow": {
-        "wantsToMergeCommitsInto_one": "が {{count}} 件のコミットをマージしようとしています:",
-        "wantsToMergeCommitsInto_other": "が {{count}} 件のコミットをマージしようとしています:",
-        "mergedCommitsInto_one": "が {{count}} 件のコミットをマージしました:",
-        "mergedCommitsInto_other": "が {{count}} 件のコミットをマージしました:",
-        "from": "←",
-        "copyHeadBranch": "ブランチ名をコピー",
-        "branchCopied": "ブランチ名をコピーしました"
-      },
-      "sidebar": {
-        "reviewers": "レビュアー",
-        "requestReviewers": "レビュアーをリクエスト",
-        "awaitingReview": "レビュー待ち",
-        "noReviews": "レビューはありません",
-        "assignees": "担当者",
-        "noAssignees": "担当者なし",
-        "labels": "ラベル",
-        "noLabels": "まだありません",
-        "actions": "操作",
-        "editAssignees": "担当者を編集",
-        "searchAssignees": "ユーザーを検索",
-        "noAssigneeCandidates": "利用可能なユーザーがいません",
-        "assigneesLoadFailed": "ユーザーを読み込めませんでした",
-        "assigneesUpdated": "担当者を更新しました",
-        "editLabels": "ラベルを編集",
-        "searchLabels": "ラベルを検索",
-        "noLabelCandidates": "利用可能なラベルがありません",
-        "labelsLoadFailed": "ラベルを読み込めませんでした",
-        "labelsUpdated": "ラベルを更新しました"
       },
       "tabs": {
         "conversation": "会話",
@@ -1334,6 +1193,35 @@
         "noneShort": "CI なし",
         "unavailableShort": "CI を利用できません",
         "branchStatus": "Pull request #{{number}} CI：{{status}}"
+      },
+      "mergeStatus": {
+        "label": "マージ状態",
+        "viewChecks": "すべてのチェックを表示",
+        "ableToMerge": "マージの準備完了",
+        "blocked": "マージがブロックされています",
+        "conflicts": "マージ競合",
+        "queued": "マージキューに登録済み",
+        "draft": "下書き — まだマージできません",
+        "merged": "プルリクエストはマージ済み",
+        "closed": "プルリクエストはクローズ済み",
+        "checking": "マージ可否を確認中…",
+        "checksPassed": "すべてのチェックに合格しました",
+        "checksFailing_one": "{{count}} 件のチェックが失敗",
+        "checksFailing_other": "{{count}} 件のチェックが失敗",
+        "checksRunning_one": "{{count}} 件のチェックを実行中",
+        "checksRunning_other": "{{count}} 件のチェックを実行中",
+        "checksSkipped_one": "{{count}} 件のチェックをスキップ",
+        "checksSkipped_other": "{{count}} 件のチェックをスキップ",
+        "checksNone": "チェックは報告されていません",
+        "reviewApproved": "変更が承認されました",
+        "reviewRequired": "レビューが必要",
+        "reviewChangesRequested": "変更がリクエストされました",
+        "noConflicts": "ベースブランチと競合はありません",
+        "hasConflicts": "ベースブランチと競合しています",
+        "outOfDate": "ベースブランチより古い状態です",
+        "checkingConflicts": "競合を確認中…",
+        "autoMergeEnabled": "自動マージを有効にしました",
+        "inMergeQueue": "マージキューで待機中"
       },
       "commits": {
         "backToList": "すべてのコミット",
@@ -1371,8 +1259,6 @@
         "removedFromQueue": "マージキューから削除しました",
         "autoMergeEnabled": "自動マージを有効にしました",
         "autoMergeDisabled": "自動マージを無効にしました",
-        "convertToDraft": "下書きに戻す",
-        "convertedToDraft": "pull request を下書きに変換しました",
         "confirmCloseTitle": "pull request を閉じますか？",
         "confirmCloseMessage": "pull request は引き続き利用でき、後で再度開くことができます。",
         "closeSuccess": "pull request を閉じました",
@@ -1407,8 +1293,58 @@
           "checksFailed": "マージする前に必須チェックに合格する必要があります",
           "checksPending": "必須チェックを待つか、自動マージを有効にしてください",
           "mergeBlocked": "GitHub から未達成のマージ要件が報告されています"
-        }
-      }
+        },
+        "convertToDraft": "下書きに戻す",
+        "convertedToDraft": "pull request を下書きに変換しました",
+        "markReady": "レビュー可能にする",
+        "markedReady": "pull request をレビュー可能にしました"
+      },
+      "flow": {
+        "wantsToMergeCommitsInto_one": "が {{count}} 件のコミットをマージしようとしています:",
+        "wantsToMergeCommitsInto_other": "が {{count}} 件のコミットをマージしようとしています:",
+        "mergedCommitsInto_one": "が {{count}} 件のコミットをマージしました:",
+        "mergedCommitsInto_other": "が {{count}} 件のコミットをマージしました:",
+        "from": "←",
+        "copyHeadBranch": "ブランチ名をコピー",
+        "branchCopied": "ブランチ名をコピーしました"
+      },
+      "sidebar": {
+        "reviewers": "レビュアー",
+        "requestReviewers": "レビュアーをリクエスト",
+        "awaitingReview": "レビュー待ち",
+        "noReviews": "レビューはありません",
+        "assignees": "担当者",
+        "noAssignees": "担当者なし",
+        "labels": "ラベル",
+        "noLabels": "まだありません",
+        "actions": "操作",
+        "editAssignees": "担当者を編集",
+        "searchAssignees": "ユーザーを検索",
+        "noAssigneeCandidates": "利用可能なユーザーがいません",
+        "assigneesLoadFailed": "ユーザーを読み込めませんでした",
+        "assigneesUpdated": "担当者を更新しました",
+        "editLabels": "ラベルを編集",
+        "searchLabels": "ラベルを検索",
+        "noLabelCandidates": "利用可能なラベルがありません",
+        "labelsLoadFailed": "ラベルを読み込めませんでした",
+        "labelsUpdated": "ラベルを更新しました"
+      },
+      "creating": "pull request を作成中…",
+      "createError": "pull request の作成に失敗しました",
+      "readyHint": "ブランチはプッシュ済みで、pull request を作成できます",
+      "neutralHint": "ブランチをプッシュして pull request を作成してください",
+      "noBranch": "ブランチが選択されていません",
+      "noRepoPath": "リポジトリのパスがありません",
+      "notAuthenticated": "ログインして pull request を作成してください",
+      "noOriginRemote": "origin リモートが設定されていません",
+      "cannotParseRepoName": "origin リモートからリポジトリ名を解析できませんでした",
+      "authRequired": {
+        "title": "GitHub を接続",
+        "description": "設定 → 接続で GitHub アカウントを接続してください。"
+      },
+      "navigationTrail": "pull request ナビゲーション",
+      "failedToLoad": "pull request を読み込めませんでした",
+      "label": "Pull request"
     },
     "messages": {
       "pushSuccess": "Successfully pushed changes to remote",
@@ -1521,7 +1457,8 @@
         "reviewRequestRemoved": "がレビューリクエストを削除しました",
         "reviewed": "がこれらの変更をレビューしました",
         "reviewDismissed": "がレビューを却下しました",
-        "userBlocked": "がこのユーザーをブロックしました"
+        "userBlocked": "がこのユーザーをブロックしました",
+        "appendedSession": "がセッションを追加しました"
       },
       "composer": {
         "addComment": "コメントを追加",
@@ -1553,18 +1490,40 @@
         "count_other": "{{count}} 件の関連項目",
         "unavailable": "詳細を取得できません",
         "unavailableCount_one": "{{count}} 件の関連項目を解決できませんでした",
-        "unavailableCount_other": "{{count}} 件の関連項目を解決できませんでした"
-      }
+        "unavailableCount_other": "{{count}} 件の関連項目を解決できませんでした",
+        "reference": "GitHub 参照"
+      },
+      "title": "Issues",
+      "loading": "issue を読み込み中…",
+      "empty": "{{state}} の issue はありません",
+      "failedToLoad": "issue を読み込めませんでした",
+      "failedToCreate": "issue を作成できませんでした",
+      "failedToUpdate": "issue を更新できませんでした",
+      "failedToComment": "コメントを追加できませんでした",
+      "filterAll": "すべて",
+      "filterOpen": "オープン",
+      "filterClosed": "クローズ",
+      "noGitHubRepo": "GitHub リポジトリを接続して issue を管理してください",
+      "commentPlaceholder": "コメントを残す…",
+      "submitComment": "コメント",
+      "newIssueTitlePlaceholder": "Issue のタイトル",
+      "newIssueBodyPlaceholder": "Issue の説明（任意）…",
+      "authRequired": {
+        "title": "GitHub を接続",
+        "description": "設定 → 接続で GitHub アカウントを接続してください。"
+      },
+      "reAuthRequired": "GitHub の認証が必要です",
+      "reAuthDescription": "GitHub トークンの有効期限が切れました。設定 → 接続で再接続してください。",
+      "goToSettings": "設定へ移動",
+      "loadingTimeline": "アクティビティを読み込み中…",
+      "label": "Issue",
+      "linkedLoading": "リンクされた項目を読み込み中",
+      "detailNavigation": "issue ナビゲーション"
     }
   },
   "selectors": {
     "shared": {
-      "repo": "リポジトリ",
-      "workspace": "ワークスペース",
-      "folder": "フォルダ",
-      "source": "ソース",
-      "branch": "ブランチ",
-      "name": "名前"
+      "workspace": "ワークスペース"
     },
     "labels": {
       "recent": "最近"
@@ -1577,60 +1536,66 @@
       "chooseKey": "キーを選択",
       "noCompatibleAccounts": "互換性のあるキーがありません",
       "chooseModelHint": "キーボードで移動するか、マウスでモデルをクリックしてください",
-      "selectAccount": "アカウントを選択",
       "chooseKeyHint": "キーボードで移動するか、マウスでキーをクリックしてください",
-      "noModelsForKey": "このキーで有効なモデルはありません"
+      "noModelsForKey": "このキーで有効なモデルはありません",
+      "selectAccount": "アカウントを選択"
     },
     "modelProperties": {
       "effort": "Effort",
-      "default": "デフォルト"
+      "default": "デフォルト",
+      "settings": "モデル設定",
+      "model": "モデル",
+      "speed": "速度",
+      "standard": "標準",
+      "fast": "高速",
+      "thinking": "Thinking",
+      "on": "オン",
+      "off": "オフ"
     },
     "repo": {
-      "workspaceFolders": "Workspace フォルダ",
       "addEntry": "その他のインポートオプション",
       "sections": {
-        "coding": "Workspace",
         "pinned": "ピン留め",
         "current": "現在",
         "repo": "リポジトリ",
         "systemPaths": "システムパス",
-        "usedElsewhere": "他の場所で使用",
-        "workspace": "Workspace",
+        "usedElsewhere": "他のアプリで使用",
+        "workspace": "作業ディレクトリ",
         "thisOrg": "この組織",
-        "outsideOrg": "この組織の外"
+        "outsideOrg": "この組織の外",
+        "outsideNamedOrg": "{{org}} の外",
+        "recent": "最近"
       },
       "tabs": {},
       "addOptions": {
         "cloneFromGitHubUrl": "GitHub URL からクローン",
         "cloneFromMyGitHub": "自分の GitHub からクローン",
-        "createWorkspace": "新しい Workspace を作成"
+        "createWorkspace": "新しい作業ディレクトリを作成"
       },
       "sources": {
         "cloningFromGitHub": "GitHub からクローン中",
         "cloningFromGitHubUrl": "GitHub URL からクローン",
         "cloningFromMyGitHub": "自分の GitHub からクローン",
-        "creatingWorkspace": "新しい Workspace を作成中",
-        "creatingMultiRepoWorkspace": "Multi-repo Workspace を構成中"
+        "creatingWorkspace": "新しい作業ディレクトリを作成中",
+        "creatingMultiRepoWorkspace": "マルチリポジトリ作業ディレクトリを構成中"
       },
       "forms": {
-        "repoName": "リポジトリ名",
         "localPath": "ローカルパス",
         "chooseDestinationPath": "保存先のパスを選択",
         "choose": "選択",
         "createAt": "{{path}} に作成",
-        "createWorkspaceTitle": "新しい Workspace",
-        "creatingWorkspace": "Workspace を作成中...",
-        "readyToCreateWorkspace": "Workspace を作成できます",
-        "workspaceName": "Workspace 名",
-        "workspaceNamePlaceholder": "My Workspace"
+        "createWorkspaceTitle": "新しい作業ディレクトリ",
+        "creatingWorkspace": "作業ディレクトリを作成中...",
+        "readyToCreateWorkspace": "作業ディレクトリを作成できます",
+        "workspaceName": "ディレクトリ名",
+        "workspaceNamePlaceholder": "マイディレクトリ"
       },
       "path": {
         "switchTo": "切り替え先",
         "switchToTemplate": "{workspace} に切り替え",
-        "search": "検索",
-        "manageWorkspace": "ワークスペースを管理",
-        "addBy": "Workspace の追加方法",
-        "addByTemplate": "{source} で Workspace を追加"
+        "manageWorkspace": "作業ディレクトリを管理",
+        "addBy": "作業ディレクトリの追加方法",
+        "addByTemplate": "{source} で作業ディレクトリを追加"
       },
       "pathImport": {
         "addLabel": "追加",
@@ -1639,20 +1604,14 @@
       },
       "gitInitPrompt": {
         "title": "Git を初期化しますか？",
-        "message": "この Workspace には .git フォルダーがありません。Git リポジトリとして初期化しますか？",
+        "message": "この作業ディレクトリには .git フォルダーがありません。Git リポジトリとして初期化しますか？",
         "ok": "Git を初期化",
         "cancel": "フォルダーのままにする"
       }
     },
     "folder": {
-      "path": {
-        "switchTo": "切り替え"
-      },
       "addOptions": {},
-      "sources": {},
-      "forms": {
-        "choose": "選択"
-      }
+      "sources": {}
     },
     "branch": {
       "path": {
@@ -1699,12 +1658,11 @@
         "noGithubRemote": "GitHub リモートが設定されていません",
         "prSearchScope": "読み込んだ {{count}} 件の Pull requests を検索",
         "prLimit": "最大 {{count}} 件のオープン PR を表示",
-        "noPullRequests": "一致する Pull requests はありません"
+        "noPullRequests": "一致する Pull requests はありません",
+        "mainWorktree": "メイン"
       },
       "placeholders": {
-        "checkout": "ブランチ",
         "add": "新しいブランチ名...",
-        "remove": "ブランチ",
         "pullRequests": "Pull requests を検索..."
       },
       "tabs": {
@@ -1714,14 +1672,12 @@
     },
     "sessionInfo": {
       "sourcePlaceholder": "ソースを選択",
-      "start": "開始",
       "sourceAria": "Workspace ソースを選択",
-      "on": "で",
       "branchAria": "ブランチを選択",
-      "switchWorkspace": "Workspace を切り替え",
+      "switchWorkspace": "作業ディレクトリを切り替え",
       "switchBranch": "Branch を切り替え",
       "switchLocation": "実行場所を切り替え",
-      "sessionWorkspace": "セッション Workspace を切り替え",
+      "sessionWorkspace": "セッションの作業ディレクトリを切り替え",
       "locationAria": "実行場所を選択",
       "systemPaths": {
         "home": {
@@ -1732,23 +1688,24 @@
           "label": "Documents",
           "description": "Documents フォルダ"
         }
-      }
+      },
+      "selectWorktreeSource": "Worktree のブランチまたは pull request を選択"
     },
     "spotlightFooter": {
       "navigate": "移動",
       "select": "選択",
       "switchColumn": "列を切り替え",
       "switchSection": "セクションを切り替え",
+      "showPath": "パスを表示",
+      "keyFirst": "キー優先",
+      "showBranchInfo": "ブランチ情報を表示",
       "compatibleKeys": "互換性あり",
       "planSupport": "Plan",
       "byokSupport": "Keys",
       "incompatible": "非対応",
       "manageModels": "モデルを管理",
       "manageKeys": "キーを管理",
-      "manageAgents": "Agent を管理",
-      "showPath": "パスを表示",
-      "keyFirst": "キー優先",
-      "showBranchInfo": "ブランチ情報を表示"
+      "manageAgents": "Agent を管理"
     },
     "editorSpotlight": {
       "searchPlaceholder": "コマンドを検索...",
@@ -1800,7 +1757,7 @@
     "spotlight": {
       "placeholder": "検索するかコマンドを入力…",
       "placeholders": {
-        "workspace": "検索またはフォルダパスを入力",
+        "workspace": "検索またはフォルダパスを入力...",
         "branch": "ブランチを検索...",
         "source": "ソースを検索...",
         "actions": "アクションを検索...",
@@ -1808,7 +1765,8 @@
       },
       "groups": {
         "agentSession": "Agent セッション",
-        "workspace": "Workspace",
+        "workspace": "作業ディレクトリ",
+        "organization": "組織 / ワークスペース",
         "quickNavigation": "クイックナビゲーション",
         "editor": "エディター",
         "view": "表示",
@@ -1828,9 +1786,6 @@
           "label": "Finder でリポジトリを表示",
           "pillLabel": "表示"
         },
-        "createSession": {
-          "label": "新しいセッションを作成"
-        },
         "searchAgentSessions": {
           "label": "Agent セッションを検索",
           "pillLabel": "セッションを検索",
@@ -1842,16 +1797,17 @@
           "placeholder": "Search across all sessions..."
         },
         "switchWorkspace": {
-          "label": "Workspace を切り替え"
+          "label": "作業ディレクトリを切り替え"
         },
         "switchBranch": {
+          "repoLabel": "{{repoName}} のブランチを切り替え",
           "label": "ブランチを切り替え"
         },
         "addWorkspace": {
-          "label": "Workspace を追加"
+          "label": "作業ディレクトリを追加"
         },
         "createMultiRepoWorkspace": {
-          "label": "Multi-repo Workspace を追加"
+          "label": "マルチリポジトリ作業ディレクトリを追加"
         },
         "showSourceControl": {
           "label": "Source Control を表示"
@@ -1905,10 +1861,10 @@
           "label": "Work Item を作成"
         },
         "createOrganization": {
-          "label": "組織を作成"
+          "label": "ワークスペースを作成"
         },
         "joinOrganization": {
-          "label": "組織に参加"
+          "label": "ワークスペースに参加"
         }
       },
       "toast": {
@@ -1923,20 +1879,14 @@
   },
   "ellipsisMenu": {},
   "layoutSettings": {
-    "chatPanelLocation": "チャットパネルの位置",
+    "chatPanelLocation": "チャットパネル",
     "chatLeft": "左チャット",
     "chatRight": "右チャット",
-    "full": "フル",
-    "theme": "テーマ",
-    "sidebarPosition": "サイドバーの位置",
+    "sidebarPosition": "Workstation サイドバー",
     "modelPickerStyle": "ピッカー",
+    "paginateChatHistory": "チャット履歴をページ分割",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "メニュー",
-    "replaySession": "Replay セッション",
-    "captionBar": "Agent メッセージバー",
-    "location": "位置",
-    "floating": "フローティング",
-    "pinned": "固定",
     "left": "左",
     "right": "右",
     "ramFps": "FPS",
@@ -1959,13 +1909,9 @@
     "ramHydratedEvents": "Hydrated イベント",
     "ramTurnBodies": "履歴 lazy load",
     "ramFileTrees": "ファイルツリー",
-    "ramCodeMirrors": "ファイルレンダリング",
-    "paginateChatHistory": "チャット履歴をページ分割"
+    "ramCodeMirrors": "ファイルレンダリング"
   },
   "spotlightActions": {
-    "switchToLightTheme": "ライトテーマに切り替え",
-    "switchToDarkTheme": "ダークテーマに切り替え",
-    "switchToHighContrastTheme": "ハイコントラストテーマに切り替え",
     "enableChatPagination": "チャットのページ分割をオンにする",
     "disableChatPagination": "チャットのページ分割をオフにする",
     "useModelPickerSpotlight": "Spotlight モデル選択を使う",
@@ -1976,13 +1922,12 @@
     "openAgentStation": "Agent Station に移動",
     "openKanban": "Kanban に移動",
     "changeLanguage": "言語を変更",
-    "switchToSystemTheme": "システムテーマに従う",
-    "detectUpdate": "アップデートを確認",
-    "recentlyUsed": "最近使用した項目",
     "changeTheme": "テーマを変更",
     "changeSkin": "スキンを変更",
     "searchThemes": "テーマを検索...",
-    "searchSkins": "スキンを検索..."
+    "searchSkins": "スキンを検索...",
+    "detectUpdate": "アップデートを確認",
+    "recentlyUsed": "最近使用した項目"
   },
   "commands": {
     "showBottomPanel": "ボトムパネルを表示",
@@ -1990,110 +1935,28 @@
     "showPrimarySidebar": "サイドバーを表示",
     "hidePrimarySidebar": "サイドバーを非表示",
     "searchFiles": "ファイルを検索",
-    "openBrowser": "ブラウザを開く",
-    "switchWorkspace": "Workspace を切り替え / 追加",
-    "openEditor": "エディタを開く",
-    "hideTerminal": "Terminal を非表示",
-    "hideFiles": "ファイルを非表示",
-    "maximizeChat": "Chat パネルにフォーカス",
-    "toggleSidebar": "サイドバーを切替",
-    "openDevTools": "DevTools を開く",
-    "showDevTools": "DevTools を表示",
-    "hideDevTools": "DevTools を非表示",
-    "connections": "接続",
-    "newTab": "新規タブ",
-    "newPrivateTab": "新規プライベートタブ",
-    "openDashboard": "Dashboard を開く",
-    "runQuery": "クエリを実行",
-    "newProject": "新しい Project"
-  },
-  "lsp": {
-    "installPrompt": "\"{{language}}\" の Language Server がインストールされていません。インストールしますか？",
-    "installing": "Language Server をインストール中..."
+    "switchWorkspace": "作業ディレクトリを切り替え / 追加",
+    "newTab": "新規タブ"
   },
   "gitDashboard": {
-    "title": "Git ダッシュボード",
     "author": "作成者",
-    "commits": "コミット",
-    "additions": "追加",
-    "deletions": "削除",
-    "filesChanged": "変更ファイル",
-    "files": "ファイル",
-    "other": "その他",
-    "showMore": "さらに表示",
-    "showLess": "折りたたむ"
+    "commits": "コミット"
   },
   "aiImpact": {
-    "title": "AI Impact",
-    "noData": "AI セッション影響データがありません",
-    "sessions": "セッション",
-    "files": "関連ファイル",
-    "functions": "関数",
-    "commits": "Commit",
-    "lines": "コード行",
-    "sessionBreakdown": "セッション内訳",
-    "human": "Human",
-    "completed": "完了",
-    "incomplete": "未完了"
+    "lines": "コード行"
   },
   "sessions": {
-    "title": "セッション",
-    "myUsage": "マイ利用",
-    "teamUsage": "チーム利用"
-  },
-  "otherUsage": {
-    "title": "その他の使用",
-    "sessions": "セッション",
-    "completed": "完了",
-    "incomplete": "未完了",
-    "tabs": {
-      "overview": "概要",
-      "cursor": "Cursor",
-      "cli": "CLI"
-    }
-  },
-  "devActivity": {
-    "title": "コーディングプロフィール",
-    "sessions": "セッション",
-    "source": "ソース",
-    "commits": "Commits",
-    "active": "アクティブ"
-  },
-  "devRecord": {
-    "loading": "読み込み中…",
-    "custom": "カスタム",
-    "startDate": "開始日",
-    "endDate": "終了日",
-    "statCards": {
-      "commits": "コミット",
-      "filesChanged": "変更ファイル",
-      "sessions": "セッション",
-      "projects": "ヒートマップ"
-    },
-    "team": {
-      "title": "チーム活動",
-      "member": "メンバー",
-      "email": "メール",
-      "model": "モデル",
-      "sessions": "セッション",
-      "tokens": "Token",
-      "days": "日"
-    }
-  },
-  "actionSummary": {
-    "read": "読取"
+    "title": "セッション"
   },
   "sourceControl": {
     "notGitInitialized": "Git 未初期化",
-    "notGitInitializedSubtitle": "Git を初期化すると、この Workspace で変更の追跡、コミット作成、ブランチツールを使用できます。",
+    "notGitInitializedSubtitle": "Git を初期化すると、この作業ディレクトリで変更の追跡、コミット作成、ブランチツールを使用できます。",
     "initializeGit": "Git を初期化",
     "initializingGit": "Git を初期化中...",
-    "noRemoteForPublish": "この Workspace は Git リポジトリになりましたが、まだ remote がありません。このブランチを公開する前に origin などの remote を追加してください。",
-    "generateCommitMessage": "AI で commit message を生成",
+    "noRemoteForPublish": "この作業ディレクトリは Git リポジトリになりましたが、まだ remote がありません。このブランチを公開する前に origin などの remote を追加してください。",
     "pull": "Pull",
     "push": "Push",
     "fetch": "Fetch",
-    "sync": "Sync",
     "worktreeActions": "Worktree アクション",
     "removeWorktree": "Worktree を削除",
     "removeWorktreeTitle": "Worktree {{name}} を削除しますか？",
@@ -2109,21 +1972,18 @@
     "pill": {
       "focus": "フォーカス",
       "allChanges": "すべての変更"
+    },
+    "scope": {
+      "main": "メインチェックアウト",
+      "worktrees": "Worktrees",
+      "searchPlaceholder": "Worktree を検索…",
+      "switchScopeActive": "ソース管理のスコープを切り替え: {{repo}}、{{branch}}"
     }
   },
   "contextInfo": {
     "contextUsed": "コンテキスト使用量",
     "title": "Context",
-    "full": "使用中",
     "ariaLabel": "Context 使用量",
-    "categories": {
-      "rules": "Rules",
-      "conversation": "会話",
-      "tools": "ツール",
-      "skills": "スキル",
-      "mcp": "MCP",
-      "subagents": "subagent"
-    },
     "autoCompactNote": "まもなくコンテキストを要約します",
     "compactBoundaryTitle": "コンテキストを圧縮しました",
     "compactBoundarySubtitle_other": "{{count}}件の過去メッセージを要約",
@@ -2138,14 +1998,25 @@
     "manualCompactNoRuntime": "圧縮する前にメッセージを送信してください",
     "manualCompactFailed": "圧縮に失敗しました: {{message}}",
     "manualCompactChannelAttached": "このセッションはチャンネル管理です — そちらで /compact を使ってください",
-    "manualCompactInstructionsPlaceholder": "任意: 要約で重視するポイント"
+    "manualCompactInstructionsPlaceholder": "任意: 要約で重視するポイント",
+    "categories": {
+      "unattributed": "未分類"
+    },
+    "cacheSaved": "キャッシュ節約: 読み取り {{read}}、書き込み {{write}}",
+    "cacheHero": "{{pct}}% をキャッシュから提供 · このターンで約 {{tokens}} を再利用",
+    "cacheHeroSub": "プロンプトキャッシュでコストを最大 90% 削減できます",
+    "compactBoundarySubtitle_one": "{{count}}件の過去メッセージを要約",
+    "manualCompactSectionTitle": "手動圧縮",
+    "miniCpmCompactTitle": "MiniCPM サイレント自動圧縮",
+    "miniCpmCompactDescription": "古いコンテキストを非同期で処理します",
+    "miniCpmCompactToggleAria": "MiniCPM サイレント自動圧縮を有効にする",
+    "manualCompactNativeProvider": "ここでの手動圧縮は組み込み Agent セッションのみ対応しています。ネイティブ CLI の履歴はプロバイダーのアプリで圧縮してください。"
   },
   "relativeDate": {
+    "justNow": "たった今",
     "today": "今日",
     "yesterday": "昨日",
-    "tomorrow": "明日",
-    "last7Days": "過去7日間",
-    "last30Days": "過去30日間"
+    "tomorrow": "明日"
   },
   "cloneForm": {
     "titleCloneFromGitHub": "GitHub からクローン",
@@ -2176,54 +2047,32 @@
     "parentFolderPlaceholder": "選択 Parent folder"
   },
   "workspaceForm": {
-    "title": "マルチ Repo Workspace を作成",
-    "editTitle": "Workspace を編集",
-    "createWorkspace": "マルチリポ Workspace を作成",
-    "multiRepoWorkspace": "マルチ Repo Workspace",
-    "createWorkspaceDesc": "複数の Repo から Workspace を構成",
+    "title": "マルチリポジトリ作業ディレクトリを作成",
+    "editTitle": "作業ディレクトリを編集",
+    "createWorkspace": "マルチリポジトリ作業ディレクトリを作成",
+    "multiRepoWorkspace": "マルチリポジトリ作業ディレクトリ",
+    "createWorkspaceDesc": "複数の Repo から作業ディレクトリを構成",
     "filterPlaceholder": "Repo を検索...",
-    "selectRepos": "Workspace の Repo を選択",
+    "selectRepos": "作業ディレクトリの Repo を選択",
     "noReposFound": "一致する Repo がありません",
     "noRepos": "利用可能な Repo がありません",
     "current": "現在",
-    "workspaceName": "Workspace 名",
-    "workspaceNamePlaceholder": "マイ Workspace",
-    "willInclude": "Workspace には {{count}} 個の Repo が含まれます",
+    "workspaceName": "作業ディレクトリ名",
+    "workspaceNamePlaceholder": "マイ作業ディレクトリ",
+    "willInclude": "作業ディレクトリには {{count}} 個の Repo が含まれます",
     "statusSelectAtLeastTwo": "2つ以上の Repo を選択してください",
-    "statusReadyToCreate": "Workspace を作成する準備ができました",
-    "defaultName": "Workspace",
-    "defaultNameWithRepo": "{{repo}} Workspace",
-    "windowTitle": "Workspace"
+    "statusReadyToCreate": "作業ディレクトリを作成する準備ができました",
+    "defaultName": "作業ディレクトリ",
+    "defaultNameWithRepo": "{{repo}} 作業ディレクトリ",
+    "windowTitle": "作業ディレクトリ",
+    "statusMaxRepos": "選択できる Repo は最大 5 件です"
   },
   "database": {
-    "addConnection": "Add Database Connection",
-    "databaseType": "Database Type",
-    "connectionName": "Connection Name",
     "databaseFile": "Database File",
     "projectUrl": "Project URL",
     "accessToken": "Access Token",
     "databaseUrl": "Database URL",
     "authToken": "Auth Token",
-    "testingConnection": "Testing connection...",
-    "addingConnection": "Adding connection...",
-    "connectionSuccessful": "Connection successful!",
-    "testConnection": "Test Connection",
-    "addConnectionAction": "追加",
-    "testing": "Testing...",
-    "adding": "Adding...",
-    "notValidSqlite": "Not a valid SQLite database file",
-    "connectionFailed": "Connection failed",
-    "failedToAddConnection": "Failed to add connection",
-    "supabaseHint": "Found in Supabase Dashboard → Project Settings → API",
-    "supabaseTokenHint": "Personal Access Token (PAT). Generate at",
-    "tursoTokenHint": "Generate at Turso CLI: turso db tokens create",
-    "neonHint": "Neon コンソール → 接続の詳細から接続文字列を取得",
-    "sqliteDescription": "Local .sqlite file",
-    "supabaseDescription": "PostgreSQL in the cloud",
-    "tursoDescription": "SQLite at the edge",
-    "neonDescription": "Serverless PostgreSQL",
-    "postgresDescription": "PostgreSQL 直接接続",
-    "mysqlDescription": "MySQL / MariaDB",
     "connectionString": "接続文字列",
     "host": "ホスト",
     "port": "ポート",
@@ -2231,10 +2080,6 @@
     "user": "ユーザー",
     "password": "パスワード",
     "ssl": "SSL を要求",
-    "requireSsl": "SSL 接続を要求",
-    "newConnection": "New {{type}} connection",
-    "changePending": "change",
-    "changesPending": "changes",
     "spotlight": {
       "scanFolder": "フォルダをスキャン",
       "scanFolderDesc": "フォルダ内のすべての .sqlite、.db ファイルを検索",
@@ -2254,25 +2099,13 @@
   "dragDrop": {
     "couldNotExtractPathFromItem": "Could not extract file path from dropped item"
   },
-  "contextList": {
-    "task": "Task",
-    "repo": "Repo",
-    "ref": "Ref",
-    "key": "Key",
-    "image": "Image",
-    "group": "Group",
-    "unknown": "Unknown"
-  },
   "showMore": "もっと見る",
   "showLess": "閉じる",
   "schedule": {
     "recurring": "定期",
     "oneShot": "一回限り",
     "noSchedule": "スケジュールなし",
-    "active": "有効",
-    "inactive": "無効",
     "scheduleType": "スケジュールタイプ",
-    "dateAndTime": "日時",
     "frequency": "頻度",
     "time": "時間",
     "dayOfWeek": "曜日",
@@ -2281,7 +2114,6 @@
     "hideCustomCron": "カスタム cron を隠す",
     "cronHelp": "例: 0 9 * * 1 = 毎週月曜 9:00",
     "lastRun": "最終実行",
-    "enableSchedule": "スケジュールを有効化",
     "freq": {
       "daily": "毎日",
       "weekday": "平日 (月〜金)",
@@ -2296,16 +2128,9 @@
       "thu": "木曜日",
       "fri": "金曜日",
       "sat": "土曜日"
-    },
-    "humanReadable": {
-      "daily": "毎日 {{time}}",
-      "weekday": "平日 {{time}}",
-      "weekly": "毎週{{day}} {{time}}",
-      "monthly": "毎月{{day}}日 {{time}}"
     }
   },
   "selectionMenu": {
-    "title": "チャットに追加",
     "addToChat": "チャットに追加",
     "addThisFile": "このファイルを追加",
     "addLines": "{{from}} – {{to}} 行を追加"
@@ -2323,43 +2148,14 @@
     "openedInBrowser": "ブラウザで開きました",
     "goToBrowser": "ブラウザへ移動"
   },
-  "ideaArea": {
-    "menu": {
-      "shared": "共有"
-    },
-    "trending": {
-      "title": "トレンドアイデア"
-    },
-    "shared": {
-      "title": "共有アイデア",
-      "searchPlaceholder": "アイデアを検索..."
-    },
-    "myIdeas": {
-      "title": "マイアイデア",
-      "empty": "まだアイデアを共有していません"
-    }
-  },
   "controlTower": {
     "sidebar": {
-      "terminal": "Terminal",
-      "browser": "ブラウザ",
-      "settings": "設定",
       "newTab": "新しいタブ",
       "newPrivateTab": "新しいプライベートタブ",
       "newTerminal": "新規 Terminal",
       "untitled": "タイトルなし"
     },
     "statusBar": {}
-  },
-  "notifications": {
-    "backgroundSession": "バックグラウンドセッション",
-    "taskCompletedTitle": "タスク完了",
-    "taskCompletedBody": "「{{name}}」が完了しました。レビューできます",
-    "taskCompletedToast": "「{{name}}」が完了しました。セッションを開いて結果を確認してください。",
-    "openSessionAction": "セッションを開く",
-    "taskFailedTitle": "タスク失敗",
-    "taskFailedBody": "「{{name}}」は失敗しました{{detail}}",
-    "taskCancelledToast": "「{{name}}」はキャンセルされました"
   },
   "globalToolbar": {},
   "quitConfirmation": {
@@ -2368,18 +2164,6 @@
     "cancel": "キャンセル",
     "confirm": "終了"
   },
-  "projects": {
-    "title": "ヒートマップ",
-    "workspace": "ワークスペース",
-    "duration": "時間",
-    "codingTime": "コーディング時間",
-    "noData": "プロジェクトデータがありません",
-    "topLanguage": "主要言語",
-    "editCount": "編集回数"
-  },
-  "dashboard": {
-    "other": "その他"
-  },
   "imagePreview": {
     "dialogLabel": "画像プレビュー",
     "copyImage": "画像をコピー",
@@ -2387,14 +2171,6 @@
     "closePreview": "プレビューを閉じる",
     "copiedToClipboard": "画像をクリップボードにコピーしました",
     "previewAlt": "プレビュー"
-  },
-  "update": {
-    "downloading": "アップデートをダウンロード中",
-    "installing": "アップデートをインストール中",
-    "progressPercent": "{{percent}}%",
-    "downloadedOfTotal": "{{downloaded}} / {{total}}",
-    "preparingDownload": "ダウンロードを準備中…",
-    "downloadingAndInstalling": "アップデートをダウンロードしてインストール中 (v{{version}})…"
   },
   "workManagementTable": {
     "columns": {
@@ -2410,5 +2186,97 @@
     "officialApp": "アプリ",
     "cli": "CLI",
     "thirdParty": "サードパーティ"
+  },
+  "browserCookieImport": {
+    "safari": {
+      "needsFullDiskAccess": "Needs Full Disk Access",
+      "explain": "Safari keeps its cookies in a folder macOS protects. Allow ORG2 under Full Disk Access in System Settings, then check again.",
+      "openSettings": "Open System Settings",
+      "checkAgain": "Check again"
+    },
+    "title": "Import cookies from your browser",
+    "action": "Import cookies from browser",
+    "scanning": "Looking for installed browsers…",
+    "reading": "Reading cookies from {{browser}}…",
+    "keychainHint": "Your system may ask for permission to read the browser's saved data",
+    "selectAll": "Select all",
+    "selectedSummary": "{{sites}} sites · {{cookies}} cookies",
+    "cookieCount_one": "{{count}} cookie",
+    "cookieCount_other": "{{count}} cookies",
+    "noSites": "No cookies were found in this profile",
+    "noMatchingSites": "No matching sites",
+    "importAction_one": "Import {{count}} site",
+    "importAction_other": "Import {{count}} sites",
+    "imported_one": "Imported {{count}} cookie",
+    "imported_other": "Imported {{count}} cookies",
+    "doneTitle_one": "Imported {{count}} cookie",
+    "doneTitle_other": "Imported {{count}} cookies",
+    "doneSkipped_one": "{{count}} cookie was skipped",
+    "doneSkipped_other": "{{count}} cookies were skipped",
+    "empty": {
+      "title": "No supported browsers found",
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+    },
+    "category": {
+      "banking": "Bank",
+      "email": "Mail",
+      "sso": "Sign-in"
+    },
+    "errors": {
+      "openSettingsFailed": "Couldn't open System Settings",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "listFailed": "Couldn't find browsers to import from",
+      "previewFailed": "Couldn't read cookies from that browser",
+      "importFailed": "Couldn't import the selected cookies"
+    }
+  },
+  "notifications": {
+    "taskCancelledToast": "「{{name}}」はキャンセルされました",
+    "taskCompletedToast": "「{{name}}」が完了しました。セッションを開いて結果を確認してください。",
+    "backgroundSession": "バックグラウンドセッション",
+    "taskCompletedTitle": "タスクが完了しました",
+    "taskCompletedBody": "「{{name}}」が完了しました — レビューできます",
+    "openSessionAction": "セッションを開く",
+    "taskFailedTitle": "タスクが失敗しました",
+    "taskFailedBody": "「{{name}}」が失敗しました{{detail}}"
+  },
+  "documentOpen": {
+    "openInDefault": "{{name}} で開く",
+    "openDefaultApp": "デフォルトのアプリで開く",
+    "openExternally": "外部アプリで開く",
+    "label": "アプリで開く…",
+    "defaultApp": "デフォルトのアプリ",
+    "appDefault": "{{name}}（デフォルト）",
+    "loading": "アプリを読み込み中…",
+    "loadFailed": "アプリを取得できません — 再度開いて再試行してください",
+    "openFailed": "ドキュメントを開けませんでした",
+    "saveFirst": "別のアプリで開く前に変更を保存または破棄してください"
+  },
+  "sqlEditor": {
+    "placeholder": "SQL クエリを入力...",
+    "format": "整形",
+    "runQueryToSeeResults": "クエリを実行すると結果が表示されます",
+    "executingQuery": "クエリを実行中...",
+    "queryFailed": "クエリが失敗しました",
+    "queryCompleted": "クエリが完了しました",
+    "noResults": "クエリの結果はありません",
+    "rowCount_one": "{{count}} 行",
+    "rowCount_other": "{{count}} 行",
+    "press": "実行するには",
+    "toRun": "を押します",
+    "nullValue": "NULL",
+    "booleanTrue": "true",
+    "booleanFalse": "false"
+  },
+  "chatImage": {
+    "maxReached": "画像は最大 {{max}} 枚までです",
+    "remainingWarning": "追加できる画像はあと {{remaining}} 枚です（最大 {{max}} 枚）",
+    "processFailed": "画像を処理できませんでした",
+    "loadFailed": "画像を読み込めませんでした: {{fileName}}"
+  },
+  "navigation": {
+    "goToSection": "{{label}} へ移動、セクション {{current}} / {{total}}",
+    "section": "セクション {{current}}",
+    "sectionPosition": "セクション {{current}} / {{total}}"
   }
 }

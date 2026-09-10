@@ -64,7 +64,7 @@ export const LaunchpadActionCard = forwardRef<
         {...buttonProps}
         ref={ref}
         type="button"
-        className={`group flex min-h-[68px] w-full flex-col items-start justify-between rounded-lg border bg-transparent px-2.5 py-2 text-left shadow-xs transition-colors focus-visible:border-primary-6 focus-visible:outline-none ${ACTION_CARD_TONE_CLASS[action.tone]}`}
+        className={`group flex min-h-[68px] w-full transform-gpu flex-col items-start justify-between rounded-lg border bg-transparent px-2.5 py-2 text-left shadow-xs transition-colors focus-visible:border-primary-6 focus-visible:outline-none ${ACTION_CARD_TONE_CLASS[action.tone]}`}
         onClick={action.onClick}
         data-testid={dataTestId ?? `chat-panel-start-page-${action.id}`}
       >
@@ -85,7 +85,7 @@ export const LaunchpadActionCard = forwardRef<
       {...buttonProps}
       ref={ref}
       type="button"
-      className={`group inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-left transition-colors focus-visible:border-primary-6 focus-visible:outline-none ${ACTION_TONE_CLASS[action.tone]}`}
+      className={`group inline-flex max-w-full min-w-0 transform-gpu items-center gap-1.5 rounded-full border px-3 py-1.5 text-left transition-colors focus-visible:border-primary-6 focus-visible:outline-none ${ACTION_TONE_CLASS[action.tone]}`}
       onClick={action.onClick}
       data-testid={dataTestId ?? `chat-panel-start-page-${action.id}`}
     >
@@ -101,6 +101,46 @@ export const LaunchpadActionCard = forwardRef<
   );
 });
 
+interface LaunchpadActionGridToggleProps {
+  collapsed: boolean;
+  collapseLabel: string;
+  controls: string;
+  expandLabel: string;
+  onClick: () => void;
+  testId: string;
+}
+
+function LaunchpadActionGridToggle({
+  collapsed,
+  collapseLabel,
+  controls,
+  expandLabel,
+  onClick,
+  testId,
+}: LaunchpadActionGridToggleProps): React.ReactNode {
+  return (
+    <Button
+      variant="tertiary"
+      size="mini"
+      shape="circle"
+      icon={
+        <HugeiconsIcon
+          icon={collapsed ? EllipsisIcon : ArrowUp01Icon}
+          data-icon={collapsed ? "ellipsis" : "chevron-up"}
+          size={14}
+          strokeWidth={1.8}
+        />
+      }
+      iconOnly
+      aria-label={collapsed ? expandLabel : collapseLabel}
+      aria-controls={controls}
+      aria-expanded={!collapsed}
+      onClick={onClick}
+      data-testid={testId}
+    />
+  );
+}
+
 interface LaunchpadActionGridProps {
   cardWidthClassName?: string;
   children?: React.ReactNode;
@@ -109,6 +149,7 @@ interface LaunchpadActionGridProps {
   collapsible?: boolean;
   controlAlignment?: "left" | "center";
   expandLabel?: string;
+  header?: React.ReactNode;
   layoutActionCount?: number;
   presentation?: LaunchpadActionPresentation;
 }
@@ -121,22 +162,24 @@ export function LaunchpadActionGrid({
   collapsible = false,
   controlAlignment = "left",
   expandLabel = "Expand",
+  header,
   layoutActionCount,
   presentation = "pill",
 }: LaunchpadActionGridProps): React.ReactNode {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Spacious layouts show cards immediately; CSS keeps compact layouts collapsed.
+  const [isStandardCollapsed, setIsStandardCollapsed] = useState(false);
+  const [isCompactExpanded, setIsCompactExpanded] = useState(false);
   const contentId = useId();
-  const isCardGridCollapsed =
-    collapsible && presentation === "card" && isCollapsed;
+  const isCardGrid = presentation === "card";
+  const isCollapsibleCardGrid = collapsible && isCardGrid;
+  const isCardGridCollapsed = isCollapsibleCardGrid && isStandardCollapsed;
   const expandControlAlignmentClass =
     controlAlignment === "center" ? "justify-center" : "justify-start pl-2.5";
-  const collapseControlAlignmentClass =
-    controlAlignment === "center" ? "left-1/2 -translate-x-1/2" : "left-2.5";
   const actionCount = layoutActionCount ?? Children.count(children);
   const cardWidthClass =
     cardWidthClassName ??
     (actionCount >= 4
-      ? "max-w-[600px]"
+      ? "max-w-[320px] @[640px]/focusedchat:max-w-[640px]"
       : actionCount === 3
         ? "max-w-[480px]"
         : "max-w-[320px]");
@@ -146,78 +189,104 @@ export function LaunchpadActionGrid({
       : actionCount === 3
         ? "@[440px]/startactions:grid-cols-3"
         : "";
+  const cardGridClass = isCardGrid
+    ? `${
+        isCollapsibleCardGrid ? "" : "hidden @[640px]/focusedchat:block"
+      } ${cardWidthClass}`
+    : "";
+
+  const handleCompactToggle = () => {
+    setIsStandardCollapsed(false);
+    setIsCompactExpanded((expanded) => !expanded);
+  };
+
+  const handleStandardCollapse = () => {
+    setIsCompactExpanded(false);
+    setIsStandardCollapsed(true);
+  };
 
   return (
     <div
       className={`group/launchpad-actions @container/startactions relative ${
-        presentation === "card"
-          ? `hidden @[640px]/focusedchat:block ${cardWidthClass}`
-          : ""
-      } ${className}`}
-      data-collapsed={isCardGridCollapsed ? "true" : "false"}
+        isCollapsibleCardGrid ? "launchpad-action-grid-compact" : ""
+      } ${cardGridClass} ${className}`}
+      data-compact-expanded={
+        isCollapsibleCardGrid ? String(isCompactExpanded) : undefined
+      }
     >
+      {header ? (
+        <div className="launchpad-action-grid-header mx-auto mb-2 flex w-fit max-w-full flex-col items-center gap-0.5">
+          {header}
+        </div>
+      ) : null}
       <div
         id={contentId}
         hidden={isCardGridCollapsed}
-        className={
+        className={`launchpad-action-grid-content ${
           isCardGridCollapsed
             ? "hidden"
-            : presentation === "card"
+            : isCardGrid
               ? `grid grid-cols-1 gap-2 @[300px]/startactions:grid-cols-2 ${cardColumnClass}`
               : "flex flex-wrap justify-center gap-2"
-        }
+        }`}
       >
         {children}
       </div>
-      {collapsible && presentation === "card" ? (
+      {/* Compact disclosure. It sits after the content and borrows the standard
+          control's wrapper so both read as the same "show/hide the cards"
+          affordance in the same place — below the cards, and left-docked with
+          the title in the layouts where the title itself docks left. `display`
+          is owned by the compact-state mixin in ChatPanel/index.scss. */}
+      {isCollapsibleCardGrid ? (
+        <div
+          className={`launchpad-action-grid-compact-toggle w-full pt-1 ${expandControlAlignmentClass}`}
+        >
+          <LaunchpadActionGridToggle
+            collapsed={!isCompactExpanded}
+            collapseLabel={collapseLabel}
+            controls={contentId}
+            expandLabel={expandLabel}
+            onClick={handleCompactToggle}
+            testId="launchpad-action-grid-compact-toggle"
+          />
+        </div>
+      ) : null}
+      {isCollapsibleCardGrid ? (
         isCardGridCollapsed ? (
           <div
             className={`flex w-full ${expandControlAlignmentClass}`}
+            data-launchpad-action-grid-standard-control
             data-testid="launchpad-action-grid-expand-zone"
           >
-            <Button
-              variant="tertiary"
-              size="mini"
-              shape="circle"
-              icon={
-                <HugeiconsIcon
-                  icon={EllipsisIcon}
-                  data-icon="ellipsis"
-                  size={14}
-                  strokeWidth={1.8}
-                />
-              }
-              iconOnly
-              aria-label={expandLabel}
-              aria-controls={contentId}
-              aria-expanded={false}
-              onClick={() => setIsCollapsed(false)}
-              data-testid="launchpad-action-grid-expand"
+            <LaunchpadActionGridToggle
+              collapsed
+              collapseLabel={collapseLabel}
+              controls={contentId}
+              expandLabel={expandLabel}
+              onClick={() => setIsStandardCollapsed(false)}
+              testId="launchpad-action-grid-expand"
             />
           </div>
         ) : (
           <div
-            className={`absolute top-full z-10 pt-1 opacity-0 transition-opacity group-focus-within/launchpad-actions:opacity-100 group-hover/launchpad-actions:opacity-100 ${collapseControlAlignmentClass}`}
+            // The fade is driven by hover on the whole group, so entering any
+            // card or the full-width disclosure area animates opacity here.
+            // Without `will-change: opacity` the
+            // compositor layer is created and destroyed on every hover in and
+            // out, which re-rounds the sibling cards' sub-pixel positions and
+            // makes all of their icons twitch at once. Same treatment as the
+            // Simulator grid-cell header actions.
+            className={`absolute top-full left-0 z-10 flex w-full py-1 opacity-0 transition-opacity will-change-[opacity] group-focus-within/launchpad-actions:opacity-100 group-hover/launchpad-actions:opacity-100 ${expandControlAlignmentClass}`}
+            data-launchpad-action-grid-standard-control
             data-testid="launchpad-action-grid-collapse-zone"
           >
-            <Button
-              variant="tertiary"
-              size="mini"
-              shape="circle"
-              icon={
-                <HugeiconsIcon
-                  icon={ArrowUp01Icon}
-                  data-icon="chevron-up"
-                  size={14}
-                  strokeWidth={1.8}
-                />
-              }
-              iconOnly
-              aria-label={collapseLabel}
-              aria-controls={contentId}
-              aria-expanded
-              onClick={() => setIsCollapsed(true)}
-              data-testid="launchpad-action-grid-collapse"
+            <LaunchpadActionGridToggle
+              collapsed={false}
+              collapseLabel={collapseLabel}
+              controls={contentId}
+              expandLabel={expandLabel}
+              onClick={handleStandardCollapse}
+              testId="launchpad-action-grid-collapse"
             />
           </div>
         )

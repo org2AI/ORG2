@@ -505,21 +505,6 @@ export function createDomComponentPreviewTab(
 }
 
 // ============================================
-// Singleton Tabs
-// ============================================
-
-export const aiImpactTabFactory = defineTabFactory<Record<string, never>>({
-  tabType: "ai-impact",
-  idStrategy: { type: "singleton", id: "ai-impact:main" },
-  getTitle: () => "AI Impact",
-  icon: "Sparkles",
-});
-
-export function createAIImpactTab(): WorkStationTab {
-  return aiImpactTabFactory({});
-}
-
-// ============================================
 // Search Sessions Tab (singleton)
 // ============================================
 

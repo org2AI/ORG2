@@ -18,7 +18,7 @@ import {
 } from "@src/icons";
 import { SpotlightPinnedActionSection } from "@src/scaffold/GlobalSpotlight/components/SpotlightPinnedActionSection";
 import { SpotlightTabs } from "@src/scaffold/GlobalSpotlight/components/SpotlightTabs";
-import { useSelectorKernel } from "@src/scaffold/GlobalSpotlight/palettes/core";
+import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import { PaletteBody } from "@src/scaffold/GlobalSpotlight/shell";
 import type { SpotlightItem } from "@src/scaffold/GlobalSpotlight/types";
 import { getPrStatusVariant } from "@src/shared/pr/prStatus";

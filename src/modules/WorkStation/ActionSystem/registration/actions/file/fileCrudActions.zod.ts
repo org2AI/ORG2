@@ -29,7 +29,9 @@ export function createFileCrudActions(repoPath: string) {
             "File path (defaults to current file, absolute or relative to repo)"
           ),
       }),
-      shortcut: getShortcutKeys("save_file"),
+      get shortcut() {
+        return getShortcutKeys("save_file");
+      },
       examples: ["save", "save file", "save current file"],
     },
     async ({ path }) => {

@@ -311,31 +311,22 @@ export interface E2EHelpers {
   agentOrgSessionRunView: (
     sessionId: string
   ) => Promise<Result<{ view: Json | null }>>;
-  agentOrgGroupChatHistoryPage: (
+  agentOrgGroupProjectionPage: (
     sessionId: string,
-    beforeId?: number | null,
+    cursor?: string | null,
     limit?: number
   ) => Promise<Result<{ page: Json }>>;
   agentOrgSessionInterventionState: (
     sessionId: string
   ) => Promise<Result<{ state: Json }>>;
-  agentOrgSessionEnterIntervention: (
-    sessionId: string
-  ) => Promise<Result<{ entered: boolean }>>;
-  agentOrgSessionReturnToWork: (
-    sessionId: string
-  ) => Promise<Result<{ returned: boolean }>>;
-  agentOrgSendGroupChatMessage: (
-    sessionId: string,
-    targetMemberId: string | null,
-    content: string
-  ) => Promise<Result<{ result: Json }>>;
   agentOrgPauseRun: (
-    sessionId: string
-  ) => Promise<Result<{ transitioned: boolean }>>;
+    sessionId: string,
+    requestId?: string
+  ) => Promise<Result<{ outcome: Json }>>;
   agentOrgResumeRun: (
-    sessionId: string
-  ) => Promise<Result<{ transitioned: boolean }>>;
+    sessionId: string,
+    requestId?: string
+  ) => Promise<Result<{ outcome: Json }>>;
   agentOrgSimulateAppRestart: () => Promise<
     Result<{
       intentsReconciled: number;
@@ -495,6 +486,7 @@ export interface E2EHelpers {
   debugSessionOrgRuntimeSnapshot: (
     sessionId: string
   ) => Promise<Result<{ snapshot: Json }>>;
+  debugAgentOrgEnableRedesign: () => Promise<Result<{ enabled: true }>>;
   debugSessionExecuteTool: (
     sessionId: string,
     toolName: string,
@@ -504,11 +496,6 @@ export interface E2EHelpers {
     sessionId: string,
     toolName: string,
     params: Json
-  ) => Promise<Result<{ result: Json }>>;
-  agentOrgSendUserMessageToMember: (
-    sessionId: string,
-    memberId: string,
-    content: string
   ) => Promise<Result<{ result: Json }>>;
   launchSession: (params: Json) => Promise<Result<{ result: Json }>>;
   reloadSessionList: () => Promise<
@@ -662,7 +649,6 @@ export interface E2EHelpers {
       isPendingCancel: boolean;
       isQueueEditing: boolean;
       userInitiatedCancel: boolean;
-      queueFlushRequest: number;
       queuedMessages: Array<{ id: string; sessionId: string; content: string }>;
       runtimeError: string | null;
       rawEvents: Array<{

@@ -101,7 +101,7 @@ export function useRepoSelection(
 
       // Branch reset is the only step we can safely skip on re-select; the
       // recent-docs and atom writes below must always run because callers
-      // (e.g. SelectRepoPage) rely on this to reaffirm the selection after
+      // rely on this to reaffirm the selection after
       // `useRepoLoader` eagerly restored `lastUsedRepo` into the atom.
       if (!isSameRepo) {
         resetBranchTracking();

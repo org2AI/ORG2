@@ -1,8 +1,7 @@
-import React, { memo } from "react";
+import React, { type ComponentProps, memo } from "react";
 
 import { Placeholder } from "@src/components/Placeholder";
 import EventWrapper from "@src/engines/ChatPanel/adapters/EventWrapper";
-import type { BackendEvent } from "@src/types/session/steps";
 import { classNames } from "@src/util/ui/classNames";
 
 import { NoTabsPlaceholder } from "../NoTabsPlaceholder";
@@ -13,8 +12,6 @@ import type {
   PrimarySidebarConfig,
   SecondaryPanelConfig,
 } from "../WorkStationShell/config";
-import type { SessionReplayPlaceholderMode } from "../useSimulatorPlaceholderActions";
-import type { ReplayTab } from "./ReplayTabBar";
 import { SimulatorReplayChrome } from "./SimulatorReplayChrome";
 import type { ReplayShellLayoutMode } from "./replayShellHelpers";
 
@@ -26,18 +23,12 @@ export interface ReplayShellWorkstationConfig {
   layoutMode: ReplayShellLayoutMode;
 }
 
-export interface ReplayShellLayoutProps {
-  tabs: ReplayTab[];
-  activeEventId: string | null;
-  onTabClick: (eventId: string) => void;
-  children: React.ReactNode;
-  trailingSlot?: React.ReactNode;
-  sidebarToggleDisabled?: boolean;
-  showWorkstationTabHeader?: boolean;
-  event?: unknown;
-  eventMode?: SessionReplayPlaceholderMode;
+export interface ReplayShellLayoutProps extends ComponentProps<
+  typeof SimulatorReplayChrome
+> {
+  /** Explicit wrapper presence keeps the event subtree stable while data loads. */
+  eventWrapper?: Pick<ComponentProps<typeof EventWrapper>, "event" | "mode">;
   workstation?: ReplayShellWorkstationConfig;
-  contentWrapperClassName?: string;
 }
 
 export interface ReplayShellPlaceholderProps {
@@ -65,20 +56,13 @@ export const ReplayShellPlaceholder: React.FC<ReplayShellPlaceholderProps> =
 ReplayShellPlaceholder.displayName = "ReplayShellPlaceholder";
 
 const ReplayShellLayoutComponent: React.FC<ReplayShellLayoutProps> = ({
-  tabs,
-  activeEventId,
-  onTabClick,
   children,
-  trailingSlot,
-  sidebarToggleDisabled,
-  showWorkstationTabHeader,
-  event,
-  eventMode = "simulation",
+  eventWrapper,
   workstation,
-  contentWrapperClassName,
+  ...chromeProps
 }) => {
   const body = workstation ? (
-    <div className={classNames("flex min-h-0 flex-1", contentWrapperClassName)}>
+    <div className="flex min-h-0 flex-1">
       <WorkStationShell
         primarySidebarConfig={workstation.primarySidebarConfig}
         secondaryPanelConfig={workstation.secondaryPanelConfig}
@@ -93,26 +77,17 @@ const ReplayShellLayoutComponent: React.FC<ReplayShellLayoutProps> = ({
   );
 
   const chrome = (
-    <SimulatorReplayChrome
-      tabs={tabs}
-      activeEventId={activeEventId}
-      onTabClick={onTabClick}
-      trailingSlot={trailingSlot}
-      sidebarToggleDisabled={sidebarToggleDisabled}
-      showWorkstationTabHeader={showWorkstationTabHeader}
-    >
-      {body}
-    </SimulatorReplayChrome>
+    <SimulatorReplayChrome {...chromeProps}>{body}</SimulatorReplayChrome>
   );
 
-  if (event === undefined) {
+  if (!eventWrapper) {
     return chrome;
   }
 
   return (
     <EventWrapper
-      event={event as unknown as BackendEvent}
-      mode={eventMode}
+      event={eventWrapper.event}
+      mode={eventWrapper.mode}
       expand={true}
       padding="p-0"
     >

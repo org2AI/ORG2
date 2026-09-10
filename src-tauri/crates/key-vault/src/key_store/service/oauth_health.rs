@@ -15,6 +15,8 @@ const OAUTH_REFRESH_FAILURE_COOLDOWN_SECONDS: i64 = 5 * 60;
 fn is_permanent_oauth_refresh_failure(error_message: &str) -> bool {
     let lower = error_message.to_lowercase();
     lower.contains("refresh token not found or invalid")
+        || lower.contains("refresh_token_reused")
+        || lower.contains("refresh token has already been used")
         || lower.contains("invalid_grant")
         || lower.contains("invalid refresh token")
         || lower.contains("refresh token expired")

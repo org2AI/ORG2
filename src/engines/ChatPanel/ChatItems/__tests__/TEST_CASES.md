@@ -41,7 +41,7 @@ Covers the defensive display layer for agent/LLM error messages, primarily the
 
 - [x] Message is plain text (screen-reader friendly), never injected HTML.
 - [x] Resume button keyboard-navigable (existing `Button` component).
-- [x] Danger `InlineAlert` provides a titled, bordered region.
+- [x] Danger `PageNotice` provides a titled, bordered region.
 
 ## Acceptance Criteria
 

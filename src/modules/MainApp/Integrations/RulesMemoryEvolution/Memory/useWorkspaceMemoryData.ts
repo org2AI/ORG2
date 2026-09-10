@@ -25,7 +25,7 @@ import type {
 } from "@src/api/tauri/rpc/schemas/workspaceMemory";
 import Message from "@src/components/Message";
 import { useMounted } from "@src/hooks/lifecycle/useMounted";
-import { useRefreshSpin } from "@src/hooks/ui";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 
 export const MEMORY_TYPE_FILTER_ALL = "all" as const;
 
@@ -62,7 +62,6 @@ export interface UseWorkspaceMemoryDataReturn {
   handleShowIndex: () => void;
   handleDelete: (filename: string) => void;
   handleClearAll: () => void;
-  setSingleExpandedFile: (entry: WorkspaceMemoryEntry) => void;
   loadFileDetail: (filename: string) => void;
   setExpandedFileKeys: (keys: string[]) => void;
   setSelectedFile: (filename: string | null) => void;
@@ -265,30 +264,6 @@ export function useWorkspaceMemoryData({
     [workspace, mountedRef, setDetail, t]
   );
 
-  const setSingleExpandedFile = useCallback(
-    (entry: WorkspaceMemoryEntry) => {
-      const { filename } = entry;
-      const shouldOpen = !expandedFileKeys.includes(filename);
-      setExpandedFileKeys(shouldOpen ? [filename] : []);
-      if (shouldOpen) {
-        setSelectedFile(filename);
-        setShowIndex(false);
-        loadFileDetail(filename);
-      } else {
-        setSelectedFile(null);
-        setDetail(null);
-      }
-    },
-    [
-      expandedFileKeys,
-      loadFileDetail,
-      setDetail,
-      setExpandedFileKeys,
-      setSelectedFile,
-      setShowIndex,
-    ]
-  );
-
   const handleShowIndex = useCallback(() => {
     if (!workspace) return;
     setSelectedFile(null);
@@ -439,7 +414,6 @@ export function useWorkspaceMemoryData({
     handleShowIndex,
     handleDelete,
     handleClearAll,
-    setSingleExpandedFile,
     loadFileDetail,
     setExpandedFileKeys,
     setSelectedFile,

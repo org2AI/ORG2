@@ -271,18 +271,6 @@ pub struct SessionCheckpointFileStateRecord {
     pub quality: ArtifactQuality,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RawTrajectoryRef {
-    pub schema_version: u32,
-    pub source: String,
-    pub session_id: String,
-    pub source_path: Option<String>,
-    pub source_record_key: Option<String>,
-    pub fingerprint: Option<String>,
-    pub tier: OrgtrackTier,
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanCheckpoint {

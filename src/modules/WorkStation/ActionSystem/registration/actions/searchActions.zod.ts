@@ -87,7 +87,9 @@ export function createSearchZodActions(repoPath: string) {
           .default(false)
           .describe("Case sensitive search"),
       }),
-      shortcut: getShortcutKeys("search_files"),
+      get shortcut() {
+        return getShortcutKeys("search_files");
+      },
       examples: [
         "search for TODO",
         "find all usages of useState",
@@ -140,7 +142,9 @@ export function createSearchZodActions(repoPath: string) {
           .min(1, "Query cannot be empty")
           .describe("File name pattern"),
       }),
-      shortcut: getShortcutKeys("quick_open"),
+      get shortcut() {
+        return getShortcutKeys("quick_open");
+      },
       examples: ["find file config", "search for package.json"],
     },
     async ({ query }) => {
@@ -155,6 +159,3 @@ export function createSearchZodActions(repoPath: string) {
 
   return [searchCodebase, searchFiles];
 }
-
-// Default export for static registration (when repoPath not needed)
-export const searchZodActions = createSearchZodActions("");

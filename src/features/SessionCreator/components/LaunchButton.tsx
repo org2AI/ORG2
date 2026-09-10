@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip from "@src/components/Tooltip";
 import { INPUT_AREA_BUTTONS } from "@src/config/inputAreaTokens";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import { ArrowUp02Icon, HugeiconsIcon, Loading03Icon } from "@src/icons";
 import { chatAppearanceAtom } from "@src/store/config/configAtom";
 
@@ -57,6 +57,9 @@ const LaunchButton: React.FC<LaunchButtonProps> = ({
 }) => {
   const { t } = useTranslation();
   const { sendOnEnter } = useAtomValue(chatAppearanceAtom);
+  const sendShortcut = useShortcutKeys("chat_send", {
+    chatSendOnEnter: sendOnEnter,
+  });
   const isActive = loading || !disabled;
   const stateClass = isActive
     ? INPUT_AREA_BUTTONS.iconButtonActive
@@ -110,9 +113,7 @@ const LaunchButton: React.FC<LaunchButtonProps> = ({
       content={
         <KeyboardShortcutTooltipContent
           label={ariaLabel}
-          shortcut={getShortcutKeys("chat_send", {
-            chatSendOnEnter: sendOnEnter,
-          })}
+          shortcut={sendShortcut}
         />
       }
       position="top-end"

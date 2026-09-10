@@ -1,27 +1,8 @@
 {
-  "selectRepo": {
-    "title": "Orgii",
-    "subtitle": "Başlamak için bir depo seçin",
-    "recentRepos": "Son Depolar",
-    "loadingProjects": "Repos yükleniyor...",
-    "noRepositories": "Henüz depo yok",
-    "getStartedHint": "Başlamak için bir Repo oluşturun veya klonlayın",
-    "noPath": "Yol yok",
-    "searchPlaceholder": "Depolarda ara...",
-    "loadMore": "Daha fazla yükle",
-    "actions": {
-      "importLocal": "Yerel Depo İçe Aktar",
-      "cloneUrl": "GitHub URL'sinden Klonla",
-      "cloneGithub": "GitHub'ımdan Klonla",
-      "createNew": "Yeni Depo Oluştur"
-    }
-  },
   "market": {
     "auth": {
       "noAuthCode": "Yetkilendirme kodu alınamadı",
-      "authSessionExpired": "Kimlik doğrulama Session sona erdi. Lütfen tekrar deneyin.",
-      "tokenExchangeFailed": "Token değişimi başarısız",
-      "defaultUser": "Kullanıcı"
+      "tokenExchangeFailed": "Token değişimi başarısız"
     }
   }
 }

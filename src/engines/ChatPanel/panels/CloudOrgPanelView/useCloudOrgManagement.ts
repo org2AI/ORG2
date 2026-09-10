@@ -57,11 +57,6 @@ import {
   COLLAB_SESSION_ACCESS_MODE,
   type CollabSessionAccessMode,
 } from "@src/store/collaboration/types";
-import {
-  SETUP_GUIDE_PERSISTED_MILESTONE,
-  completeSetupGuideMilestone,
-} from "@src/store/settings/setupGuideProgress";
-import { saveSetupGuideProgressAtom } from "@src/store/settings/setupGuideProgressAtom";
 import { copyText } from "@src/util/data/clipboard";
 
 const log = createLogger("CloudOrgManagement");
@@ -95,7 +90,6 @@ export function useCloudOrgManagement({
   const closeCloudOrgManagementTab = useSetAtom(
     closeOrganizationChatPanelTabAtom
   );
-  const saveSetupGuideProgress = useSetAtom(saveSetupGuideProgressAtom);
   const refetchOrgs = useRefetchOrg2CloudOrgs();
   const rosterVersionByOrg = useAtomValue(org2CloudRosterVersionAtom);
   const rosterVersion = rosterVersionByOrg[orgId] ?? 0;
@@ -226,14 +220,6 @@ export function useCloudOrgManagement({
               : getInviteExpiresAt(options.expiresInDays),
         });
         setLatestCreatedInvite(created);
-        void saveSetupGuideProgress((progress) =>
-          completeSetupGuideMilestone(
-            progress,
-            SETUP_GUIDE_PERSISTED_MILESTONE.TEAMMATE_INVITED
-          )
-        ).catch((error: unknown) => {
-          log.warn("failed to persist setup guide invite milestone", error);
-        });
         // Local prepend mirrors the server row (created_at desc ordering)
         // without an extra list round-trip.
         setInvites((current) => [
@@ -259,14 +245,7 @@ export function useCloudOrgManagement({
         setCreatingInvite(false);
       }
     },
-    [
-      creatingInvite,
-      flashCopied,
-      getFreshToken,
-      orgId,
-      saveSetupGuideProgress,
-      t,
-    ]
+    [creatingInvite, flashCopied, getFreshToken, orgId, t]
   );
 
   const handleCopyInvite = useCallback(async () => {

@@ -1,34 +1,9 @@
 {
-  "connect": "连接",
   "name": "姓名",
   "genderOptions": {},
   "role": "角色",
   "location": "位置",
-  "timezone": "时区",
   "commits": "次提交",
   "activity": "活跃度",
-  "specialty": {
-    "frontend": "前端",
-    "backend": "后端",
-    "fullstack": "全栈",
-    "mobile": "移动端",
-    "devops": "DevOps",
-    "data": "数据",
-    "systems": "系统"
-  },
-  "bio": "个人简介",
-  "social": {},
-  "edu": {
-    "edit": "编辑教育经历",
-    "present": "至今"
-  },
-  "exp": {
-    "edit": "编辑工作经历"
-  },
-  "sections": {
-    "about": "关于",
-    "developerActivity": "开发活动",
-    "projectsAndAchievements": "项目与成就",
-    "professionalBackground": "职业背景"
-  }
+  "social": {}
 }

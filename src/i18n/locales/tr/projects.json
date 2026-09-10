@@ -1,6 +1,5 @@
 {
   "projects": {
-    "searchPlaceholder": "Project ara...",
     "loading": "Projects yükleniyor...",
     "emptyState": "Henüz Project yok",
     "emptyStateSubtitle": "Başlamak için ilk Projectnizi oluşturun",
@@ -8,14 +7,13 @@
     "noResults": "Project bulunamadı",
     "dashboardTitle": "Projects",
     "groupBy": {
-      "org": "Org'a göre",
       "project": "Projeye göre",
       "status": "Duruma göre",
       "priority": "Önceliğe göre",
-      "person": "Kişiye göre",
       "assignedTo": "Atanana göre",
       "createdBy": "Oluşturan göre",
-      "targetDate": "Hedef tarihe göre"
+      "targetDate": "Hedef tarihe göre",
+      "property": "Özelliğe göre"
     },
     "source": {
       "localOnly": "Yalnızca yerel",
@@ -28,44 +26,17 @@
       "later": "Daha sonra",
       "noTargetDate": "Hedef tarih yok"
     },
-    "allProjects": "Tüm projeler",
-    "otherRepos": "Diğer Repolar",
-    "noOtherRepos": "Projectsi olan başka repo yok",
-    "personalWorkspace": "Personal Workspace",
-    "personalEmpty": "Henüz kişisel Project yok",
-    "addProject": "Project Ekle",
-    "repoFallback": "Repo",
     "loadProjectsFailed": "Projects yüklenemedi",
-    "deleteProject": "Projectyi sil",
     "createProject": "Project oluştur",
     "createMore": "Daha fazla oluştur",
     "newProject": "Yeni Project",
     "columns": {
-      "name": "Ad",
       "workItems": "İş öğeleri"
-    },
-    "viewModes": {
-      "list": "Liste",
-      "settings": "Ayarlar"
-    },
-    "syncMethod": {
-      "title": "Senkronizasyon yöntemi",
-      "storage": "Depolama",
-      "git": "Git (.orgii ile)"
-    },
-    "errors": {
-      "initFailed": "Project deposu başlatılamadı: {{error}}"
     },
     "editor": {
       "titlePlaceholder": "Yeni Project Adı",
       "summaryPlaceholder": "Kısa bir özet ekleyin...",
       "descriptionPlaceholder": "Bir açıklama, Project özeti veya fikir yazın..."
-    },
-    "tooltips": {
-      "dashboard": "Panel",
-      "filter": "Filtre",
-      "selectPeople": "Kişileri seç",
-      "searchPeople": "Kişi ara..."
     },
     "priorityGroups": {
       "unprioritized": "Önceliklendirilmemiş"
@@ -75,9 +46,6 @@
   "githubIssuesImport": {
     "title": "GitHub Issues içe aktar",
     "menuLabel": "GitHub Issues içe aktar",
-    "createTarget": "GitHub Issues Project",
-    "heading": "GitHub Issues üzerinden Project oluştur",
-    "description": "Bir GitHub deposu seçin, ORGII Project oluşturun ve GitHub Issues öğelerini work items olarak senkronize tutun.",
     "importButton": "GitHub Issues içe aktar",
     "projectDescription": "GitHub Issues · {{owner}}/{{repo}}",
     "fields": {
@@ -96,67 +64,43 @@
     "linkedRepoHint": "Bu Project ayrıca geçerli Workspace repo ile ilişkilendirilecek: {{repoName}}",
     "errors": {
       "invalidRepo": "owner/repo veya GitHub depo URL'si kullanın."
-    },
-    "importStatus": {
-      "title": "İçe aktarma durumu",
-      "state": {
-        "pending": "Bekliyor",
-        "running": "Çalışıyor",
-        "completed": "Tamamlandı",
-        "failed": "Başarısız",
-        "cancelled": "İptal edildi"
-      }
     }
   },
   "orgs": {
-    "yourOrgs": "Kuruluşlarınız",
-    "sectionTitle": "Kuruluşlar",
+    "yourOrgs": "Çalışma alanlarıınız",
     "recentProjects": "Son projeler",
-    "personalOrg": "Kişisel kuruluşum",
-    "linearOrg": "Linear kuruluşu",
-    "noLinearOrgs": "Henüz bağlı kuruluş yok",
+    "personalOrg": "Çalışma alanım",
+    "linearOrg": "Linear çalışma alanını",
+    "noLinearOrgs": "Henüz bağlı çalışma alanı yok",
     "sources": {
       "local": "Local",
-      "cloud": "Cloud",
-      "linear": "Linear"
+      "cloud": "Cloud"
     },
-    "addOrg": "Kuruluş ekle",
-    "importOrgs": "Kuruluşları içe aktar",
-    "importLinearOrgs": "Linear kuruluşlarını içe aktar",
-    "createOrg": "Kuruluş oluştur",
-    "createOrgHint": "Projeleri ve work items öğelerini Linear'dan ayrı gruplamak için yerel bir ORGII kuruluşu oluşturun.",
-    "createOrgFailed": "Kuruluş oluşturulamadı",
-    "orgName": "Kuruluş adı",
-    "orgNamePlaceholder": "Platform ekibi",
+    "addOrg": "Çalışma alanı ekle",
+    "importLinearOrgs": "Linear çalışma alanlarını içe aktar",
     "gitFolderPath": "Git klasör yolu (isteğe bağlı)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "Klasör senkronizasyonu için bu kuruluşu mevcut bir Git çalışma ağacına bağlayın.",
+    "gitFolderPathHint": "Klasör senkronizasyonu için bu çalışma alanını mevcut bir Git çalışma ağacına bağlayın.",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Bir Git klasörüyle senkronize edildi",
     "pendingSync": "Senkronizasyon bekleniyor",
     "management": {
-      "breadcrumb": "Organizasyon Ayarları",
       "overview": "Genel Bakış",
-      "profile": "Profil",
       "syncMethods": "Senkronizasyon Yöntemleri",
-      "orgNameDescription": "Bu proje organizasyonunun görünen adı",
-      "orgKey": "Organizasyon anahtarı",
-      "orgKeyDescription": "Organizasyon kapsamlı proje ID'leri için kullanılan kararlı kısa anahtar",
-      "projectCountDescription": "Şu anda bu organizasyona atanmış yerel projeler",
       "gitFolderSync": "Git klasörü senkronizasyonu",
-      "gitFolderSyncDescription": "Bu organizasyonun projelerini ve work items öğelerini bir Git worktree üzerinden yansıtır",
+      "gitFolderSyncDescription": "Bu çalışma alanının projelerini ve work items öğelerini bir Git worktree üzerinden yansıtır",
       "notConfigured": "Yapılandırılmadı",
       "syncNowDescription": "Uzak dosya değişikliklerini içe aktar ve yerel veritabanı değişikliklerini dışa aktar",
       "syncSummary": "{{projects}} proje, {{workItems}} work items, {{conflicts}} çakışma",
-      "syncHowItWorks": "Git klasör senkronizasyonu bu organizasyonu mevcut bir Git deposuna bağlar. ORGII, organizasyondan dışa aktarılan projeleri ve work items kayıtlarını bu deponun içindeki `.orgii/projects/...` altında saklar, dosya değişikliklerini oradan içe aktarır, yerel veritabanı değişikliklerini tekrar dosyalara dışa aktarır ve çakışmalarda durarak üzerine yazmadan önce inceleme yapmanı sağlar",
-      "noProjectsForCatalog": "Bu organizasyonda henüz proje yok.",
-      "noProjectsForCatalogHint": "Paylaşılan etiketleri yönetmeden önce bu organizasyonda bir proje oluşturun",
+      "syncHowItWorks": "Git klasör senkronizasyonu bu çalışma alanını mevcut bir Git deposuna bağlar. ORGII, çalışma alanından dışa aktarılan projeleri ve work items kayıtlarını bu deponun içindeki `.orgii/projects/...` altında saklar, dosya değişikliklerini oradan içe aktarır, yerel veritabanı değişikliklerini tekrar dosyalara dışa aktarır ve çakışmalarda durarak üzerine yazmadan önce inceleme yapmanı sağlar",
+      "noProjectsForCatalog": "Bu çalışma alanında henüz proje yok.",
+      "noProjectsForCatalogHint": "Paylaşılan etiketleri yönetmeden önce bu çalışma alanında bir proje oluşturun",
       "dangerZone": "Tehlikeli Bölge",
-      "deleteOrg": "Bu organizasyonu sil",
+      "deleteOrg": "Bu çalışma alanını sil",
       "deleteOrgDescription": "{{org}} ve tüm yerel projeleri ile iş öğelerini kalıcı olarak siler. Bu işlem geri alınamaz",
-      "personalOrgDeleteDisabled": "Varsayılan kişisel organizasyon kalıcıdır ve silinemez",
+      "personalOrgDeleteDisabled": "Varsayılan kişisel çalışma alanı kalıcıdır ve silinemez",
       "deleteTypeToConfirm": "Onaylamak için {{org}} yazın",
-      "deleteOrgAction": "Organizasyonu sil",
+      "deleteOrgAction": "Çalışma alanıu sil",
       "deletedToast": "{{org}} silindi"
     }
   },
@@ -173,28 +117,20 @@
     "targetDate": "Hedef tarih",
     "repos": "Depo(lar)",
     "completion": "Tamamlanma",
-    "statusBreakdown": "Durum Dağılımı",
     "addLead": "Lider ekle",
     "noLead": "Lider yok",
     "addMembers": "Üye ekle",
     "addTeams": "Takım ekle",
     "addLabels": "Etiket ekle",
     "addRepos": "Depoları bağla",
-    "searchRepos": "Depo ara...",
     "noReposHint": "Kullanılabilir depo yok. Önce çalışma alanına bir depo ekleyin.",
     "addDate": "Tarih ekle",
     "clearDate": "Tarihi temizle",
     "noStatus": "Durum yok",
     "noUpdates": "Güncelleme yok",
     "noPriority": "Öncelik yok",
-    "searchMembers": "Üye ara...",
     "searchAssignee": "Atanan kişiyi ara...",
-    "searchTeams": "Takım ara...",
     "noTeamsHint": "Henüz takım yok. Projectye üye ekleyin ve onları takımlara organize edin",
-    "searchLabels": "Etiket ara...",
-    "searchStatus": "Durum ara...",
-    "searchHealth": "Sağlık ara...",
-    "searchPriority": "Öncelik ara...",
     "memberCount_one": "{{count}} üye",
     "memberCount_other": "{{count}} üye",
     "statusOptions": {
@@ -215,8 +151,7 @@
       "onTrack": "Yolunda",
       "atRisk": "Risk altında",
       "offTrack": "Sapmış"
-    },
-    "noProjectSelected": "Project seçilmedi"
+    }
   },
   "workItems": {
     "label": "Work items",
@@ -232,22 +167,6 @@
     "newWorkItem": "Yeni Work Item",
     "newWorkItemName": "Yeni Work Item",
     "createWorkItem": "Work Item Oluştur",
-    "createModes": {
-      "generateWithAi": "AI ile oluştur",
-      "generateWithAgent": "Agent ile oluştur",
-      "manualCreation": "Manuel oluşturma",
-      "sessionCreatorPrompt": {
-        "promptNameQuestion": "Önce kullanıcıya belirli bir Work Item adı belirtmek isteyip istemediğini sor.",
-        "promptInstruction": "Bu proje için Work Items oluştur.",
-        "promptProject": "Proje: {{project}}",
-        "promptDraftTitle": "İstenen Work Item adı: {{title}}",
-        "promptDraftDetails": "Taslak ayrıntıları:\n{{details}}"
-      }
-    },
-    "linkExisting": {
-      "label": "Mevcut Work Item'ı bağla",
-      "placeholder": "Bağlanacak Work Item'ı seç"
-    },
     "titlePlaceholder": "Work Item başlığı",
     "descriptionPlaceholder": "Work Item tanımlayın...",
     "deleteWorkItem": "İş öğesini sil",
@@ -256,8 +175,7 @@
     "showProperties": "Özellikleri göster",
     "addStatusItem": "{{status}} öğesi ekle",
     "deleteBin": {
-      "title": "Silme Kutusu",
-      "subtitle": "7 gün boyunca kurtarılabilir"
+      "title": "Silme Kutusu"
     },
     "tabs": {
       "overview": "Genel Bakış",
@@ -265,7 +183,8 @@
       "kanban": "Kanban",
       "gantt": "Gantt",
       "calendar": "Takvim",
-      "settings": "Ayarlar"
+      "settings": "Ayarlar",
+      "table": "Tablo"
     },
     "statusFilters": {
       "all": "Tümü",
@@ -297,21 +216,9 @@
       "medium": "Orta",
       "low": "Düşük"
     },
-    "toolLabels": {
-      "edit": "düzenle",
-      "new": "yeni",
-      "patch": "yama"
-    },
     "overview": {
       "projectNamePlaceholder": "Project adı",
-      "descriptionPlaceholder": "Project açıklaması yazın...",
-      "stats": "İstatistikler",
-      "totalItems": "Toplam",
-      "completionRate": "Tamamlanma Oranı",
-      "recentUpdates": "Son Güncellemeler",
-      "name": "Ad",
-      "assignee": "Sorumlu",
-      "lastUpdated": "Güncellendi"
+      "descriptionPlaceholder": "Project açıklaması yazın..."
     },
     "properties": {
       "title": "İş Öğesi Özellikleri",
@@ -320,8 +227,6 @@
       "noAssignee": "Atanmamış",
       "noMembersHint": "Henüz üye yok. Git'ten senkronize etmek için Settings > Members'a gidin",
       "noProject": "Bağlı Project yok",
-      "selectProject": "Project seçin",
-      "noProjectsHint": "Kullanılabilir Project yok.",
       "noMilestone": "Kilometre taşı yok",
       "noDueDate": "Son tarih yok",
       "noDueDay": "Son gün yok",
@@ -342,20 +247,31 @@
       "inHours_other": "{{count}} saat içinde",
       "inLessThanHour": "1 saatten az",
       "searchProjects": "Project ara...",
-      "searchMilestones": "Kilometre taşı ara...",
       "delegations": "Delegasyonlar",
       "delegationsCompleted": "tamamlandı",
       "daysAgo": "{{count}} gün önce",
       "hoursAgo": "{{count}} saat önce",
       "inDays": "{{count}} gün içinde",
       "inHours": "{{count}} saat içinde",
-      "membersGroup": "Üyeler"
-    },
-    "history": {
-      "noHistory": "Henüz geçmiş yok"
+      "membersGroup": "Üyeler",
+      "filter": "Özellik filtresi",
+      "filterValue": "Özellik filtresi değeri",
+      "noValue": "Değer yok",
+      "archiveNamed": "{{name}} özelliğini arşivle",
+      "add": "Özellik ekle",
+      "archive": "Özelliği arşivle",
+      "datePlaceholder": "YYYY-AA-GG",
+      "empty": "Henüz özel özellik yok.",
+      "loading": "Özellikler yükleniyor…",
+      "namePlaceholder": "Özellik adı",
+      "no": "Hayır",
+      "optionsPlaceholder": "Seçenekler, virgülle ayrılmış",
+      "optionsRequired": "Seçim özellikleri virgülle ayrılmış seçenekler gerektirir.",
+      "type": "Özellik türü",
+      "updateFailed": "Özellik güncellenemedi",
+      "yes": "Evet"
     },
     "activity": {
-      "title": "Etkinlik",
       "discussionTitle": "Tartışma",
       "activityHistory": "Etkinlik geçmişi",
       "activityHistoryCount": "{{count}} etkinlik",
@@ -363,17 +279,12 @@
       "subscribe": "Abone ol",
       "unsubscribe": "Abonelikten çık",
       "commentPlaceholder": "Yorum bırakın...",
-      "you": "Siz",
       "createdWorkItem": "görevi oluşturdu",
       "deletedWorkItem": "görevi sildi",
       "restoredWorkItem": "görevi geri yükledi",
       "movedFromTo": "{{from}} konumundan {{to}} konumuna taşıdı",
       "commented": "yorum yaptı",
       "system": "Sistem",
-      "wasAssigned": "atandı",
-      "wasUnassigned": "atama kaldırıldı",
-      "addedLabel": "etiket ekledi",
-      "removedLabel": "etiket kaldırdı",
       "madeChange": "değişiklik yaptı",
       "changedField": "{{field}} alanını {{from}} yerine {{to}} olarak değiştirdi",
       "changedFieldShort": "{{field}} alanını güncelledi",
@@ -391,10 +302,6 @@
       "todoMarkedPending": "“{{todo}}” öğesini beklemede olarak işaretledi",
       "todoRenamed": "“{{from}}” adını “{{to}}” olarak değiştirdi",
       "todoUpdated": "“{{todo}}” öğesini güncelledi",
-      "justNow": "az önce",
-      "daysAgo": "{{count}}g önce",
-      "hoursAgo": "{{count}}s önce",
-      "minutesAgo": "{{count}}dk önce",
       "agent": "Agent",
       "fields": {
         "title": "başlık",
@@ -415,7 +322,27 @@
         "schedule": "zamanlama",
         "orchestratorConfig": "Orchestrator yapılandırması",
         "handoff": "devir"
-      }
+      },
+      "mentionPeople": "Kişilerden bahset",
+      "mentionAll": "@all — bu öğedeki herkes",
+      "mentionAgentOption": "{{name}} (agent)",
+      "mentionAgentOrgOption": "{{name}} (agent org)",
+      "appendedSession": "bir oturum ekledi",
+      "edited": "(düzenlendi)",
+      "commentDeleted": "Bu yorum silindi.",
+      "deleteComment": "Yorumu sil",
+      "deleteCommentConfirm": "Bu yorum silinsin mi? Yanıtlar kalır, yorum gövdesi kaldırılır.",
+      "messageCount_one": "{{count}} mesaj",
+      "messageCount_other": "{{count}} mesaj",
+      "cancelReply": "Yanıtı iptal et",
+      "conclusion": "Sonuç",
+      "reopen": "Yeniden aç",
+      "reply": "Yanıtla",
+      "replyingInThread": "Konuda yanıtlanıyor",
+      "resolve": "Çöz",
+      "resolved": "Çözüldü",
+      "submitComment": "Yorumu gönder",
+      "openedWorkItem": "bu iş öğesini açtı"
     },
     "contextMenu": {
       "status": "Durum",
@@ -428,8 +355,6 @@
       "milestone": "Kilometre taşı",
       "setDueDate": "Son tarih belirle",
       "rename": "Yeniden adlandır...",
-      "addLink": "Bağlantı ekle...",
-      "favorite": "Favori",
       "moreProperties": "Daha fazla özellik"
     },
     "propertyFields": {
@@ -440,63 +365,10 @@
     },
     "addWorkItem": "İş Öğesi Ekle",
     "agentWorkflow": {
-      "title": "Agent İş Akışı",
-      "running": "Çalışıyor...",
-      "completed": "Tamamlandı",
-      "failed": "Başarısız",
-      "interrupted": "Kesintiye Uğradı",
-      "retry": "Yeniden Dene",
-      "resume": "Devam Et",
-      "openSession": "Oturumu Aç",
-      "viewLiveChat": "Canlı Chat'i Görüntüle",
-      "viewConversation": "Konuşmayı Görüntüle",
-      "noWorkflowRun": "Henüz Agent iş akışı çalıştırılmadı",
-      "confirmStart": "Bu iş öğesinde SDE Agent başlatılsın mı?",
-      "sdePhase": "SDE Geliştirme",
-      "totalCost": "Toplam Maliyet",
-      "totalTokens": "Toplam Token",
-      "proofOfWork": "Çalışma Kanıtı",
-      "branch": "Dal",
-      "pullRequest": "Pull Request",
-      "filesChanged": "Değişen Dosyalar",
-      "linesAdded": "Eklenen Satırlar",
-      "linesRemoved": "Silinen Satırlar",
-      "approved": "Onaylandı",
-      "changesRequested": "Değişiklik İstendi",
-      "inconclusive": "Belirsiz",
-      "failedError": "Oturum başarısız oldu",
-      "retryWithContext": "Önceki hatanın bağlamıyla yeniden dene",
-      "interruptedMessage": "Uygulama kapatılırken iş akışı kesintiye uğradı",
-      "selectAccount": "Bir code account seçin",
-      "noAccountsReady": "Kullanılabilir yerel hesap yok",
-      "sessionOutput": "Oturum Çıktısı",
-      "noOutputYet": "Henüz çıktı yok",
-      "cycles": "{{count}} döngü",
-      "whatNext": "Ne yapmak istersiniz?",
-      "acceptAsIs": "Olduğu Gibi Kabul Et",
-      "fixAndRerun": "Düzelt ve Yeniden Çalıştır",
-      "roleSde": "SDE",
-      "roleReview": "Review",
-      "roleFollowUp": "Follow-up",
-      "roleAssistant": "Assistant",
-      "roleUser": "User",
       "statusRunning": "Çalışıyor",
       "statusCompleted": "Tamamlandı",
       "statusFailed": "Başarısız",
-      "statusCancelled": "İptal Edildi",
-      "sessionFiles": "Dosyalar",
-      "noFilesModified": "Değiştirilen dosya yok",
-      "subAgents": "Sub-Agents",
-      "subAgentSpawn": "{{name}} #{{instance}} oluşturuluyor",
-      "subAgentComplete": "{{name}} #{{instance}} tamamlandı",
-      "subAgentFailed": "{{name}} #{{instance}} başarısız",
-      "tokens": "Token",
-      "subAgentDefault": "Sub-Agent",
-      "toolResult": "{{tool}} sonucu",
-      "collabLockRunning": "{{name}} is running",
-      "collabLockHeld": "{{name}}'s agent is already working on this item",
-      "collabLockConflict": "Another member just started an agent on this item",
-      "collabLockUnresolved": "Could not verify this work item's collaboration status. Check your connection and try again."
+      "statusCancelled": "İptal Edildi"
     },
     "changedFiles": {
       "title": "Değişen Dosyalar",
@@ -509,15 +381,13 @@
       "notAuthenticated": "Kimlik doğrulanmadı. Lütfen marketplace'e giriş yapın.",
       "noRepoPath": "Depo yolu mevcut değil",
       "noOriginRemote": "Depoda origin remote bulunamadı",
-      "cannotParseRepoName": "Depo adı çözümlenemiyor: {{url}}",
-      "defaultPrTitle": "[{{shortId}}] Work item değişiklikleri"
+      "cannotParseRepoName": "Depo adı çözümlenemiyor: {{url}}"
     },
     "sessions": {
-      "linkedSessions": "Bağlı Sessions",
-      "newSession": "Yeni oturum",
-      "starting": "Başlatılıyor...",
       "emptyOverview": "Henüz Sessions yok",
-      "emptyOverviewHint": "Yürütmeyi burada izlemek için bir Agent Session başlatın."
+      "originTitle": "Oluşturma oturumu",
+      "originStatus": "Bu öğeyi oluşturdu",
+      "runsCount": "{{count}} çalıştırma"
     },
     "outputTab": {
       "prSection": "Pull Request",
@@ -531,17 +401,120 @@
       "prMerged": "Merged",
       "prClosed": "Closed",
       "prDraft": "Draft",
-      "openPr": "PR'yi aç",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "Dosya değişikliği yok",
       "fileDiffCleanHint": "Dosya değişikliği algılanmadı.",
       "costSummary": "Maliyet özeti",
       "totalCost": "Toplam",
       "tokens": "Token",
-      "cycles": "döngü"
+      "prBlocked": "Tamamlama engellendi",
+      "prReady": "Tamamlanmaya hazır"
     },
     "viewWorkItems": "Work Item'ları görüntüle",
-    "fromRoutine": "From routine: {{name}}"
+    "fromRoutine": "From routine: {{name}}",
+    "batchField": {
+      "hint": "Seçilen {{count}} öğeye uygulanır."
+    },
+    "batchStatus": {
+      "title": "Durumu ayarla"
+    },
+    "batchPriority": {
+      "title": "Önceliği ayarla"
+    },
+    "batchAssignee": {
+      "title": "Atanan kişiyi ayarla"
+    },
+    "discussion": {
+      "previewWillWake": "Yanıtlaması için agent uyandırılacak",
+      "previewNoteOnly": "Yalnızca not — agent tetiklenmeyecek",
+      "previewNoSession": "Bağlı agent oturumu yok — hiçbir şey tetiklenmeyecek",
+      "previewMentionResume": "Bahsedilen agent uyandırılacak",
+      "previewMentionStart": "Bahsedilen agent başlatılacak",
+      "previewMentionUnroutable": "Bahsedilen agent bu öğede yapılandırılmamış — hiçbir şey tetiklenmeyecek",
+      "previewThread": "Agent bu konudan uyandırılacak",
+      "previewAssignee": "Atanan agent uyandırılacak",
+      "previewAssigneeStart": "Atanan agent başlatılacak",
+      "previewCoalesce": "bekleyen uyandırmaya katılır",
+      "previewMemberThread": "Üye konusu — hiçbir agent uyandırılmayacak"
+    },
+    "subItems": {
+      "title": "Alt öğeler",
+      "parent": "Üst öğe",
+      "progress": "{{total}} öğeden {{completed}} tanesi tamamlandı",
+      "add": "Alt öğe ekle",
+      "addFirst": "İlk alt öğeyi ekle",
+      "titlePlaceholder": "Alt öğe başlığı ekleyin",
+      "stagePicker": "Alt öğe aşaması",
+      "noStage": "Aşama yok",
+      "stage": "Aşama {{stage}}",
+      "openStatus": "Açık",
+      "completedStatus": "Tamamlandı",
+      "cancelledStatus": "İptal edildi",
+      "createError": "Alt öğe oluşturulamadı. Tekrar deneyin."
+    },
+    "savedViews": {
+      "placeholder": "Görünümler",
+      "save": "Geçerli görünümü kaydet",
+      "saveTitle": "Görünümü kaydet",
+      "namePlaceholder": "Görünüm adı",
+      "saveHint": "Geçerli filtreleri yakalar; düzen ilk açılışı belirler.",
+      "delete": "Görünümü sil"
+    },
+    "table": {
+      "columnsPicker": "Sütunlar",
+      "groupByProperty": "Özelliğe göre grupla",
+      "columns": {
+        "shortId": "ID",
+        "title": "Başlık",
+        "status": "Durum",
+        "priority": "Öncelik",
+        "assignee": "Atanan",
+        "targetDate": "Son tarih",
+        "labels": "Etiketler"
+      }
+    },
+    "batchProperty": {
+      "title": "Özellik ayarla",
+      "hint": "Seçili {{count}} öğeye tek bir özellik değeri uygular. Temizlemek için değeri boş bırakın.",
+      "propertyPlaceholder": "Özellik",
+      "valuePlaceholder": "Değer",
+      "applied": "{{count}} öğe güncellendi"
+    },
+    "revisionConflict": {
+      "title": "Düzenleme çakışmasını çöz",
+      "description": "{{field}}, {{expected}} revizyonundan sonra değişti. Düzenlemenizi {{actual}} revizyonuyla karşılaştırın, ardından hangi sürümün korunacağını seçin.",
+      "mine": "Benim sürümüm",
+      "latest": "En son sürüm",
+      "useLatest": "En sonu kullan",
+      "keepMine": "Benimkini koru",
+      "titleField": "Başlık",
+      "descriptionField": "Açıklama",
+      "commentField": "Yorum",
+      "reloadNotice": "Bu iş öğesi başka bir yerde değişti. En son sürüm yeniden yüklendi.",
+      "retryFailed": "En son sürüm yeniden değişti. Tekrar denemeden önce her iki sürümü inceleyin."
+    },
+    "quickActions": {
+      "title": "Hızlı eylemler",
+      "empty": "Henüz hızlı eylem yok. Bir agent için yeniden kullanılabilir bir istem kaydedin.",
+      "emptyManage": "Henüz kaydedilmiş bir şey yok.",
+      "manageTitle": "Hızlı eylemleri yönet",
+      "namePlaceholder": "Eylem adı (örn. CI'ı düzelt)",
+      "targetPlaceholder": "Hedef agent",
+      "promptPlaceholder": "Agent ne yapmalı?",
+      "archive": "Eylemi arşivle",
+      "scopeChanged": "Hızlı eylem artık bu iş öğesinin kapsamında değil",
+      "started": "“{{name}}” hızlı eylemi başlatıldı"
+    },
+    "detailNavigation": "İş öğesi gezinmesi",
+    "linkedSessions": {
+      "title": "Oturumlar"
+    },
+    "detail": {
+      "conversation": "Konuşma",
+      "linked": "Bağlı"
+    },
+    "detailSummary": "İş öğesi özeti",
+    "navigationTrail": "İş öğesi gezinmesi"
   },
   "settings": {
     "sidebarGeneral": "Genel",
@@ -560,35 +533,19 @@
     "githubUsernameDesc": "Bağlandığında üye listelerinde kimliğinizi eşleştirir",
     "profileNotFound": "Kimliğiniz ekip üyeleriyle eşleştirilemedi",
     "profileNotFoundHint": "Git e-postanız ({{email}}) üye listesinde bulunamadı. Güncellemek için üyeleri senkronize edin",
-    "teamMembers": "Takım Üyeleri",
-    "memberCount": "{{active}} / {{total}} aktif",
-    "activeBadge": "Aktif",
-    "inactiveBadge": "Pasif",
-    "activateMember": "Üyeyi etkinleştir",
-    "deactivateMember": "Üyeyi devre dışı bırak",
-    "syncFromGit": "Git'ten senkronize et",
-    "membersDescription": "Takım üyelerini yönetin. Pasif üyeler atama açılır listelerinde görünmez",
     "activeMembers": "Mevcut",
     "activeMembersDescription": "Atama listelerinde ve raporlarda görünen üyeler",
     "inactiveMembers": "Mevcut değil",
     "inactiveMembersDescription": "Listelerden gizlendi. Tekrar dahil etmek için yeniden etkinleştirin",
     "noActiveMembers": "Aktif üye yok",
-    "repoTab": "Repo",
-    "projectTab": "Project",
     "workItemIdTitle": "İş Öğesi Kimliği",
     "workItemIdPrefix": "ID Ön Eki",
     "workItemIdPrefixDescription": "1-3 harf veya rakam. Yeni ID'ler bu ön eki kullanır",
     "customPrefix": "Özel Ön Ek",
-    "customPrefixDescription": "Kapalıyken ön ek, Project adının ilk 3 karakterinden otomatik türetilir",
     "customPrefixCurrentValue": "Geçerli değer: {{value}}",
-    "manageInRepoSettings": "Repo Ayarlarında Yönet",
-    "projectMemberList": "Project Üyeleri",
     "projectMemberListDescription": "Bu Projectye ait repo üyelerini seçin",
     "labelsDescription": "İş öğelerini kategorize etmek için etiketleri yönetin",
-    "addLabel": "Etiket ekle",
     "noLabels": "Etiket eklemek için + tıklayın",
-    "deleteLabel": "Etiketi sil",
-    "changeColor": "Rengi değiştir",
     "labelNamePlaceholder": "Etiket adı...",
     "memberRecentlyActive": "Aktif",
     "linkedIdentities": "Bağlı Kimlikler",
@@ -607,9 +564,7 @@
     "claimIdentityShowAsAuthor": "İş öğesi geçmişinde yazar olarak görün",
     "claimIdentityWarning": "Yalnızca size ait kimlikleri talep edin",
     "confirmClaim": "Talebi Onayla",
-    "alreadyClaimed": "Zaten başka bir üyeye bağlı",
     "dangerZone": "Tehlikeli Bölge",
-    "dangerZoneDescription": "Bu Project için geri alınamaz işlemler",
     "deleteProject": "Bu Projectyi sil",
     "deleteProjectWarning": ".orgii içindeki Project klasörü ve tüm iş öğeleri kalıcı olarak silinecektir. Bu işlem geri alınamaz",
     "deleteThisProject": "Bu Projectyi sil...",
@@ -624,47 +579,17 @@
         "notAttached": "Bağlı değil",
         "attach": "Bağla",
         "detach": "Ayır",
-        "changeWarning": "Yeni bir adaptör bağlamadan önce mevcut adaptörü ayırın."
+        "changeWarning": "Yeni bir adaptör bağlamadan önce mevcut adaptörü ayırın.",
+        "detachProjectMenuLabel": "GitHub bağlantısını kaldır",
+        "detachProjectTitle": "{{project}} için GitHub bağlantısı kaldırılsın mı?",
+        "detachProjectDescription": "GitHub Issues senkronizasyonu duracak. Yerel proje ve içe aktarılan iş öğeleri ORGII'de kalacak.",
+        "detachProjectAction": "{{project}} için GitHub bağlantısını kaldır",
+        "detachProjectSuccess": "{{project}} için GitHub bağlantısı kaldırıldı"
       },
       "accountPicker": {
         "title": "Hesap",
         "empty": "Bu adaptör için global senkronizasyon hesabı yok",
         "previewNote": "Bu Project'nin senkronizasyon için kullanacağı global hesabı seçin."
-      },
-      "token": {
-        "title": "API Token",
-        "placeholder": "Kişisel erişim Token'ınızı yapıştırın",
-        "save": "Token'ı kaydet",
-        "saved": "Token kaydedildi",
-        "tabs": {
-          "oauth": "OAuth",
-          "personalToken": "Kişisel Token"
-        },
-        "bothMethodsNote": "Her iki yöntem de çalışır — en son yapılan oturum açma kazanır.",
-        "oauth": {
-          "connectButton": "{{adapter}} ile bağlan",
-          "instructions": "Az önce açılan tarayıcı sekmesine aşağıdaki kodu girin ve erişimi onaylayın.",
-          "userCodeLabel": "Kod",
-          "openLinkButton": "Doğrulama sayfasını aç",
-          "waitingForConfirmation": "Tarayıcıda onaylamanız bekleniyor…",
-          "cancel": "İptal",
-          "connected": "OAuth ile bağlandı",
-          "reconnect": "Yeniden bağlan",
-          "codeCopied": "Kod panoya kopyalandı",
-          "errors": {
-            "startFailed": "OAuth başlatılamadı: {{error}}",
-            "accessDenied": "OAuth oturum açma reddedildi.",
-            "expired": "Onaydan önce kodun süresi doldu. Lütfen tekrar deneyin.",
-            "pollFailed": "Oturum açma başarısız: {{detail}}",
-            "unknown": "Beklenmeyen oturum açma hatası: {{error}}"
-          },
-          "browserOpened": "{{adapter}} tarayıcınızda açılıyor…",
-          "redirect": {
-            "openButton": "{{adapter}} yetkilendirme sayfasını aç",
-            "instructions": "{{adapter}} bağlantısını tamamlamak için tarayıcıdaki isteği onaylayın.",
-            "expiresAt": "Bağlantının süresi {{time}} sona eriyor"
-          }
-        }
       },
       "status": {
         "title": "Durum",
@@ -741,7 +666,6 @@
       },
       "problems": {
         "title": "Başarısız girişler",
-        "empty": "Başarısız giriş yok.",
         "op": {
           "create": "create",
           "update": "update",
@@ -771,10 +695,6 @@
       },
       "conflicts": {
         "title": "Senkronizasyon çakışmaları",
-        "loading": "Çakışmalar yükleniyor…",
-        "empty": "Çakışma yok.",
-        "openCount_one": "{{count}} açık çakışma",
-        "openCount_other": "{{count}} açık çakışma",
         "detectedAt": "{{time}} tespit edildi",
         "resolvedAt": "{{time}} çözüldü",
         "fields_one": "{{count}} alan",
@@ -809,13 +729,21 @@
         },
         "errors": {
           "listFailed": "Çakışmalar yüklenemedi: {{error}}",
-          "countFailed": "Çakışma sayısı yüklenemedi: {{error}}",
           "useLocalFailed": "Yerel değerler korunamadı: {{error}}",
           "useRemoteFailed": "Uzak değerler benimsenemedi: {{error}}",
           "dismissFailed": "Çakışma yok sayılamadı: {{error}}"
         }
       }
-    }
+    },
+    "sidebarStatuses": "Durumlar",
+    "statusesBuiltin": "Yerleşik durumlar",
+    "statusesBuiltinDescription": "Standart iş akışı grupları. Her zaman kullanılabilir.",
+    "statusesCustom": "Özel durumlar",
+    "statusesCustomDescription": "Yerleşik bir grup üzerindeki adlandırılmış takma adlar. Filtreler, sayımlar ve panolar bunları grupları gibi ele alır.",
+    "statusNamePlaceholder": "Durum adı",
+    "noCustomStatuses": "Henüz özel durum yok.",
+    "statusArchive": "Durumu arşivle",
+    "statusRestore": "Durumu geri yükle"
   },
   "statusBar": {
     "workItemCount": "{{count}} öğe",
@@ -856,29 +784,13 @@
     "views": "Views",
     "more": "More"
   },
-  "teams": {
-    "title": "Ekiplerin",
-    "localTeams": "Yerel ekipler",
-    "linearTeams": "Linear ekipleri",
-    "personalOrg": "Personal Org",
-    "agentOrgs": "Agent Ekipleri",
-    "emptyLinearTeams": "Linear ekibi bulunamadı",
-    "empty": "Ekip bulunamadı"
-  },
   "linearProjects": {
-    "title": "Linear Projects",
-    "open": "Open Linear Projects",
-    "subtitle": "Browse and edit Linear Projects in real time without importing them into ORGII.",
-    "refresh": "Refresh",
     "createProject": "Create Project",
-    "archive": "Archive",
-    "searchPlaceholder": "Search Linear Projects...",
     "loadingProjects": "Loading Linear Projects...",
     "loadingIssues": "Loading Linear Issues...",
     "emptyProjects": "No Linear Projects found",
     "emptyIssues": "No Linear Issues in this Project",
     "unknownState": "Unknown state",
-    "updated": "Updated {{date}}",
     "emptyConnections": {
       "title": "No Linear connections",
       "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
@@ -887,14 +799,9 @@
       "title": "Select a Linear Project",
       "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
     },
-    "issues": {
-      "title": "Linear Issues",
-      "subtitle": "Issues are read and mutated directly through the Linear API."
-    },
     "forms": {
       "createProjectTitle": "Create Linear Project",
       "projectName": "Project name",
-      "issueTitle": "Issue title",
       "description": "Description"
     },
     "statusPanel": {
@@ -945,6 +852,6 @@
     "noResultTitle": "No Git sync result",
     "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This org has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
   }
 }

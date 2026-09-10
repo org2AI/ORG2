@@ -124,11 +124,12 @@ impl CodexValidator {
         if token.is_empty() {
             return Err("Codex OAuth access token is empty".to_string());
         }
+        // Retain this argument for the existing RPC/service contract, but do
+        // not pass it to the disposable app-server home. Token rotation is
+        // owned by KeyService so refreshed credentials are persisted.
+        let _ = refresh_token;
 
-        let app_server_error = match self
-            .list_models_via_app_server(token, refresh_token, id_token)
-            .await
-        {
+        let app_server_error = match self.list_models_via_app_server(token, id_token).await {
             Ok(models) if !models.is_empty() => return Ok(models),
             Ok(_) => {
                 log::warn!(
@@ -173,10 +174,9 @@ impl CodexValidator {
     async fn list_models_via_app_server(
         &self,
         access_token: &str,
-        refresh_token: Option<&str>,
         id_token: Option<&str>,
     ) -> Result<Vec<DiscoveredModel>, String> {
-        let codex_home = write_temporary_codex_home(access_token, refresh_token, id_token).await?;
+        let codex_home = write_temporary_codex_home(access_token, id_token).await?;
         let discovery_result = run_codex_model_list_rpc(&codex_home).await;
         cleanup_temporary_codex_home(&codex_home, "model discovery").await;
         discovery_result
@@ -233,6 +233,10 @@ impl CodexValidator {
     ) -> Result<QuotaInfo, String> {
         match self.fetch_usage_api_quota(access_token).await {
             Ok(quota) => Ok(quota),
+            // Let the Key Vault quota pipeline perform the refresh through its
+            // persisted, per-account OAuth lock. Falling back to a disposable
+            // app-server on an auth failure risks obscuring this signal.
+            Err(usage_api_err) if is_oauth_auth_error_message(&usage_api_err) => Err(usage_api_err),
             Err(usage_api_err) => {
                 log::warn!(
                     "[CodexQuota] Usage API quota fetch failed ({usage_api_err}); falling back to app-server"
@@ -298,8 +302,11 @@ impl CodexValidator {
         if token.is_empty() {
             return Err("Codex OAuth access token is empty".to_string());
         }
+        // Kept for caller compatibility; disposable CODEX_HOME instances must
+        // never own or rotate the persisted refresh token.
+        let _ = refresh_token;
 
-        let codex_home = write_temporary_codex_home(token, refresh_token, id_token).await?;
+        let codex_home = write_temporary_codex_home(token, id_token).await?;
         let quota_result = run_codex_rate_limits_rpc(&codex_home).await;
         cleanup_temporary_codex_home(&codex_home, "quota fetch").await;
         quota_result
@@ -364,6 +371,21 @@ impl CodexValidator {
 
         (false, "Unknown token format".to_string())
     }
+}
+
+#[cfg(test)]
+pub(in crate::providers) fn is_oauth_auth_error(error: &str) -> bool {
+    is_oauth_auth_error_message(error)
+}
+
+fn is_oauth_auth_error_message(error: &str) -> bool {
+    let lower = error.to_lowercase();
+    lower.contains("401")
+        || lower.contains("403")
+        || lower.contains("unauthorized")
+        || lower.contains("forbidden")
+        || lower.contains("invalid token")
+        || lower.contains("token expired")
 }
 
 impl Default for CodexValidator {

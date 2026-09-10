@@ -8,7 +8,7 @@
  */
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { createLogger } from "@src/hooks/logger";
 
 const log = createLogger("CanvasInlineCard");
@@ -38,9 +38,9 @@ export class CanvasErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <InlineAlert type="danger" title="Preview failed" role="alert">
+        <PageNotice type="danger" title="Preview failed" role="alert">
           {this.state.error.message}
-        </InlineAlert>
+        </PageNotice>
       );
     }
     return this.props.children;

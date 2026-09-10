@@ -99,7 +99,7 @@ export const SpotlightSearchBar: React.FC<SpotlightSearchBarProps> = ({
       data-icon="chevron-left"
       size={13}
       strokeWidth={2.5}
-      className="shrink-0"
+      className="block shrink-0 self-center"
     />
   );
 
@@ -108,7 +108,11 @@ export const SpotlightSearchBar: React.FC<SpotlightSearchBarProps> = ({
   // which `typeof === "function"` misses), and hugeicons glyph data — which a
   // hand-rolled switch here used to drop entirely, leaving pills iconless.
   const renderPillIcon = (segment: PathSegment) => (
-    <AnyIcon icon={segment.icon} size={14} className="text-primary-6" />
+    <AnyIcon
+      icon={segment.icon}
+      size={14}
+      className="block shrink-0 self-center text-primary-6"
+    />
   );
 
   return (
@@ -139,7 +143,7 @@ export const SpotlightSearchBar: React.FC<SpotlightSearchBarProps> = ({
               return (
                 <div
                   key={`${segment.type}-${segment.id}`}
-                  className={`${SPOTLIGHT_CLASSES.primaryPill} ${canRemove ? "cursor-pointer" : ""}`}
+                  className={`${SPOTLIGHT_CLASSES.primaryPill} ${canRemove ? SPOTLIGHT_CLASSES.interactivePill : ""}`}
                   onClick={
                     canRemove
                       ? (event) => handlePillRemove(index, event)

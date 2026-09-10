@@ -34,10 +34,17 @@ import { type MutableRefObject, type RefObject, useEffect } from "react";
  */
 import { useRef } from "react";
 
+function setMounted(mountedRef: RefObject<boolean>, mounted: boolean): void {
+  (mountedRef as MutableRefObject<boolean>).current = mounted;
+}
+
 export function useMountedCleanup(mountedRef: RefObject<boolean>): void {
   useEffect(() => {
+    // Re-arm on every (re)mount so StrictMode's simulated unmount/remount and
+    // Fast Refresh do not leave the ref stuck at `false`.
+    setMounted(mountedRef, true);
     return () => {
-      (mountedRef as MutableRefObject<boolean>).current = false;
+      setMounted(mountedRef, false);
     };
   }, [mountedRef]);
 }

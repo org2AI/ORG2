@@ -1,8 +1,10 @@
 import React, { useCallback } from "react";
 
+import Input, { type InputProps } from "@src/components/Input";
 import type { ControlAppearance } from "@src/components/controlAppearance";
 
 interface TimePickerProps {
+  mode?: "time";
   hour: number;
   minute: number;
   onChange: (hour: number, minute: number) => void;
@@ -35,7 +37,13 @@ function parseTime(value: string): { hour: number; minute: number } | null {
   return { hour: parsedHour, minute: parsedMinute };
 }
 
-const TimePicker: React.FC<TimePickerProps> = ({
+interface DateTimePickerProps extends Omit<InputProps, "type" | "step"> {
+  mode: "datetime";
+  /** Hours by default; opt into minutes. Seconds are never shown. */
+  precision?: "hour" | "minute";
+}
+
+const TimeOnlyPicker: React.FC<TimePickerProps> = ({
   hour,
   minute,
   onChange,
@@ -53,27 +61,38 @@ const TimePicker: React.FC<TimePickerProps> = ({
     [onChange]
   );
 
-  const inputClassName = [
-    "h-7 rounded-lg px-2 text-[13px] text-text-1 outline-none transition-colors",
-    "scheme-light-dark",
-    appearance === "ghost"
-      ? "border border-transparent bg-transparent hover:bg-surface-hover focus:bg-surface-hover"
-      : "border border-border-2 bg-bg-2 focus:border-primary-6 focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary-6)_15%,transparent)]",
-    disabled && "cursor-not-allowed opacity-50",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
-    <input
+    <Input
+      size="small"
+      appearance={appearance}
+      inputClassName="scheme-light-dark tabular-nums"
       type="time"
       value={formatTime(hour, minute)}
-      onChange={handleTimeChange}
+      onChange={(_, event) => handleTimeChange(event)}
       disabled={disabled}
       step={minuteStep * 60}
-      className={`${inputClassName} ${className}`}
+      className={className}
     />
   );
 };
 
-export default TimePicker;
+export default function TimePicker(
+  props: TimePickerProps | DateTimePickerProps
+) {
+  if (props.mode !== "datetime") return <TimeOnlyPicker {...props} />;
+  const { mode: _mode, precision = "hour", value, onChange, ...rest } = props;
+  const normalize = (next: string) =>
+    next
+      ? `${next.slice(0, 13)}:${precision === "hour" ? "00" : next.slice(14, 16)}`
+      : "";
+  return (
+    <Input
+      {...rest}
+      type="datetime-local"
+      step={precision === "hour" ? 3600 : 60}
+      inputClassName="scheme-light-dark tabular-nums"
+      value={value === undefined ? undefined : normalize(value)}
+      onChange={(next, event) => onChange?.(normalize(next), event)}
+    />
+  );
+}

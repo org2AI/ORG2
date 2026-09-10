@@ -3,14 +3,7 @@
  *
  * Displays console log entries with filtering and search capabilities.
  */
-import React, {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Virtuoso } from "react-virtuoso";
 
@@ -21,15 +14,16 @@ import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip"
 import { Placeholder } from "@src/components/Placeholder";
 import Select from "@src/components/Select";
 import {
+  HEADER_BUTTON,
+  HEADER_ICON_SIZE,
+} from "@src/config/workstation/tokens";
+import { useKeyedCopyCheck } from "@src/hooks/ui/useCopyCheck";
+import {
   BrushCleaningIcon,
   Copy01Icon,
   HugeiconsIcon,
   Tick01Icon,
 } from "@src/icons";
-import {
-  HEADER_BUTTON,
-  HEADER_ICON_SIZE,
-} from "@src/modules/WorkStation/shared/tokens";
 import { copyText } from "@src/util/data/clipboard";
 
 import type { ConsoleEntry, FilterLevel, LogLevel } from "../../types";
@@ -240,17 +234,16 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = memo(
     const [expandedStackIds, setExpandedStackIds] = useState<Set<string>>(
       new Set()
     );
-    const [copiedId, setCopiedId] = useState<string | null>(null);
-    const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const mountedRef = useRef(true);
-
-    useEffect(() => {
-      mountedRef.current = true;
-      return () => {
-        mountedRef.current = false;
-        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
-      };
+    const copyEntry = useCallback((entry: ConsoleEntry) => {
+      const text = `[${entry.level.toUpperCase()}] ${formatTimestamp(entry.timestamp)}\n${entry.message}${entry.stack ? `\n\nStack:\n${entry.stack}` : ""}`;
+      return copyText(text);
     }, []);
+    const {
+      copiedKey: copiedEntry,
+      handleCopy: flashCopiedEntry,
+      reset: resetCopiedEntry,
+    } = useKeyedCopyCheck(copyEntry, { durationMs: 1500 });
+    const copiedId = copiedEntry?.id ?? null;
 
     // Filter entries by level and search query
     const filteredEntries = useMemo(() => {
@@ -317,18 +310,9 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = memo(
     const handleCopyEntry = useCallback(
       (entry: ConsoleEntry, event: React.MouseEvent) => {
         event.stopPropagation();
-        const text = `[${entry.level.toUpperCase()}] ${formatTimestamp(entry.timestamp)}\n${entry.message}${entry.stack ? `\n\nStack:\n${entry.stack}` : ""}`;
-        void copyText(text).then(() => {
-          if (!mountedRef.current) return;
-          setCopiedId(entry.id);
-          if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
-          copiedTimerRef.current = setTimeout(() => {
-            copiedTimerRef.current = null;
-            if (mountedRef.current) setCopiedId(null);
-          }, 1500);
-        });
+        flashCopiedEntry(entry);
       },
-      []
+      [flashCopiedEntry]
     );
 
     const renderEntry = useCallback(
@@ -356,13 +340,9 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = memo(
     const handleClear = useCallback(() => {
       setExpandedMessageIds(new Set());
       setExpandedStackIds(new Set());
-      setCopiedId(null);
-      if (copiedTimerRef.current) {
-        clearTimeout(copiedTimerRef.current);
-        copiedTimerRef.current = null;
-      }
+      resetCopiedEntry();
       onClear();
-    }, [onClear]);
+    }, [onClear, resetCopiedEntry]);
 
     return (
       <div className="flex h-full min-w-0 flex-col">

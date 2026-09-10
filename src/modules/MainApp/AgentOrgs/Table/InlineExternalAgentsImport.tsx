@@ -6,15 +6,11 @@ import InlineExternalImport from "@src/scaffold/WizardSystem/shared/externalImpo
 
 interface InlineExternalAgentsImportProps {
   cursorRepos?: CursorRepo[];
-  forceExpanded?: boolean;
-  onCompleted?: () => void;
   onAfterImport?: () => void | Promise<void>;
 }
 
 const InlineExternalAgentsImport: React.FC<InlineExternalAgentsImportProps> = ({
   cursorRepos,
-  forceExpanded,
-  onCompleted,
   onAfterImport,
 }) => {
   const { t } = useTranslation("integrations");
@@ -30,8 +26,6 @@ const InlineExternalAgentsImport: React.FC<InlineExternalAgentsImportProps> = ({
         itemColumn: t("agentOrgs.importAgentColumn"),
       }}
       cursorRepos={cursorRepos}
-      forceExpanded={forceExpanded}
-      onCompleted={onCompleted}
       onAfterImport={onAfterImport}
       importableCheck="filtered"
     />

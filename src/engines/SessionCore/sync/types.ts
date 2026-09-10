@@ -58,11 +58,13 @@ export interface PostLoadResult {
   /** Context token fill level (sets sessionContextTokensAtom). */
   contextTokens?: number;
   /** Full context usage snapshot (sets sessionContextUsageAtom). */
-  contextUsage?: ContextUsageSnapshot;
+  contextUsage?: ContextUsageSnapshot | null;
   /** Session engine run status (sets sessionRuntimeStatusAtom). */
   runStatus?: string;
   /** Session error message (sets sessionRuntimeErrorAtom). */
   runError?: string | null;
+  /** Durable transcript owner reported by the session backend. */
+  transcriptSource?: string;
 }
 
 // ============================================================================
@@ -96,7 +98,10 @@ export interface EventHandlerCallbacks {
     }
   ) => void;
   /** Called when CLI token usage updates. */
-  onTokenUpdate?: (tokens: number) => void;
+  onTokenUpdate?: (
+    tokens: number,
+    contextUsage?: ContextUsageSnapshot | null
+  ) => void;
 }
 
 /**
@@ -166,6 +171,10 @@ export interface AdapterSendInput {
   turnIntentSource: TurnIntentSource;
   /** True only for a real user-authored prompt (not resume/wake/continuation). */
   directUserIntent?: boolean;
+  /** Permit guarded native recovery after canonical synchronization. */
+  allowNativeContextRecovery?: boolean;
+  /** Exact persisted EventStore user event authorizing Member direct work. */
+  agentOrgDirectSourceEventId?: string;
   /**
    * When `true`, this is a user-initiated Resume after a failed turn.
    * The backend runs deletion-based orphan tool-use filter instead of
@@ -192,6 +201,19 @@ export interface SessionAdapter {
    * Pure async function — no side effects.
    */
   loadHistory(sessionId: string, signal: AbortSignal): Promise<SessionEvent[]>;
+
+  /**
+   * Load the complete, lossless persisted transcript for operations whose
+   * correctness depends on the entire conversation (native materialization,
+   * migration, and canonical verification). Most managed adapters can omit
+   * this because `loadHistory` is already complete. Imported-history adapters
+   * must implement it because their normal `loadHistory` is intentionally a
+   * bounded UI preview.
+   */
+  loadAuthoritativeHistory?(
+    sessionId: string,
+    signal: AbortSignal
+  ): Promise<SessionEvent[]>;
 
   /**
    * Post-load setup: restore session status, token counts, etc.

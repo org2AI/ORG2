@@ -8,6 +8,9 @@ export type ConnectionStatus =
 
 export type DesktopPresence = "online" | "offline" | "unknown";
 
+/** A policy denial needs a new user action, not an automatic network retry. */
+export class MobileConnectionAuthorizationError extends Error {}
+
 export type MobilePermissionTier = "full" | "read_only";
 
 export interface MobileRemoteCapabilities {
@@ -68,6 +71,8 @@ export interface MobileSessionRow {
   category?: "live" | "cloud";
   sendCapability?: "native" | "external_codex" | "read_only";
   updatedAtMs?: number;
+  repoPath?: string | null;
+  repoName?: string | null;
 }
 
 export interface MobileConnectionConfig {

@@ -70,7 +70,6 @@ export interface UseBrowserReplayTabsResult {
   handleNewPrivateMyTabsSession: () => void;
   handleSelectMyTabsSession: (sessionId: string) => void;
   handleCloseMyTabsSession: (sessionId: string) => void;
-  handleOpenMyTabsHistoryUrl: (url: string) => void;
 }
 
 // ============================================
@@ -261,14 +260,6 @@ export function useBrowserReplayTabs({
     [closeBrowserTab, myTabsBrowserState]
   );
 
-  const handleOpenMyTabsHistoryUrl = useCallback(
-    (url: string) => {
-      const sessionId = myTabsBrowserState.addSession(url);
-      switchBrowserTab(createBrowserSessionTabId(sessionId));
-    },
-    [myTabsBrowserState, switchBrowserTab]
-  );
-
   const handleBrowserTabClick = useCallback((tabId: string) => {
     if (
       tabId === MY_TABS_BROWSER_TAB_ID ||
@@ -290,6 +281,5 @@ export function useBrowserReplayTabs({
     handleNewPrivateMyTabsSession,
     handleSelectMyTabsSession,
     handleCloseMyTabsSession,
-    handleOpenMyTabsHistoryUrl,
   };
 }

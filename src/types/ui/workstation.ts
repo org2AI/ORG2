@@ -8,4 +8,4 @@ export const STATION_MODE = {
   AGENT_STATION: "agent-station",
 } as const satisfies Record<string, StationMode>;
 
-export type StatusBarAppType = "code" | "data" | "browser" | "project";
+export type StatusBarAppType = "code" | "browser" | "project";

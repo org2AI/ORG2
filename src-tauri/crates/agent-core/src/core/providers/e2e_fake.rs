@@ -5,6 +5,7 @@ use std::sync::atomic::AtomicBool;
 
 use async_trait::async_trait;
 use serde_json::Value;
+use tokio::time::{sleep, Duration};
 
 use super::traits::{
     finish_reason, usage_key, LLMProvider, LLMResponse, ProviderError, StreamDelta, ToolCallRequest,
@@ -14,6 +15,58 @@ const ADDRESS_COMMENTS_MARKER: &str =
     "Teammates left review comments on this session. Address every comment below";
 const ADDRESS_COMMENT_ID_MARKER: &str = " — id: ";
 const REPLY_SESSION_COMMENT_TOOL: &str = "reply_session_comment";
+const AGENT_ORG_TASK_FSM_MARKER: &str = "E2E_AGENT_ORG_TASK_FSM:";
+const AGENT_ORG_HANDOFF_MARKER: &str = "E2E_AGENT_ORG_HANDOFF:";
+const AGENT_ORG_COMPLETION_MARKER: &str = "E2E_AGENT_ORG_COMPLETION:";
+const AGENT_ORG_PLAN_REVISION_MARKER: &str = "E2E_AGENT_ORG_PLAN_REVISION:";
+const AGENT_ORG_PAUSE_MARKER: &str = "E2E_AGENT_ORG_PAUSE:";
+const AGENT_ORG_ARCHIVE_STOP_TIMEOUT_MARKER: &str = "E2E_AGENT_ORG_ARCHIVE_STOP_TIMEOUT:";
+const CONTROL_WAIT_MARKER: &str = "Create a stoppable window by waiting for about ";
+const TASK_GRAPH_CREATE_TOOL: &str = "task_graph_create";
+const TASK_UPDATE_TOOL: &str = "task_update";
+const CREATE_PLAN_TOOL: &str = "create_plan";
+const ORG_RUN_COMPLETE_TOOL: &str = "org_run_complete";
+const RUN_SHELL_TOOL: &str = "run_shell";
+
+fn task_update_arguments_with_empty_placeholders(arguments: Value) -> Value {
+    let Value::Object(mut arguments) = arguments else {
+        return arguments;
+    };
+    let Value::Object(placeholders) = serde_json::json!({
+        "subject": null,
+        "description": "",
+        "active_form": " \t",
+        "clear_active_form": false,
+        "owner_member_id": "",
+        "clear_owner": false,
+        "execution_mode": "",
+        "blocked_by": [],
+        "metadata": {},
+        "eligible_member_ids": [],
+        "required_role": "\n",
+        "body": "",
+        "output": {"summary": "", "content": "", "artifact_ids": []},
+        "reason": {"code": "", "message": ""},
+        "replacement": {
+            "id": "",
+            "subject": "",
+            "description": null,
+            "active_form": "",
+            "owner_member_id": "",
+            "execution_mode": "",
+            "blocked_by": [],
+            "metadata": {},
+            "eligible_member_ids": [],
+            "required_role": ""
+        }
+    }) else {
+        unreachable!("task_update placeholder fixture must be an object");
+    };
+    for (key, value) in placeholders {
+        arguments.entry(key).or_insert(value);
+    }
+    Value::Object(arguments)
+}
 
 pub const E2E_FAKE_PROVIDER_MODEL_PREFIX: &str = "e2e-fake-provider";
 
@@ -32,18 +85,15 @@ impl E2eFakeProvider {
             .filter_map(|message| message.get("content").and_then(Value::as_str))
             .collect::<Vec<_>>()
             .join("\n");
+        let latest_user = latest_model_user(messages).unwrap_or_default();
 
-        if system_text.contains("You are a context compactor") {
+        if system_text.contains("You are a context compactor")
+            || latest_user.contains("You are a context compactor")
+            || (latest_user.contains("<current_session_memory>")
+                && latest_user.contains("<new_messages>"))
+        {
             return "E2E_FAKE_COMPACT_SUMMARY: older history was compacted without carrying old full markers forward.".to_string();
         }
-
-        let latest_user = messages
-            .iter()
-            .rev()
-            .find(|message| message.get("role").and_then(Value::as_str) == Some("user"))
-            .and_then(|message| message.get("content"))
-            .and_then(content_text)
-            .unwrap_or_default();
 
         format!("E2E_FAKE_PROVIDER_REPLY: {latest_user}")
     }
@@ -118,6 +168,938 @@ impl E2eFakeProvider {
             })
             .collect()
     }
+
+    fn agent_org_completion_candidate_tool_calls(
+        messages: &[Value],
+        tools: Option<&[Value]>,
+    ) -> Vec<ToolCallRequest> {
+        if !Self::has_tool(tools, ORG_RUN_COMPLETE_TOOL) {
+            return Vec::new();
+        }
+        let Some(snapshot_index) = messages.iter().rposition(|message| {
+            message
+                .get("content")
+                .and_then(content_text)
+                .is_some_and(|content| {
+                    content.contains("### Completion candidate snapshot")
+                        && content.contains("state=`ready`")
+                })
+        }) else {
+            return Vec::new();
+        };
+        if messages[snapshot_index + 1..]
+            .iter()
+            .any(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+        {
+            return Vec::new();
+        }
+        vec![ToolCallRequest {
+            id: "e2e-agent-org-run-complete".to_string(),
+            name: ORG_RUN_COMPLETE_TOOL.to_string(),
+            arguments: serde_json::json!({
+                "candidate_outcome": "delivered",
+                "summary": "All formal Tasks have output-backed closure.",
+                "evidence_task_ids": [],
+            }),
+            thought_signature: None,
+        }]
+    }
+
+    fn agent_org_task_fsm_tool_calls(
+        messages: &[Value],
+        tools: Option<&[Value]>,
+    ) -> Vec<ToolCallRequest> {
+        let Some((latest_user_index, latest_user)) = latest_task_fsm_user(messages) else {
+            return Vec::new();
+        };
+        let Some(scenario_id) = task_fsm_scenario_id(latest_user.as_str()) else {
+            return Vec::new();
+        };
+        let tool_results = messages[latest_user_index + 1..]
+            .iter()
+            .filter(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+            .collect::<Vec<_>>();
+
+        if is_task_assignment(latest_user.as_str()) {
+            if !Self::has_tool(tools, TASK_UPDATE_TOOL) {
+                return Vec::new();
+            }
+            let Some(task_id) = task_assignment_value(&latest_user, "Task ID:", "task_id") else {
+                return Vec::new();
+            };
+            let subject = task_assignment_value(&latest_user, "Task assigned by", "subject")
+                .unwrap_or_default();
+            let stage = tool_results.len();
+            let arguments = if stage == 0 {
+                serde_json::json!({ "operation": "start", "id": task_id })
+            } else if subject.contains("E2E_TASK_FSM_HISTORY:") && stage == 1 {
+                serde_json::json!({
+                    "operation": "complete",
+                    "id": task_id,
+                    "output": {
+                        "summary": format!("E2E paged history result for {scenario_id}"),
+                    },
+                })
+            } else if subject.contains("E2E_TASK_FSM_COMPLETE:") && stage == 1 {
+                serde_json::json!({
+                    "operation": "append_evidence",
+                    "id": task_id,
+                    "body": format!("E2E production-path evidence for {scenario_id}"),
+                })
+            } else if subject.contains("E2E_TASK_FSM_COMPLETE:") && stage == 2 {
+                serde_json::json!({
+                    "operation": "complete",
+                    "id": task_id,
+                    "output": {
+                        "summary": format!("E2E completed {scenario_id}"),
+                        "content": "Completed through Provider -> Tool dispatcher -> Task Store.",
+                        "artifact_ids": [format!("e2e-artifact-{scenario_id}")],
+                    },
+                })
+            } else if subject.contains("E2E_TASK_FSM_FAIL:") && stage == 1 {
+                serde_json::json!({
+                    "operation": "append_progress",
+                    "id": task_id,
+                    "body": format!("E2E progress before failure for {scenario_id}"),
+                })
+            } else if subject.contains("E2E_TASK_FSM_FAIL:") && stage == 2 {
+                serde_json::json!({
+                    "operation": "fail",
+                    "id": task_id,
+                    "reason": {
+                        "code": "e2e.expected_failure",
+                        "message": format!("Deterministic E2E failure for {scenario_id}"),
+                    },
+                })
+            } else if subject.contains("E2E_TASK_FSM_LATE:") && stage == 1 {
+                // The coordinator cancels and replaces this Task while this
+                // owner callback is delayed. The Store must reject the late
+                // completion against the original persisted Turn binding.
+                serde_json::json!({
+                    "operation": "complete",
+                    "id": task_id,
+                    "output": { "summary": format!("Late output for {scenario_id}") },
+                })
+            } else {
+                return Vec::new();
+            };
+            return vec![ToolCallRequest {
+                id: format!("e2e-task-fsm-owner-{scenario_id}-{task_id}-{stage}"),
+                name: TASK_UPDATE_TOOL.to_string(),
+                arguments: task_update_arguments_with_empty_placeholders(arguments),
+                thought_signature: None,
+            }];
+        }
+
+        if !Self::has_tool(tools, TASK_GRAPH_CREATE_TOOL)
+            || !Self::has_tool(tools, TASK_UPDATE_TOOL)
+        {
+            return Vec::new();
+        }
+        match tool_results.len() {
+            0 => {
+                let mut tasks = vec![
+                    serde_json::json!({
+                        "key": "pending",
+                        "subject": format!("E2E_TASK_FSM_PENDING:{scenario_id}"),
+                        "description": format!("{AGENT_ORG_TASK_FSM_MARKER}{scenario_id}"),
+                        "execution_mode": "build",
+                        "eligible_member_ids": ["sde-implementer"]
+                    }),
+                    serde_json::json!({
+                        "key": "complete",
+                        "subject": format!("E2E_TASK_FSM_COMPLETE:{scenario_id}"),
+                        "description": format!("{AGENT_ORG_TASK_FSM_MARKER}{scenario_id}"),
+                        "owner_member_id": "sde-reviewer",
+                        "execution_mode": "build"
+                    }),
+                    serde_json::json!({
+                        "key": "fail",
+                        "subject": format!("E2E_TASK_FSM_FAIL:{scenario_id}"),
+                        "description": format!("{AGENT_ORG_TASK_FSM_MARKER}{scenario_id}"),
+                        "owner_member_id": "sde-tester",
+                        "execution_mode": "build"
+                    }),
+                    serde_json::json!({
+                        "key": "late",
+                        "subject": format!("E2E_TASK_FSM_LATE:{scenario_id}"),
+                        "description": format!("{AGENT_ORG_TASK_FSM_MARKER}{scenario_id}"),
+                        "owner_member_id": "sde-planner",
+                        "execution_mode": "build"
+                    }),
+                ];
+                if scenario_id.starts_with("page") {
+                    let owners = [
+                        "sde-implementer",
+                        "sde-reviewer",
+                        "sde-tester",
+                        "sde-planner",
+                    ];
+                    tasks.extend((0..20).map(|index| {
+                        serde_json::json!({
+                            "key": format!("history-{index:02}"),
+                            "subject": format!("E2E_TASK_FSM_HISTORY:{scenario_id}:{index:02}"),
+                            "description": format!("{AGENT_ORG_TASK_FSM_MARKER}{scenario_id}"),
+                            "owner_member_id": owners[index % owners.len()],
+                            "execution_mode": "build"
+                        })
+                    }));
+                }
+                vec![ToolCallRequest {
+                    id: format!("e2e-task-fsm-graph-{scenario_id}"),
+                    name: TASK_GRAPH_CREATE_TOOL.to_string(),
+                    arguments: serde_json::json!({
+                        "allow_parallel_with_existing_open_tasks": true,
+                        "tasks": tasks,
+                    }),
+                    thought_signature: None,
+                }]
+            }
+            1 => {
+                let Some(late_task_id) = tool_results
+                    .iter()
+                    .filter_map(|message| message.get("content"))
+                    .filter_map(tool_result_json)
+                    .find_map(|result| {
+                        result
+                            .get("task_id_by_key")
+                            .and_then(|value| value.get("late"))
+                            .and_then(Value::as_str)
+                            .map(str::to_string)
+                    })
+                else {
+                    return Vec::new();
+                };
+                vec![ToolCallRequest {
+                    id: format!("e2e-task-fsm-replace-{scenario_id}"),
+                    name: TASK_UPDATE_TOOL.to_string(),
+                    arguments: task_update_arguments_with_empty_placeholders(serde_json::json!({
+                        "operation": "cancel_and_replace",
+                        "id": late_task_id,
+                        "reason": {
+                            "code": "e2e.replaced",
+                            "message": format!("Deterministic E2E replacement for {scenario_id}")
+                        },
+                        "replacement": {
+                            "subject": format!("E2E_TASK_FSM_REPLACEMENT:{scenario_id}"),
+                            "description": "Ownerless replacement remains in Current Work.",
+                            "execution_mode": "build",
+                            "eligible_member_ids": ["sde-planner"]
+                        }
+                    })),
+                    thought_signature: None,
+                }]
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    fn agent_org_completion_flow_tool_calls(
+        messages: &[Value],
+        tools: Option<&[Value]>,
+    ) -> Vec<ToolCallRequest> {
+        let Some((latest_user_index, latest_user)) = messages
+            .iter()
+            .enumerate()
+            .rev()
+            .filter(|(_, message)| message.get("role").and_then(Value::as_str) == Some("user"))
+            .filter_map(|(index, message)| {
+                message
+                    .get("content")
+                    .and_then(content_text)
+                    .map(|content| (index, content))
+            })
+            .find(|(_, content)| {
+                content.contains(AGENT_ORG_COMPLETION_MARKER)
+                    && !content.trim_start().starts_with("<system-reminder>")
+            })
+        else {
+            return Vec::new();
+        };
+        let Some(scenario_id) = completion_scenario_id(&latest_user) else {
+            return Vec::new();
+        };
+        let stage = messages[latest_user_index + 1..]
+            .iter()
+            .filter(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+            .count();
+
+        if is_task_assignment(&latest_user) {
+            if !Self::has_tool(tools, TASK_UPDATE_TOOL) {
+                return Vec::new();
+            }
+            let Some(task_id) = task_assignment_value(&latest_user, "Task ID:", "task_id") else {
+                return Vec::new();
+            };
+            let arguments = match stage {
+                0 => serde_json::json!({ "operation": "start", "id": task_id }),
+                1 => serde_json::json!({
+                    "operation": "complete",
+                    "id": task_id,
+                    "output": {
+                        "summary": format!("E2E completion evidence for {scenario_id}"),
+                        "content": "Completed through the real TaskExecution tool path.",
+                        "artifact_ids": [format!("e2e-completion-{scenario_id}")],
+                    },
+                }),
+                _ => return Vec::new(),
+            };
+            return vec![ToolCallRequest {
+                id: format!("e2e-completion-owner-{scenario_id}-{stage}"),
+                name: TASK_UPDATE_TOOL.to_string(),
+                arguments: task_update_arguments_with_empty_placeholders(arguments),
+                thought_signature: None,
+            }];
+        }
+
+        if stage != 0
+            || !latest_user.contains(&format!("Run {AGENT_ORG_COMPLETION_MARKER}"))
+            || !Self::has_tool(tools, TASK_GRAPH_CREATE_TOOL)
+        {
+            return Vec::new();
+        }
+        vec![ToolCallRequest {
+            id: format!("e2e-completion-graph-{scenario_id}"),
+            name: TASK_GRAPH_CREATE_TOOL.to_string(),
+            arguments: serde_json::json!({
+                "allow_parallel_with_existing_open_tasks": true,
+                "tasks": [{
+                    "key": "completion",
+                    "subject": format!("{AGENT_ORG_COMPLETION_MARKER}{scenario_id}"),
+                    "description": "Produce one output-backed terminal Task for certificate validation.",
+                    "owner_member_id": "sde-reviewer",
+                    "execution_mode": "build"
+                }]
+            }),
+            thought_signature: None,
+        }]
+    }
+
+    fn agent_org_plan_revision_tool_calls(
+        messages: &[Value],
+        tools: Option<&[Value]>,
+    ) -> Vec<ToolCallRequest> {
+        // A fresh TaskExecution Turn may intentionally receive only the exact
+        // changes-requested Inbox row, not the older assignment transcript.
+        // The rendered E2E feedback therefore carries the stable scenario and
+        // Task identities explicitly so this deterministic provider does not
+        // rely on cross-Turn history shape.
+        if let Some(latest_user) = latest_model_user(messages) {
+            if is_plan_rejection_input(&latest_user)
+                && latest_user.contains(AGENT_ORG_PLAN_REVISION_MARKER)
+                && Self::has_tool(tools, CREATE_PLAN_TOOL)
+            {
+                let Some(scenario_id) = plan_revision_scenario_id(&latest_user) else {
+                    return Vec::new();
+                };
+                let Some(task_id) = marker_identifier_argument(&latest_user, "task") else {
+                    return Vec::new();
+                };
+                return vec![ToolCallRequest {
+                    id: format!("e2e-plan-revision-revised-{scenario_id}"),
+                    name: CREATE_PLAN_TOOL.to_string(),
+                    arguments: serde_json::json!({
+                        "title": format!("E2E Revised User Plan {scenario_id}"),
+                        "content": format!(
+                            "Revised user-reviewed plan {scenario_id}: inspect, implement, review each checkpoint, then verify."
+                        ),
+                        "new_plan": false,
+                        "source_task_id": task_id,
+                    }),
+                    thought_signature: None,
+                }];
+            }
+        }
+        let Some((scenario_user_index, scenario_user)) = latest_plan_revision_user(messages) else {
+            return Vec::new();
+        };
+        let Some(scenario_id) = plan_revision_scenario_id(&scenario_user) else {
+            return Vec::new();
+        };
+        let tool_results = messages[scenario_user_index + 1..]
+            .iter()
+            .filter(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+            .count();
+        let received_rejection = messages[scenario_user_index + 1..]
+            .iter()
+            .filter(|message| message.get("role").and_then(Value::as_str) == Some("user"))
+            .filter_map(|message| message.get("content").and_then(content_text))
+            .any(|content| is_plan_rejection_input(&content));
+
+        if is_task_assignment(&scenario_user) {
+            let Some(task_id) = task_assignment_value(&scenario_user, "Task ID:", "task_id") else {
+                return Vec::new();
+            };
+            let execution_mode =
+                task_assignment_value(&scenario_user, "Execution mode:", "execution_mode")
+                    .unwrap_or_default();
+            if execution_mode == "plan" {
+                if tool_results == 0 && Self::has_tool(tools, TASK_UPDATE_TOOL) {
+                    return vec![ToolCallRequest {
+                        id: format!("e2e-plan-revision-start-{scenario_id}"),
+                        name: TASK_UPDATE_TOOL.to_string(),
+                        arguments: task_update_arguments_with_empty_placeholders(
+                            serde_json::json!({ "operation": "start", "id": task_id }),
+                        ),
+                        thought_signature: None,
+                    }];
+                }
+                if tool_results == 1 && Self::has_tool(tools, CREATE_PLAN_TOOL) {
+                    return vec![ToolCallRequest {
+                        id: format!("e2e-plan-revision-initial-{scenario_id}"),
+                        name: CREATE_PLAN_TOOL.to_string(),
+                        arguments: serde_json::json!({
+                            "title": format!("E2E User Plan {scenario_id}"),
+                            "content": format!(
+                                "Initial user-reviewed plan {scenario_id}: inspect, implement, and verify."
+                            ),
+                            "new_plan": false,
+                            "source_task_id": task_id,
+                        }),
+                        thought_signature: None,
+                    }];
+                }
+                if tool_results == 2
+                    && received_rejection
+                    && Self::has_tool(tools, CREATE_PLAN_TOOL)
+                {
+                    return vec![ToolCallRequest {
+                        id: format!("e2e-plan-revision-revised-{scenario_id}"),
+                        name: CREATE_PLAN_TOOL.to_string(),
+                        arguments: serde_json::json!({
+                            "title": format!("E2E Revised User Plan {scenario_id}"),
+                            "content": format!(
+                                "Revised user-reviewed plan {scenario_id}: inspect, implement, review each checkpoint, then verify."
+                            ),
+                            "new_plan": false,
+                            "source_task_id": task_id,
+                        }),
+                        thought_signature: None,
+                    }];
+                }
+                return Vec::new();
+            }
+
+            if execution_mode == "build" && Self::has_tool(tools, TASK_UPDATE_TOOL) {
+                let arguments = match tool_results {
+                    0 => serde_json::json!({ "operation": "start", "id": task_id }),
+                    1 => serde_json::json!({
+                        "operation": "complete",
+                        "id": task_id,
+                        "output": {
+                            "summary": format!("Implemented approved plan {scenario_id}"),
+                            "content": "The dependent task consumed the approved immutable revision.",
+                            "artifact_ids": [format!("e2e-plan-revision-{scenario_id}")],
+                        },
+                    }),
+                    _ => return Vec::new(),
+                };
+                return vec![ToolCallRequest {
+                    id: format!("e2e-plan-revision-build-{scenario_id}-{tool_results}"),
+                    name: TASK_UPDATE_TOOL.to_string(),
+                    arguments: task_update_arguments_with_empty_placeholders(arguments),
+                    thought_signature: None,
+                }];
+            }
+            return Vec::new();
+        }
+
+        if tool_results != 0 || !Self::has_tool(tools, TASK_GRAPH_CREATE_TOOL) {
+            return Vec::new();
+        }
+        let Some(planner_member_id) = marker_argument(&scenario_user, "planner") else {
+            return Vec::new();
+        };
+        let Some(implementer_member_id) = marker_argument(&scenario_user, "implementer") else {
+            return Vec::new();
+        };
+        vec![ToolCallRequest {
+            id: format!("e2e-plan-revision-graph-{scenario_id}"),
+            name: TASK_GRAPH_CREATE_TOOL.to_string(),
+            arguments: serde_json::json!({
+                "allow_parallel_with_existing_open_tasks": true,
+                "tasks": [
+                    {
+                        "key": "plan",
+                        "subject": format!("E2E_PLAN_REVISION:{scenario_id}"),
+                        "description": scenario_user,
+                        "owner_member_id": planner_member_id,
+                        "execution_mode": "plan"
+                    },
+                    {
+                        "key": "build",
+                        "subject": format!("E2E_PLAN_REVISION_BUILD:{scenario_id}"),
+                        "description": format!(
+                            "{AGENT_ORG_PLAN_REVISION_MARKER}{scenario_id}"
+                        ),
+                        "owner_member_id": implementer_member_id,
+                        "execution_mode": "build",
+                        "depends_on": ["plan"]
+                    }
+                ]
+            }),
+            thought_signature: None,
+        }]
+    }
+
+    fn agent_org_pause_tool_calls(
+        messages: &[Value],
+        tools: Option<&[Value]>,
+    ) -> Vec<ToolCallRequest> {
+        let Some((latest_user_index, latest_user)) = latest_pause_user(messages) else {
+            return Vec::new();
+        };
+        let tool_result_count = messages[latest_user_index + 1..]
+            .iter()
+            .filter(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+            .count();
+        if tool_result_count != 0 {
+            return Vec::new();
+        }
+        let Some(scenario_id) = pause_scenario_id(&latest_user) else {
+            return Vec::new();
+        };
+        if is_task_assignment(&latest_user) {
+            if !Self::has_tool(tools, RUN_SHELL_TOOL) {
+                return Vec::new();
+            }
+            let member_id =
+                task_assignment_value(&latest_user, "Owner member ID:", "owner_member_id")
+                    .unwrap_or_else(|| "member".to_string());
+            return vec![ToolCallRequest {
+                id: format!("e2e-pause-shell-{scenario_id}-{member_id}"),
+                name: RUN_SHELL_TOOL.to_string(),
+                arguments: serde_json::json!({
+                    "command": format!(
+                        "trap '' TERM; sh -c 'trap \"\" TERM; while :; do sleep 120; done' & child=$!; printf 'E2E_PAUSE_PROCESS scenario={scenario_id} parent=%s child=%s\\n' \"$$\" \"$child\"; wait"
+                    ),
+                    "description": "Hold Pause process group",
+                    "mode": "background"
+                }),
+                thought_signature: None,
+            }];
+        }
+        if !Self::has_tool(tools, TASK_GRAPH_CREATE_TOOL) {
+            return Vec::new();
+        }
+        let tasks = (1..=9)
+            .map(|index| {
+                serde_json::json!({
+                    "key": format!("pause-{index:02}"),
+                    "subject": format!("E2E_PAUSE_TASK:{scenario_id}:{index:02}"),
+                    "description": format!(
+                        "{AGENT_ORG_PAUSE_MARKER}{scenario_id}\nCreate a stoppable window by waiting for about 30 seconds before the final answer."
+                    ),
+                    "owner_member_id": format!("pause-worker-{index:02}"),
+                    "execution_mode": "build"
+                })
+            })
+            .collect::<Vec<_>>();
+        vec![ToolCallRequest {
+            id: format!("e2e-pause-graph-{scenario_id}"),
+            name: TASK_GRAPH_CREATE_TOOL.to_string(),
+            arguments: serde_json::json!({
+                "allow_parallel_with_existing_open_tasks": true,
+                "tasks": tasks,
+            }),
+            thought_signature: None,
+        }]
+    }
+
+    fn agent_org_handoff_tool_calls(
+        messages: &[Value],
+        tools: Option<&[Value]>,
+    ) -> Vec<ToolCallRequest> {
+        let Some((latest_user_index, latest_user)) = latest_handoff_user(messages) else {
+            return Vec::new();
+        };
+        let Some(scenario_id) = handoff_scenario_id(&latest_user) else {
+            return Vec::new();
+        };
+        let stage = messages[latest_user_index + 1..]
+            .iter()
+            .filter(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+            .count();
+        if is_task_assignment(&latest_user) {
+            let Some(task_id) = task_assignment_value(&latest_user, "Task ID:", "task_id") else {
+                return Vec::new();
+            };
+            if stage == 0 && Self::has_tool(tools, TASK_UPDATE_TOOL) {
+                return vec![ToolCallRequest {
+                    id: format!("e2e-handoff-start-{scenario_id}-{task_id}"),
+                    name: TASK_UPDATE_TOOL.to_string(),
+                    arguments: task_update_arguments_with_empty_placeholders(serde_json::json!({
+                        "operation": "start",
+                        "id": task_id,
+                    })),
+                    thought_signature: None,
+                }];
+            }
+            if stage == 1 && Self::has_tool(tools, RUN_SHELL_TOOL) {
+                return vec![ToolCallRequest {
+                    id: format!("e2e-handoff-shell-{scenario_id}-{task_id}"),
+                    name: RUN_SHELL_TOOL.to_string(),
+                    arguments: serde_json::json!({
+                        "command": format!(
+                            "trap '' TERM; sh -c 'trap \"\" TERM; while :; do sleep 120; done' & child=$!; printf 'E2E_HANDOFF_PROCESS scenario={scenario_id} parent=%s child=%s\\n' \"$$\" \"$child\"; wait"
+                        ),
+                        "description": "Hold Task handoff process group",
+                        "mode": "background"
+                    }),
+                    thought_signature: None,
+                }];
+            }
+            return Vec::new();
+        }
+        if stage != 0 || !Self::has_tool(tools, TASK_GRAPH_CREATE_TOOL) {
+            return Vec::new();
+        }
+        vec![ToolCallRequest {
+            id: format!("e2e-handoff-graph-{scenario_id}"),
+            name: TASK_GRAPH_CREATE_TOOL.to_string(),
+            arguments: serde_json::json!({
+                "allow_parallel_with_existing_open_tasks": true,
+                "tasks": [{
+                    "key": "handoff",
+                    "subject": format!("E2E_HANDOFF_TASK:{scenario_id}"),
+                    "description": format!(
+                        "{AGENT_ORG_HANDOFF_MARKER}{scenario_id} hold a real background process until the rendered user reassigns or cancels this Task."
+                    ),
+                    "owner_member_id": "sde-implementer",
+                    "execution_mode": "build"
+                }]
+            }),
+            thought_signature: None,
+        }]
+    }
+
+    async fn delay_task_fsm_race_stage(messages: &[Value]) {
+        let Some((latest_user_index, latest_user)) = latest_task_fsm_user(messages) else {
+            return;
+        };
+        let stage = messages[latest_user_index + 1..]
+            .iter()
+            .filter(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+            .count();
+        let task_assignment = is_task_assignment(latest_user.as_str());
+        let delay_ms =
+            if task_assignment && latest_user.contains("E2E_TASK_FSM_LATE:") && stage == 1 {
+                4_000
+            } else if task_assignment
+                && (latest_user.contains("E2E_TASK_FSM_COMPLETE:")
+                    || latest_user.contains("E2E_TASK_FSM_FAIL:"))
+                && stage == 2
+            {
+                3_000
+            } else if !task_assignment && stage == 1 {
+                1_500
+            } else {
+                0
+            };
+        if delay_ms > 0 {
+            sleep(Duration::from_millis(delay_ms)).await;
+        }
+    }
+
+    async fn delay_agent_org_pause_stage(messages: &[Value]) {
+        let Some((latest_user_index, latest_user)) = latest_pause_user(messages) else {
+            return;
+        };
+        let tool_result_count = messages[latest_user_index + 1..]
+            .iter()
+            .filter(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+            .count();
+        if !is_task_assignment(&latest_user) && tool_result_count > 0 {
+            sleep(Duration::from_secs(30)).await;
+        }
+    }
+
+    fn pause_wait_required(messages: &[Value]) -> bool {
+        let Some((latest_user_index, _latest_user)) = latest_pause_user(messages) else {
+            return false;
+        };
+        // The first provider response must be free to emit the Task graph or
+        // real run_shell call. Hold the Turn only after that tool completed.
+        messages[latest_user_index + 1..]
+            .iter()
+            .any(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+    }
+
+    fn handoff_wait_required(messages: &[Value]) -> bool {
+        let Some((latest_user_index, latest_user)) = latest_handoff_user(messages) else {
+            return false;
+        };
+        is_task_assignment(&latest_user)
+            && messages[latest_user_index + 1..]
+                .iter()
+                .filter(|message| message.get("role").and_then(Value::as_str) == Some("tool"))
+                .count()
+                >= 2
+    }
+
+    fn archive_stop_timeout_required(messages: &[Value]) -> bool {
+        latest_model_user(messages)
+            .is_some_and(|content| content.contains(AGENT_ORG_ARCHIVE_STOP_TIMEOUT_MARKER))
+    }
+
+    fn build_response(messages: &[Value], tools: Option<&[Value]>) -> LLMResponse {
+        let mut tool_calls = Self::address_comment_tool_calls(messages, tools);
+        if tool_calls.is_empty() {
+            tool_calls = Self::agent_org_completion_candidate_tool_calls(messages, tools);
+        }
+        if tool_calls.is_empty() {
+            tool_calls = Self::agent_org_completion_flow_tool_calls(messages, tools);
+        }
+        if tool_calls.is_empty() {
+            tool_calls = Self::agent_org_plan_revision_tool_calls(messages, tools);
+        }
+        if tool_calls.is_empty() {
+            tool_calls = Self::agent_org_task_fsm_tool_calls(messages, tools);
+        }
+        if tool_calls.is_empty() {
+            tool_calls = Self::agent_org_handoff_tool_calls(messages, tools);
+        }
+        if tool_calls.is_empty() {
+            tool_calls = Self::agent_org_pause_tool_calls(messages, tools);
+        }
+        let content = if tool_calls.is_empty() {
+            Some(Self::response_for(messages))
+        } else {
+            None
+        };
+        let prompt_tokens = messages
+            .iter()
+            .map(|message| message.to_string().len() as i64 / 4)
+            .sum::<i64>();
+        let completion_tokens = content
+            .as_deref()
+            .map_or(tool_calls.len() as i64 * 12, |text| text.len() as i64 / 4)
+            .max(1);
+        let mut usage = HashMap::new();
+        usage.insert(usage_key::PROMPT_TOKENS.to_string(), prompt_tokens);
+        usage.insert(usage_key::COMPLETION_TOKENS.to_string(), completion_tokens);
+        usage.insert(
+            usage_key::TOTAL_TOKENS.to_string(),
+            prompt_tokens + completion_tokens,
+        );
+        LLMResponse {
+            content,
+            finish_reason: if tool_calls.is_empty() {
+                finish_reason::STOP.to_string()
+            } else {
+                finish_reason::TOOL_CALLS.to_string()
+            },
+            tool_calls,
+            usage,
+            reasoning_content: None,
+            blocks: Vec::new(),
+            stream_error_kind: None,
+            retry_after_ms: None,
+        }
+    }
+}
+
+fn latest_model_user(messages: &[Value]) -> Option<String> {
+    messages
+        .iter()
+        .rev()
+        .filter(|message| message.get("role").and_then(Value::as_str) == Some("user"))
+        .filter_map(|message| message.get("content").and_then(content_text))
+        .find(|content| !content.trim_start().starts_with("<system-reminder>"))
+}
+
+fn control_wait_duration(messages: &[Value]) -> Option<Duration> {
+    let latest_user = latest_model_user(messages)?;
+    let wait_seconds = latest_user
+        .split_once(CONTROL_WAIT_MARKER)?
+        .1
+        .split_whitespace()
+        .next()?
+        .parse::<u64>()
+        .ok()?;
+    Some(Duration::from_secs(wait_seconds.clamp(1, 60)))
+}
+
+fn latest_task_fsm_user(messages: &[Value]) -> Option<(usize, String)> {
+    messages
+        .iter()
+        .enumerate()
+        .rev()
+        .filter(|(_, message)| message.get("role").and_then(Value::as_str) == Some("user"))
+        .filter_map(|(index, message)| {
+            message
+                .get("content")
+                .and_then(content_text)
+                .map(|content| (index, content))
+        })
+        .find(|(_, content)| {
+            content.contains(AGENT_ORG_TASK_FSM_MARKER)
+                && !content.trim_start().starts_with("<system-reminder>")
+        })
+}
+
+fn latest_pause_user(messages: &[Value]) -> Option<(usize, String)> {
+    messages
+        .iter()
+        .enumerate()
+        .rev()
+        .filter(|(_, message)| message.get("role").and_then(Value::as_str) == Some("user"))
+        .filter_map(|(index, message)| {
+            message
+                .get("content")
+                .and_then(content_text)
+                .map(|content| (index, content))
+        })
+        .find(|(_, content)| {
+            content.contains(AGENT_ORG_PAUSE_MARKER)
+                && !content.trim_start().starts_with("<system-reminder>")
+        })
+}
+
+fn latest_handoff_user(messages: &[Value]) -> Option<(usize, String)> {
+    messages
+        .iter()
+        .enumerate()
+        .rev()
+        .filter(|(_, message)| message.get("role").and_then(Value::as_str) == Some("user"))
+        .filter_map(|(index, message)| {
+            message
+                .get("content")
+                .and_then(content_text)
+                .map(|content| (index, content))
+        })
+        .find(|(_, content)| {
+            content.contains(AGENT_ORG_HANDOFF_MARKER)
+                && !content.trim_start().starts_with("<system-reminder>")
+        })
+}
+
+fn latest_plan_revision_user(messages: &[Value]) -> Option<(usize, String)> {
+    messages
+        .iter()
+        .enumerate()
+        .rev()
+        .filter(|(_, message)| message.get("role").and_then(Value::as_str) == Some("user"))
+        .filter_map(|(index, message)| {
+            message
+                .get("content")
+                .and_then(content_text)
+                .map(|content| (index, content))
+        })
+        .find(|(_, content)| {
+            content.contains(AGENT_ORG_PLAN_REVISION_MARKER)
+                && !content.trim_start().starts_with("<system-reminder>")
+        })
+}
+
+fn pause_scenario_id(text: &str) -> Option<String> {
+    let suffix = text.split(AGENT_ORG_PAUSE_MARKER).nth(1)?;
+    let id = suffix
+        .chars()
+        .take_while(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+        .take(48)
+        .collect::<String>();
+    (!id.is_empty()).then_some(id)
+}
+
+fn task_fsm_scenario_id(text: &str) -> Option<String> {
+    let suffix = text.split(AGENT_ORG_TASK_FSM_MARKER).nth(1)?;
+    let id = suffix
+        .chars()
+        .take_while(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+        .take(48)
+        .collect::<String>();
+    (!id.is_empty()).then_some(id)
+}
+
+fn handoff_scenario_id(text: &str) -> Option<String> {
+    let suffix = text.split(AGENT_ORG_HANDOFF_MARKER).nth(1)?;
+    let id = suffix
+        .chars()
+        .take_while(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+        .take(48)
+        .collect::<String>();
+    (!id.is_empty()).then_some(id)
+}
+
+fn completion_scenario_id(text: &str) -> Option<String> {
+    let suffix = text.split(AGENT_ORG_COMPLETION_MARKER).nth(1)?;
+    let id = suffix
+        .chars()
+        .take_while(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+        .take(48)
+        .collect::<String>();
+    (!id.is_empty()).then_some(id)
+}
+
+fn plan_revision_scenario_id(text: &str) -> Option<String> {
+    let suffix = text.split(AGENT_ORG_PLAN_REVISION_MARKER).nth(1)?;
+    let id = suffix
+        .chars()
+        .take_while(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+        .take(48)
+        .collect::<String>();
+    (!id.is_empty()).then_some(id)
+}
+
+fn is_plan_rejection_input(text: &str) -> bool {
+    text.contains("Plan rejected") || text.contains("<plan_approval_response accepted=\"false\"")
+}
+
+fn marker_argument(text: &str, name: &str) -> Option<String> {
+    let prefix = format!("{name}=");
+    text.split_whitespace()
+        .find_map(|part| part.strip_prefix(&prefix))
+        .map(|value| value.trim_matches(|character: char| matches!(character, ',' | ';')))
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn marker_identifier_argument(text: &str, name: &str) -> Option<String> {
+    let prefix = format!("{name}=");
+    let suffix = text.split(&prefix).nth(1)?;
+    let value = suffix
+        .chars()
+        .take_while(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+        .collect::<String>();
+    (!value.is_empty()).then_some(value)
+}
+
+fn line_value<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
+    text.lines()
+        .find_map(|line| line.trim().strip_prefix(prefix).map(str::trim))
+        .filter(|value| !value.is_empty())
+}
+
+fn is_task_assignment(text: &str) -> bool {
+    text.contains("Task assigned by") || text.contains("<task_assigned ")
+}
+
+fn task_assignment_value(text: &str, line_prefix: &str, attribute: &str) -> Option<String> {
+    line_value(text, line_prefix)
+        .map(str::to_string)
+        .or_else(|| xml_attribute_value(text, "task_assigned", attribute))
+}
+
+fn xml_attribute_value(text: &str, element: &str, attribute: &str) -> Option<String> {
+    let element_start = text.find(&format!("<{element} "))?;
+    let element_tail = &text[element_start..];
+    let tag_end = element_tail.find('>')?;
+    let opening_tag = &element_tail[..tag_end];
+    let attribute_prefix = format!("{attribute}=\"");
+    let value_start = opening_tag.find(&attribute_prefix)? + attribute_prefix.len();
+    let value_tail = &opening_tag[value_start..];
+    let value_end = value_tail.find('"')?;
+    let value = &value_tail[..value_end];
+    (!value.is_empty()).then(|| value.to_string())
+}
+
+fn tool_result_json(value: &Value) -> Option<Value> {
+    match value {
+        Value::String(text) => serde_json::from_str(text).ok(),
+        Value::Object(_) => Some(value.clone()),
+        _ => None,
+    }
 }
 
 fn content_text(value: &Value) -> Option<String> {
@@ -144,42 +1126,12 @@ impl LLMProvider for E2eFakeProvider {
         _max_tokens: u32,
         _temperature: f32,
     ) -> Result<LLMResponse, ProviderError> {
-        let tool_calls = Self::address_comment_tool_calls(messages, tools);
-        let content = if tool_calls.is_empty() {
-            Some(Self::response_for(messages))
-        } else {
-            None
-        };
-        let prompt_tokens = messages
-            .iter()
-            .map(|message| message.to_string().len() as i64 / 4)
-            .sum::<i64>();
-        let completion_tokens = content
-            .as_deref()
-            .map_or(tool_calls.len() as i64 * 12, |text| text.len() as i64 / 4)
-            .max(1);
-        let mut usage = HashMap::new();
-        usage.insert(usage_key::PROMPT_TOKENS.to_string(), prompt_tokens);
-        usage.insert(usage_key::COMPLETION_TOKENS.to_string(), completion_tokens);
-        usage.insert(
-            usage_key::TOTAL_TOKENS.to_string(),
-            prompt_tokens + completion_tokens,
-        );
-
-        Ok(LLMResponse {
-            content,
-            finish_reason: if tool_calls.is_empty() {
-                finish_reason::STOP.to_string()
-            } else {
-                finish_reason::TOOL_CALLS.to_string()
-            },
-            tool_calls,
-            usage,
-            reasoning_content: None,
-            blocks: Vec::new(),
-            stream_error_kind: None,
-            retry_after_ms: None,
-        })
+        if let Some(duration) = control_wait_duration(messages) {
+            sleep(duration).await;
+        }
+        Self::delay_task_fsm_race_stage(messages).await;
+        Self::delay_agent_org_pause_stage(messages).await;
+        Ok(Self::build_response(messages, tools))
     }
 
     async fn chat_streaming(
@@ -196,9 +1148,45 @@ impl LLMProvider for E2eFakeProvider {
             return Err(ProviderError::Cancelled);
         }
 
-        let response = self
-            .chat(messages, tools, model, max_tokens, temperature)
-            .await?;
+        let cancellable_wait =
+            if Self::pause_wait_required(messages) || Self::handoff_wait_required(messages) {
+                // Real shell-process materialization across all nine Members can
+                // take longer than the old 30-second fake response window on a
+                // packaged build. Keep every formal Turn cancellably in flight
+                // until the test clicks Pause; this is still interrupted
+                // immediately through the normal provider cancel flag.
+                Some(Duration::from_secs(120))
+            } else {
+                control_wait_duration(messages)
+            };
+        let response = if let Some(wait_duration) = cancellable_wait {
+            if let Some(flag) = cancel_flag {
+                tokio::select! {
+                    _ = sleep(wait_duration) => {}
+                    _ = async {
+                        while !flag.load(std::sync::atomic::Ordering::Relaxed) {
+                            sleep(Duration::from_millis(25)).await;
+                        }
+                    } => {
+                        if Self::archive_stop_timeout_required(messages) {
+                            // Debug-only fault injection: keep the provider call alive
+                            // beyond Archive's absolute 60-second teardown deadline.
+                            sleep(Duration::from_secs(65)).await;
+                        }
+                        // Keep the rendered Draining phase observable while
+                        // still proving ten providers yield in parallel.
+                        sleep(Duration::from_millis(350)).await;
+                        return Err(ProviderError::Cancelled);
+                    }
+                }
+            } else {
+                sleep(wait_duration).await;
+            }
+            Self::build_response(messages, tools)
+        } else {
+            self.chat(messages, tools, model, max_tokens, temperature)
+                .await?
+        };
         if let Some(content) = response.content.clone() {
             on_delta(StreamDelta {
                 content: Some(content),
@@ -228,6 +1216,10 @@ impl LLMProvider for E2eFakeProvider {
 }
 
 #[cfg(test)]
+#[path = "e2e_fake/agent_org_plan_tests.rs"]
+mod agent_org_plan_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
@@ -236,6 +1228,13 @@ mod tests {
         json!({
             "type": "function",
             "function": { "name": REPLY_SESSION_COMMENT_TOOL }
+        })
+    }
+
+    fn named_tool(name: &str) -> Value {
+        json!({
+            "type": "function",
+            "function": { "name": name }
         })
     }
 
@@ -283,6 +1282,471 @@ mod tests {
         assert!(
             E2eFakeProvider::address_comment_tool_calls(&messages, Some(&[reply_tool()]))
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn ordinary_reply_ignores_trailing_system_reminder() {
+        let messages = vec![
+            json!({ "role": "user", "content": "actual user request" }),
+            json!({
+                "role": "user",
+                "content": "<system-reminder>volatile context</system-reminder>"
+            }),
+        ];
+
+        assert_eq!(
+            E2eFakeProvider::response_for(&messages),
+            "E2E_FAKE_PROVIDER_REPLY: actual user request"
+        );
+    }
+
+    #[test]
+    fn user_role_compactor_prompt_returns_compact_summary() {
+        let messages = vec![json!({
+            "role": "user",
+            "content": "You are a context compactor. Summarize the older conversation."
+        })];
+
+        assert!(E2eFakeProvider::response_for(&messages).starts_with("E2E_FAKE_COMPACT_SUMMARY:"));
+    }
+
+    #[test]
+    fn control_wait_uses_real_user_prompt_and_bounds_seconds() {
+        let messages = vec![
+            json!({
+                "role": "user",
+                "content": concat!(
+                    "Start a harmless task. ",
+                    "Create a stoppable window by waiting for about 45 seconds before the final answer."
+                )
+            }),
+            json!({
+                "role": "user",
+                "content": "<system-reminder>volatile context</system-reminder>"
+            }),
+        ];
+
+        assert_eq!(
+            control_wait_duration(&messages),
+            Some(Duration::from_secs(45))
+        );
+    }
+
+    #[test]
+    fn archive_stop_timeout_fault_injection_requires_explicit_marker() {
+        let ordinary = vec![json!({
+            "role": "user",
+            "content": "Create a stoppable window by waiting for about 45 seconds before the final answer."
+        })];
+        let fault = vec![json!({
+            "role": "user",
+            "content": concat!(
+                "E2E_AGENT_ORG_ARCHIVE_STOP_TIMEOUT:retained-runtime\n",
+                "Create a stoppable window by waiting for about 60 seconds before the final answer."
+            )
+        })];
+
+        assert!(!E2eFakeProvider::archive_stop_timeout_required(&ordinary));
+        assert!(E2eFakeProvider::archive_stop_timeout_required(&fault));
+    }
+
+    #[test]
+    fn session_memory_compaction_does_not_replay_task_fsm_markers() {
+        let messages = vec![json!({
+            "role": "user",
+            "content": concat!(
+                "<current_session_memory>\n",
+                "Run E2E_AGENT_ORG_TASK_FSM:stale_page\n",
+                "</current_session_memory>\n",
+                "<new_messages>settled task updates</new_messages>"
+            )
+        })];
+
+        let response = E2eFakeProvider::response_for(&messages);
+
+        assert!(response.starts_with("E2E_FAKE_COMPACT_SUMMARY:"));
+        assert!(!response.contains(AGENT_ORG_TASK_FSM_MARKER));
+    }
+
+    #[test]
+    fn task_fsm_marker_drives_graph_then_atomic_replacement() {
+        let tools = [
+            named_tool(TASK_GRAPH_CREATE_TOOL),
+            named_tool(TASK_UPDATE_TOOL),
+        ];
+        let messages = vec![
+            json!({
+                "role": "user",
+                "content": "Run E2E_AGENT_ORG_TASK_FSM:run_1"
+            }),
+            json!({
+                "role": "user",
+                "content": "<system-reminder>Per-turn context only.</system-reminder>"
+            }),
+        ];
+
+        let graph = E2eFakeProvider::agent_org_task_fsm_tool_calls(&messages, Some(&tools));
+        assert_eq!(graph.len(), 1);
+        assert_eq!(graph[0].name, TASK_GRAPH_CREATE_TOOL);
+        assert_eq!(graph[0].arguments["tasks"].as_array().unwrap().len(), 4);
+        assert_eq!(
+            graph[0].arguments["tasks"][0]["eligible_member_ids"][0],
+            "sde-implementer"
+        );
+
+        let mut with_result = messages;
+        with_result.push(json!({
+            "role": "tool",
+            "content": json!({
+                "created": true,
+                "task_id_by_key": { "late": "late-task-id" }
+            }).to_string()
+        }));
+        with_result.push(json!({
+            "role": "user",
+            "content": "<system-reminder>Updated per-turn context.</system-reminder>"
+        }));
+        let replacement =
+            E2eFakeProvider::agent_org_task_fsm_tool_calls(&with_result, Some(&tools));
+        assert_eq!(replacement.len(), 1);
+        assert_eq!(replacement[0].name, TASK_UPDATE_TOOL);
+        assert_eq!(replacement[0].arguments["operation"], "cancel_and_replace");
+        assert_eq!(replacement[0].arguments["id"], "late-task-id");
+        assert_eq!(
+            replacement[0].arguments["replacement"]["eligible_member_ids"][0],
+            "sde-planner"
+        );
+    }
+
+    #[test]
+    fn pause_marker_creates_nine_owned_long_running_tasks_once() {
+        let tools = [named_tool(TASK_GRAPH_CREATE_TOOL)];
+        let messages = vec![json!({
+            "role": "user",
+            "content": "Run E2E_AGENT_ORG_PAUSE:episode_1"
+        })];
+        let calls = E2eFakeProvider::agent_org_pause_tool_calls(&messages, Some(&tools));
+        assert_eq!(calls.len(), 1);
+        let tasks = calls[0].arguments["tasks"]
+            .as_array()
+            .expect("pause task array");
+        assert_eq!(tasks.len(), 9);
+        assert_eq!(tasks[0]["owner_member_id"], "pause-worker-01");
+        assert_eq!(tasks[8]["owner_member_id"], "pause-worker-09");
+
+        let replay = vec![
+            messages[0].clone(),
+            json!({ "role": "tool", "content": "{}" }),
+        ];
+        assert!(E2eFakeProvider::agent_org_pause_tool_calls(&replay, Some(&tools)).is_empty());
+    }
+
+    #[test]
+    fn pause_task_assignment_starts_one_real_background_process_group_once() {
+        let tools = [named_tool(RUN_SHELL_TOOL)];
+        let assigned = json!({
+            "role": "user",
+            "content": concat!(
+                "Task assigned by coordinator: E2E_PAUSE_TASK:episode_1:01\n",
+                "Owner member ID: pause-worker-01\n",
+                "E2E_AGENT_ORG_PAUSE:episode_1"
+            )
+        });
+        let calls = E2eFakeProvider::agent_org_pause_tool_calls(
+            std::slice::from_ref(&assigned),
+            Some(&tools),
+        );
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, RUN_SHELL_TOOL);
+        assert_eq!(calls[0].arguments["mode"], "background");
+        assert!(calls[0].arguments["command"]
+            .as_str()
+            .is_some_and(|command| command.contains("sleep 120") && command.contains("child=$!")));
+
+        let replay = vec![assigned, json!({ "role": "tool", "content": "{}" })];
+        assert!(
+            E2eFakeProvider::agent_org_pause_tool_calls(&replay, Some(&tools)).is_empty(),
+            "the continuation must not restart the background command"
+        );
+    }
+
+    #[test]
+    fn handoff_marker_creates_one_owned_task_then_holds_its_exact_turn() {
+        let coordinator_tools = [named_tool(TASK_GRAPH_CREATE_TOOL)];
+        let coordinator_messages = vec![json!({
+            "role": "user",
+            "content": "Run E2E_AGENT_ORG_HANDOFF:handoff_1"
+        })];
+        let graph = E2eFakeProvider::agent_org_handoff_tool_calls(
+            &coordinator_messages,
+            Some(&coordinator_tools),
+        );
+        assert_eq!(graph.len(), 1);
+        assert_eq!(graph[0].name, TASK_GRAPH_CREATE_TOOL);
+        assert_eq!(graph[0].arguments["tasks"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            graph[0].arguments["tasks"][0]["owner_member_id"],
+            "sde-implementer"
+        );
+
+        let owner_tools = [named_tool(TASK_UPDATE_TOOL), named_tool(RUN_SHELL_TOOL)];
+        let assigned = json!({
+            "role": "user",
+            "content": concat!(
+                "Task assigned by coordinator: E2E_HANDOFF_TASK:handoff_1\n",
+                "Task ID: task-handoff\n",
+                "Owner member ID: sde-implementer\n",
+                "E2E_AGENT_ORG_HANDOFF:handoff_1"
+            )
+        });
+        let start = E2eFakeProvider::agent_org_handoff_tool_calls(
+            std::slice::from_ref(&assigned),
+            Some(&owner_tools),
+        );
+        assert_eq!(start.len(), 1);
+        assert_eq!(start[0].name, TASK_UPDATE_TOOL);
+        assert_eq!(start[0].arguments["operation"], "start");
+
+        let after_start = vec![assigned.clone(), json!({ "role": "tool", "content": "ok" })];
+        let shell = E2eFakeProvider::agent_org_handoff_tool_calls(&after_start, Some(&owner_tools));
+        assert_eq!(shell.len(), 1);
+        assert_eq!(shell[0].name, RUN_SHELL_TOOL);
+        assert_eq!(shell[0].arguments["mode"], "background");
+
+        let held = vec![
+            assigned,
+            json!({ "role": "tool", "content": "started" }),
+            json!({ "role": "tool", "content": "spawned" }),
+        ];
+        assert!(
+            E2eFakeProvider::agent_org_handoff_tool_calls(&held, Some(&owner_tools)).is_empty()
+        );
+        assert!(E2eFakeProvider::handoff_wait_required(&held));
+    }
+
+    #[test]
+    fn task_owner_lifecycle_uses_only_task_update_operations() {
+        let tools = [named_tool(TASK_UPDATE_TOOL)];
+        let assigned = json!({
+            "role": "user",
+            "content": concat!(
+                "Task assigned by coordinator: E2E_TASK_FSM_COMPLETE:run_2\n",
+                "Task ID: task-complete\n",
+                "Execution mode: build\n",
+                "E2E_AGENT_ORG_TASK_FSM:run_2"
+            )
+        });
+
+        let start = E2eFakeProvider::agent_org_task_fsm_tool_calls(
+            std::slice::from_ref(&assigned),
+            Some(&tools),
+        );
+        assert_eq!(
+            start[0].arguments,
+            task_update_arguments_with_empty_placeholders(
+                json!({ "operation": "start", "id": "task-complete" })
+            )
+        );
+
+        let context = json!({
+            "role": "user",
+            "content": "<system-reminder>Per-turn context only.</system-reminder>"
+        });
+        let evidence_messages = vec![
+            assigned.clone(),
+            context.clone(),
+            json!({ "role": "tool", "content": "ok" }),
+        ];
+        let evidence =
+            E2eFakeProvider::agent_org_task_fsm_tool_calls(&evidence_messages, Some(&tools));
+        assert_eq!(evidence[0].arguments["operation"], "append_evidence");
+
+        let complete_messages = vec![
+            assigned,
+            context,
+            json!({ "role": "tool", "content": "ok" }),
+            json!({ "role": "tool", "content": "ok" }),
+        ];
+        let complete =
+            E2eFakeProvider::agent_org_task_fsm_tool_calls(&complete_messages, Some(&tools));
+        assert_eq!(complete[0].arguments["operation"], "complete");
+        assert!(complete[0].arguments["output"].get("produced_at").is_none());
+        assert!(complete[0].arguments["output"]
+            .get("produced_by_member_id")
+            .is_none());
+    }
+
+    #[test]
+    fn task_owner_ignores_state_projection_marker_in_trailing_system_reminder() {
+        let tools = [named_tool(TASK_UPDATE_TOOL)];
+        let messages = vec![
+            json!({
+                "role": "user",
+                "content": concat!(
+                    "Task assigned by coordinator: E2E_TASK_FSM_COMPLETE:run_3\n",
+                    "Task ID: task-complete\n",
+                    "Execution mode: build\n",
+                    "E2E_AGENT_ORG_TASK_FSM:run_3"
+                )
+            }),
+            json!({
+                "role": "user",
+                "content": concat!(
+                    "<system-reminder>Current work includes ",
+                    "E2E_AGENT_ORG_TASK_FSM:stale_projection.</system-reminder>"
+                )
+            }),
+        ];
+
+        let calls = E2eFakeProvider::agent_org_task_fsm_tool_calls(&messages, Some(&tools));
+
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, TASK_UPDATE_TOOL);
+        assert_eq!(
+            calls[0].arguments,
+            task_update_arguments_with_empty_placeholders(
+                json!({ "operation": "start", "id": "task-complete" })
+            )
+        );
+    }
+
+    #[test]
+    fn task_owner_lifecycle_accepts_production_inbox_xml_attachment() {
+        let tools = [named_tool(TASK_UPDATE_TOOL)];
+        let messages = vec![
+            json!({
+                "role": "user",
+                "content": concat!(
+                    "<inbox-batch run_id=\"run\" org=\"Default Agent Org\">\n",
+                    "  <inbox-message id=\"3\" from_member_id=\"coordinator\" kind=\"task_assigned\" created_at=\"now\">",
+                    "<task_assigned task_id=\"task-complete\" subject=\"E2E_TASK_FSM_COMPLETE:run_4\" assigned_by=\"Coordinator\" execution_mode=\"build\">",
+                    "<description>E2E_AGENT_ORG_TASK_FSM:run_4</description>",
+                    "</task_assigned></inbox-message>\n",
+                    "</inbox-batch>"
+                )
+            }),
+            json!({
+                "role": "user",
+                "content": "<system-reminder>Current work also contains E2E_AGENT_ORG_TASK_FSM:run_4.</system-reminder>"
+            }),
+        ];
+
+        let calls = E2eFakeProvider::agent_org_task_fsm_tool_calls(&messages, Some(&tools));
+
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, TASK_UPDATE_TOOL);
+        assert_eq!(
+            calls[0].arguments,
+            task_update_arguments_with_empty_placeholders(
+                json!({ "operation": "start", "id": "task-complete" })
+            )
+        );
+    }
+
+    #[test]
+    fn task_owner_tool_call_ids_are_unique_across_same_scenario_tasks() {
+        let tools = [named_tool(TASK_UPDATE_TOOL)];
+        let assignment = |task_id: &str| {
+            json!({
+                "role": "user",
+                "content": format!(
+                    concat!(
+                        "Task assigned by coordinator: E2E_TASK_FSM_HISTORY:run_5:00\n",
+                        "Task ID: {}\n",
+                        "Execution mode: build\n",
+                        "E2E_AGENT_ORG_TASK_FSM:run_5"
+                    ),
+                    task_id
+                )
+            })
+        };
+
+        let first = E2eFakeProvider::agent_org_task_fsm_tool_calls(
+            &[assignment("task-history-a")],
+            Some(&tools),
+        );
+        let second = E2eFakeProvider::agent_org_task_fsm_tool_calls(
+            &[assignment("task-history-b")],
+            Some(&tools),
+        );
+
+        assert_eq!(first.len(), 1);
+        assert_eq!(second.len(), 1);
+        assert_ne!(first[0].id, second[0].id);
+        assert!(first[0].id.contains("task-history-a"));
+        assert!(second[0].id.contains("task-history-b"));
+    }
+
+    #[test]
+    fn ready_completion_snapshot_calls_certificate_owner_once_without_task_list() {
+        let tools = [named_tool(ORG_RUN_COMPLETE_TOOL), named_tool("task_list")];
+        let snapshot = json!({
+            "role": "user",
+            "content": concat!(
+                "<system-reminder>\n",
+                "### Completion candidate snapshot\n",
+                "- state=`ready`; checked_outcome=`delivered`; activation_generation=Some(1); work_revision=Some(9); blockers=[]\n",
+                "- Call `org_run_complete` exactly once now. Do not call `task_list` first.\n",
+                "</system-reminder>"
+            )
+        });
+
+        let calls = E2eFakeProvider::agent_org_completion_candidate_tool_calls(
+            std::slice::from_ref(&snapshot),
+            Some(&tools),
+        );
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, ORG_RUN_COMPLETE_TOOL);
+        assert_eq!(calls[0].arguments["candidate_outcome"], "delivered");
+        assert_ne!(calls[0].name, "task_list");
+
+        let replay = vec![snapshot, json!({ "role": "tool", "content": "certified" })];
+        assert!(
+            E2eFakeProvider::agent_org_completion_candidate_tool_calls(&replay, Some(&tools))
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn completion_flow_creates_one_task_and_owner_completes_it() {
+        let coordinator_tools = [named_tool(TASK_GRAPH_CREATE_TOOL)];
+        let graph = E2eFakeProvider::agent_org_completion_flow_tool_calls(
+            &[json!({
+                "role": "user",
+                "content": "Run E2E_AGENT_ORG_COMPLETION:certificate_1"
+            })],
+            Some(&coordinator_tools),
+        );
+        assert_eq!(graph.len(), 1);
+        assert_eq!(graph[0].name, TASK_GRAPH_CREATE_TOOL);
+        assert_eq!(
+            graph[0].arguments["tasks"][0]["owner_member_id"],
+            "sde-reviewer"
+        );
+
+        let owner_tools = [named_tool(TASK_UPDATE_TOOL)];
+        let assignment = json!({
+            "role": "user",
+            "content": concat!(
+                "Task assigned by coordinator: E2E_AGENT_ORG_COMPLETION:certificate_1\n",
+                "Task ID: completion-task\n",
+                "Execution mode: build"
+            )
+        });
+        let start = E2eFakeProvider::agent_org_completion_flow_tool_calls(
+            std::slice::from_ref(&assignment),
+            Some(&owner_tools),
+        );
+        assert_eq!(start[0].arguments["operation"], "start");
+        let complete = E2eFakeProvider::agent_org_completion_flow_tool_calls(
+            &[assignment, json!({ "role": "tool", "content": "started" })],
+            Some(&owner_tools),
+        );
+        assert_eq!(complete[0].arguments["operation"], "complete");
+        assert_eq!(
+            complete[0].arguments["output"]["summary"],
+            "E2E completion evidence for certificate_1"
         );
     }
 }

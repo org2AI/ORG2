@@ -4,7 +4,7 @@
  *
  * 2026-06 incident: the refocus effect keyed on the raw `items` array (a
  * fresh reference every parent render) with no isOpen gate. A CLOSED
- * WorkspacePalette mounted under the session-creator page therefore re-fired
+ * WorkingDirectoryPalette mounted under the session-creator page therefore re-fired
  * the effect on every parent render, each run queuing setTimeout(0) →
  * input.focus() — ~700 focus steals per second, blurring the composer the
  * user was typing in and feeding back into more renders.

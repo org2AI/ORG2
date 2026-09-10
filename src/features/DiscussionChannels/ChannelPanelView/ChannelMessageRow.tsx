@@ -39,7 +39,7 @@ import {
   Pen01Icon,
   Tick01Icon,
 } from "@src/icons";
-import { openOrFocusSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpenAtoms";
+import { openOrFocusSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpen/session";
 import { sessionByIdAtom } from "@src/store/session/sessionAtom";
 import { LOCAL_CHANNEL_MESSAGE_MAX_LENGTH } from "@src/store/ui/localChannelMessagesAtom";
 import { formatLocalClock } from "@src/util/data/formatters/date";

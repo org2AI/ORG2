@@ -11,6 +11,7 @@ import PrerequisiteAlert from "@src/components/PrerequisiteAlert";
 import TabPill from "@src/components/TabPill";
 import type { InstallMethod } from "@src/config/cliAgents";
 import { INSTALL_METHOD_PREREQUISITES } from "@src/config/prerequisites";
+import { createLogger } from "@src/hooks/logger";
 import {
   Copy01Icon,
   Delete02Icon,
@@ -18,12 +19,15 @@ import {
   HugeiconsIcon,
 } from "@src/icons";
 import { usePrerequisiteCheck } from "@src/modules/MainApp/Integrations/hooks/usePrerequisiteCheck";
+import { copyText } from "@src/util/data/clipboard";
 
 import {
   InlineCardColumnStack,
   InlineCardSplit,
   InlineSplitNavRow,
 } from "../../shared/InlineCardPrimitives";
+
+const log = createLogger("CliClientSection");
 
 const CLI_CLIENT_ACTION_TAB = {
   INSTALL: "install",
@@ -205,10 +209,12 @@ export const CliClientSection: React.FC<CliClientSectionProps> = ({
                   <HugeiconsIcon icon={Copy01Icon} data-icon="copy" size={12} />
                 }
                 onClick={() => {
-                  navigator.clipboard
-                    .writeText(selectedMethod.command)
+                  copyText(selectedMethod.command)
                     .then(() => {
                       Message.success({ content: copySuccessMessage });
+                    })
+                    .catch((error: unknown) => {
+                      log.warn("Failed to copy install command", error);
                     });
                 }}
               >

@@ -11,10 +11,10 @@
  * deps, which causes useTerminalXtermMount to destroy and recreate the
  * terminal on every parent re-render — producing the xterm renderer crash
  * ("this._renderer.value.dimensions") and cascading WebGL context exhaustion
- * that breaks the glass toolbar.
+ * that breaks surrounding simulator chrome.
  *
  * History: reverted extraction in 2eb32a6c7 (Mar 2026) after it broke
- * terminal rendering and glass styles within hours.
+ * terminal rendering and surrounding styles within hours.
  */
 import { type FitAddon } from "@xterm/addon-fit";
 import { type SearchAddon } from "@xterm/addon-search";
@@ -48,6 +48,10 @@ import {
   terminalThemeAtom,
   themesAtom,
 } from "@src/store/ui/uiAtom";
+import {
+  clearTransientScrollbar,
+  revealTransientScrollbar,
+} from "@src/util/ui/transientScrollbars";
 
 import "./index.scss";
 import { registerTerminalEventHandlers } from "./terminalHandlers";
@@ -284,6 +288,10 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
         });
 
       terminal.open(containerRef.current);
+      const scrollbarElement = containerRef.current;
+      const scrollbarDisposable = terminal.onScroll(() => {
+        revealTransientScrollbar(scrollbarElement);
+      });
 
       terminalRef.current = terminal;
       fitAddonRef.current = fitAddon;
@@ -335,6 +343,8 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
 
         webglController.dispose();
         webglControllerRef.current = null;
+        scrollbarDisposable.dispose();
+        clearTransientScrollbar(scrollbarElement);
         cancelRenderSettle(terminal);
         terminal.dispose();
         terminalRef.current = null;

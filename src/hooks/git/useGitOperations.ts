@@ -19,7 +19,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useActionSystemOptional } from "@src/ActionSystem";
 import type { GitErrorType } from "@src/api/http/git/streaming";
-import { useGitStatus } from "@src/contexts/git";
+import { useGitStatus } from "@src/contexts/git/GitStatusContext/useGitStatus";
 import { GitOperationsService } from "@src/services/git/GitOperationsService";
 import type { GitPullStrategy } from "@src/store/ui/editorSettingsAtom";
 

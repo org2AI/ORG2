@@ -18,7 +18,7 @@ import { useAppShellActions } from "./useAppShellActions";
 
 vi.mock("@src/router/lazy/preload", () => ({ preloadRouteByPath: vi.fn() }));
 vi.mock("@src/scaffold/GlobalSpotlight/openSpotlight", () => ({
-  openWorkspaceSpotlight: vi.fn(),
+  openWorkingDirectorySpotlight: vi.fn(),
 }));
 
 function ActionProbe() {

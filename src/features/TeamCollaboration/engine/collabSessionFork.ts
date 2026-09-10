@@ -259,7 +259,9 @@ export async function forkSession(
         localKeys
       ))
   ) {
-    throw new Error(
+    throw new ForkOperationError(
+      "agent_unavailable",
+      remoteSession.sourceSessionId,
       "The selected account/model is no longer available; choose another before forking."
     );
   }

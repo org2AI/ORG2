@@ -7,6 +7,9 @@
  * `src/store/`.
  */
 import { atomWithStorage } from "jotai/utils";
+import { z } from "zod/v4";
+
+import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
 import {
   DEFAULT_SESSION_GROUP_VISIBLE_COUNT,
@@ -28,77 +31,30 @@ const DEFAULT_MODE: GroupByMode = "byTime";
 const DEFAULT_PROJECTS_MODE: ProjectsGroupByMode = "byOrg";
 const DEFAULT_INCLUDE_EXTERNAL = true;
 
-const KNOWN_MODES = new Set<GroupByMode>(GROUP_BY_MODES);
-const KNOWN_PROJECTS_MODES = new Set<ProjectsGroupByMode>(
-  PROJECTS_GROUP_BY_MODES
-);
-const KNOWN_GROUP_VISIBLE_COUNTS = new Set<number>(
-  SESSION_GROUP_VISIBLE_COUNTS
-);
-
-function parseStored(raw: unknown): GroupByMode {
-  if (typeof raw !== "string") return DEFAULT_MODE;
-  if (KNOWN_MODES.has(raw as GroupByMode)) return raw as GroupByMode;
-  return DEFAULT_MODE;
-}
-
-function parseStoredProjects(raw: unknown): ProjectsGroupByMode {
-  if (typeof raw !== "string") return DEFAULT_PROJECTS_MODE;
-  if (KNOWN_PROJECTS_MODES.has(raw as ProjectsGroupByMode)) {
-    return raw as ProjectsGroupByMode;
-  }
-  return DEFAULT_PROJECTS_MODE;
-}
-
-function parseStoredBoolean(raw: unknown): boolean {
-  return typeof raw === "boolean" ? raw : DEFAULT_INCLUDE_EXTERNAL;
-}
-
-function parseStoredGroupVisibleCount(raw: unknown): SessionGroupVisibleCount {
-  return typeof raw === "number" && KNOWN_GROUP_VISIBLE_COUNTS.has(raw)
-    ? (raw as SessionGroupVisibleCount)
-    : DEFAULT_SESSION_GROUP_VISIBLE_COUNT;
-}
-
-function parseStoredWorkspaceKeys(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return Array.from(
-    new Set(
-      raw.filter(
-        (value): value is string =>
-          typeof value === "string" && value.length > 0
+const StoredGroupByModeSchema = z.enum([...GROUP_BY_MODES]);
+const StoredProjectsGroupByModeSchema = z.enum([...PROJECTS_GROUP_BY_MODES]);
+const StoredIncludeExternalSchema = z.boolean();
+const StoredGroupVisibleCountSchema = z.literal([
+  ...SESSION_GROUP_VISIBLE_COUNTS,
+]);
+/** Non-empty string keys, de-duplicated; anything else in the list is dropped. */
+const StoredWorkspaceKeysSchema = z
+  .array(z.unknown())
+  .transform((raw) =>
+    Array.from(
+      new Set(
+        raw.filter(
+          (value): value is string =>
+            typeof value === "string" && value.length > 0
+        )
       )
     )
   );
-}
-
-function createStorage<T>(parseValue: (raw: unknown) => T) {
-  return {
-    getItem(key: string, initialValue: T): T {
-      if (typeof window === "undefined") return initialValue;
-      try {
-        const stored = window.localStorage.getItem(key);
-        if (stored == null) return initialValue;
-        return parseValue(JSON.parse(stored) as unknown);
-      } catch {
-        return initialValue;
-      }
-    },
-    setItem(key: string, value: T) {
-      if (typeof window === "undefined") return;
-      window.localStorage.setItem(key, JSON.stringify(value));
-    },
-    removeItem(key: string) {
-      if (typeof window === "undefined") return;
-      window.localStorage.removeItem(key);
-    },
-  };
-}
 
 export const sidebarGroupByAtom = atomWithStorage<GroupByMode>(
   STORAGE_KEY,
   DEFAULT_MODE,
-  createStorage(parseStored),
+  createZodJsonStorage(StoredGroupByModeSchema),
   { getOnInit: true }
 );
 sidebarGroupByAtom.debugLabel = "sidebarGroupByAtom";
@@ -106,7 +62,7 @@ sidebarGroupByAtom.debugLabel = "sidebarGroupByAtom";
 const projectsSidebarGroupByAtom = atomWithStorage<ProjectsGroupByMode>(
   PROJECTS_STORAGE_KEY,
   DEFAULT_PROJECTS_MODE,
-  createStorage(parseStoredProjects),
+  createZodJsonStorage(StoredProjectsGroupByModeSchema),
   { getOnInit: true }
 );
 projectsSidebarGroupByAtom.debugLabel = "projectsSidebarGroupByAtom";
@@ -114,7 +70,7 @@ projectsSidebarGroupByAtom.debugLabel = "projectsSidebarGroupByAtom";
 export const sidebarIncludeExternalAtom = atomWithStorage<boolean>(
   INCLUDE_EXTERNAL_STORAGE_KEY,
   DEFAULT_INCLUDE_EXTERNAL,
-  createStorage(parseStoredBoolean),
+  createZodJsonStorage(StoredIncludeExternalSchema),
   { getOnInit: true }
 );
 sidebarIncludeExternalAtom.debugLabel = "sidebarIncludeExternalAtom";
@@ -123,7 +79,7 @@ export const sidebarGroupVisibleCountAtom =
   atomWithStorage<SessionGroupVisibleCount>(
     GROUP_VISIBLE_COUNT_STORAGE_KEY,
     DEFAULT_SESSION_GROUP_VISIBLE_COUNT,
-    createStorage(parseStoredGroupVisibleCount),
+    createZodJsonStorage(StoredGroupVisibleCountSchema),
     { getOnInit: true }
   );
 sidebarGroupVisibleCountAtom.debugLabel = "sidebarGroupVisibleCountAtom";
@@ -139,7 +95,7 @@ sidebarGroupVisibleCountAtom.debugLabel = "sidebarGroupVisibleCountAtom";
 export const sidebarHiddenWorkspacesAtom = atomWithStorage<string[]>(
   HIDDEN_WORKSPACES_STORAGE_KEY,
   [],
-  createStorage(parseStoredWorkspaceKeys),
+  createZodJsonStorage(StoredWorkspaceKeysSchema),
   { getOnInit: true }
 );
 sidebarHiddenWorkspacesAtom.debugLabel = "sidebarHiddenWorkspacesAtom";
@@ -152,7 +108,7 @@ sidebarHiddenWorkspacesAtom.debugLabel = "sidebarHiddenWorkspacesAtom";
 export const sidebarPinnedWorkspacesAtom = atomWithStorage<string[]>(
   PINNED_WORKSPACES_STORAGE_KEY,
   [],
-  createStorage(parseStoredWorkspaceKeys),
+  createZodJsonStorage(StoredWorkspaceKeysSchema),
   { getOnInit: true }
 );
 sidebarPinnedWorkspacesAtom.debugLabel = "sidebarPinnedWorkspacesAtom";

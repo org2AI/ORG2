@@ -14,15 +14,15 @@
 //!    `budget_tokens` (which they reject with HTTP 400).
 //! 3. **Translating** `(mode, level)` into each provider's wire parameter.
 //!
-//! The suffix token set mirrors the frontend `VARIANT_SUFFIX_TOKENS`
-//! (`src/util/modelVariants.ts`) so front- and back-end agree on what a
-//! "variant suffix" is.
+//! The suffix grammar lives in `model_variant.rs`; its frontend counterpart is
+//! `MODEL_VARIANT_SUFFIX_TOKENS` in `src/util/modelNameGrammar.ts`.
 
 use regex::Regex;
 use serde_json::{json, Value};
 use std::sync::OnceLock;
 
 use crate::providers::model_capabilities::{classify_family, ModelFamily};
+use crate::providers::model_variant::parse_model_variant_id;
 
 /// User-selectable reasoning effort, independent of provider protocol.
 /// Mirrors the frontend `MODEL_REASONING_LEVEL`.
@@ -106,73 +106,22 @@ impl ParsedVariant {
     }
 }
 
-/// Tokens that may appear as ORG2-encoded variant suffixes. Matches the
-/// frontend `VARIANT_SUFFIX_TOKENS` exactly. Provider-native suffixes
-/// (`mini`, `flash`, date stamps, `20250514`) are deliberately absent so they
-/// are never stripped.
-const SUFFIX_TOKENS: &[&str] = &[
-    "none",
-    "baseline",
-    "low",
-    "medium",
-    "high",
-    "extra",
-    "extra-high",
-    "xhigh",
-    "max",
-    "ultra",
-    "ultracode",
-    "minimal",
-    "thinking",
-    "fast",
-];
-
-fn is_suffix_token(tok: &str) -> bool {
-    SUFFIX_TOKENS.contains(&tok)
-}
-
 /// Split a (possibly suffixed) model id into base alias + variant metadata.
 ///
 /// Peels trailing tokens that belong to ORG2's variant vocabulary only;
 /// provider-native suffixes are preserved. `extra` + `high` are merged into
 /// `extra-high` exactly as the frontend (`mergeCompoundTokens`) does.
 pub fn parse_model_variant(model: &str) -> ParsedVariant {
-    let lower = model.to_lowercase();
-    let lower_segments: Vec<&str> = lower.split('-').collect();
-
-    // Walk from the end, peeling recognised suffix tokens off the base.
-    let mut split = lower_segments.len();
-    while split > 1 {
-        if !is_suffix_token(lower_segments[split - 1]) {
-            break;
-        }
-        split -= 1;
-    }
-
-    if split == lower_segments.len() {
+    let parsed_id = parse_model_variant_id(model);
+    if parsed_id.suffix_tokens.is_empty() {
         // No suffix token peeled — id carries no encoded variant.
         return ParsedVariant::bare(model);
-    }
-
-    let raw_tokens: Vec<&str> = lower_segments[split..].to_vec();
-
-    // Merge `extra` + `high` → `extra-high`.
-    let mut merged: Vec<String> = Vec::with_capacity(raw_tokens.len());
-    let mut i = 0;
-    while i < raw_tokens.len() {
-        if raw_tokens[i] == "extra" && i + 1 < raw_tokens.len() && raw_tokens[i + 1] == "high" {
-            merged.push("extra-high".to_string());
-            i += 2;
-        } else {
-            merged.push(raw_tokens[i].to_string());
-            i += 1;
-        }
     }
 
     let mut thinking = false;
     let mut fast = false;
     let mut level: Option<ReasoningLevel> = None;
-    for tok in &merged {
+    for tok in &parsed_id.suffix_tokens {
         match tok.as_str() {
             "thinking" => thinking = true,
             "fast" => fast = true,
@@ -181,11 +130,8 @@ pub fn parse_model_variant(model: &str) -> ParsedVariant {
         }
     }
 
-    // Base model keeps original casing (take the first `split` segments).
-    let base_model: String = model.split('-').take(split).collect::<Vec<_>>().join("-");
-
     ParsedVariant {
-        base_model,
+        base_model: parsed_id.base_model,
         level,
         thinking,
         fast,

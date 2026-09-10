@@ -20,12 +20,11 @@ import { REGISTRY } from "./registry";
 
 export interface UnifiedTabContentDispatcherProps {
   tab: WorkStationTab;
-  paneId: string;
   isActive: boolean;
 }
 
 export const UnifiedTabContent: React.FC<UnifiedTabContentDispatcherProps> =
-  memo(({ tab, paneId, isActive }) => {
+  memo(({ tab, isActive }) => {
     const entry = REGISTRY[tab.type];
     if (!entry) {
       return <UnknownTabPlaceholder type={tab.type} />;
@@ -47,7 +46,7 @@ export const UnifiedTabContent: React.FC<UnifiedTabContentDispatcherProps> =
       );
     return (
       <Suspense fallback={fallback}>
-        <Component tab={tab} paneId={paneId} isActive={isActive} />
+        <Component tab={tab} isActive={isActive} />
       </Suspense>
     );
   });

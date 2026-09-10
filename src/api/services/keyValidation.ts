@@ -19,8 +19,8 @@ import type {
   CliVersionSnapshot,
   CodexOauthExchangeResponse,
   CodexOauthStartResponse,
-  CursorBillingUsagePage,
-  CursorBillingUsageSnapshot,
+  CredentialImportReport,
+  CredentialSuggestion,
   DefaultVariantInfo,
   FullKeyResponse,
   HealthStatus,
@@ -46,39 +46,30 @@ export type {
   ModelType,
   AuthMethod,
   AutoDetectResult,
+  CredentialImportReport,
+  CredentialSuggestion,
+  SuggestionSourceKind,
   CliVersionSnapshot,
   ClaudeCodeOauthExchangeResponse,
   ClaudeCodeOauthStartResponse,
   CodexOauthExchangeResponse,
   CodexOauthStartResponse,
-  CursorBillingUsagePage,
-  CursorBillingUsageSnapshot,
-  DetectedKey,
-  DetectedQuotaInfo,
   FullKeyResponse,
   HealthStatus,
-  HousekeeperHealthCheckRequest,
   HousekeeperHealthCheckResponse,
-  HousekeeperTokenBenchmarkRequest,
   HousekeeperTokenBenchmarkResponse,
   HousekeeperUiContext,
-  HousekeeperUiIntentRequest,
   HousekeeperUiIntentResponse,
   KeyInfo,
-  KeyQuotaRefreshStatusInfo,
   ModelContextLengths,
   ProviderProtocol,
-  PromptPolishRequest,
   PromptPolishResponse,
   QuotaInfo,
   SaveKeyRequest,
   SessionStepExplainRequest,
   SessionStepExplainResponse,
-  UsageItem,
   ValidationResult,
 } from "@src/api/tauri/rpc/schemas/validation";
-
-export type { ModelAliasInfo } from "@src/api/types/keys";
 
 function cleanOptionalString(value?: string | null): string | null {
   const trimmed = value?.trim();
@@ -160,39 +151,6 @@ export async function getKeyQuotaRefreshStatus(
   keyId: string
 ): Promise<KeyQuotaRefreshStatusInfo | null> {
   return rpc.validation.getKeyQuotaRefreshStatus({ keyId });
-}
-
-/**
- * Sync Cursor's exact account-level billing export and return its bounded
- * aggregate summary. Event rows remain in the private raw cache and must be
- * read through `readCursorBillingUsagePage`.
- *
- * This source is intentionally separate from local Cursor session context
- * history so callers cannot accidentally double-count both datasets.
- */
-export async function syncCursorBillingUsage(
-  accountId: string,
-  force = false
-): Promise<CursorBillingUsageSnapshot> {
-  return rpc.validation.cursorSyncBillingUsage({ accountId, force });
-}
-
-/**
- * Read one bounded page from the current Cursor billing last-good cache.
- *
- * `cursor` is opaque and only valid for the same account/credential snapshot.
- * The backend enforces a hard maximum of 200 events per IPC response.
- */
-export async function readCursorBillingUsagePage(
-  accountId: string,
-  cursor: string | null = null,
-  limit = 100
-): Promise<CursorBillingUsagePage> {
-  return rpc.validation.cursorReadBillingUsagePage({
-    accountId,
-    cursor,
-    limit: Math.min(200, Math.max(1, Math.trunc(limit))),
-  });
 }
 
 /** Archive the active account cache during logout/removal. */
@@ -506,6 +464,26 @@ export async function autoDetectKey(
   agentType: ModelType
 ): Promise<AutoDetectResult> {
   return rpc.validation.autoDetectKey({ agentType });
+}
+
+/**
+ * Offline probe for credentials other coding tools have left on this
+ * machine (env vars, shell profiles, login stores). Cheap; no network.
+ */
+export async function listCredentialSuggestions(): Promise<
+  CredentialSuggestion[]
+> {
+  return rpc.validation.listCredentialSuggestions();
+}
+
+/**
+ * Import selected suggestions. Secrets are re-read and validated on the
+ * Rust side; the per-item report keeps partial failures visible.
+ */
+export async function importCredentialSuggestions(
+  selections: CredentialSuggestion[]
+): Promise<CredentialImportReport> {
+  return rpc.validation.importCredentialSuggestions({ selections });
 }
 
 /** Scan the installed/latest version of one explicitly selected CLI. */

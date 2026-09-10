@@ -621,7 +621,7 @@ mod tests {
     }
 
     #[test]
-    fn settings_are_flat_keys_like_the_settings_registry() {
+    fn local_and_production_connection_plans_use_cloud_auth() {
         let dir = TempDir::new().expect("tempdir");
         write_auth_store(&dir);
         let value = serde_json::json!({
@@ -635,7 +635,9 @@ mod tests {
         assert!(settings.relay_enabled);
         assert_eq!(settings.desktop_id, "desktop-a");
         let plan = settings.connection_plan().expect("connection plan");
-        assert!(plan.ws_url.starts_with("wss://relay.example.com/v1/desktop/ws?"));
+        assert!(plan
+            .ws_url
+            .starts_with("wss://relay.example.com/v1/desktop/ws?"));
         assert!(plan.ws_url.contains("desktopId=desktop-a"));
         assert_eq!(plan.access_token, "cloud-access-token");
         let request = build_websocket_request(&plan).expect("request");
@@ -646,6 +648,17 @@ mod tests {
                 .and_then(|value| value.to_str().ok()),
             Some("Bearer cloud-access-token")
         );
+
+        let local = RelaySettings {
+            relay_url: "ws://127.0.0.1:8787/v1/mobile/ws".to_string(),
+            ..settings
+        };
+        let local_plan = local.connection_plan().expect("local connection plan");
+        assert!(local_plan
+            .ws_url
+            .starts_with("ws://127.0.0.1:8787/v1/desktop/ws?"));
+        assert_eq!(local_plan.access_token, "cloud-access-token");
+
         std::env::remove_var("ORGII_TEST_SHARED_AUTH_STORE");
     }
 

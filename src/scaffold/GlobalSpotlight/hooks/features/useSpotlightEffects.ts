@@ -30,12 +30,14 @@ export interface UseSpotlightEffectsOptions {
   isOpen: boolean;
   dispatch: Dispatch<SpotlightAction>;
   closeModal: () => void;
-  onOpenWorkspaceLayer?: (mode: "switch" | "open" | "add" | "create") => void;
+  onOpenWorkingDirectoryLayer?: (
+    mode: "switch" | "open" | "add" | "create"
+  ) => void;
   onOpenCollabOrgLayer?: (context?: SpotlightCollabOrgContext) => void;
   onOpenGitHubIssuesImportLayer?: (
     context?: SpotlightGitHubIssuesImportContext
   ) => void;
-  onOpenBranchLayer?: () => void;
+  onOpenBranchLayer?: (repoId?: string) => void;
   onOpenWorktreeLayer?: () => void;
   onOpenEditorLayer?: (
     query: string,
@@ -45,6 +47,7 @@ export interface UseSpotlightEffectsOptions {
   onOpenAllSessionsSearchLayer?: () => void;
   onOpenAgentControlLayer?: () => void;
   onOpenSessionCreatorLayer?: () => void;
+  onOpenSessionImportLayer?: () => void;
 }
 
 // ============================================
@@ -58,13 +61,14 @@ export function useSpotlightEffects(options: UseSpotlightEffectsOptions): void {
     onOpenBranchLayer,
     onOpenWorktreeLayer,
     onOpenEditorLayer,
-    onOpenWorkspaceLayer,
+    onOpenWorkingDirectoryLayer,
     onOpenCollabOrgLayer,
     onOpenGitHubIssuesImportLayer,
     onOpenAgentSessionSearchLayer,
     onOpenAllSessionsSearchLayer,
     onOpenAgentControlLayer,
     onOpenSessionCreatorLayer,
+    onOpenSessionImportLayer,
   } = options;
 
   // Reset state on close
@@ -110,13 +114,13 @@ export function useSpotlightEffects(options: UseSpotlightEffectsOptions): void {
     if (!isOpen || !initialQuery) return;
 
     if (initialQuery.layer?.kind === "workspace") {
-      onOpenWorkspaceLayer?.(initialQuery.layer.mode);
+      onOpenWorkingDirectoryLayer?.(initialQuery.layer.mode);
     } else if (initialQuery.layer?.kind === "collabOrg") {
       onOpenCollabOrgLayer?.(initialQuery.layer.context);
     } else if (initialQuery.layer?.kind === "githubIssuesImport") {
       onOpenGitHubIssuesImportLayer?.(initialQuery.layer.context);
     } else if (initialQuery.layer?.kind === "branch") {
-      onOpenBranchLayer?.();
+      onOpenBranchLayer?.(initialQuery.layer.repoId);
     } else if (initialQuery.layer?.kind === "worktree") {
       onOpenWorktreeLayer?.();
     } else if (initialQuery.layer?.kind === "editor") {
@@ -129,6 +133,8 @@ export function useSpotlightEffects(options: UseSpotlightEffectsOptions): void {
       onOpenAgentControlLayer?.();
     } else if (initialQuery.layer?.kind === "sessionCreator") {
       onOpenSessionCreatorLayer?.();
+    } else if (initialQuery.layer?.kind === "sessionImport") {
+      onOpenSessionImportLayer?.();
     } else if (initialQuery.query) {
       dispatch({
         type: "SET_SEARCH_QUERY",
@@ -148,8 +154,9 @@ export function useSpotlightEffects(options: UseSpotlightEffectsOptions): void {
     onOpenEditorLayer,
     onOpenCollabOrgLayer,
     onOpenGitHubIssuesImportLayer,
-    onOpenWorkspaceLayer,
+    onOpenWorkingDirectoryLayer,
     onOpenSessionCreatorLayer,
+    onOpenSessionImportLayer,
     setInitialQuery,
     dispatch,
   ]);

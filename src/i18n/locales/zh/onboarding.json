@@ -1,7 +1,5 @@
 {
   "tutorials": {
-    "modalTitle": "页面教程",
-    "start": "开始",
     "chrome": {
       "stepProgress": "第 {{current}} / {{total}} 步",
       "close": "关闭",
@@ -16,7 +14,7 @@
     },
     "generalLayout": {
       "title": "整体布局教程",
-      "description": "了解会话侧栏、聊天面板、工作站模式切换、Workstation、Dock 与应用区域。",
+      "description": "了解聊天面板、运行时、工作站模式切换器和 Dock。",
       "duration": "1 分钟",
       "steps": {
         "chat-panel": {
@@ -25,7 +23,7 @@
         },
         "runtime": {
           "title": "运行时",
-          "body": "在这里查看个人用量与运行状态；切换到组织后，还可以查看成员同步状态，并进入成员详情查看 Codex、Claude 和 Cursor 用量。"
+          "body": "在这里查看个人用量与运行状态；切换到工作空间后，还可以查看成员同步状态，并进入成员详情查看 Codex、Claude 和 Cursor 用量。"
         },
         "station-mode-pill": {
           "title": "切换工作站模式",
@@ -34,41 +32,17 @@
         "dock": {
           "title": "Agent 工作站 Dock",
           "body": "Dock 用于切换工作站内的应用。教程期间会暂时关闭自动隐藏，让这些控件保持可见。"
-        },
-        "all-tabs": {
-          "title": "全部标签页",
-          "body": "第一个 Dock 图标会集中显示所有已打开的标签页，不受其所属工作站应用限制。"
-        },
-        "code-editor": {
-          "title": "代码编辑器",
-          "body": "在代码编辑器中处理文件、Diff、终端、源代码管理，以及会话中产生的代码变更。"
-        },
-        "browser": {
-          "title": "浏览器",
-          "body": "在聊天的同时使用浏览器查看网页与预览、测试应用，并开展基于浏览器的调查。"
-        },
-        "projects": {
-          "title": "项目",
-          "body": "使用项目跟踪与当前 Workspace 相关的工作项、计划和项目状态。"
         }
       }
     },
     "codeEditor": {
       "title": "代码编辑器教程",
-      "description": "了解标签页、仓库与分支切换、源代码管理、Git 历史和项目看板。",
+      "description": "了解标签页、编辑器工作区、源代码管理和 Git 历史。",
       "duration": "2 分钟",
       "steps": {
         "tabs": {
           "title": "代码编辑器标签页",
           "body": "标签页集中承载你在仓库工作时打开的文件、Diff、终端、源代码管理视图和看板。"
-        },
-        "repo-selector": {
-          "title": "创建或切换仓库",
-          "body": "使用仓库选择器切换当前仓库，或添加另一个仓库或 Workspace。"
-        },
-        "branch-selector": {
-          "title": "切换分支",
-          "body": "分支选择器会显示当前 Git 分支，并打开该仓库的分支切换或创建流程。"
         },
         "editor-surface": {
           "title": "编辑器 Workspace",
@@ -85,12 +59,15 @@
         "git-history": {
           "title": "Git 历史",
           "body": "Git 历史会把源代码管理切换到提交历史模式，供你检查过去的提交及相关变更。"
-        },
-        "dashboard": {
-          "title": "代码编辑器看板",
-          "body": "看板是代码编辑器面向 Workspace 的主页标签页，可用于添加仓库、查看仓库详情并进入项目工作。"
         }
       }
     }
+  },
+  "discovery": {
+    "title": "新手入门与新功能",
+    "getStarted": "开始使用",
+    "newFeatures": "新功能",
+    "branchesTitle": "仓库分支",
+    "branchesDescription": "直接在 Spotlight 中切换仓库分支。"
   }
 }

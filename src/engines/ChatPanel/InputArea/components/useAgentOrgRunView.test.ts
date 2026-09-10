@@ -36,12 +36,14 @@ function runView(): AgentOrgRunView {
         { memberId: "m1", name: "Alice", role: "worker", agentId: "alice" },
         { memberId: "m2", name: "Bob", role: "worker", agentId: "bob" },
       ],
-      hierarchyMode: "flat",
       planApprovalPolicy: "coordinator",
       rootSessionId: "root-session",
     },
     runStatus: "running",
     runPhase: "members_working",
+    coordinatorWorkState: "inactive",
+    completion: { state: "none" },
+    executionHandoffs: [],
     currentMemberId: "coordinator",
     members: [
       {
@@ -50,6 +52,7 @@ function runView(): AgentOrgRunView {
         role: "worker",
         agentId: "alice",
         isCoordinator: false,
+        writerCapable: false,
         sessionRuntime: {
           sessionId: "alice-session",
           status: "idle",
@@ -61,6 +64,7 @@ function runView(): AgentOrgRunView {
         pendingTaskCount: 0,
         inProgressTaskCount: 0,
         completedTaskCount: 0,
+        queuedUserDirectedCount: 0,
       },
       {
         memberId: "m2",
@@ -68,6 +72,7 @@ function runView(): AgentOrgRunView {
         role: "worker",
         agentId: "bob",
         isCoordinator: false,
+        writerCapable: false,
         sessionRuntime: {
           sessionId: "bob-session",
           status: "idle",
@@ -79,6 +84,7 @@ function runView(): AgentOrgRunView {
         pendingTaskCount: 0,
         inProgressTaskCount: 0,
         completedTaskCount: 0,
+        queuedUserDirectedCount: 0,
       },
     ],
     tasks: [],
@@ -87,13 +93,30 @@ function runView(): AgentOrgRunView {
       pending: 0,
       inProgress: 0,
       completed: 0,
+      failed: 0,
+      cancelled: 0,
       corrupt: 0,
       visible: 0,
       truncated: false,
     },
+    taskStateWindow: { tasks: [], truncated: false },
+    workState: {
+      activeMembers: 0,
+      inFlightTurns: 0,
+      openTasks: 0,
+      blockingInbox: 0,
+    },
+    blockers: [],
     inbox: [],
     unreadInboxCount: 0,
-    pendingPlanApprovals: [],
+    blockingUnreadInboxCount: 0,
+    planRevisions: [],
+    formalActivity: {
+      pendingCount: 0,
+      materializedCount: 0,
+      pendingReceiptIds: [],
+      coordinatorObserving: false,
+    },
   };
 }
 

@@ -9,6 +9,7 @@
  * - Dynamic file type icon based on typed extension
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import {
@@ -40,6 +41,10 @@ export function NewItemInput({
   onConfirm,
   onCancel,
 }: NewItemInputProps) {
+  const { t } = useTranslation("common");
+  const inputLabel = isFolder
+    ? t("placeholders.enterFolderName")
+    : t("placeholders.enterFileName");
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const hasSubmittedRef = useRef(false);
@@ -147,7 +152,8 @@ export function NewItemInput({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          placeholder={isFolder ? "folder name" : "file name"}
+          placeholder={inputLabel}
+          aria-label={inputLabel}
           className="h-[22px] w-full min-w-0 rounded border border-primary-6 bg-pane-input px-1 text-[13px] text-text-1 ring-1 ring-primary-6/30 outline-none placeholder:text-text-4"
           autoComplete="off"
           autoCorrect="off"

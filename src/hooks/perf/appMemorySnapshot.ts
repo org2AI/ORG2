@@ -75,19 +75,6 @@ export interface AppMemorySnapshot {
   skipped_ambiguous_pids: number[];
 }
 
-export type ToolProcessCategory = "terminal" | "agent_cli" | "mcp_or_tool";
-
-export interface ToolProcessMemoryDiagnostic {
-  pid: number;
-  parent_pid: number | null;
-  process_instance_id: string;
-  name: string;
-  category: ToolProcessCategory;
-  rss_bytes: number;
-  virtual_memory_bytes: number;
-  depth: number;
-}
-
 export interface AppMemorySnapshotState {
   snapshot: AppMemorySnapshot | null;
   errorMessage: string | null;

@@ -1,5 +1,8 @@
 import { ROUTES, isWorkbenchPath } from "@src/config/routes";
+import { navigateApp as dispatchNavigate } from "@src/router/navigateApp";
+import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import type { StationMode } from "@src/store/ui/simulatorAtom";
+import { activeHostAtom } from "@src/store/workstation/tabHost";
 import type {
   WorkStationTab,
   WorkStationTabType,
@@ -20,15 +23,12 @@ function isWorkStationRoute() {
   );
 }
 
-function isCodeEditorRoute() {
-  return window.location.pathname === ROUTES.workStation.code.path;
-}
-
-function dispatchNavigate(path: string) {
-  window.dispatchEvent(
-    new CustomEvent("action-system-navigate", {
-      detail: { path },
-    })
+function isCodeEditorActive() {
+  const store = getStore();
+  return (
+    isWorkStationRoute() &&
+    store.get(stationModeAtom) === "my-station" &&
+    store.get(activeHostAtom) === "code"
   );
 }
 
@@ -42,7 +42,7 @@ function dispatchOpenCodeTab(tabId: string) {
 
 async function unmaximizeChatPanel(): Promise<void> {
   const { chatPanelMaximizedAtom } =
-    await import("@src/store/ui/chatPanelAtom");
+    await import("@src/store/ui/chatPanel/surfaceAtoms");
   const store = getStore();
   store.set(chatPanelMaximizedAtom, false);
 }
@@ -93,7 +93,7 @@ async function shouldToggleMaximizedForActiveTab(
   tabId: string,
   options?: NavigationOptions
 ): Promise<boolean> {
-  if (!options?.toggleChatPanelMaximizedWhenActive || !isCodeEditorRoute()) {
+  if (!options?.toggleChatPanelMaximizedWhenActive || !isCodeEditorActive()) {
     return false;
   }
   const { EditorTabService } =
@@ -128,15 +128,13 @@ export const WorkStationViewService = {
     const [
       { activeChatPanelTabAtom, isChatPanelTabStationAvailable },
       { stationModeAtom },
-      {
-        activeStationChatVisibleAtom,
-        chatPanelMaximizedAtom,
-        stationChatVisibilityAtom,
-      },
+      { activeStationChatVisibleAtom, stationChatVisibilityAtom },
+      { chatPanelMaximizedAtom },
     ] = await Promise.all([
       import("@src/store/chatPanel/chatPanelTabsAtom"),
       import("@src/store/ui/simulatorAtom"),
-      import("@src/store/ui/chatPanelAtom"),
+      import("@src/store/ui/chatPanel/visibilityAtoms"),
+      import("@src/store/ui/chatPanel/surfaceAtoms"),
     ]);
 
     const store = getStore();
@@ -157,7 +155,7 @@ export const WorkStationViewService = {
   async openKanbanTab(): Promise<boolean> {
     const [{ activeStationChatVisibleAtom }, { stationModeAtom }] =
       await Promise.all([
-        import("@src/store/ui/chatPanelAtom"),
+        import("@src/store/ui/chatPanel/visibilityAtoms"),
         import("@src/store/ui/simulatorAtom"),
       ]);
 
@@ -183,7 +181,7 @@ export const WorkStationViewService = {
       { stationModeAtom },
     ] = await Promise.all([
       import("@src/store/chatPanel/chatPanelTabsAtom"),
-      import("@src/store/ui/chatPanelAtom"),
+      import("@src/store/ui/chatPanel/visibilityAtoms"),
       import("@src/store/ui/simulatorAtom"),
     ]);
 
@@ -225,7 +223,7 @@ export const WorkStationViewService = {
       { workStationPrimarySidebarCollapsedPersistAtom },
     ] = await Promise.all([
       import("@src/store/ui/workStationLayout/statusBarAtoms"),
-      import("@src/store/ui/workStationAtom"),
+      import("@src/store/ui/workStationLayout/primarySidebarAtoms"),
     ]);
 
     const store = getStore();
@@ -249,33 +247,23 @@ export const WorkStationViewService = {
     ]);
 
     const store = getStore();
-    const isAlreadyOnCodeEditorRoute = isCodeEditorRoute();
+    const isCodeEditorAlreadyActive = isCodeEditorActive();
     await unmaximizeChatPanel();
     store.set(stationModeAtom, "my-station");
     const workspace = store.get(presentedWorkstationWorkspaceKeyAtom);
     queuePendingCodeEditorTab(workspace, tabId);
     dispatchNavigate(ROUTES.workStation.code.path);
-    if (isAlreadyOnCodeEditorRoute) {
+    if (isCodeEditorAlreadyActive) {
       dispatchOpenCodeTab(tabId);
     }
     return true;
-  },
-
-  async openCodeEditorTabOrToggleChatPanelMaximized(
-    tabId: string,
-    options?: NavigationOptions
-  ): Promise<boolean> {
-    if (await shouldToggleMaximizedForActiveTab(tabId, options)) {
-      return this.toggleChatPanelMaximized();
-    }
-    return this.openCodeEditorTab(tabId);
   },
 
   async openFileFolderTab(options?: NavigationOptions): Promise<boolean> {
     const { EditorTabService } =
       await import("@src/services/workStation/EditorTabService");
     const targetTabId = EditorTabService.getLastFileOrExplorerTabId();
-    if (options?.toggleChatPanelMaximizedWhenActive && isCodeEditorRoute()) {
+    if (options?.toggleChatPanelMaximizedWhenActive && isCodeEditorActive()) {
       const activeTab = EditorTabService.getActiveTab();
       if (
         activeTab &&
@@ -325,7 +313,7 @@ export const WorkStationViewService = {
       { searchQueryAtom },
     ] = await Promise.all([
       import("@src/store/ui/simulatorAtom"),
-      import("@src/store/ui/workStationAtom"),
+      import("@src/store/ui/workStationLayout/primarySidebarAtoms"),
       import("@src/store/workstation/codeEditor/search"),
     ]);
 
@@ -333,7 +321,7 @@ export const WorkStationViewService = {
     if (
       options?.toggleChatPanelMaximizedWhenActive &&
       query === undefined &&
-      isCodeEditorRoute() &&
+      isCodeEditorActive() &&
       store.get(workStationPrimarySidebarTabAtom) ===
         PRIMARY_SIDEBAR_TABS.SEARCH
     ) {
@@ -370,7 +358,7 @@ export const WorkStationViewService = {
       import("@src/store/workstation/tabs"),
       import("@src/engines/Simulator/types/appTypes"),
       import("@src/store/ui/simulatorAtom"),
-      import("@src/store/ui/chatPanelAtom"),
+      import("@src/store/ui/chatPanel/surfaceAtoms"),
     ]);
 
     if (

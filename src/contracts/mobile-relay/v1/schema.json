@@ -1,0 +1,694 @@
+{
+  "artifactVersion": 1,
+  "constants": {
+    "DESKTOP_WS_PATH": "/v1/desktop/ws",
+    "DEVICES_PATH": "/v1/devices",
+    "DEVICE_REVOKE_PATH": "/v1/devices/revoke",
+    "MAX_FRAME_BYTES": 1048576,
+    "MOBILE_CONNECT_TICKET_PATH": "/v1/mobile/auth/connect-ticket",
+    "MOBILE_WS_PATH": "/v1/mobile/ws",
+    "PAIRINGS_PATH": "/v1/pairings",
+    "PAIRING_COMPLETE_PATH": "/v1/pairings/complete",
+    "PRIMARY_DESKTOP_PATH": "/v1/desktops/primary",
+    "RELAY_PROTOCOL_VERSION": 1
+  },
+  "crateVersion": "0.1.0",
+  "types": {
+    "MobileConnectTicketRequest": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "description": "Cloud Bearer travels in the HTTP header, never in this body or a WS URL.",
+        "properties": {
+          "desktopId": {
+            "type": "string"
+          },
+          "deviceToken": {
+            "type": "string"
+          },
+          "pairingCode": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "required": ["desktopId", "deviceToken"],
+        "title": "MobileConnectTicketRequest",
+        "type": "object"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "description": "Cloud Bearer travels in the HTTP header, never in this body or a WS URL.",
+        "properties": {
+          "desktopId": {
+            "type": "string"
+          },
+          "deviceToken": {
+            "type": "string"
+          },
+          "pairingCode": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "required": ["desktopId", "deviceToken", "pairingCode"],
+        "title": "MobileConnectTicketRequest",
+        "type": "object"
+      }
+    },
+    "MobileConnectTicketResponse": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "authExpiresAtMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "expiresAtMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ticket": {
+            "type": "string"
+          }
+        },
+        "required": ["ticket", "expiresAtMs", "authExpiresAtMs"],
+        "title": "MobileConnectTicketResponse",
+        "type": "object"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "authExpiresAtMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "expiresAtMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ticket": {
+            "type": "string"
+          }
+        },
+        "required": ["ticket", "expiresAtMs", "authExpiresAtMs"],
+        "title": "MobileConnectTicketResponse",
+        "type": "object"
+      }
+    },
+    "PairedDeviceInfo": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "PermissionTier": {
+            "enum": ["read_only", "full"],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "desktopId": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "lastSeenMs": {
+            "format": "int64",
+            "type": ["integer", "null"]
+          },
+          "pairedAtMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tier": {
+            "$ref": "#/definitions/PermissionTier"
+          }
+        },
+        "required": [
+          "deviceId",
+          "desktopId",
+          "label",
+          "tier",
+          "isPrimary",
+          "pairedAtMs"
+        ],
+        "title": "PairedDeviceInfo",
+        "type": "object"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "PermissionTier": {
+            "enum": ["read_only", "full"],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "desktopId": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "lastSeenMs": {
+            "format": "int64",
+            "type": ["integer", "null"]
+          },
+          "pairedAtMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tier": {
+            "$ref": "#/definitions/PermissionTier"
+          }
+        },
+        "required": [
+          "deviceId",
+          "desktopId",
+          "label",
+          "tier",
+          "isPrimary",
+          "pairedAtMs",
+          "lastSeenMs"
+        ],
+        "title": "PairedDeviceInfo",
+        "type": "object"
+      }
+    },
+    "PairingCompleteRequest": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "PermissionTier": {
+            "enum": ["read_only", "full"],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "pairingCode": {
+            "type": "string"
+          },
+          "tier": {
+            "$ref": "#/definitions/PermissionTier"
+          }
+        },
+        "required": ["pairingCode", "tier"],
+        "title": "PairingCompleteRequest",
+        "type": "object"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "PermissionTier": {
+            "enum": ["read_only", "full"],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "pairingCode": {
+            "type": "string"
+          },
+          "tier": {
+            "$ref": "#/definitions/PermissionTier"
+          }
+        },
+        "required": ["pairingCode", "tier"],
+        "title": "PairingCompleteRequest",
+        "type": "object"
+      }
+    },
+    "PairingInitRequest": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "PermissionTier": {
+            "enum": ["read_only", "full"],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "desktopId": {
+            "type": "string"
+          },
+          "isPrimary": {
+            "default": false,
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tier": {
+            "$ref": "#/definitions/PermissionTier"
+          }
+        },
+        "required": ["desktopId", "label", "tier"],
+        "title": "PairingInitRequest",
+        "type": "object"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "PermissionTier": {
+            "enum": ["read_only", "full"],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "desktopId": {
+            "type": "string"
+          },
+          "isPrimary": {
+            "default": false,
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tier": {
+            "$ref": "#/definitions/PermissionTier"
+          }
+        },
+        "required": ["desktopId", "label", "tier", "isPrimary"],
+        "title": "PairingInitRequest",
+        "type": "object"
+      }
+    },
+    "PairingInitResponse": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "confirmationPhrase": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pairingCode": {
+            "type": "string"
+          },
+          "qrPayload": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pairingCode",
+          "confirmationPhrase",
+          "qrPayload",
+          "expiresInSeconds"
+        ],
+        "title": "PairingInitResponse",
+        "type": "object"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "confirmationPhrase": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pairingCode": {
+            "type": "string"
+          },
+          "qrPayload": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pairingCode",
+          "confirmationPhrase",
+          "qrPayload",
+          "expiresInSeconds"
+        ],
+        "title": "PairingInitResponse",
+        "type": "object"
+      }
+    },
+    "PermissionTier": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "enum": ["read_only", "full"],
+        "title": "PermissionTier",
+        "type": "string"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "enum": ["read_only", "full"],
+        "title": "PermissionTier",
+        "type": "string"
+      }
+    },
+    "RelayWireFrame": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "PairedDeviceInfo": {
+            "properties": {
+              "desktopId": {
+                "type": "string"
+              },
+              "deviceId": {
+                "type": "string"
+              },
+              "isPrimary": {
+                "type": "boolean"
+              },
+              "label": {
+                "type": "string"
+              },
+              "lastSeenMs": {
+                "format": "int64",
+                "type": ["integer", "null"]
+              },
+              "pairedAtMs": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "tier": {
+                "$ref": "#/definitions/PermissionTier"
+              }
+            },
+            "required": [
+              "deviceId",
+              "desktopId",
+              "label",
+              "tier",
+              "isPrimary",
+              "pairedAtMs"
+            ],
+            "type": "object"
+          },
+          "PermissionTier": {
+            "enum": ["read_only", "full"],
+            "type": "string"
+          }
+        },
+        "description": "Frames used only between the relay and the desktop outbound connection.\n`payload` remains the existing OrgiiMobile JSON-RPC envelope.",
+        "oneOf": [
+          {
+            "properties": {
+              "desktop_id": {
+                "type": "string"
+              },
+              "protocol_version": {
+                "format": "uint32",
+                "maximum": 4294967295,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "const": "desktop_registered",
+                "type": "string"
+              }
+            },
+            "required": ["type", "desktop_id", "protocol_version"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "connection_id": {
+                "type": "string"
+              },
+              "device": {
+                "$ref": "#/definitions/PairedDeviceInfo"
+              },
+              "type": {
+                "const": "mobile_connected",
+                "type": "string"
+              }
+            },
+            "required": ["type", "connection_id", "device"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "connection_id": {
+                "type": "string"
+              },
+              "type": {
+                "const": "mobile_disconnected",
+                "type": "string"
+              }
+            },
+            "required": ["type", "connection_id"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "connection_id": {
+                "type": "string"
+              },
+              "payload": true,
+              "type": {
+                "const": "mobile_frame",
+                "type": "string"
+              }
+            },
+            "required": ["type", "connection_id", "payload"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "connection_id": {
+                "type": "string"
+              },
+              "payload": true,
+              "type": {
+                "const": "desktop_frame",
+                "type": "string"
+              }
+            },
+            "required": ["type", "connection_id", "payload"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "const": "error",
+                "type": "string"
+              }
+            },
+            "required": ["type", "code", "message"],
+            "type": "object"
+          }
+        ],
+        "title": "RelayWireFrame"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "PairedDeviceInfo": {
+            "properties": {
+              "desktopId": {
+                "type": "string"
+              },
+              "deviceId": {
+                "type": "string"
+              },
+              "isPrimary": {
+                "type": "boolean"
+              },
+              "label": {
+                "type": "string"
+              },
+              "lastSeenMs": {
+                "format": "int64",
+                "type": ["integer", "null"]
+              },
+              "pairedAtMs": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "tier": {
+                "$ref": "#/definitions/PermissionTier"
+              }
+            },
+            "required": [
+              "deviceId",
+              "desktopId",
+              "label",
+              "tier",
+              "isPrimary",
+              "pairedAtMs",
+              "lastSeenMs"
+            ],
+            "type": "object"
+          },
+          "PermissionTier": {
+            "enum": ["read_only", "full"],
+            "type": "string"
+          }
+        },
+        "description": "Frames used only between the relay and the desktop outbound connection.\n`payload` remains the existing OrgiiMobile JSON-RPC envelope.",
+        "oneOf": [
+          {
+            "properties": {
+              "desktop_id": {
+                "type": "string"
+              },
+              "protocol_version": {
+                "format": "uint32",
+                "maximum": 4294967295,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "const": "desktop_registered",
+                "type": "string"
+              }
+            },
+            "required": ["type", "desktop_id", "protocol_version"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "connection_id": {
+                "type": "string"
+              },
+              "device": {
+                "$ref": "#/definitions/PairedDeviceInfo"
+              },
+              "type": {
+                "const": "mobile_connected",
+                "type": "string"
+              }
+            },
+            "required": ["type", "connection_id", "device"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "connection_id": {
+                "type": "string"
+              },
+              "type": {
+                "const": "mobile_disconnected",
+                "type": "string"
+              }
+            },
+            "required": ["type", "connection_id"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "connection_id": {
+                "type": "string"
+              },
+              "payload": true,
+              "type": {
+                "const": "mobile_frame",
+                "type": "string"
+              }
+            },
+            "required": ["type", "connection_id", "payload"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "connection_id": {
+                "type": "string"
+              },
+              "payload": true,
+              "type": {
+                "const": "desktop_frame",
+                "type": "string"
+              }
+            },
+            "required": ["type", "connection_id", "payload"],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "const": "error",
+                "type": "string"
+              }
+            },
+            "required": ["type", "code", "message"],
+            "type": "object"
+          }
+        ],
+        "title": "RelayWireFrame"
+      }
+    },
+    "RevokeDeviceRequest": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          }
+        },
+        "required": ["deviceId"],
+        "title": "RevokeDeviceRequest",
+        "type": "object"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          }
+        },
+        "required": ["deviceId"],
+        "title": "RevokeDeviceRequest",
+        "type": "object"
+      }
+    },
+    "SetPrimaryDesktopRequest": {
+      "input": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "desktopId": {
+            "type": "string"
+          }
+        },
+        "required": ["desktopId"],
+        "title": "SetPrimaryDesktopRequest",
+        "type": "object"
+      },
+      "output": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "desktopId": {
+            "type": "string"
+          }
+        },
+        "required": ["desktopId"],
+        "title": "SetPrimaryDesktopRequest",
+        "type": "object"
+      }
+    }
+  }
+}

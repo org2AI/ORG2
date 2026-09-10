@@ -6,10 +6,10 @@ import {
   type GroupByMode,
   type SessionGroupVisibleCount,
 } from "../types";
-import type { WorkstationSidebarKey } from "./types";
+import type { SessionSidebarView } from "./types";
 
 interface UseSidebarBottomRightActionsParams {
-  activeSidebarKey: WorkstationSidebarKey;
+  activeViewKey: SessionSidebarView;
   groupByMode: GroupByMode;
   groupVisibleCount: SessionGroupVisibleCount;
   includeExternal: boolean;
@@ -24,7 +24,7 @@ interface UseSidebarBottomRightActionsParams {
 }
 
 export function useSidebarBottomRightActions({
-  activeSidebarKey,
+  activeViewKey,
   groupByMode,
   groupVisibleCount,
   includeExternal,
@@ -55,7 +55,7 @@ export function useSidebarBottomRightActions({
     [groupVisibleCount, resetGroupVisibleCounts, setGroupVisibleCount]
   );
 
-  if (activeSidebarKey === "projects") {
+  if (activeViewKey !== "sessions") {
     return null;
   }
 

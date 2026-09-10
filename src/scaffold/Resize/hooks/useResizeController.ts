@@ -29,6 +29,8 @@ import {
   useState,
 } from "react";
 
+import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
+
 import { useResizeManager } from "../ResizeManager";
 import type { ResizeControllerOptions, ResizeSession } from "../types";
 
@@ -97,7 +99,8 @@ export function useResizeController(
   const start = useCallback(
     (event: ReactMouseEvent, currentSize: number) => {
       // Prevent if another resize is active
-      if (globalIsResizing) return;
+      if (event.button !== 0 || globalIsResizing || dragCleanupRef.current)
+        return;
 
       event.preventDefault();
       event.stopPropagation();
@@ -180,8 +183,7 @@ export function useResizeController(
        * Handle mouse up - Commit to state
        */
       const handleEnd = () => {
-        document.removeEventListener("mousemove", handleMove);
-        document.removeEventListener("mouseup", handleEnd);
+        dispose();
         dragCleanupRef.current = null;
 
         // Hide ghost layer
@@ -199,12 +201,15 @@ export function useResizeController(
       };
 
       // Attach global listeners
-      document.addEventListener("mousemove", handleMove);
-      document.addEventListener("mouseup", handleEnd);
+      const dispose = listenForDrag({
+        onMove: handleMove,
+        onEnd: handleEnd,
+        onCancel: handleEnd,
+      });
 
       dragCleanupRef.current = () => {
-        document.removeEventListener("mousemove", handleMove);
-        document.removeEventListener("mouseup", handleEnd);
+        dispose();
+        dragCleanupRef.current = null;
         if (ghostRef.current) {
           ghostRef.current.style.display = "none";
         }

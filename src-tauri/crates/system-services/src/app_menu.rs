@@ -11,10 +11,11 @@
 //! Recent paths are persisted to `recent_paths.json` in the Tauri app data dir
 //! and restored into ORGII's app-controlled File > Open Recent menu on startup.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
-use tauri::menu::{Menu, MenuBuilder, MenuItem, Submenu, SubmenuBuilder};
+use std::sync::{LazyLock, Mutex};
+use tauri::menu::{Menu, MenuBuilder, MenuItem, MenuItemKind, Submenu, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager, Wry};
 
 /// Maximum number of recent items to show in the menu
@@ -296,6 +297,7 @@ pub fn create_app_menu(app: &AppHandle) -> Result<Menu<Wry>, tauri::Error> {
         .item(&help_menu)
         .build()?;
 
+    apply_shortcut_overrides(&menu)?;
     Ok(menu)
 }
 
@@ -433,21 +435,17 @@ pub fn initialize_recent_paths(app: &AppHandle) {
     super::system_recents::clear_system_recent_documents();
 
     let paths = load_recent_paths_from_disk(app);
-    if paths.is_empty() {
+    if let Err(err) = rebuild_menu(app) {
+        eprintln!("[AppMenu] Failed to install application menu: {}", err);
         return;
     }
 
-    if let Err(err) = rebuild_menu(app) {
-        eprintln!(
-            "[AppMenu] Failed to rebuild menu after loading recents: {}",
-            err
+    if !paths.is_empty() {
+        println!(
+            "✅ [AppMenu] Restored {} recent path(s) from disk",
+            paths.len()
         );
     }
-
-    println!(
-        "✅ [AppMenu] Restored {} recent path(s) from disk",
-        paths.len()
-    );
 }
 
 /// Add a path to the recent items list and persist to disk.
@@ -703,4 +701,127 @@ pub fn confirm_quit_app(app: AppHandle) {
 #[tauri::command]
 pub fn cancel_quit_confirmation(app: AppHandle) {
     close_quit_confirmation_state(&app);
+}
+
+// Frontend preferences own the bindings; keep the latest bounded snapshot so
+// rebuilding File > Open Recent cannot restore obsolete accelerators.
+static SHORTCUT_OVERRIDES: LazyLock<Mutex<HashMap<String, String>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static SHORTCUT_RECORDING: AtomicBool = AtomicBool::new(false);
+const SHORTCUT_MENU_IDS: &[(&str, &[&str])] = &[
+    ("quit_app", &["app_quit"]),
+    ("new_session", &["file_new_session"]),
+    ("window_open_folder", &["file_open_folder"]),
+    (
+        "window_close",
+        &["file_close_window", "window_close_window"],
+    ),
+    ("open_workspace_selector", &["view_switch_workspace"]),
+    ("open_branch_selector", &["view_switch_branch"]),
+    ("open_location_selector", &["view_switch_location"]),
+    ("open_model_selector", &["view_select_model"]),
+    ("open_settings", &["view_open_settings"]),
+    ("maximize_work_station", &["window_maximize_work_station"]),
+];
+
+fn apply_shortcut_overrides(menu: &Menu<Wry>) -> Result<(), tauri::Error> {
+    let overrides = SHORTCUT_OVERRIDES.lock().unwrap().clone();
+    let recording = SHORTCUT_RECORDING.load(Ordering::Acquire);
+    fn visit(
+        items: Vec<MenuItemKind<Wry>>,
+        parent: Option<&Submenu<Wry>>,
+        overrides: &HashMap<String, String>,
+        recording: bool,
+    ) -> Result<(), tauri::Error> {
+        for item in items {
+            match item {
+                MenuItemKind::Submenu(submenu) => {
+                    visit(submenu.items()?, Some(&submenu), overrides, recording)?
+                }
+                MenuItemKind::MenuItem(item) => {
+                    if recording {
+                        item.set_accelerator(None::<&str>)?;
+                    } else if let Some((shortcut, _)) = SHORTCUT_MENU_IDS
+                        .iter()
+                        .find(|(_, ids)| ids.contains(&item.id().0.as_str()))
+                    {
+                        if let Some(accelerator) = overrides.get(*shortcut) {
+                            item.set_accelerator(Some(accelerator.as_str()))?;
+                        }
+                    }
+                }
+                MenuItemKind::Predefined(item) if recording => {
+                    if let Some(parent) = parent {
+                        parent.remove(&item)?;
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+    visit(menu.items()?, None, &overrides, recording)
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct ForwardedKeyBinding {
+    key: String,
+    ctrl: bool,
+    meta: bool,
+    alt: bool,
+    shift: bool,
+}
+
+#[tauri::command]
+pub fn menu_set_shortcut_overrides(
+    app: AppHandle,
+    overrides: HashMap<String, String>,
+    recording: bool,
+    forwarded: HashMap<String, Vec<ForwardedKeyBinding>>,
+) -> Result<(), String> {
+    if overrides.len() > SHORTCUT_MENU_IDS.len()
+        || overrides.iter().any(|(id, accelerator)| {
+            !SHORTCUT_MENU_IDS.iter().any(|(allowed, _)| *allowed == id)
+                || accelerator.len() > 80
+                || accelerator.is_empty()
+        })
+    {
+        return Err("Invalid menu shortcut overrides".into());
+    }
+    const FORWARDED_IDS: &[&str] = &[
+        "zoomIn",
+        "zoomOut",
+        "zoomReset",
+        "toggleSpotlight",
+        "openFilePalette",
+    ];
+    if forwarded.len() > FORWARDED_IDS.len()
+        || forwarded.iter().any(|(id, bindings)| {
+            !FORWARDED_IDS.contains(&id.as_str())
+                || bindings.len() > 3
+                || bindings.iter().any(|binding| binding.key.len() > 20)
+        })
+    {
+        return Err("Invalid forwarded shortcut bindings".into());
+    }
+    let script = format!(
+        "window.__ORGII_SHORTCUT_PREFERENCES__ = {};",
+        serde_json::json!({
+            "bindings": forwarded, "recording": recording
+        })
+    );
+    let previous = std::mem::replace(&mut *SHORTCUT_OVERRIDES.lock().unwrap(), overrides);
+    let previous_recording = SHORTCUT_RECORDING.swap(recording, Ordering::AcqRel);
+    if let Err(error) = rebuild_menu(&app) {
+        *SHORTCUT_OVERRIDES.lock().unwrap() = previous;
+        SHORTCUT_RECORDING.store(previous_recording, Ordering::Release);
+        return Err(error.to_string());
+    }
+    app_window::shortcut_preferences::replace(script.clone());
+    for webview in app.webviews().values() {
+        if let Err(error) = webview.eval(&script) {
+            tracing::warn!(%error, "Could not refresh embedded shortcut bindings");
+        }
+    }
+    Ok(())
 }

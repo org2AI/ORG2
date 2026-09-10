@@ -43,12 +43,9 @@ import { SnapshotCacheManager } from "./snapshotCacheManager";
 
 export type {
   DerivedSnapshot,
-  EventStoreMemoryStats,
   Snapshot,
   SnapshotDelta,
   SnapshotEnvelope,
-  SnapshotEventMembership,
-  SnapshotPayload,
   StreamingSnapshot,
 } from "./EventStoreProxyTypes";
 export {
@@ -59,6 +56,10 @@ export {
 const log = createLogger("EventStoreProxy");
 
 class EventStoreProxyImpl {
+  private activityRequests = new Map<
+    string,
+    Promise<Record<string, boolean>>
+  >();
   /**
    * JS-side snapshot cache, listener registry and coalescing queue. The
    * delta base-miss fallback routes back through `getSnapshot` so the fetch
@@ -187,9 +188,14 @@ class EventStoreProxyImpl {
   }
 
   /** Replace all events (session load / clear). */
-  async set(events: SessionEvent[], sessionId?: string): Promise<void> {
+  async set(
+    events: SessionEvent[],
+    sessionId?: string,
+    expectedVersion?: number
+  ): Promise<void> {
     await rpc.sessionCore.eventStore.set({
       events,
+      ...(expectedVersion === undefined ? {} : { expectedVersion }),
       sessionId: sessionId ?? inferSessionId(events),
     });
   }
@@ -320,8 +326,9 @@ class EventStoreProxyImpl {
   async evictSession(sessionId: string): Promise<void> {
     await rpc.sessionCore.eventStore.evictSession({ sessionId });
     // Mirror the Rust-side eviction in the JS snapshot cache so large event
-    // arrays are freed on the JS heap as well.
-    this.evictSessionCache(sessionId);
+    // arrays are freed on the JS heap as well. Mounted subscribers own their
+    // lifetime: Reload, edit and compaction must keep delivering new snapshots.
+    this.releaseSessionSnapshot(sessionId);
   }
 
   /** Buffer events for a background session. */
@@ -336,6 +343,22 @@ class EventStoreProxyImpl {
   // =========================================================================
 
   /** Fetch the full derived snapshot from Rust. */
+  getChatActivity(sessionIds: string[]): Promise<Record<string, boolean>> {
+    const ids = [...new Set(sessionIds)].sort();
+    const key = JSON.stringify(ids);
+    const existing = this.activityRequests.get(key);
+    if (existing) return existing;
+    const request = rpc.sessionCore.eventStore.getChatActivity({
+      sessionIds: ids,
+    });
+    this.activityRequests.set(key, request);
+    void request.then(
+      () => this.activityRequests.delete(key),
+      () => this.activityRequests.delete(key)
+    );
+    return request;
+  }
+
   async getSnapshot(sessionId?: string): Promise<DerivedSnapshot> {
     const snapshot = (await rpc.sessionCore.eventStore.getSnapshot({
       sessionId: sessionId ?? null,
@@ -521,6 +544,7 @@ class EventStoreProxyImpl {
     return rpc.sessionCore.eventStore.removeSyntheticUserInputs({
       sessionId: sessionId ?? null,
       matchingContents: scope?.matchingContents,
+      matchingTurnIntentIds: scope?.matchingTurnIntentIds,
       olderThan: scope?.olderThan,
     });
   }

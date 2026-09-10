@@ -60,7 +60,7 @@ vi.mock("@codemirror/lang-sql", () => ({
 }));
 
 vi.mock("@codemirror/view", () => ({
-  EditorView: { lineWrapping: {} },
+  EditorView: { lineWrapping: {}, domEventHandlers: () => ({}) },
   keymap: { of: () => ({}) },
 }));
 

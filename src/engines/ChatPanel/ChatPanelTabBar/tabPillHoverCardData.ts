@@ -6,7 +6,7 @@
  */
 import type { PrHoverCardData } from "@src/components/PrHoverCard";
 import type { WorkItemHoverCardData } from "@src/modules/ProjectManager/WorkItems/components/WorkItemHoverCard";
-import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
 export function getWorkItemHoverCardData(
   selection: NonNullable<ChatPanelTab["workItem"]>

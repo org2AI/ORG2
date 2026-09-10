@@ -12,7 +12,7 @@ import { useCallback } from "react";
 
 import { replayModeAtom } from "@src/engines/SessionCore";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import {
   STATION_MODE,
   bumpSimulatorDiffRefreshNonceAtom,

@@ -25,8 +25,8 @@ import type { Repo } from "@src/store/repo/types";
 import type { SimulatorDiffCommitNavigationRequest } from "@src/store/ui/simulatorAtom";
 import type { SourceControlHistorySelection } from "@src/store/workstation/tabs";
 
-import type { SubmissionCommit } from "./SubmissionsContent";
 import { getRepoContextKey } from "./diffSessionReplay.repoContext";
+import type { SubmissionCommit } from "./submissionsData";
 import type { DiffReplayTab } from "./types";
 import type { SubmissionRepoContext } from "./useSubmissionsData";
 

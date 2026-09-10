@@ -5,7 +5,6 @@ import {
   __resetRetainedPrDetailScopes,
   retainWorkstationPrDetailScope,
   workstationPrDetailCallbackAtomFamily,
-  workstationPrDetailTabAtomFamily,
   workstationPrScopeKey,
   workstationSelectedPrAtomFamily,
 } from "./workstationSelectedPrAtom";
@@ -31,7 +30,6 @@ describe("retainWorkstationPrDetailScope", () => {
     const first = scope(0);
     const firstAtoms = [
       workstationSelectedPrAtomFamily(first),
-      workstationPrDetailTabAtomFamily(first),
       workstationPrDetailCallbackAtomFamily(first),
     ];
 
@@ -41,9 +39,8 @@ describe("retainWorkstationPrDetailScope", () => {
 
     // A family hands back a NEW atom instance for a key it has released.
     expect(workstationSelectedPrAtomFamily(first)).not.toBe(firstAtoms[0]);
-    expect(workstationPrDetailTabAtomFamily(first)).not.toBe(firstAtoms[1]);
     expect(workstationPrDetailCallbackAtomFamily(first)).not.toBe(
-      firstAtoms[2]
+      firstAtoms[1]
     );
   });
 

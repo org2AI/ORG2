@@ -1,7 +1,7 @@
 import React from "react";
 
 import { useKeepAliveWindow } from "@src/hooks/ui/useKeepAliveWindow";
-import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
 import { UnknownChatPanelTabPlaceholder } from "./UnknownChatPanelTabPlaceholder";
 import { resolveChatPanelTabSurfaceEntry } from "./registry";

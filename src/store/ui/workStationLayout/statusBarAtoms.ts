@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 
+import { activeHostAtom } from "@src/store/workstation/tabHost";
 import type { StatusBarAppType } from "@src/types/ui/workstation";
 
 export type { StatusBarAppType } from "@src/types/ui/workstation";
@@ -89,14 +90,15 @@ export const perAppStatusBarStateAtom = atom<
   Record<StatusBarAppType, GlobalStatusBarState>
 >({
   code: { ...defaultStatusBarState, appType: "code" },
-  data: { ...defaultStatusBarState, appType: "data" },
   browser: { ...defaultStatusBarState, appType: "browser" },
   project: { ...defaultStatusBarState, appType: "project" },
 });
 perAppStatusBarStateAtom.debugLabel = "perAppStatusBarState";
 
-/** Which app is currently active (set by AppShell on mode switch) */
-export const activeStatusBarAppAtom = atom<StatusBarAppType>("code");
+/** Status-bar selection follows the canonical active tab host synchronously. */
+export const activeStatusBarAppAtom = atom<StatusBarAppType>((get) =>
+  get(activeHostAtom)
+);
 activeStatusBarAppAtom.debugLabel = "activeStatusBarApp";
 
 /**
@@ -142,28 +144,6 @@ export const codeStatusBarStateAtom = makeStatusBarStateAtom("code");
 export const browserStatusBarStateAtom = makeStatusBarStateAtom("browser");
 export const projectStatusBarStateAtom = makeStatusBarStateAtom("project");
 
-/**
- * @deprecated Use the per-app atom (codeStatusBarStateAtom, etc.) so writes
- * always target the correct slot regardless of which app is currently active.
- */
-export const globalStatusBarStateAtom = atom(
-  (get) => get(activeStatusBarStateAtom),
-  (
-    get,
-    set,
-    update:
-      | GlobalStatusBarState
-      | ((prev: GlobalStatusBarState) => GlobalStatusBarState)
-  ) => {
-    const perApp = get(perAppStatusBarStateAtom);
-    const activeApp = get(activeStatusBarAppAtom);
-    const prev = perApp[activeApp];
-    const newState = typeof update === "function" ? update(prev) : update;
-    set(perAppStatusBarStateAtom, { ...perApp, [newState.appType]: newState });
-  }
-);
-globalStatusBarStateAtom.debugLabel = "globalStatusBarState";
-
 // ============================================
 // Per-App Callbacks
 // ============================================
@@ -202,7 +182,6 @@ export const perAppStatusBarCallbacksAtom = atom<
   Record<StatusBarAppType, StatusBarCallbacks>
 >({
   code: {},
-  data: {},
   browser: {},
   project: {},
 });

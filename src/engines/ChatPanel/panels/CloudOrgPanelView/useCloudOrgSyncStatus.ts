@@ -56,6 +56,7 @@ import {
 } from "@src/features/Org2Cloud/org2CloudSyncJournal";
 import { useShareableScopeKeyVersion } from "@src/features/TeamCollaboration/repoScopeResolver";
 import { sessionOrgTagsAtom } from "@src/features/TeamCollaboration/sessionOrgTagsAtom";
+import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 import {
   dataSourceConfigAtom,
   externalSessionsEnabledAtom,
@@ -340,12 +341,7 @@ export function useCloudOrgSyncStatus(orgId: string): CloudOrgSyncStatus {
   }, [accessToken]);
 
   const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  useMountedCleanup(mountedRef);
 
   const runSync = useCallback(() => {
     if (running) return;

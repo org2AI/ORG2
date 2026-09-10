@@ -94,7 +94,7 @@ const ORG_LOAD_STALL_MS = 20_000;
  * before we flag it stuck again.
  */
 const ORG_LOAD_STALL_ERROR =
-  "Couldn't load your cloud organizations. Try refreshing, or sign out and back in if this keeps happening.";
+  "Couldn't load your cloud workspaces. Try refreshing, or sign out and back in if this keeps happening.";
 
 export function useTeamRuntimeRoster(
   requestedOrgId?: string

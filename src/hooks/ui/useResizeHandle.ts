@@ -111,6 +111,8 @@ export function useResizeHandle(
 
   const handleMouseDown = useCallback(
     (event: ReactMouseEvent) => {
+      if (event.button !== 0) return;
+      dragCleanupRef.current?.();
       event.preventDefault();
 
       const startPos =
@@ -138,6 +140,10 @@ export function useResizeHandle(
       };
 
       const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
+        if ((moveEvent.buttons & 1) === 0) {
+          handleMouseUp();
+          return;
+        }
         if (!hasDragged) {
           hasDragged = true;
           setIsResizing(true);
@@ -156,9 +162,24 @@ export function useResizeHandle(
         }
       };
 
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === "hidden") handleMouseUp();
+      };
+
+      const removeListeners = () => {
+        document.removeEventListener("mousemove", handleMouseMove, true);
+        window.removeEventListener("mouseup", handleMouseUp, true);
+        window.removeEventListener("pointercancel", handleMouseUp, true);
+        window.removeEventListener("blur", handleMouseUp);
+        document.removeEventListener(
+          "visibilitychange",
+          handleVisibilityChange
+        );
+        dragCleanupRef.current = null;
+      };
+
       const handleMouseUp = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
+        removeListeners();
 
         // Cancel any pending RAF
         if (rafIdRef.current !== null) {
@@ -174,12 +195,14 @@ export function useResizeHandle(
         onResizeEnd?.();
       };
 
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove, true);
+      window.addEventListener("mouseup", handleMouseUp, true);
+      window.addEventListener("pointercancel", handleMouseUp, true);
+      window.addEventListener("blur", handleMouseUp);
+      document.addEventListener("visibilitychange", handleVisibilityChange);
 
       dragCleanupRef.current = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
+        removeListeners();
         if (rafIdRef.current !== null) {
           cancelAnimationFrame(rafIdRef.current);
           rafIdRef.current = null;

@@ -33,6 +33,7 @@ import {
 } from "@src/store/ui/backgroundConfigAtom";
 import type { SpotlightPlacement } from "@src/store/ui/uiAtom";
 
+import { AppIconPicker } from "./AppIconPicker";
 import { ChatPanelAppearanceTab } from "./ChatPanelAppearanceTab";
 import { UI_SCALE_OPTIONS, useAppearanceState } from "./useAppearanceState";
 
@@ -47,9 +48,6 @@ export const APPEARANCE_TAB_KEYS = {
   CODE_EDITOR: "code-editor",
   CHAT_PANEL: "chat-panel",
 } as const;
-
-export type AppearanceTabKey =
-  (typeof APPEARANCE_TAB_KEYS)[keyof typeof APPEARANCE_TAB_KEYS];
 
 const SPOTLIGHT_PLACEMENT_OPTIONS: SpotlightPlacement[] = ["top", "center"];
 const IS_MACOS_HOST = resolveHostDesktop() === HOST_DESKTOP.MACOS;
@@ -136,6 +134,9 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     iconStyle,
     setIconStyle,
     iconStyleOptions,
+    dockIcon,
+    setDockIcon,
+    dockIconOptions,
   } = useAppearanceState();
 
   return (
@@ -154,6 +155,18 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                 showSearch
                 size="default"
                 style={SECTION_CONTROL_STYLE}
+              />
+            </SectionRow>
+            <SectionRow
+              settingsSearchKeys="general.dockIcon"
+              label={t("general.appIcon")}
+            >
+              <AppIconPicker
+                value={dockIcon}
+                options={dockIconOptions}
+                onChange={setDockIcon}
+                ariaLabel={t("general.appIcon")}
+                dataTestId="app-icon-picker"
               />
             </SectionRow>
           </SectionContainer>
@@ -408,7 +421,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
             </SectionRow>
           </SectionContainer>
 
-          {!IS_MACOS_HOST && <BackgroundSettings embedded showHeader={false} />}
+          {!IS_MACOS_HOST && <BackgroundSettings />}
         </>
       )}
 

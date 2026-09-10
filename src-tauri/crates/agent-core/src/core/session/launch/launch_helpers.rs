@@ -7,8 +7,8 @@ use std::collections::HashMap;
 
 use core_types::key_source::KeySource;
 
-use crate::coordination::agent_org_runs::AgentOrgRunStore;
-use crate::definitions::orgs::{OrgMember, OrgMemberRuntimeConfig};
+use crate::coordination::agent_org_runs::{AgentOrgRunStore, AgentOrgStartingFailure};
+use crate::definitions::orgs::{FlatOrgMember, OrgMemberRuntimeConfig};
 use crate::session::turn::streaming::{
     broadcast_agent_error_structured, classify_streaming_error_message, StreamingError,
 };
@@ -30,7 +30,16 @@ pub(super) async fn handle_background_launch_failure(
 ) {
     tracing::warn!("{}", message);
     if let Some(run_id) = agent_org_run_id {
-        if let Err(mark_err) = AgentOrgRunStore::mark_failed(run_id, message) {
+        let failure_result = AgentOrgRunStore::load(run_id).and_then(|run| {
+            let run = run.ok_or_else(|| format!("Agent Org run not found: {run_id}"))?;
+            AgentOrgRunStore::fail_starting(
+                run_id,
+                run.activation_generation,
+                &AgentOrgStartingFailure::new("starting_convergence_failed", message),
+            )
+            .map(|_| ())
+        });
+        if let Err(mark_err) = failure_result {
             tracing::warn!(
                 run_id = %run_id,
                 error = %mark_err,
@@ -41,23 +50,44 @@ pub(super) async fn handle_background_launch_failure(
     }
     release_work_item_execution_lock_if_present(project_slug, work_item_id, session_id, app_handle)
         .await;
-    broadcast_launch_send_error(session_id, message);
-    crate::lifecycle::persist_session_error_event(app_handle, session_id, message);
-    if let Err(mark_err) = mark_session_failed(session_id.to_string()).await {
+
+    // First-turn failures happen after `session_launch` has already returned
+    // `first_turn_started`, so every recovery path is asynchronous. Make the
+    // durable event + session row authoritative before publishing transient
+    // notifications; a window that misses both broadcasts can then replay the
+    // same terminal error from SQLite.
+    if let Err(err) =
+        crate::lifecycle::persist_session_error_event(app_handle, session_id, message).await
+    {
         tracing::warn!(
+            session_id = %session_id,
+            error = %err,
+            "[session_launch] failed to persist first-turn error event"
+        );
+    }
+
+    match mark_session_failed(session_id.to_string()).await {
+        Ok(()) => crate::lifecycle::emit_session_status_changed(
+            app_handle,
+            session_id,
+            crate::persistence::db_helpers::AgentSessionStatus::Failed,
+        ),
+        Err(mark_err) => tracing::warn!(
             session_id = %session_id,
             error = %mark_err,
             "{}",
             session_mark_warning
-        );
+        ),
     }
+
+    broadcast_launch_send_error(session_id, message);
 }
 
 pub(super) fn apply_member_launch_overrides_to_snapshot(
-    members: &mut [OrgMember],
+    members: &mut [FlatOrgMember],
     overrides: &HashMap<String, crate::definitions::orgs::OrgMemberLaunchOverride>,
 ) -> Result<(), String> {
-    crate::definitions::orgs::apply_overrides_to_member_tree(
+    crate::definitions::orgs::apply_overrides_to_members(
         members,
         overrides,
         "Agent Org launch override",
@@ -68,9 +98,6 @@ pub(super) fn validate_launch_agent_definitions(
     agent_definition_id: Option<&str>,
     org_definition: Option<&crate::definitions::orgs::OrgDefinition>,
 ) -> Result<(), String> {
-    use std::collections::HashSet;
-
-    use crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID;
     use crate::definitions::orgs::is_cli_agent_org_reference;
 
     let store = crate::definitions::definitions_store();
@@ -85,11 +112,11 @@ pub(super) fn validate_launch_agent_definitions(
     }
 
     if let Some(org) = org_definition {
+        crate::definitions::orgs::validate_launch_snapshot(
+            &crate::definitions::orgs::AgentOrgLaunchSnapshot::from(org),
+        )?;
         let mut missing: Vec<String> = Vec::new();
         let mut unsupported_cli: Vec<String> = Vec::new();
-        let mut member_ids = HashSet::new();
-        let mut invalid_member_ids: Vec<String> = Vec::new();
-        let mut duplicate_member_ids: Vec<String> = Vec::new();
         if !org.agent_id.trim().is_empty() {
             if is_cli_agent_org_reference(&org.agent_id) {
                 unsupported_cli.push(format!("coordinator '{}'", org.agent_id));
@@ -97,21 +124,12 @@ pub(super) fn validate_launch_agent_definitions(
                 missing.push(format!("coordinator '{}'", org.agent_id));
             }
         }
-        for member in flatten_org_members(&org.children) {
-            let member_id = member.id.trim();
-            if member_id.is_empty() {
-                invalid_member_ids.push(format!("member '{}' has empty id", member.name));
-            } else if member_id == COORDINATOR_MEMBER_ID {
-                invalid_member_ids.push(format!(
-                    "member '{}' uses reserved id '{}'",
-                    member.name, COORDINATOR_MEMBER_ID
-                ));
-            } else if !member_ids.insert(member_id.to_string()) {
-                duplicate_member_ids.push(member_id.to_string());
-            }
-
+        for member in &org.members {
             if is_cli_agent_org_reference(&member.agent_id) {
-                unsupported_cli.push(format!("member '{}' ({})", member.id, member.agent_id));
+                unsupported_cli.push(format!(
+                    "member '{}' ({})",
+                    member.member_id, member.agent_id
+                ));
             } else if store.get(&member.agent_id).is_none() {
                 missing.push(format!("member '{}' ({})", member.name, member.agent_id));
             }
@@ -120,23 +138,6 @@ pub(super) fn validate_launch_agent_definitions(
             return Err(format!(
                 "CLI Agent Org participants are not supported yet because they cannot drain the Agent Org inbox or use task tools: {}",
                 unsupported_cli.join(", ")
-            ));
-        }
-        duplicate_member_ids.sort();
-        duplicate_member_ids.dedup();
-        if !invalid_member_ids.is_empty() || !duplicate_member_ids.is_empty() {
-            let mut reasons = Vec::new();
-            reasons.extend(invalid_member_ids);
-            if !duplicate_member_ids.is_empty() {
-                reasons.push(format!(
-                    "duplicate member_id value(s): {}",
-                    duplicate_member_ids.join(", ")
-                ));
-            }
-            return Err(format!(
-                "Agent Org '{}' has invalid member_id configuration: {}",
-                org.name,
-                reasons.join(", ")
             ));
         }
         if !missing.is_empty() {
@@ -177,10 +178,6 @@ pub(super) fn member_runtime_account_id(
     config
         .and_then(|cfg| clean_runtime_value(cfg.account_id.as_ref()))
         .or_else(|| fallback.clone())
-}
-
-pub(super) fn member_runtime_tier(config: Option<&OrgMemberRuntimeConfig>) -> Option<String> {
-    config.and_then(|cfg| clean_runtime_value(cfg.tier.as_ref()))
 }
 
 pub(super) fn member_runtime_key_source(
@@ -257,7 +254,9 @@ pub(super) async fn mark_session_failed(session_id: String) -> Result<(), String
         let Some(mut record) =
             crate::session::persistence::get_session(&session_id).map_err(|err| err.to_string())?
         else {
-            return Ok(());
+            return Err(format!(
+                "session {session_id} disappeared before first-turn failure could be persisted"
+            ));
         };
         record.status = crate::session::SessionStatus::Failed.as_str().to_string();
         record.updated_at = chrono::Utc::now().to_rfc3339();
@@ -280,15 +279,6 @@ pub(super) fn derive_name(explicit: Option<&str>, content: &str) -> String {
     } else {
         truncated
     }
-}
-
-pub(super) fn flatten_org_members(members: &[OrgMember]) -> Vec<OrgMember> {
-    let mut flattened = Vec::new();
-    for member in members {
-        flattened.push(member.clone());
-        flattened.extend(flatten_org_members(&member.children));
-    }
-    flattened
 }
 
 #[cfg(test)]

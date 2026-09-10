@@ -23,6 +23,7 @@ import { HIDDEN_AGENT_STATUS_TRAIL_STATE } from "@src/engines/ChatPanel/hooks/ag
 import type { OptimizedChatItem } from "../../chatItemPipeline/types";
 import type { GroupHeaderRenderPart } from "../../renderers/GroupHeaderRenderer";
 import ChatHistoryList from "../ChatHistoryList";
+import { sameChatHistoryListProps } from "../ChatHistoryListEquality";
 import { buildChatGroupRenderKeys } from "../ChatHistoryListLayout";
 import type {
   ChatHistoryListHandle,
@@ -116,6 +117,36 @@ describe("ChatHistoryList turn identity", () => {
       src: "data:image/png;base64,AA==",
     });
   }
+
+  it.each([
+    ["queueMessageId", "old-owner", undefined],
+    ["deliveryOwnerRetired", undefined, true],
+    ["deliveryStatus", "failed", "pending"],
+    ["deliveryError", "old failure", "new failure"],
+    ["turnIntentId", "old-intent", "retry-intent"],
+  ])("invalidates cached actions when %s changes", (key, before, after) => {
+    const item = bodyItem(0);
+    const previous = listProps(
+      [
+        {
+          ...item,
+          event: { ...item.event!, result: { [key]: before } },
+        },
+      ],
+      "same-session"
+    );
+    const next = {
+      ...previous,
+      flatItems: [
+        {
+          ...item,
+          event: { ...item.event!, result: { [key]: after } },
+        },
+      ],
+    };
+    expect(sameChatHistoryListProps(previous, next)).toBe(false);
+    expect(sameChatHistoryListProps(previous, previous)).toBe(true);
+  });
 
   function listProps(
     flatItems: OptimizedChatItem[],

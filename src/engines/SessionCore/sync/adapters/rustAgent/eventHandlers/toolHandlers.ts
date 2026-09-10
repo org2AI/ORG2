@@ -18,6 +18,7 @@ import type {
   CanvasInlinePayload,
 } from "@src/engines/ChatPanel/blocks/CanvasInlineCard/types";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import { makeToolResultEvent } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
 import { createLogger } from "@src/hooks/logger";
 import {
   type CanvasPreviewEntry,
@@ -28,8 +29,15 @@ import {
   markCanvasRevisionDraftApplying,
 } from "@src/store/session/canvasRevisionDraftAtom";
 import { clearMcpProgressForCallAtom } from "@src/store/session/mcpProgressAtom";
+import {
+  clearFinalizedPermissionRequest,
+  pendingPermissionRequestsAtom,
+} from "@src/store/session/permissionRequestAtom";
+import {
+  getInstrumentedStore,
+  isStoreInitialized,
+} from "@src/util/core/state/instrumentedStore";
 
-import { makeToolResultEvent } from "../../shared/eventBuilders";
 import {
   SPAWNED_SESSION_RE,
   findActiveSubagentCallIndex,
@@ -375,6 +383,17 @@ export async function handleInteractionFinalized(
     ...(resultEvent.result as Record<string, unknown>),
     ...resultObject,
   };
+  if (event.tool === "permission" && isStoreInitialized()) {
+    const requestId =
+      typeof event.requestId === "string" ? event.requestId : undefined;
+    getInstrumentedStore().set(pendingPermissionRequestsAtom, (prev) =>
+      clearFinalizedPermissionRequest(prev, sessionId, {
+        requestId,
+        toolCallId,
+      })
+    );
+  }
+
   await eventStoreProxy.mergeEvents([resultEvent], sessionId);
 
   if (isAutoModeSwitchAccept(event.tool, resultObject)) {

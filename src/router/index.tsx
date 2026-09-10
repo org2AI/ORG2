@@ -12,7 +12,6 @@ import AppShell from "@src/modules";
 import ErrorPage from "@src/modules/shared/Error";
 import {
   appStandaloneRouteGroup,
-  mainAppRouteGroup,
   projectManagerRouteGroup,
   workStationRouteGroup,
   workbenchAppRouteGroup,
@@ -92,7 +91,6 @@ const router = createBrowserRouter(
                 ...workbenchAppRouteGroup,
               ],
             },
-            mainAppRouteGroup,
             // Catch-all route for 404s
             {
               path: "*",

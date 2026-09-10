@@ -46,25 +46,11 @@ import {
 import { truncate } from "@src/util/string/truncate";
 
 import { useCommunicationAgentIdentity } from "./communicationAgentIdentity";
+import { isAgentOrgInboxTranscriptEvent } from "./emailBubbleEvent";
 import type { MessageEntry } from "./types";
-import { extractMessageContent, isAgentOrgInboxTranscriptEvent } from "./utils";
+import { extractMessageContent } from "./utils";
 
 const SUBJECT_MAX_CHARS = 80;
-
-export const EMAIL_BUBBLE_TOOLS = [
-  "org_send_message",
-  "send_message",
-  "send_to_inbox",
-] as const;
-
-export type EmailBubbleTool = (typeof EMAIL_BUBBLE_TOOLS)[number];
-
-export function isEmailBubbleEvent(event: SessionEvent): boolean {
-  return (
-    isAgentOrgInboxTranscriptEvent(event) ||
-    (EMAIL_BUBBLE_TOOLS as readonly string[]).includes(event.functionName)
-  );
-}
 
 /**
  * Normalized view model fed to the bubble UI. All fields except `body` are

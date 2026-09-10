@@ -91,6 +91,15 @@ const DeferredUserProfileSync = React.lazy(() =>
   }))
 );
 
+const DeferredWeeklyQuotaSampler = React.lazy(() =>
+  import("@src/hooks/keyVault/useWeeklyQuotaHistory").then((module) => ({
+    default: function DeferredWeeklyQuotaSampler() {
+      module.useWeeklyQuotaSampler();
+      return null;
+    },
+  }))
+);
+
 const DeferredGitAutoFetch = React.lazy(() =>
   import(
     /* webpackChunkName: "deferred-services" */ "@src/hooks/git/useGitAutoFetch"
@@ -191,6 +200,7 @@ export const AppDeferredServices: React.FC<{ ready: boolean }> = ({
       {mainWindow && (
         <DeferredServiceBoundary>
           <DeferredGitAutoFetch />
+          <DeferredWeeklyQuotaSampler />
         </DeferredServiceBoundary>
       )}
       <DeferredServiceBoundary>

@@ -14,7 +14,14 @@ describe("SpotlightFormShell", () => {
       )
     );
 
-    expect(markup).toContain('class="overflow-hidden bg-chat-input"');
+    const shellClasses = markup.match(/^<div class="([^"]+)"/)?.[1].split(" ");
+    expect(shellClasses).toEqual(
+      expect.arrayContaining([
+        "overflow-hidden",
+        "bg-chat-input",
+        "[--modal-chrome-padding:--spacing(3)]",
+      ])
+    );
     expect(markup).toContain('class="p-3"');
     expect(markup).not.toContain("border");
     expect(markup).not.toContain("rounded");

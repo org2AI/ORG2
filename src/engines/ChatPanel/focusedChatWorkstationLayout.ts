@@ -1,8 +1,8 @@
 import {
   FOCUSED_CHAT_WORKSTATION_TRAIL_RAIL_PADDING_CLASS,
   WORKSTATION_TRAIL_WIDTH,
-} from "@src/modules/shared/layouts/blocks/WorkstationTrailSurface";
-import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsAtom";
+} from "@src/modules/shared/layouts/blocks/workstationTrailTokens";
+import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
 /**
  * Width at which a maximized chat pane is wide enough to give the
@@ -76,12 +76,6 @@ interface FocusedChatWorkstationMountInput {
   showSessionContent: boolean;
 }
 
-interface FocusedChatWorkstationPlaceholderInput {
-  activeTabType: ChatPanelTab["type"] | null;
-  isChatFocus: boolean;
-  startPageOpen: boolean;
-}
-
 /**
  * The environment rail owns a live working-tree subscription, so it only
  * mounts while a maximized session is actually presenting session content.
@@ -92,18 +86,6 @@ export function shouldMountFocusedChatWorkstationControls({
   showSessionContent,
 }: FocusedChatWorkstationMountInput): boolean {
   return isChatFocus && activeTabType === "session" && showSessionContent;
-}
-
-/**
- * Keep focused Launchpad content aligned with a session using the collapsed
- * workstation track, without mounting the rail's live data or controls.
- */
-export function shouldReserveFocusedChatWorkstationPlaceholder({
-  activeTabType,
-  isChatFocus,
-  startPageOpen,
-}: FocusedChatWorkstationPlaceholderInput): boolean {
-  return isChatFocus && activeTabType === "start-page" && startPageOpen;
 }
 
 /**

@@ -2,7 +2,7 @@
  * TerminalCore Component
  *
  * Reusable terminal component that can work with:
- * 1. TerminalContext (for main terminal page)
+ * 1. Canonical terminal atoms via useTerminalState (for main terminal page)
  * 2. Prop-based state (for simulator or standalone use)
  *
  * Features:
@@ -21,13 +21,7 @@ import Message from "@src/components/Message";
 import { Placeholder } from "@src/components/Placeholder";
 import { useTerminalProcessPoller } from "@src/hooks/terminal";
 import { addToAgentAtom } from "@src/store/ui/addToAgentAtom";
-import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanelAtom";
-import {
-  commandCwdChangedAtom,
-  commandExecutedAtom,
-  commandFinishedAtom,
-  commandPromptStartAtom,
-} from "@src/store/workstation/codeEditor/terminal/commandDetection";
+import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 
 import {
   type TerminalFileLinkTarget,
@@ -114,12 +108,6 @@ export const TerminalCore: React.FC<TerminalCoreProps> = ({
     refreshSignal: processRefreshSignal,
     updateSessionInfo,
   });
-
-  // Command detection dispatchers (OSC 633)
-  const dispatchPromptStart = useSetAtom(commandPromptStartAtom);
-  const dispatchCommandExecuted = useSetAtom(commandExecutedAtom);
-  const dispatchCommandFinished = useSetAtom(commandFinishedAtom);
-  const dispatchCwdChanged = useSetAtom(commandCwdChangedAtom);
 
   const { t } = useTranslation("sessions");
 
@@ -445,26 +433,9 @@ export const TerminalCore: React.FC<TerminalCoreProps> = ({
                   requestProcessRefresh();
                 }}
                 shellIntegration={{
-                  onPromptStart: () => dispatchPromptStart(session.id),
-                  onCommandExecuted: (commandLine) => {
-                    requestProcessRefresh();
-                    dispatchCommandExecuted({
-                      sessionId: session.id,
-                      commandLine,
-                    });
-                  },
-                  onCommandFinished: (exitCode) => {
-                    requestProcessRefresh();
-                    dispatchCommandFinished({
-                      sessionId: session.id,
-                      exitCode,
-                    });
-                  },
+                  onCommandExecuted: () => requestProcessRefresh(),
+                  onCommandFinished: () => requestProcessRefresh(),
                   onCwdChanged: (cwd) => {
-                    dispatchCwdChanged({
-                      sessionId: session.id,
-                      cwd,
-                    });
                     updateSessionInfo(session.id, { liveCwd: cwd });
                   },
                 }}

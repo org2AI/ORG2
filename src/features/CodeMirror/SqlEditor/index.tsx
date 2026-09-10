@@ -10,13 +10,14 @@
  * - Query history dropdown
  */
 import { SQLite, sql } from "@codemirror/lang-sql";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
 import React, { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { KeyboardShortcut } from "@src/components/KeyboardShortcut";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import type { TableInfo } from "@src/engines/DatabaseCore";
 import { createLogger } from "@src/hooks/logger";
 import {
@@ -126,6 +127,8 @@ export const SqlQueryEditor: React.FC<SqlQueryEditorProps> = memo(
       [setValue, onHistorySelect]
     );
 
+    const executeShortcut = useShortcutKeys("db_run_query");
+
     // Build extensions
     const extensions = useMemo(() => {
       const exts = [
@@ -140,16 +143,14 @@ export const SqlQueryEditor: React.FC<SqlQueryEditorProps> = memo(
         // Custom theme
         createCodeMirrorTheme(),
         // Execute on Ctrl+Enter
-        keymap.of([
-          {
-            key: "Ctrl-Enter",
-            mac: "Cmd-Enter",
-            run: () => {
-              handleExecute();
-              return true;
-            },
+        EditorView.domEventHandlers({
+          keydown: (event) => {
+            if (!matchesShortcut(event, "db_run_query")) return false;
+            event.preventDefault();
+            handleExecute();
+            return true;
           },
-        ]),
+        }),
         // Line wrapping for long queries
         EditorView.lineWrapping,
       ];
@@ -226,7 +227,7 @@ export const SqlQueryEditor: React.FC<SqlQueryEditorProps> = memo(
             <button
               onClick={handleExecute}
               disabled={loading || !value.trim()}
-              title={t("tooltips.executeQuery")}
+              title={t("tooltips.executeQuery", { shortcut: executeShortcut })}
               className="sql-query-editor__btn sql-query-editor__btn--primary"
             >
               <HugeiconsIcon
@@ -256,7 +257,7 @@ export const SqlQueryEditor: React.FC<SqlQueryEditorProps> = memo(
         {/* Keyboard hint */}
         <div className="absolute right-3 bottom-2 flex items-center gap-1 text-xs text-text-4">
           <span>{t("sqlEditor.press")}</span>
-          <KeyboardShortcut shortcut={getShortcutKeys("db_run_query")} />
+          <KeyboardShortcut shortcutId={"db_run_query"} />
           <span>{t("sqlEditor.toRun")}</span>
         </div>
       </div>
@@ -268,6 +269,5 @@ SqlQueryEditor.displayName = "SqlQueryEditor";
 
 // Re-export QueryResults for consumers who import from SqlEditor
 export { QueryResults } from "./QueryResults";
-export type { QueryResultsProps } from "./QueryResults";
 
 export default SqlQueryEditor;

@@ -4,15 +4,13 @@ import { ACTION_ID } from "@src/ActionSystem/actionIds";
 import { defineAppActionRegistration } from "@src/ActionSystem/schema/actionRegistration";
 import { defineZodAction } from "@src/ActionSystem/schema/defineZodAction";
 import {
-  activeStationChatVisibleAtom,
   chatTurnPaginationEnabledAtom,
   modelPickerStyleAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/displayPrefsAtoms";
+import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
-import {
-  chatPanelPositionAtom,
-  workStationLayoutModePersistAtom,
-} from "@src/store/ui/workStationAtom";
+import { chatPanelPositionAtom } from "@src/store/ui/workStationLayout/chatPositionAtoms";
+import { workStationLayoutModePersistAtom } from "@src/store/ui/workStationLayout/splitLayoutAtoms";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 const emptyParams = z.object({});

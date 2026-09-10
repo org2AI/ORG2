@@ -60,10 +60,10 @@ import {
   type CloudSessionComment,
 } from "../org2CloudCommentsClient";
 import {
-  type CommentThread,
   getThreadResolution,
   isThreadResolved,
 } from "../org2CloudSessionCommentsAtom";
+import type { CommentThread } from "../org2CloudSessionCommentsAtom.types";
 import { useSessionCommentsContext } from "./SessionCommentsContext";
 import {
   AGENT_COMPOSER_PREFIX,

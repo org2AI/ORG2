@@ -37,7 +37,7 @@ vi.mock("@src/components/Button", () => ({
   }) => React.createElement("button", { onClick }, children),
 }));
 
-vi.mock("@src/components/InlineAlert", () => ({
+vi.mock("@src/components/PageNotice", () => ({
   default: () => null,
 }));
 
@@ -55,11 +55,13 @@ vi.mock("@src/hooks/auth/useServiceAuth", () => ({
   }),
 }));
 
-vi.mock("@src/modules/shared/layouts", () => ({
-  ONBOARDING_LOADING_VIDEO_WIDTH_CLASS: "test-width",
-  OnboardingLayout: ({ leftContent }: { leftContent?: React.ReactNode }) =>
-    React.createElement("main", null, leftContent),
-  OnboardingLoadingVideo: () => null,
+vi.mock("./LoginCard", () => ({
+  default: ({ content }: { content?: React.ReactNode }) =>
+    React.createElement("main", null, content),
+}));
+vi.mock("./LoginArtwork", () => ({
+  LOGIN_ARTWORK_WIDTH_CLASS: "test-width",
+  LoginArtwork: () => null,
 }));
 
 const reactActEnvironment = globalThis as typeof globalThis & {

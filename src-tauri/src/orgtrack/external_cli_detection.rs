@@ -298,7 +298,7 @@ pub const EXTERNAL_CLI_SOURCES: &[ExternalCliSourceSpec] = &[
     ),
     source(
         "cursor_cli",
-        "Cursor CLI",
+        "Cursor",
         "cursor",
         "cursor-agent",
         &[],
@@ -323,7 +323,7 @@ pub const EXTERNAL_CLI_SOURCES: &[ExternalCliSourceSpec] = &[
     ),
     source(
         "kimi",
-        "Kimi",
+        "Kimi Code CLI",
         "kimi",
         "kimi",
         &[],

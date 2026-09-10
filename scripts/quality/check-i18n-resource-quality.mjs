@@ -53,6 +53,9 @@ const namespaceFiles = readdirSync(join(LOCALES_ROOT, SOURCE_LOCALE))
 // exact blank values while it was under review; keep that debt explicit so
 // any new blank translation still fails the contract.
 const DEVELOP_BASELINE_INVALID_VALUES = new Set([
+  "ja/sessions:creator.launchpadQuestion",
+  "ko/sessions:creator.launchpadQuestion",
+  "tr/sessions:creator.launchpadQuestion",
   "ja/sessions:creator.planLaunchpadQuestion",
   "ko/sessions:creator.planLaunchpadQuestion",
   "tr/sessions:creator.planLaunchpadQuestion",

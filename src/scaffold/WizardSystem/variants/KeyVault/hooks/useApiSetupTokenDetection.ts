@@ -122,19 +122,20 @@ export function useApiSetupTokenDetection({
         return;
       }
 
-      const catalog =
-        isClaudeCode || isCodex
-          ? await getOAuthModelCatalog(
-              isClaudeCode ? CLI_AGENT.CLAUDE_CODE : CLI_AGENT.CODEX,
-              {
-                accessToken: cred.session_token ?? cred.api_key ?? undefined,
-                refreshToken: isClaudeCode
-                  ? cred.env_vars?.CLAUDE_CODE_REFRESH_TOKEN
-                  : cred.env_vars?.OPENAI_REFRESH_TOKEN,
-                idToken: cred.env_vars?.OPENAI_ID_TOKEN,
-              }
-            )
-          : undefined;
+      const usesOAuthCatalog =
+        (isClaudeCode || isCodex) && cred.auth_method === "oauth";
+      const catalog = usesOAuthCatalog
+        ? await getOAuthModelCatalog(
+            isClaudeCode ? CLI_AGENT.CLAUDE_CODE : CLI_AGENT.CODEX,
+            {
+              accessToken: cred.session_token ?? undefined,
+              refreshToken: isClaudeCode
+                ? cred.env_vars?.CLAUDE_CODE_REFRESH_TOKEN
+                : cred.env_vars?.OPENAI_REFRESH_TOKEN,
+              idToken: cred.env_vars?.OPENAI_ID_TOKEN,
+            }
+          )
+        : undefined;
       applyKey(cred, {
         onChange,
         setTokenDetected,
@@ -219,7 +220,7 @@ export function useApiSetupTokenDetection({
           (cred) => cred.validated
         );
         setSelectedCredentialIndex(
-          isClaudeCode && validOAuthIndex >= 0
+          (isClaudeCode || isCodex) && validOAuthIndex >= 0
             ? validOAuthIndex
             : validApiKeyIndex >= 0
               ? validApiKeyIndex
@@ -245,6 +246,7 @@ export function useApiSetupTokenDetection({
     openCodeEndpoints,
     applySelectedKey,
     isClaudeCode,
+    isCodex,
     setDetectedKeys,
     setDetectingToken,
     setSelectedCredentialIndex,

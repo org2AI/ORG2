@@ -44,6 +44,23 @@ pub struct CodexAppTurnWindow {
     pub loaded_event_count: usize,
 }
 
+/// Visit canonical turns without retaining the complete transcript body.
+/// Uses the same parser (including mirrors and tool pairing) as full replay.
+pub fn visit_codex_app_from_path(
+    session_id: &str,
+    path: &Path,
+    visit: &mut dyn FnMut(Vec<ActivityChunk>) -> Result<(), String>,
+) -> Result<(), String> {
+    parse_codex_app_from_path_with_mode(
+        session_id,
+        path,
+        CodexTranscriptCollectionMode::Visit(visit),
+        0,
+        0,
+    )?;
+    Ok(())
+}
+
 pub fn load_codex_app_from_path(
     session_id: &str,
     path: &Path,
@@ -159,6 +176,35 @@ pub fn load_codex_app_turn_from_path(
             codex_lazy_turn_offset(turn_id).map(|offset| (offset, codex_lazy_turn_sequence(offset)))
         })
         .unwrap_or((0, 0));
+    load_codex_turn_at(session_id, path, turn_id, start_offset, initial_sequence)
+}
+
+/// Window IDs encode byte offsets. Do not resolve them through the legacy
+/// sequential-ID cache, which a complete canonical read can overwrite.
+pub fn load_codex_app_window_turn_from_path(
+    session_id: &str,
+    path: &Path,
+    turn_id: &str,
+) -> Result<CodexAppTurnWindow, String> {
+    let offset = codex_lazy_turn_offset(turn_id)
+        .ok_or_else(|| format!("Invalid Codex window turn id: {turn_id}"))?;
+    load_codex_turn_at(
+        session_id,
+        path,
+        turn_id,
+        offset,
+        codex_lazy_turn_sequence(offset),
+    )
+}
+
+fn load_codex_turn_at(
+    session_id: &str,
+    path: &Path,
+    turn_id: &str,
+    start_offset: u64,
+    initial_sequence: usize,
+) -> Result<CodexAppTurnWindow, String> {
+    let signature = codex_transcript_file_signature(path)?;
     let (selected_chunks, _, _) = parse_codex_app_from_path_with_mode(
         session_id,
         path,

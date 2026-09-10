@@ -3,7 +3,7 @@ import React from "react";
 import { MIN_WIDTH as CHAT_MIN_WIDTH } from "@src/engines/ChatPanel/config";
 import { VerticalResizeHandle } from "@src/scaffold/Resize";
 import { GUIDE_TARGETS } from "@src/scaffold/Tutorials/guideTargets";
-import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
 import { UnifiedChatPanelTabContent } from "./TabContent/UnifiedChatPanelTabContent";
 
@@ -25,6 +25,8 @@ interface ChatPanelShellProps {
   isTerminalTabActive: boolean;
   onResizeMouseDown: React.MouseEventHandler;
   panelRef: React.RefObject<HTMLDivElement | null>;
+  /** Overlay pinned to the pane's own edges (swipe-navigation indicator). */
+  panelOverlay?: React.ReactNode;
   resizeIndicatorHost?: HTMLElement | null;
   resizeTooltipLabel: React.ReactNode;
   resizeTooltipShortcut: string;
@@ -50,6 +52,7 @@ export function ChatPanelShell({
   isTerminalTabActive,
   onResizeMouseDown,
   panelRef,
+  panelOverlay,
   resizeIndicatorHost,
   resizeTooltipLabel,
   resizeTooltipShortcut,
@@ -110,6 +113,7 @@ export function ChatPanelShell({
         </div>
         {focusedWorkstationRail}
       </div>
+      {panelOverlay}
     </div>
   );
 

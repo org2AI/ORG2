@@ -421,13 +421,13 @@ pub fn mark_pending_stale(session_id: &str) -> Result<usize, IntentError> {
     Ok(affected)
 }
 
-/// Close every in-flight intent left by a previous process.
+/// Close ordinary SDE in-flight intents left by a previous process.
 ///
 /// The scheduler queue is memory-only, so after a process restart no
 /// `optimistic` or `queued` row can still execute; they are stale. A `running`
 /// row means the process died during execution and is recorded as failed.
-/// This is intentionally connection-scoped so the app can call it from the
-/// database initialization hook without recursively opening the database.
+/// Agent Org intents have their own durable Starting recovery and must be
+/// reconciled only after the Agent Org schema is available.
 pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, IntentError> {
     let now = Utc::now().to_rfc3339();
     let affected = conn.execute(
@@ -437,7 +437,8 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Int
                     ELSE 'stale'
                 END,
                 updated_at = ?1
-          WHERE status IN ('optimistic', 'queued', 'running')",
+          WHERE org_run_id IS NULL
+            AND status IN ('optimistic', 'queued', 'running')",
         [now],
     )?;
     Ok(affected)
@@ -825,7 +826,7 @@ mod tests {
     }
 
     #[test]
-    fn restart_reconciliation_closes_every_in_flight_intent() {
+    fn restart_reconciliation_closes_every_generic_in_flight_intent() {
         with_temp_orgii_home(|| {
             let session = "test-session-restart-intents";
             for (intent, status) in [
@@ -872,5 +873,51 @@ mod tests {
             assert_eq!(by_id["running-c"], TurnIntentStatus::Failed);
             assert_eq!(by_id["completed-d"], TurnIntentStatus::Completed);
         });
+    }
+
+    #[test]
+    fn ordinary_restart_reconciliation_has_no_agent_org_schema_dependency() {
+        let conn = Connection::open_in_memory().expect("open SDE-only fixture");
+        conn.execute_batch(
+            "CREATE TABLE session_turn_intents (
+                session_id TEXT NOT NULL, turn_intent_id TEXT NOT NULL,
+                client_message_id TEXT, org_run_id TEXT, source TEXT NOT NULL,
+                status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                PRIMARY KEY(session_id, turn_intent_id)
+             );
+             INSERT INTO session_turn_intents VALUES
+                ('sde', 'queued', NULL, NULL, 'user_submit', 'queued', 'now', 'now'),
+                ('sde', 'running', NULL, NULL, 'user_submit', 'running', 'now', 'now'),
+                ('org', 'owned', NULL, 'run-a', 'agent_org', 'queued', 'now', 'now');",
+        )
+        .expect("seed fixture without Agent Org context tables");
+
+        assert_eq!(reconcile_in_flight_after_restart(&conn).unwrap(), 2);
+        let sde_states = conn
+            .prepare(
+                "SELECT turn_intent_id, status FROM session_turn_intents
+                 WHERE session_id='sde' ORDER BY turn_intent_id",
+            )
+            .unwrap()
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(
+            sde_states,
+            vec![
+                ("queued".into(), "stale".into()),
+                ("running".into(), "failed".into())
+            ]
+        );
+        assert_eq!(
+            get_intent(&conn, "org", "owned")
+                .unwrap()
+                .expect("Agent Org row is preserved")
+                .status,
+            TurnIntentStatus::Queued
+        );
     }
 }

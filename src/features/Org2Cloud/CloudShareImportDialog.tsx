@@ -28,6 +28,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
 import Button from "@src/components/Button";
+import PageNotice from "@src/components/PageNotice";
 import { ROUTES } from "@src/config/routes";
 import { importRemoteSession } from "@src/features/TeamCollaboration/engine/collabSyncEngineHelpers";
 import { resolveForkWorkspacePath } from "@src/features/TeamCollaboration/forkSession";
@@ -372,12 +373,11 @@ const CloudShareImportDialog: React.FC = () => {
 
         {resolveFailed ? (
           <div
-            className="rounded-lg bg-danger-1 px-3 py-2 text-[12px] text-danger-6"
-            data-testid="cloud-share-import-resolve-error"
             data-error-kind={resolveError ?? undefined}
+            data-testid="cloud-share-import-resolve-error"
             role="alert"
           >
-            {resolveErrorMessage}
+            <PageNotice type="danger">{resolveErrorMessage}</PageNotice>
           </div>
         ) : null}
 

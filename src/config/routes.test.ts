@@ -20,7 +20,6 @@ describe("Workbench route ownership", () => {
 
   it("keeps standalone app routes outside the Workbench shell", () => {
     expect(isWorkbenchPath(ROUTES.auth.login.path)).toBe(false);
-    expect(isWorkbenchPath(ROUTES.app.selectRepo.path)).toBe(false);
     expect(isWorkbenchPath("/orgii/workstation-old")).toBe(false);
     expect(isWorkbenchPath("/orgii/app/settings-preview")).toBe(false);
   });

@@ -7,20 +7,22 @@
     "allRead": "Всё прочитано",
     "loadMore": "Загрузить ещё",
     "filters": {
-      "all": "Все",
       "mentions": "Упоминания",
       "assigned": "Назначенные"
     },
     "sections": {
       "reviewRequested": "Запрошено ревью",
-      "authoredByMe": "Созданные мной"
+      "authoredByMe": "Созданные мной",
+      "updates": "Обновления"
     },
     "status": {
       "read": "Прочитано",
       "unread": "Не прочитано"
     },
     "row": {
-      "ariaLabel": "{{title}}, {{status}}"
+      "ariaLabel": "{{title}}, {{status}}",
+      "issueSource": "Issue {{repository}}",
+      "issueSourceFallback": "Issue"
     },
     "empty": {
       "title": "Здесь пока ничего нет",
@@ -38,6 +40,10 @@
       "noResults": {
         "title": "Совпадений нет",
         "subtitle": "Нет элементов, соответствующих «{{query}}»."
+      },
+      "archived": {
+        "title": "Нет архивированных элементов",
+        "subtitle": "Архивированные элементы будут отображаться здесь."
       }
     },
     "loading": "Загрузка общего почтового ящика команды…",
@@ -56,8 +62,6 @@
       "recipientSelf": "{{name}} (я)",
       "chooseRecipient": "Выбрать получателя",
       "todoCount_one": "{{count}} задача",
-      "todoCount_few": "{{count}} задачи",
-      "todoCount_many": "{{count}} задач",
       "todoCount_other": "{{count}} задачи",
       "workItemTitle": "Название рабочей задачи",
       "assignTo": "Назначить на",
@@ -90,7 +94,17 @@
       "identityUnavailable": "Не удалось подтвердить вашу командную учётную запись. Проверьте профиль проекта перед ответом.",
       "rowPending": "От {{name}} · Ожидает ответа",
       "rowAccepted": "Передача принята · {{status}} · {{priority}}",
-      "rowReturned": "Возвращено пользователем {{name}} · {{status}} · {{priority}}"
+      "rowReturned": "Возвращено пользователем {{name}} · {{status}} · {{priority}}",
+      "destination": "Назначение",
+      "chooseDestination": "Выберите назначение",
+      "cloudDestination": "{{name}} · Общий почтовый ящик команды",
+      "validation": {
+        "title_required": "Введите название рабочей задачи.",
+        "project_required": "Выберите назначение.",
+        "project_unavailable": "Это назначение больше недоступно. Выберите другое.",
+        "recipient_required": "Выберите получателя.",
+        "recipient_unavailable": "Этот получатель больше недоступен. Выберите другого получателя."
+      }
     },
     "errors": {
       "loadTitle": "Не удалось загрузить общий почтовый ящик команды",
@@ -106,8 +120,11 @@
       "pullRequestsPartialLoadHelp": "Доступные элементы по-прежнему отображаются; обновите список, чтобы повторно загрузить отсутствующие pull requests",
       "workItemContext": "Часть контекста проекта недоступна. Рабочая задача остаётся доступной для использования.",
       "workItemLoad": "Не удалось загрузить эту рабочую задачу. Повторите попытку.",
+      "githubIssueLoad": "Не удалось загрузить задачу GitHub для этого рабочего элемента. Локальные сведения по-прежнему показаны.",
       "workItemUpdate": "Не удалось сохранить последнее изменение рабочей задачи. Повторите попытку.",
-      "githubIssueLoad": "Не удалось загрузить задачу GitHub для этого рабочего элемента. Локальные сведения по-прежнему показаны."
+      "archive": "Не удалось архивировать этот элемент. Повторите попытку.",
+      "unarchive": "Не удалось восстановить этот элемент. Повторите попытку.",
+      "mutePreferences": "Не удалось обновить категории уведомлений. Повторите попытку."
     },
     "detail": {
       "assignedSubtitle": "Назначенная рабочая задача",
@@ -115,14 +132,14 @@
       "mentionSubtitle": "Упомянуто в комментарии",
       "mentionedYou": "упомянул(а) вас",
       "threadComments_one": "{{count}} комментарий в этой теме",
-      "threadComments_few": "{{count}} комментария в этой теме",
-      "threadComments_many": "{{count}} комментариев в этой теме",
       "threadComments_other": "{{count}} комментария в этой теме"
     },
     "actions": {
       "markRead": "Отметить как прочитанное",
       "markUnread": "Отметить как непрочитанное",
-      "openWorkItem": "Открыть рабочую задачу"
+      "openWorkItem": "Открыть рабочую задачу",
+      "archive": "Архивировать",
+      "unarchive": "Вернуть во входящие"
     },
     "workItemStatus": {
       "backlog": "Бэклог",
@@ -139,6 +156,26 @@
       "medium": "Средний",
       "high": "Высокий",
       "urgent": "Срочный"
+    },
+    "notifications": {
+      "assignmentTitle": "Вам назначена новая рабочая задача",
+      "mentionTitle": "{{name}} упомянул(а) вас",
+      "handoffTitle": "Передача от {{name}}",
+      "multipleTitle": "Новых обновлений в общем почтовом ящике команды: {{count}}",
+      "multipleBody": "Откройте общий почтовый ящик команды, чтобы просмотреть назначения и упоминания."
+    },
+    "mute": {
+      "title": "Отключить категории обновлений"
+    },
+    "events": {
+      "mention": "Упоминание в комментарии",
+      "discussion_updated": "Обсуждение обновлено",
+      "run_failed": "Запуск не выполнен",
+      "status_changed": "Статус изменён",
+      "assignee_changed": "Исполнитель изменён",
+      "priority_changed": "Приоритет изменён",
+      "dates_changed": "Даты изменены",
+      "child_completed": "Дочерняя рабочая задача завершена"
     }
   },
   "windowChrome": {
@@ -166,7 +203,7 @@
       "commandPalette": "Палитра команд",
       "goToFile": "Перейти к файлу...",
       "selectModel": "Выбрать модель...",
-      "switchWorkspace": "Сменить рабочую область...",
+      "switchWorkspace": "Сменить рабочий каталог...",
       "switchBranch": "Сменить ветку...",
       "switchRunningLocation": "Сменить место выполнения...",
       "settings": "Настройки...",
@@ -189,26 +226,25 @@
     "replyEmpty": "Ответ не может быть пустым",
     "sessionNotFound": "Сессия не найдена",
     "answerSubmitted": "Ответ успешно отправлен",
-    "answerFailed": "Не удалось отправить ответ. Повторите попытку.",
     "replyError": "Произошла ошибка при отправке ответа",
     "questionIgnored": "Вопрос пропущен",
     "addedAsContext": "{{name}} добавлен в контекст",
     "addedFilesAsContext": "Добавлено файлов в контекст: {{count}}",
+    "chooseExecutionAgentAi": "Выберите ответственного агента перед созданием с помощью ИИ.",
+    "autoExecuteRequiresExecutionAgent": "Для автоматического выполнения требуется ответственный агент.",
     "openSessionBeforeLinking": "Откройте сессию перед привязкой рабочего элемента.",
     "sessionLinkedToWorkItem": "Сессия привязана к рабочему элементу.",
     "sessionLinkFailed": "Не удалось привязать сессию: {{message}}",
-    "chooseFolderNewWorkspace": "Выберите папку для создания рабочей области",
-    "chooseExistingWorkspace": "Выберите существующую рабочую область",
+    "chooseFolderNewWorkspace": "Выберите родительскую папку рабочего каталога",
+    "chooseExistingWorkspace": "Выберите существующий рабочий каталог",
     "selectDirectoryFailed": "Не удалось выбрать каталог",
-    "workspaceCreated": "Рабочая область создана",
-    "workspaceCreateFailed": "Не удалось создать рабочую область",
-    "workspaceImported": "Рабочая область импортирована",
-    "workspaceImportFailed": "Не удалось импортировать рабочую область",
+    "workspaceCreated": "Рабочий каталог создан",
+    "workspaceCreateFailed": "Не удалось создать рабочий каталог",
+    "workspaceImported": "Рабочий каталог импортирован",
+    "workspaceImportFailed": "Не удалось импортировать рабочий каталог",
     "chooseFolderCloneRepo": "Выберите папку для клонирования репозитория",
     "repositoryCloned": "Репозиторий клонирован",
-    "repositoryCloneFailed": "Не удалось клонировать репозиторий",
-    "chooseExecutionAgentAi": "Выберите ответственного агента перед созданием с помощью ИИ.",
-    "autoExecuteRequiresExecutionAgent": "Для автоматического выполнения требуется ответственный агент."
+    "repositoryCloneFailed": "Не удалось клонировать репозиторий"
   },
   "previews": {
     "noCanvasAvailable": "Холст недоступен",
@@ -258,12 +294,10 @@
     "save": "Сохранить",
     "cancel": "Отмена",
     "delete": "Удалить",
-    "deleteCount": "Удалить ({{count}})",
     "removeFromOrgii": "Убрать из ORGII",
     "removeFromOrgiiCount": "Убрать из ORGII ({{count}})",
     "edit": "Редактировать",
     "write": "Запись",
-    "reply": "Ответить",
     "close": "Закрыть",
     "expand": "Развернуть",
     "confirm": "Подтвердить",
@@ -273,16 +307,13 @@
     "add": "Добавить",
     "remove": "Удалить",
     "create": "Создать",
-    "update": "Обновить",
     "submit": "Отправить",
     "loadMore": "Загрузить ещё",
-    "load": "Загрузить",
     "back": "Назад",
     "next": "Далее",
     "previous": "Назад",
     "done": "Готово",
     "retry": "Повторить",
-    "regenerate": "Перегенерировать",
     "refresh": "Обновить",
     "rescan": "Сканировать снова",
     "reload": "Перезагрузить",
@@ -290,35 +321,20 @@
     "reviewPreviousFile": "Проверить предыдущий файл",
     "copy": "Копировать",
     "paste": "Вставить",
-    "cut": "Вырезать",
     "undo": "Отменить",
-    "redo": "Повторить",
-    "keep": "Оставить",
-    "reject": "Отклонить",
-    "accept": "Принять",
     "review": "Обзор",
     "undoAll": "Отменить все",
-    "redoAll": "Повторить все",
-    "keepAll": "Оставить все",
-    "select": "Выбрать",
     "selectAll": "Выбрать все",
     "unselectAll": "Снять выделение",
     "clear": "Очистить",
     "open": "Открыть",
     "view": "Просмотреть",
-    "openInApp": "Открыть в приложении",
     "openToRight": "Открыть справа",
-    "new": "Новый",
     "rename": "Переименовать",
     "duplicate": "Дублировать",
-    "export": "Экспорт",
-    "import": "Импорт",
     "download": "Скачать",
     "upload": "Загрузить",
-    "insertImage": "Вставить изображение",
     "browse": "Обзор",
-    "discover": "Обнаружить",
-    "discoverTests": "Обнаружить тесты",
     "newFile": "Новый файл",
     "newFolder": "Новая папка",
     "copyPath": "Копировать путь",
@@ -338,16 +354,9 @@
     "configure": "Настроить",
     "manage": "Управление",
     "uninstall": "Удалить",
-    "connect": "Подключить",
-    "customize": "Настроить",
-    "goToSettings": "Перейти к настройкам",
     "restart": "Перезапустить",
     "switchToStation": "Переключиться на {{station}}",
-    "rate": "Оценить",
-    "openInTab": "Открыть во вкладке",
-    "insert": "Вставить",
     "discard": "Отменить",
-    "disable": "Отключить",
     "run": "Запустить",
     "clone": "Клонировать",
     "send": "Отправить",
@@ -359,20 +368,12 @@
     "filter": "Фильтр",
     "loading": "Загрузка...",
     "replace": "Заменить",
-    "publish": "Publish",
-    "acceptAll": "Принять всё",
-    "rejectAll": "Отклонить всё",
-    "install": "Установить",
-    "expandAll": "Развернуть все",
     "collapseAll": "Свернуть все",
     "viewOnGitHub": "Открыть в GitHub",
     "selectRepository": "Выбрать репо",
     "all": "Все",
     "collapse": "Свернуть",
     "toggle": "Свернуть/развернуть",
-    "addRepo": "Добавить репо",
-    "addFolder": "Добавить папку",
-    "resume": "Продолжить",
     "yes": "Да",
     "more": "Другие действия",
     "advanced": "Дополнительно",
@@ -380,22 +381,20 @@
     "moreSettings": "Больше настроек",
     "sort": "Сортировать",
     "openFolder": "Открыть папку",
-    "addWorkspace": "Добавить workspace",
-    "openSpotlight": "Открыть Spotlight",
-    "openWorkspace": "Открыть workspace",
-    "skipThisVersion": "Пропустить эту версию",
+    "addWorkspace": "Добавить рабочий каталог",
+    "openWorkspace": "Открыть рабочий каталог",
     "later": "Позже",
     "link": "Связать",
     "copyName": "Копировать имя",
     "switchMethod": "Сменить способ",
     "dismiss": "Отклонить",
-    "comingSoon": "Скоро",
     "clearSelection": "Очистить выбор",
     "uiSettings": "Настройки интерфейса",
-    "clearAll": "Очистить всё"
-  },
-  "refreshToast": {
-    "successName": "{{name}} обновлено"
+    "clearAll": "Очистить всё",
+    "openOnGitHub": "Открыть на GitHub",
+    "createPullRequest": "Создать pull request",
+    "expandView": "Развернуть представление",
+    "restoreSplitView": "Восстановить разделённый вид"
   },
   "status": {
     "yes": "Да",
@@ -471,18 +470,13 @@
     "lastPage": "Последняя страница",
     "selectPage": "Выбрать страницу",
     "title": "Пагинация",
-    "roundOf": "Round {{current}} / {{total}}",
     "round": "Round {{current}}",
     "previousRound": "Предыдущий раунд",
     "nextRound": "Следующий раунд",
-    "latestRound": "Последний раунд",
-    "searchRounds": "Поиск rounds"
+    "latestRound": "Последний раунд"
   },
   "optional": "необязательно",
   "common": {
-    "yes": "Да",
-    "no": "Нет",
-    "ok": "ОК",
     "on": "Вкл",
     "off": "Выкл",
     "default": "По умолчанию",
@@ -491,32 +485,20 @@
     "s": "s",
     "multiplier": "×",
     "spaces": "пробелов",
-    "font": "Шрифт",
     "name": "Имя",
     "description": "Описание",
     "type": "Тип",
     "date": "Дата",
     "time": "Время",
-    "size": "Размер",
-    "path": "Путь",
     "status": "Статус",
     "actions": "Действия",
-    "options": "Опции",
     "details": "Подробности",
     "more": "Ещё",
-    "less": "Свернуть",
-    "all": "Все",
     "none": "Ничего",
-    "selected": "Выбрано",
-    "items": "элементов",
-    "item": "элемент",
-    "empty": "Пусто",
     "noResults": "Результаты не найдены",
     "searchPlaceholder": "Поиск...",
     "properties": "Свойства",
     "overview": "Обзор",
-    "appearance": "Оформление",
-    "theme": "Тема",
     "timezone": "Часовой пояс",
     "language": "Язык",
     "preview": "Предпросмотр",
@@ -524,17 +506,11 @@
     "sourceCode": "Исходный код",
     "raw": "Исходный вид",
     "table": "Таблица",
-    "filter": "Фильтр",
-    "filters": "Фильтры",
     "selectDate": "Выберите дату",
-    "files": "файлов",
-    "required": "обязательно",
-    "pending": "ожидание",
     "error": "Ошибка",
     "pid": "PID",
     "shell": "Shell",
-    "source": "Источник",
-    "filterByLanguage": "Фильтр по языку"
+    "source": "Источник"
   },
   "labels": {
     "accounts": "Аккаунты",
@@ -652,19 +628,36 @@
     "noAppliedCommit": "No linked commit yet",
     "noSessionsForFile": "No sessions found for this file",
     "committedRate": "Закоммичено",
-    "email": "Email"
+    "email": "Email",
+    "noPullRequestForBranch": "Для этой ветки пока нет pull request.",
+    "creatingPullRequest": "Создание…",
+    "failedToLoadPullRequest": "Не удалось загрузить pull request",
+    "noCommitsInPullRequest": "В этом pull request нет коммитов",
+    "prStatus": {
+      "open": "Открыт",
+      "merged": "Объединён",
+      "closed": "Закрыт",
+      "draft": "Черновик",
+      "unknown": "Неизвестно"
+    },
+    "sendingNow": "отправка…",
+    "issues": "Issues",
+    "noIssues": "Нет issues",
+    "openIssues": "Открытые",
+    "closedIssues": "Закрытые",
+    "issueComments": "{{count}} комментарий",
+    "issueComments_one": "1 комментарий",
+    "issueComments_other": "{{count}} комментария",
+    "tokens": "Токены",
+    "actions": "Действия",
+    "all": "Все"
   },
   "searchModes": {},
   "tabs": {
     "terminal": "Терминал",
-    "problems": "Проблемы",
-    "output": "Вывод",
-    "testResults": "Результаты тестов",
     "explorer": "Проводник",
     "search": "Поиск",
     "sourceControl": "Управление версиями",
-    "testing": "Тестирование",
-    "extensions": "Расширения",
     "sessions": "Сеансы",
     "myTabs": "Мои вкладки ({{count}})",
     "design": "Дизайн",
@@ -673,23 +666,12 @@
     "console": "Консоль",
     "network": "Сеть",
     "css": "CSS",
-    "source": "Источник",
-    "connections": "Подключения",
-    "queryHistory": "История запросов",
-    "table": "Таблица",
-    "sql": "SQL",
-    "tools": "Инструменты",
-    "overview": "Обзор"
+    "source": "Источник"
   },
   "errors": {
     "generic": "Что-то пошло не так",
-    "networkError": "Ошибка сети. Проверьте подключение.",
     "notFound": "Не найдено",
-    "unauthorized": "Требуется авторизация. Войдите в систему.",
     "forbidden": "Доступ запрещён",
-    "serverError": "Ошибка сервера. Попробуйте позже.",
-    "timeout": "Время ожидания истекло",
-    "validation": "Ошибка валидации",
     "pageNotFound": "Страница не найдена",
     "failedToLoadComponent": "Не удалось загрузить компонент",
     "networkErrorShort": "Ошибка сети",
@@ -698,13 +680,11 @@
     "couldntConnect": "Не удалось подключиться к серверу. Проверьте подключение к интернету.",
     "failedToLoadProperly": "Компонент не удалось загрузить должным образом.",
     "requiredFileCouldntLoad": "Не удалось загрузить необходимый файл. Обычно это решается перезапуском.",
-    "failedToRenderActivity": "Не удалось отобразить активность",
-    "failedToRenderEvent": "Не удалось отобразить событие",
     "unknown": "Неизвестная ошибка",
     "agentRequestFailed": "Ошибка запроса Agent",
     "codexLoginExpired": "Срок входа в Codex истёк",
     "codexLoginExpiredDescription": "Повторно подключите Codex, чтобы восстановить эту учётную запись. После сохранения нового входа вы вернётесь к этому сеансу",
-    "reconnectCodex": "Повторно подключить Codex",
+    "reconnectCodex": "Повторно подключить",
     "technicalDetails": "Технические сведения",
     "failedToCopy": "Не удалось скопировать",
     "api": {
@@ -745,14 +725,14 @@
       },
       "workflow": "Сервис рабочих процессов временно недоступен. Попробуйте позже."
     },
-    "imageUploadFailed": "Не удалось загрузить изображение",
-    "imageTooLarge": "Изображение слишком большое",
     "failedToLoad": "Не удалось загрузить",
-    "unknownError": "Произошла неизвестная ошибка"
+    "unknownError": "Произошла неизвестная ошибка",
+    "componentLoadingFailed": "Не удалось загрузить компонент",
+    "noLocalPath": "Локальный путь недоступен",
+    "openInFinderFailed": "Не удалось открыть в Finder"
   },
   "confirmation": {
     "delete": "Вы уверены, что хотите удалить это?",
-    "discard": "Отменить изменения?",
     "removeTitle": "Удалить \"{{name}}\" из ORGII?",
     "removeMessage": "Это только удалит связь с ORGII. Ничего не будет удалено с диска.",
     "deleteWorkspaceTitle": "Удалить Workspace \"{{name}}\"?",
@@ -770,32 +750,14 @@
     "unsavedCloseMultipleMessage": "{{count}} файл(ов) содержат несохранённые изменения. Всё равно закрыть?",
     "undoAllChanges": "Это отменит все {{count}} изменений файлов, сделанных Agent. Это действие нельзя отменить. Продолжить?"
   },
-  "dateRange": {
-    "1d": "1Д",
-    "7d": "7Д",
-    "1w": "1Н",
-    "30d": "30Д",
-    "1m": "1М",
-    "3m": "3М",
-    "1y": "1Г"
-  },
   "filters": {
     "all": "Все",
     "source": "Источник",
-    "local": "Локальные",
     "member": "Участник",
-    "model": "Модель",
-    "custom": "Другой",
     "tokenMarket": "Token Market",
-    "market": "Маркет",
-    "agentOrAgentOrg": "Session agent",
     "searchAgentOrOrg": "Выбрать Agent или Команду Agent...",
-    "tplSelectAgentOrOrg": "Выбрать {agent}",
-    "cliAgent": "CLI Agent",
     "searchModel": "Искать модель...",
-    "searchModelFor": "Выберите модель для {{target}}...",
-    "tplSelectModel": "Выбрать {model}",
-    "tplSelectModelFor": "Выбрать {model} для {{target}}"
+    "searchModelFor": "Выберите модель для {{target}}..."
   },
   "prerequisite": {
     "missingTitle": "Отсутствует зависимость",
@@ -805,29 +767,14 @@
     "agent": "Agent",
     "you": "Вы",
     "session": "Session",
-    "agentSession": "Agent Session",
     "workStation": "Workstation",
-    "osAgent": "OS Agent",
-    "coding": "Coding",
     "agentTerminal": "Agent терминал",
     "myStation": "Моя станция",
     "agentStation": "Станция Agent",
-    "projectManager": "Project Manager",
-    "myTerminal": "Мой терминал",
-    "myTerminalInfo": "Информация о моем терминале"
-  },
-  "pageSearch": {
-    "placeholder": "Поиск страниц...",
-    "tooltip": "Поиск страниц",
-    "categories": {
-      "workspace": "Рабочее пространство",
-      "tools": "Инструменты",
-      "market": "Маркет"
-    }
+    "myTerminal": "Мой терминал"
   },
   "tooltips": {
     "closeEsc": "Закрыть (Esc)",
-    "hidePanel": "Скрыть панель (⌘J)",
     "refreshTree": "Обновить дерево",
     "copy": "Копировать",
     "previous": "Предыдущий",
@@ -838,7 +785,7 @@
     "openInEditorTab": "Открыть во вкладке редактора",
     "openFile": "Открыть файл",
     "openNativeDevTools": "Открыть нативные DevTools браузера",
-    "captureScreenshot": "Сделать снимок страницы и прикрепить к чату",
+    "captureScreenshot": "Скриншот",
     "enableInspectMode": "Исследовать элемент",
     "disableInspectMode": "Выйти из инспектора (Esc)",
     "killTerminal": "Завершить терминал",
@@ -865,24 +812,20 @@
     "searchInOpenEditors": "Искать только в открытых редакторах",
     "replace": "Заменить (Ctrl+Shift+1)",
     "replaceAll": "Заменить всё (Ctrl+Alt+Enter)",
-    "uninstall": "Удалить",
-    "dismiss": "Отклонить",
     "moreActions": "Дополнительные действия...",
     "formatSql": "Форматировать SQL",
     "queryHistory": "История запросов",
-    "executeQuery": "Выполнить запрос (Ctrl+Enter)",
+    "executeQuery": "Выполнить запрос ({{shortcut}})",
     "startVoiceInput": "Начать голосовой ввод",
     "cancelRecording": "Отменить запись",
     "stopAndTranscribe": "Остановить и транскрибировать",
     "htmlPreview": "HTML предпросмотр",
     "manual": "Вручную",
-    "scrollLeft": "Прокрутить вкладки влево",
     "toggleFileFilters": "Переключить фильтры файлов",
     "closeDevTools": "Закрыть DevTools",
     "movePanelToRight": "Переместить панель вправо",
     "movePanelToBottom": "Переместить панель вниз",
     "domTree": "DOM дерево",
-    "clearUiIndex": "Очистить индекс компонентов",
     "closeSession": "Закрыть Session",
     "clearNetworkLogs": "Очистить сетевые журналы",
     "clearConsole": "Очистить консоль",
@@ -898,6 +841,8 @@
     "copyValueRightClickForPath": "Нажмите, чтобы скопировать значение, правый клик — путь"
   },
   "placeholders": {
+    "enterFileName": "Введите имя файла",
+    "enterFolderName": "Введите имя папки",
     "loading": "Загрузка...",
     "selectToViewConfig": "Выберите {{type}} для просмотра или настройки",
     "selectToViewConfigSubtitle": "Выберите элемент из списка слева",
@@ -917,7 +862,6 @@
     "failedToParseSymbols": "Не удалось проанализировать символы",
     "outlineParseError": "Структура недоступна для этого файла",
     "runQueryToSeeResults": "Выполните запрос, чтобы увидеть результаты",
-    "noProjectsFound": "Projects не найдены",
     "failedToLoad": "Ошибка загрузки",
     "noItems": "Нет элементов для отображения",
     "nothingHereYet": "Нет элементов для отображения",
@@ -948,7 +892,6 @@
     "chatHistoryAgentWorkingHint": "Сообщения появятся с первым ответом; до этого панель может выглядеть неактивной",
     "pleaseSelect": "Пожалуйста, выберите",
     "noSessionsFound": "Session не найдены",
-    "noBrowsingHistory": "История просмотра пуста",
     "typeToSearchFiles": "Введите для поиска файлов...",
     "selectFileToViewChanges": "Выберите файл для просмотра изменений",
     "failedToLoadHistory": "Не удалось загрузить историю",
@@ -986,16 +929,9 @@
     "noStyles": "Нет стилей",
     "noDomTree": "Нет дерева DOM",
     "noSourceDetected": "Исходный код не обнаружен",
-    "notIndexed": "Not indexed",
-    "indexedInspectElement": "Проиндексировано, проверьте элемент",
-    "buildIndexToStart": "Создайте индекс для начала",
     "noMatchingFilesFound": "Совпадающие файлы не найдены",
-    "scanning": "Сканирование...",
-    "retryToScanAgain": "Повторить сканирование",
-    "noTokensFound": "Token не найдены",
-    "addCssVariables": "Добавьте CSS-переменные в проект",
-    "noWorkspaceExplorerTitle": "Workspace не открыт",
-    "noWorkspaceExplorerSubtitle": "Откройте рабочее пространство для просмотра файлов",
+    "noWorkspaceExplorerTitle": "Рабочий каталог не открыт",
+    "noWorkspaceExplorerSubtitle": "Откройте рабочий каталог для просмотра файлов",
     "cannotFindRepo": "Не удалось найти {{repoName}}",
     "lastSeenAtPath": "Последний раз был по пути {{path}}",
     "unsupportedFileType": "Неподдерживаемый тип файла",
@@ -1020,60 +956,45 @@
     "noRepoSelected": "No repository selected",
     "previewUnavailable": "Предпросмотр недоступен",
     "selectRepositoryFromWorkspace": "Выберите репозиторий из рабочего пространства",
-    "noData": "Нет данных"
+    "noData": "Нет данных",
+    "noResults": "Нет результатов",
+    "noSessionHistoryForFile": "Активность сессий для {{file}} не найдена",
+    "noSessionHistory": "Нет истории сессий"
   },
   "inbox": {
-    "searchPlaceholder": "Поиск сообщений...",
-    "channels": {
-      "title": "Каналы",
-      "git": "Git",
-      "workItems": "Рабочие элементы",
-      "promotions": "Акции"
-    },
-    "selectChannel": "Выберите канал",
-    "noMessages": "Сообщений пока нет",
-    "noMessagesSubtitle": "Сообщения появятся здесь при возникновении событий",
-    "composerPlaceholder": "Заметка…",
     "scrollToBottom": "Вниз",
-    "markAllAsRead": "Отметить все как прочитанные",
-    "scrollToUnread": "К непрочитанным"
+    "markAllAsRead": "Отметить все как прочитанные"
   },
   "placeholderTypes": {
     "mcpServer": "MCP-сервер",
-    "connection": "подключение",
-    "policy": "Policy",
-    "skill": "Skill",
-    "message": "сообщение"
+    "connection": "подключение"
   },
   "workstation": {
     "expandReplace": "Развернуть замену",
     "collapseReplace": "Свернуть замену",
     "tooltipRefreshExplorer": "Обновить проводник",
-    "deleteSelectedRows": "Удалить {{count}} выбранных строк(и)",
     "agentBrowser": "Agent Browser",
     "userInControl": "User in control",
     "agentControlling": "Agent controlling",
     "returnToAgent": "Return to Agent",
     "takeOver": "Take Over",
-    "chromeInForeground": "Chrome window is in the foreground — interact directly",
     "chromeWindowOpen": "Окно Chrome открыто — взаимодействуйте напрямую, затем вернитесь к Agent",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
     "split": "Split",
-    "reloadFromDiskConfirm": "Reload from disk (will prompt to confirm)",
-    "reloadFromDisk": "Reload from disk",
     "publishingBranch": "Publishing...",
-    "refreshGitStatus": "Refresh git status",
     "notGitInitialized": "Git не инициализирован",
-    "notGitInitializedTooltip": "В этом Workspace пока нет каталога .git.",
+    "notGitInitializedTooltip": "В этом рабочем каталоге пока нет каталога .git.",
     "publishBranchToOrigin": "Publish branch \"{{branch}}\" to origin",
-    "syncWithRemote": "Sync with remote ({{behind}} to pull, {{ahead}} to push)",
     "scanningFiles": "Scanning files...",
-    "branchTooltip": "Ветка: {{branch}}",
     "branchTooltipSwitching": "Ветка: {{branch}} (переключение…)",
-    "switchWorkspaceTooltip": "Сменить workspace",
+    "switchWorkspaceTooltip": "Сменить рабочий каталог",
     "switchWorktreeTooltip": "Сменить worktree",
     "switchBranchTooltip": "Сменить ветку",
+    "switchLocalBranchTooltip": "Сменить локальную ветку",
+    "sessionEnvCloud": "Облако",
+    "sessionEnvLocal": "Локально",
+    "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Действия Git",
     "switchToSessionRepo": "Переключиться на {{name}}",
     "embeddingProgress": "Embedding: обработано чанков — {{count}}",
@@ -1082,83 +1003,45 @@
     "embeddingLabel": "Embedding",
     "indexingProgress": "Индексация: {{processed}}/{{total}} файлов ({{percent}}%)",
     "indexingProgressWithFile": "Индексация: {{processed}}/{{total}} файлов ({{percent}}%)\nТекущий: {{file}}",
-    "languageServices": "Language Services",
     "ports": {
       "workspaceSection": "Текущее рабочее пространство",
       "externalSection": "Внешние",
-      "tooltip": "Порты: {{workspace}} workspace, {{external}} внешних",
       "viewPortsTooltip": "Показать используемые порты",
       "noWorkspacePorts": "Порты workspace не обнаружены",
-      "externalLabel": "внешний",
       "unknownProcess": "Неизвестный процесс",
       "pidLabel": "PID {{pid}}",
       "openInBrowser": "Открыть в браузере",
-      "openAddress": "Открыть {{address}}",
       "copyAddress": "Копировать адрес",
       "stopProcess": "Остановить процесс",
       "searchPlaceholder": "Поиск портов…",
       "noSearchResults": "Нет подходящих портов",
+      "openAddress": "Открыть {{address}}",
       "rescan": "Пересканировать",
       "rescanning": "Сканирование…",
       "rescanTooltip": "Снова найти прослушиваемые порты",
       "lastScannedAt": "Последнее сканирование в {{time}}"
     },
-    "noLanguageServicesActive": "No language services active",
     "linesSelected": "{{count}} lines selected",
     "charsSelected": "{{count}} selected",
     "nLines": "{{count}} lines",
-    "blameOn": "Blame: On",
-    "blameOff": "Blame: Off",
     "hideFilter": "Hide filter",
     "filterFilesAction": "Filter files",
     "switchToTreeView": "Switch to tree view",
     "switchToListView": "Switch to list view",
     "discardChanges": "Discard Changes",
-    "stagedChangesCount": "{{count}} Staged Changes",
-    "changesCount": "{{count}} Changes",
-    "acceptAllMergeChanges": "Accept All Merge Changes (Stage resolved files)",
     "toOrigin": "to origin",
     "discardChangesConfirm": "Discard changes to {{files}}? This cannot be undone.",
     "discardAllUnstagedConfirm": "Discard all unstaged changes? This cannot be undone.",
     "addedToAgent": "{{fileName}} added to agent",
-    "privateBrowsing": "Private",
-    "standardBrowsing": "Стандарт",
-    "openNativeDevTools": "Open native browser DevTools (Safari Inspector / Edge DevTools)",
-    "extractingProps": "Extracting props...",
-    "initializingPreview": "Initializing preview...",
-    "buildUiIndex": "Build component index",
     "componentLabel": "Component",
     "definitionLabel": "Definition",
     "findSource": "Find Source",
     "preserveConsole": "Preserve",
     "consoleShowStackTrace": "Показать трассировку стека",
     "consoleHideStackTrace": "Скрыть трассировку стека",
-    "loadingData": "Loading data...",
-    "noData": "No data",
-    "tokenName": "token-name",
-    "manualMode": "Manual",
-    "position": "Position",
-    "flow": "Flow",
-    "size": "Size",
-    "paddingLabel": "Padding",
-    "marginLabel": "Margin",
-    "boxModel": "Box Model",
-    "opacityLabel": "Opacity",
-    "cornersLabel": "Corners",
-    "textLabel": "Text",
-    "weightLabel": "Weight",
-    "lineLabel": "Line",
-    "borderLabel": "Border",
-    "widthLabel": "Width",
-    "heightLabel": "Height",
-    "colorLabel": "Color",
-    "shadowAndBlur": "Shadow & Blur",
-    "blurLabel": "Blur",
-    "spreadLabel": "Spread",
     "styleEditsCount_one": "{{count}} правка",
     "styleEditsCount_other": "{{count}} правок",
     "sendStyleEdits": "Отправить",
-    "addToChat": "Добавить в чат",
     "browserCore": {
       "desktopOnlyTitle": "Браузер доступен только в десктопном приложении",
       "desktopOnlyBody": "Встроенный браузер доступен только в настольном приложении Tauri.",
@@ -1166,32 +1049,32 @@
       "debugTauriInternals": "__TAURI_INTERNALS__: {{value}}",
       "debugTauriIpc": "__TAURI_IPC__: {{value}}",
       "debugTauri": "__TAURI__: {{value}}",
-      "privateBrowsingLabel": "Приватный просмотр:",
       "enterUrlToStart": "Введите URL, чтобы начать",
       "privateBrowsingEmptyTitle": "Приватный просмотр: Введите URL, чтобы начать",
       "simulatorBrowserNotice": "Этот браузер только для воспроизведения сессии. Для постоянного просмотра используйте браузер в главном приложении (Инструменты → Браузер).",
       "tlsDevNote": "Примечание: на некоторых HTTPS-сайтах (например GitHub) в режиме разработки возможны ошибки TLS из‑за проверки сертификата. Попробуйте HTTP или простые HTTPS-сайты вроде example.com.",
       "siteUnreachableTitle": "Не удаётся открыть сайт",
-      "errorTls": "Подключение к этому сайту не защищено. Часто встречается для HTTPS в режиме разработки.",
-      "errorTimeout": "Время ожидания истекло. Сервер отвечает слишком долго.",
-      "errorDns": "DNS-адрес сервера не найден. Проверьте URL.",
-      "errorRefused": "Сервер отказал в подключении.",
-      "errorGeneric": "Не удаётся подключиться к серверу. Сайт может быть недоступен или есть проблема с сетью.",
-      "technicalDetails": "Технические подробности",
-      "tryHeading": "Попробуйте:",
-      "tryCheckConnection": "Проверить подключение к интернету",
-      "tryVerifyUrl": "Проверить правильность URL",
-      "tryAgainLater": "Повторить позже",
       "webviewHiddenTitle": "Веб-представление временно скрыто",
-      "webviewHiddenBody": "Закройте меню или диалог, чтобы снова его показать."
+      "webviewHiddenBody": "Закройте меню или диалог, чтобы снова его показать.",
+      "embeddedFallbackTitle": "Этот сайт может не работать во встроенном браузере",
+      "embeddedFallbackBody": "Некоторые сайты блокируют или не отображают содержимое внутри WebView приложения. Если страница остаётся пустой, откройте её в системном браузере.",
+      "currentUrl": "Текущий URL"
     },
     "unsavedChangesTitle": "Unsaved Changes",
-    "prkPlaceholder": "PRJ",
-    "gitSyncMenuTitle": "Действия Git sync",
-    "switchLocalBranchTooltip": "Сменить локальную ветку",
-    "sessionEnvCloud": "Облако",
-    "sessionEnvLocal": "Локально",
-    "sessionHarness": "{{name}} Harness"
+    "ci": {
+      "openPullRequest": "Открыть pull request на GitHub",
+      "viewDetails": "Просмотреть подробности проверки",
+      "refresh": "Обновить проверки",
+      "refreshing": "Обновление…",
+      "lastFetchedAt": "Последнее обновление: {{time}}",
+      "unavailable": "Не удалось прочитать проверки",
+      "sections": {
+        "failed": "Не пройдено",
+        "running": "Выполняется",
+        "skipped": "Пропущено",
+        "passed": "Пройдено"
+      }
+    }
   },
   "git": {
     "loading": "Загрузка статуса Git...",
@@ -1232,10 +1115,6 @@
       "compareBranch": "Сравнить ветку"
     },
     "rail": {
-      "openTabs": "Открытые вкладки",
-      "closeItem": "Закрыть {{label}}",
-      "expand": "Развернуть сведения о рабочей области",
-      "collapse": "Свернуть сведения о рабочей области",
       "subagents": "Subagents",
       "subagentsCount_one": "{{count}} subagent",
       "subagentsCount_other": "{{count}} subagents",
@@ -1244,6 +1123,10 @@
       "subagentPending": "В ожидании",
       "subagentCompleted": "Завершено",
       "subagentFailed": "Ошибка",
+      "openTabs": "Открытые вкладки",
+      "closeItem": "Закрыть {{label}}",
+      "expand": "Развернуть сведения о рабочей области",
+      "collapse": "Свернуть сведения о рабочей области",
       "restoreWidth": "Восстановить исходную ширину ({{width}} px)",
       "setMinimumWidth": "Сделать текущую ширину минимальной ({{width}} px)",
       "widerWidth": "Шире ({{width}} px)",
@@ -1256,9 +1139,7 @@
       "returnFromMiniTerminal": "Показать здесь",
       "resizeTerminal": "Изменить размер терминала",
       "terminalProcessCount_one": "{{count}} процесс",
-      "terminalProcessCount_other": "{{count}} процесса",
-      "terminalProcessCount_few": "{{count}} процесса",
-      "terminalProcessCount_many": "{{count}} процессов"
+      "terminalProcessCount_other": "{{count}} процесса"
     },
     "pr": {
       "title": "Pull request",
@@ -1287,44 +1168,11 @@
         "approved": "одобрил(а) эти изменения",
         "changesRequested": "запросил(а) изменения",
         "reviewDismissed": "отклонил(а) ревью",
-        "reviewed": "провёл(а) ревью"
+        "reviewed": "провёл(а) ревью",
+        "appendedSession": "добавил(а) сессию"
       },
       "summary": {
         "label": "Сводка pull request"
-      },
-      "flow": {
-        "wantsToMergeCommitsInto_one": "хочет слить {{count}} коммит в",
-        "wantsToMergeCommitsInto_few": "хочет слить {{count}} коммита в",
-        "wantsToMergeCommitsInto_many": "хочет слить {{count}} коммитов в",
-        "wantsToMergeCommitsInto_other": "хочет слить {{count}} коммита в",
-        "mergedCommitsInto_one": "слито {{count}} коммит в",
-        "mergedCommitsInto_few": "слито {{count}} коммита в",
-        "mergedCommitsInto_many": "слито {{count}} коммитов в",
-        "mergedCommitsInto_other": "слито {{count}} коммита в",
-        "from": "из",
-        "copyHeadBranch": "Скопировать имя ветки",
-        "branchCopied": "Имя ветки скопировано"
-      },
-      "sidebar": {
-        "reviewers": "Рецензенты",
-        "requestReviewers": "Запросить рецензентов",
-        "awaitingReview": "Ожидает рецензии",
-        "noReviews": "Нет рецензий",
-        "assignees": "Исполнители",
-        "noAssignees": "Никто не назначен",
-        "labels": "Метки",
-        "noLabels": "Пока нет",
-        "actions": "Действия",
-        "editAssignees": "Изменить исполнителей",
-        "searchAssignees": "Поиск людей",
-        "noAssigneeCandidates": "Нет доступных людей",
-        "assigneesLoadFailed": "Не удалось загрузить людей",
-        "assigneesUpdated": "Исполнители обновлены",
-        "editLabels": "Изменить метки",
-        "searchLabels": "Поиск меток",
-        "noLabelCandidates": "Нет доступных меток",
-        "labelsLoadFailed": "Не удалось загрузить метки",
-        "labelsUpdated": "Метки обновлены"
       },
       "tabs": {
         "conversation": "Обсуждение",
@@ -1345,6 +1193,35 @@
         "noneShort": "Нет CI",
         "unavailableShort": "CI недоступен",
         "branchStatus": "CI для pull request №{{number}}: {{status}}"
+      },
+      "mergeStatus": {
+        "label": "Статус слияния",
+        "viewChecks": "Показать все проверки",
+        "ableToMerge": "Готово к слиянию",
+        "blocked": "Слияние заблокировано",
+        "conflicts": "Конфликты слияния",
+        "queued": "В очереди на слияние",
+        "draft": "Черновик — слияние пока недоступно",
+        "merged": "Пул-реквест объединён",
+        "closed": "Пул-реквест закрыт",
+        "checking": "Проверка возможности слияния…",
+        "checksPassed": "Все проверки пройдены",
+        "checksFailing_one": "{{count}} проверка не пройдена",
+        "checksFailing_other": "{{count}} проверки не пройдено",
+        "checksRunning_one": "{{count}} проверка выполняется",
+        "checksRunning_other": "{{count}} проверки выполняется",
+        "checksSkipped_one": "{{count}} проверка пропущена",
+        "checksSkipped_other": "{{count}} проверки пропущено",
+        "checksNone": "Проверки не найдены",
+        "reviewApproved": "Изменения одобрены",
+        "reviewRequired": "Требуется ревью",
+        "reviewChangesRequested": "Запрошены изменения",
+        "noConflicts": "Нет конфликтов с базовой веткой",
+        "hasConflicts": "Конфликты с базовой веткой",
+        "outOfDate": "Отстаёт от базовой ветки",
+        "checkingConflicts": "Проверка конфликтов…",
+        "autoMergeEnabled": "Автоматическое слияние включено",
+        "inMergeQueue": "Ожидает в очереди слияния"
       },
       "commits": {
         "backToList": "Все коммиты",
@@ -1382,8 +1259,6 @@
         "removedFromQueue": "Удалено из очереди слияния",
         "autoMergeEnabled": "Автоматическое слияние включено",
         "autoMergeDisabled": "Автоматическое слияние отключено",
-        "convertToDraft": "Перевести в черновик",
-        "convertedToDraft": "Pull request переведён в черновик",
         "confirmCloseTitle": "Закрыть pull request?",
         "confirmCloseMessage": "Pull request останется доступным, и его можно будет открыть снова.",
         "closeSuccess": "Pull request закрыт",
@@ -1418,8 +1293,58 @@
           "checksFailed": "Перед слиянием необходимо пройти обязательные проверки",
           "checksPending": "Дождитесь обязательных проверок или включите автоматическое слияние",
           "mergeBlocked": "GitHub сообщает о невыполненных требованиях для слияния"
-        }
-      }
+        },
+        "convertToDraft": "Перевести в черновик",
+        "convertedToDraft": "Pull request переведён в черновик",
+        "markReady": "Отметить как готовый к ревью",
+        "markedReady": "Pull request отмечен как готовый к ревью"
+      },
+      "flow": {
+        "wantsToMergeCommitsInto_one": "хочет слить {{count}} коммит в",
+        "wantsToMergeCommitsInto_other": "хочет слить {{count}} коммита в",
+        "mergedCommitsInto_one": "слито {{count}} коммит в",
+        "mergedCommitsInto_other": "слито {{count}} коммита в",
+        "from": "из",
+        "copyHeadBranch": "Скопировать имя ветки",
+        "branchCopied": "Имя ветки скопировано"
+      },
+      "sidebar": {
+        "reviewers": "Рецензенты",
+        "requestReviewers": "Запросить рецензентов",
+        "awaitingReview": "Ожидает рецензии",
+        "noReviews": "Нет рецензий",
+        "assignees": "Исполнители",
+        "noAssignees": "Никто не назначен",
+        "labels": "Метки",
+        "noLabels": "Пока нет",
+        "actions": "Действия",
+        "editAssignees": "Изменить исполнителей",
+        "searchAssignees": "Поиск людей",
+        "noAssigneeCandidates": "Нет доступных людей",
+        "assigneesLoadFailed": "Не удалось загрузить людей",
+        "assigneesUpdated": "Исполнители обновлены",
+        "editLabels": "Изменить метки",
+        "searchLabels": "Поиск меток",
+        "noLabelCandidates": "Нет доступных меток",
+        "labelsLoadFailed": "Не удалось загрузить метки",
+        "labelsUpdated": "Метки обновлены"
+      },
+      "creating": "Создание pull request…",
+      "createError": "Не удалось создать pull request",
+      "readyHint": "Ветка отправлена и готова для pull request",
+      "neutralHint": "Отправьте ветку, чтобы создать pull request",
+      "noBranch": "Ветка не выбрана",
+      "noRepoPath": "Путь к репозиторию недоступен",
+      "notAuthenticated": "Войдите, чтобы создавать pull requests",
+      "noOriginRemote": "Remote origin не настроен",
+      "cannotParseRepoName": "Не удалось определить имя репозитория из remote origin",
+      "authRequired": {
+        "title": "Подключить GitHub",
+        "description": "Перейдите в Настройки → Подключения, чтобы подключить учётную запись GitHub."
+      },
+      "navigationTrail": "Навигация по pull request",
+      "failedToLoad": "Не удалось загрузить pull requests",
+      "label": "Pull request"
     },
     "messages": {
       "pushSuccess": "Push выполнен успешно",
@@ -1477,8 +1402,6 @@
         "opened": "открыл(а) этот issue",
         "commented": "оставил(а) комментарий",
         "timelineItemCount_one": "{{count}} событие на шкале времени",
-        "timelineItemCount_few": "{{count}} события на шкале времени",
-        "timelineItemCount_many": "{{count}} событий на шкале времени",
         "timelineItemCount_other": "{{count}} событий на шкале времени",
         "noDescription": "Описание не указано.",
         "assigned": "назначил(а)",
@@ -1534,7 +1457,8 @@
         "reviewRequestRemoved": "удалил(а) запрос на проверку",
         "reviewed": "проверил(а) эти изменения",
         "reviewDismissed": "отклонил(а) проверку",
-        "userBlocked": "заблокировал(а) этого пользователя"
+        "userBlocked": "заблокировал(а) этого пользователя",
+        "appendedSession": "добавил(а) сессию"
       },
       "composer": {
         "addComment": "Добавить комментарий",
@@ -1566,18 +1490,40 @@
         "count_other": "{{count}} связанных элементов",
         "unavailable": "Сведения недоступны",
         "unavailableCount_one": "Не удалось разрешить {{count}} связанный элемент",
-        "unavailableCount_other": "Не удалось разрешить {{count}} связанных элементов"
-      }
+        "unavailableCount_other": "Не удалось разрешить {{count}} связанных элементов",
+        "reference": "Ссылка GitHub"
+      },
+      "title": "Issues",
+      "loading": "Загрузка issues…",
+      "empty": "Нет issues ({{state}})",
+      "failedToLoad": "Не удалось загрузить issues",
+      "failedToCreate": "Не удалось создать issue",
+      "failedToUpdate": "Не удалось обновить issue",
+      "failedToComment": "Не удалось добавить комментарий",
+      "filterAll": "Все",
+      "filterOpen": "Открытые",
+      "filterClosed": "Закрытые",
+      "noGitHubRepo": "Подключите репозиторий GitHub, чтобы управлять issues",
+      "commentPlaceholder": "Оставьте комментарий…",
+      "submitComment": "Комментировать",
+      "newIssueTitlePlaceholder": "Заголовок issue",
+      "newIssueBodyPlaceholder": "Опишите issue (необязательно)…",
+      "authRequired": {
+        "title": "Подключить GitHub",
+        "description": "Перейдите в Настройки → Подключения, чтобы подключить учётную запись GitHub."
+      },
+      "reAuthRequired": "Требуется авторизация GitHub",
+      "reAuthDescription": "Срок действия вашего token GitHub истёк. Перейдите в Настройки → Подключения, чтобы переподключиться.",
+      "goToSettings": "Перейти в настройки",
+      "loadingTimeline": "Загрузка активности…",
+      "label": "Issue",
+      "linkedLoading": "Загрузка связанных элементов",
+      "detailNavigation": "Навигация по issue"
     }
   },
   "selectors": {
     "shared": {
-      "repo": "репо",
-      "workspace": "Рабочая область",
-      "folder": "папка",
-      "source": "источник",
-      "branch": "ветка",
-      "name": "имя"
+      "workspace": "Рабочая область"
     },
     "labels": {
       "recent": "Недавние"
@@ -1590,60 +1536,66 @@
       "chooseKey": "Выберите ключ",
       "noCompatibleAccounts": "Нет совместимых ключей",
       "chooseModelHint": "Используйте клавиатуру для навигации или щелкните модель мышью",
-      "selectAccount": "Выберите аккаунт",
       "chooseKeyHint": "Используйте клавиатуру для навигации или щелкните ключ мышью",
-      "noModelsForKey": "Для этого ключа нет включённых моделей"
+      "noModelsForKey": "Для этого ключа нет включённых моделей",
+      "selectAccount": "Выберите аккаунт"
     },
     "modelProperties": {
       "effort": "Усилие",
-      "default": "По умолчанию"
+      "default": "По умолчанию",
+      "settings": "Настройки модели",
+      "model": "Модель",
+      "speed": "Скорость",
+      "standard": "Стандартная",
+      "fast": "Быстрая",
+      "thinking": "Размышление",
+      "on": "Вкл.",
+      "off": "Выкл."
     },
     "repo": {
-      "workspaceFolders": "Папки Workspace",
       "addEntry": "Больше вариантов импорта",
       "sections": {
-        "coding": "Workspace",
         "pinned": "Закреплено",
         "current": "Текущий",
         "repo": "Репозитории",
         "systemPaths": "Системные пути",
-        "usedElsewhere": "Используется в других местах",
-        "workspace": "Workspace",
+        "usedElsewhere": "Используется в других приложениях",
+        "workspace": "Рабочий каталог",
         "thisOrg": "Эта организация",
-        "outsideOrg": "Вне этой организации"
+        "outsideOrg": "Вне этой организации",
+        "outsideNamedOrg": "Вне {{org}}",
+        "recent": "Недавние"
       },
       "tabs": {},
       "addOptions": {
         "cloneFromGitHubUrl": "Клонировать по URL GitHub",
         "cloneFromMyGitHub": "Клонировать из моего GitHub",
-        "createWorkspace": "Создать новый workspace"
+        "createWorkspace": "Создать новый рабочий каталог"
       },
       "sources": {
         "cloningFromGitHub": "клонирование из GitHub",
         "cloningFromGitHubUrl": "клонирование по URL GitHub",
         "cloningFromMyGitHub": "клонирование из моего GitHub",
-        "creatingWorkspace": "создание нового workspace",
-        "creatingMultiRepoWorkspace": "сборка multi-repo workspace"
+        "creatingWorkspace": "создание нового рабочего каталога",
+        "creatingMultiRepoWorkspace": "сборка рабочего каталога с несколькими репозиториями"
       },
       "forms": {
-        "repoName": "Имя репозитория",
         "localPath": "Локальный путь",
         "chooseDestinationPath": "Выберите путь назначения",
         "choose": "Выбрать",
         "createAt": "Создать в {{path}}",
-        "createWorkspaceTitle": "Новый workspace",
-        "creatingWorkspace": "Создание workspace...",
-        "readyToCreateWorkspace": "Готово к созданию workspace",
-        "workspaceName": "Название workspace",
-        "workspaceNamePlaceholder": "Мой workspace"
+        "createWorkspaceTitle": "Новый рабочий каталог",
+        "creatingWorkspace": "Создание рабочего каталога...",
+        "readyToCreateWorkspace": "Готово к созданию рабочего каталога",
+        "workspaceName": "Название каталога",
+        "workspaceNamePlaceholder": "Мой каталог"
       },
       "path": {
         "switchTo": "Переключиться на",
         "switchToTemplate": "Переключиться на {workspace}",
-        "search": "Поиск",
-        "manageWorkspace": "Управление рабочим пространством",
-        "addBy": "Добавить workspace через",
-        "addByTemplate": "Добавить workspace через {source}"
+        "manageWorkspace": "Управление рабочим каталогом",
+        "addBy": "Добавить рабочий каталог через",
+        "addByTemplate": "Добавить рабочий каталог через {source}"
       },
       "pathImport": {
         "addLabel": "Добавить",
@@ -1652,20 +1604,14 @@
       },
       "gitInitPrompt": {
         "title": "Инициализировать Git?",
-        "message": "В этом workspace нет папки .git. Инициализировать его как Git-репозиторий?",
+        "message": "В этом рабочем каталоге нет папки .git. Инициализировать его как Git-репозиторий?",
         "ok": "Инициализировать Git",
         "cancel": "Оставить как папку"
       }
     },
     "folder": {
-      "path": {
-        "switchTo": "Переключить на"
-      },
       "addOptions": {},
-      "sources": {},
-      "forms": {
-        "choose": "Выбрать"
-      }
+      "sources": {}
     },
     "branch": {
       "path": {
@@ -1712,12 +1658,11 @@
         "noGithubRemote": "Удалённый репозиторий GitHub не настроен",
         "prSearchScope": "Поиск среди {{count}} загруженных Pull requests",
         "prLimit": "Показано до {{count}} открытых PR",
-        "noPullRequests": "Нет подходящих Pull requests"
+        "noPullRequests": "Нет подходящих Pull requests",
+        "mainWorktree": "Основной"
       },
       "placeholders": {
-        "checkout": "ветка",
         "add": "имя новой ветки...",
-        "remove": "ветка",
         "pullRequests": "Поиск Pull requests..."
       },
       "tabs": {
@@ -1727,14 +1672,12 @@
     },
     "sessionInfo": {
       "sourcePlaceholder": "Выберите источник",
-      "start": "Начать",
       "sourceAria": "Выбрать источник рабочей области",
-      "on": "на",
       "branchAria": "Выбрать ветку",
-      "switchWorkspace": "Сменить Workspace",
+      "switchWorkspace": "Сменить рабочий каталог",
       "switchBranch": "Сменить Branch",
       "switchLocation": "Изменить место выполнения",
-      "sessionWorkspace": "Сменить Workspace сессии",
+      "sessionWorkspace": "Сменить рабочий каталог сессии",
       "locationAria": "Выбрать место выполнения",
       "systemPaths": {
         "home": {
@@ -1745,23 +1688,24 @@
           "label": "Документы",
           "description": "Папка Документы"
         }
-      }
+      },
+      "selectWorktreeSource": "Выберите ветку worktree или pull request"
     },
     "spotlightFooter": {
       "navigate": "Навигация",
       "select": "Выбрать",
       "switchColumn": "Сменить колонку",
       "switchSection": "Сменить раздел",
+      "showPath": "Показывать путь",
+      "keyFirst": "Сначала ключ",
+      "showBranchInfo": "Показывать информацию о ветках",
       "compatibleKeys": "Совместимые",
       "planSupport": "Plan",
       "byokSupport": "Keys",
       "incompatible": "Несовместимые",
       "manageModels": "Управление моделями",
       "manageKeys": "Управление ключами",
-      "manageAgents": "Управление Agents",
-      "showPath": "Показывать путь",
-      "keyFirst": "Сначала ключ",
-      "showBranchInfo": "Показывать информацию о ветках"
+      "manageAgents": "Управление Agents"
     },
     "editorSpotlight": {
       "searchPlaceholder": "Поиск команд...",
@@ -1813,7 +1757,7 @@
     "spotlight": {
       "placeholder": "Поиск или введите команду…",
       "placeholders": {
-        "workspace": "Найти или ввести путь к папке",
+        "workspace": "Найти или ввести путь к папке...",
         "branch": "Поиск ветки...",
         "source": "Поиск источника...",
         "actions": "Поиск действий...",
@@ -1821,7 +1765,8 @@
       },
       "groups": {
         "agentSession": "Сессия Agent",
-        "workspace": "Workspace",
+        "workspace": "Рабочие каталоги",
+        "organization": "Организация / Рабочее пространство",
         "quickNavigation": "Быстрая навигация",
         "editor": "Редактор",
         "view": "Вид",
@@ -1841,9 +1786,6 @@
           "label": "Показать репозиторий в Finder",
           "pillLabel": "Найти"
         },
-        "createSession": {
-          "label": "Создать новую сессию"
-        },
         "searchAgentSessions": {
           "label": "Искать Agent-сессии",
           "pillLabel": "Искать сессии",
@@ -1855,16 +1797,17 @@
           "placeholder": "Search across all sessions..."
         },
         "switchWorkspace": {
-          "label": "Переключить Workspace"
+          "label": "Сменить рабочий каталог"
         },
         "switchBranch": {
+          "repoLabel": "Переключить ветку {{repoName}}",
           "label": "Переключить ветку"
         },
         "addWorkspace": {
-          "label": "Добавить Workspace"
+          "label": "Добавить рабочий каталог"
         },
         "createMultiRepoWorkspace": {
-          "label": "Добавить Multi-repo Workspace"
+          "label": "Добавить рабочий каталог с несколькими репозиториями"
         },
         "showSourceControl": {
           "label": "Показать Source Control"
@@ -1918,10 +1861,10 @@
           "label": "Создать Work Item"
         },
         "createOrganization": {
-          "label": "Создать организацию"
+          "label": "Создать рабочее пространство"
         },
         "joinOrganization": {
-          "label": "Присоединиться к организации"
+          "label": "Присоединиться к рабочего пространства"
         }
       },
       "toast": {
@@ -1936,13 +1879,12 @@
   },
   "ellipsisMenu": {},
   "layoutSettings": {
-    "chatPanelLocation": "Расположение панели чата",
+    "chatPanelLocation": "Панель чата",
     "chatLeft": "Чат слева",
     "chatRight": "Чат справа",
-    "full": "Полный",
-    "theme": "Тема",
-    "sidebarPosition": "Положение панели",
+    "sidebarPosition": "Боковая панель Workstation",
     "modelPickerStyle": "Селектор",
+    "paginateChatHistory": "Разбивать историю чата на страницы",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "Меню",
     "left": "Слева",
@@ -1967,13 +1909,9 @@
     "ramHydratedEvents": "Hydrated события",
     "ramTurnBodies": "Lazy-загрузки истории",
     "ramFileTrees": "Деревья файлов",
-    "ramCodeMirrors": "File rendering",
-    "paginateChatHistory": "Разбивать историю чата на страницы"
+    "ramCodeMirrors": "File rendering"
   },
   "spotlightActions": {
-    "switchToLightTheme": "Переключиться на светлую тему",
-    "switchToDarkTheme": "Переключиться на тёмную тему",
-    "switchToHighContrastTheme": "Переключиться на тему высокого контраста",
     "enableChatPagination": "Включить пагинацию чата",
     "disableChatPagination": "Отключить пагинацию чата",
     "useModelPickerSpotlight": "Использовать выбор модели через Spotlight",
@@ -1984,13 +1922,12 @@
     "openAgentStation": "Перейти в Agent Station",
     "openKanban": "Перейти в Kanban",
     "changeLanguage": "Изменить язык",
-    "switchToSystemTheme": "Следовать системной теме",
-    "detectUpdate": "Проверить обновления",
-    "recentlyUsed": "Недавно использованные",
     "changeTheme": "Изменить тему",
     "changeSkin": "Изменить оформление",
     "searchThemes": "Поиск тем...",
-    "searchSkins": "Поиск вариантов оформления..."
+    "searchSkins": "Поиск вариантов оформления...",
+    "detectUpdate": "Проверить обновления",
+    "recentlyUsed": "Недавно использованные"
   },
   "commands": {
     "showBottomPanel": "Показать нижнюю панель",
@@ -1998,110 +1935,28 @@
     "showPrimarySidebar": "Показать боковую панель",
     "hidePrimarySidebar": "Скрыть боковую панель",
     "searchFiles": "Поиск файлов",
-    "openBrowser": "Открыть браузер",
-    "switchWorkspace": "Переключить / добавить Workspace",
-    "openEditor": "Открыть редактор",
-    "hideTerminal": "Скрыть терминал",
-    "hideFiles": "Скрыть файлы",
-    "maximizeChat": "Фокус на панели чата",
-    "toggleSidebar": "Переключить боковую панель",
-    "openDevTools": "Открыть DevTools",
-    "showDevTools": "Показать DevTools",
-    "hideDevTools": "Скрыть DevTools",
-    "connections": "Подключения",
-    "newTab": "Новая вкладка",
-    "newPrivateTab": "Новая приватная вкладка",
-    "openDashboard": "Открыть Dashboard",
-    "runQuery": "Выполнить запрос",
-    "newProject": "Новый Project"
-  },
-  "lsp": {
-    "installPrompt": "Language Server для \"{{language}}\" не установлен. Хотите установить?",
-    "installing": "Установка Language Server..."
+    "switchWorkspace": "Сменить / добавить рабочий каталог",
+    "newTab": "Новая вкладка"
   },
   "gitDashboard": {
-    "title": "Git панель",
     "author": "Автор",
-    "commits": "Коммиты",
-    "additions": "Добавления",
-    "deletions": "Удаления",
-    "filesChanged": "Изменённые файлы",
-    "files": "файлов",
-    "other": "Другие",
-    "showMore": "Показать ещё",
-    "showLess": "Скрыть"
+    "commits": "Коммиты"
   },
   "aiImpact": {
-    "title": "AI Impact",
-    "noData": "Нет данных о влиянии AI-сессий",
-    "sessions": "Сессии",
-    "files": "Файлы",
-    "functions": "Функции",
-    "commits": "Commit",
-    "lines": "Строки",
-    "sessionBreakdown": "Детали сессий",
-    "human": "Human",
-    "completed": "Завершено",
-    "incomplete": "Не завершено"
+    "lines": "Строки"
   },
   "sessions": {
-    "title": "Сессии",
-    "myUsage": "Моё использование",
-    "teamUsage": "Использование команды"
-  },
-  "otherUsage": {
-    "title": "Другое использование",
-    "sessions": "Сессии",
-    "completed": "Завершено",
-    "incomplete": "Не завершено",
-    "tabs": {
-      "overview": "Обзор",
-      "cursor": "Cursor",
-      "cli": "CLI"
-    }
-  },
-  "devActivity": {
-    "title": "Профиль Разработчика",
-    "sessions": "Сессии",
-    "source": "Источник",
-    "commits": "Commits",
-    "active": "Активно"
-  },
-  "devRecord": {
-    "loading": "Загрузка…",
-    "custom": "Настраиваемый",
-    "startDate": "Дата начала",
-    "endDate": "Дата окончания",
-    "statCards": {
-      "commits": "Коммиты",
-      "filesChanged": "Изменённые файлы",
-      "sessions": "Сессии",
-      "projects": "Тепловая карта"
-    },
-    "team": {
-      "title": "Активность Команды",
-      "member": "Участник",
-      "email": "Email",
-      "model": "Модель",
-      "sessions": "Сессии",
-      "tokens": "Token",
-      "days": "дней"
-    }
-  },
-  "actionSummary": {
-    "read": "Прочитано"
+    "title": "Сессии"
   },
   "sourceControl": {
     "notGitInitialized": "Git не инициализирован",
-    "notGitInitializedSubtitle": "Инициализируйте Git, чтобы отслеживать изменения, создавать коммиты и использовать инструменты веток в этом Workspace.",
+    "notGitInitializedSubtitle": "Инициализируйте Git, чтобы отслеживать изменения, создавать коммиты и использовать инструменты веток в этом рабочем каталоге.",
     "initializeGit": "Инициализировать Git",
     "initializingGit": "Инициализация Git...",
-    "noRemoteForPublish": "Этот Workspace теперь является Git-репозиторием, но у него еще нет remote. Добавьте remote, например origin, перед публикацией этой ветки.",
-    "generateCommitMessage": "Сгенерировать сообщение коммита с помощью ИИ",
+    "noRemoteForPublish": "Этот рабочий каталог теперь является Git-репозиторием, но у него еще нет remote. Добавьте remote, например origin, перед публикацией этой ветки.",
     "pull": "Pull",
     "push": "Push",
     "fetch": "Fetch",
-    "sync": "Sync",
     "worktreeActions": "Действия Worktree",
     "removeWorktree": "Удалить Worktree",
     "removeWorktreeTitle": "Удалить Worktree {{name}}?",
@@ -2117,26 +1972,21 @@
     "pill": {
       "focus": "Фокус",
       "allChanges": "Все изменения"
+    },
+    "scope": {
+      "main": "Основной checkout",
+      "worktrees": "Worktree",
+      "searchPlaceholder": "Фильтр worktree…",
+      "switchScopeActive": "Сменить область Source Control: {{repo}}, {{branch}}"
     }
   },
   "contextInfo": {
     "contextUsed": "контекст использован",
     "title": "Context",
-    "full": "Заполнено",
     "ariaLabel": "Использование контекста",
-    "categories": {
-      "rules": "Rules",
-      "conversation": "Переписка",
-      "tools": "Инструменты",
-      "skills": "Навыки",
-      "mcp": "MCP",
-      "subagents": "Subagents"
-    },
     "autoCompactNote": "Контекст скоро будет резюмирован",
     "compactBoundaryTitle": "Контекст сжат",
     "compactBoundarySubtitle_one": "{{count}} предыдущее сообщение обобщено",
-    "compactBoundarySubtitle_few": "{{count}} предыдущих сообщения обобщены",
-    "compactBoundarySubtitle_many": "{{count}} предыдущих сообщений обобщено",
     "compactBoundarySubtitle_other": "{{count}} предыдущих сообщений обобщено",
     "compactBoundaryTokens": "{{before}} → {{after}} токенов",
     "manualCompactAction": "Сжать",
@@ -2149,14 +1999,24 @@
     "manualCompactNoRuntime": "Отправьте сообщение перед сжатием",
     "manualCompactFailed": "Сжатие не удалось: {{message}}",
     "manualCompactChannelAttached": "Эта сессия управляется каналом — используйте /compact там",
-    "manualCompactInstructionsPlaceholder": "Необязательно: на чём сфокусировать резюме"
+    "manualCompactInstructionsPlaceholder": "Необязательно: на чём сфокусировать резюме",
+    "categories": {
+      "unattributed": "Без категории"
+    },
+    "cacheSaved": "Сэкономлено кэшем: {{read}} чтение, {{write}} запись",
+    "cacheHero": "{{pct}}% из кэша · ~{{tokens}} повторно использовано за этот ход",
+    "cacheHeroSub": "Кэширование промптов может снизить стоимость до 90%",
+    "manualCompactSectionTitle": "Ручное сжатие",
+    "miniCpmCompactTitle": "Тихое автосжатие MiniCPM",
+    "miniCpmCompactDescription": "Асинхронно обрабатывает более старый контекст",
+    "miniCpmCompactToggleAria": "Включить тихое автосжатие MiniCPM",
+    "manualCompactNativeProvider": "Ручное сжатие здесь поддерживается только для встроенных сессий Agent. Историю нативного CLI сжимайте в приложении его провайдера."
   },
   "relativeDate": {
+    "justNow": "только что",
     "today": "Сегодня",
     "yesterday": "Вчера",
-    "tomorrow": "Завтра",
-    "last7Days": "Последние 7 дней",
-    "last30Days": "Последние 30 дней"
+    "tomorrow": "Завтра"
   },
   "cloneForm": {
     "titleCloneFromGitHub": "Клонировать из GitHub",
@@ -2187,54 +2047,32 @@
     "parentFolderPlaceholder": "Выбрать Parent folder"
   },
   "workspaceForm": {
-    "title": "Создать мульти-Repo Workspace",
-    "editTitle": "Редактировать Workspace",
-    "createWorkspace": "Создать мульти-Repo Workspace",
-    "multiRepoWorkspace": "Мульти-Repo Workspace",
-    "createWorkspaceDesc": "Составить Workspace из нескольких репо",
+    "title": "Создать рабочий каталог с несколькими репозиториями",
+    "editTitle": "Редактировать рабочий каталог",
+    "createWorkspace": "Создать рабочий каталог с несколькими репозиториями",
+    "multiRepoWorkspace": "Рабочий каталог с несколькими репозиториями",
+    "createWorkspaceDesc": "Составить рабочий каталог из нескольких репозиториев",
     "filterPlaceholder": "Фильтр репо...",
-    "selectRepos": "Выберите репо для Workspace",
+    "selectRepos": "Выберите репозитории для рабочего каталога",
     "noReposFound": "Репо не найдены",
     "noRepos": "Нет доступных репо",
     "current": "текущий",
-    "workspaceName": "Название Workspace",
-    "workspaceNamePlaceholder": "Мой Workspace",
-    "willInclude": "Workspace будет включать {{count}} репо",
+    "workspaceName": "Название рабочего каталога",
+    "workspaceNamePlaceholder": "Мой рабочий каталог",
+    "willInclude": "Рабочий каталог будет включать {{count}} репозиториев",
     "statusSelectAtLeastTwo": "Выберите минимум 2 репо",
-    "statusReadyToCreate": "Готово к созданию Workspace",
-    "defaultName": "Workspace",
-    "defaultNameWithRepo": "Workspace {{repo}}",
-    "windowTitle": "Workspace"
+    "statusReadyToCreate": "Готово к созданию рабочего каталога",
+    "defaultName": "Рабочий каталог",
+    "defaultNameWithRepo": "Рабочий каталог {{repo}}",
+    "windowTitle": "Рабочий каталог",
+    "statusMaxRepos": "Выбрано максимум 5 репо"
   },
   "database": {
-    "addConnection": "Add Database Connection",
-    "databaseType": "Database Type",
-    "connectionName": "Connection Name",
     "databaseFile": "Database File",
     "projectUrl": "Project URL",
     "accessToken": "Access Token",
     "databaseUrl": "Database URL",
     "authToken": "Auth Token",
-    "testingConnection": "Testing connection...",
-    "addingConnection": "Adding connection...",
-    "connectionSuccessful": "Connection successful!",
-    "testConnection": "Test Connection",
-    "addConnectionAction": "Добавить",
-    "testing": "Testing...",
-    "adding": "Adding...",
-    "notValidSqlite": "Not a valid SQLite database file",
-    "connectionFailed": "Connection failed",
-    "failedToAddConnection": "Failed to add connection",
-    "supabaseHint": "Found in Supabase Dashboard → Project Settings → API",
-    "supabaseTokenHint": "Personal Access Token (PAT). Generate at",
-    "tursoTokenHint": "Generate at Turso CLI: turso db tokens create",
-    "neonHint": "Строка подключения из Neon Console → Детали подключения",
-    "sqliteDescription": "Local .sqlite file",
-    "supabaseDescription": "PostgreSQL in the cloud",
-    "tursoDescription": "SQLite at the edge",
-    "neonDescription": "Serverless PostgreSQL",
-    "postgresDescription": "Прямое подключение PostgreSQL",
-    "mysqlDescription": "MySQL / MariaDB",
     "connectionString": "Строка подключения",
     "host": "Хост",
     "port": "Порт",
@@ -2242,10 +2080,6 @@
     "user": "Пользователь",
     "password": "Пароль",
     "ssl": "Требовать SSL",
-    "requireSsl": "Требовать SSL-соединение",
-    "newConnection": "New {{type}} connection",
-    "changePending": "change",
-    "changesPending": "changes",
     "spotlight": {
       "scanFolder": "Сканировать папку",
       "scanFolderDesc": "Найти все файлы .sqlite, .db в папке",
@@ -2265,25 +2099,13 @@
   "dragDrop": {
     "couldNotExtractPathFromItem": "Could not extract file path from dropped item"
   },
-  "contextList": {
-    "task": "Task",
-    "repo": "Repo",
-    "ref": "Ref",
-    "key": "Key",
-    "image": "Image",
-    "group": "Group",
-    "unknown": "Unknown"
-  },
   "showMore": "Показать ещё",
   "showLess": "Свернуть",
   "schedule": {
     "recurring": "Повторяющийся",
     "oneShot": "Одноразовый",
     "noSchedule": "Без расписания",
-    "active": "Активно",
-    "inactive": "Неактивно",
     "scheduleType": "Тип расписания",
-    "dateAndTime": "Дата и время",
     "frequency": "Частота",
     "time": "Время",
     "dayOfWeek": "День недели",
@@ -2292,7 +2114,6 @@
     "hideCustomCron": "Скрыть пользовательский cron",
     "cronHelp": "напр. 0 9 * * 1 = каждый понедельник в 9:00",
     "lastRun": "Последний запуск",
-    "enableSchedule": "Включить расписание",
     "freq": {
       "daily": "Каждый день",
       "weekday": "Будни (пн-пт)",
@@ -2307,16 +2128,9 @@
       "thu": "Четверг",
       "fri": "Пятница",
       "sat": "Суббота"
-    },
-    "humanReadable": {
-      "daily": "Каждый день в {{time}}",
-      "weekday": "Будни в {{time}}",
-      "weekly": "Каждый {{day}} в {{time}}",
-      "monthly": "Ежемесячно {{day}} числа в {{time}}"
     }
   },
   "selectionMenu": {
-    "title": "Добавить в чат",
     "addToChat": "Добавить в чат",
     "addThisFile": "Добавить этот файл",
     "addLines": "Добавить строки {{from}} – {{to}}"
@@ -2334,43 +2148,14 @@
     "openedInBrowser": "Открыто в браузере",
     "goToBrowser": "Перейти к браузеру"
   },
-  "ideaArea": {
-    "menu": {
-      "shared": "Поделились"
-    },
-    "trending": {
-      "title": "Трендовые идеи"
-    },
-    "shared": {
-      "title": "Поделившиеся идеи",
-      "searchPlaceholder": "Поиск идей..."
-    },
-    "myIdeas": {
-      "title": "Мои идеи",
-      "empty": "Вы ещё не поделились идеями"
-    }
-  },
   "controlTower": {
     "sidebar": {
-      "terminal": "Terminal",
-      "browser": "Браузер",
-      "settings": "Настройки",
       "newTab": "Новая вкладка",
       "newPrivateTab": "Новая приватная вкладка",
       "newTerminal": "Новый терминал",
       "untitled": "Без названия"
     },
     "statusBar": {}
-  },
-  "notifications": {
-    "backgroundSession": "Фоновая сессия",
-    "taskCompletedTitle": "Задача завершена",
-    "taskCompletedBody": "«{{name}}» завершена — можно проверить",
-    "taskCompletedToast": "«{{name}}» завершена. Откройте сессию, чтобы проверить результат.",
-    "openSessionAction": "Открыть сессию",
-    "taskFailedTitle": "Ошибка задачи",
-    "taskFailedBody": "«{{name}}» завершилась с ошибкой{{detail}}",
-    "taskCancelledToast": "«{{name}}» отменена"
   },
   "globalToolbar": {},
   "quitConfirmation": {
@@ -2379,18 +2164,6 @@
     "cancel": "Отмена",
     "confirm": "Выйти"
   },
-  "projects": {
-    "title": "Тепловая карта",
-    "workspace": "Рабочая область",
-    "duration": "Длительность",
-    "codingTime": "Время разработки",
-    "noData": "Нет данных по проектам",
-    "topLanguage": "Основной язык",
-    "editCount": "Правки"
-  },
-  "dashboard": {
-    "other": "Другое"
-  },
   "imagePreview": {
     "dialogLabel": "Предпросмотр изображения",
     "copyImage": "Копировать изображение",
@@ -2398,14 +2171,6 @@
     "closePreview": "Закрыть предпросмотр",
     "copiedToClipboard": "Изображение скопировано в буфер обмена",
     "previewAlt": "Предпросмотр"
-  },
-  "update": {
-    "downloading": "Загрузка обновления",
-    "installing": "Установка обновления",
-    "progressPercent": "{{percent}} %",
-    "downloadedOfTotal": "{{downloaded}} из {{total}}",
-    "preparingDownload": "Подготовка загрузки…",
-    "downloadingAndInstalling": "Загрузка и установка обновления (v{{version}})…"
   },
   "workManagementTable": {
     "columns": {
@@ -2421,5 +2186,97 @@
     "officialApp": "Приложение",
     "cli": "CLI",
     "thirdParty": "Сторонний"
+  },
+  "browserCookieImport": {
+    "safari": {
+      "needsFullDiskAccess": "Needs Full Disk Access",
+      "explain": "Safari keeps its cookies in a folder macOS protects. Allow ORG2 under Full Disk Access in System Settings, then check again.",
+      "openSettings": "Open System Settings",
+      "checkAgain": "Check again"
+    },
+    "title": "Import cookies from your browser",
+    "action": "Import cookies from browser",
+    "scanning": "Looking for installed browsers…",
+    "reading": "Reading cookies from {{browser}}…",
+    "keychainHint": "Your system may ask for permission to read the browser's saved data",
+    "selectAll": "Select all",
+    "selectedSummary": "{{sites}} sites · {{cookies}} cookies",
+    "cookieCount_one": "{{count}} cookie",
+    "cookieCount_other": "{{count}} cookies",
+    "noSites": "No cookies were found in this profile",
+    "noMatchingSites": "No matching sites",
+    "importAction_one": "Import {{count}} site",
+    "importAction_other": "Import {{count}} sites",
+    "imported_one": "Imported {{count}} cookie",
+    "imported_other": "Imported {{count}} cookies",
+    "doneTitle_one": "Imported {{count}} cookie",
+    "doneTitle_other": "Imported {{count}} cookies",
+    "doneSkipped_one": "{{count}} cookie was skipped",
+    "doneSkipped_other": "{{count}} cookies were skipped",
+    "empty": {
+      "title": "No supported browsers found",
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+    },
+    "category": {
+      "banking": "Bank",
+      "email": "Mail",
+      "sso": "Sign-in"
+    },
+    "errors": {
+      "openSettingsFailed": "Couldn't open System Settings",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "listFailed": "Couldn't find browsers to import from",
+      "previewFailed": "Couldn't read cookies from that browser",
+      "importFailed": "Couldn't import the selected cookies"
+    }
+  },
+  "notifications": {
+    "taskCancelledToast": "«{{name}}» отменена",
+    "taskCompletedToast": "«{{name}}» завершена. Откройте сеанс, чтобы просмотреть результат.",
+    "backgroundSession": "Фоновая сессия",
+    "taskCompletedTitle": "Задача завершена",
+    "taskCompletedBody": "«{{name}}» завершена — готово к проверке",
+    "openSessionAction": "Открыть сессию",
+    "taskFailedTitle": "Задача не выполнена",
+    "taskFailedBody": "«{{name}}» не выполнена{{detail}}"
+  },
+  "documentOpen": {
+    "openInDefault": "Открыть в {{name}}",
+    "openDefaultApp": "Открыть в приложении по умолчанию",
+    "openExternally": "Открыть во внешнем приложении",
+    "label": "Открыть в…",
+    "defaultApp": "Приложение по умолчанию",
+    "appDefault": "{{name}} (по умолчанию)",
+    "loading": "Загрузка приложений…",
+    "loadFailed": "Приложения недоступны — откройте снова, чтобы повторить",
+    "openFailed": "Не удалось открыть документ",
+    "saveFirst": "Сохраните или отмените изменения, прежде чем открывать в другом приложении"
+  },
+  "sqlEditor": {
+    "placeholder": "Введите SQL-запрос...",
+    "format": "Форматировать",
+    "runQueryToSeeResults": "Выполните запрос, чтобы увидеть результаты",
+    "executingQuery": "Выполнение запроса...",
+    "queryFailed": "Запрос не выполнен",
+    "queryCompleted": "Запрос выполнен",
+    "noResults": "Запрос не вернул результатов",
+    "rowCount_one": "{{count}} строка",
+    "rowCount_other": "{{count}} строк",
+    "press": "Нажмите",
+    "toRun": "для запуска",
+    "nullValue": "NULL",
+    "booleanTrue": "true",
+    "booleanFalse": "false"
+  },
+  "chatImage": {
+    "maxReached": "Максимум {{max}} изображений",
+    "remainingWarning": "Можно добавить ещё только {{remaining}} изображений (максимум {{max}})",
+    "processFailed": "Не удалось обработать изображение",
+    "loadFailed": "Не удалось загрузить изображение: {{fileName}}"
+  },
+  "navigation": {
+    "goToSection": "Перейти к {{label}}, раздел {{current}} из {{total}}",
+    "section": "Раздел {{current}}",
+    "sectionPosition": "Раздел {{current}} из {{total}}"
   }
 }

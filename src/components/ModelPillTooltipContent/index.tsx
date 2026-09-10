@@ -18,7 +18,8 @@ interface ModelPillTooltipContentProps {
   variantInfo?: string;
   thinking?: boolean;
   rawValue?: string;
-  shortcut: string;
+  shortcut?: string;
+  shortcutId?: string;
 }
 
 export const ModelPillTooltipContent: React.FC<ModelPillTooltipContentProps> =
@@ -32,21 +33,27 @@ export const ModelPillTooltipContent: React.FC<ModelPillTooltipContentProps> =
       thinking,
       rawValue,
       shortcut,
+      shortcutId,
     }) => (
       <KeyboardShortcutTooltipContent
         label={
-          <ModelSelectionBreadcrumb
-            accountName={accountName}
-            modelLabel={modelLabel}
-            modelId={modelId}
-            modelType={modelType}
-            variantInfo={variantInfo}
-            thinking={thinking}
-            rawValue={rawValue}
-            wide
-          />
+          modelId ? (
+            <ModelSelectionBreadcrumb
+              accountName={accountName}
+              modelLabel={modelLabel}
+              modelId={modelId}
+              modelType={modelType}
+              variantInfo={variantInfo}
+              thinking={thinking}
+              rawValue={rawValue}
+              wide
+            />
+          ) : (
+            modelLabel
+          )
         }
         shortcut={shortcut}
+        shortcutId={shortcutId}
       />
     )
   );

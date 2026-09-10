@@ -177,7 +177,7 @@ fn is_completed_task_result(content: &str) -> bool {
 pub(crate) struct OpenCodeAdapter;
 
 impl AcpAgentAdapter for OpenCodeAdapter {
-    fn map_tool_kind(&self, kind: &str, raw_input: &Value) -> String {
+    fn map_tool_kind(&self, kind: &str, _title: &str, raw_input: &Value) -> String {
         let name = raw_input
             .get("name")
             .or(raw_input.get("tool"))
@@ -278,6 +278,7 @@ pub async fn run_acp_protocol(
     resume_session_id: Option<&str>,
     chunk_tx: mpsc::Sender<ActivityChunk>,
     image_paths: Vec<String>,
+    mcp_servers: Vec<serde_json::Value>,
 ) -> Result<AcpSessionResult, String> {
     acp_common::run_acp_protocol(
         OpenCodeAdapter,
@@ -289,6 +290,7 @@ pub async fn run_acp_protocol(
         resume_session_id,
         chunk_tx,
         image_paths,
+        mcp_servers,
     )
     .await
 }

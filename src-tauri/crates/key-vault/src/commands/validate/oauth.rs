@@ -47,8 +47,8 @@ fn oauth_static_catalog(
             crate::commands::crud::CLAUDE_CODE_OAUTH_DEFAULT_ENABLED_MODELS,
         )),
         "codex" => Some((
-            crate::commands::crud::CODEX_OAUTH_MODELS,
-            crate::commands::crud::CODEX_OAUTH_DEFAULT_ENABLED_MODELS,
+            crate::model_catalog::CODEX_OAUTH_MODELS,
+            crate::model_catalog::CODEX_OAUTH_DEFAULT_ENABLED_MODELS,
         )),
         _ => None,
     }

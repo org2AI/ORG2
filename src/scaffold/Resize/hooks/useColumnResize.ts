@@ -23,6 +23,8 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
+
 interface UseColumnResizeOptions {
   width: number;
   setWidth: (width: number) => void;
@@ -64,6 +66,7 @@ export function useColumnResize({
 
   const handleMouseDown = useCallback(
     (event: React.MouseEvent) => {
+      if (event.button !== 0) return;
       event.preventDefault();
 
       if (event.detail >= 2) return;
@@ -97,8 +100,10 @@ export function useColumnResize({
       };
 
       const handleMouseUp = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
+        dispose();
+        dragCleanupRef.current = null;
+        isResizingRef.current = false;
+        setIsResizing(false);
 
         if (hasDraggedRef.current) {
           if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -108,13 +113,13 @@ export function useColumnResize({
           if (columnRef.current) columnRef.current.style.width = "";
           setWidth(pendingWidthRef.current);
         }
-        isResizingRef.current = false;
-        setIsResizing(false);
       };
 
       dragCleanupRef.current = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
+        dispose();
+        dragCleanupRef.current = null;
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
         if (hasDraggedRef.current) {
           document.body.style.cursor = "";
           document.body.style.userSelect = "";
@@ -123,8 +128,11 @@ export function useColumnResize({
         setIsResizing(false);
       };
 
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
+      const dispose = listenForDrag({
+        onMove: handleMouseMove,
+        onEnd: handleMouseUp,
+        onCancel: handleMouseUp,
+      });
     },
     [width, setWidth, min, max, inverted]
   );

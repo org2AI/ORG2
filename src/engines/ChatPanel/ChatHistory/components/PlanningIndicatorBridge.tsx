@@ -1,6 +1,6 @@
-import { useAtomValue } from "jotai";
+import { type PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
 import type { ComponentProps, FC } from "react";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 import { useAgentStatusTrail } from "@src/engines/ChatPanel/hooks/useAgentStatusTrail";
 import { manualCompactInFlightSessionAtom } from "@src/engines/ChatPanel/hooks/useManualCompact";
@@ -12,7 +12,6 @@ import {
   type PlanningIndicatorState,
   usePlanningIndicator,
 } from "@src/engines/SessionCore/hooks/replay/usePlanningIndicator";
-import { useConversationRunnerScope } from "@src/features/Org2Cloud/SessionConversation/conversationRunnerScope";
 
 import ChatHistoryList from "./ChatHistoryList";
 
@@ -101,31 +100,20 @@ function PlanningIndicatorBridgeContent({
   );
 }
 
-function ScopedPlanningIndicatorBridge({
+function ScopedPlanningIndicatorSync({
   effectiveScope,
-  ...props
-}: PlanningIndicatorBridgeProps & {
+  outputAtom,
+}: {
   effectiveScope: PlanningIndicatorScope;
+  outputAtom: PrimitiveAtom<PlanningIndicatorState>;
 }) {
   const planningState = usePlanningIndicator(effectiveScope);
-  return (
-    <PlanningIndicatorBridgeContent
-      {...props}
-      effectiveScope={effectiveScope}
-      planningState={planningState}
-    />
-  );
-}
-
-function GlobalPlanningIndicatorBridge(props: PlanningIndicatorBridgeProps) {
-  const planningState = useAtomValue(globalPlanningIndicatorBridgeOutputAtom);
-  return (
-    <PlanningIndicatorBridgeContent
-      {...props}
-      effectiveScope={null}
-      planningState={planningState}
-    />
-  );
+  const publish = useSetAtom(outputAtom);
+  const { count, variantIndex } = planningState;
+  useLayoutEffect(() => {
+    publish({ count, variantIndex });
+  }, [count, variantIndex, publish]);
+  return null;
 }
 
 /**
@@ -139,26 +127,32 @@ const PlanningIndicatorBridge: FC<PlanningIndicatorBridgeProps> = ({
   planningIndicatorScope,
   ...props
 }) => {
-  const runnerScope = useConversationRunnerScope();
-  const effectiveScope = runnerScope
-    ? { sessionId: runnerScope, isLive: true }
-    : planningIndicatorScope;
+  const [scopedOutputAtom] = useState(() =>
+    atom<PlanningIndicatorState>({ count: 0, variantIndex: 0 })
+  );
+  const planningState = useAtomValue(
+    planningIndicatorScope
+      ? scopedOutputAtom
+      : globalPlanningIndicatorBridgeOutputAtom
+  );
 
-  if (effectiveScope) {
-    return (
-      <ScopedPlanningIndicatorBridge
-        {...props}
-        planningIndicatorScope={planningIndicatorScope}
-        effectiveScope={effectiveScope}
-      />
-    );
-  }
-
+  // Only the subscription owner changes. Wrapping the list in different
+  // scoped/global component types remounts its DOM and virtualizer at Stop,
+  // losing the user's scroll position even though the conversation is unchanged.
   return (
-    <GlobalPlanningIndicatorBridge
-      {...props}
-      planningIndicatorScope={planningIndicatorScope}
-    />
+    <>
+      {planningIndicatorScope && (
+        <ScopedPlanningIndicatorSync
+          effectiveScope={planningIndicatorScope}
+          outputAtom={scopedOutputAtom}
+        />
+      )}
+      <PlanningIndicatorBridgeContent
+        {...props}
+        effectiveScope={planningIndicatorScope}
+        planningState={planningState}
+      />
+    </>
   );
 };
 

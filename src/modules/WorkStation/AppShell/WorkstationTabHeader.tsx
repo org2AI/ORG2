@@ -45,7 +45,12 @@ const WorkstationTabHeader: React.FC = memo(() => {
     headerSlots?.shellLeadingChromeHidden ?? false;
   const isSourceControlTab =
     activeApp === "code" && activeTab?.type === "source-control";
-  const publishedHeaderPaddingLeftClassName = isSourceControlTab
+  const isBrowserTab = activeApp === "browser";
+  // The Browser URL toolbar owns its leading controls and divider (see
+  // WebUrlBar), so it starts flush with the shell edge rather than behind a
+  // redundant leading gutter.
+  const joinsSidebarGroup = isSourceControlTab || isBrowserTab;
+  const publishedHeaderPaddingLeftClassName = joinsSidebarGroup
     ? "pl-0"
     : "pl-2";
 
@@ -57,12 +62,14 @@ const WorkstationTabHeader: React.FC = memo(() => {
 
   return (
     <div
-      className={`flex h-9 shrink-0 items-center gap-2 pr-2 ${
-        shellLeadingChromeHidden ? "pl-0" : "pl-1.5"
-      } ${headerSlots?.joinWithFollowingRow ? "" : "border-b border-border-2"}`}
+      className={`flex h-9 shrink-0 items-center ${
+        isBrowserTab ? "gap-px" : "gap-2"
+      } pr-2 ${shellLeadingChromeHidden ? "pl-0" : "pl-1.5"} ${
+        headerSlots?.joinWithFollowingRow ? "" : "border-b border-border-2"
+      }`}
       data-tauri-drag-region={windowsHost ? undefined : true}
     >
-      {!shellLeadingChromeHidden && (
+      {!shellLeadingChromeHidden && !isBrowserTab && (
         <>
           <NoDragRegion className="flex shrink-0 items-center gap-px">
             <WorkStationSidebarToggleButton
@@ -72,7 +79,7 @@ const WorkstationTabHeader: React.FC = memo(() => {
             <CodeSidebarHeaderActions />
             <SourceControlHeaderActions />
           </NoDragRegion>
-          {!isSourceControlTab && <HeaderSectionSeparator />}
+          {!joinsSidebarGroup && <HeaderSectionSeparator />}
         </>
       )}
       <PublishedHeaderSlotsView

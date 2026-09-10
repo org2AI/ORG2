@@ -22,12 +22,12 @@ import {
   CHEVRON_SIZE,
   STICKY_ROW,
   stickyRowPadding,
-} from "@src/components/VirtualizedStickyTree";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
+} from "@src/components/VirtualizedStickyTree/tokens";
 import {
   COUNT_BADGE,
   getCountBadgeSizeClass,
-} from "@src/modules/WorkStation/shared/tokens";
+} from "@src/config/workstation/tokens";
+import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 
 import type { SourceControlNode } from "../utils/virtualizedTreeUtils";
 

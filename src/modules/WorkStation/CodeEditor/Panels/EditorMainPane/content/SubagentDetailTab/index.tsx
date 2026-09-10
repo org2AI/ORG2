@@ -10,23 +10,12 @@ import React, { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Markdown from "@src/components/MarkDown";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import { NestedActivityListForSession } from "@src/engines/ChatPanel/blocks/SubagentBlock/NestedActivityList";
+import { formatElapsedTime } from "@src/engines/ChatPanel/blocks/SubagentBlock/SubagentHelpers";
 import { ArrowRight01Icon, HugeiconsIcon, Tick01Icon } from "@src/icons";
 import type { SubagentDetailTabData } from "@src/store/workstation/tabs/types";
-
-// ============================================
-// Helpers
-// ============================================
-
-function formatElapsedTime(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  const seconds = Math.round(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
-}
 
 // ============================================
 // Main Component
@@ -163,9 +152,9 @@ const SubagentDetailTab: React.FC<SubagentDetailTabProps> = memo(({ data }) => {
               />
               <span>Error</span>
             </div>
-            <div className="rounded-lg border border-danger-5/30 bg-danger-5/5 px-4 py-3 text-[13px] leading-relaxed text-danger-5">
+            <PageNotice type="danger" role="alert">
               <span className="whitespace-pre-wrap">{errorMessage}</span>
-            </div>
+            </PageNotice>
           </div>
         )}
 

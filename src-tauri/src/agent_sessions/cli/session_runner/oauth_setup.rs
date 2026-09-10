@@ -40,6 +40,13 @@ pub(super) fn is_cli_oauth_failure_message(message: &str) -> bool {
 }
 
 pub(super) fn chunk_error_message(chunk: &ActivityChunk) -> Option<String> {
+    // Retry signals belong to provider failures. Successful replies and tool
+    // results may quote status codes or authentication errors as ordinary text.
+    let failed_session_end = chunk.action_type == "session_end"
+        && chunk.result.get("success").and_then(serde_json::Value::as_bool) == Some(false);
+    if chunk.action_type != "error" && !failed_session_end {
+        return None;
+    }
     let result = &chunk.result;
     result
         .get("error_message")

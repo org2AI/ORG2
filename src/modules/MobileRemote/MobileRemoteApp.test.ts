@@ -37,6 +37,7 @@ describe("MobileRemoteApp", () => {
       )
     );
     expect(markup).toContain("Mobile Remote");
-    expect(markup).toContain("Try demo");
+    expect(markup).not.toContain("Try demo");
+    expect(markup).toContain(enMobileRemote.welcome.scanQr);
   });
 });

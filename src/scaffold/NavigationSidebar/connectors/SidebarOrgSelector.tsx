@@ -11,6 +11,7 @@ import {
   Login01Icon,
   Settings02Icon,
 } from "@src/icons";
+import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "@src/scaffold/NavigationSidebar/config";
 
 export interface SidebarOrgSelectorProps {
   value: string;
@@ -49,6 +50,8 @@ const SidebarOrgSelector: React.FC<SidebarOrgSelectorProps> = React.memo(
   }) => {
     const { t } = useTranslation("navigation");
     const [menuOpen, setMenuOpen] = useState(false);
+    // A route change can mount this row beneath a stationary pointer.
+    const [pointerMoved, setPointerMoved] = useState(false);
 
     const handleChange = useCallback(
       (nextValue: string | number | (string | number)[]) => {
@@ -184,12 +187,13 @@ const SidebarOrgSelector: React.FC<SidebarOrgSelectorProps> = React.memo(
         className="w-full min-w-0 [&>span]:w-full"
         data-testid="sidebar-org-selector-scope"
         data-org-id={value}
+        onPointerMove={pointerMoved ? undefined : () => setPointerMoved(true)}
       >
         <ToolbarTooltip
           label={t("collaboration.switchOrg")}
           position="bottom"
-          mouseEnterDelay={1500}
-          disabled={menuOpen}
+          mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
+          disabled={menuOpen || !pointerMoved}
         >
           <div className="w-full min-w-0">
             <Select
@@ -210,10 +214,12 @@ const SidebarOrgSelector: React.FC<SidebarOrgSelectorProps> = React.memo(
               radius="lg"
               dropdownWidth={250}
               dropdownAlign="left"
-              className="h-8 w-full"
-              selectorClassName={`h-8 px-2! [&_.select-arrow]:text-text-2! [&_.select-suffix]:ml-2 [&_.select-value]:flex-initial! [&_.select-value]:gap-3 [&_.select-value]:text-[13px] [&_.select-value]:font-semibold ${
-                menuOpen ? "bg-sidebar-selected!" : "hover:bg-sidebar-selected!"
-              }`}
+              className="h-7 w-full"
+              selectorClassName={`h-7 px-2! [&_.select-arrow]:text-text-2! ${
+                menuOpen
+                  ? "[&_.select-arrow]:opacity-100 bg-sidebar-selected!"
+                  : "[&_.select-arrow]:opacity-0 group-hover/sidebar:[&_.select-arrow]:opacity-100 hover:[&_.select-arrow]:opacity-100"
+              } ${pointerMoved ? "hover:bg-sidebar-selected!" : ""} [&_.select-suffix]:ml-2 [&_.select-value]:flex-initial! [&_.select-value]:gap-3 [&_.select-value]:text-[13px] [&_.select-value]:font-semibold`}
               dataTestId="sidebar-org-selector"
             />
           </div>

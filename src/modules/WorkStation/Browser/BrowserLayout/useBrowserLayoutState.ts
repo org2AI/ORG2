@@ -11,7 +11,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import Message from "@src/components/Message";
 import { ROUTES } from "@src/config/routes";
@@ -20,7 +20,7 @@ import { useWorkStationTabShortcutBridge } from "@src/hooks/tabHost/useWorkStati
 import { useBrowserPaneState } from "@src/modules/WorkStation/Browser/hooks/useBrowserPaneState";
 import { useBrowserSessions } from "@src/modules/WorkStation/Browser/hooks/useBrowserSessions";
 import { addToAgentAtom } from "@src/store/ui/addToAgentAtom";
-import { workStationDevToolsCollapsedPersistAtom } from "@src/store/ui/workStationAtom";
+import { workStationDevToolsCollapsedPersistAtom } from "@src/store/ui/workStationLayout/devToolsCollapsedAtoms";
 import {
   browserTabsAtom,
   createBrowserSessionTabId,
@@ -40,7 +40,6 @@ export function useBrowserLayoutState({
 }: UseBrowserLayoutStateOptions) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const automation = useBrowserAutomation({ enabled: isActive });
 
@@ -82,8 +81,6 @@ export function useBrowserLayoutState({
     sessionCount: browser.sessionCount,
     currentSessionIndex: browser.currentSessionIndex,
     selectedElement: browser.selectedElement,
-    primarySidebarCollapsed: browser.primarySidebarCollapsed,
-    togglePrimarySidebar: browser.togglePrimarySidebar,
     handleToggleDevTools,
     handlePrevSession: browser.handlePrevSession,
     handleNextSession: browser.handleNextSession,
@@ -133,18 +130,9 @@ export function useBrowserLayoutState({
   // — Browser mode renders a single-item variant pinned to "New Browser
   // Tab". The bridge still wires ⌘W so the active tab can be closed.
   useWorkStationTabShortcutBridge({
-    enabled:
-      isActive && location.pathname.startsWith("/orgii/workstation/browser"),
+    enabled: isActive,
     onCloseActiveTab: handleWorkStationCloseActiveBrowserTab,
   });
-
-  const handleSelectSession = useCallback(
-    (sessionId: string) => {
-      browser.browserState.setActiveSession(sessionId);
-      browserPane.switchToTab(createBrowserSessionTabId(sessionId));
-    },
-    [browser.browserState, browserPane]
-  );
 
   // ============================================
   // Derived state
@@ -190,7 +178,6 @@ export function useBrowserLayoutState({
     isShowingBrowserSession,
     showBrowserViewport,
     hasBrowserSessions,
-    handleSelectSession,
     handleCloseSession,
     handleOpenEditor,
     handleToggleDevTools,

@@ -24,17 +24,18 @@ import { org2CloudRemoteSessionsAtom } from "@src/features/Org2Cloud/org2CloudRe
 import { useFilteredItems } from "@src/hooks/search";
 import type { LanguagePreference } from "@src/i18n";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
+import { reposAtom } from "@src/store/repo";
 import {
   type Session,
   sessionsAtom,
   visitedSessionsAtom,
 } from "@src/store/session";
 import {
-  chatPanelMaximizedAtom,
   chatTurnPaginationEnabledAtom,
-  chatVisibleAtom,
   modelPickerStyleAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/displayPrefsAtoms";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { chatVisibleAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { languageAtom } from "@src/store/ui/languageAtom";
 import { sidebarCollapsedAtom } from "@src/store/ui/sidebarAtom";
 import { spotlightRecentActionsAtom } from "@src/store/ui/spotlightRecentActionsAtom";
@@ -44,13 +45,15 @@ import {
   skinVariantAtom,
   systemColorSchemeAtom,
 } from "@src/store/ui/uiAtom";
-import {
-  chatPanelPositionAtom,
-  workStationEditorSecondaryCollapsedAtom,
-  workStationLayoutModeAtom,
-  workStationPrimarySidebarCollapsedAtom,
-} from "@src/store/ui/workStationAtom";
+import { workStationEditorSecondaryCollapsedAtom } from "@src/store/ui/workStationLayout/bottomPanelAtoms";
+import { chatPanelPositionAtom } from "@src/store/ui/workStationLayout/chatPositionAtoms";
+import { workStationPrimarySidebarCollapsedAtom } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
+import { workStationLayoutModeAtom } from "@src/store/ui/workStationLayout/splitLayoutAtoms";
 import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
+import {
+  workspaceActiveAtom,
+  workspaceFoldersAtom,
+} from "@src/store/workspace";
 import { getSessionSearchText } from "@src/util/session/sessionSearch";
 
 import { NAV_DESTINATIONS } from "../../config";
@@ -76,7 +79,6 @@ import {
   STATION_MODE_ACTIONS,
   type SpotlightEditorActionId,
   type SpotlightStaticActionDefinition,
-  WORKSPACE_ACTIONS,
   buildChatPanelSettingsActions,
   buildViewActions,
 } from "./spotlightActionDefinitions";
@@ -99,6 +101,7 @@ import {
   resolveAgentSessionSearchInput,
   resolveSpotlightCloudSessionPresentation,
 } from "./spotlightSessionSearch";
+import { buildWorkingDirectoryActions } from "./spotlightWorkingDirectoryActions";
 
 const GENERAL_SPOTLIGHT_SESSION_RESULT_LIMIT = 8;
 
@@ -137,7 +140,7 @@ interface SpotlightItemsHandlers {
     label: string,
     icon: SpotlightItem["icon"]
   ) => void;
-  currentRepoId?: string;
+  currentRepoId: string | undefined;
   isEditorRoute: boolean;
   isWorkStationRoute: boolean;
 }
@@ -148,6 +151,9 @@ export function useSpotlightItems(
   handlers: SpotlightItemsHandlers
 ): UseSpotlightItemsReturn {
   const state = useSpotlightState();
+  const repos = useAtomValue(reposAtom);
+  const workspaceFolders = useAtomValue(workspaceFoldersAtom);
+  const workspaceActive = useAtomValue(workspaceActiveAtom);
   const isSidebarCollapsed = useAtomValue(sidebarCollapsedAtom);
   const fallbackWorkstationSidebarCollapsed = useAtomValue(
     workStationPrimarySidebarCollapsedAtom
@@ -236,6 +242,17 @@ export function useSpotlightItems(
     getSearchText: getSessionText,
   });
 
+  const workingDirectoryActions = useMemo(
+    () =>
+      buildWorkingDirectoryActions(
+        repos,
+        currentRepoId,
+        workspaceFolders,
+        workspaceActive
+      ),
+    [repos, currentRepoId, workspaceFolders, workspaceActive]
+  );
+
   const items = useMemo((): SpotlightItem[] => {
     const viewActions = buildViewActions(
       isSidebarCollapsed,
@@ -293,7 +310,7 @@ export function useSpotlightItems(
         isEditorRoute,
         staticCommandActions: [
           ...AGENT_SESSION_ACTIONS,
-          ...WORKSPACE_ACTIONS,
+          ...workingDirectoryActions,
           ...ORGANIZATION_ACTIONS,
           ...chatPanelSettingsActions,
           ...quickNavigationActions,
@@ -374,17 +391,17 @@ export function useSpotlightItems(
     );
     const workspaceItems = [
       ...buildStaticActionItems(
-        WORKSPACE_ACTIONS,
+        workingDirectoryActions,
         onSelectStaticAction,
         translate
       ),
-      ...buildStaticActionItems(
-        ORGANIZATION_ACTIONS,
-        onSelectStaticAction,
-        translate
-      ),
-      ...buildActionItems(onSelectAction, translate),
+      ...buildActionItems(onSelectAction, translate, "workspace"),
     ];
+    const organizationItems = buildStaticActionItems(
+      ORGANIZATION_ACTIONS,
+      onSelectStaticAction,
+      translate
+    );
     const quickNavigationItems = buildStaticActionItems(
       quickNavigationActions,
       onSelectStaticAction,
@@ -393,11 +410,14 @@ export function useSpotlightItems(
     const editorItems = isEditorRoute
       ? buildEditorActionItems(onSelectEditorAction, translate)
       : [];
-    const viewItems = buildStaticActionItems(
-      [...chatPanelSettingsActions, ...viewActions, ...APP_ACTIONS],
-      onSelectStaticAction,
-      translate
-    );
+    const viewItems = [
+      ...buildActionItems(onSelectAction, translate, "view"),
+      ...buildStaticActionItems(
+        [...chatPanelSettingsActions, ...viewActions, ...APP_ACTIONS],
+        onSelectStaticAction,
+        translate
+      ),
+    ];
     const navActionItems = NAV_DESTINATIONS.filter(
       (destination) =>
         destination.group === "actions" &&
@@ -413,7 +433,7 @@ export function useSpotlightItems(
     const recentItems = buildStaticActionItems(
       resolveRecentDefinitions(recentActionIds, [
         ...AGENT_SESSION_ACTIONS,
-        ...WORKSPACE_ACTIONS,
+        ...workingDirectoryActions,
         ...ORGANIZATION_ACTIONS,
         ...chatPanelSettingsActions,
         ...quickNavigationActions,
@@ -428,6 +448,7 @@ export function useSpotlightItems(
       recentItems,
       agentSessionItems,
       workspaceItems,
+      organizationItems,
       quickNavigationItems,
       editorItems,
       viewItems,
@@ -471,6 +492,7 @@ export function useSpotlightItems(
     filteredRepos,
     filteredBranches,
     currentRepoId,
+    workingDirectoryActions,
     onSelectAction,
     onSelectStaticAction,
     onSelectEditorAction,

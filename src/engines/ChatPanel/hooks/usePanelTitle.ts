@@ -12,7 +12,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SESSION_CONFIG } from "@src/config/sessionCreatorConfig";
-import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { type Session, sessionByIdAtom } from "@src/store/session";
 import { stripPillReferences } from "@src/util/session/stripPillReferences";
 

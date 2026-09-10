@@ -59,7 +59,7 @@ import {
 } from "@src/features/Org2Cloud/org2CloudPendingShareAtom";
 import { useOpenCloudSessionReference } from "@src/features/Org2Cloud/useOpenCloudSessionReference";
 import { log, logDebug, logError, logWarn } from "@src/hooks/logger";
-import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanelAtom";
+import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { isTauriReady } from "@src/util/platform/tauri/init";
 import { isMainAppWindow } from "@src/util/platform/tauri/windowIdentity";

@@ -2,7 +2,7 @@
  * View Container Tokens
  *
  * Shared class strings and style helpers for view containers (WorkStation,
- * SessionWorkspace) and page panels (MainAppShell, ShellFallback).
+ * SessionWorkspace) and page panels (Settings, ShellFallback).
  */
 import type { CSSProperties } from "react";
 
@@ -24,6 +24,16 @@ const IS_MACOS_HOST = resolveHostDesktop() === HOST_DESKTOP.MACOS;
  */
 export const PANE_WIDTH_TRANSITION_CLASSES =
   "transition-[width,flex-grow,flex-basis] duration-200 ease-out motion-reduce:transition-none";
+
+/**
+ * For headers that reserve space under the window's pinned chrome (the
+ * sidebar group on the left, the collapse toggles on the right). The
+ * reservation flips the instant a pane collapses, but the pane itself takes
+ * `PANE_WIDTH_TRANSITION_CLASSES` to move, so the inset must travel on the
+ * same curve or the header's titles jump by the reservation and then glide.
+ */
+export const CHROME_INSET_TRANSITION_CLASSES =
+  "transition-[padding] duration-200 ease-out motion-reduce:transition-none";
 
 interface ChatSlotLayoutStyleOptions {
   maximized: boolean;
@@ -77,38 +87,6 @@ export function getWorkbenchLayoutStyle(maximized: boolean): CSSProperties {
 }
 
 /**
- * View container class strings for modules/index.tsx
- *
- * `WithBg` suffix preserved for backward-compat in caller code. The
- * surface paint actually arrives via `getPagePanelBackgroundStyle()`
- * applied by MainAppShell / ShellFallback — these classes contribute
- * only geometry. Loading-state callers that mount these containers
- * standalone (outside MainAppShell) keep an explicit `bg-bg-2` token
- * so they don't render transparent.
- */
-export const VIEW_CONTAINER_CLASSES = {
-  /** Flat Modern container with a background for loading state. */
-  withBg: "absolute inset-0 bg-bg-2",
-} as const;
-
-/** Style for visibility toggle - prevents flash when switching views */
-export function getViewToggleStyle(
-  isVisible: boolean,
-  zIndexWhenVisible = 10
-): CSSProperties {
-  return {
-    visibility: isVisible ? "visible" : "hidden",
-    display: isVisible ? "block" : "none",
-    zIndex: isVisible ? zIndexWhenVisible : -1,
-  };
-}
-
-/** CSS containment for layout isolation - used by outlet containers */
-export const LAYOUT_CONTAIN_STYLE: CSSProperties = {
-  contain: "layout style",
-};
-
-/**
  * Build the inline style for the page panel surface. Always emits a
  * `backgroundColor` (via `color-mix`) so callers can drop the redundant
  * `bg-bg-2` Tailwind class — there's a single source of truth for the
@@ -143,7 +121,7 @@ export function getSidebarSurfaceBackgroundStyle(
  * `--color-chat-container` is intentionally NOT rebound: it backs distinct
  * cards/badges that sit on top of the primary surface (region notices, pinned
  * pop-out cards, inline tool blocks). Those should read as raised surfaces
- * over the wallpaper-tinted pane, not also bleed through.
+ * over the tinted pane, not also bleed through.
  *
  * The mix reads the shared `--color-primary-pane-bg` token. The consumer
  * aliases remain available for semantic component styling, but resolve to one

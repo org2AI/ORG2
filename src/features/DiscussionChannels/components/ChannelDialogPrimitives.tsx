@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import type { ButtonVariant } from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
 import Input from "@src/components/Input";
-import { HugeiconsIcon, TriangleAlertIcon } from "@src/icons";
+import PageNotice from "@src/components/PageNotice";
 import { PanelFooter } from "@src/modules/shared/layouts/blocks";
 
 import {
@@ -143,7 +143,7 @@ export interface ChannelDialogErrorNoticeProps {
 }
 
 /**
- * The channels-dialog inline error box (danger-1 background pattern).
+ * The channels-dialog error notice uses the shared PageNotice surface.
  * `role="alert"` because it appears dynamically after a failed submit —
  * without live-region semantics screen readers never hear the failure.
  */
@@ -152,13 +152,9 @@ export const ChannelDialogErrorNotice: React.FC<
 > = ({ message, testId }) => {
   if (!message) return null;
   return (
-    <div
-      role="alert"
-      className="rounded-lg bg-danger-1 px-3 py-2 text-[12px] text-danger-6"
-      data-testid={testId}
-    >
+    <PageNotice type="danger" role="alert" dataTestId={testId}>
       {message}
-    </div>
+    </PageNotice>
   );
 };
 
@@ -181,16 +177,7 @@ export const ChannelDeleteConfirmation: React.FC<
   acknowledgeTestId,
 }) => (
   <>
-    <div className="flex items-start gap-2 rounded-lg bg-danger-1 px-3 py-2 text-[12px] text-danger-6">
-      <HugeiconsIcon
-        icon={TriangleAlertIcon}
-        data-icon="triangle-alert"
-        size={14}
-        aria-hidden
-        className="mt-0.5 shrink-0"
-      />
-      <span>{warning}</span>
-    </div>
+    <PageNotice type="warning">{warning}</PageNotice>
     <div data-testid={acknowledgeTestId}>
       <Checkbox
         size="small"

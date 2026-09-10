@@ -61,7 +61,11 @@ fn extract_screenshot_store(
 /// **workspace path contract**: callers pass the workspace root (`workspace_path`). This function
 /// internally joins `.orgii` so the loader scans `{project}/.orgii/skills/`, matching the
 /// canonical project skill location documented in `create-skill/SKILL.md`.
-fn expand_skill_slash_command(content: &str, workspace: Option<&std::path::Path>) -> String {
+fn expand_skill_slash_command(
+    content: &str,
+    workspace: Option<&std::path::Path>,
+    org_id: Option<&str>,
+) -> String {
     let trimmed = content.trim_start();
     if !trimmed.starts_with('/')
         || trimmed.len() <= 1
@@ -78,8 +82,11 @@ fn expand_skill_slash_command(content: &str, workspace: Option<&std::path::Path>
 
     let ws_root = workspace.unwrap_or_else(|| std::path::Path::new(""));
     let ws = ws_root.join(".orgii");
-    let loader = crate::specialization::skills::loader::SkillsLoader::new(&ws)
+    let mut loader = crate::specialization::skills::loader::SkillsLoader::new(&ws)
         .with_builtin_dir(crate::specialization::skills::loader::global_skills_dir());
+    if let Some(org_id) = org_id {
+        loader = loader.with_org_id(org_id);
+    }
 
     let Some(skill_md) = loader.load_skill(slash_name) else {
         return content.to_string();
@@ -118,12 +125,9 @@ pub async fn process_message(
     app_handle: Option<tauri::AppHandle>,
 ) -> Result<ProcessingResult, String> {
     let runtime = session
-        .runtime
-        .read()
+        .get_runtime()
         .await
-        .as_ref()
-        .ok_or_else(|| format!("Session {} runtime not initialized", session.id))?
-        .clone();
+        .ok_or_else(|| format!("Session {} runtime not initialized", session.id))?;
 
     let workspace_path = runtime.workspace_state.read().working_dir().to_path_buf();
 
@@ -155,6 +159,7 @@ pub async fn process_message(
         app_handle: app_handle.clone(),
         hook_executor: Some(hook_executor),
         turn_id: input.turn_id.clone(),
+        group_projection_only: false,
         cancel_flag: Some(Arc::clone(&session.cancel_flag)),
         active_turn_generation: Some(Arc::clone(&session.active_turn_generation)),
         active_repo_path: input
@@ -162,9 +167,19 @@ pub async fn process_message(
             .as_ref()
             .and_then(|ctx| ctx.repo_path.clone()),
         agent_org_task_lifecycle: None,
+        require_durable_assistant_event: false,
+        agent_org_turn_intent_id: None,
     };
 
-    let policy = Arc::clone(&runtime.policy);
+    let policy = if runtime.agent_org_context.is_some() {
+        Arc::new(
+            runtime
+                .policy
+                .for_persisted_agent_org_turn(&session.id, &input.turn_intent_id)?,
+        )
+    } else {
+        Arc::clone(&runtime.policy)
+    };
 
     let processor = UnifiedMessageProcessor::new(super::processor::ProcessorParams {
         runtime: Arc::clone(&runtime),
@@ -187,7 +202,17 @@ pub async fn process_message(
         turn_intent_id: input.turn_intent_id,
     };
 
-    let content = expand_skill_slash_command(&input.content, Some(workspace_path.as_path()));
+    let session_org_id = tokio::task::block_in_place(|| {
+        crate::session::persistence::get_session(&session.id)
+            .ok()
+            .flatten()
+            .and_then(|record| record.org_id)
+    });
+    let content = expand_skill_slash_command(
+        &input.content,
+        Some(workspace_path.as_path()),
+        session_org_id.as_deref(),
+    );
 
     let (ide_repo_path, workspace_folders) = input
         .ide_context
@@ -197,8 +222,11 @@ pub async fn process_message(
 
     let skill_ws = workspace_path.join(".orgii");
     let skill_loader_fn = |name: &str| -> Option<String> {
-        let loader = crate::specialization::skills::loader::SkillsLoader::new(&skill_ws)
+        let mut loader = crate::specialization::skills::loader::SkillsLoader::new(&skill_ws)
             .with_builtin_dir(crate::specialization::skills::loader::global_skills_dir());
+        if let Some(org_id) = session_org_id.as_deref() {
+            loader = loader.with_org_id(org_id);
+        }
         loader.load_skill(name)
     };
 
@@ -233,6 +261,7 @@ mod tests {
         let expanded = expand_skill_slash_command(
             "/newline-skill\nrun the relevant frontend spec",
             Some(workspace.path()),
+            None,
         );
 
         assert!(

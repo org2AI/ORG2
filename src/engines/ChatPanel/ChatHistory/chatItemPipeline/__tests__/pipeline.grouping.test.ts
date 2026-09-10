@@ -271,6 +271,78 @@ describe("processChatItems", () => {
   });
 
   describe("terminal grouping", () => {
+    it.each([
+      { success: false, error: "Command failed" },
+      { is_error: true, content: "Command failed" },
+      { error_message: "Command failed" },
+    ])(
+      "groups consecutive failed commands without losing errors: %j",
+      (result) => {
+        const commands = ["python3", "from", "import"].map((command) =>
+          makeSessionEvent({
+            action_type: "tool_call",
+            function: "run_shell",
+            status: "failed",
+            args: { command },
+            result,
+          })
+        );
+        const { items } = processChatItems(
+          [...commands, makeSearchItem("done")],
+          {
+            preFilterEmptyActivities: false,
+          }
+        );
+
+        expect(items).toHaveLength(2);
+        expect(items[0].activityStackGroup).toEqual({
+          category: "terminal",
+          events: commands,
+          closedByBoundary: true,
+        });
+        expect(
+          items[0].activityStackGroup?.events.map((event) => event.result)
+        ).toEqual(commands.map(() => result));
+      }
+    );
+
+    it("keeps failed terminal follow-ups with successful commands", () => {
+      const events = [
+        makeShellItem("git status"),
+        {
+          ...makeAwaitItem("shell", "48291"),
+          result: { success: false, error: "Wait failed" },
+        },
+        {
+          ...makeInspectTerminalsItem(),
+          result: { success: false, error: "Inspection failed" },
+        },
+        makeShellItem("git diff", 1),
+      ];
+      const { items } = processChatItems(events, {
+        preFilterEmptyActivities: false,
+      });
+
+      expect(items).toHaveLength(1);
+      expect(items[0].activityStackGroup?.events).toEqual(events);
+      expect(items[0].activityStackGroup?.closedByBoundary).toBe(false);
+    });
+
+    it("keeps non-terminal MCP failures standalone", () => {
+      const failure = makeSessionEvent({
+        action_type: "tool_call",
+        function: "mcp_service__lookup",
+        result: { success: false, error: "Service unavailable" },
+      });
+      const { items } = processChatItems(
+        [makeShellItem("git status"), failure, makeShellItem("git diff")],
+        { preFilterEmptyActivities: false }
+      );
+
+      expect(items).toHaveLength(3);
+      expect(items[1].event).toEqual(failure);
+    });
+
     it("groups a single terminal command", () => {
       const command = makeShellItem("git status");
 

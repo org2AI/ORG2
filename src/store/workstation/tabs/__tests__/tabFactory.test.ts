@@ -22,6 +22,7 @@ import {
   createSourceControlTab,
   createSubagentDetailTab,
   createTerminalTab,
+  createTimelineDiffTab,
   createWorkItemDetailTab,
   fileTabFactory,
 } from "../factories";
@@ -332,7 +333,7 @@ describe("Project Manager Factories", () => {
       });
 
       expect(tab.id).toBe("project-dashboard:org:personal-org");
-      expect(tab.title).toBe("Personal Org Projects");
+      expect(tab.title).toBe("My workspace Projects");
     });
   });
 
@@ -354,7 +355,7 @@ describe("Project Manager Factories", () => {
       });
 
       expect(tab.id).toBe("project-work-items:org:personal-org");
-      expect(tab.title).toBe("Personal Org Work Items");
+      expect(tab.title).toBe("My workspace Work Items");
     });
   });
 
@@ -466,5 +467,20 @@ describe("Factory and Creator Function Parity", () => {
     expect(viaCreator.id).toBe(viaFactory.id);
     expect(viaCreator.type).toBe(viaFactory.type);
     expect(viaCreator.data.filePath).toBe(viaFactory.data.filePath);
+  });
+});
+
+describe("createTimelineDiffTab", () => {
+  it("opens historical content through git-diff while retaining its stable ID", () => {
+    const tab = createTimelineDiffTab("/repo/a.ts", "abcdef", "abc^", "abc");
+    expect(tab.id).toBe("timeline-diff:abcdef:/repo/a.ts");
+    expect(tab.type).toBe("git-diff");
+    expect(tab.data).toMatchObject({
+      filePath: "/repo/a.ts",
+      isTimeline: true,
+      commitSha: "abcdef",
+      shortSha: "abc^",
+      headShortSha: "abc",
+    });
   });
 });

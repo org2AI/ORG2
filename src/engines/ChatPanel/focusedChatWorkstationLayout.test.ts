@@ -8,7 +8,6 @@ import {
   resolveFocusedChatWorkstationRailTrackClass,
   resolveFocusedChatWorkstationSectionOrder,
   shouldMountFocusedChatWorkstationControls,
-  shouldReserveFocusedChatWorkstationPlaceholder,
 } from "./focusedChatWorkstationLayout";
 import { CHAT_PANEL_HEADER_STACK_HEIGHT_PX } from "./header/chatPanelHeaderLayout";
 
@@ -41,38 +40,6 @@ describe("shouldMountFocusedChatWorkstationControls", () => {
     },
   ])("stays unmounted outside the focused session lifecycle", (input) => {
     expect(shouldMountFocusedChatWorkstationControls(input)).toBe(false);
-  });
-});
-
-describe("shouldReserveFocusedChatWorkstationPlaceholder", () => {
-  it("reserves the collapsed rail track for a focused visible Launchpad", () => {
-    expect(
-      shouldReserveFocusedChatWorkstationPlaceholder({
-        activeTabType: "start-page",
-        isChatFocus: true,
-        startPageOpen: true,
-      })
-    ).toBe(true);
-  });
-
-  it.each([
-    {
-      activeTabType: "start-page" as const,
-      isChatFocus: false,
-      startPageOpen: true,
-    },
-    {
-      activeTabType: "start-page" as const,
-      isChatFocus: true,
-      startPageOpen: false,
-    },
-    {
-      activeTabType: "session" as const,
-      isChatFocus: true,
-      startPageOpen: true,
-    },
-  ])("does not reserve the track outside Launchpad focus", (input) => {
-    expect(shouldReserveFocusedChatWorkstationPlaceholder(input)).toBe(false);
   });
 });
 

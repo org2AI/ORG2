@@ -17,18 +17,18 @@ import type { RoutineDraft, UpdateRoutineDraft } from "./routineDraft";
 interface RoutineExecutionSectionsProps {
   draft: RoutineDraft;
   updateDraft: UpdateRoutineDraft;
-  isWorkspacePaletteOpen: boolean;
+  isWorkingDirectoryPaletteOpen: boolean;
   isModelPaletteOpen: boolean;
-  onOpenWorkspacePalette: () => void;
+  onOpenWorkingDirectoryPalette: () => void;
   onOpenModelPalette: () => void;
 }
 
 const RoutineExecutionSections: React.FC<RoutineExecutionSectionsProps> = ({
   draft,
   updateDraft,
-  isWorkspacePaletteOpen,
+  isWorkingDirectoryPaletteOpen,
   isModelPaletteOpen,
-  onOpenWorkspacePalette,
+  onOpenWorkingDirectoryPalette,
   onOpenModelPalette,
 }) => {
   const { t } = useTranslation("integrations");
@@ -65,8 +65,8 @@ const RoutineExecutionSections: React.FC<RoutineExecutionSectionsProps> = ({
             <SpotlightSelectTrigger
               value={draft.workspaceLabel || draft.workspacePath || undefined}
               placeholder={t("routineFields.workspacePathPlaceholder")}
-              onClick={onOpenWorkspacePalette}
-              active={isWorkspacePaletteOpen}
+              onClick={onOpenWorkingDirectoryPalette}
+              active={isWorkingDirectoryPaletteOpen}
               size="default"
               style={SECTION_CONTROL_STYLE}
               prefix={

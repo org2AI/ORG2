@@ -56,9 +56,9 @@ describe("sessionToKanbanTask workspace label", () => {
 describe("sessionToKanbanTask agent label", () => {
   it.each([
     ["cursoride-session-1", "cursor_cli", "Cursor App"],
-    ["cliagent-cursor-1", "cursor_cli", "Cursor CLI"],
+    ["cliagent-cursor-1", "cursor_cli", "Cursor"],
     ["claudecodeapp-session-1", "claude_code", "Claude App"],
-    ["cliagent-claude-1", "claude_code", "Claude CLI"],
+    ["cliagent-claude-1", "claude_code", "Claude Code"],
   ] as const)("labels %s as %s", (sessionId, cliAgentType, expected) => {
     const task = toTask(makeSession({ session_id: sessionId, cliAgentType }));
 

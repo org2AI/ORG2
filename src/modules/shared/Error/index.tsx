@@ -1,10 +1,11 @@
 import Button from "@/src/components/Button";
 import { invoke } from "@tauri-apps/api/core";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { isRouteErrorResponse, useRouteError } from "react-router-dom";
 
 import { stripAnsiCodes } from "@src/engines/TerminalCore/components/TerminalDisplay/utils/ansiProcessor";
 import { createLogger } from "@src/hooks/logger";
+import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import i18n from "@src/i18n";
 import {
   Copy01Icon,
@@ -128,7 +129,6 @@ const ErrorPageContent: React.FC<{ error?: unknown }> = ({ error }) => {
     () => getErrorInfo(error),
     [error]
   );
-  const [copied, setCopied] = useState(false);
 
   // Clean message for display (strip ANSI codes)
   const cleanMessage = useMemo(() => stripAnsiCodes(rawMessage), [rawMessage]);
@@ -139,16 +139,18 @@ const ErrorPageContent: React.FC<{ error?: unknown }> = ({ error }) => {
     [cleanMessage]
   );
 
-  const handleCopy = useCallback(async () => {
+  const copyMessage = useCallback(async () => {
     try {
       // Copy the full clean message (not truncated)
       await copyText(cleanMessage);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       logger.error("Failed to copy:", err);
+      throw err;
     }
   }, [cleanMessage]);
+  const { copied, handleCopy } = useCopyCheck(copyMessage, {
+    durationMs: 2000,
+  });
 
   // Log error for debugging
   useEffect(() => {

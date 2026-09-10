@@ -162,7 +162,7 @@ export function WorkItemDetailHeaderBreadcrumb({
   onTitleChange,
   t,
 }: WorkItemDetailHeaderBreadcrumbProps) {
-  const workItemName = workItem.name || t("workItems.untitled");
+  const workItemName = workItem.name || t("common:placeholders.untitled");
   const workItemStatus = workItem.workItemStatus ?? workItem.status;
   const isGitHubIssue = isGitHubIssueStatus(workItemStatus);
   const displayShortId = formatWorkItemShortId(
@@ -184,7 +184,7 @@ export function WorkItemDetailHeaderBreadcrumb({
   const titleContent = (
     <WorkItemBreadcrumbTitle
       title={workItem.name || ""}
-      fallbackTitle={t("workItems.untitled")}
+      fallbackTitle={t("common:placeholders.untitled")}
       shortId={displayShortId}
       onTitleChange={onTitleChange}
       renameLabel={t("workItems.contextMenu.rename")}

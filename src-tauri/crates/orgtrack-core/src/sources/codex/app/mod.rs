@@ -13,12 +13,15 @@ use crate::sources::imported_history::{
     ImportedHistoryRecentPath, ImportedHistorySessionPage, ImportedHistorySessionRow,
 };
 
+mod context_usage;
 mod desktop_exec;
 mod impact;
 mod index;
 mod meta;
 mod normalize;
 mod transcript;
+
+pub use index::load_codex_context_usage_for_session;
 
 // Public API — preserved at `...::sources::codex::app::*`.
 pub use index::{
@@ -27,13 +30,15 @@ pub use index::{
     load_codex_app_cloud_turn_for_session, load_codex_app_for_session,
     load_codex_app_initial_window_for_session, load_codex_app_mobile_tail_window_for_session,
     load_codex_app_turn_for_session, load_codex_app_turn_ids_for_session,
+    resolve_codex_session_path,
 };
 pub use meta::{resolve_codex_transcript_for_thread_id_near_path, CodexTranscriptLocator};
 pub(crate) use normalize::normalize_codex_tool_calls;
 pub use transcript::{
     load_codex_app_from_path, load_codex_app_initial_window_from_path,
     load_codex_app_mobile_tail_window_from_path, load_codex_app_turn_from_path,
-    CodexAppInitialWindow, CodexAppTurnWindow,
+    load_codex_app_window_turn_from_path, visit_codex_app_from_path, CodexAppInitialWindow,
+    CodexAppTurnWindow,
 };
 
 // Internal re-exports so the sibling `app_tests.rs` (`use super::*`) resolves.

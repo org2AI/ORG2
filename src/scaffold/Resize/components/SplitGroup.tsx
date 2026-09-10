@@ -35,6 +35,8 @@ import React, {
   useState,
 } from "react";
 
+import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
+
 import { useResizeManager } from "../ResizeManager";
 import type { ResizeAxis, ResizeSession, SplitGroupProps } from "../types";
 import { GhostLayer } from "./GhostLayer";
@@ -165,7 +167,8 @@ export const SplitGroup: React.FC<SplitGroupProps> = memo(
      */
     const handleMouseDown = useCallback(
       (event: React.MouseEvent, index: number) => {
-        if (globalIsResizing) return;
+        if (event.button !== 0 || globalIsResizing || dragCleanupRef.current)
+          return;
 
         event.preventDefault();
         event.stopPropagation();
@@ -260,8 +263,7 @@ export const SplitGroup: React.FC<SplitGroupProps> = memo(
          * Handle mouse up
          */
         const handleEnd = () => {
-          document.removeEventListener("mousemove", handleMove);
-          document.removeEventListener("mouseup", handleEnd);
+          dispose();
           dragCleanupRef.current = null;
 
           // Hide ghost
@@ -274,12 +276,15 @@ export const SplitGroup: React.FC<SplitGroupProps> = memo(
           setActiveResizeIndex(null);
         };
 
-        document.addEventListener("mousemove", handleMove);
-        document.addEventListener("mouseup", handleEnd);
+        const dispose = listenForDrag({
+          onMove: handleMove,
+          onEnd: handleEnd,
+          onCancel: handleEnd,
+        });
 
         dragCleanupRef.current = () => {
-          document.removeEventListener("mousemove", handleMove);
-          document.removeEventListener("mouseup", handleEnd);
+          dispose();
+          dragCleanupRef.current = null;
           if (ghostRef.current) {
             ghostRef.current.style.display = "none";
           }

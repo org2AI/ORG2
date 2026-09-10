@@ -23,7 +23,8 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import type { TooltipProps } from "@src/components/Tooltip";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
+import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import {
   HugeiconsIcon,
   LayoutAlignLeftIcon,
@@ -36,16 +37,14 @@ import {
   simulatorPrimarySidebarPositionAtom,
 } from "@src/store/ui/simulatorAtom";
 import {
-  workStationLayoutModeAtom,
   workStationPrimarySidebarCollapsedAtom,
   workStationPrimarySidebarCollapsedPersistAtom,
-} from "@src/store/ui/workStationAtom";
+} from "@src/store/ui/workStationLayout/primarySidebarAtoms";
+import { workStationLayoutModeAtom } from "@src/store/ui/workStationLayout/splitLayoutAtoms";
 import {
   activeStatusBarAppAtom,
   activeStatusBarCallbacksAtom,
 } from "@src/store/ui/workStationLayout/statusBarAtoms";
-
-import { HEADER_ICON_SIZE } from "./tokens";
 
 // ============================================
 // View component
@@ -90,9 +89,9 @@ const SidebarToggleButtonComponent: React.FC<SidebarToggleButtonProps> = ({
   const label = collapsed
     ? t("simulator.titleBar.showSidebar")
     : t("simulator.titleBar.hideSidebar");
-  const shortcut = showShortcut
-    ? getShortcutKeys("toggle_workstation_sidebar")
-    : undefined;
+  const shortcut = useShortcutKeys(
+    showShortcut ? "toggle_workstation_sidebar" : ""
+  );
   return (
     <ToolbarTooltip
       label={label}

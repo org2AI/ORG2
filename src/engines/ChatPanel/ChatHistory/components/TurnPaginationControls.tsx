@@ -20,6 +20,7 @@ import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
 import TurnNavigationToolbar from "@src/components/TurnNavigationToolbar/TurnNavigationToolbar";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
+import { AgentOrgWriterBadge } from "@src/engines/ChatPanel/blocks/OrgTaskBadges";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { AiNetworkIcon, ArrowDown01Icon, HugeiconsIcon } from "@src/icons";
 import { isAgentOrgMemberEmpty } from "@src/util/agentOrg/memberActivity";
@@ -294,29 +295,30 @@ const TurnPaginationControls: React.FC<TurnPaginationControlsProps> = memo(
                         !member.isCoordinator && isAgentOrgMemberEmpty(member);
                       const runtimeStatusLabelKey =
                         MEMBER_RUNTIME_STATUS_LABEL_KEYS[runtimeStatus];
-                      const runtimeStatusLabel = hasNoTasksAndNoInbox
-                        ? t("sessions:planner.agentOrgMemberStatus.noTasks", {
-                            defaultValue: "No tasks",
-                          })
-                        : runtimeStatus
-                          ? runtimeStatusLabelKey
-                            ? t(`sessions:${runtimeStatusLabelKey}`)
-                            : formatFallbackStatusLabel(runtimeStatus)
-                          : "";
-                      const isDisabled = hasNoTasksAndNoInbox;
+                      const runtimeStatusLabel = member.activity
+                        ? t(
+                            `sessions:planner.agentOrgIntervention.activity.${member.activity.kind}`,
+                            { count: member.queuedUserDirectedCount }
+                          )
+                        : hasNoTasksAndNoInbox
+                          ? t("sessions:planner.agentOrgMemberStatus.noTasks", {
+                              defaultValue: "No tasks",
+                            })
+                          : runtimeStatus
+                            ? runtimeStatusLabelKey
+                              ? t(`sessions:${runtimeStatusLabelKey}`)
+                              : formatFallbackStatusLabel(runtimeStatus)
+                            : "";
                       return (
                         <button
                           key={member.memberId}
                           type="button"
                           role="menuitem"
                           data-testid={`agent-org-member-switcher-option-${member.memberId}`}
-                          disabled={isDisabled}
-                          aria-disabled={isDisabled || undefined}
                           className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} ${
                             isCurrent ? DROPDOWN_CLASSES.itemSelected : ""
-                          } ${isDisabled ? "cursor-not-allowed opacity-50" : ""}`}
+                          }`}
                           onClick={() => {
-                            if (isDisabled) return;
                             if (groupChatViewActive) {
                               onGroupChatViewToggle?.(false);
                             }
@@ -324,8 +326,15 @@ const TurnPaginationControls: React.FC<TurnPaginationControlsProps> = memo(
                             closeMemberSwitcher();
                           }}
                         >
-                          <span className="min-w-0 flex-1 truncate text-left">
-                            {memberLabel}
+                          <span className="flex min-w-0 flex-1 items-center gap-1 truncate text-left">
+                            <span className="truncate">{memberLabel}</span>
+                            {member.writerCapable && !member.isCoordinator && (
+                              <AgentOrgWriterBadge>
+                                {t(
+                                  "sessions:planner.agentOrgIntervention.writerBadge"
+                                )}
+                              </AgentOrgWriterBadge>
+                            )}
                           </span>
                           {runtimeStatusLabel && (
                             <span className="shrink-0 text-[11px] text-text-3">

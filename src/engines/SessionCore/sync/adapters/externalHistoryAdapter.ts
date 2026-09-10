@@ -173,16 +173,57 @@ async function loadExternalHistory(
   return signal.aborted ? [] : events;
 }
 
+async function loadAuthoritativeExternalHistory(
+  sessionId: string,
+  signal: AbortSignal
+): Promise<SessionEvent[]> {
+  const source = getImportedHistorySourceBySessionId(sessionId);
+  if (!source) {
+    throw new Error(
+      `No imported-history source is registered for ${sessionId}`
+    );
+  }
+  if (signal.aborted) return [];
+
+  // Do not reuse the UI preview cache here. Native continuation and migration
+  // require every durable role/tool event, including the prefix intentionally
+  // omitted by a large transcript's initial viewport window.
+  const chunks = await source.loadFullTranscriptChunks(sessionId);
+  if (signal.aborted || !Array.isArray(chunks) || chunks.length === 0) {
+    return [];
+  }
+  const events = await processChunksRust(chunks, sessionId);
+  return signal.aborted ? [] : events;
+}
+
 export const externalHistoryAdapter: ExternalHistorySessionAdapter = {
   category: "external_history",
 
   loadHistory: loadExternalHistory,
 
+  loadAuthoritativeHistory: loadAuthoritativeExternalHistory,
+
   loadHistoryFromObservedSignature: (sessionId, signal, observedSignature) =>
     loadExternalHistory(sessionId, signal, observedSignature),
 
-  async postLoad() {
-    return { runStatus: "completed" };
+  async postLoad(sessionId, signal) {
+    const source = getImportedHistorySourceBySessionId(sessionId);
+    try {
+      const contextUsage =
+        (await source?.loadContextUsage?.(sessionId)) ?? null;
+      if (signal.aborted) return {};
+      return {
+        runStatus: "completed",
+        contextTokens: contextUsage?.usedTokens ?? 0,
+        contextUsage,
+      };
+    } catch (error) {
+      // Telemetry is optional: an unavailable rollout must not break history replay.
+      logger.warn("Context telemetry unavailable", error);
+      return signal.aborted
+        ? {}
+        : { runStatus: "completed", contextTokens: 0, contextUsage: null };
+    }
   },
 
   createEventHandler(

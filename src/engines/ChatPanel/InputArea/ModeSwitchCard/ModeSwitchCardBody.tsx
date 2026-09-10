@@ -7,6 +7,7 @@ import {
   ChatStatusTwoLineContent,
 } from "@src/engines/ChatPanel/components/ChatStatusBanners";
 import { ArrowLeftRightIcon, HugeiconsIcon } from "@src/icons";
+import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 
 import { MODE_LABELS } from "./useModeSwitchActions";
 
@@ -46,8 +47,12 @@ export function ModeSwitchCardBody({
 
   useEffect(() => {
     if (!createdAt) return;
-    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(timer);
+    const timer = startVisibilityAwareInterval(
+      document,
+      () => setNowMs(Date.now()),
+      1000
+    );
+    return () => timer();
   }, [createdAt]);
 
   const autoSkipRemaining = getAutoSkipRemaining(createdAt, nowMs);

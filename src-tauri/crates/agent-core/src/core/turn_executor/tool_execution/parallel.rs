@@ -46,6 +46,7 @@ pub(super) async fn execute_parallel_group(
     session_id: &str,
     turn_intent_id: &str,
     projected_inbox_ids: &[i64],
+    turn_process_control: Option<&crate::tools::call_context::TurnProcessControl>,
     handler: &dyn TurnEventHandler,
     permission_provider: Option<&dyn PermissionProvider>,
     cancel_flag: Option<&Arc<AtomicBool>>,
@@ -227,12 +228,14 @@ pub(super) async fn execute_parallel_group(
             .map(|(idx, effective_args, _display_name)| {
                 let tool_name = &calls[*idx].name;
                 let call_id = &calls[*idx].id;
-                let ctx = crate::tools::call_context::CallContext::for_turn(
+                let ctx = crate::tools::call_context::CallContext::for_runtime_turn(
                     call_id,
                     session_id,
                     turn_intent_id,
                     projected_inbox_ids.to_vec(),
-                );
+                    turn_process_control.cloned(),
+                )
+                .with_authority(policy.call_authority());
                 let args = effective_args.clone();
                 async move {
                     let start = Instant::now();
@@ -408,6 +411,17 @@ pub(super) async fn execute_parallel_group(
             input_bytes: serialized_value_bytes(&exec_result.effective_args),
             output_bytes: string_bytes(&truncated),
         });
+
+        if matches!(
+            rich.as_ref().and_then(|result| result.turn_directive),
+            Some(crate::tools::result::ToolTurnDirective::EndTurn)
+        ) {
+            return ParallelResult::EarlyExit(
+                executed_count + denied_count,
+                execution_usage,
+                ToolBatchOutcome::EndTurn(String::new()),
+            );
+        }
 
         if is_cancelled(cancel_flag) {
             return ParallelResult::EarlyExit(

@@ -1,8 +1,14 @@
-import { atom } from "jotai";
+import { type Setter, atom } from "jotai";
 
 import { workstationActiveSessionIdAtom } from "@src/store/session/viewAtom";
 import { clearTerminalTargetForWorkspaceAtom } from "@src/store/workstation/codeEditor/terminalTargetAtom";
 
+import {
+  isSameWorkstationWorkspace,
+  recentWorkstationTabEntriesAtom,
+  recordWorkstationTabTransitionAtom,
+  removeRecentWorkstationTabAtom,
+} from "./recentTabs";
 import {
   deletePersistedWorkstationWorkspace,
   loadWorkstationTabsState,
@@ -20,7 +26,7 @@ import {
   type WorkStationLayoutState,
   type WorkStationTab,
   type WorkstationTabRef,
-  type WorkstationTabsStateV3,
+  type WorkstationTabsStateV4,
   type WorkstationWorkspaceKey,
   type WorkstationWorkspaceState,
   closesSharedResourceOnDismiss,
@@ -54,14 +60,23 @@ export const presentedWorkstationWorkspaceKeyAtom =
 presentedWorkstationWorkspaceKeyAtom.debugLabel =
   "presentedWorkstationWorkspaceKeyAtom";
 
+/** Recent tabs belonging to the workspace currently visible in My Station. */
+export const recentWorkstationTabsAtom = atom((get) => {
+  const workspace = get(presentedWorkstationWorkspaceKeyAtom);
+  return get(recentWorkstationTabEntriesAtom)
+    .filter((entry) => isSameWorkstationWorkspace(entry.workspace, workspace))
+    .map((entry) => entry.tab);
+});
+recentWorkstationTabsAtom.debugLabel = "recentWorkstationTabsAtom";
+
 /** Canonical persisted state. Feature code writes through scoped actions below. */
-export const workstationTabsStateAtom = atom<WorkstationTabsStateV3>(
+export const workstationTabsStateAtom = atom<WorkstationTabsStateV4>(
   loadWorkstationTabsState()
 );
 workstationTabsStateAtom.debugLabel = "workstationTabsStateAtom";
 
 function workspaceFor(
-  state: WorkstationTabsStateV3,
+  state: WorkstationTabsStateV4,
   key: WorkstationWorkspaceKey
 ): WorkstationWorkspaceState {
   if (key.kind === "global") return state.globalWorkspace;
@@ -73,7 +88,7 @@ function refIdentity(ref: WorkstationTabRef): string {
 }
 
 function composePanel(
-  state: WorkstationTabsStateV3,
+  state: WorkstationTabsStateV4,
   key: WorkstationWorkspaceKey
 ): PanelState {
   const workspace = workspaceFor(state, key);
@@ -116,10 +131,10 @@ function composePanel(
 }
 
 function splitPanel(
-  previous: WorkstationTabsStateV3,
+  previous: WorkstationTabsStateV4,
   key: WorkstationWorkspaceKey,
   panel: PanelState
-): WorkstationTabsStateV3 {
+): WorkstationTabsStateV4 {
   const sharedTabs: WorkStationTab[] = [];
   const localTabs: WorkStationTab[] = [];
   const tabOrder: WorkstationTabRef[] = [];
@@ -169,12 +184,42 @@ function splitPanel(
 function setAndPersist(
   set: (
     atom: typeof workstationTabsStateAtom,
-    value: WorkstationTabsStateV3
+    value: WorkstationTabsStateV4
   ) => void,
-  next: WorkstationTabsStateV3
+  next: WorkstationTabsStateV4
 ): void {
   set(workstationTabsStateAtom, next);
   persistWorkstationTabsState(next);
+}
+
+function recordPanelTransition(
+  set: Setter,
+  workspace: WorkstationWorkspaceKey,
+  previousPanel: PanelState,
+  nextPanel: PanelState
+): void {
+  if (previousPanel.activeTabId === nextPanel.activeTabId) return;
+  set(recordWorkstationTabTransitionAtom, {
+    workspace,
+    previousTab: previousPanel.tabs.find(
+      (tab) => tab.id === previousPanel.activeTabId
+    ),
+    nextTabId: nextPanel.activeTabId,
+  });
+}
+
+function removeClosedTabsFromRecent(
+  set: Setter,
+  workspace: WorkstationWorkspaceKey,
+  previousPanel: PanelState,
+  nextPanel: PanelState
+): void {
+  const nextIds = new Set(nextPanel.tabs.map((tab) => tab.id));
+  for (const tab of previousPanel.tabs) {
+    if (!nextIds.has(tab.id)) {
+      set(removeRecentWorkstationTabAtom, { workspace, tabId: tab.id });
+    }
+  }
 }
 
 /**
@@ -204,10 +249,10 @@ export const workstationLayoutAtom = atom<
       typeof nextOrUpdater === "function"
         ? nextOrUpdater(previousLayout)
         : nextOrUpdater;
-    setAndPersist(
-      set,
-      splitPanel(state, key, nextLayout.mainPane ?? EMPTY_PANEL)
-    );
+    const nextPanel = nextLayout.mainPane ?? EMPTY_PANEL;
+    recordPanelTransition(set, key, previousLayout.mainPane, nextPanel);
+    removeClosedTabsFromRecent(set, key, previousLayout.mainPane, nextPanel);
+    setAndPersist(set, splitPanel(state, key, nextPanel));
   }
 );
 workstationLayoutAtom.debugLabel = "workstationLayoutAtom";
@@ -217,7 +262,7 @@ export const claimLegacyWorkstationSeedAtom = atom(null, (get, set) => {
   if (key.kind !== "session") return;
   const state = get(workstationTabsStateAtom);
   if (!state.legacySeed || state.sessionWorkspaces[key.sessionId]) return;
-  const next: WorkstationTabsStateV3 = {
+  const next: WorkstationTabsStateV4 = {
     ...state,
     sessionWorkspaces: {
       ...state.sessionWorkspaces,
@@ -266,10 +311,10 @@ export interface CloseWorkstationTabsRequest {
 }
 
 function updateScopedPanel(
-  state: WorkstationTabsStateV3,
+  state: WorkstationTabsStateV4,
   workspace: WorkstationWorkspaceKey,
   updater: (panel: PanelState) => PanelState
-): WorkstationTabsStateV3 {
+): WorkstationTabsStateV4 {
   return splitPanel(state, workspace, updater(composePanel(state, workspace)));
 }
 
@@ -278,20 +323,18 @@ export const openWorkstationTabAtom = atom(
   null,
   (get, set, request: ScopedWorkstationTabRequest) => {
     const state = get(workstationTabsStateAtom);
-    setAndPersist(
-      set,
-      updateScopedPanel(state, request.workspace, (panel) =>
-        openTabMutation(panel, request.tab)
-      )
-    );
+    const previousPanel = composePanel(state, request.workspace);
+    const nextPanel = openTabMutation(previousPanel, request.tab);
+    recordPanelTransition(set, request.workspace, previousPanel, nextPanel);
+    setAndPersist(set, splitPanel(state, request.workspace, nextPanel));
   }
 );
 openWorkstationTabAtom.debugLabel = "openWorkstationTabAtom";
 
 function removeSharedTabsFromState(
-  state: WorkstationTabsStateV3,
+  state: WorkstationTabsStateV4,
   tabIds: ReadonlySet<string>
-): WorkstationTabsStateV3 {
+): WorkstationTabsStateV4 {
   if (
     tabIds.size === 0 ||
     !state.shared.tabs.some((tab) => tabIds.has(tab.id))
@@ -366,6 +409,13 @@ export const closeWorkstationTabsAtom = atom(
       splitPanel(state, request.workspace, nextPanel),
       resourceIds
     );
+    recordPanelTransition(set, request.workspace, panel, nextPanel);
+    for (const tab of tabsToClose) {
+      set(removeRecentWorkstationTabAtom, {
+        workspace: request.workspace,
+        tabId: tab.id,
+      });
+    }
     setAndPersist(set, nextState);
   }
 );
@@ -404,8 +454,15 @@ export const removeSharedWorkstationTabsAtom = atom(
   null,
   (get, set, tabIds: readonly string[]) => {
     const state = get(workstationTabsStateAtom);
+    const key = get(presentedWorkstationWorkspaceKeyAtom);
+    const previousPanel = composePanel(state, key);
     const next = removeSharedTabsFromState(state, new Set(tabIds));
     if (next === state) return;
+    const nextPanel = composePanel(next, key);
+    recordPanelTransition(set, key, previousPanel, nextPanel);
+    for (const tabId of tabIds) {
+      set(removeRecentWorkstationTabAtom, { tabId });
+    }
     setAndPersist(set, next);
   }
 );
@@ -419,12 +476,10 @@ export const focusWorkstationTabAtom = atom(
     request: { workspace: WorkstationWorkspaceKey; tabId: string }
   ) => {
     const state = get(workstationTabsStateAtom);
-    setAndPersist(
-      set,
-      updateScopedPanel(state, request.workspace, (panel) =>
-        switchTabMutation(panel, request.tabId)
-      )
-    );
+    const previousPanel = composePanel(state, request.workspace);
+    const nextPanel = switchTabMutation(previousPanel, request.tabId);
+    recordPanelTransition(set, request.workspace, previousPanel, nextPanel);
+    setAndPersist(set, splitPanel(state, request.workspace, nextPanel));
   }
 );
 focusWorkstationTabAtom.debugLabel = "focusWorkstationTabAtom";
@@ -555,7 +610,7 @@ openEditorFilePathsAtom.debugLabel = "openEditorFilePathsAtom";
 
 /** Read a workspace without changing the presented WorkStation selection. */
 export function selectWorkstationPanel(
-  state: WorkstationTabsStateV3,
+  state: WorkstationTabsStateV4,
   key: WorkstationWorkspaceKey
 ): PanelState {
   return composePanel(state, key);

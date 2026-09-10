@@ -5,8 +5,8 @@ import type { McpConfigScope } from "@src/api/tauri/rpc/schemas/mcp";
 import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
 import Dropdown from "@src/components/Dropdown";
-import InlineAlert from "@src/components/InlineAlert";
 import Menu from "@src/components/Menu";
+import PageNotice from "@src/components/PageNotice";
 import SettingsTable, {
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
@@ -482,7 +482,7 @@ export const McpTable: React.FC<McpTableProps> = ({
   );
 
   const connectingBanner = connectingCount > 0 && (
-    <InlineAlert
+    <PageNotice
       type="info"
       title={
         slowConnect
@@ -491,7 +491,7 @@ export const McpTable: React.FC<McpTableProps> = ({
       }
     >
       {slowConnect ? t("mcp.connectingSlowBody") : null}
-    </InlineAlert>
+    </PageNotice>
   );
 
   const bulkActionBar = selectedNames.length > 0 && (

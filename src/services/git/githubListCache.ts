@@ -22,6 +22,7 @@ import type {
   OpenPRItem,
   PrFile,
 } from "@src/api/tauri/github";
+import { BoundedMap } from "@src/util/collections/BoundedMap";
 import {
   BROWSER_CACHE_STORAGE_KEYS,
   estimateBrowserStorageEntryBytes,
@@ -67,33 +68,17 @@ export interface CachedPrDetail {
   cachedAt: number;
 }
 
-// JS Maps iterate in insertion order, so delete+reinsert = LRU promotion.
-function lruGet<T>(cache: Map<string, T>, key: string): T | null {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  // Promote to most-recently-used by reinserting at the end
-  cache.delete(key);
-  cache.set(key, entry);
-  return entry;
-}
-
-function lruSet<T>(
-  cache: Map<string, T>,
-  key: string,
-  value: T,
-  maxSize: number = MAX_REPOS
-): void {
-  if (cache.has(key)) {
-    cache.delete(key); // remove before reinserting to update order
-  } else if (cache.size >= maxSize) {
-    // Evict least-recently-used (first key in insertion order)
-    cache.delete(cache.keys().next().value as string);
-  }
-  cache.set(key, value);
-}
-
-const issueCache = new Map<string, CachedIssues>();
-const prCache = new Map<string, CachedPrs>();
+// `BoundedMap.get` promotes the key to most-recently-used and evicts the
+// least-recently-touched entry once `maxSize` is reached; `peek` reads
+// without touching, which the staleness checks rely on.
+const issueCache = new BoundedMap<string, CachedIssues>({
+  maxSize: MAX_REPOS,
+  name: "githubListCache.issues",
+});
+const prCache = new BoundedMap<string, CachedPrs>({
+  maxSize: MAX_PR_LISTS,
+  name: "githubListCache.prs",
+});
 const inFlightListRequests = new Map<string, Promise<unknown>>();
 
 /**
@@ -138,11 +123,7 @@ function safeLocalStorage(): Storage | null {
   }
 }
 
-function hydrate<T>(
-  storageKey: string,
-  cache: Map<string, T>,
-  maxSize: number
-): void {
+function hydrate<T>(storageKey: string, cache: BoundedMap<string, T>): void {
   const store = safeLocalStorage();
   if (!store) return;
   try {
@@ -151,7 +132,7 @@ function hydrate<T>(
     const entries = JSON.parse(raw) as [string, T][];
     if (!Array.isArray(entries)) return;
     for (const [key, value] of entries) {
-      lruSet(cache, key, value, maxSize);
+      cache.set(key, value);
     }
   } catch {
     // Corrupt/legacy payload — ignore and start fresh.
@@ -159,7 +140,7 @@ function hydrate<T>(
 }
 
 function serializeCacheWithinBudget<T>(
-  cache: Map<string, T>,
+  cache: BoundedMap<string, T>,
   budgetBytes: number,
   compact: (value: T) => T
 ): string {
@@ -224,13 +205,13 @@ export function flushGitHubListCachePersistence(): void {
   flushPendingPersistence();
 }
 
-hydrate(STORAGE_KEY_ISSUES, issueCache, MAX_REPOS);
-hydrate(STORAGE_KEY_PRS, prCache, MAX_PR_LISTS);
+hydrate(STORAGE_KEY_ISSUES, issueCache);
+hydrate(STORAGE_KEY_PRS, prCache);
 
 // ── Issues ────────────────────────────────────────────────────────────────────
 
 export function getCachedIssues(repoKey: string): CachedIssues | null {
-  return lruGet(issueCache, repoKey);
+  return issueCache.get(repoKey) ?? null;
 }
 
 export type CachedIssueState = "open" | "closed";
@@ -239,7 +220,7 @@ export function isIssueCacheStale(
   repoKey: string,
   state: CachedIssueState = "open"
 ): boolean {
-  const entry = issueCache.get(repoKey);
+  const entry = issueCache.peek(repoKey);
   if (!entry) return true;
   const cachedAt = state === "open" ? entry.openCachedAt : entry.closedCachedAt;
   return (
@@ -252,8 +233,8 @@ export function updateCachedOpenIssues(
   repoKey: string,
   openIssues: GitHubIssue[]
 ) {
-  const existing = lruGet(issueCache, repoKey);
-  lruSet(issueCache, repoKey, {
+  const existing = issueCache.get(repoKey);
+  issueCache.set(repoKey, {
     openIssues: openIssues.slice(0, MAX_ISSUES_PER_SECTION),
     closedIssues: existing?.closedIssues ?? [],
     openCachedAt: Date.now(),
@@ -272,8 +253,8 @@ export function updateCachedClosedIssues(
   repoKey: string,
   closedIssues: GitHubIssue[]
 ) {
-  const existing = lruGet(issueCache, repoKey);
-  lruSet(issueCache, repoKey, {
+  const existing = issueCache.get(repoKey);
+  issueCache.set(repoKey, {
     openIssues: existing?.openIssues ?? [],
     closedIssues: closedIssues.slice(0, MAX_ISSUES_PER_SECTION),
     openCachedAt: existing?.openCachedAt ?? null,
@@ -300,14 +281,14 @@ export function getCachedPrs(
   repoKey: string,
   state: CachedPrState = "open"
 ): CachedPrs | null {
-  return lruGet(prCache, prCacheKey(repoKey, state));
+  return prCache.get(prCacheKey(repoKey, state)) ?? null;
 }
 
 export function isPrCacheStale(
   repoKey: string,
   state: CachedPrState = "open"
 ): boolean {
-  const entry = prCache.get(prCacheKey(repoKey, state));
+  const entry = prCache.peek(prCacheKey(repoKey, state));
   if (!entry) return true;
   return Date.now() - entry.cachedAt > GITHUB_LIST_CACHE_TTL_MS;
 }
@@ -317,15 +298,10 @@ export function setCachedPrs(
   prs: OpenPRItem[],
   state: CachedPrState = "open"
 ) {
-  lruSet(
-    prCache,
-    prCacheKey(repoKey, state),
-    {
-      prs: prs.slice(0, MAX_PRS),
-      cachedAt: Date.now(),
-    },
-    MAX_PR_LISTS
-  );
+  prCache.set(prCacheKey(repoKey, state), {
+    prs: prs.slice(0, MAX_PRS),
+    cachedAt: Date.now(),
+  });
   schedulePersist(STORAGE_KEY_PRS, () =>
     serializeCacheWithinBudget(
       prCache,
@@ -337,7 +313,10 @@ export function setCachedPrs(
 
 // ── Pull Request detail ─────────────────────────────────────────────────────
 
-const prDetailCache = new Map<string, CachedPrDetail>();
+const prDetailCache = new BoundedMap<string, CachedPrDetail>({
+  maxSize: MAX_PR_DETAILS,
+  name: "githubListCache.prDetails",
+});
 
 /** Cache key for a PR detail snapshot. */
 export function prDetailKey(repoFullName: string, prNumber: number): string {
@@ -345,11 +324,11 @@ export function prDetailKey(repoFullName: string, prNumber: number): string {
 }
 
 export function getCachedPrDetail(key: string): CachedPrDetail | null {
-  return lruGet(prDetailCache, key);
+  return prDetailCache.get(key) ?? null;
 }
 
 export function isPrDetailStale(key: string): boolean {
-  const entry = prDetailCache.get(key);
+  const entry = prDetailCache.peek(key);
   if (!entry) return true;
   return Date.now() - entry.cachedAt > GITHUB_LIST_CACHE_TTL_MS;
 }
@@ -358,12 +337,7 @@ export function setCachedPrDetail(
   key: string,
   detail: Omit<CachedPrDetail, "cachedAt">
 ) {
-  lruSet(
-    prDetailCache,
-    key,
-    { ...detail, cachedAt: Date.now() },
-    MAX_PR_DETAILS
-  );
+  prDetailCache.set(key, { ...detail, cachedAt: Date.now() });
 }
 
 /**
@@ -376,17 +350,12 @@ export function updateCachedPrDetail(
   key: string,
   update: (current: CachedPrDetail) => Partial<Omit<CachedPrDetail, "cachedAt">>
 ): boolean {
-  const current = prDetailCache.get(key);
+  const current = prDetailCache.peek(key);
   if (!current) return false;
-  lruSet(
-    prDetailCache,
-    key,
-    {
-      ...current,
-      ...update(current),
-      cachedAt: current.cachedAt,
-    },
-    MAX_PR_DETAILS
-  );
+  prDetailCache.set(key, {
+    ...current,
+    ...update(current),
+    cachedAt: current.cachedAt,
+  });
   return true;
 }

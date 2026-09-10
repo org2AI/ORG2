@@ -78,3 +78,55 @@ describe("TurnMetadataFooter PR row", () => {
     await root.unmount();
   });
 });
+
+describe("TurnMetadataFooter container disclosure", () => {
+  it("collapses and reopens the body while keeping tabs and counts available", async () => {
+    const root = createSmokeRoot();
+    await root.render(
+      React.createElement(TurnMetadataFooter, {
+        summary: SUMMARY,
+        sessionId: SUMMARY.sessionId,
+        turnId: SUMMARY.turnId,
+      })
+    );
+    const toggle = root.container.querySelector<HTMLButtonElement>(
+      '[data-testid="turn-metadata-collapse-toggle"]'
+    )!;
+    const tab = root.container.querySelector<HTMLButtonElement>(
+      '[data-testid="turn-metadata-edits-tab"]'
+    )!;
+    expect(toggle).not.toBeNull();
+    expect(tab.className).toContain("bg-transparent");
+    expect(tab.querySelector(".rounded-full")).toBeNull();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      root.container.querySelector('[data-testid="turn-metadata-pr"]')
+    ).not.toBeNull();
+
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      await dispatch(() => toggle.click());
+      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      expect(
+        root.container.querySelector(
+          '[data-testid="turn-metadata-scroll-area"]'
+        )
+      ).toBeNull();
+      expect(root.container.contains(tab)).toBe(true);
+      expect(
+        root.container.querySelector(
+          '[data-testid="turn-metadata-edits-count"]'
+        )?.textContent
+      ).toBe("1");
+
+      await dispatch(() => toggle.click());
+      expect(toggle.getAttribute("aria-expanded")).toBe("true");
+      expect(
+        root.container.querySelector('[data-testid="turn-metadata-pr"]')
+      ).not.toBeNull();
+      expect(
+        document.getElementById(toggle.getAttribute("aria-controls")!)
+      ).not.toBeNull();
+    }
+    await root.unmount();
+  });
+});

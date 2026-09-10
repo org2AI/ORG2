@@ -33,7 +33,7 @@ export default function WorkItemFlowHeader({
 
   return (
     <DetailFlowHeader
-      title={workItem.name || t("workItems.untitled")}
+      title={workItem.name || t("common:placeholders.untitled")}
       identifier={displayShortId}
       status={
         <span className="inline-flex shrink-0 rounded-full bg-fill-2 px-2 py-0.5 text-[11px] font-medium text-text-2">

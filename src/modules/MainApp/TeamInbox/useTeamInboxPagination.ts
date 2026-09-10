@@ -3,8 +3,12 @@
  *
  * Owns the Inbox page snapshot: initial hydration, revalidation against the
  * data source, source-driven reloads, and the load-more / refresh commands.
+ * The active list pages through the data source's live feed; the archived
+ * list pages by cursor through `listArchivedPage`.
  */
 import { useEffect, useRef, useState } from "react";
+
+import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 
 import {
   type LoadState,
@@ -16,8 +20,11 @@ import {
   loadStateForPage,
 } from "./domain";
 
+export type TeamInboxListMode = "active" | "archived";
+
 export interface UseTeamInboxPaginationOptions {
   dataSource: TeamInboxDataSource;
+  listMode: TeamInboxListMode;
   pageSize: number;
   issueMessage: (issue: TeamInboxIssue) => string;
   t: (key: string) => string;
@@ -26,6 +33,7 @@ export interface UseTeamInboxPaginationOptions {
 
 export function useTeamInboxPagination({
   dataSource,
+  listMode,
   pageSize,
   issueMessage,
   t,
@@ -37,6 +45,7 @@ export function useTeamInboxPagination({
   const [items, setItems] = useState<TeamInboxItem[]>(
     () => initialPage?.items ?? []
   );
+  const [itemsMode, setItemsMode] = useState<TeamInboxListMode>("active");
   const [authoritativeUnreadCounts, setAuthoritativeUnreadCounts] =
     useState<TeamInboxUnreadCounts | null>(
       () => initialPage?.unreadCounts ?? null
@@ -56,26 +65,42 @@ export function useTeamInboxPagination({
     );
   const [reloadRevision, setReloadRevision] = useState(0);
   const [hasMore, setHasMore] = useState(() => initialPage?.nextCursor != null);
+  const [nextCursor, setNextCursor] = useState(
+    () => initialPage?.nextCursor ?? null
+  );
   const [loadingMore, setLoadingMore] = useState(false);
   const mountedRef = useRef(true);
+  useMountedCleanup(mountedRef);
+  const loadMoreAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    mountedRef.current = true;
     return () => {
-      mountedRef.current = false;
+      loadMoreAbortRef.current?.abort();
+      loadMoreAbortRef.current = null;
     };
   }, []);
 
   useEffect(() => {
     const abortController = new AbortController();
 
-    void dataSource
-      .listPage({ limit: pageSize, signal: abortController.signal })
+    const listPage =
+      listMode === "archived"
+        ? (dataSource.listArchivedPage ??
+          (async (): Promise<TeamInboxPage> => ({
+            items: [],
+            nextCursor: null,
+          })))
+        : dataSource.listPage;
+    void listPage({ limit: pageSize, signal: abortController.signal })
       .then((page) => {
         if (abortController.signal.aborted) return;
         setItems(page.items);
-        setAuthoritativeUnreadCounts(page.unreadCounts ?? null);
+        setItemsMode(listMode);
+        if (listMode === "active") {
+          setAuthoritativeUnreadCounts(page.unreadCounts ?? null);
+        }
         setHasMore(page.nextCursor != null);
+        setNextCursor(page.nextCursor);
         const nextLoadState = loadStateForPage(page, issueMessage);
         if (nextLoadState.status !== "loading") {
           setCompletedDataSourceScopeKey(dataSourceScopeKey);
@@ -109,6 +134,7 @@ export function useTeamInboxPagination({
     dataSource,
     dataSourceScopeKey,
     issueMessage,
+    listMode,
     pageSize,
     reloadRevision,
     t,
@@ -122,7 +148,43 @@ export function useTeamInboxPagination({
   }, [dataSource]);
 
   const handleLoadMore = () => {
-    if (!dataSource.loadMore || loadingMore) return;
+    if (loadingMore) return;
+    if (listMode === "archived") {
+      if (!dataSource.listArchivedPage || !nextCursor) return;
+      const abortController = new AbortController();
+      loadMoreAbortRef.current?.abort();
+      loadMoreAbortRef.current = abortController;
+      setLoadingMore(true);
+      void dataSource
+        .listArchivedPage({
+          cursor: nextCursor,
+          limit: pageSize,
+          signal: abortController.signal,
+        })
+        .then((page) => {
+          if (abortController.signal.aborted || !mountedRef.current) return;
+          setItems((current) => [...current, ...page.items]);
+          setNextCursor(page.nextCursor);
+          setHasMore(page.nextCursor != null);
+        })
+        .catch(() => {
+          if (abortController.signal.aborted) return;
+          setLoadState({
+            status: "error",
+            message: t("teamInbox.errors.loadMore"),
+          });
+        })
+        .finally(() => {
+          if (loadMoreAbortRef.current === abortController) {
+            loadMoreAbortRef.current = null;
+          }
+          if (mountedRef.current && !abortController.signal.aborted) {
+            setLoadingMore(false);
+          }
+        });
+      return;
+    }
+    if (!dataSource.loadMore) return;
     setLoadingMore(true);
     void dataSource
       .loadMore()
@@ -143,9 +205,9 @@ export function useTeamInboxPagination({
   };
 
   const handleRefresh = () => {
-    onRefreshPullRequests?.();
+    if (listMode === "active") onRefreshPullRequests?.();
     setLoadState({ status: "loading", message: null });
-    if (!dataSource.refresh) {
+    if (listMode === "archived" || !dataSource.refresh) {
       setReloadRevision((value) => value + 1);
       return;
     }
@@ -164,9 +226,18 @@ export function useTeamInboxPagination({
       });
   };
 
+  /** Crossing the active/archived boundary invalidates in-flight paging. */
+  const resetForModeSwitch = () => {
+    loadMoreAbortRef.current?.abort();
+    loadMoreAbortRef.current = null;
+    setLoadingMore(false);
+    setLoadState({ status: "loading", message: null });
+  };
+
   return {
     items,
     setItems,
+    itemsMode,
     authoritativeUnreadCounts,
     loadState,
     setLoadState,
@@ -176,5 +247,6 @@ export function useTeamInboxPagination({
     loadingMore,
     handleLoadMore,
     handleRefresh,
+    resetForModeSwitch,
   };
 }

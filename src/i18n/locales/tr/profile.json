@@ -1,34 +1,9 @@
 {
-  "connect": "Bağlan",
   "name": "Ad",
   "genderOptions": {},
   "role": "Rol",
   "location": "Konum",
-  "timezone": "Saat dilimi",
   "commits": "commit",
   "activity": "Aktivite",
-  "specialty": {
-    "frontend": "Frontend",
-    "backend": "Backend",
-    "fullstack": "Full Stack",
-    "mobile": "Mobile",
-    "devops": "DevOps",
-    "data": "Data",
-    "systems": "Systems"
-  },
-  "bio": "Biyografi",
-  "social": {},
-  "edu": {
-    "edit": "Eğitimi Düzenle",
-    "present": "Devam ediyor"
-  },
-  "exp": {
-    "edit": "Deneyimi Düzenle"
-  },
-  "sections": {
-    "about": "Hakkında",
-    "developerActivity": "Geliştirici Etkinliği",
-    "projectsAndAchievements": "Projects ve başarılar",
-    "professionalBackground": "Mesleki Geçmiş"
-  }
+  "social": {}
 }

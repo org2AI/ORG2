@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 
+import { useAgentOrgTaskProjection } from "@src/engines/ChatPanel/ChatHistory/AgentOrgTaskProjectionContext";
 import { useAgentTurnContext } from "@src/engines/ChatPanel/ChatHistory/AgentTurnContext";
 import type { RustOrgTaskItem } from "@src/engines/SessionCore/core/types";
 import { resolveOrgTaskOperationOutcome } from "@src/engines/SessionCore/rendering/orgTaskOutcome";
@@ -58,6 +59,11 @@ function renderListCard(
     tasks: tasks.map(orgTaskItemToCardData),
     total: extracted.total,
     orgRunId: extracted.orgRunId,
+    observation:
+      extracted.taskListObservation === "no_new_work_facts" ||
+      extracted.taskListObservation === "new_trigger_pending"
+        ? extracted.taskListObservation
+        : "results",
   };
   return (
     <div
@@ -91,6 +97,16 @@ export const OrgTaskAdapter: React.FC<UniversalEventProps> = (props) => {
         : null,
     [props.result, props.rustExtracted, props.status]
   );
+  const projectedTaskId =
+    props.rustExtracted?.kind === "orgTask"
+      ? ((props.rustExtracted.task ?? props.rustExtracted.tasks?.[0])?.id ?? "")
+      : "";
+  const currentTask = useAgentOrgTaskProjection(
+    props.rustExtracted?.kind === "orgTask"
+      ? props.rustExtracted.orgRunId
+      : undefined,
+    projectedTaskId
+  );
 
   if (props.rustExtracted?.kind !== "orgTask") {
     return (
@@ -115,6 +131,26 @@ export const OrgTaskAdapter: React.FC<UniversalEventProps> = (props) => {
   const isSimulator = props.variant === "simulator";
   // Narrowing above guarantees an Agent Org outcome was resolved.
   const resolvedOperationOutcome = operationOutcome ?? "failed";
+
+  if (
+    extracted.action === "list" &&
+    extracted.taskListObservation === "unknown"
+  ) {
+    return (
+      <ToolCallBlock
+        toolName={props.functionName || props.eventType || "task_list"}
+        title={title}
+        args={props.args}
+        result={props.result}
+        isLoading={false}
+        defaultCollapsed={true}
+        eventId={props.eventId}
+        callId={props.callId}
+        sessionId={props.sessionId}
+        payloadRefs={props.payloadRefs}
+      />
+    );
+  }
 
   if (extracted.action === "list" && resolvedOperationOutcome === "succeeded")
     return renderListCard(props, groupSenderName);
@@ -162,7 +198,6 @@ export const OrgTaskAdapter: React.FC<UniversalEventProps> = (props) => {
       : extracted.action === "delete"
         ? "delete"
         : "update";
-
   return (
     <div
       data-tool-call-event-id={props.eventId}
@@ -174,12 +209,29 @@ export const OrgTaskAdapter: React.FC<UniversalEventProps> = (props) => {
         description={task.description}
         ownerName={resolveOrgTaskOwnerDisplay(task)}
         status={blockAction === "delete" ? undefined : task.status}
+        currentStatus={
+          blockAction === "delete" ? undefined : currentTask?.status
+        }
+        currentUpdatedAt={currentTask?.updatedAt}
+        currentOwnerName={
+          currentTask
+            ? currentTask.ownerMemberId
+              ? prettifyMemberName(currentTask.ownerMemberId)
+              : null
+            : undefined
+        }
+        currentGeneration={currentTask?.activationGeneration}
+        currentReplacementTaskId={currentTask?.replacementTaskId ?? undefined}
+        currentRecordUnavailable={
+          blockAction !== "delete" && currentTask === null
+        }
         priority={task.priority}
         blocks={task.blocks ?? []}
         blockedBy={task.blockedBy ?? []}
         ownerChanged={extracted.ownerChanged}
         statusChanged={extracted.statusChanged}
         taskAssignedDispatched={extracted.taskAssignedDispatched}
+        completionDeferred={extracted.completionDeferred}
         operationOutcome={resolvedOperationOutcome}
         operationMessage={extracted.guidance ?? extracted.errorMessage}
         isLoading={

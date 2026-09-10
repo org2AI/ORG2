@@ -10,9 +10,11 @@
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import {
+  getSessionMetadata,
   loadEvents,
   loadInitialTurnWindow,
 } from "@src/engines/SessionCore/storage/cacheAdapter";
+import { isSyntheticUserInputEvent } from "@src/engines/SessionCore/sync/utils/activityIds";
 import { createLogger } from "@src/hooks/logger";
 import type {
   CliSessionStatus,
@@ -131,10 +133,62 @@ export async function loadOwnSessionInitialEvents(
     sessionId,
     isCollaborationImportedSession(sessionId) ? 0 : undefined
   );
-  if (window.turns.length === 0) {
-    return loadEvents(sessionId);
+  const history =
+    window.turns.length === 0 ? await loadEvents(sessionId) : window.events;
+  if (!isCollaborationImportedSession(sessionId)) return history;
+  // Both registered-agent and not-yet-registered imports use this loader.
+  // Round windows omit local delivery sidecars; restore them here rather
+  // than making adapter registration determine whether Retry is visible.
+  const failedProjection = await loadFailedUserDeliveryProjection(sessionId);
+  return mergeFailedUserDeliveryProjection(history, failedProjection);
+}
+
+/**
+ * Provider-native history cannot contain a user turn rejected before native
+ * acceptance. EventStore persists that one terminal delivery projection so
+ * Retry/Edit remains visible after restart; merge only those rows back into
+ * the UI history. Pending dispatch still belongs to the durable queue and
+ * accepted turns still belong to the provider transcript.
+ */
+export function mergeFailedUserDeliveryProjection(
+  history: readonly SessionEvent[],
+  projected: readonly SessionEvent[]
+): SessionEvent[] {
+  const historyIds = new Set(history.map((event) => event.id));
+  const failed = projected.filter(
+    (event) =>
+      !historyIds.has(event.id) &&
+      isSyntheticUserInputEvent(event) &&
+      event.result?.deliveryStatus === "failed" &&
+      typeof event.result?.turnIntentId === "string" &&
+      event.result.turnIntentId.length > 0
+  );
+  if (failed.length === 0) return history as SessionEvent[];
+
+  const merged = [...history];
+  for (const event of failed) {
+    const insertAt = merged.findIndex(
+      (candidate) => candidate.createdAt > event.createdAt
+    );
+    if (insertAt < 0) merged.push(event);
+    else merged.splice(insertAt, 0, event);
   }
-  return window.events;
+  return merged;
+}
+
+async function loadFailedUserDeliveryProjection(
+  sessionId: string
+): Promise<SessionEvent[]> {
+  // Avoid cache_load_session_events' provider fallback when no SQLite rows
+  // exist; a large native transcript must be parsed exactly once per load.
+  const metadata = await getSessionMetadata(sessionId);
+  if (!metadata || metadata.eventCount === 0) return [];
+  const cached = await loadEvents(sessionId);
+  return cached.filter(
+    (event) =>
+      isSyntheticUserInputEvent(event) &&
+      event.result?.deliveryStatus === "failed"
+  );
 }
 
 export async function loadPersistedHistory(
@@ -144,12 +198,16 @@ export async function loadPersistedHistory(
 ): Promise<SessionEvent[]> {
   if (adapter.category === "agent") {
     const events = await loadOwnSessionInitialEvents(sessionId);
-    if (events.length > 0 || signal.aborted) {
-      return events;
-    }
-    return adapter.loadHistory(sessionId, signal);
+    if (signal.aborted) return [];
+    return events.length > 0
+      ? events
+      : await adapter.loadHistory(sessionId, signal);
   }
-  return adapter.loadHistory(sessionId, signal);
+  const history = await adapter.loadHistory(sessionId, signal);
+  if (signal.aborted || adapter.category !== "cli") return history;
+  const failedProjection = await loadFailedUserDeliveryProjection(sessionId);
+  if (signal.aborted) return [];
+  return mergeFailedUserDeliveryProjection(history, failedProjection);
 }
 
 export async function hydrateSessionStoreBeforeDisplay(

@@ -18,6 +18,7 @@ import { rpc } from "@src/api/tauri/rpc";
 import { createLogger } from "@src/hooks/logger";
 import { useEnsureAgentDefs } from "@src/modules/MainApp/AgentOrgs/hooks/useEnsureAgentDefs";
 import {
+  allAgentDefsAtom,
   builtInAgentsAtom,
   customAgentsAtom,
 } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
@@ -93,8 +94,7 @@ export function useAgentToolMatrix() {
   const defsLoaded = useEnsureAgentDefs();
   const builtInAgents = useAtomValue(builtInAgentsAtom);
   const customAgents = useAtomValue(customAgentsAtom);
-  const setBuiltInAgents = useSetAtom(builtInAgentsAtom);
-  const setCustomAgents = useSetAtom(customAgentsAtom);
+  const setAllDefs = useSetAtom(allAgentDefsAtom);
   const records = useMemo(
     () => [...builtInAgents, ...customAgents].map(parseAgent),
     [builtInAgents, customAgents]
@@ -106,13 +106,9 @@ export function useAgentToolMatrix() {
         current.map((entry) =>
           entry.id === definition.id ? definition : entry
         );
-      if (definition.builtIn) {
-        setBuiltInAgents(update);
-      } else {
-        setCustomAgents(update);
-      }
+      setAllDefs(update);
     },
-    [setBuiltInAgents, setCustomAgents]
+    [setAllDefs]
   );
 
   const rowsByTool = useCallback(

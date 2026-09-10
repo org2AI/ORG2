@@ -11,14 +11,14 @@ import React, { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Placeholder } from "@src/components/Placeholder";
-import { openWorkspaceSpotlight } from "@src/scaffold/GlobalSpotlight/openSpotlight";
+import { openWorkingDirectorySpotlight } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 
 import type { UnifiedTabContentProps } from "../types";
 
 const ExplorerTabRenderer: React.FC<UnifiedTabContentProps> = memo(() => {
   const { t } = useTranslation();
   const handleAddWorkspace = useCallback(() => {
-    openWorkspaceSpotlight("switch");
+    openWorkingDirectorySpotlight("switch");
   }, []);
 
   return (
@@ -26,13 +26,15 @@ const ExplorerTabRenderer: React.FC<UnifiedTabContentProps> = memo(() => {
       variant="empty"
       placement="detail-panel"
       title={t("placeholders.noWorkspaceExplorerTitle", {
-        defaultValue: "No workspace open",
+        defaultValue: "No working directory open",
       })}
       subtitle={t("placeholders.noWorkspaceExplorerSubtitle", {
-        defaultValue: "Open workspace to view file",
+        defaultValue: "Open a working directory to view files",
       })}
       action={{
-        label: t("actions.openWorkspace", { defaultValue: "Open Workspace" }),
+        label: t("actions.openWorkspace", {
+          defaultValue: "Open Working Directory",
+        }),
         onClick: handleAddWorkspace,
       }}
       fillParentHeight

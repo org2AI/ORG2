@@ -3,11 +3,7 @@ import { z } from "zod/v4";
 import { defineProcedure } from "../invoke";
 import * as schemas from "../schemas";
 
-export type {
-  CursorPluginHook,
-  CursorPluginInfo,
-  CursorPluginSkill,
-} from "../schemas/agentOrgs";
+export type { CursorPluginInfo } from "../schemas/agentOrgs";
 
 const cursor = {
   readConfig: defineProcedure("cursor_cli_config_read")
@@ -119,6 +115,24 @@ const managedConfig = {
     .build(),
 } as const;
 
+const connections = {
+  status: defineProcedure("harness_connection_status")
+    .input(schemas.agentOrgs.HarnessConnectionInput)
+    .output(schemas.agentOrgs.HarnessConnectionViewSchema)
+    .build(),
+  test: defineProcedure("harness_connection_test")
+    .input(schemas.agentOrgs.HarnessConnectionTestInput)
+    .output(z.string())
+    .build(),
+  cancelTest: defineProcedure("harness_connection_cancel_test")
+    .input(z.object({ requestId: z.string() }))
+    .build(),
+  apply: defineProcedure("harness_connection_apply")
+    .input(schemas.agentOrgs.HarnessConnectionApplyInput)
+    .output(schemas.agentOrgs.CliConfigManagedStatusSchema)
+    .build(),
+} as const;
+
 const sessionProvenance = {
   status: defineProcedure("session_provenance_hooks_status")
     .output(z.array(schemas.agentOrgs.SessionProvenanceHookStatusSchema))
@@ -176,13 +190,11 @@ const memory = {
 
 const orgs = {
   list: defineProcedure("agent_orgs_list")
-    .output(z.array(schemas.agentOrgs.OrgMemberSchema))
+    .output(z.array(schemas.agentOrgs.OrgDefinitionSchema))
     .build(),
-  add: defineProcedure("agent_orgs_add")
+  saveTrustedSettings: defineProcedure("agent_orgs_save_trusted_settings")
     .input(schemas.agentOrgs.OrgJsonInput)
-    .build(),
-  update: defineProcedure("agent_orgs_update")
-    .input(schemas.agentOrgs.OrgJsonInput)
+    .output(schemas.agentOrgs.OrgDefinitionSchema)
     .build(),
   remove: defineProcedure("agent_orgs_remove")
     .input(schemas.agentOrgs.OrgIdInput)
@@ -196,6 +208,7 @@ export const agentOrgs = {
   cliConfigFiles,
   launchProfiles,
   managedConfig,
+  connections,
   sessionProvenance,
   memory,
   orgs,

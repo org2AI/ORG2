@@ -12,11 +12,12 @@ import React, { memo, useCallback, useEffect, useMemo } from "react";
 import { ActionSystemProvider } from "@src/ActionSystem";
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
 import { usePinnedTabs } from "@src/hooks/tabHost/usePinnedTabs";
+import { useRetainedTabPool } from "@src/hooks/tabHost/useRetainedTabPool";
 import { useWorkStationPanels } from "@src/hooks/tabHost/useWorkStationPanels";
 import { useWorkStationTabs } from "@src/hooks/tabHost/useWorkStationTabs";
-import { useEditorRepoCacheSync } from "@src/hooks/ui/tabs";
+import { useEditorRepoCacheSync } from "@src/hooks/ui/tabs/useEditorRepoCacheSync";
 import { CODE_EDITOR_CONFIG } from "@src/modules/WorkStation/CodeEditor/config";
-import { type PrimarySidebarTabKey } from "@src/store/ui/workStationAtom";
+import { type PrimarySidebarTabKey } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import { workspaceFoldersAtom } from "@src/store/ui/workspaceFoldersAtom";
 import {
   CODE_EDITOR_MAIN_TERMINAL_SESSION_ID,
@@ -37,6 +38,7 @@ import { EditorIntegrations } from "./EditorLayout/components/EditorIntegrations
 import FileSearchPanel from "./EditorLayout/overlays/FileSearchPanel";
 import EditorContent from "./Panels/EditorMainPane";
 import { EditorPrimarySidebar } from "./Panels/EditorPrimarySidebar";
+import { trackGitPollingVisibility } from "./gitPollingVisibility";
 import { useCodeEditor } from "./hooks/useCodeEditor";
 import { useCodeEditorEvents } from "./hooks/useCodeEditorEvents";
 import { useCodeEditorHandlers } from "./hooks/useCodeEditorHandlers";
@@ -103,6 +105,21 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
     // file-row clicks can be wired to `handleGitFileSelect`.
     const { activeTab, tabs } = useWorkStationTabs();
     const setLayout = useSetAtom(workstationLayoutAtom);
+    // Tabs the retention policy keeps mounted-but-hidden after you leave
+    // them (`tabRetention.ts`). Computed once here so the main pane and the
+    // sidebar slot hide/show the same instances in lockstep.
+    const retainedTabIds = useRetainedTabPool(
+      "source-control",
+      tabs,
+      activeTab?.id ?? null
+    );
+    const retainedTabs = useMemo(
+      () => tabs.filter((tab) => retainedTabIds.has(tab.id)),
+      [retainedTabIds, tabs]
+    );
+    const sourceControlSurfaceMounted =
+      activeTab?.type === "source-control" ||
+      retainedTabs.some((tab) => tab.type === "source-control");
 
     // === Local state, status-bar sync, and misc handlers ===
     const {
@@ -199,6 +216,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
       currentBranch,
       gitDiffState,
       activeTab,
+      sourceControlSurfaceMounted,
       setPrimaryPanel,
       handleGitFileSelect,
     });
@@ -317,6 +335,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
       () => (
         <SidebarSlot
           activeTab={activeTab}
+          retainedTabs={retainedTabs}
           repoPath={repoPath}
           repoId={selectedRepoId}
           isMultiRoot={workspaceFolders.length > 1}
@@ -336,6 +355,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
         handleGitFilesChange,
         handleSourceControlHistorySelectionChange,
         repoPath,
+        retainedTabs,
         selectedRepoId,
         tabSidebarExtraContext,
         workspaceFolders.length,
@@ -367,12 +387,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
 
     const isSourceControlActive = activeTab?.type === "source-control";
     useEffect(() => {
-      const repoId = isActive && isSourceControlActive ? selectedRepoId : null;
-      void invoke(SET_ACTIVE_GIT_POLLING_REPO_COMMAND, { repoId });
-
-      return () => {
-        void invoke(SET_ACTIVE_GIT_POLLING_REPO_COMMAND, { repoId: null });
-      };
+      return trackGitPollingVisibility(
+        document,
+        isActive && isSourceControlActive ? selectedRepoId : null,
+        (repoId) => {
+          void invoke(SET_ACTIVE_GIT_POLLING_REPO_COMMAND, { repoId });
+        }
+      );
     }, [isActive, isSourceControlActive, selectedRepoId]);
 
     const editorSourceControlScopePicker = isSourceControlActive
@@ -416,6 +437,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
             isBinary={codeEditorState.isBinary}
             onCursorPositionChange={handleCursorPositionChange}
             terminalState={terminalState}
+            retainedTabIds={retainedTabIds}
             sourceControlHeaderLeadingSlot={editorSourceControlScopePicker}
             sourceControlHeaderTrailingSlot={editorSourceControlHeaderSlot}
             sourceControlFilterMode={editorSourceControlFilterMode}
@@ -446,6 +468,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
         handleAllChangesClick,
         handleCursorPositionChange,
         terminalState,
+        retainedTabIds,
         editorSourceControlScopePicker,
         editorSourceControlHeaderSlot,
         editorSourceControlFilterMode,

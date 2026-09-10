@@ -114,6 +114,14 @@ describe("useApiSetupTokenDetection", () => {
 
     expect(serviceMocks.autoDetectKey).toHaveBeenCalledTimes(1);
     expect(serviceMocks.getOAuthModelCatalog).toHaveBeenCalledTimes(1);
+    expect(serviceMocks.getOAuthModelCatalog).toHaveBeenCalledWith(
+      CLI_AGENT.CODEX,
+      {
+        accessToken: "test-access-token",
+        refreshToken: "test-refresh-token",
+        idToken: "test-id-token",
+      }
+    );
     expect(setDetectingToken).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -128,6 +136,147 @@ describe("useApiSetupTokenDetection", () => {
       true,
       false,
     ]);
+
+    await act(async () => root.unmount());
+  });
+
+  it("prefers a valid Codex OAuth session when direct detection also finds an API key", async () => {
+    (
+      globalThis as typeof globalThis & {
+        IS_REACT_ACT_ENVIRONMENT: boolean;
+      }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+
+    serviceMocks.autoDetectKey.mockResolvedValue({
+      success: true,
+      message: "Found 2 key(s)",
+      keys: [
+        {
+          auth_method: "oauth",
+          validated: true,
+          session_token: "oauth-access-token",
+        },
+        {
+          auth_method: "api_key",
+          validated: true,
+          api_key: "sk-api-key",
+        },
+      ],
+    });
+
+    const setSelectedCredentialIndex = vi.fn();
+    const setShowKeySelection = vi.fn();
+    const options: HookOptions = {
+      data: { agent_type: CLI_AGENT.CODEX } as WizardData,
+      onChange: vi.fn(),
+      t: ((key: string) => key) as TFunction<"integrations">,
+      isCursor: false,
+      isOAuthAgent: true,
+      isClaudeCode: false,
+      isCodex: true,
+      detectedKeys: [],
+      selectedCredentialIndex: 0,
+      setDetectingToken: vi.fn(),
+      setTokenDetected: vi.fn(),
+      setTokenError: vi.fn(),
+      setCursorSessionToken: vi.fn(),
+      setShowKeySelection,
+      setDetectedKeys: vi.fn(),
+      setSelectedCredentialIndex,
+    };
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    let hookResult: HookResult | undefined;
+    await act(async () => {
+      root.render(
+        createElement(HookHarness, {
+          options,
+          onResult: (result) => {
+            hookResult = result;
+          },
+        })
+      );
+    });
+
+    await act(async () => {
+      await hookResult?.handleAutoDetectToken();
+    });
+
+    expect(setSelectedCredentialIndex).toHaveBeenLastCalledWith(0);
+    expect(setShowKeySelection).toHaveBeenLastCalledWith(true);
+    expect(serviceMocks.getOAuthModelCatalog).not.toHaveBeenCalled();
+
+    await act(async () => root.unmount());
+  });
+
+  it("keeps a directly detected Codex API key on the API model path", async () => {
+    (
+      globalThis as typeof globalThis & {
+        IS_REACT_ACT_ENVIRONMENT: boolean;
+      }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+
+    serviceMocks.autoDetectKey.mockResolvedValue({
+      success: true,
+      message: "Found 1 key(s)",
+      keys: [
+        {
+          auth_method: "api_key",
+          validated: true,
+          api_key: "sk-api-key",
+          available_models: ["api-visible-model"],
+        },
+      ],
+    });
+
+    const onChange = vi.fn();
+    const options: HookOptions = {
+      data: { agent_type: CLI_AGENT.CODEX } as WizardData,
+      onChange,
+      t: ((key: string) => key) as TFunction<"integrations">,
+      isCursor: false,
+      isOAuthAgent: true,
+      isClaudeCode: false,
+      isCodex: true,
+      detectedKeys: [],
+      selectedCredentialIndex: 0,
+      setDetectingToken: vi.fn(),
+      setTokenDetected: vi.fn(),
+      setTokenError: vi.fn(),
+      setCursorSessionToken: vi.fn(),
+      setShowKeySelection: vi.fn(),
+      setDetectedKeys: vi.fn(),
+      setSelectedCredentialIndex: vi.fn(),
+    };
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    let hookResult: HookResult | undefined;
+    await act(async () => {
+      root.render(
+        createElement(HookHarness, {
+          options,
+          onResult: (result) => {
+            hookResult = result;
+          },
+        })
+      );
+    });
+
+    await act(async () => {
+      await hookResult?.handleAutoDetectToken();
+    });
+
+    expect(serviceMocks.getOAuthModelCatalog).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        raw_key_input: "sk-api-key",
+        available_models: ["api-visible-model"],
+      })
+    );
 
     await act(async () => root.unmount());
   });

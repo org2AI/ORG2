@@ -43,6 +43,64 @@ describe("Dropdown", () => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
   });
 
+  it.each([
+    { label: "options", options: [{ value: "one", label: "One" }] },
+    { label: "empty", options: [] },
+    { label: "loading", options: [], loading: true },
+    { label: "search", options: [], showSearch: true },
+  ])(
+    "provides a themed surface for $label without caller styling",
+    (scenario) => {
+      const props: React.ComponentProps<typeof Dropdown> = {
+        ...scenario,
+        defaultPopupVisible: true,
+        children: React.createElement("button", null, "Open"),
+      };
+      const markup = renderToStaticMarkup(React.createElement(Dropdown, props));
+      container.innerHTML = markup;
+      const surface = container.querySelector(".bg-bg-2");
+      expect(surface).not.toBeNull();
+      for (const token of [
+        "border",
+        "border-border-2",
+        "rounded-lg",
+        "shadow-dropdown",
+      ]) {
+        expect(surface!.classList.contains(token)).toBe(true);
+      }
+    }
+  );
+
+  it("keeps the same surface node when callers supply panel classes in a portal", async () => {
+    const props: React.ComponentProps<typeof Dropdown> = {
+      defaultPopupVisible: true,
+      options: [{ value: "one", label: "One" }],
+      className: "bg-bg-2 border shadow-dropdown w-64",
+      getPopupContainer: () => document.body,
+      children: React.createElement("button", null, "Open"),
+    };
+    await act(async () => root.render(React.createElement(Dropdown, props)));
+    const surfaces = document.body.querySelectorAll(".bg-bg-2");
+    expect(surfaces).toHaveLength(1);
+    expect(surfaces[0].classList.contains("w-64")).toBe(true);
+    expect(surfaces[0].querySelector('[role="listbox"]')).not.toBeNull();
+  });
+
+  it("leaves custom droplist surface ownership with the caller", () => {
+    const props: React.ComponentProps<typeof Dropdown> = {
+      defaultPopupVisible: true,
+      droplist: React.createElement(
+        "div",
+        { className: "custom-panel" },
+        "Menu"
+      ),
+      children: React.createElement("button", null, "Open"),
+    };
+    const markup = renderToStaticMarkup(React.createElement(Dropdown, props));
+    expect(markup).toContain("custom-panel");
+    expect(markup).not.toContain("bg-bg-2");
+  });
+
   it("right-aligns the menu by default", () => {
     const props: React.ComponentProps<typeof Dropdown> = {
       defaultPopupVisible: true,

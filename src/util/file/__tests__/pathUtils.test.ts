@@ -40,6 +40,27 @@ describe("getFileExtension", () => {
   it("returns empty for empty string", () => {
     expect(getFileExtension("")).toBe("");
   });
+
+  it("uses the last dot of multi-dot file names", () => {
+    expect(getFileExtension("file.test.ts")).toBe("ts");
+    expect(getFileExtension("jquery.min.js")).toBe("js");
+  });
+
+  it("ignores dots in directory names", () => {
+    expect(getFileExtension("src/v1.2/README")).toBe("");
+    expect(getFileExtension("dir.v2/file.ts")).toBe("ts");
+    expect(getFileExtension("a/b.c/d")).toBe("");
+  });
+
+  it("ignores dots in Windows-style directory names", () => {
+    expect(getFileExtension("C:\\x.y\\z.md")).toBe("md");
+    expect(getFileExtension("C:\\x.y\\README")).toBe("");
+  });
+
+  it("treats dotfiles inside directories like bare dotfiles", () => {
+    expect(getFileExtension("repo/.gitignore")).toBe("gitignore");
+    expect(getFileExtension("Users/me/.DS_Store")).toBe("DS_Store");
+  });
 });
 
 describe("getFileName", () => {
@@ -108,5 +129,10 @@ describe("getFileExtensionLower", () => {
   it("lowercases extension", () => {
     expect(getFileExtensionLower("Image.PNG")).toBe("png");
     expect(getFileExtensionLower("a.TxT")).toBe("txt");
+  });
+
+  it("ignores dots in directory names", () => {
+    expect(getFileExtensionLower("src/v1.2/README")).toBe("");
+    expect(getFileExtensionLower("dir.v2/Image.PNG")).toBe("png");
   });
 });

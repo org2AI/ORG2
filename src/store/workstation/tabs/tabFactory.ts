@@ -21,7 +21,7 @@ import type {
   WorkStationTabType,
 } from "./types";
 
-export { getFileName } from "@src/util/file/pathUtils";
+export { getFileExtension, getFileName } from "@src/util/file/pathUtils";
 
 // ============================================
 // Types
@@ -66,7 +66,7 @@ export interface TabFactoryConfig<TData> {
  * `category` field when a tab type wants its own mount slot (e.g. a
  * read-only viewer that should not share state with the editor).
  */
-const DEFAULT_CATEGORY_BY_TYPE: Record<
+export const DEFAULT_CATEGORY_BY_TYPE: Record<
   WorkStationTabType,
   WorkStationTabCategory
 > = {
@@ -75,7 +75,6 @@ const DEFAULT_CATEGORY_BY_TYPE: Record<
   explorer: "explorer",
   "git-diff": "git",
   "source-control": "git",
-  "timeline-diff": "git",
   "git-log": "git",
   "git-commit-detail": "git",
   "git-stash-detail": "git",
@@ -83,7 +82,6 @@ const DEFAULT_CATEGORY_BY_TYPE: Record<
   "dom-component-preview": "preview",
   terminal: "terminal",
   search: "search",
-  "ai-impact": "ai-impact",
   "search-sessions": "search-sessions",
   "url-preview": "preview",
   "browser-session": "browser",
@@ -170,9 +168,4 @@ export function defineTabFactory<TData>(
       hideWhenOthersExist: config.hideWhenOthersExist ?? false,
     };
   };
-}
-
-export function getFileExtension(name: string): string {
-  const parts = name.split(".");
-  return parts.length > 1 ? parts[parts.length - 1] : "";
 }

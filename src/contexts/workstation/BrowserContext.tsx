@@ -19,13 +19,13 @@ import React, {
 } from "react";
 import { v4 as uuidv4 } from "uuid";
 
+import type { BrowserSession } from "@src/engines/BrowserCore/types";
 import { useGlobalBrowserTabs } from "@src/hooks/ui/tabs/useGlobalTabs";
 import { useSyncBrowserTabs } from "@src/hooks/ui/tabs/useSyncGlobalTabs";
 import {
   NEW_PRIVATE_TAB_TITLE,
   NEW_TAB_TITLE,
 } from "@src/store/workstation/browser/tabs";
-import type { BrowserSession } from "@src/types/ui/tabs";
 
 interface BrowserContextValue {
   sessions: BrowserSession[];
@@ -190,9 +190,6 @@ export const BrowserProvider: React.FC<{ children: React.ReactNode }> = ({
       url: url || "",
       history: url ? [url] : [],
       historyIndex: url ? 0 : -1,
-      historyEntries: url
-        ? [{ url, title: getTitleFromUrl(url), visitedAt: Date.now() }]
-        : [],
       isLoading: false,
       error: null,
       incognito,

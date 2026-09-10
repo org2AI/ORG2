@@ -7,20 +7,22 @@
     "allRead": "Tout est à jour",
     "loadMore": "Charger plus",
     "filters": {
-      "all": "Tous",
       "mentions": "Mentions",
       "assigned": "Assignés"
     },
     "sections": {
       "reviewRequested": "Révision demandée",
-      "authoredByMe": "Créées par moi"
+      "authoredByMe": "Créées par moi",
+      "updates": "Mises à jour"
     },
     "status": {
       "read": "Lu",
       "unread": "Non lu"
     },
     "row": {
-      "ariaLabel": "{{title}}, {{status}}"
+      "ariaLabel": "{{title}}, {{status}}",
+      "issueSource": "Issue {{repository}}",
+      "issueSourceFallback": "Issue"
     },
     "empty": {
       "title": "Rien ici pour l’instant",
@@ -38,6 +40,10 @@
       "noResults": {
         "title": "Aucun résultat",
         "subtitle": "Aucun élément ne correspond à « {{query}} »."
+      },
+      "archived": {
+        "title": "Aucun élément archivé",
+        "subtitle": "Les éléments que vous archivez apparaîtront ici."
       }
     },
     "loading": "Chargement de la boîte de réception d’équipe…",
@@ -88,7 +94,17 @@
       "identityUnavailable": "Votre identité d’équipe n’a pas pu être vérifiée. Vérifiez votre profil de projet avant de répondre.",
       "rowPending": "De {{name}} · En attente de réponse",
       "rowAccepted": "Transfert accepté · {{status}} · {{priority}}",
-      "rowReturned": "Renvoyé par {{name}} · {{status}} · {{priority}}"
+      "rowReturned": "Renvoyé par {{name}} · {{status}} · {{priority}}",
+      "destination": "Destination",
+      "chooseDestination": "Choisissez une destination",
+      "cloudDestination": "{{name}} · Boîte de réception d’équipe",
+      "validation": {
+        "title_required": "Saisissez un titre d’élément de travail.",
+        "project_required": "Choisissez une destination.",
+        "project_unavailable": "Cette destination n’est plus disponible. Choisissez-en une autre.",
+        "recipient_required": "Choisissez un destinataire.",
+        "recipient_unavailable": "Ce destinataire n’est plus disponible. Choisissez-en un autre."
+      }
     },
     "errors": {
       "loadTitle": "Impossible de charger la boîte de réception d’équipe",
@@ -104,8 +120,11 @@
       "pullRequestsPartialLoadHelp": "Les éléments disponibles restent affichés ; actualisez pour tenter de charger à nouveau les pull requests manquantes",
       "workItemContext": "Une partie du contexte du projet n’est pas disponible. L’élément de travail reste utilisable.",
       "workItemLoad": "Impossible de charger cet élément de travail. Réessayez.",
+      "githubIssueLoad": "Impossible de charger le ticket GitHub de cet élément de travail. Les détails locaux restent affichés.",
       "workItemUpdate": "Impossible d’enregistrer la dernière modification de l’élément de travail. Réessayez.",
-      "githubIssueLoad": "Impossible de charger le ticket GitHub de cet élément de travail. Les détails locaux restent affichés."
+      "archive": "Impossible d’archiver cet élément. Réessayez.",
+      "unarchive": "Impossible de restaurer cet élément. Réessayez.",
+      "mutePreferences": "Impossible de mettre à jour les catégories de notification. Réessayez."
     },
     "detail": {
       "assignedSubtitle": "Élément de travail assigné",
@@ -118,7 +137,9 @@
     "actions": {
       "markRead": "Marquer comme lu",
       "markUnread": "Marquer comme non lu",
-      "openWorkItem": "Ouvrir l’élément de travail"
+      "openWorkItem": "Ouvrir l’élément de travail",
+      "archive": "Archiver",
+      "unarchive": "Restaurer dans la boîte de réception"
     },
     "workItemStatus": {
       "backlog": "Backlog",
@@ -135,6 +156,26 @@
       "medium": "Moyenne",
       "high": "Haute",
       "urgent": "Urgente"
+    },
+    "notifications": {
+      "assignmentTitle": "Nouvel élément de travail qui vous est assigné",
+      "mentionTitle": "{{name}} vous a mentionné",
+      "handoffTitle": "Passation de {{name}}",
+      "multipleTitle": "{{count}} nouvelles mises à jour dans la boîte de réception d’équipe",
+      "multipleBody": "Ouvrez la boîte de réception d’équipe pour consulter les assignations et les mentions."
+    },
+    "mute": {
+      "title": "Mettre en sourdine des catégories de mises à jour"
+    },
+    "events": {
+      "mention": "Mentionné dans un commentaire",
+      "discussion_updated": "Discussion mise à jour",
+      "run_failed": "Exécution échouée",
+      "status_changed": "Statut modifié",
+      "assignee_changed": "Assigné modifié",
+      "priority_changed": "Priorité modifiée",
+      "dates_changed": "Dates modifiées",
+      "child_completed": "Élément de travail enfant terminé"
     }
   },
   "windowChrome": {
@@ -162,7 +203,7 @@
       "commandPalette": "Palette de commandes",
       "goToFile": "Accéder au fichier...",
       "selectModel": "Sélectionner un modèle...",
-      "switchWorkspace": "Changer d’espace de travail...",
+      "switchWorkspace": "Changer de répertoire de travail...",
       "switchBranch": "Changer de branche...",
       "switchRunningLocation": "Changer d’emplacement d’exécution...",
       "settings": "Paramètres...",
@@ -185,26 +226,25 @@
     "replyEmpty": "La réponse ne peut pas être vide",
     "sessionNotFound": "Session introuvable",
     "answerSubmitted": "Réponse envoyée avec succès",
-    "answerFailed": "Échec de l'envoi de la réponse. Veuillez réessayer.",
     "replyError": "Une erreur s'est produite lors de l'envoi de la réponse",
     "questionIgnored": "Question ignorée",
     "addedAsContext": "{{name}} ajouté au contexte",
     "addedFilesAsContext": "{{count}} fichier(s) ajouté(s) au contexte",
+    "chooseExecutionAgentAi": "Choisissez un agent responsable avant de créer avec l'IA.",
+    "autoExecuteRequiresExecutionAgent": "L'exécution automatique nécessite un agent responsable.",
     "openSessionBeforeLinking": "Ouvrez une session avant de lier un élément de travail.",
     "sessionLinkedToWorkItem": "Session liée à l'élément de travail.",
     "sessionLinkFailed": "Échec de la liaison de la session : {{message}}",
-    "chooseFolderNewWorkspace": "Choisir un dossier pour créer l'espace de travail",
-    "chooseExistingWorkspace": "Choisir un espace de travail existant",
+    "chooseFolderNewWorkspace": "Choisir le dossier parent du répertoire de travail",
+    "chooseExistingWorkspace": "Choisir un répertoire de travail existant",
     "selectDirectoryFailed": "Échec de la sélection du répertoire",
-    "workspaceCreated": "Espace de travail créé",
-    "workspaceCreateFailed": "Échec de la création de l'espace de travail",
-    "workspaceImported": "Espace de travail importé",
-    "workspaceImportFailed": "Échec de l'importation de l'espace de travail",
+    "workspaceCreated": "Répertoire de travail créé",
+    "workspaceCreateFailed": "Échec de la création du répertoire de travail",
+    "workspaceImported": "Répertoire de travail importé",
+    "workspaceImportFailed": "Échec de l'importation du répertoire de travail",
     "chooseFolderCloneRepo": "Choisir un dossier pour cloner le dépôt",
     "repositoryCloned": "Dépôt cloné",
-    "repositoryCloneFailed": "Échec du clonage du dépôt",
-    "chooseExecutionAgentAi": "Choisissez un agent responsable avant de créer avec l'IA.",
-    "autoExecuteRequiresExecutionAgent": "L'exécution automatique nécessite un agent responsable."
+    "repositoryCloneFailed": "Échec du clonage du dépôt"
   },
   "previews": {
     "noCanvasAvailable": "Aucun canevas disponible",
@@ -254,12 +294,10 @@
     "save": "Enregistrer",
     "cancel": "Annuler",
     "delete": "Supprimer",
-    "deleteCount": "Supprimer ({{count}})",
     "removeFromOrgii": "Retirer d’ORGII",
     "removeFromOrgiiCount": "Retirer d’ORGII ({{count}})",
     "edit": "Modifier",
     "write": "Écrire",
-    "reply": "Répondre",
     "close": "Fermer",
     "expand": "Agrandir",
     "confirm": "Confirmer",
@@ -269,16 +307,13 @@
     "add": "Ajouter",
     "remove": "Retirer",
     "create": "Créer",
-    "update": "Mettre à jour",
     "submit": "Soumettre",
     "loadMore": "Charger plus",
-    "load": "Charger",
     "back": "Retour",
     "next": "Suivant",
     "previous": "Précédent",
     "done": "Terminé",
     "retry": "Réessayer",
-    "regenerate": "Régénérer",
     "refresh": "Actualiser",
     "rescan": "Rescanner",
     "reload": "Recharger",
@@ -286,35 +321,20 @@
     "reviewPreviousFile": "Examiner le fichier précédent",
     "copy": "Copier",
     "paste": "Coller",
-    "cut": "Couper",
     "undo": "Annuler",
-    "redo": "Rétablir",
-    "keep": "Conserver",
-    "reject": "Rejeter",
-    "accept": "Accepter",
     "review": "Examiner",
     "undoAll": "Tout annuler",
-    "redoAll": "Tout rétablir",
-    "keepAll": "Tout conserver",
-    "select": "Sélectionner",
     "selectAll": "Tout sélectionner",
     "unselectAll": "Tout désélectionner",
     "clear": "Effacer",
     "open": "Ouvrir",
     "view": "Afficher",
-    "openInApp": "Ouvrir dans l'app",
     "openToRight": "Ouvrir à droite",
-    "new": "Nouveau",
     "rename": "Renommer",
     "duplicate": "Dupliquer",
-    "export": "Exporter",
-    "import": "Importer",
     "download": "Télécharger",
     "upload": "Téléverser",
-    "insertImage": "Insérer une image",
     "browse": "Parcourir",
-    "discover": "Découvrir",
-    "discoverTests": "Découvrir les tests",
     "newFile": "Nouveau fichier",
     "newFolder": "Nouveau dossier",
     "copyPath": "Copier le chemin",
@@ -334,16 +354,9 @@
     "configure": "Configurer",
     "manage": "Gérer",
     "uninstall": "Désinstaller",
-    "connect": "Connecter",
-    "customize": "Personnaliser",
-    "goToSettings": "Aller aux Paramètres",
     "restart": "Redémarrer",
     "switchToStation": "Basculer vers {{station}}",
-    "rate": "Évaluer",
-    "openInTab": "Ouvrir dans un onglet",
-    "insert": "Insérer",
     "discard": "Abandonner",
-    "disable": "Désactiver",
     "run": "Exécuter",
     "clone": "Cloner",
     "send": "Envoyer",
@@ -355,20 +368,12 @@
     "filter": "Filtrer",
     "loading": "Chargement...",
     "replace": "Remplacer",
-    "publish": "Publish",
-    "acceptAll": "Tout accepter",
-    "rejectAll": "Tout rejeter",
-    "install": "Installer",
-    "expandAll": "Tout développer",
     "collapseAll": "Tout réduire",
     "viewOnGitHub": "Voir sur GitHub",
     "selectRepository": "Sélectionner le dépôt",
     "all": "Tous",
     "collapse": "Réduire",
     "toggle": "Basculer le fil",
-    "addRepo": "Ajouter un dépôt",
-    "addFolder": "Ajouter un dossier",
-    "resume": "Reprendre",
     "yes": "Oui",
     "more": "Plus d'actions",
     "advanced": "Avancé",
@@ -376,22 +381,20 @@
     "moreSettings": "Plus de paramètres",
     "sort": "Trier",
     "openFolder": "Ouvrir un dossier",
-    "addWorkspace": "Ajouter un espace de travail",
-    "openSpotlight": "Ouvrir Spotlight",
-    "openWorkspace": "Ouvrir le workspace",
-    "skipThisVersion": "Ignorer cette version",
+    "addWorkspace": "Ajouter un répertoire de travail",
+    "openWorkspace": "Ouvrir le répertoire de travail",
     "later": "Plus tard",
     "link": "Lier",
     "copyName": "Copier le nom",
     "switchMethod": "Changer de méthode",
     "dismiss": "Ignorer",
-    "comingSoon": "Bientôt",
     "clearSelection": "Effacer la sélection",
     "uiSettings": "Paramètres d’interface",
-    "clearAll": "Tout effacer"
-  },
-  "refreshToast": {
-    "successName": "{{name}} actualisé"
+    "clearAll": "Tout effacer",
+    "openOnGitHub": "Ouvrir sur GitHub",
+    "createPullRequest": "Créer une pull request",
+    "expandView": "Agrandir la vue",
+    "restoreSplitView": "Restaurer la vue partagée"
   },
   "status": {
     "yes": "Oui",
@@ -467,18 +470,13 @@
     "lastPage": "Dernière page",
     "selectPage": "Sélectionner une page",
     "title": "Pagination",
-    "roundOf": "Round {{current}} / {{total}}",
     "round": "Round {{current}}",
     "previousRound": "Round précédent",
     "nextRound": "Round suivant",
-    "latestRound": "Round le plus récent",
-    "searchRounds": "Rechercher des rounds"
+    "latestRound": "Round le plus récent"
   },
   "optional": "facultatif",
   "common": {
-    "yes": "Oui",
-    "no": "Non",
-    "ok": "OK",
     "on": "Activé",
     "off": "Désactivé",
     "default": "Par défaut",
@@ -487,32 +485,20 @@
     "s": "s",
     "multiplier": "×",
     "spaces": "espaces",
-    "font": "Police",
     "name": "Nom",
     "description": "Description",
     "type": "Type",
     "date": "Date",
     "time": "Heure",
-    "size": "Taille",
-    "path": "Chemin",
     "status": "Statut",
     "actions": "Actions",
-    "options": "Options",
     "details": "Détails",
     "more": "Plus",
-    "less": "Moins",
-    "all": "Tout",
     "none": "Aucun",
-    "selected": "Sélectionné",
-    "items": "éléments",
-    "item": "élément",
-    "empty": "Vide",
     "noResults": "Aucun résultat trouvé",
     "searchPlaceholder": "Rechercher...",
     "properties": "Propriétés",
     "overview": "Aperçu",
-    "appearance": "Apparence",
-    "theme": "Thème",
     "timezone": "Fuseau horaire",
     "language": "Langue",
     "preview": "Aperçu",
@@ -520,17 +506,11 @@
     "sourceCode": "Code source",
     "raw": "Brut",
     "table": "Tableau",
-    "filter": "Filtre",
-    "filters": "Filtres",
     "selectDate": "Sélectionner une date",
-    "files": "fichiers",
-    "required": "obligatoire",
-    "pending": "en attente",
     "error": "Erreur",
     "pid": "PID",
     "shell": "Shell",
-    "source": "Source",
-    "filterByLanguage": "Filtrer par langage"
+    "source": "Source"
   },
   "labels": {
     "accounts": "Comptes",
@@ -648,19 +628,36 @@
     "noAppliedCommit": "No linked commit yet",
     "noSessionsForFile": "No sessions found for this file",
     "committedRate": "Validé",
-    "email": "E-mail"
+    "email": "E-mail",
+    "noPullRequestForBranch": "Il n’y a pas encore de pull request pour cette branche.",
+    "creatingPullRequest": "Création…",
+    "failedToLoadPullRequest": "Échec du chargement de la pull request",
+    "noCommitsInPullRequest": "Aucun commit dans cette pull request",
+    "prStatus": {
+      "open": "Ouverte",
+      "merged": "Fusionnée",
+      "closed": "Fermée",
+      "draft": "Brouillon",
+      "unknown": "Inconnu"
+    },
+    "sendingNow": "envoi en cours…",
+    "issues": "Issues",
+    "noIssues": "Aucune issue",
+    "openIssues": "Ouvertes",
+    "closedIssues": "Fermées",
+    "issueComments": "{{count}} commentaire",
+    "issueComments_one": "1 commentaire",
+    "issueComments_other": "{{count}} commentaires",
+    "tokens": "Tokens",
+    "actions": "Actions",
+    "all": "Tous"
   },
   "searchModes": {},
   "tabs": {
     "terminal": "Terminal",
-    "problems": "Problèmes",
-    "output": "Sortie",
-    "testResults": "Résultats de tests",
     "explorer": "Explorateur",
     "search": "Rechercher",
     "sourceControl": "Contrôle de source",
-    "testing": "Tests",
-    "extensions": "Extensions",
     "sessions": "Sessions",
     "myTabs": "Mes onglets ({{count}})",
     "design": "Design",
@@ -669,23 +666,12 @@
     "console": "Console",
     "network": "Réseau",
     "css": "CSS",
-    "source": "Source",
-    "connections": "Connexions",
-    "queryHistory": "Historique des requêtes",
-    "table": "Tableau",
-    "sql": "SQL",
-    "tools": "Outils",
-    "overview": "Aperçu"
+    "source": "Source"
   },
   "errors": {
     "generic": "Une erreur s'est produite",
-    "networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
     "notFound": "Non trouvé",
-    "unauthorized": "Non autorisé. Veuillez vous connecter.",
     "forbidden": "Accès refusé",
-    "serverError": "Erreur serveur. Veuillez réessayer plus tard.",
-    "timeout": "Délai d'attente dépassé",
-    "validation": "Erreur de validation",
     "pageNotFound": "Page introuvable",
     "failedToLoadComponent": "Échec du chargement du composant",
     "networkErrorShort": "Erreur réseau",
@@ -694,13 +680,11 @@
     "couldntConnect": "Impossible de se connecter au serveur. Vérifiez votre connexion internet.",
     "failedToLoadProperly": "Un composant n'a pas pu être chargé correctement.",
     "requiredFileCouldntLoad": "Un fichier requis n'a pas pu être chargé. Cela se résout généralement au redémarrage.",
-    "failedToRenderActivity": "Échec du rendu de l'activité",
-    "failedToRenderEvent": "Échec du rendu de l'événement",
     "unknown": "Erreur inconnue",
     "agentRequestFailed": "Échec de la requête Agent",
     "codexLoginExpired": "La connexion à Codex a expiré",
     "codexLoginExpiredDescription": "Reconnectez Codex pour réparer ce compte. Vous reviendrez à cette session une fois la nouvelle connexion enregistrée",
-    "reconnectCodex": "Reconnecter Codex",
+    "reconnectCodex": "Reconnecter",
     "technicalDetails": "Détails techniques",
     "failedToCopy": "Échec de la copie",
     "api": {
@@ -741,14 +725,14 @@
       },
       "workflow": "Le service de flux de travail est temporairement indisponible. Réessayez plus tard."
     },
-    "imageUploadFailed": "Échec du téléversement de l'image",
-    "imageTooLarge": "L'image est trop grande",
     "failedToLoad": "Échec du chargement",
-    "unknownError": "Une erreur inconnue s'est produite"
+    "unknownError": "Une erreur inconnue s'est produite",
+    "componentLoadingFailed": "Échec du chargement du composant",
+    "noLocalPath": "Aucun chemin local disponible",
+    "openInFinderFailed": "Échec de l’ouverture dans le Finder"
   },
   "confirmation": {
     "delete": "Êtes-vous sûr de vouloir supprimer ?",
-    "discard": "Abandonner les modifications ?",
     "removeTitle": "Retirer \"{{name}}\" d’ORGII ?",
     "removeMessage": "Cela supprime uniquement son lien avec ORGII. Rien ne sera supprimé du disque.",
     "deleteWorkspaceTitle": "Supprimer le Workspace \"{{name}}\" ?",
@@ -766,32 +750,14 @@
     "unsavedCloseMultipleMessage": "{{count}} fichier(s) ont des modifications non enregistrées. Les fermer quand même ?",
     "undoAllChanges": "Cela annulera les {{count}} modifications de fichiers effectuées par l'Agent. Cette action est irréversible. Continuer ?"
   },
-  "dateRange": {
-    "1d": "1J",
-    "7d": "7J",
-    "1w": "1S",
-    "30d": "30J",
-    "1m": "1M",
-    "3m": "3M",
-    "1y": "1A"
-  },
   "filters": {
     "all": "Tous",
     "source": "Source",
-    "local": "Local",
     "member": "Membre",
-    "model": "Modèle",
-    "custom": "Personnalisé",
     "tokenMarket": "Token Market",
-    "market": "Marché",
-    "agentOrAgentOrg": "Session agent",
     "searchAgentOrOrg": "Sélectionner un Agent ou une Équipe Agent...",
-    "tplSelectAgentOrOrg": "Sélectionner {agent}",
-    "cliAgent": "CLI Agent",
     "searchModel": "Rechercher un modèle...",
-    "searchModelFor": "Sélectionner un modèle pour {{target}}...",
-    "tplSelectModel": "Sélectionner {model}",
-    "tplSelectModelFor": "Sélectionner {model} pour {{target}}"
+    "searchModelFor": "Sélectionner un modèle pour {{target}}..."
   },
   "prerequisite": {
     "missingTitle": "Prérequis manquant",
@@ -801,29 +767,14 @@
     "agent": "Agent",
     "you": "Vous",
     "session": "Session",
-    "agentSession": "Session Agent",
     "workStation": "Workstation",
-    "osAgent": "OS Agent",
-    "coding": "Coding",
     "agentTerminal": "Agent Terminal",
     "myStation": "Ma station",
     "agentStation": "Station de l'Agent",
-    "projectManager": "Project Manager",
-    "myTerminal": "Mon terminal",
-    "myTerminalInfo": "Infos de mon terminal"
-  },
-  "pageSearch": {
-    "placeholder": "Rechercher des pages...",
-    "tooltip": "Rechercher des pages",
-    "categories": {
-      "workspace": "Espace de travail",
-      "tools": "Outils",
-      "market": "Marché"
-    }
+    "myTerminal": "Mon terminal"
   },
   "tooltips": {
     "closeEsc": "Fermer (Esc)",
-    "hidePanel": "Masquer le panneau (⌘J)",
     "refreshTree": "Actualiser l'arborescence",
     "copy": "Copier",
     "previous": "Précédent",
@@ -834,7 +785,7 @@
     "openInEditorTab": "Ouvrir dans un onglet de l'éditeur",
     "openFile": "Ouvrir le fichier",
     "openNativeDevTools": "Ouvrir les DevTools natives du navigateur",
-    "captureScreenshot": "Capturer la page et l'attacher au chat",
+    "captureScreenshot": "Capture d’écran",
     "enableInspectMode": "Inspecter un élément",
     "disableInspectMode": "Quitter l'inspecteur (Échap)",
     "killTerminal": "Terminer le terminal",
@@ -861,24 +812,20 @@
     "searchInOpenEditors": "Rechercher uniquement dans les éditeurs ouverts",
     "replace": "Remplacer (Ctrl+Shift+1)",
     "replaceAll": "Tout remplacer (Ctrl+Alt+Enter)",
-    "uninstall": "Désinstaller",
-    "dismiss": "Ignorer",
     "moreActions": "Plus d'actions...",
     "formatSql": "Formater le SQL",
     "queryHistory": "Historique des requêtes",
-    "executeQuery": "Exécuter la requête (Ctrl+Enter)",
+    "executeQuery": "Exécuter la requête ({{shortcut}})",
     "startVoiceInput": "Démarrer la saisie vocale",
     "cancelRecording": "Annuler l'enregistrement",
     "stopAndTranscribe": "Arrêter et transcrire",
     "htmlPreview": "Aperçu HTML",
     "manual": "Manuel",
-    "scrollLeft": "Faire défiler les onglets vers la gauche",
     "toggleFileFilters": "Basculer les filtres de fichiers",
     "closeDevTools": "Fermer les DevTools",
     "movePanelToRight": "Déplacer le panneau à droite",
     "movePanelToBottom": "Déplacer le panneau en bas",
     "domTree": "Arborescence DOM",
-    "clearUiIndex": "Effacer l'index des composants",
     "closeSession": "Fermer la Session",
     "clearNetworkLogs": "Effacer les journaux réseau",
     "clearConsole": "Effacer la console",
@@ -894,6 +841,8 @@
     "copyValueRightClickForPath": "Cliquez pour copier la valeur, clic droit pour copier le chemin"
   },
   "placeholders": {
+    "enterFileName": "Saisissez le nom du fichier",
+    "enterFolderName": "Saisissez le nom du dossier",
     "loading": "Chargement...",
     "selectToViewConfig": "Sélectionnez un {{type}} pour voir ou configurer",
     "selectToViewConfigSubtitle": "Choisissez un élément dans la liste à gauche",
@@ -913,7 +862,6 @@
     "failedToParseSymbols": "Échec de l'analyse des symboles",
     "outlineParseError": "Plan non disponible pour ce fichier",
     "runQueryToSeeResults": "Exécutez une requête pour voir les résultats",
-    "noProjectsFound": "Aucun Project trouvé",
     "failedToLoad": "Échec du chargement",
     "noItems": "Aucun élément à afficher",
     "nothingHereYet": "Aucun élément à afficher",
@@ -944,7 +892,6 @@
     "chatHistoryAgentWorkingHint": "Les messages apparaissent avec la première réponse ; jusque-là, la barre peut sembler inactive",
     "pleaseSelect": "Veuillez sélectionner",
     "noSessionsFound": "Aucune Session trouvée",
-    "noBrowsingHistory": "Aucun historique de navigation",
     "typeToSearchFiles": "Tapez pour rechercher des fichiers...",
     "selectFileToViewChanges": "Sélectionnez un fichier pour voir les modifications",
     "failedToLoadHistory": "Échec du chargement de l'historique",
@@ -982,16 +929,9 @@
     "noStyles": "Aucun style",
     "noDomTree": "Aucun arbre DOM",
     "noSourceDetected": "Aucun code source détecté",
-    "notIndexed": "Not indexed",
-    "indexedInspectElement": "Indexé, inspectez un élément",
-    "buildIndexToStart": "Construire l'index pour commencer",
     "noMatchingFilesFound": "Aucun fichier correspondant trouvé",
-    "scanning": "Analyse en cours...",
-    "retryToScanAgain": "Réessayer pour analyser à nouveau",
-    "noTokensFound": "Aucun token trouvé",
-    "addCssVariables": "Ajoutez des variables CSS à votre projet",
-    "noWorkspaceExplorerTitle": "Aucun workspace ouvert",
-    "noWorkspaceExplorerSubtitle": "Ouvrez un espace de travail pour voir les fichiers",
+    "noWorkspaceExplorerTitle": "Aucun répertoire de travail ouvert",
+    "noWorkspaceExplorerSubtitle": "Ouvrez un répertoire de travail pour voir les fichiers",
     "cannotFindRepo": "Impossible de trouver {{repoName}}",
     "lastSeenAtPath": "Dernière fois vu à l'emplacement {{path}}",
     "unsupportedFileType": "Type de fichier non pris en charge",
@@ -1016,60 +956,45 @@
     "noRepoSelected": "No repository selected",
     "previewUnavailable": "Aperçu indisponible",
     "selectRepositoryFromWorkspace": "Choisissez un dépôt dans l’espace de travail",
-    "noData": "Aucune donnée"
+    "noData": "Aucune donnée",
+    "noResults": "Aucun résultat",
+    "noSessionHistoryForFile": "Aucune activité de session trouvée pour {{file}}",
+    "noSessionHistory": "Aucun historique de session"
   },
   "inbox": {
-    "searchPlaceholder": "Rechercher des messages...",
-    "channels": {
-      "title": "Canaux",
-      "git": "Git",
-      "workItems": "Éléments de travail",
-      "promotions": "Promotions"
-    },
-    "selectChannel": "Sélectionner un canal",
-    "noMessages": "Aucun message pour le moment",
-    "noMessagesSubtitle": "Les messages apparaîtront ici lorsque des événements se produiront",
-    "composerPlaceholder": "Écrire une note…",
     "scrollToBottom": "Aller en bas",
-    "markAllAsRead": "Tout marquer comme lu",
-    "scrollToUnread": "Aller aux non lus"
+    "markAllAsRead": "Tout marquer comme lu"
   },
   "placeholderTypes": {
     "mcpServer": "serveur MCP",
-    "connection": "connexion",
-    "policy": "Policy",
-    "skill": "skill",
-    "message": "message"
+    "connection": "connexion"
   },
   "workstation": {
     "expandReplace": "Développer le remplacement",
     "collapseReplace": "Réduire le remplacement",
     "tooltipRefreshExplorer": "Actualiser l'explorateur",
-    "deleteSelectedRows": "Supprimer {{count}} ligne(s) sélectionnée(s)",
     "agentBrowser": "Agent Browser",
     "userInControl": "User in control",
     "agentControlling": "Agent controlling",
     "returnToAgent": "Return to Agent",
     "takeOver": "Take Over",
-    "chromeInForeground": "Chrome window is in the foreground — interact directly",
     "chromeWindowOpen": "La fenêtre Chrome est ouverte — interagissez directement, puis revenez à l'Agent",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
     "split": "Split",
-    "reloadFromDiskConfirm": "Reload from disk (will prompt to confirm)",
-    "reloadFromDisk": "Reload from disk",
     "publishingBranch": "Publishing...",
-    "refreshGitStatus": "Refresh git status",
     "notGitInitialized": "Git non initialisé",
-    "notGitInitializedTooltip": "Cet espace de travail n’a pas encore de dossier .git.",
+    "notGitInitializedTooltip": "Ce répertoire de travail n’a pas encore de dossier .git.",
     "publishBranchToOrigin": "Publish branch \"{{branch}}\" to origin",
-    "syncWithRemote": "Sync with remote ({{behind}} to pull, {{ahead}} to push)",
     "scanningFiles": "Scanning files...",
-    "branchTooltip": "Branche : {{branch}}",
     "branchTooltipSwitching": "Branche : {{branch}} (changement en cours…)",
-    "switchWorkspaceTooltip": "Changer d'espace de travail",
+    "switchWorkspaceTooltip": "Changer de répertoire de travail",
     "switchWorktreeTooltip": "Changer de worktree",
     "switchBranchTooltip": "Changer de branche",
+    "switchLocalBranchTooltip": "Changer de branche locale",
+    "sessionEnvCloud": "Cloud",
+    "sessionEnvLocal": "Local",
+    "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Actions Git",
     "switchToSessionRepo": "Basculer vers {{name}}",
     "embeddingProgress": "Embedding : {{count}} chunks traités",
@@ -1078,83 +1003,45 @@
     "embeddingLabel": "Embedding",
     "indexingProgress": "Indexation : {{processed}}/{{total}} fichiers ({{percent}}%)",
     "indexingProgressWithFile": "Indexation : {{processed}}/{{total}} fichiers ({{percent}}%)\nFichier en cours : {{file}}",
-    "languageServices": "Language Services",
     "ports": {
       "workspaceSection": "Espace de travail actuel",
       "externalSection": "Externes",
-      "tooltip": "Ports : {{workspace}} workspace, {{external}} externes",
       "viewPortsTooltip": "Voir les ports utilisés",
       "noWorkspacePorts": "Aucun port workspace détecté",
-      "externalLabel": "externe",
       "unknownProcess": "Processus inconnu",
       "pidLabel": "PID {{pid}}",
       "openInBrowser": "Ouvrir dans le navigateur",
-      "openAddress": "Ouvrir {{address}}",
       "copyAddress": "Copier l'adresse",
       "stopProcess": "Arrêter le processus",
       "searchPlaceholder": "Rechercher des ports…",
       "noSearchResults": "Aucun port correspondant",
+      "openAddress": "Ouvrir {{address}}",
       "rescan": "Analyser à nouveau",
       "rescanning": "Analyse…",
       "rescanTooltip": "Rechercher à nouveau les ports en écoute",
       "lastScannedAt": "Dernière analyse à {{time}}"
     },
-    "noLanguageServicesActive": "No language services active",
     "linesSelected": "{{count}} lines selected",
     "charsSelected": "{{count}} selected",
     "nLines": "{{count}} lines",
-    "blameOn": "Blame: On",
-    "blameOff": "Blame: Off",
     "hideFilter": "Hide filter",
     "filterFilesAction": "Filter files",
     "switchToTreeView": "Switch to tree view",
     "switchToListView": "Switch to list view",
     "discardChanges": "Discard Changes",
-    "stagedChangesCount": "{{count}} Staged Changes",
-    "changesCount": "{{count}} Changes",
-    "acceptAllMergeChanges": "Accept All Merge Changes (Stage resolved files)",
     "toOrigin": "to origin",
     "discardChangesConfirm": "Discard changes to {{files}}? This cannot be undone.",
     "discardAllUnstagedConfirm": "Discard all unstaged changes? This cannot be undone.",
     "addedToAgent": "{{fileName}} added to agent",
-    "privateBrowsing": "Private",
-    "standardBrowsing": "Standard",
-    "openNativeDevTools": "Open native browser DevTools (Safari Inspector / Edge DevTools)",
-    "extractingProps": "Extracting props...",
-    "initializingPreview": "Initializing preview...",
-    "buildUiIndex": "Build component index",
     "componentLabel": "Component",
     "definitionLabel": "Definition",
     "findSource": "Find Source",
     "preserveConsole": "Preserve",
     "consoleShowStackTrace": "Afficher la pile d'appels",
     "consoleHideStackTrace": "Masquer la pile d'appels",
-    "loadingData": "Loading data...",
-    "noData": "No data",
-    "tokenName": "token-name",
-    "manualMode": "Manual",
-    "position": "Position",
-    "flow": "Flow",
-    "size": "Size",
-    "paddingLabel": "Padding",
-    "marginLabel": "Margin",
-    "boxModel": "Box Model",
-    "opacityLabel": "Opacity",
-    "cornersLabel": "Corners",
-    "textLabel": "Text",
-    "weightLabel": "Weight",
-    "lineLabel": "Line",
-    "borderLabel": "Border",
-    "widthLabel": "Width",
-    "heightLabel": "Height",
-    "colorLabel": "Color",
-    "shadowAndBlur": "Shadow & Blur",
-    "blurLabel": "Blur",
-    "spreadLabel": "Spread",
     "styleEditsCount_one": "{{count}} modification",
     "styleEditsCount_other": "{{count}} modifications",
     "sendStyleEdits": "Envoyer",
-    "addToChat": "Ajouter à la discussion",
     "browserCore": {
       "desktopOnlyTitle": "Navigateur disponible dans l’app de bureau",
       "desktopOnlyBody": "Le navigateur intégré n’est disponible que dans l’application de bureau Tauri.",
@@ -1162,32 +1049,32 @@
       "debugTauriInternals": "__TAURI_INTERNALS__ : {{value}}",
       "debugTauriIpc": "__TAURI_IPC__ : {{value}}",
       "debugTauri": "__TAURI__ : {{value}}",
-      "privateBrowsingLabel": "Navigation privée :",
       "enterUrlToStart": "Saisissez une URL pour commencer",
       "privateBrowsingEmptyTitle": "Navigation privée : Saisissez une URL pour commencer",
       "simulatorBrowserNotice": "Ce navigateur sert uniquement à la relecture de session. Pour une navigation persistante, utilisez le navigateur de l’app principale (Outils → Navigateur).",
       "tlsDevNote": "Remarque : certains sites HTTPS (comme GitHub) peuvent afficher des erreurs TLS en mode développement à cause de la validation des certificats. Essayez des sites HTTP ou des HTTPS simples comme example.com.",
       "siteUnreachableTitle": "Impossible d’accéder à ce site",
-      "errorTls": "La connexion à ce site n’est pas sécurisée. Cela arrive souvent avec les sites HTTPS en mode développement.",
-      "errorTimeout": "La connexion a expiré. Le serveur a mis trop longtemps à répondre.",
-      "errorDns": "L’adresse DNS du serveur est introuvable. Vérifiez l’URL.",
-      "errorRefused": "Le serveur a refusé la connexion.",
-      "errorGeneric": "Impossible de joindre le serveur. Le site est peut-être indisponible ou il y a un problème réseau.",
-      "technicalDetails": "Détails techniques",
-      "tryHeading": "Essayez :",
-      "tryCheckConnection": "Vérifier votre connexion Internet",
-      "tryVerifyUrl": "Vérifier que l’URL est correcte",
-      "tryAgainLater": "Réessayer plus tard",
       "webviewHiddenTitle": "Vue web temporairement masquée",
-      "webviewHiddenBody": "Fermez le menu ou la boîte de dialogue pour l’afficher à nouveau."
+      "webviewHiddenBody": "Fermez le menu ou la boîte de dialogue pour l’afficher à nouveau.",
+      "embeddedFallbackTitle": "Ce site risque de ne pas fonctionner dans le navigateur intégré",
+      "embeddedFallbackBody": "Certains sites bloquent l’affichage ou échouent à se rendre dans les WebViews de l’app. Ouvrez-le dans votre navigateur système si la page reste vide.",
+      "currentUrl": "URL actuelle"
     },
     "unsavedChangesTitle": "Unsaved Changes",
-    "prkPlaceholder": "PRJ",
-    "gitSyncMenuTitle": "Actions de synchronisation Git",
-    "switchLocalBranchTooltip": "Changer de branche locale",
-    "sessionEnvCloud": "Cloud",
-    "sessionEnvLocal": "Local",
-    "sessionHarness": "{{name}} Harness"
+    "ci": {
+      "openPullRequest": "Ouvrir la pull request sur GitHub",
+      "viewDetails": "Voir les détails du check",
+      "refresh": "Actualiser les checks",
+      "refreshing": "Actualisation…",
+      "lastFetchedAt": "Dernière récupération à {{time}}",
+      "unavailable": "Impossible de lire les checks",
+      "sections": {
+        "failed": "Échoués",
+        "running": "En cours",
+        "skipped": "Ignorés",
+        "passed": "Réussis"
+      }
+    }
   },
   "git": {
     "loading": "Chargement du statut Git...",
@@ -1228,10 +1115,6 @@
       "compareBranch": "Comparer la branche"
     },
     "rail": {
-      "openTabs": "Onglets ouverts",
-      "closeItem": "Fermer {{label}}",
-      "expand": "Développer les informations de l’espace de travail",
-      "collapse": "Réduire les informations de l’espace de travail",
       "subagents": "Subagents",
       "subagentsCount_one": "{{count}} subagent",
       "subagentsCount_other": "{{count}} subagents",
@@ -1240,6 +1123,10 @@
       "subagentPending": "En attente",
       "subagentCompleted": "Terminé",
       "subagentFailed": "Échoué",
+      "openTabs": "Onglets ouverts",
+      "closeItem": "Fermer {{label}}",
+      "expand": "Développer les informations de l’espace de travail",
+      "collapse": "Réduire les informations de l’espace de travail",
       "restoreWidth": "Rétablir la largeur d'origine ({{width}} px)",
       "setMinimumWidth": "Définir la largeur actuelle comme minimum ({{width}} px)",
       "widerWidth": "Plus large ({{width}} px)",
@@ -1281,40 +1168,11 @@
         "approved": "a approuvé ces modifications",
         "changesRequested": "a demandé des modifications",
         "reviewDismissed": "a rejeté une revue",
-        "reviewed": "a effectué une revue"
+        "reviewed": "a effectué une revue",
+        "appendedSession": "a ajouté une session"
       },
       "summary": {
         "label": "Résumé de la pull request"
-      },
-      "flow": {
-        "wantsToMergeCommitsInto_one": "souhaite fusionner {{count}} commit dans",
-        "wantsToMergeCommitsInto_other": "souhaite fusionner {{count}} commits dans",
-        "mergedCommitsInto_one": "a fusionné {{count}} commit dans",
-        "mergedCommitsInto_other": "a fusionné {{count}} commits dans",
-        "from": "depuis",
-        "copyHeadBranch": "Copier le nom de la branche",
-        "branchCopied": "Nom de la branche copié"
-      },
-      "sidebar": {
-        "reviewers": "Relecteurs",
-        "requestReviewers": "Demander des relecteurs",
-        "awaitingReview": "Relecture en attente",
-        "noReviews": "Aucune relecture",
-        "assignees": "Assignés",
-        "noAssignees": "Personne d'assigné",
-        "labels": "Étiquettes",
-        "noLabels": "Aucune pour l'instant",
-        "actions": "Actions",
-        "editAssignees": "Modifier les assignés",
-        "searchAssignees": "Rechercher des personnes",
-        "noAssigneeCandidates": "Aucune personne disponible",
-        "assigneesLoadFailed": "Impossible de charger les personnes",
-        "assigneesUpdated": "Assignés mis à jour",
-        "editLabels": "Modifier les étiquettes",
-        "searchLabels": "Rechercher des étiquettes",
-        "noLabelCandidates": "Aucune étiquette disponible",
-        "labelsLoadFailed": "Impossible de charger les étiquettes",
-        "labelsUpdated": "Étiquettes mises à jour"
       },
       "tabs": {
         "conversation": "Conversation",
@@ -1335,6 +1193,35 @@
         "noneShort": "Aucune CI",
         "unavailableShort": "CI indisponible",
         "branchStatus": "CI de la pull request n°{{number}} : {{status}}"
+      },
+      "mergeStatus": {
+        "label": "État de fusion",
+        "viewChecks": "Voir toutes les vérifications",
+        "ableToMerge": "Prête à fusionner",
+        "blocked": "Fusion bloquée",
+        "conflicts": "Conflits de fusion",
+        "queued": "En file d'attente de fusion",
+        "draft": "Brouillon — pas encore fusionnable",
+        "merged": "Pull request fusionnée",
+        "closed": "Pull request fermée",
+        "checking": "Vérification de la fusion…",
+        "checksPassed": "Toutes les vérifications ont réussi",
+        "checksFailing_one": "{{count}} vérification en échec",
+        "checksFailing_other": "{{count}} vérifications en échec",
+        "checksRunning_one": "{{count}} vérification en cours",
+        "checksRunning_other": "{{count}} vérifications en cours",
+        "checksSkipped_one": "{{count}} vérification ignorée",
+        "checksSkipped_other": "{{count}} vérifications ignorées",
+        "checksNone": "Aucune vérification signalée",
+        "reviewApproved": "Modifications approuvées",
+        "reviewRequired": "Revue requise",
+        "reviewChangesRequested": "Modifications demandées",
+        "noConflicts": "Aucun conflit avec la branche de base",
+        "hasConflicts": "Conflits avec la branche de base",
+        "outOfDate": "En retard sur la branche de base",
+        "checkingConflicts": "Recherche de conflits…",
+        "autoMergeEnabled": "Fusion automatique activée",
+        "inMergeQueue": "En attente dans la file de fusion"
       },
       "commits": {
         "backToList": "Tous les commits",
@@ -1372,8 +1259,6 @@
         "removedFromQueue": "Retirée de la file de fusion",
         "autoMergeEnabled": "Fusion automatique activée",
         "autoMergeDisabled": "Fusion automatique désactivée",
-        "convertToDraft": "Convertir en brouillon",
-        "convertedToDraft": "Pull request convertie en brouillon",
         "confirmCloseTitle": "Fermer la pull request ?",
         "confirmCloseMessage": "La pull request restera disponible et pourra être rouverte ultérieurement.",
         "closeSuccess": "Pull request fermée",
@@ -1408,8 +1293,58 @@
           "checksFailed": "Les vérifications requises doivent réussir avant la fusion",
           "checksPending": "Attendez les vérifications requises ou activez la fusion automatique",
           "mergeBlocked": "GitHub signale des exigences de fusion non satisfaites"
-        }
-      }
+        },
+        "convertToDraft": "Convertir en brouillon",
+        "convertedToDraft": "Pull request convertie en brouillon",
+        "markReady": "Marquer comme prête pour revue",
+        "markedReady": "Pull request marquée comme prête pour revue"
+      },
+      "flow": {
+        "wantsToMergeCommitsInto_one": "souhaite fusionner {{count}} commit dans",
+        "wantsToMergeCommitsInto_other": "souhaite fusionner {{count}} commits dans",
+        "mergedCommitsInto_one": "a fusionné {{count}} commit dans",
+        "mergedCommitsInto_other": "a fusionné {{count}} commits dans",
+        "from": "depuis",
+        "copyHeadBranch": "Copier le nom de la branche",
+        "branchCopied": "Nom de la branche copié"
+      },
+      "sidebar": {
+        "reviewers": "Relecteurs",
+        "requestReviewers": "Demander des relecteurs",
+        "awaitingReview": "Relecture en attente",
+        "noReviews": "Aucune relecture",
+        "assignees": "Assignés",
+        "noAssignees": "Personne d'assigné",
+        "labels": "Étiquettes",
+        "noLabels": "Aucune pour l'instant",
+        "actions": "Actions",
+        "editAssignees": "Modifier les assignés",
+        "searchAssignees": "Rechercher des personnes",
+        "noAssigneeCandidates": "Aucune personne disponible",
+        "assigneesLoadFailed": "Impossible de charger les personnes",
+        "assigneesUpdated": "Assignés mis à jour",
+        "editLabels": "Modifier les étiquettes",
+        "searchLabels": "Rechercher des étiquettes",
+        "noLabelCandidates": "Aucune étiquette disponible",
+        "labelsLoadFailed": "Impossible de charger les étiquettes",
+        "labelsUpdated": "Étiquettes mises à jour"
+      },
+      "creating": "Création de la pull request…",
+      "createError": "Échec de la création de la pull request",
+      "readyHint": "La branche est poussée et prête pour une pull request",
+      "neutralHint": "Poussez votre branche pour créer une pull request",
+      "noBranch": "Aucune branche sélectionnée",
+      "noRepoPath": "Aucun chemin de dépôt disponible",
+      "notAuthenticated": "Connectez-vous pour créer des pull requests",
+      "noOriginRemote": "Aucun remote origin configuré",
+      "cannotParseRepoName": "Impossible d’extraire le nom du dépôt depuis le remote origin",
+      "authRequired": {
+        "title": "Connecter GitHub",
+        "description": "Allez dans Paramètres → Connexions pour connecter votre compte GitHub."
+      },
+      "navigationTrail": "Navigation dans la pull request",
+      "failedToLoad": "Échec du chargement des pull requests",
+      "label": "Pull request"
     },
     "messages": {
       "pushSuccess": "Push réussi",
@@ -1522,7 +1457,8 @@
         "reviewRequestRemoved": "a supprimé une demande de révision",
         "reviewed": "a révisé ces modifications",
         "reviewDismissed": "a rejeté une révision",
-        "userBlocked": "a bloqué cet utilisateur"
+        "userBlocked": "a bloqué cet utilisateur",
+        "appendedSession": "a ajouté une session"
       },
       "composer": {
         "addComment": "Ajouter un commentaire",
@@ -1554,18 +1490,40 @@
         "count_other": "{{count}} éléments associés",
         "unavailable": "Détails indisponibles",
         "unavailableCount_one": "Impossible de résoudre {{count}} élément associé",
-        "unavailableCount_other": "Impossible de résoudre {{count}} éléments associés"
-      }
+        "unavailableCount_other": "Impossible de résoudre {{count}} éléments associés",
+        "reference": "Référence GitHub"
+      },
+      "title": "Issues",
+      "loading": "Chargement des issues…",
+      "empty": "Aucune issue {{state}}",
+      "failedToLoad": "Échec du chargement des issues",
+      "failedToCreate": "Échec de la création de l’issue",
+      "failedToUpdate": "Échec de la mise à jour de l’issue",
+      "failedToComment": "Échec de l’ajout du commentaire",
+      "filterAll": "Toutes",
+      "filterOpen": "Ouvertes",
+      "filterClosed": "Fermées",
+      "noGitHubRepo": "Connectez un dépôt GitHub pour gérer les issues",
+      "commentPlaceholder": "Laisser un commentaire…",
+      "submitComment": "Commenter",
+      "newIssueTitlePlaceholder": "Titre de l’issue",
+      "newIssueBodyPlaceholder": "Décrivez l’issue (facultatif)…",
+      "authRequired": {
+        "title": "Connecter GitHub",
+        "description": "Allez dans Paramètres → Connexions pour connecter votre compte GitHub."
+      },
+      "reAuthRequired": "Autorisation GitHub requise",
+      "reAuthDescription": "Votre token GitHub a expiré. Allez dans Paramètres → Connexions pour vous reconnecter.",
+      "goToSettings": "Aller aux paramètres",
+      "loadingTimeline": "Chargement de l’activité…",
+      "label": "Issue",
+      "linkedLoading": "Chargement des éléments liés",
+      "detailNavigation": "Navigation dans l’issue"
     }
   },
   "selectors": {
     "shared": {
-      "repo": "dépôt",
-      "workspace": "Espace de travail",
-      "folder": "dossier",
-      "source": "source",
-      "branch": "branche",
-      "name": "nom"
+      "workspace": "Espace de travail"
     },
     "labels": {
       "recent": "Récent"
@@ -1578,60 +1536,66 @@
       "chooseKey": "Choisir une clé",
       "noCompatibleAccounts": "Aucune clé compatible",
       "chooseModelHint": "Utilisez le clavier pour naviguer ou cliquez sur un modèle avec la souris",
-      "selectAccount": "Sélectionner un compte",
       "chooseKeyHint": "Utilisez le clavier pour naviguer ou cliquez sur une clé avec la souris",
-      "noModelsForKey": "Aucun modèle activé pour cette clé"
+      "noModelsForKey": "Aucun modèle activé pour cette clé",
+      "selectAccount": "Sélectionner un compte"
     },
     "modelProperties": {
       "effort": "Effort",
-      "default": "Par défaut"
+      "default": "Par défaut",
+      "settings": "Paramètres du modèle",
+      "model": "Modèle",
+      "speed": "Vitesse",
+      "standard": "Standard",
+      "fast": "Rapide",
+      "thinking": "Réflexion",
+      "on": "Activé",
+      "off": "Désactivé"
     },
     "repo": {
-      "workspaceFolders": "Dossiers du Workspace",
       "addEntry": "Plus d’options d’importation",
       "sections": {
-        "coding": "Espace de travail",
         "pinned": "Épinglé",
         "current": "Actuel",
         "repo": "Dépôts",
         "systemPaths": "Chemins système",
-        "usedElsewhere": "Utilisé ailleurs",
-        "workspace": "Espace de travail",
+        "usedElsewhere": "Utilisé dans d’autres applications",
+        "workspace": "Répertoire de travail",
         "thisOrg": "Cette organisation",
-        "outsideOrg": "En dehors de cette organisation"
+        "outsideOrg": "En dehors de cette organisation",
+        "outsideNamedOrg": "En dehors de {{org}}",
+        "recent": "Récents"
       },
       "tabs": {},
       "addOptions": {
         "cloneFromGitHubUrl": "Cloner depuis une URL GitHub",
         "cloneFromMyGitHub": "Cloner depuis mon GitHub",
-        "createWorkspace": "Créer un nouvel espace de travail"
+        "createWorkspace": "Créer un nouveau répertoire de travail"
       },
       "sources": {
         "cloningFromGitHub": "clonage depuis GitHub",
         "cloningFromGitHubUrl": "clonage depuis une URL GitHub",
         "cloningFromMyGitHub": "clonage depuis mon GitHub",
-        "creatingWorkspace": "création d’un nouvel espace de travail",
-        "creatingMultiRepoWorkspace": "composition d’un espace de travail multi-dépôts"
+        "creatingWorkspace": "création d’un nouveau répertoire de travail",
+        "creatingMultiRepoWorkspace": "composition d’un répertoire de travail multi-dépôts"
       },
       "forms": {
-        "repoName": "Nom du dépôt",
         "localPath": "Chemin local",
         "chooseDestinationPath": "Choisir le chemin de destination",
         "choose": "Choisir",
         "createAt": "Créer dans {{path}}",
-        "createWorkspaceTitle": "Nouvel espace de travail",
-        "creatingWorkspace": "Création de l’espace de travail...",
-        "readyToCreateWorkspace": "Prêt à créer l’espace de travail",
-        "workspaceName": "Nom de l’espace de travail",
-        "workspaceNamePlaceholder": "Mon espace de travail"
+        "createWorkspaceTitle": "Nouveau répertoire de travail",
+        "creatingWorkspace": "Création du répertoire de travail...",
+        "readyToCreateWorkspace": "Prêt à créer le répertoire de travail",
+        "workspaceName": "Nom du répertoire",
+        "workspaceNamePlaceholder": "Mon répertoire"
       },
       "path": {
         "switchTo": "Basculer vers",
         "switchToTemplate": "Basculer vers {workspace}",
-        "search": "Rechercher",
-        "manageWorkspace": "Gérer l’espace de travail",
-        "addBy": "Ajouter un espace de travail par",
-        "addByTemplate": "Ajouter un espace de travail par {source}"
+        "manageWorkspace": "Gérer le répertoire de travail",
+        "addBy": "Ajouter un répertoire de travail par",
+        "addByTemplate": "Ajouter un répertoire de travail par {source}"
       },
       "pathImport": {
         "addLabel": "Ajouter",
@@ -1640,20 +1604,14 @@
       },
       "gitInitPrompt": {
         "title": "Initialiser Git ?",
-        "message": "Cet espace de travail n’a pas de dossier .git. L’initialiser comme dépôt Git ?",
+        "message": "Ce répertoire de travail n’a pas de dossier .git. L’initialiser comme dépôt Git ?",
         "ok": "Initialiser Git",
         "cancel": "Garder comme dossier"
       }
     },
     "folder": {
-      "path": {
-        "switchTo": "Basculer vers"
-      },
       "addOptions": {},
-      "sources": {},
-      "forms": {
-        "choose": "Choisir"
-      }
+      "sources": {}
     },
     "branch": {
       "path": {
@@ -1700,12 +1658,11 @@
         "noGithubRemote": "Aucun dépôt distant GitHub configuré",
         "prSearchScope": "La recherche porte sur les {{count}} Pull requests chargées",
         "prLimit": "Affichage de {{count}} PR ouvertes au maximum",
-        "noPullRequests": "Aucune Pull requests correspondante"
+        "noPullRequests": "Aucune Pull requests correspondante",
+        "mainWorktree": "Principal"
       },
       "placeholders": {
-        "checkout": "branche",
         "add": "nom de nouvelle branche...",
-        "remove": "branche",
         "pullRequests": "Rechercher des Pull requests..."
       },
       "tabs": {
@@ -1715,14 +1672,12 @@
     },
     "sessionInfo": {
       "sourcePlaceholder": "Sélectionner une source",
-      "start": "Démarrer",
       "sourceAria": "Sélectionner la source de l’espace de travail",
-      "on": "sur",
       "branchAria": "Sélectionner la branche",
-      "switchWorkspace": "Changer d'espace de travail",
+      "switchWorkspace": "Changer de répertoire de travail",
       "switchBranch": "Changer de branche",
       "switchLocation": "Changer l'emplacement d'exécution",
-      "sessionWorkspace": "Changer l'espace de travail de session",
+      "sessionWorkspace": "Changer le répertoire de travail de la session",
       "locationAria": "Sélectionner l'emplacement d'exécution",
       "systemPaths": {
         "home": {
@@ -1733,23 +1688,24 @@
           "label": "Documents",
           "description": "Dossier Documents"
         }
-      }
+      },
+      "selectWorktreeSource": "Sélectionner la branche ou la pull request du worktree"
     },
     "spotlightFooter": {
       "navigate": "Naviguer",
       "select": "Sélectionner",
       "switchColumn": "Changer de colonne",
       "switchSection": "Changer de section",
+      "showPath": "Afficher le chemin",
+      "keyFirst": "Clé d'abord",
+      "showBranchInfo": "Afficher les infos de branche",
       "compatibleKeys": "Compatible",
       "planSupport": "Plan",
       "byokSupport": "Keys",
       "incompatible": "Incompatible",
       "manageModels": "Gérer les modèles",
       "manageKeys": "Gérer les clés",
-      "manageAgents": "Gérer les Agents",
-      "showPath": "Afficher le chemin",
-      "keyFirst": "Clé d'abord",
-      "showBranchInfo": "Afficher les infos de branche"
+      "manageAgents": "Gérer les Agents"
     },
     "editorSpotlight": {
       "searchPlaceholder": "Rechercher des commandes...",
@@ -1801,7 +1757,7 @@
     "spotlight": {
       "placeholder": "Rechercher ou saisir une commande…",
       "placeholders": {
-        "workspace": "Rechercher ou saisir un chemin de dossier",
+        "workspace": "Rechercher ou saisir un chemin de dossier...",
         "branch": "Rechercher une branche...",
         "source": "Rechercher une source...",
         "actions": "Rechercher des actions...",
@@ -1809,7 +1765,8 @@
       },
       "groups": {
         "agentSession": "Session Agent",
-        "workspace": "Espace de travail",
+        "workspace": "Répertoires de travail",
+        "organization": "ORG / Espace de travail",
         "quickNavigation": "Navigation rapide",
         "editor": "Éditeur",
         "view": "Vue",
@@ -1829,9 +1786,6 @@
           "label": "Localiser le dépôt dans le Finder",
           "pillLabel": "Localiser"
         },
-        "createSession": {
-          "label": "Créer une nouvelle session"
-        },
         "searchAgentSessions": {
           "label": "Rechercher des sessions Agent",
           "pillLabel": "Rechercher sessions",
@@ -1843,16 +1797,17 @@
           "placeholder": "Search across all sessions..."
         },
         "switchWorkspace": {
-          "label": "Changer de workspace"
+          "label": "Changer de répertoire de travail"
         },
         "switchBranch": {
+          "repoLabel": "Changer la branche de {{repoName}}",
           "label": "Changer de branche"
         },
         "addWorkspace": {
-          "label": "Ajouter un workspace"
+          "label": "Ajouter un répertoire de travail"
         },
         "createMultiRepoWorkspace": {
-          "label": "Ajouter un workspace multi-repo"
+          "label": "Ajouter un répertoire de travail multi-dépôts"
         },
         "showSourceControl": {
           "label": "Afficher Source Control"
@@ -1906,10 +1861,10 @@
           "label": "Créer un Work Item"
         },
         "createOrganization": {
-          "label": "Créer une organisation"
+          "label": "Créer un espace de travail"
         },
         "joinOrganization": {
-          "label": "Rejoindre une organisation"
+          "label": "Rejoindre un espace de travail"
         }
       },
       "toast": {
@@ -1924,18 +1879,14 @@
   },
   "ellipsisMenu": {},
   "layoutSettings": {
-    "chatPanelLocation": "Emplacement du panneau de chat",
+    "chatPanelLocation": "Panneau de chat",
     "chatLeft": "Chat à gauche",
     "chatRight": "Chat à droite",
-    "full": "Plein",
-    "theme": "Thème",
-    "sidebarPosition": "Position de la barre latérale",
+    "sidebarPosition": "Barre latérale du Workstation",
     "modelPickerStyle": "Sélecteur",
+    "paginateChatHistory": "Paginer l’historique du chat",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "Menu",
-    "replayStatusPosition": "Position du statut Replay",
-    "leftEnd": "Extrémité gauche",
-    "rightEnd": "Extrémité droite",
     "left": "Gauche",
     "right": "Droite",
     "ramFps": "FPS",
@@ -1958,13 +1909,9 @@
     "ramHydratedEvents": "Événements hydrated",
     "ramTurnBodies": "Chargements lazy de l’historique",
     "ramFileTrees": "Arbres de fichiers",
-    "ramCodeMirrors": "Rendu des fichiers",
-    "paginateChatHistory": "Paginer l’historique du chat"
+    "ramCodeMirrors": "Rendu des fichiers"
   },
   "spotlightActions": {
-    "switchToLightTheme": "Passer au thème clair",
-    "switchToDarkTheme": "Passer au thème sombre",
-    "switchToHighContrastTheme": "Passer au thème contraste élevé",
     "enableChatPagination": "Activer la pagination du chat",
     "disableChatPagination": "Désactiver la pagination du chat",
     "useModelPickerSpotlight": "Utiliser le sélecteur de modèles Spotlight",
@@ -1975,13 +1922,12 @@
     "openAgentStation": "Aller à Agent Station",
     "openKanban": "Aller à Kanban",
     "changeLanguage": "Changer la langue",
-    "switchToSystemTheme": "Suivre le thème du système",
-    "detectUpdate": "Rechercher des mises à jour",
-    "recentlyUsed": "Récemment utilisés",
     "changeTheme": "Changer de thème",
     "changeSkin": "Changer d’apparence",
     "searchThemes": "Rechercher des thèmes...",
-    "searchSkins": "Rechercher des apparences..."
+    "searchSkins": "Rechercher des apparences...",
+    "detectUpdate": "Rechercher des mises à jour",
+    "recentlyUsed": "Récemment utilisés"
   },
   "commands": {
     "showBottomPanel": "Afficher le panneau inférieur",
@@ -1989,110 +1935,28 @@
     "showPrimarySidebar": "Afficher la barre latérale",
     "hidePrimarySidebar": "Masquer la barre latérale",
     "searchFiles": "Rechercher des fichiers",
-    "openBrowser": "Ouvrir le navigateur",
-    "switchWorkspace": "Changer / Ajouter un espace de travail",
-    "openEditor": "Ouvrir l'éditeur",
-    "hideTerminal": "Masquer le terminal",
-    "hideFiles": "Masquer les fichiers",
-    "maximizeChat": "Mettre le chat au premier plan",
-    "toggleSidebar": "Basculer la barre latérale",
-    "openDevTools": "Ouvrir DevTools",
-    "showDevTools": "Afficher DevTools",
-    "hideDevTools": "Masquer DevTools",
-    "connections": "Connexions",
-    "newTab": "Nouvel onglet",
-    "newPrivateTab": "Nouvel onglet privé",
-    "openDashboard": "Ouvrir le Dashboard",
-    "runQuery": "Exécuter la requête",
-    "newProject": "Nouveau Project"
-  },
-  "lsp": {
-    "installPrompt": "Le Language Server pour \"{{language}}\" n'est pas installé. Voulez-vous l'installer ?",
-    "installing": "Installation du Language Server..."
+    "switchWorkspace": "Changer / ajouter un répertoire de travail",
+    "newTab": "Nouvel onglet"
   },
   "gitDashboard": {
-    "title": "Tableau de bord Git",
     "author": "Auteur",
-    "commits": "Commits",
-    "additions": "Ajouts",
-    "deletions": "Suppressions",
-    "filesChanged": "Fichiers Modifiés",
-    "files": "fichiers",
-    "other": "Autres",
-    "showMore": "Afficher Plus",
-    "showLess": "Afficher Moins"
+    "commits": "Commits"
   },
   "aiImpact": {
-    "title": "AI Impact",
-    "noData": "Aucune donnée d'impact de session AI",
-    "sessions": "Sessions",
-    "files": "Fichiers",
-    "functions": "Fonctions",
-    "commits": "Commits",
-    "lines": "Lignes",
-    "sessionBreakdown": "Détail des sessions",
-    "human": "Human",
-    "completed": "Terminé",
-    "incomplete": "Incomplet"
+    "lines": "Lignes"
   },
   "sessions": {
-    "title": "Sessions",
-    "myUsage": "Mon utilisation",
-    "teamUsage": "Utilisation équipe"
-  },
-  "otherUsage": {
-    "title": "Autre utilisation",
-    "sessions": "Sessions",
-    "completed": "Terminé",
-    "incomplete": "Incomplet",
-    "tabs": {
-      "overview": "Aperçu",
-      "cursor": "Cursor",
-      "cli": "CLI"
-    }
-  },
-  "devActivity": {
-    "title": "Profil de Développement",
-    "sessions": "Sessions",
-    "source": "Source",
-    "commits": "Commits",
-    "active": "Actif"
-  },
-  "devRecord": {
-    "loading": "Chargement…",
-    "custom": "Personnalisé",
-    "startDate": "Date de début",
-    "endDate": "Date de fin",
-    "statCards": {
-      "commits": "Commits",
-      "filesChanged": "Fichiers Modifiés",
-      "sessions": "Sessions",
-      "projects": "Carte thermique"
-    },
-    "team": {
-      "title": "Activité d'Équipe",
-      "member": "Membre",
-      "email": "E-mail",
-      "model": "Modèle",
-      "sessions": "Sessions",
-      "tokens": "Token",
-      "days": "jours"
-    }
-  },
-  "actionSummary": {
-    "read": "Lu"
+    "title": "Sessions"
   },
   "sourceControl": {
     "notGitInitialized": "Git non initialisé",
-    "notGitInitializedSubtitle": "Initialisez Git pour suivre les changements, créer des commits et utiliser les outils de branche dans cet espace de travail.",
+    "notGitInitializedSubtitle": "Initialisez Git pour suivre les changements, créer des commits et utiliser les outils de branche dans ce répertoire de travail.",
     "initializeGit": "Initialiser Git",
     "initializingGit": "Initialisation de Git...",
-    "noRemoteForPublish": "Cet espace de travail est maintenant un dépôt Git, mais il n'a pas encore de remote. Ajoutez un remote comme origin avant de publier cette branche.",
-    "generateCommitMessage": "Générer le message de commit avec l'IA",
+    "noRemoteForPublish": "Ce répertoire de travail est maintenant un dépôt Git, mais il n'a pas encore de remote. Ajoutez un remote comme origin avant de publier cette branche.",
     "pull": "Pull",
     "push": "Push",
     "fetch": "Fetch",
-    "sync": "Sync",
     "worktreeActions": "Actions Worktree",
     "removeWorktree": "Supprimer le Worktree",
     "removeWorktreeTitle": "Supprimer le Worktree {{name}} ?",
@@ -2108,21 +1972,18 @@
     "pill": {
       "focus": "Focus",
       "allChanges": "Toutes les modifications"
+    },
+    "scope": {
+      "main": "Checkout principal",
+      "worktrees": "Worktrees",
+      "searchPlaceholder": "Filtrer les worktrees…",
+      "switchScopeActive": "Changer la portée du source control : {{repo}}, {{branch}}"
     }
   },
   "contextInfo": {
     "contextUsed": "contexte utilisé",
     "title": "Context",
-    "full": "Utilisé",
     "ariaLabel": "Utilisation du contexte",
-    "categories": {
-      "rules": "Rules",
-      "conversation": "Conversation",
-      "tools": "Outils",
-      "skills": "Compétences",
-      "mcp": "MCP",
-      "subagents": "Subagents"
-    },
     "autoCompactNote": "Le contexte sera bientôt résumé",
     "compactBoundaryTitle": "Contexte compacté",
     "compactBoundarySubtitle_one": "{{count}} message précédent résumé",
@@ -2138,14 +1999,24 @@
     "manualCompactNoRuntime": "Envoyez un message avant de compacter",
     "manualCompactFailed": "Échec du compactage : {{message}}",
     "manualCompactChannelAttached": "Cette session est gérée par un canal — utilisez /compact là-bas",
-    "manualCompactInstructionsPlaceholder": "Facultatif : sur quoi concentrer le résumé"
+    "manualCompactInstructionsPlaceholder": "Facultatif : sur quoi concentrer le résumé",
+    "categories": {
+      "unattributed": "Non attribué"
+    },
+    "cacheSaved": "Cache économisé : {{read}} en lecture, {{write}} en écriture",
+    "cacheHero": "{{pct}} % servis depuis le cache · ~{{tokens}} réutilisés ce tour",
+    "cacheHeroSub": "Le prompt caching peut réduire le coût jusqu’à 90 %",
+    "manualCompactSectionTitle": "Compactage manuel",
+    "miniCpmCompactTitle": "Auto-compactage silencieux MiniCPM",
+    "miniCpmCompactDescription": "Traite le contexte ancien de manière asynchrone",
+    "miniCpmCompactToggleAria": "Activer l’auto-compactage silencieux MiniCPM",
+    "manualCompactNativeProvider": "Le compactage manuel ici ne concerne que les sessions Agent intégrées. Compactez l’historique des CLI natifs dans l’app de leur fournisseur."
   },
   "relativeDate": {
+    "justNow": "à l'instant",
     "today": "Aujourd'hui",
     "yesterday": "Hier",
-    "tomorrow": "Demain",
-    "last7Days": "7 derniers jours",
-    "last30Days": "30 derniers jours"
+    "tomorrow": "Demain"
   },
   "cloneForm": {
     "titleCloneFromGitHub": "Cloner depuis GitHub",
@@ -2176,54 +2047,32 @@
     "parentFolderPlaceholder": "Choisir Parent folder"
   },
   "workspaceForm": {
-    "title": "Créer un Workspace multi-Repo",
-    "editTitle": "Modifier le Workspace",
-    "createWorkspace": "Créer un Workspace multi-repo",
-    "multiRepoWorkspace": "Workspace multi-Repo",
-    "createWorkspaceDesc": "Composer un Workspace à partir de plusieurs Repos",
+    "title": "Créer un répertoire de travail multi-dépôts",
+    "editTitle": "Modifier le répertoire de travail",
+    "createWorkspace": "Créer un répertoire de travail multi-dépôts",
+    "multiRepoWorkspace": "Répertoire de travail multi-dépôts",
+    "createWorkspaceDesc": "Composer un répertoire de travail à partir de plusieurs dépôts",
     "filterPlaceholder": "Filtrer les repos...",
-    "selectRepos": "Sélectionner les repos pour le Workspace",
+    "selectRepos": "Sélectionner les dépôts du répertoire de travail",
     "noReposFound": "Aucun repo correspondant",
     "noRepos": "Aucun repo disponible",
     "current": "actuel",
-    "workspaceName": "Nom du Workspace",
-    "workspaceNamePlaceholder": "Mon Workspace",
-    "willInclude": "Le Workspace inclura {{count}} repos",
+    "workspaceName": "Nom du répertoire de travail",
+    "workspaceNamePlaceholder": "Mon répertoire de travail",
+    "willInclude": "Le répertoire de travail inclura {{count}} dépôts",
     "statusSelectAtLeastTwo": "Sélectionnez au moins 2 repos",
-    "statusReadyToCreate": "Prêt à créer le Workspace",
-    "defaultName": "Workspace",
-    "defaultNameWithRepo": "Workspace {{repo}}",
-    "windowTitle": "Workspace"
+    "statusReadyToCreate": "Prêt à créer le répertoire de travail",
+    "defaultName": "Répertoire de travail",
+    "defaultNameWithRepo": "Répertoire de travail {{repo}}",
+    "windowTitle": "Répertoire de travail",
+    "statusMaxRepos": "Maximum 5 repos sélectionnés"
   },
   "database": {
-    "addConnection": "Add Database Connection",
-    "databaseType": "Database Type",
-    "connectionName": "Connection Name",
     "databaseFile": "Database File",
     "projectUrl": "Project URL",
     "accessToken": "Access Token",
     "databaseUrl": "Database URL",
     "authToken": "Auth Token",
-    "testingConnection": "Testing connection...",
-    "addingConnection": "Adding connection...",
-    "connectionSuccessful": "Connection successful!",
-    "testConnection": "Test Connection",
-    "addConnectionAction": "Ajouter",
-    "testing": "Testing...",
-    "adding": "Adding...",
-    "notValidSqlite": "Not a valid SQLite database file",
-    "connectionFailed": "Connection failed",
-    "failedToAddConnection": "Failed to add connection",
-    "supabaseHint": "Found in Supabase Dashboard → Project Settings → API",
-    "supabaseTokenHint": "Personal Access Token (PAT). Generate at",
-    "tursoTokenHint": "Generate at Turso CLI: turso db tokens create",
-    "neonHint": "Chaîne de connexion depuis Neon Console → Détails de connexion",
-    "sqliteDescription": "Local .sqlite file",
-    "supabaseDescription": "PostgreSQL in the cloud",
-    "tursoDescription": "SQLite at the edge",
-    "neonDescription": "Serverless PostgreSQL",
-    "postgresDescription": "PostgreSQL direct",
-    "mysqlDescription": "MySQL / MariaDB",
     "connectionString": "Chaîne de connexion",
     "host": "Hôte",
     "port": "Port",
@@ -2231,10 +2080,6 @@
     "user": "Utilisateur",
     "password": "Mot de passe",
     "ssl": "Exiger SSL",
-    "requireSsl": "Exiger une connexion SSL",
-    "newConnection": "New {{type}} connection",
-    "changePending": "change",
-    "changesPending": "changes",
     "spotlight": {
       "scanFolder": "Analyser le dossier",
       "scanFolderDesc": "Trouver tous les fichiers .sqlite, .db dans un dossier",
@@ -2254,25 +2099,13 @@
   "dragDrop": {
     "couldNotExtractPathFromItem": "Could not extract file path from dropped item"
   },
-  "contextList": {
-    "task": "Task",
-    "repo": "Repo",
-    "ref": "Ref",
-    "key": "Key",
-    "image": "Image",
-    "group": "Group",
-    "unknown": "Unknown"
-  },
   "showMore": "Voir plus",
   "showLess": "Voir moins",
   "schedule": {
     "recurring": "Récurrent",
     "oneShot": "Ponctuel",
     "noSchedule": "Aucune planification",
-    "active": "Actif",
-    "inactive": "Inactif",
     "scheduleType": "Type de planification",
-    "dateAndTime": "Date et heure",
     "frequency": "Fréquence",
     "time": "Heure",
     "dayOfWeek": "Jour de la semaine",
@@ -2281,7 +2114,6 @@
     "hideCustomCron": "Masquer le cron personnalisé",
     "cronHelp": "ex. 0 9 * * 1 = chaque lundi à 9h00",
     "lastRun": "Dernière exécution",
-    "enableSchedule": "Activer la planification",
     "freq": {
       "daily": "Chaque jour",
       "weekday": "Jours ouvrables (lun-ven)",
@@ -2296,16 +2128,9 @@
       "thu": "Jeudi",
       "fri": "Vendredi",
       "sat": "Samedi"
-    },
-    "humanReadable": {
-      "daily": "Chaque jour à {{time}}",
-      "weekday": "Jours ouvrables à {{time}}",
-      "weekly": "Chaque {{day}} à {{time}}",
-      "monthly": "Mensuel le {{day}} à {{time}}"
     }
   },
   "selectionMenu": {
-    "title": "Ajouter au chat",
     "addToChat": "Ajouter au chat",
     "addThisFile": "Ajouter ce fichier",
     "addLines": "Ajouter lignes {{from}} – {{to}}"
@@ -2323,43 +2148,14 @@
     "openedInBrowser": "Ouvert dans le navigateur",
     "goToBrowser": "Aller au navigateur"
   },
-  "ideaArea": {
-    "menu": {
-      "shared": "Partagées"
-    },
-    "trending": {
-      "title": "Idées tendances"
-    },
-    "shared": {
-      "title": "Idées partagées",
-      "searchPlaceholder": "Rechercher des idées..."
-    },
-    "myIdeas": {
-      "title": "Mes idées",
-      "empty": "Vous n'avez pas encore partagé d'idées"
-    }
-  },
   "controlTower": {
     "sidebar": {
-      "terminal": "Terminal",
-      "browser": "Navigateur",
-      "settings": "Paramètres",
       "newTab": "Nouvel onglet",
       "newPrivateTab": "Nouvel onglet privé",
       "newTerminal": "Nouveau terminal",
       "untitled": "Sans titre"
     },
     "statusBar": {}
-  },
-  "notifications": {
-    "backgroundSession": "Session en arrière-plan",
-    "taskCompletedTitle": "Tâche terminée",
-    "taskCompletedBody": "La tâche « {{name}} » est terminée — prête à être révisée",
-    "taskCompletedToast": "La tâche « {{name}} » est terminée. Ouvrez la session pour vérifier le résultat.",
-    "openSessionAction": "Ouvrir la session",
-    "taskFailedTitle": "Échec de la tâche",
-    "taskFailedBody": "La tâche « {{name}} » a échoué{{detail}}",
-    "taskCancelledToast": "La tâche « {{name}} » a été annulée"
   },
   "globalToolbar": {},
   "quitConfirmation": {
@@ -2368,18 +2164,6 @@
     "cancel": "Annuler",
     "confirm": "Quitter"
   },
-  "projects": {
-    "title": "Carte thermique",
-    "workspace": "Espace de travail",
-    "duration": "Durée",
-    "codingTime": "Temps de codage",
-    "noData": "Pas encore de données projets",
-    "topLanguage": "Langage principal",
-    "editCount": "Éditions"
-  },
-  "dashboard": {
-    "other": "Autre"
-  },
   "imagePreview": {
     "dialogLabel": "Aperçu de l’image",
     "copyImage": "Copier l’image",
@@ -2387,14 +2171,6 @@
     "closePreview": "Fermer l’aperçu",
     "copiedToClipboard": "Image copiée dans le presse-papiers",
     "previewAlt": "Aperçu"
-  },
-  "update": {
-    "downloading": "Téléchargement de la mise à jour",
-    "installing": "Installation de la mise à jour",
-    "progressPercent": "{{percent}} %",
-    "downloadedOfTotal": "{{downloaded}} sur {{total}}",
-    "preparingDownload": "Préparation du téléchargement…",
-    "downloadingAndInstalling": "Téléchargement et installation de la mise à jour (v{{version}})…"
   },
   "workManagementTable": {
     "columns": {
@@ -2410,5 +2186,97 @@
     "officialApp": "App",
     "cli": "CLI",
     "thirdParty": "Tiers"
+  },
+  "browserCookieImport": {
+    "safari": {
+      "needsFullDiskAccess": "Needs Full Disk Access",
+      "explain": "Safari keeps its cookies in a folder macOS protects. Allow ORG2 under Full Disk Access in System Settings, then check again.",
+      "openSettings": "Open System Settings",
+      "checkAgain": "Check again"
+    },
+    "title": "Import cookies from your browser",
+    "action": "Import cookies from browser",
+    "scanning": "Looking for installed browsers…",
+    "reading": "Reading cookies from {{browser}}…",
+    "keychainHint": "Your system may ask for permission to read the browser's saved data",
+    "selectAll": "Select all",
+    "selectedSummary": "{{sites}} sites · {{cookies}} cookies",
+    "cookieCount_one": "{{count}} cookie",
+    "cookieCount_other": "{{count}} cookies",
+    "noSites": "No cookies were found in this profile",
+    "noMatchingSites": "No matching sites",
+    "importAction_one": "Import {{count}} site",
+    "importAction_other": "Import {{count}} sites",
+    "imported_one": "Imported {{count}} cookie",
+    "imported_other": "Imported {{count}} cookies",
+    "doneTitle_one": "Imported {{count}} cookie",
+    "doneTitle_other": "Imported {{count}} cookies",
+    "doneSkipped_one": "{{count}} cookie was skipped",
+    "doneSkipped_other": "{{count}} cookies were skipped",
+    "empty": {
+      "title": "No supported browsers found",
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+    },
+    "category": {
+      "banking": "Bank",
+      "email": "Mail",
+      "sso": "Sign-in"
+    },
+    "errors": {
+      "openSettingsFailed": "Couldn't open System Settings",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "listFailed": "Couldn't find browsers to import from",
+      "previewFailed": "Couldn't read cookies from that browser",
+      "importFailed": "Couldn't import the selected cookies"
+    }
+  },
+  "notifications": {
+    "taskCancelledToast": "« {{name}} » a été annulée",
+    "taskCompletedToast": "« {{name}} » est terminée. Ouvrez la session pour consulter le résultat.",
+    "backgroundSession": "Session en arrière-plan",
+    "taskCompletedTitle": "Tâche terminée",
+    "taskCompletedBody": "« {{name}} » est terminée — prête pour revue",
+    "openSessionAction": "Ouvrir la session",
+    "taskFailedTitle": "Tâche échouée",
+    "taskFailedBody": "« {{name}} » a échoué{{detail}}"
+  },
+  "documentOpen": {
+    "openInDefault": "Ouvrir dans {{name}}",
+    "openDefaultApp": "Ouvrir dans l’application par défaut",
+    "openExternally": "Ouvrir dans une application externe",
+    "label": "Ouvrir dans…",
+    "defaultApp": "Application par défaut",
+    "appDefault": "{{name}} (par défaut)",
+    "loading": "Chargement des applications…",
+    "loadFailed": "Applications indisponibles — rouvrez pour réessayer",
+    "openFailed": "Impossible d’ouvrir le document",
+    "saveFirst": "Enregistrez ou annulez les modifications avant d’ouvrir dans une autre application"
+  },
+  "sqlEditor": {
+    "placeholder": "Saisissez une requête SQL...",
+    "format": "Formater",
+    "runQueryToSeeResults": "Exécutez une requête pour voir les résultats",
+    "executingQuery": "Exécution de la requête...",
+    "queryFailed": "Échec de la requête",
+    "queryCompleted": "Requête terminée",
+    "noResults": "La requête n’a renvoyé aucun résultat",
+    "rowCount_one": "{{count}} ligne",
+    "rowCount_other": "{{count}} lignes",
+    "press": "Appuyez sur",
+    "toRun": "pour exécuter",
+    "nullValue": "NULL",
+    "booleanTrue": "true",
+    "booleanFalse": "false"
+  },
+  "chatImage": {
+    "maxReached": "Maximum {{max}} images autorisées",
+    "remainingWarning": "Seulement {{remaining}} image(s) supplémentaire(s) possible(s) (max {{max}})",
+    "processFailed": "Échec du traitement de l’image",
+    "loadFailed": "Échec du chargement de l’image : {{fileName}}"
+  },
+  "navigation": {
+    "goToSection": "Aller à {{label}}, section {{current}} sur {{total}}",
+    "section": "Section {{current}}",
+    "sectionPosition": "Section {{current}} sur {{total}}"
   }
 }

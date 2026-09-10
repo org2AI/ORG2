@@ -170,11 +170,6 @@ function rootContextFromFolder(
   };
 }
 
-export const activeWorkspaceFolderRepoAtom = atom<Repo | undefined>((get) => {
-  return resolveFolderRepo(get(activeFolderAtom), get(reposAtom));
-});
-activeWorkspaceFolderRepoAtom.debugLabel = "activeWorkspaceFolderRepoAtom";
-
 export const activeWorkspaceRootAtom = atom<WorkspaceRootContext | null>(
   (get) => {
     const folderRoot = rootContextFromFolder(
@@ -228,19 +223,6 @@ export const primaryWorkspaceRootPathAtom = atom<string>((get) => {
 });
 primaryWorkspaceRootPathAtom.debugLabel = "primaryWorkspaceRootPathAtom";
 
-export const workspaceFolderRepoMapAtom = atom<Map<string, Repo | undefined>>(
-  (get) => {
-    const repos = get(reposAtom);
-    return new Map(
-      get(workspaceFoldersAtom).map((folder) => [
-        folder.id,
-        resolveFolderRepo(folder, repos),
-      ])
-    );
-  }
-);
-workspaceFolderRepoMapAtom.debugLabel = "workspaceFolderRepoMapAtom";
-
 /**
  * Display name for the current workspace.
  * - If a .orgii-workspace file is loaded: uses its filename (without extension)
@@ -283,11 +265,3 @@ export const workspaceNameAtom = atom<string>((get) => {
   return `${repoName ?? primary.name} Workspace`;
 });
 workspaceNameAtom.debugLabel = "workspaceNameAtom";
-
-/**
- * Number of folders currently in the workspace (for UI badges like "(3)").
- */
-export const workspaceFolderCountAtom = atom<number>((get) => {
-  return get(workspaceFoldersAtom).length;
-});
-workspaceFolderCountAtom.debugLabel = "workspaceFolderCountAtom";

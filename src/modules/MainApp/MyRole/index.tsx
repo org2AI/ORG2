@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import AnyIcon from "@src/components/AnyIcon";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
+import Message from "@src/components/Message";
 import NumberInput from "@src/components/NumberInput";
 import Select from "@src/components/Select";
 import Switch from "@src/components/Switch";
@@ -347,6 +348,8 @@ const MyRolePage: React.FC = () => {
   const modeSwitchByPresence = settings[
     "agent.sde.modeSwitchAutoPlanByPresence"
   ] as Record<BuiltInPresenceMode, boolean>;
+  const followUpSuggestionsEnabled =
+    settings["agent.sde.followUpSuggestionsEnabled"];
   const goalByPresence = settings["agent.sde.goalMaxTurnsByPresence"] as Record<
     BuiltInPresenceMode,
     number
@@ -419,6 +422,28 @@ const MyRolePage: React.FC = () => {
           <SectionContainer
             title={t("myRole.builtInTitle", { defaultValue: "Built-in roles" })}
           >
+            <SectionRow
+              label={t("myRole.followUpSuggestionsLabel", {
+                defaultValue: "Agent follow-up suggestions",
+              })}
+              description={t("myRole.followUpSuggestionsDesc", {
+                defaultValue:
+                  "Suggest possible next steps after a completed Work Item turn. This uses an additional model request.",
+              })}
+            >
+              <Switch
+                checked={followUpSuggestionsEnabled}
+                onCheckedChange={(checked) => {
+                  void updateSetting({
+                    key: "agent.sde.followUpSuggestionsEnabled",
+                    value: checked,
+                  }).catch((error: unknown) => Message.error(String(error)));
+                }}
+                ariaLabel={t("myRole.followUpSuggestionsLabel", {
+                  defaultValue: "Agent follow-up suggestions",
+                })}
+              />
+            </SectionRow>
             {BUILT_IN_ROLES.map((role) => {
               const icon = role.icon;
               const value =

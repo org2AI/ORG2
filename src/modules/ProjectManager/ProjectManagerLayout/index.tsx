@@ -1,6 +1,5 @@
 import { useSetAtom } from "jotai";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { PROJECT_ORG_SYNC_PROVIDER } from "@src/api/http/project";
@@ -9,6 +8,7 @@ import {
   buildIntegrationsPath,
   buildWizardPath,
 } from "@src/config/mainAppPaths";
+import { useCloseTabWithGuard } from "@src/hooks/tabHost/useCloseTabWithGuard";
 import { usePrimarySidebarState } from "@src/hooks/tabHost/useWorkStationPanels";
 import { useWorkStationTabShortcutBridge } from "@src/hooks/tabHost/useWorkStationTabShortcutBridge";
 import { useWorkStationTabs } from "@src/hooks/tabHost/useWorkStationTabs";
@@ -18,7 +18,7 @@ import {
   openGitHubIssuesImportSpotlight,
 } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import { projectListRefreshAtom } from "@src/store/project/projectAtom";
-import { projectStatusBarCallbacksAtom } from "@src/store/ui/workStationAtom";
+import { projectStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import {
   STORY_ORG_SCOPE,
   getProjectWorkItemsTabChrome,
@@ -39,7 +39,6 @@ import type { ProjectManagerLayoutProps } from "./types";
 
 export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
   ({ repoPath, repoName }) => {
-    const { t } = useTranslation();
     const navigate = useNavigate();
 
     const {
@@ -55,31 +54,16 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
       tabs,
       activeTab,
       openTab,
-      closeTab,
+      removeTab,
       setTabUnsaved,
       updateTabData,
       updateTabMeta,
     } = useWorkStationTabs();
 
+    const dismissTab = useCloseTabWithGuard();
     const handleCloseTab = useCallback(
-      async (tabId: string) => {
-        const tabToClose = tabs.find((tab) => tab.id === tabId);
-        if (tabToClose?.hasUnsavedChanges) {
-          const { ask } = await import("@tauri-apps/plugin-dialog");
-          const confirmed = await ask(
-            `"${tabToClose.title}" has unsaved changes. Discard them and close?`,
-            {
-              title: t("workstation.unsavedChangesTitle"),
-              kind: "warning",
-              okLabel: t("actions.discard"),
-              cancelLabel: t("actions.cancel"),
-            }
-          );
-          if (!confirmed) return;
-        }
-        closeTab(tabId);
-      },
-      [tabs, closeTab, t]
+      (tabId: string) => dismissTab({ tabId }),
+      [dismissTab]
     );
 
     const activeProjectSlug =
@@ -156,7 +140,6 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
       tabs,
       activeTab,
       openTab,
-      closeTab,
       primarySidebarCollapsed,
     });
 
@@ -268,7 +251,7 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
         onOpenRepoSettings: handleOpenRepoSettings,
         onExpandWorkItemToTab: handleExpandWorkItemToTab,
         onOpenChatSession: handleOpenChatSession,
-        onCloseTab: closeTab,
+        onCloseTab: removeTab,
         onUpdateTabData: updateTabData,
         onUpdateTabMeta: updateTabMeta,
         onSetTabUnsaved: setTabUnsaved,
@@ -288,7 +271,7 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
         handleOpenRepoSettings,
         handleExpandWorkItemToTab,
         handleOpenChatSession,
-        closeTab,
+        removeTab,
         updateTabData,
         updateTabMeta,
         setTabUnsaved,
@@ -303,22 +286,6 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
         tabs={tabs}
         activeTab={activeTab}
         projectQuickActions={projectQuickActions}
-        onSelectProject={handleSelectProject}
-        onOpenProjects={handleOpenProjects}
-        onCreateProject={handleCreateProject}
-        onCreateWorkItem={handleCreateWorkItem}
-        onOpenLinearProjects={handleOpenLinearProjects}
-        onOpenRepoSettings={handleOpenRepoSettings}
-        onExpandWorkItemToTab={handleExpandWorkItemToTab}
-        onOpenChatSession={handleOpenChatSession}
-        onCloseTab={closeTab}
-        onUpdateTabData={updateTabData}
-        onUpdateTabMeta={updateTabMeta}
-        onSetTabUnsaved={setTabUnsaved}
-        onEmbeddedWorkItemDetailStateChange={
-          handleEmbeddedWorkItemDetailStateChange
-        }
-        onProjectListRefreshRequested={handleProjectListRefreshRequested}
       />
     );
 

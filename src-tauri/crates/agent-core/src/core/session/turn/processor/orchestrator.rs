@@ -15,7 +15,8 @@ use crate::core::session::types::{DialogTurnState, ProcessingContext, Processing
 use super::compaction::CompactionPhaseOutcome;
 use super::message_shaping::{reconcile_inbox_transcript_replay, scoped_system_message};
 use super::{
-    inbox_drain, member_idle, post_turn_dispatch, unified_persistence, UnifiedMessageProcessor,
+    inbox_drain, member_idle, post_turn_dispatch, start_task_execution_before_provider,
+    unified_persistence, UnifiedMessageProcessor,
 };
 
 impl UnifiedMessageProcessor {
@@ -41,8 +42,22 @@ impl UnifiedMessageProcessor {
         // race the new transcript.
         crate::memory::background::cancel_memory_jobs_for_session(session_id);
 
+        // A FinalSummaryReceipt owns a deliberately narrow provider turn. It
+        // reuses the Root Session for identity, but must not inherit that
+        // Session's transcript, memory, hooks, compaction, or file snapshots.
+        let is_final_summary_turn = if self.runtime.agent_org_context.is_some() {
+            tokio::task::block_in_place(|| {
+                crate::coordination::agent_org_final_summary::is_summary_turn(
+                    session_id,
+                    &context.turn_intent_id,
+                )
+            })?
+        } else {
+            false
+        };
+
         // 0b. Restore persisted SM state on first turn (lazy init)
-        if self.sm_config.enabled {
+        if self.sm_config.enabled && !is_final_summary_turn {
             let mut sm_state = self.sm_state.lock().await;
             if !sm_state.initialized && sm_state.content.is_none() {
                 let sid = session_id.to_string();
@@ -65,7 +80,9 @@ impl UnifiedMessageProcessor {
         }
 
         // 1a. Take pre-message snapshot (if enabled)
-        self.take_pre_message_snapshot(session_id).await;
+        if !is_final_summary_turn {
+            self.take_pre_message_snapshot(session_id).await;
+        }
 
         // 1. Persist user message
         //
@@ -77,29 +94,81 @@ impl UnifiedMessageProcessor {
         // ("text content is empty") on the very next request.
         let should_save_user_msg = !(context.is_resume && content.is_empty());
         if should_save_user_msg {
-            let message_id = tokio::task::block_in_place(|| {
-                unified_persistence::save_user_msg(session_id, content, context.images.as_deref())
-            })
+            let initial_input = tokio::task::block_in_place(|| {
+                crate::coordination::agent_org_runs::AgentOrgRunStore::initial_input_for_turn(
+                    &context.turn_intent_id,
+                )
+            })?;
+            let pre_persisted_source_event_id = if self.runtime.agent_org_context.is_some() {
+                tokio::task::block_in_place(|| {
+                    crate::coordination::agent_org_turn_contexts::pre_persisted_source_event_for_turn(
+                        session_id,
+                        &context.turn_intent_id,
+                    )
+                })?
+            } else {
+                None
+            };
+            let message_id = if let Some(input) = initial_input.as_ref() {
+                if input.content != content {
+                    return Err(format!(
+                        "Starting input content mismatch for turn {}",
+                        context.turn_intent_id
+                    ));
+                }
+                tokio::task::block_in_place(|| {
+                    unified_persistence::save_user_msg_with_id(
+                        &input.message_id,
+                        session_id,
+                        content,
+                    )
+                })
+                .map(|(message_id, _inserted)| message_id)
+            } else if let Some(source_event_id) = pre_persisted_source_event_id.as_deref() {
+                tokio::task::block_in_place(|| {
+                    unified_persistence::save_user_msg_with_id(source_event_id, session_id, content)
+                })
+                .map(|(message_id, _inserted)| message_id)
+            } else {
+                tokio::task::block_in_place(|| {
+                    unified_persistence::save_user_msg(
+                        session_id,
+                        content,
+                        context.images.as_deref(),
+                    )
+                })
+            }
             .map_err(|err| format!("Failed to save user message: {}", err))?;
 
-            if let Some(handle) = self.app_handle.as_ref() {
-                if let Err(err) = tokio::task::block_in_place(|| {
-                    crate::bus::event_pipeline_bridge::persist_user_message_event(
-                        handle,
-                        session_id,
-                        &message_id,
-                        content,
-                        context.display_text.as_deref(),
-                        context.images.as_deref(),
-                        crate::bus::event_pipeline_bridge::PersistedUserMessageSource::User,
-                        context.turn_intent_id.as_str(),
-                    )
-                }) {
-                    tracing::warn!(
-                        session_id,
-                        error = %err,
-                        "[unified_processor] failed to persist user-message UI event"
-                    );
+            // DirectMember and GroupRoot already persisted their exact visible
+            // EventStore source before admission. Rebuilding an ordinary
+            // backend user event here would create a second user fact.
+            if pre_persisted_source_event_id.is_none() {
+                if let Some(handle) = self.app_handle.as_ref() {
+                    let event_result = tokio::task::block_in_place(|| {
+                        crate::bus::event_pipeline_bridge::persist_user_message_event(
+                            handle,
+                            session_id,
+                            &message_id,
+                            content,
+                            context.display_text.as_deref(),
+                            context.images.as_deref(),
+                            crate::bus::event_pipeline_bridge::PersistedUserMessageSource::User,
+                            context.turn_intent_id.as_str(),
+                        )
+                    });
+                    if let Err(err) = event_result {
+                        if initial_input.is_some() {
+                            return Err(format!(
+                                "Failed to persist authoritative user-message event: {err}"
+                            ));
+                        }
+                        tracing::warn!(
+                            session_id,
+                            error = %err,
+                            "[unified_processor] failed to persist user-message UI event"
+                        );
+                    }
                 }
             }
         }
@@ -107,9 +176,12 @@ impl UnifiedMessageProcessor {
         // 2. Load history once, after the user message is persisted. The provider request
         // must see the same DB snapshot; load failures must fail the turn instead of
         // silently becoming an empty transcript.
-        let history =
+        let history = if is_final_summary_turn {
+            Vec::new()
+        } else {
             tokio::task::block_in_place(|| unified_persistence::load_llm_history(session_id))
-                .map_err(|err| format!("Failed to load LLM history: {}", err))?;
+                .map_err(|err| format!("Failed to load LLM history: {}", err))?
+        };
 
         // 2b. Skill + memory relevance prefetch.
         //
@@ -117,7 +189,7 @@ impl UnifiedMessageProcessor {
         // `TurnPrefetchHook` performs a
         // zero-wait collect before each LLM iteration; if a side query is still
         // pending, the first token/tool call is not delayed.
-        {
+        if !is_final_summary_turn {
             let mut hook_slot = self.turn_prefetch_hook.lock().await;
             if let Some(previous_hook) = hook_slot.take() {
                 previous_hook.abort_pending();
@@ -129,7 +201,14 @@ impl UnifiedMessageProcessor {
 
         // 3. Build system prompt, split into the stable cacheable prefix and
         // the volatile per-turn body (environment/IDE/presence/mode suffix).
-        let (system_prompt, volatile_prompt) = self.build_system_prompt(session_id).await;
+        let (system_prompt, volatile_prompt) = if is_final_summary_turn {
+            (
+                "You write one final user-facing Agent Org report from the certified evidence supplied in this request. Do not use tools, continue work, inspect conversation history, or invent missing evidence.".to_string(),
+                String::new(),
+            )
+        } else {
+            self.build_system_prompt(session_id).await
+        };
 
         // 4. Build provider messages from the already-loaded history.
         let mut messages: Vec<Value> = Vec::with_capacity(history.len() + 3);
@@ -162,7 +241,7 @@ impl UnifiedMessageProcessor {
             );
         }
 
-        if context.is_resume {
+        if context.is_resume && !is_final_summary_turn {
             self.session
                 .invalidate_prompt_cache(
                     crate::session::prompt::cache::PromptCacheInvalidationReason::Resume,
@@ -249,13 +328,31 @@ impl UnifiedMessageProcessor {
 
         let message_count_before_inbox = messages.len();
         let mut inbox_had_real_input = false;
+        let persisted_turn_context = if self.runtime.agent_org_context.is_some() {
+            Some(tokio::task::block_in_place(|| {
+                let conn = database::db::get_connection().map_err(|error| error.to_string())?;
+                crate::coordination::agent_org_turn_contexts::revalidate_context_with_connection(
+                    &conn,
+                    session_id,
+                    &context.turn_intent_id,
+                )
+            })?)
+        } else {
+            None
+        };
+        let is_user_directed_work = persisted_turn_context
+            .as_ref()
+            .is_some_and(|context| context.is_user_directed_work());
         let mut inbox_guard = self.runtime.agent_org_context.as_ref().map(|org_context| {
-            inbox_drain::drain_and_render_deferred(
+            inbox_drain::drain_and_render_deferred_for_turn(
                 org_context,
                 &self.agent_id,
                 self.runtime.agent_org_current_member_id.as_deref(),
                 &mut messages,
                 Some(self.session.as_ref()),
+                persisted_turn_context
+                    .as_ref()
+                    .expect("Agent Org runtime has persisted typed Turn context"),
             )
         });
         if let Some(guard) = inbox_guard.as_mut() {
@@ -266,8 +363,9 @@ impl UnifiedMessageProcessor {
                         .transcript_identity(session_id)
                         .expect("a non-empty drained transcript has stable source row ids");
                     let (materialization, inserted) = tokio::task::block_in_place(|| {
-                        unified_persistence::materialize_agent_org_inbox_transcript(
+                        unified_persistence::materialize_agent_org_inbox_transcript_for_turn(
                             session_id,
+                            &context.turn_intent_id,
                             guard.new_materialization_ids(),
                             &stable_message_id,
                             &stable_intent_id,
@@ -320,6 +418,30 @@ impl UnifiedMessageProcessor {
             }
         }
 
+        // A pause continuation is durable work even when the original Task
+        // assignment Inbox was consumed before Pause. Supply its instruction
+        // only in the provider request: Resume must not create a fake user
+        // transcript row or a second Inbox source.
+        if context.is_resume && content.trim().is_empty() && persisted_turn_context.is_some() {
+            let continuation_nudge = tokio::task::block_in_place(|| {
+                crate::coordination::agent_org_pause::continuation_nudge_for_turn(
+                    session_id,
+                    &context.turn_intent_id,
+                )
+            })?;
+            if let Some(nudge) = continuation_nudge {
+                messages.push(serde_json::json!({
+                    "role": "user",
+                    "content": nudge,
+                }));
+                info!(
+                    session_id = %session_id,
+                    turn_intent_id = %context.turn_intent_id,
+                    "[unified_processor] Injected transient Agent Org Pause continuation"
+                );
+            }
+        }
+
         // An Agent Org wake is only a doorbell. If another worker consumed the
         // work before this turn started, do not manufacture an empty user
         // nudge and spend a provider call. A later unread inbox row or
@@ -327,6 +449,7 @@ impl UnifiedMessageProcessor {
         if context.is_resume
             && content.trim().is_empty()
             && self.runtime.agent_org_context.is_some()
+            && !is_final_summary_turn
             && !inbox_had_real_input
             && messages.len() == message_count_before_inbox
         {
@@ -350,20 +473,22 @@ impl UnifiedMessageProcessor {
         // nudge — in-memory only, never persisted, so it neither creates a
         // round nor a visible bubble. Mirrors inbox_drain's transient
         // injection, generalized to the SDE path.
-        if context.is_resume {
+        if context.is_resume && !is_final_summary_turn {
             Self::inject_job_wake_nudge_if_needed(&mut messages, session_id);
         }
 
         // 5/5b/6. Pre-turn message-list compaction (microcompact +
         // aggregate budget + LLM context compaction + compact-fork).
-        if let CompactionPhaseOutcome::ForkRedirect(redirect) = self
-            .run_pre_turn_compaction(session_id, &mut messages)
-            .await
-        {
-            if let Some(prefetch_hook) = self.turn_prefetch_hook.lock().await.take() {
-                prefetch_hook.abort_pending();
+        if !is_final_summary_turn {
+            if let CompactionPhaseOutcome::ForkRedirect(redirect) = self
+                .run_pre_turn_compaction(session_id, &mut messages)
+                .await
+            {
+                if let Some(prefetch_hook) = self.turn_prefetch_hook.lock().await.take() {
+                    prefetch_hook.abort_pending();
+                }
+                return Ok(redirect);
             }
-            return Ok(redirect);
         }
 
         // Optional MiniCPM sidecar overlay. The canonical transcript and the
@@ -371,23 +496,25 @@ impl UnifiedMessageProcessor {
         // replaces a validated old prefix only in the provider request view.
         // Apply it after the normal compaction pipeline so that pipeline keeps
         // its original trigger, persistence, and compact-fork semantics.
-        match tokio::task::block_in_place(|| {
-            crate::session::housekeeper_compaction::apply_overlay(
-                session_id,
-                &mut messages,
-            )
-        }) {
-            Ok(crate::session::housekeeper_compaction::OverlayOutcome::Applied {
-                covered_messages,
-            }) => info!(
-                "[unified_processor] Applied MiniCPM context overlay for session {} ({} canonical messages covered)",
-                session_id, covered_messages
-            ),
-            Ok(_) => {}
-            Err(err) => warn!(
-                "[unified_processor] MiniCPM context overlay skipped for session {}: {}",
-                session_id, err
-            ),
+        if !is_final_summary_turn {
+            match tokio::task::block_in_place(|| {
+                crate::session::housekeeper_compaction::apply_overlay(
+                    session_id,
+                    &mut messages,
+                )
+            }) {
+                Ok(crate::session::housekeeper_compaction::OverlayOutcome::Applied {
+                    covered_messages,
+                }) => info!(
+                    "[unified_processor] Applied MiniCPM context overlay for session {} ({} canonical messages covered)",
+                    session_id, covered_messages
+                ),
+                Ok(_) => {}
+                Err(err) => warn!(
+                    "[unified_processor] MiniCPM context overlay skipped for session {}: {}",
+                    session_id, err
+                ),
+            }
         }
 
         // Build dynamic context only after every no-provider early return
@@ -395,9 +522,43 @@ impl UnifiedMessageProcessor {
         // coordinator this stages the exact work revision rendered into the
         // live task-board snapshot. A later successful provider turn may
         // observe that revision; an empty wake must never consume it.
-        let (dynamic_sections, coordinator_presented_work_revision) = self
-            .build_dynamic_sections(session_id, None, Some(content))
-            .await;
+        let projected_inbox_ids = inbox_guard
+            .as_ref()
+            .map(|guard| guard.pending_ids().to_vec())
+            .unwrap_or_default();
+        let (dynamic_sections, _coordinator_presented_work_revision) = if is_final_summary_turn {
+            match crate::coordination::agent_org_final_summary::summary_context_for_turn(
+                session_id,
+                &context.turn_intent_id,
+            ) {
+                Ok(Some(summary_context)) => (vec![summary_context], None),
+                Ok(None) => {
+                    let _ = crate::coordination::agent_org_final_summary::mark_failed_for_turn(
+                        session_id,
+                        &context.turn_intent_id,
+                        "certified_evidence_missing",
+                    );
+                    return Err("final_summary_certified_evidence_missing".to_string());
+                }
+                Err(error) => {
+                    let _ = crate::coordination::agent_org_final_summary::mark_failed_for_turn(
+                        session_id,
+                        &context.turn_intent_id,
+                        "certified_evidence_invalid",
+                    );
+                    return Err(format!("final_summary_certified_evidence_invalid: {error}"));
+                }
+            }
+        } else {
+            self.build_dynamic_sections(
+                session_id,
+                Some(&context.turn_intent_id),
+                None,
+                Some(content),
+                &projected_inbox_ids,
+            )
+            .await
+        };
 
         if super::super::super::recovery::ensure_tool_result_pairing(&mut messages) {
             info!(
@@ -433,10 +594,25 @@ impl UnifiedMessageProcessor {
         // Reasoning trigger words are detected on the CURRENT user input
         // only (never history) so escalation stays per-turn.
         let reasoning_trigger = crate::providers::thinking_mode::detect_reasoning_trigger(content);
-        let projected_inbox_ids = inbox_guard
-            .as_ref()
-            .map(|guard| guard.pending_ids().to_vec())
-            .unwrap_or_default();
+        if persisted_turn_context.as_ref().is_some_and(|context| {
+            context.turn_kind
+                == crate::coordination::agent_org_turn_contexts::AgentOrgTurnKind::TaskExecution
+        }) {
+            let started_run_id = tokio::task::block_in_place(|| {
+                start_task_execution_before_provider(
+                    session_id,
+                    &context.turn_intent_id,
+                    &projected_inbox_ids,
+                )
+            })?;
+            if let Some(run_id) = started_run_id {
+                crate::coordination::agent_org_run_events::notify_agent_org_run_changed(&run_id);
+            }
+        }
+        // Summary work uses the ordinary Provider Turn timeout. The 10-second
+        // finalization budget starts after that Provider returns or times out;
+        // adding another summary-specific timer here would create a second
+        // cancellation owner and could race EventStore persistence.
         let turn_result = self
             .execute_turn_with_reactive_retry(
                 session_id,
@@ -450,6 +626,59 @@ impl UnifiedMessageProcessor {
         if let Some(prefetch_hook) = self.turn_prefetch_hook.lock().await.take() {
             prefetch_hook.abort_pending();
         }
+        if let Err(error) = &turn_result {
+            if is_final_summary_turn {
+                let typed_error = if self
+                    .session
+                    .cancel_flag
+                    .load(std::sync::atomic::Ordering::SeqCst)
+                {
+                    "stopped"
+                } else if error.to_ascii_lowercase().contains("timeout") {
+                    "hard_timeout"
+                } else {
+                    "provider_error"
+                };
+                if let Err(mark_error) =
+                    crate::coordination::agent_org_final_summary::mark_failed_for_turn(
+                        session_id,
+                        &context.turn_intent_id,
+                        typed_error,
+                    )
+                {
+                    warn!(
+                        session_id,
+                        turn_intent_id = %context.turn_intent_id,
+                        error = %mark_error,
+                        "failed to persist FinalSummaryReceipt terminal error"
+                    );
+                }
+            } else if self.runtime.agent_org_context.is_some() {
+                let typed_error = if self
+                    .session
+                    .cancel_flag
+                    .load(std::sync::atomic::Ordering::SeqCst)
+                {
+                    "stopped"
+                } else {
+                    "provider_error"
+                };
+                if let Err(mark_error) =
+                    crate::coordination::agent_org_formal_triggers::fail_attempt_for_turn(
+                        session_id,
+                        &context.turn_intent_id,
+                        typed_error,
+                    )
+                {
+                    warn!(
+                        session_id,
+                        turn_intent_id = %context.turn_intent_id,
+                        error = %mark_error,
+                        "failed to release FormalTriggerReceipt after provider failure"
+                    );
+                }
+            }
+        }
         let (result, handler) = turn_result?;
 
         let response_text = result.content.clone().unwrap_or_default();
@@ -457,6 +686,17 @@ impl UnifiedMessageProcessor {
 
         // Flush any pending streaming content before completing the turn.
         handler.flush_streaming(session_id);
+        handler.verify_agent_org_completion_publication(session_id);
+        if let Some(error) = handler.take_assistant_persistence_error() {
+            if !is_final_summary_turn && self.runtime.agent_org_context.is_some() {
+                let _ = crate::coordination::agent_org_formal_triggers::fail_attempt_for_turn(
+                    session_id,
+                    &context.turn_intent_id,
+                    "assistant_persistence_failed",
+                );
+            }
+            return Err(error);
+        }
 
         // Update nag-reminder counter based on whether manage_todo was called
         // during this turn. Reset to 0 on any todo call; increment otherwise.
@@ -508,21 +748,42 @@ impl UnifiedMessageProcessor {
             if let Some(guard) = inbox_guard.take() {
                 guard.commit();
             }
+        } else if !is_final_summary_turn && self.runtime.agent_org_context.is_some() {
+            if let Err(error) =
+                crate::coordination::agent_org_formal_triggers::fail_attempt_for_turn(
+                    session_id,
+                    &context.turn_intent_id,
+                    "stopped",
+                )
+            {
+                warn!(
+                    session_id,
+                    turn_intent_id = %context.turn_intent_id,
+                    error = %error,
+                    "failed to release FormalTriggerReceipt after Stop"
+                );
+            }
         }
 
         if matches!(final_turn_state, DialogTurnState::Completed) {
-            if let (Some(org_context), Some(presented_work_revision)) = (
-                self.runtime.agent_org_context.as_ref(),
-                coordinator_presented_work_revision,
-            ) {
+            if let Some(org_context) = self.runtime.agent_org_context.as_ref() {
                 if self.runtime.agent_org_current_member_id.as_deref()
                     == Some(crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID)
                 {
-                    let run_id = org_context.run_id.clone();
+                    let observation_session_id = session_id.to_string();
+                    let observation_turn_intent_id = context.turn_intent_id.clone();
                     match tokio::task::spawn_blocking(move || {
+                        let Some((run_id, committed_revision)) =
+                            crate::coordination::agent_org_finality::final_coordinator_revision_for_turn(
+                                &observation_session_id,
+                                &observation_turn_intent_id,
+                            )?
+                        else {
+                            return Ok::<_, String>(None);
+                        };
                         crate::coordination::agent_org_runs::AgentOrgRunStore::mark_coordinator_observed_work_revision(
                             &run_id,
-                            presented_work_revision,
+                            committed_revision,
                         )
                     })
                     .await
@@ -530,13 +791,11 @@ impl UnifiedMessageProcessor {
                         Ok(Ok(_)) => {}
                         Ok(Err(error)) => warn!(
                             run_id = %org_context.run_id,
-                            presented_work_revision,
                             error = %error,
-                            "[unified_processor] failed to record Agent Org work revision observed by coordinator provider turn"
+                            "[unified_processor] failed to record the final committed Agent Org work revision observed by coordinator provider turn"
                         ),
                         Err(error) => warn!(
                             run_id = %org_context.run_id,
-                            presented_work_revision,
                             error = %error,
                             "[unified_processor] coordinator work-revision observation task failed"
                         ),
@@ -562,6 +821,28 @@ impl UnifiedMessageProcessor {
         };
         let sm_last_turn_has_tool_calls =
             crate::model_context::session_memory::last_turn_has_tool_calls(&messages);
+        let intervention_suspended_formal_turn = persisted_turn_context.as_ref().is_some_and(
+            |turn_context| {
+                turn_context.turn_kind
+                    == crate::coordination::agent_org_turn_contexts::AgentOrgTurnKind::TaskExecution
+            },
+        ) && match tokio::task::block_in_place(|| {
+            crate::coordination::agent_member_interventions::AgentMemberInterventionStore::open_receipt_for_original_turn(
+                    session_id,
+                    &context.turn_intent_id,
+                )
+        }) {
+            Ok(receipt) => receipt.is_some(),
+            Err(error) => {
+                warn!(
+                    session_id,
+                    turn_intent_id = %context.turn_intent_id,
+                    error = %error,
+                    "could not prove whether formal Turn was suspended; suppressing background finalizers"
+                );
+                true
+            }
+        };
         self.dispatch_post_turn_work(post_turn_dispatch::PostTurnInputs {
             session_id,
             turn_id: &turn_id,
@@ -572,6 +853,8 @@ impl UnifiedMessageProcessor {
             turn_started_at_ms,
             sm_current_tokens,
             sm_last_turn_has_tool_calls,
+            suppress_background_finalizers: is_user_directed_work
+                || intervention_suspended_formal_turn,
         })
         .await;
 
@@ -588,46 +871,48 @@ impl UnifiedMessageProcessor {
         // Covers success and interrupted transitions. Failed member turns
         // are emitted from lifecycle finalization after `process` returns
         // an error, so model/provider failures still notify the coordinator.
-        let idle_reason = match final_turn_state {
-            DialogTurnState::Cancelled => {
-                crate::coordination::agent_inbox::MemberIdleReason::Interrupted
-            }
-            _ => crate::coordination::agent_inbox::MemberIdleReason::Available,
-        };
-        let unfinished_task_ids = match self
-            .runtime
-            .agent_org_context
-            .as_ref()
-            .zip(self.runtime.agent_org_current_member_id.as_deref())
-        {
-            Some((org_context, member_id)) => {
-                match member_idle::unfinished_build_task_ids_for_member(
-                    &org_context.run_id,
-                    member_id,
-                ) {
-                    Ok(task_ids) => task_ids,
-                    Err(error) => {
-                        warn!(
-                            run_id = %org_context.run_id,
-                            member_id = %member_id,
-                            error = %error,
-                            "failed to inspect unfinished Agent Org tasks before MemberIdle"
-                        );
-                        Vec::new()
+        if !is_user_directed_work && !intervention_suspended_formal_turn {
+            let idle_reason = match final_turn_state {
+                DialogTurnState::Cancelled => {
+                    crate::coordination::agent_inbox::MemberIdleReason::Interrupted
+                }
+                _ => crate::coordination::agent_inbox::MemberIdleReason::Available,
+            };
+            let unfinished_task_ids = match self
+                .runtime
+                .agent_org_context
+                .as_ref()
+                .zip(self.runtime.agent_org_current_member_id.as_deref())
+            {
+                Some((org_context, member_id)) => {
+                    match member_idle::unfinished_build_task_ids_for_member(
+                        &org_context.run_id,
+                        member_id,
+                    ) {
+                        Ok(task_ids) => task_ids,
+                        Err(error) => {
+                            warn!(
+                                run_id = %org_context.run_id,
+                                member_id = %member_id,
+                                error = %error,
+                                "failed to inspect unfinished Agent Org tasks before MemberIdle"
+                            );
+                            Vec::new()
+                        }
                     }
                 }
-            }
-            None => Vec::new(),
-        };
-        member_idle::maybe_emit_member_idle_with_details(
-            self.runtime.agent_org_context.as_ref(),
-            self.runtime.agent_org_current_member_id.as_deref(),
-            idle_reason,
-            self.agent_mode,
-            None,
-            None,
-            unfinished_task_ids,
-        );
+                None => Vec::new(),
+            };
+            member_idle::maybe_emit_member_idle_with_details(
+                self.runtime.agent_org_context.as_ref(),
+                self.runtime.agent_org_current_member_id.as_deref(),
+                idle_reason,
+                self.agent_mode,
+                None,
+                None,
+                unfinished_task_ids,
+            );
+        }
 
         Ok(ProcessingResult {
             turn_id,

@@ -13,13 +13,10 @@ import {
 } from "@src/store/ui/workspaceFoldersAtom";
 
 import {
-  branchesAtom,
   cachedReposAtom,
   repoFilterAtom,
-  repoLastCheckAtom,
   reposAtom,
   selectedRepoIdAtom,
-  validRepoIdsAtom,
 } from "./atoms";
 import { matchRepoByPath, normalizeRepoPath } from "./matchRepoByPath";
 import { REPO_KIND, type Repo } from "./types";
@@ -67,13 +64,6 @@ export const selectedRepoPathAtom = atom<string>((get) => {
 });
 selectedRepoPathAtom.debugLabel = "selectedRepoPathAtom";
 
-/** Check if a repo ID is valid */
-export const isValidRepoIdAtom = atom((get) => {
-  const validIds = get(validRepoIdsAtom);
-  return (id: string) => validIds.has(id);
-});
-isValidRepoIdAtom.debugLabel = "isValidRepoIdAtom";
-
 // ============================================
 // Filtered & Search
 // ============================================
@@ -88,97 +78,6 @@ export const filteredReposAtom = atom((get) => {
   );
 });
 filteredReposAtom.debugLabel = "filteredReposAtom";
-
-/** Branch options for dropdowns */
-export const branchOptionsAtom = atom((get) => {
-  const branches = get(branchesAtom);
-  return branches.map((branch) => ({
-    label: branch.name,
-    value: branch.name,
-    subLabel: branch.lastCommitDate,
-  }));
-});
-branchOptionsAtom.debugLabel = "branchOptionsAtom";
-
-// ============================================
-// Stats Atoms
-// ============================================
-
-/** Total number of repos */
-export const repoCountAtom = atom((get) => {
-  return get(reposAtom).length;
-});
-repoCountAtom.debugLabel = "repoCountAtom";
-
-/** Check if there are any repos */
-export const hasReposAtom = atom((get) => {
-  return get(reposAtom).length > 0;
-});
-hasReposAtom.debugLabel = "hasReposAtom";
-
-/** Check if selected repo is valid */
-export const isSelectedRepoValidAtom = atom((get) => {
-  const selectedId = get(selectedRepoIdAtom);
-  const validIds = get(validRepoIdsAtom);
-  return selectedId ? validIds.has(selectedId) : false;
-});
-isSelectedRepoValidAtom.debugLabel = "isSelectedRepoValidAtom";
-
-/** Repos grouped by type (local vs remote) */
-export const reposByTypeAtom = atom((get) => {
-  const repos = get(reposAtom);
-  return {
-    local: repos.filter((repo) => !repo.repo_url),
-    remote: repos.filter((repo) => !!repo.repo_url),
-  };
-});
-reposByTypeAtom.debugLabel = "reposByTypeAtom";
-
-// ============================================
-// Kind-based Filtering (git repos vs work folders)
-// ============================================
-
-/** Only git repositories */
-export const gitReposAtom = atom((get) => {
-  return get(reposAtom).filter((repo) => repo.kind !== REPO_KIND.FOLDER);
-});
-gitReposAtom.debugLabel = "gitReposAtom";
-
-/** Only work folders */
-export const workFoldersAtom = atom((get) => {
-  return get(reposAtom).filter((repo) => repo.kind === REPO_KIND.FOLDER);
-});
-workFoldersAtom.debugLabel = "workFoldersAtom";
-
-/** Whether the currently selected repo is a git repository (not a work folder) */
-export const currentRepoIsGitAtom = atom((get) => {
-  const repo = get(selectedRepoAtom);
-  return repo?.kind !== REPO_KIND.FOLDER;
-});
-currentRepoIsGitAtom.debugLabel = "currentRepoIsGitAtom";
-
-/** Total stats across all repos */
-export const repoTotalStatsAtom = atom((get) => {
-  const repos = get(reposAtom);
-  return repos.reduce(
-    (acc, repo) => ({
-      sessions: acc.sessions + (repo.stats?.sessions || 0),
-      linkedProjects: acc.linkedProjects + (repo.stats?.linked_stories || 0),
-      workItems: acc.workItems + (repo.stats?.work_items || 0),
-      contextItems: acc.contextItems + (repo.stats?.context_items || 0),
-    }),
-    { sessions: 0, linkedProjects: 0, workItems: 0, contextItems: 0 }
-  );
-});
-repoTotalStatsAtom.debugLabel = "repoTotalStatsAtom";
-
-/** Computed: How long ago repos were loaded (in seconds) */
-export const repoAgeSecondsAtom = atom<number | null>((get) => {
-  const lastCheck = get(repoLastCheckAtom);
-  if (!lastCheck) return null;
-  return Math.floor((Date.now() - lastCheck.getTime()) / 1000);
-});
-repoAgeSecondsAtom.debugLabel = "repoAgeSecondsAtom";
 
 /**
  * When the active WorkStation session's repo differs from the currently

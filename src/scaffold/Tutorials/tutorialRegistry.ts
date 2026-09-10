@@ -22,7 +22,7 @@ export const TUTORIALS: TutorialEntry[] = [
     id: "general-layout",
     title: "General layout tour",
     description:
-      "Learn the Session sidebar, Chat Panel, station mode switcher, Workstation, dock, and app areas.",
+      "Learn the Chat Panel, Runtime, station mode switcher, and dock.",
     durationLabel: "1 min",
     titleKey: "tutorials.generalLayout.title",
     descriptionKey: "tutorials.generalLayout.description",
@@ -33,7 +33,7 @@ export const TUTORIALS: TutorialEntry[] = [
     id: "code-editor",
     title: "Code Editor tour",
     description:
-      "Learn tabs, repo and branch switching, Source Control, Git History, and the project dashboard.",
+      "Learn tabs, the editor workspace, Source Control, and Git History.",
     durationLabel: "2 min",
     titleKey: "tutorials.codeEditor.title",
     descriptionKey: "tutorials.codeEditor.description",

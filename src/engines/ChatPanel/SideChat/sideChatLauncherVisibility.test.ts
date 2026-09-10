@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ChatPanelTabType } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTabType } from "@src/store/chatPanel/chatPanelTabsModel";
 
 import { shouldShowSideChatLauncher } from "./sideChatLauncherVisibility";
 

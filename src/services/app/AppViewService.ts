@@ -1,15 +1,8 @@
 import { ROUTES } from "@src/config/routes";
+import { navigateApp as dispatchNavigate } from "@src/router/navigateApp";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 const getStore = () => getInstrumentedStore();
-
-function dispatchNavigate(path: string) {
-  window.dispatchEvent(
-    new CustomEvent("action-system-navigate", {
-      detail: { path },
-    })
-  );
-}
 
 export const AppViewService = {
   async toggleSidebar(): Promise<boolean> {

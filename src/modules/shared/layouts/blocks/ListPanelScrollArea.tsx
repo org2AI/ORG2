@@ -2,7 +2,7 @@
  * ListPanelScrollArea — Reusable scroll container for left list panels.
  *
  * Wraps list content with standard scroll behavior and configurable top padding.
- * Place below ListPanelTabPillRow or ListPanelSearch.
+ * Place below ListPanelTabPillRow or a panel search control.
  *
  * Used by: MenuPanel, InboxListPanel, and similar panels.
  */

@@ -2,10 +2,8 @@
 import React from "react";
 
 import ModelPropertiesDropdown from "@src/components/ModelPropertiesDropdown";
-import {
-  SETTINGS_TABLE_COL,
-  type SettingsTableColumn,
-} from "@src/components/SettingsTable";
+import type { SettingsTableColumn } from "@src/components/SettingsTable";
+import { SETTINGS_TABLE_COL } from "@src/components/SettingsTable/tokens";
 import Switch from "@src/components/Switch";
 import { ArrowDown01Icon, HugeiconsIcon } from "@src/icons";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";

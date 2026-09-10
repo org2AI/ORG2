@@ -26,7 +26,6 @@ export interface SearchFilters {
 
 export interface UseSourceNavigationOptions {
   repoPath: string;
-  onSearchFiles?: (query: string) => void;
 }
 
 export interface ComponentSearchResult {

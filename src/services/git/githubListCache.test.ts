@@ -7,6 +7,7 @@ import {
   GITHUB_LIST_CACHE_TTL_MS,
   coalesceGitHubListRequest,
   flushGitHubListCachePersistence,
+  getCachedIssues,
   getCachedPrDetail,
   getCachedPrs,
   isIssueCacheStale,
@@ -168,5 +169,86 @@ describe("global GitHub list cache", () => {
 
     vi.advanceTimersByTime(60_001);
     expect(isPrDetailStale(key)).toBe(true);
+  });
+
+  it("holds four repos of issues and evicts the least-recently-read one", () => {
+    const keys = Array.from(
+      { length: 5 },
+      (_, index) => `issue-cap-${index}-${crypto.randomUUID()}`
+    );
+    const [first, second, third, fourth, fifth] = keys;
+
+    for (const key of [first, second, third, fourth]) {
+      updateCachedOpenIssues(key, []);
+    }
+    expect(getCachedIssues(fifth)).toBeNull();
+
+    // Reading `first` promotes it, so `second` becomes the eviction victim.
+    expect(getCachedIssues(first)).not.toBeNull();
+    // A staleness probe must not rescue `second` from eviction.
+    expect(isIssueCacheStale(second)).toBe(false);
+    updateCachedOpenIssues(fifth, []);
+
+    expect(getCachedIssues(second)).toBeNull();
+    expect(isIssueCacheStale(second)).toBe(true);
+    for (const key of [first, third, fourth, fifth]) {
+      expect(getCachedIssues(key)).not.toBeNull();
+    }
+  });
+
+  it("holds eight PR lists across repo/state combinations", () => {
+    const repoKeys = Array.from(
+      { length: 5 },
+      (_, index) => `pr-cap-${index}-${crypto.randomUUID()}`
+    );
+
+    for (const repoKey of repoKeys.slice(0, 4)) {
+      setCachedPrs(repoKey, [], "open");
+      setCachedPrs(repoKey, [], "closed");
+    }
+    for (const repoKey of repoKeys.slice(0, 4)) {
+      expect(getCachedPrs(repoKey, "open")).not.toBeNull();
+      expect(getCachedPrs(repoKey, "closed")).not.toBeNull();
+    }
+
+    setCachedPrs(repoKeys[4], [], "open");
+
+    expect(getCachedPrs(repoKeys[0], "open")).toBeNull();
+    expect(getCachedPrs(repoKeys[0], "closed")).not.toBeNull();
+    expect(getCachedPrs(repoKeys[4], "open")).not.toBeNull();
+  });
+
+  it("holds four PR detail snapshots and keeps in-place patches from growing the cache", () => {
+    const detail = {
+      detail: null,
+      headSha: "head",
+      baseRef: "develop",
+      conversation: [],
+      reviews: [],
+      reviewComments: [],
+      commits: [],
+      files: [],
+      checks: null,
+    };
+    const keys = Array.from(
+      { length: 5 },
+      (_, index) => `detail-cap-${index}-${crypto.randomUUID()}`
+    );
+
+    for (const key of keys.slice(0, 4)) {
+      setCachedPrDetail(key, detail);
+    }
+    expect(updateCachedPrDetail(keys[0], () => ({ headSha: "patched" }))).toBe(
+      true
+    );
+    expect(updateCachedPrDetail(keys[4], () => ({}))).toBe(false);
+
+    setCachedPrDetail(keys[4], detail);
+
+    expect(getCachedPrDetail(keys[1])).toBeNull();
+    expect(getCachedPrDetail(keys[0])?.headSha).toBe("patched");
+    for (const key of [keys[0], keys[2], keys[3], keys[4]]) {
+      expect(getCachedPrDetail(key)).not.toBeNull();
+    }
   });
 });

@@ -19,13 +19,13 @@ import { rpc } from "@src/api/tauri/rpc";
 import type { CrossSessionSearchHit } from "@src/api/tauri/rpc/schemas/sessionCore";
 import { useDebouncedCallback } from "@src/hooks/perf";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
+import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import { sessionMapAtom } from "@src/store/session/sessionAtom";
 
 import { ALL_SESSIONS_SEARCH_ICON } from "../../hooks/features/spotlightActionDefinitions.navigation";
 import type { BasePaletteProps } from "../../shared";
 import { PaletteBody, SpotlightShell } from "../../shell";
 import type { PathSegment, SpotlightItem } from "../../types";
-import { useSelectorKernel } from "../core";
 import { buildAllSessionsSearchItems } from "./allSessionsSearchItems";
 import { createLatestOnlySearchRunner } from "./latestOnlySearchRunner";
 

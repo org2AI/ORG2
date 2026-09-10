@@ -128,7 +128,8 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
     : generatedWorkspaceName;
 
   const handleSubmit = useCallback(() => {
-    const name = effectiveName || t("workspaceForm.defaultName", "Workspace");
+    const name =
+      effectiveName || t("workspaceForm.defaultName", "Working Directory");
     const selectedRepoIds = orderedRepos
       .filter((repo) => selectedIds.has(repo.id))
       .map((repo) => repo.id);
@@ -150,10 +151,10 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
         icon={ICONS.workspace}
         title={
           isEditing
-            ? t("workspaceForm.editTitle", "Edit Workspace")
-            : t("workspaceForm.title", "Create Multi-repo Workspace")
+            ? t("workspaceForm.editTitle", "Edit Working Directory")
+            : t("workspaceForm.title", "Create Multi-repo Working Directory")
         }
-        badge="WORKSPACE"
+        badge="WORKING DIRECTORY"
         badgeColor="green"
         statusText={t(`workspaceForm.${statusKey}`, {
           defaultValue:
@@ -169,12 +170,15 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
         <SpotlightFormBody>
           <div className="mb-3">
             <label className="mb-2 block text-[14px] font-normal text-text-2">
-              {t("workspaceForm.workspaceName", "Workspace Name")}
+              {t("workspaceForm.workspaceName", "Working Directory Name")}
             </label>
             <Input
               placeholder={
                 effectiveName ||
-                t("workspaceForm.workspaceNamePlaceholder", "My Workspace")
+                t(
+                  "workspaceForm.workspaceNamePlaceholder",
+                  "My Working Directory"
+                )
               }
               value={displayedWorkspaceName}
               onChange={(name) => {
@@ -217,7 +221,10 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
           </div>
 
           <div className="mb-1 text-[12px] font-medium text-text-3">
-            {t("workspaceForm.selectRepos", "Select repos for workspace")}
+            {t(
+              "workspaceForm.selectRepos",
+              "Select repos for working directory"
+            )}
             {selectedIds.size > 0 && (
               <span className="ml-1 text-primary-6">({selectedIds.size})</span>
             )}

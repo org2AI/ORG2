@@ -21,6 +21,7 @@ import { createInstrumentedStore } from "@src/util/core/state/instrumentedStore"
 
 const mocks = vi.hoisted(() => ({
   getTurnIntentDispatch: vi.fn(),
+  getTurnGeneration: vi.fn(() => 0),
 }));
 
 vi.mock("@src/engines/SessionCore/control/turnIntentDispatchLifecycle", () => ({
@@ -41,8 +42,10 @@ vi.mock("@src/store/session", () => ({
 }));
 
 vi.mock("@src/engines/SessionCore/control/turnLifecycle", () => ({
-  markTurnRunning: vi.fn(),
-  markTurnTerminal: vi.fn(),
+  getLastTurnTerminal: vi.fn(() => null),
+  getTurnGeneration: mocks.getTurnGeneration,
+  markTurnRunning: vi.fn(() => true),
+  markTurnTerminal: vi.fn(() => true),
   toTurnTerminalStatus: (status: string) =>
     status === "failed" || status === "error" || status === "timeout"
       ? "failed"
@@ -79,6 +82,7 @@ describe("session sync state callbacks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getTurnIntentDispatch.mockReturnValue(undefined);
+    mocks.getTurnGeneration.mockReturnValue(0);
   });
 
   it("clears live streaming content before completed status can leave Stop UI stuck", () => {
@@ -163,6 +167,7 @@ describe("session sync state callbacks", () => {
       sessionId: "session-1",
       generation: 17,
     });
+    mocks.getTurnGeneration.mockReturnValue(17);
     const callbacks = createSessionEventHandlerCallbacks(
       "session-1",
       createActions(),
@@ -178,6 +183,46 @@ describe("session sync state callbacks", () => {
     expect(markTurnTerminal).toHaveBeenCalledWith("session-1", "completed", {
       generation: 17,
     });
+  });
+
+  it("rejects an attributed terminal from an older turn generation", () => {
+    mocks.getTurnIntentDispatch.mockReturnValue({
+      sessionId: "session-1",
+      generation: 16,
+    });
+    mocks.getTurnGeneration.mockReturnValue(17);
+    const actions = createActions();
+    const callbacks = createSessionEventHandlerCallbacks(
+      "session-1",
+      actions,
+      vi.fn()
+    );
+
+    callbacks.onStatusChange?.("completed", undefined, {
+      turnIntentId: "stale-intent-16",
+    });
+
+    expect(markTurnTerminal).not.toHaveBeenCalled();
+    expect(actions.setSessionRuntimeStatus).not.toHaveBeenCalled();
+    expect(actions.setPendingCancel).not.toHaveBeenCalled();
+    expect(updateSessionStatus).not.toHaveBeenCalled();
+  });
+
+  it("does not update presentation when the lifecycle rejects a terminal", () => {
+    vi.mocked(markTurnTerminal).mockReturnValueOnce(false);
+    const actions = createActions();
+    const callbacks = createSessionEventHandlerCallbacks(
+      "session-1",
+      actions,
+      vi.fn()
+    );
+
+    callbacks.onStatusChange?.("completed");
+
+    expect(actions.setSessionRuntimeStatus).not.toHaveBeenCalled();
+    expect(actions.setPendingCancel).not.toHaveBeenCalled();
+    expect(eventStoreProxy.unpinSession).not.toHaveBeenCalled();
+    expect(updateSessionStatus).not.toHaveBeenCalled();
   });
 
   it("rejects a terminal intent attributed to another session", () => {
@@ -254,6 +299,22 @@ describe("session sync state callbacks", () => {
     expect(markTurnRunning).toHaveBeenCalledTimes(2);
     expect(markTurnRunning).toHaveBeenNthCalledWith(1, "session-1");
     expect(markTurnRunning).toHaveBeenNthCalledWith(2, "session-1");
+  });
+
+  it("does not update presentation when the lifecycle rejects running", () => {
+    vi.mocked(markTurnRunning).mockReturnValueOnce(false);
+    const actions = createActions();
+    const callbacks = createSessionEventHandlerCallbacks(
+      "session-1",
+      actions,
+      vi.fn()
+    );
+
+    callbacks.onStatusChange?.("running");
+
+    expect(actions.setSessionRuntimeStatus).not.toHaveBeenCalled();
+    expect(eventStoreProxy.pinSession).not.toHaveBeenCalled();
+    expect(actions.dismissCanvasAtNewTurn).not.toHaveBeenCalled();
   });
 
   it("calls dismissCanvasAtNewTurn with the session id when status is 'running'", () => {
@@ -423,5 +484,29 @@ describe("getLatestContextUsageSnapshot", () => {
         { contextUsageJson: null },
       ])
     ).toEqual(contextUsage);
+  });
+});
+
+describe("CLI source context projection", () => {
+  it("applies a full source snapshot and clears it when source telemetry is invalidated", () => {
+    const actions = createActions();
+    const callbacks = createSessionEventHandlerCallbacks(
+      "cliagent-a",
+      actions,
+      vi.fn()
+    );
+    const usage = {
+      usedTokens: 110,
+      maxTokens: null,
+      updatedAt: "now",
+      sections: [],
+      warnings: [],
+      cacheReadTokens: 80,
+    };
+    callbacks.onTokenUpdate?.(110, usage);
+    expect(actions.setSessionContextUsage).toHaveBeenLastCalledWith(usage);
+    callbacks.onTokenUpdate?.(0, null);
+    expect(actions.setSessionContextTokens).toHaveBeenLastCalledWith(0);
+    expect(actions.setSessionContextUsage).toHaveBeenLastCalledWith(null);
   });
 });

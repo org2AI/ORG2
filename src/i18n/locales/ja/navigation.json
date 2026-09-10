@@ -1,6 +1,5 @@
 {
   "labels": {
-    "devRecord": "開発記録",
     "workItems": "作業項目",
     "codeSearch": "コード検索",
     "dbManager": "DBマネージャー",
@@ -45,10 +44,9 @@
     "projectManager": "Project マネージャー",
     "diff": "Diff",
     "colleagues": "同僚",
-    "terminals": "ターミナル"
-  },
-  "trajectoryPanel": {
-    "title": "トラジェクトリ"
+    "terminals": "ターミナル",
+    "openSourceRepo": "ソース Repo を開く",
+    "teamInbox": "Team Inbox"
   },
   "routes": {
     "session": "チャット",
@@ -65,10 +63,16 @@
     "models": "モデル",
     "signingIn": "サインイン中...",
     "launchpad": "ランチパッド",
-    "ideaArea": "アイデアエリア",
     "changelog": "Changelog"
   },
   "sidebar": {
+    "sort": {
+      "dropToUnpin": "ここにドロップしてピン留めを解除",
+      "title": "チャットの並び順",
+      "priority": "優先度",
+      "updated": "最終更新",
+      "manual": "手動順"
+    },
     "tabs": {
       "workstation": "Workstation",
       "manage": "管理",
@@ -78,6 +82,7 @@
       "agentOrgs": "Agent & チーム"
     },
     "groupBy": {
+      "none": "グループ化なし",
       "title": "グループ表示",
       "byTime": "時間順",
       "byAgent": "Agent 別",
@@ -122,7 +127,11 @@
     },
     "folderCounts": {
       "repo": "{{count}} Repo",
-      "multiRepoWorkspace": "{{count}} マルチ Repo Workspace"
+      "multiRepoWorkspace": "{{count}} マルチ Repo Workspace",
+      "repo_other": "{{count}} repos",
+      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces",
+      "repo_plural": "{{count}} repos",
+      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces"
     },
     "bottomBar": {
       "settings": "設定",
@@ -157,50 +166,16 @@
       "duration30m": "30 分",
       "duration1h": "1 時間",
       "duration2h": "2 時間",
-      "durationTomorrow": "明日"
+      "durationTomorrow": "明日",
+      "unknownRole": "不明なロール"
     },
     "guide": {
-      "trigger": "ガイドを開く",
-      "title": "ORGII を使い始める",
       "startSession": "セッションを開始",
-      "close": "ガイドを閉じる",
-      "localWorkspace": "ローカルワークスペース",
-      "connectOrganization": "組織を接続または作成",
-      "createOrganizationHint": "組織名を入力して「作成」を選択してください。クラウド組織の作成が完了すると次の手順に進みます。",
-      "inviteTeammate": "チームメンバーを招待",
-      "inviteTeammateHint": "ここで招待リンクを作成し、チームメンバーに送信します。",
-      "invitePermissionHint": "ここでメンバー一覧を確認できます。招待は組織の管理者またはオーナーが作成する必要があります。",
-      "viewTeamActivity": "チームの使用状況を表示",
-      "viewTeamActivityHint": "「ランタイム > メンバー」を開きました。メンバーを選ぶと Codex、Claude、Cursor の使用状況を確認できます。データがない場合は、先にチームランタイム同期を有効にしてください。",
-      "exploreProduct": "主要画面を見る",
-      "nextStep": "次のステップ",
-      "dismiss": "ガイドを閉じる"
-    }
-  },
-  "myRole": {
-    "tabs": {
-      "status": "自分のステータス"
+      "connectOrganization": "ワークスペースを接続または作成"
     }
   },
   "launchpad": {
-    "sections": {
-      "other": "その他"
-    },
-    "searchPlaceholder": "ワークスペースを検索...",
-    "emptyTitle": "ワークスペースがありません",
-    "emptyDescription": "リポジトリを追加して始めましょう",
-    "emptyWorkspaces": "一致するワークスペースがありません",
-    "myRepos": "マイリポジトリ",
-    "myMultiRepoWorkspaces": "マルチリポ Workspaces",
-    "dashboard": "ダッシュボード",
     "myWorkspaces": "マイ Workspaces",
-    "workspaces": "ワークスペース",
-    "dashboardTitle": "ワークスペース",
-    "dashboardSubtitle": "ワークスペースを選んで起動または確認",
-    "addRepo": "Workspaceを追加",
-    "activeBadge": "アクティブ",
-    "exploreTitle": "探索",
-    "exploreDescription": "テンプレートと公開リポジトリを発見（近日公開）",
     "preview": {
       "repoType": "Project タイプ",
       "tools": "ツール",
@@ -209,11 +184,7 @@
       "statusNotAnalyzed": "未分析",
       "statusReady": "準備完了",
       "statusParamsMissing": "パラメータ不足",
-      "statusNoEnvConfig": "Env 設定不要",
-      "setupWithAI": "アプリ化",
-      "trustRepo": "このリポジトリを信頼する",
-      "launchpadPlaceholder": "この実行の追加指示...",
-      "launchpadLaunch": "起動"
+      "statusNoEnvConfig": "Env 設定不要"
     },
     "containers": {
       "title": "Containers",
@@ -222,8 +193,6 @@
       "emptySubtitle": "Docker Desktop、Colima、または Rancher Desktop を起動して更新すると、ローカル Container が表示されます。",
       "repoEmptyTitle": "この Repo の Container はありません",
       "repoEmptySubtitle": "Container は Docker Compose の作業ディレクトリ label またはこの Repo 内の bind mount で照合されます。",
-      "repoNoDockerTitle": "Docker 設定が検出されません",
-      "repoNoDockerSubtitle": "Dockerfile または docker-compose ファイルを追加すると、この Repo に Container を関連付けられます。",
       "dockerUnavailable": "Docker を利用できません",
       "name": "名前",
       "image": "Image",
@@ -259,15 +228,9 @@
       "categoryBuild": "ビルド",
       "categoryTest": "テスト",
       "categoryLint": "Lint & フォーマット",
-      "categoryOther": "その他",
-      "noScripts": "スクリプトが見つかりません",
-      "noScriptsHint": "package.json、Makefile などの設定を追加してください",
-      "run": "実行",
-      "launched": "{{name}} を実行中",
-      "launchFailed": "スクリプトの起動に失敗しました"
+      "categoryOther": "その他"
     },
     "detail": {
-      "title": "Repo 詳細",
       "path": "パス",
       "envVarsTitle": "環境変数",
       "envKey": "キー",
@@ -284,16 +247,10 @@
       "scriptName": "名前",
       "scriptCommand": "コマンド",
       "scriptCategory": "カテゴリ",
-      "scriptSource": "ソース",
       "scriptNamePlaceholder": "スクリプト名",
       "searchScripts": "スクリプトを検索…",
       "noScripts": "スクリプトが見つかりません",
       "addScript": "スクリプトを追加",
-      "sourceCustom": "カスタム",
-      "sourceDiscovered": "検出済み",
-      "analysisTitle": "分析",
-      "clearAnalysis": "分析をクリア",
-      "clearAnalysisHint": "分析キャッシュをリセットし、次回訪問時に再スキャン",
       "analysisCleared": "分析がクリアされました"
     },
     "containerEngines": {
@@ -318,15 +275,11 @@
       "switchToRepo": "開く",
       "startSession": "セッションを開始",
       "openDetails": "詳細を表示",
-      "locateInFinder": "Finder で表示",
       "remove": "Remove from ORGII",
       "removeSuccess": "Linkage to ORGII removed",
       "removeFailed": "Failed to remove linkage to ORGII"
     },
     "addWorkspace": "Workspace を追加"
-  },
-  "explore": {
-    "title": "探す"
   },
   "workstation": {
     "agentComputer": {
@@ -344,28 +297,25 @@
       "title": "新しいタブ",
       "searchFile": "ファイルを検索",
       "searchSessions": "カンバン",
-      "newBrowserTab": "新しいブラウザタブ",
       "newPrivateBrowserTab": "新しいプライベートブラウザタブ",
       "workItems": "作業項目",
       "projects": "プロジェクト",
-      "recentlyClosed": "最近"
+      "recent": "最近"
     }
   },
   "collaboration": {
-    "switchOrg": "ORG を切り替え",
-    "addOrg": "ORG を追加",
+    "switchOrg": "ワークスペースを切り替え",
+    "addOrg": "ワークスペースを追加",
     "createOrg": "作成",
     "joinOrg": "参加",
-    "orgSource": "Org ソース",
+    "orgSource": "ワークスペースの種類",
     "localOrg": "ローカル",
-    "orgName": "ORG 名",
+    "orgName": "ワークスペース名",
     "orgNamePlaceholder": "Team Alpha",
     "inviteCode": "招待リンクまたはコード",
     "inviteCodePlaceholder": "orgii:// 招待リンクまたは招待コードを貼り付け",
-    "copyInvite": "招待をコピー",
-    "copiedInvite": "コピー済み",
     "setupMode": "セットアップモード",
-    "manageOrg": "ORG を管理",
+    "manageOrg": "ワークスペースを管理",
     "session": {
       "forkFailed": "Failed to fork the session",
       "forkedFromLabel": "⑂ from {{name}}",
@@ -382,11 +332,11 @@
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
       "forkSetupModel": "Model",
-      "forkSetupContinue": "Fork & continue",
       "forkSnapshotIncomplete": "The cloud snapshot is incomplete. Ask the owner to finish syncing, then retry.",
       "forkAgentUnavailable": "Choose a local agent before forking.",
       "forkBackendRegistrationFailed": "The session history was copied, but the runnable fork could not be registered. Retry.",
-      "forkReplayUnavailable": "Full replay is not available for this session. Ask the owner to share the replay, then retry."
+      "forkReplayUnavailable": "Full replay is not available for this session. Ask the owner to share the replay, then retry.",
+      "forkSetupReused": "前回の設定で続行 · {{model}}"
     },
     "repoPicker": {
       "loading": "Loading repos…",
@@ -397,31 +347,16 @@
     "forkImported": {
       "headerButton": "フォーク",
       "headerTooltip": "このインポート済みセッションを自分の書き込み可能なセッションとしてフォークします",
-      "confirmTitle": "フォークして続行しますか？",
-      "confirmBody": "これは {{name}} さんのセッションです。あなたのコピーは読み取り専用のインポートです。続行すると自分のセッションとしてフォークされ、メッセージはそちらに送信されます。",
-      "confirm": "フォークして続行",
-      "cancel": "キャンセル",
       "retentionError": "このセッションはプランのリプレイ保持期間外です。フォークするにはアップグレードしてください",
       "goneError": "この共有セッションは利用できなくなりました（削除または期限切れ）",
       "error": "セッションのフォークに失敗しました",
-      "sendFailed": "フォークしましたが、メッセージの送信に失敗しました。内容は入力欄に復元されました",
       "forkedChipTooltip": "{{name}} さんからフォーク",
-      "continuePlaceholder": "Message to fork and continue in ORGII…",
       "snapshotError": "The cloud snapshot is incomplete. Ask the owner to finish syncing, then retry.",
       "agentError": "Choose a local agent before forking.",
       "backendError": "The session history was copied, but the runnable fork could not be registered. Retry.",
       "parentOpenUnavailable": "The source session could not be opened from this fork.",
       "replayError": "Full replay is not available for this session. Ask the owner to share the replay, then retry.",
       "openParentButton": "{{name}} の元セッションを開く"
-    },
-    "continueCli": {
-      "headerButton": "{{agent}} で続行",
-      "headerTooltip": "ターミナルタブで {{agent}} を使ってこのセッションを再開します（{{command}}）",
-      "notInstalled": "{{agent}} はこのマシンにインストールされていません",
-      "missingWorkspace": "セッションの元のフォルダが存在しません — {{agent}} は元のフォルダからのみ再開できます",
-      "sourceMissing": "元のセッションデータがディスク上に見つかりません",
-      "launchFailed": "{{agent}} ターミナルの起動に失敗しました",
-      "composerPlaceholder": "メッセージを送って新しいセッションで続行…"
     },
     "openInApp": {
       "headerButton": "{{app}} で開く",
@@ -431,13 +366,18 @@
     }
   },
   "cloud": {
-    "title": "ORG2 クラウド",
+    "featureSharingBody": "チームメンバーとセッションを共有",
+    "featureMobileRemoteBody": "スマートフォンからエージェントの作業を進めよう",
+    "featureMarketBody": "ORG2 Marketでツールやリソースを探す",
+    "signInModalTitle": "おかえりなさい",
+    "signInModalBody": "ブラウザーで続行してアカウントにログインしてください",
     "signIn": "ログイン",
     "signOut": "ログアウト",
+    "signOutConfirmTitle": "ログアウトしますか？",
+    "signOutConfirmBody": "アカウントにアクセスするには、再度ログインする必要があります",
     "signedInAs": "{{name}} としてログイン中",
     "signedInToast": "ORG2 クラウドにサインインしました",
     "sessionExpired": "ORG2 Cloud のセッションが期限切れです。続行するには再度サインインしてください。",
-    "recommendedDesc": "マネージドなセッション共有、リプレイ保存、チーム権限、安全な共有リンク。Supabase のセットアップは不要です。Auth、データベースマイグレーション、RLS ポリシー、課金、保持期間、クォータ、バックエンドのアップグレードは ORG2 が管理します",
     "customEndpoint": {
       "title": "カスタム ORG2 Cloud バックエンド",
       "toggleDesc": "自分でデプロイした ORG2 Cloud を使用",
@@ -458,9 +398,9 @@
       "membersTitle": "メンバー",
       "membersEmpty": "メンバーがいません",
       "loading": "読み込み中…",
-      "loadError": "クラウド組織の詳細を読み込めませんでした",
+      "loadError": "クラウドワークスペースの詳細を読み込めませんでした",
       "repoScopesTitle": "リポジトリスコープ",
-      "repoScopesHelp": "これらのスコープ内のリポジトリのセッションが、このクラウド組織に同期されます。スコープは git リモートで照合されるため、どのマシンのチームメイトも同じキーを共有します",
+      "repoScopesHelp": "これらのスコープ内のリポジトリのセッションが、このクラウドワークスペースに同期されます。スコープは git リモートで照合されるため、どのマシンのチームメイトも同じキーを共有します",
       "repoScopesEmpty": "リポジトリスコープはまだありません",
       "removeRepoScope": "削除",
       "saveRepoScopes": "リポジトリスコープを保存",
@@ -518,14 +458,14 @@
         "coverageTitle": "セッションのカバー率",
         "coverageSummary": "{{synced}}/{{syncable}} 同期済み（{{percent}}%）",
         "coveragePercentLabel": "カバー率",
-        "coverageEmpty": "この組織のリポジトリ範囲にはまだセッションがありません",
+        "coverageEmpty": "このワークスペースのリポジトリ範囲にはまだセッションがありません",
         "logsTitle": "同期ログ",
         "logsHelp": "このデバイスに記録された最近の同期イベント。再起動でクリアされ、アップロードされることはありません",
         "logsEmpty": "同期イベントの記録はまだありません",
         "logsClear": "クリア",
         "logsCopy": "コピー",
         "logsCopied": "コピーしました",
-        "logsOrg": "組織 {{orgId}}",
+        "logsOrg": "ワークスペース {{orgId}}",
         "levelInfo": "情報",
         "levelWarn": "警告",
         "levelError": "エラー"
@@ -534,7 +474,6 @@
     "sidebar": {
       "teamSessions": "チームセッション",
       "mySessions": "自分のセッション",
-      "memberFilter": "メンバーで絞り込み",
       "sessionFilter": "セッションを絞り込み",
       "copyUrl": "URLをコピー",
       "directlySharedWithMe": "自分に直接共有",
@@ -554,28 +493,28 @@
     },
     "sessionRef": {
       "chipLabel": "チームセッション",
-      "notMember": "このセッションを所有する組織のメンバーではありません。",
+      "notMember": "このセッションを所有するワークスペースのメンバーではありません。",
       "signInRequired": "このセッションを開くには ORG2 Cloud にサインインしてください。",
-      "sessionNotFound": "そのセッションはこの組織に属していません。",
-      "notPublished": "参照をコピーする前に、このセッションを組織と共有してください。",
-      "chooseOrg": "このセッションは複数の組織に属しています。参照したい組織に切り替えてから、もう一度コピーしてください。",
+      "sessionNotFound": "そのセッションはこのワークスペースに属していません。",
+      "notPublished": "参照をコピーする前に、このセッションをワークスペースと共有してください。",
+      "chooseOrg": "このセッションは複数のワークスペースに属しています。参照したいワークスペースに切り替えてから、もう一度コピーしてください。",
       "opening": "チームセッションを開いています…"
     },
     "sync": {
-      "quotaExceededToast": "ORG2 クラウド同期を一時停止しました：この組織のプランのクォータを超過しています",
-      "syncDisabledToast": "ORG2 クラウド同期を一時停止しました：この組織のプランではセッション同期が無効です",
+      "quotaExceededToast": "ORG2 クラウド同期を一時停止しました：このワークスペースのプランのクォータを超過しています",
+      "syncDisabledToast": "ORG2 クラウド同期を一時停止しました：このワークスペースのプランではセッション同期が無効です",
       "schemaMismatchToast": "ORG2 Cloud 同期を一時停止しました：バックエンドのスキーマバージョンは {{backend}}、アプリは {{expected}} を要求します"
     },
     "moveToOrg": {
-      "menuItem": "組織タグ…",
-      "title": "セッションの組織タグ",
-      "hint": "1つ以上の組織にチェックを入れてこのセッションを共有します。Personal と複数の組織に同時に所属できます。通常のローカルセッションのままで、そこで表示されるようになるだけです。リポジトリ範囲がこのセッションのリポジトリを含む組織のみ選択できます。",
-      "noOrgs": "クラウド組織がまだありません — ORG2 クラウドにサインインして作成または参加してください。",
+      "menuItem": "ワークスペースタグ…",
+      "title": "ラベル",
+      "hint": "1つ以上のワークスペースにチェックを入れてこのセッションを共有します。Personal と複数のワークスペースに同時に所属できます。通常のローカルセッションのままで、そこで表示されるようになるだけです。リポジトリ範囲がこのセッションのリポジトリを含むワークスペースのみ選択できます。",
+      "noOrgs": "クラウドワークスペースがまだありません — ORG2 クラウドにサインインして作成または参加してください。",
       "cloudBadge": "クラウド",
       "added": "{{org}} に追加しました",
       "removed": "{{org}} から削除しました",
       "error": "更新できませんでした — もう一度お試しください。",
-      "noRemote": "This session's repository has no git remote, so it can't match any org's repo scope.",
+      "noRemote": "This session's repository has no git remote, so it can't match any workspace's repo scope.",
       "noScopes": "No repo scopes",
       "outOfScope": "Out of scope",
       "scopeResolving": "Checking…",
@@ -619,91 +558,88 @@
         "roleChangeAction": "変更",
         "remove": "削除",
         "removeTitle": "メンバーを削除",
-        "removeConfirm": "{{member}} をこの組織から削除しますか？",
+        "removeConfirm": "{{member}} をこのワークスペースから削除しますか？",
         "youTag": "自分",
         "ownerTag": "オーナー",
         "floorOff": "最低要件なし",
-        "floorTooltip": "このメンバーの最低共有レベル。これと組織全体の下限のうち、より厳しい方が適用されます。",
-        "floorOrgMinimum": "組織の最低要件（{{mode}}）"
+        "floorTooltip": "このメンバーの最低共有レベル。これとワークスペース全体の下限のうち、より厳しい方が適用されます。",
+        "floorOrgMinimum": "ワークスペースの最低要件（{{mode}}）"
       },
       "leave": {
-        "action": "組織を退出",
-        "confirmTitle": "この組織を退出しますか？",
-        "warning": "再度招待されるまで、この組織の共有セッションにアクセスできなくなります",
+        "action": "ワークスペースを退出",
+        "confirmTitle": "このワークスペースを退出しますか？",
+        "warning": "再度招待されるまで、このワークスペースの共有セッションにアクセスできなくなります",
         "confirm": "退出",
         "cancel": "キャンセル",
         "leftToast": "{{org}} を退出しました"
       },
       "settings": {
-        "title": "組織設定",
+        "title": "ワークスペース設定",
         "dangerZone": "危険ゾーン",
-        "renameLabel": "組織名",
+        "renameLabel": "ワークスペース名",
         "renameSave": "名前を変更",
         "renamed": "変更しました",
         "transferTitle": "所有権の移譲",
-        "transferHint": "新しいオーナーがこの組織を完全に管理し、あなたは管理者になります",
+        "transferHint": "新しいオーナーがこのワークスペースを完全に管理し、あなたは管理者になります",
         "transferPlaceholder": "メンバーを選択…",
         "transferAction": "移譲",
         "transferConfirm": "{{org}} の所有権を {{member}} に移譲しますか？あなたは管理者になります。",
         "transferredToast": "所有権を移譲しました",
-        "deleteTitle": "組織を削除",
+        "deleteTitle": "ワークスペースを削除",
         "deleteHint": "すべてのメンバーから {{org}} が削除され、セッション共有が停止します。この操作はアプリ内では元に戻せません",
         "deleteTypeToConfirm": "確認のため {{org}} と入力してください",
-        "deleteAction": "組織を削除",
-        "deletedToast": "組織を削除しました",
-        "ownerLeaveHint": "オーナーは組織を退出できません——先に所有権を移譲するか組織を削除してください"
+        "deleteAction": "ワークスペースを削除",
+        "deletedToast": "ワークスペースを削除しました",
+        "ownerLeaveHint": "オーナーはワークスペースを退出できません——先に所有権を移譲するかワークスペースを削除してください"
       },
       "join": {
-        "dialogTitle": "クラウド組織に参加",
-        "prompt": "ORG2 Cloud の招待を開きました。この組織に参加しますか？",
+        "dialogTitle": "クラウドワークスペースに参加",
+        "prompt": "ORG2 Cloud の招待を開きました。このワークスペースに参加しますか？",
         "codeSuffix": "招待コード末尾 {{suffix}}",
         "confirm": "参加",
         "cancel": "後で",
         "signInFirst": "この招待を受け入れるには ORG2 Cloud にサインインしてください——招待は保留されます。",
-        "openSettings": "サインイン設定を開く",
-        "joinedToast": "{{org}} に参加しました",
-        "joinedFallbackToast": "クラウド組織に参加しました"
+        "joinedToast": "{{org}} に参加しました"
       },
       "create": {
         "sourceCloud": "クラウド",
-        "signInFirst": "マネージド組織を作成・参加するには ORG2 Cloud にサインインしてください。",
-        "openSettings": "サインイン設定を開く",
-        "createdToast": "クラウド組織を作成しました"
+        "signInFirst": "マネージドワークスペースを作成・参加するには ORG2 Cloud にサインインしてください。",
+        "createdToast": "クラウドワークスペースを作成しました"
       },
       "errors": {
-        "lastAdmin": "この組織の最後の管理者です——先に他のメンバーを昇格してください。",
-        "ownerMustTransfer": "オーナーは退出できません——先に所有権を移譲するか組織を削除してください。",
-        "ownerRequired": "この操作は組織のオーナーのみ実行できます。",
-        "adminRequired": "この操作は組織の管理者のみ実行できます。",
-        "quotaExceeded": "この組織のプラン上限に達しました。",
+        "lastAdmin": "このワークスペースの最後の管理者です——先に他のメンバーを昇格してください。",
+        "ownerMustTransfer": "オーナーは退出できません——先に所有権を移譲するかワークスペースを削除してください。",
+        "ownerRequired": "この操作はワークスペースのオーナーのみ実行できます。",
+        "adminRequired": "この操作はワークスペースの管理者のみ実行できます。",
+        "quotaExceeded": "このワークスペースのプラン上限に達しました。",
         "forbidden": "この操作を行う権限がありません。",
-        "memberNotFound": "そのメンバーはこの組織に在籍していません。",
+        "memberNotFound": "そのメンバーはこのワークスペースに在籍していません。",
         "validation": "入力が無効です——確認してもう一度お試しください。",
         "inviteInvalid": "この招待コードは無効です。",
         "inviteRevoked": "この招待は取り消されています。",
         "inviteExpired": "この招待は期限切れです。",
         "inviteExhausted": "この招待は使用回数を使い切りました。",
-        "alreadyMember": "すでにこの組織のメンバーです。",
+        "alreadyMember": "すでにこのワークスペースのメンバーです。",
         "network": "クラウドサービスに接続できません。ネットワークを確認して再試行してください。"
       }
     },
     "syncLevel": {
       "menuItem": "クラウド同期レベル…",
       "title": "クラウド同期レベル",
-      "hint": "このセッションを各クラウド組織へ何を共有するか（共有しない・メタデータのみ・フルリプレイ）と、公開範囲を選択します。",
+      "hint": "このセッションを各クラウドワークスペースへ何を共有するか（共有しない・メタデータのみ・フルリプレイ）と、公開範囲を選択します。",
       "modeOff": "オフ",
       "modeMetadata": "メタデータのみ",
       "modeFullReplay": "フルリプレイ",
-      "visibilityOrg": "組織の全員",
+      "visibilityOrg": "ワークスペースの全員",
       "visibilityRestricted": "自分のみ",
-      "taggedNote": "このセッションはこの組織に移動されているため、タグが付いている間は少なくともメタデータが共有されます。",
-      "floorNote": "組織の管理者が少なくとも{{mode}}での共有を必須にしています。",
-      "orgMinimumOption": "組織の最低要件（{{mode}}）"
+      "taggedNote": "このセッションはこのワークスペースに移動されているため、タグが付いている間は少なくともメタデータが共有されます。",
+      "floorNote": "ワークスペースの管理者が少なくとも{{mode}}での共有を必須にしています。",
+      "orgMinimumOption": "ワークスペースの最低要件（{{mode}}）"
     },
     "share": {
       "menuItem": "クラウド共有…",
       "dialogTitle": "クラウドセッション共有",
-      "noOrgs": "このセッションはどのクラウド組織にも属していません。",
+      "noOrgs": "このセッションはどのクラウドワークスペースにも属していません。",
       "directedTitle": "メンバーに共有",
       "directedEmpty": "共有できる他のメンバーがいません。",
       "createDirected": "共有",
@@ -724,9 +660,7 @@
       "incomingError": "この共有リンクは無効か、期限切れ、または取り消されています。",
       "incomingRetryHint": "インポートが完了しませんでした。共有セッションはまだアップロード中の可能性があります——もう一度お試しください。",
       "importEntry": "セッションをインポート",
-      "importDialogTitle": "共有セッションをインポート",
       "importInputPlaceholder": "orgii://cloud/session?share=…",
-      "importPasteClipboard": "クリップボードから貼り付け",
       "importSubmit": "インポート",
       "importInvalidInput": "有効な共有リンクまたはトークンではないようです。",
       "selectAll": "全員（{{count}}）",
@@ -739,59 +673,44 @@
       "incomingRetry": "再試行"
     },
     "comments": {
-      "task": {
-        "assignFailed": "コメントは投稿されましたが、エージェントの割り当てに失敗しました — スレッドから再試行してください",
-        "assignUnavailableHere": "コメントは投稿されました — このビューではエージェントの割り当ては利用できません",
-        "addressingChip": "対応中のコメント:「{{excerpt}}」",
-        "addressingChipGeneric": "コメントに対応中",
-        "addressingChipTooltip": "元セッションのコメントスレッドに対応するためにフォークされました",
-        "mentionSuggestion": "このコメントをエージェントに割り当てる"
-      },
-      "toggleLabel": "コメント",
-      "notesButton": "セッションノート",
-      "notesTitle": "セッションノート",
-      "empty": "コメントはまだありません",
-      "loadError": "コメントを読み込めませんでした",
-      "addPlaceholder": "コメントを追加…",
-      "replyPlaceholder": "返信…",
-      "send": "投稿",
-      "reply": "返信",
-      "edit": "編集",
-      "save": "保存",
-      "cancel": "キャンセル",
-      "delete": "削除",
-      "resolve": "解決済みにする",
-      "unresolve": "再オープン",
-      "resolved": "解決済み",
-      "statusActive": "対応中",
-      "wontFix": "修正しない",
-      "agentAddressing": "エージェントが対応中…",
-      "resolvedToggle": "解決済み（{{count}}）",
-      "deletedComment": "コメントは削除されました",
-      "editedMarker": "編集済み",
-      "earlierVersion": "このセッションの以前のバージョンより",
-      "replayRequired": "ターンへのコメントには完全リプレイ権限が必要です",
-      "addError": "投稿できませんでした — 下書きは保持されています",
       "actionError": "操作に失敗しました。もう一度お試しください",
       "unresolvedBadge_one": "未解決のコメント {{count}} 件",
       "unresolvedBadge": "未解決のコメント {{count}} 件",
-      "addressButton": "コメントに対応",
-      "addressPill_one": "{{count}} 件のコメントに対応",
-      "addressPill_other": "{{count}} 件のコメントに対応",
-      "addressSelectAll": "すべて選択",
-      "addressConfirm_one": "{{count}} 件のコメントに対応",
-      "addressConfirm_other": "{{count}} 件のコメントに対応",
+      "unreadBadge_one": "未読メッセージ {{count}} 件",
+      "unreadBadge": "未読メッセージ {{count}} 件",
+      "addError": "投稿できませんでした — 下書きは保持されています",
+      "addPlaceholder": "コメントを追加…",
+      "agentAddressing": "エージェントが対応中…",
       "agentAuthor": "エージェント @{{name}}",
-      "addressSessionScope": "Session notes",
-      "addressRoundScope": "Round comments",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "deletedComment": "コメントは削除されました",
+      "earlierVersion": "このセッションの以前のバージョンより",
+      "edit": "編集",
+      "editedMarker": "編集済み",
+      "empty": "コメントはまだありません",
+      "loadError": "コメントを読み込めませんでした",
       "mentionMembers": "メンバーをメンション",
-      "searchMembers": "メンバーを検索"
+      "notesButton": "セッションノート",
+      "notesTitle": "セッションノート",
+      "reply": "返信",
+      "replyPlaceholder": "返信…",
+      "resolved": "解決済み",
+      "resolvedToggle": "解決済み（{{count}}）",
+      "save": "保存",
+      "searchMembers": "メンバーを検索",
+      "send": "投稿",
+      "task": {
+        "assignFailed": "コメントは投稿されましたが、エージェントの割り当てに失敗しました — スレッドから再試行してください",
+        "mentionSuggestion": "このコメントをエージェントに割り当てる"
+      },
+      "wontFix": "修正しない"
     },
     "sharingFloor": {
       "label": "最小共有レベル",
-      "help": "この組織のリポジトリのセッションについて、メンバーが共有すべき最小レベルを設定します。メンバーはこれより低く設定できません。「制限なし」は現在の動作を維持します",
+      "help": "このワークスペースのリポジトリのセッションについて、メンバーが共有すべき最小レベルを設定します。メンバーはこれより低く設定できません。「制限なし」は現在の動作を維持します",
       "optionNone": "制限なし",
-      "memberNote": "組織の管理者が少なくとも{{mode}}での共有を必須にしているため、これより低く設定できません"
+      "memberNote": "ワークスペースの管理者が少なくとも{{mode}}での共有を必須にしているため、これより低く設定できません"
     },
     "billing": {
       "openFailed": "Couldn't open billing. Please try again."
@@ -841,23 +760,22 @@
         "nameLabel": "名前",
         "namePlaceholder": "例: code-review",
         "topicLabel": "トピック",
-        "topicOptional": "（任意）",
         "topicPlaceholder": "このチャンネルの目的は？",
         "visibilityLabel": "公開範囲",
         "publicTitle": "パブリック",
-        "publicDesc": "組織のメンバー全員が閲覧・参加できます",
+        "publicDesc": "ワークスペースのメンバー全員が閲覧・参加できます",
         "privateTitle": "プライベート",
         "privateDesc": "招待されたメンバーのみ閲覧できます",
         "membersLabel": "メンバーを追加",
         "membersHint": "あなたは自動的にチャンネル管理者になります",
         "membersLoading": "メンバーを読み込み中…",
-        "membersEmpty": "組織にはまだ他のメンバーがいません",
+        "membersEmpty": "ワークスペースにはまだ他のメンバーがいません",
         "postPolicyLabel": "投稿できる人",
         "postPolicyEveryone": "全員",
         "postPolicyManagers": "チャンネル管理者のみ",
         "submit": "作成",
         "nameTaken": "この名前はすでに使われています",
-        "quotaExceeded": "この組織のチャンネル数が上限に達しました",
+        "quotaExceeded": "このワークスペースのチャンネル数が上限に達しました",
         "error": "チャンネルを作成できませんでした。もう一度お試しください。"
       },
       "archive": {
@@ -872,7 +790,7 @@
         "warning": "この操作はチャンネルを全員に対して完全に削除します。元に戻すことはできません",
         "acknowledge": "はい、チャンネルを完全に削除します",
         "confirm": "削除",
-        "adminRequired": "チャンネルを削除できるのは組織の管理者のみです",
+        "adminRequired": "チャンネルを削除できるのはワークスペースの管理者のみです",
         "error": "削除できませんでした。もう一度お試しください。"
       },
       "members": {
@@ -883,7 +801,7 @@
         "managerBadge": "管理者",
         "you": "自分",
         "addLabel": "メンバーを追加",
-        "addEmpty": "組織の全員がすでにこのチャンネルに参加しています",
+        "addEmpty": "ワークスペースの全員がすでにこのチャンネルに参加しています",
         "addSubmit": "追加",
         "actions": "メンバー操作",
         "remove": "チャンネルから外す",
@@ -903,7 +821,6 @@
         "today": "今日",
         "yesterday": "昨日",
         "you": "あなた",
-        "memberCount": "メンバー {{memberCount}} 人",
         "emptyTitle": "ここが #{{name}} の始まりです",
         "emptySubtitle": "最初のメッセージを送って会話を始めましょう",
         "missingTitle": "チャンネルは利用できません",
@@ -916,15 +833,7 @@
         "errorQuota": "このチャンネルはこの端末でのメッセージ上限に達しました",
         "errorGeneric": "メッセージを送信できませんでした。もう一度お試しください。",
         "dropSessionHint": "ドロップしてこのセッションを参照として追加",
-        "messageBodyLabel": "チャンネルメッセージ",
-        "sessionCardMissing": "このデバイスでは利用できません",
         "sessionCardOpen": "セッション {{name}} を開く",
-        "workItemCardMissing": "このデバイスでは利用できません",
-        "workItemCardLoading": "読み込み中…",
-        "workItemCardOpen": "作業項目 {{name}} を開く",
-        "githubCardOpen": "{{name}} を GitHub で開く",
-        "githubIssue": "Issue",
-        "githubPullRequest": "Pull request",
         "archivedComposerDisabled": "このチャンネルはアーカイブされています。投稿するにはアーカイブを解除してください。",
         "errorPostForbidden": "このチャンネルに投稿できるのはチャンネル管理者のみです",
         "errorArchived": "このチャンネルはアーカイブ済みのため投稿できません",
@@ -939,11 +848,130 @@
     },
     "backgroundUpload": {
       "label": "バックグラウンドアップロード",
-      "help": "この組織がアクティブでない場合も、組織の最低共有レベルと各セッションの設定に従って、対象のメンバーセッションをバックグラウンドでアップロードします。",
+      "help": "このワークスペースがアクティブでない場合も、ワークスペースの最低共有レベルと各セッションの設定に従って、対象のメンバーセッションをバックグラウンドでアップロードします。",
       "on": "オン",
       "off": "オフ",
-      "memberNote": "管理者が有効化 — この組織を開かなくても、対象セッションがバックグラウンドでアップロードされます。"
+      "memberNote": "管理者が有効化 — このワークスペースを開かなくても、対象セッションがバックグラウンドでアップロードされます。"
     },
-    "userName": "ユーザー名"
+    "userName": "ユーザー名",
+    "title": "ORG2 クラウド"
+  },
+  "myRole": {
+    "deleteRoleMessage": "「{{name}}」を削除します。この操作は元に戻せません。",
+    "activeBadge": "アクティブ",
+    "addRole": "カスタムロールを追加",
+    "builtInTitle": "組み込みロール",
+    "customEmpty": "カスタムロールはまだありません。組み込みの 3 つでは表せない姿勢を追加してください — 例:「集中作業」「ペアリング」「オンコール」。",
+    "customTitle": "カスタムロール",
+    "deleteRoleCancel": "キャンセル",
+    "deleteRoleOk": "削除",
+    "deleteRoleTitle": "ロールを削除しますか？",
+    "followUpSuggestionsDesc": "作業項目のターン完了後に次のステップの候補を提案します。追加のモデルリクエストを使用します。",
+    "followUpSuggestionsLabel": "Agent のフォローアップ提案",
+    "goalMaxTurnsDesc": "Agent が通常停止する時点から、最後の要求に向けて最大 N ターン追加で作業を続けます（0 = オフ）。",
+    "goalMaxTurnsLabel": "目標継続の予算",
+    "guidanceLabel": "Agent へのガイダンス",
+    "guidancePlaceholder": "このロールがアクティブなとき、Agent はどのように振る舞いを変えるべきですか？",
+    "modeSwitchAutoPlanDesc": "確認タイマーが切れたとき、保留中の Plan モード提案を自動的に切り替えます。",
+    "modeSwitchAutoPlanLabel": "モード切り替えの自動 Plan",
+    "newRoleDefaultLabel": "カスタムロール",
+    "pageDescription": "今あなたが担っているロールを定義します。Agent はアクティブなロールのガイダンスを読み、それに合わせて振る舞いを調整します — 例えば、集中しているときは確認の質問を減らし、離席中は要約をまとめて送ります。",
+    "pageTitle": "マイロール",
+    "planAutoApproveDesc": "保留中の計画を N 秒後に自動承認します（0 = 自分を待つ）。",
+    "planAutoApproveLabel": "計画の自動承認",
+    "questionAutoSkipDesc": "保留中の Agent の質問を N 秒後に自動スキップします（0 = 自分を待つ）。",
+    "questionAutoSkipLabel": "質問の自動スキップ",
+    "roleNameLabel": "名前",
+    "roleNamePlaceholder": "ロール名",
+    "stanceAutonomous": "自律 — 私を待たない",
+    "stanceDeferAndBatch": "後回しでまとめる — まず作業し、あとで質問",
+    "stanceDesc": "このロールがアクティブな間、Agent がブロッキングな判断をどう扱うか。",
+    "stanceInteractive": "対話的 — 自由に質問してよい",
+    "stanceLabel": "行動の姿勢"
+  },
+  "explore": {
+    "search": "検索",
+    "searching": "検索中...",
+    "searchPlaceholder": "GitHub リポジトリを検索（例: language:rust tauri）",
+    "clone": "クローン",
+    "cloning": "クローン中...",
+    "openOnGithub": "GitHub",
+    "cloneSuccess": "{{name}} をクローンしました",
+    "cloneFailed": "クローンに失敗しました",
+    "cloneNoTarget": "デフォルトの Workspace フォルダーが設定されていません。設定で指定してください。",
+    "errorTitle": "検索に失敗しました",
+    "noResultsTitle": "一致するリポジトリがありません",
+    "noResultsSubtitle": "別のクエリや並び順をお試しください。",
+    "resultsCount": "{{total}} 件中 {{shown}} 件のリポジトリ",
+    "partial": "（一部 — 検索がタイムアウトしました）",
+    "sort": {
+      "bestMatch": "関連度順",
+      "stars": "スター数",
+      "updated": "最近の更新",
+      "forks": "フォーク数"
+    }
+  },
+  "web": {
+    "title": "ORG2 Web",
+    "sessionsNav": "Sessions",
+    "loadingSession": "Loading session…",
+    "readOnly": {
+      "headerTrailing": "Cloud · Read only",
+      "barLabel": "Read only",
+      "barPlaceholder": "Cloud session is read-only"
+    },
+    "sessionsPage": {
+      "loadError": "Sessions could not be loaded",
+      "loading": "Loading sessions…",
+      "empty": "No synced sessions",
+      "select": "Select a session",
+      "emptyHint": "Open ORG2 Desktop and enable Cloud sync for a session.",
+      "selectHint": "Choose a Cloud session from the sidebar.",
+      "retry": "Retry",
+      "organizationLoadErrorHint": "Your organizations could not be loaded. Check your connection and try again.",
+      "organizationRetryingHint": "The cloud service could not be reached. Retrying automatically…",
+      "organizationRefreshErrorHint": "Organizations could not be refreshed. Showing the last successful session list.",
+      "sessionRefreshErrorHint": "Some organization sessions could not be refreshed.",
+      "organizationSetupTitle": "Connect an organization",
+      "organizationSetupHint": "Create an organization for your team, or join one with an invite link or code.",
+      "organizationModeLabel": "Organization setup method",
+      "createOrganization": "Create organization",
+      "joinOrganization": "Join organization",
+      "organizationNamePlaceholder": "Team or organization name",
+      "invitePlaceholder": "Paste an invite link or code"
+    },
+    "sessionPage": {
+      "notFound": "Session not found",
+      "notFoundHint": "It may no longer be shared with this account.",
+      "loading": "Loading session…",
+      "workstationLoading": "Loading session workspace…",
+      "workstationEmptyTitle": "No session files were uploaded",
+      "workstationEmptySubtitle": "This session has no readable file or edit payloads yet.",
+      "workstationLoadErrorFallback": "Session files could not be loaded",
+      "workstationLoadErrorSubtitle": "Agent Station replay remains available.",
+      "workstationRefreshFailedBanner": "Refresh failed. Showing files already available from session events.",
+      "chatTab": "Chat",
+      "workstationTab": "WorkStation",
+      "forkContext": "Fork of {{owner}}'s session",
+      "notesButton": "Session notes",
+      "notesTitle": "Session notes",
+      "notesEmpty": "No session notes yet."
+    },
+    "login": {
+      "title": "Sign in to ORG2 Web",
+      "subtitle": "Review shared sessions, chat history, and replay from any browser.",
+      "continue": "Continue with ORG2 Cloud",
+      "hint": "Use the same ORG2 Cloud account as the desktop app."
+    },
+    "authCallback": {
+      "failed": "Sign-in failed",
+      "tryAgain": "Try again",
+      "completing": "Completing sign-in",
+      "missingCredentials": "The sign-in callback is missing valid credentials.",
+      "missingIdentity": "The sign-in token does not contain a user identity."
+    },
+    "sidebar": {
+      "signOut": "Sign out {{name}}"
+    }
   }
 }

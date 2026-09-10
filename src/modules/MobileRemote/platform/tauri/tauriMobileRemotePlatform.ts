@@ -1,3 +1,8 @@
+import {
+  MOBILE_REMOTE_RELAY_LOCAL_URL,
+  MOBILE_REMOTE_RELAY_PRODUCTION_URL,
+} from "@src/config/mobileRemoteRelay";
+
 import type { MobileAuthSession } from "../../auth/mobileAuthState";
 import {
   activePairingConfig,
@@ -11,6 +16,7 @@ import type {
   MobileRemotePlatform,
   MobileRemoteRuntimePort,
 } from "../types";
+import { createNativeSocketPreparation } from "./nativeSocketPreparation";
 import { createTauriMobileAuthClient } from "./tauriMobileAuthClient";
 import type {
   TauriMobileRemoteBridge,
@@ -206,6 +212,11 @@ export async function createTauriMobileRemotePlatformWithBridge({
 
   const platform: MobileRemotePlatform = {
     kind: "ios",
+    scanQr: (video, signal) =>
+      import("../scanCameraQr").then(({ scanCameraQr }) =>
+        scanCameraQr(video, signal)
+      ),
+    openExternal: (url) => bridge.openExternal(url),
     clientInfo,
     runtime,
     auth: {
@@ -218,9 +229,6 @@ export async function createTauriMobileRemotePlatformWithBridge({
       callbackUrl: () => callbackUrl,
       scrubCallback: () => {
         currentUrl = homeUrl;
-      },
-      navigate: (url) => {
-        return bridge.openExternal(url);
       },
       beginOAuthAttempt(attemptId) {
         return storeIntent(OAUTH_ATTEMPT_KEY, {
@@ -278,6 +286,16 @@ export async function createTauriMobileRemotePlatformWithBridge({
       },
     },
     connection: {
+      prepareSocketUrl: createNativeSocketPreparation({
+        fetcher,
+        runtime,
+        trustedRelayUrls: [
+          MOBILE_REMOTE_RELAY_PRODUCTION_URL,
+          ...(process.env.NODE_ENV === "development"
+            ? [MOBILE_REMOTE_RELAY_LOCAL_URL]
+            : []),
+        ],
+      }),
       createSocket,
       async load(userId) {
         if (!userId.trim()) return null;

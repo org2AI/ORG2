@@ -12,11 +12,9 @@ export const AGENT_ORG_RUN_VIEW_CACHE_RETENTION_MS = 30_000;
 export const AGENT_ORG_BOOTSTRAP_JOIN_TIMEOUT_MS = 1_000;
 const MAX_NON_ORG_DISCOVERY_ATTEMPTS = 1;
 
-const TERMINAL_RUN_STATUSES: ReadonlySet<AgentOrgRunStatus> = new Set([
-  "completed",
-  "failed",
-  "cancelled",
-  "abandoned",
+export const POLLABLE_RUN_STATUSES: ReadonlySet<AgentOrgRunStatus> = new Set([
+  "starting",
+  "running",
 ]);
 
 export interface AgentOrgRunViewSnapshot {
@@ -50,10 +48,6 @@ const inFlightByRunOrSession = new Map<string, Promise<void>>();
 const latestRequestIdByRun = new Map<string, number>();
 const refreshAfterInFlight = new Set<string>();
 const pushDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const interventionExpiryTimers = new Map<
-  string,
-  ReturnType<typeof setTimeout>
->();
 let nextRequestId = 0;
 let activeSubscriberCount = 0;
 let bootstrapOwner: RunViewEntry | null = null;
@@ -94,8 +88,12 @@ function viewForSession(
   return { ...view, currentMemberId };
 }
 
-function isTerminal(view: AgentOrgRunView | null): boolean {
-  return view !== null && TERMINAL_RUN_STATUSES.has(view.runStatus);
+function isPollable(view: AgentOrgRunView | null): boolean {
+  return (
+    view !== null &&
+    POLLABLE_RUN_STATUSES.has(view.runStatus) &&
+    view.runPhase !== "idle"
+  );
 }
 
 function findEntryCoveringSession(sessionId: string): RunViewEntry | undefined {
@@ -138,6 +136,7 @@ function evictEntry(entry: RunViewEntry): void {
   if (!isCurrentEntry(entry) || entry.subscribers.size > 0) return;
   entry.retired = true;
   entriesBySessionId.delete(entry.sessionId);
+  reconcilePollingTimer();
   if (bootstrapOwner === entry) bootstrapOwner = null;
 
   const sessionKey = `session:${entry.sessionId}`;
@@ -207,11 +206,11 @@ function publishEntry(
   entry.snapshot = { view, error };
   entry.serializedView = serializedView;
   for (const subscriber of entry.subscribers) subscriber();
+  reconcilePollingTimer();
   return true;
 }
 
 function publishRunView(view: AgentOrgRunView, requestId: number): void {
-  scheduleInterventionExpiryRefresh(view);
   for (const entry of entriesBySessionId.values()) {
     if (
       !runViewContainsSession(view, entry.sessionId) &&
@@ -263,30 +262,6 @@ function publishMissingRun(
     publishEntry(related, null, null, requestId);
   }
   return null;
-}
-
-function scheduleInterventionExpiryRefresh(view: AgentOrgRunView): void {
-  const runId = view.context.runId;
-  const existing = interventionExpiryTimers.get(runId);
-  if (existing) clearTimeout(existing);
-  interventionExpiryTimers.delete(runId);
-
-  const now = Date.now();
-  const nextExpiry = view.members.reduce<number | null>((soonest, member) => {
-    const intervention =
-      member.intervention ?? member.sessionRuntime?.intervention ?? null;
-    if (!intervention) return soonest;
-    const expiresAt = Date.parse(intervention.resumeAfter);
-    if (!Number.isFinite(expiresAt) || expiresAt <= now) return soonest;
-    return soonest === null ? expiresAt : Math.min(soonest, expiresAt);
-  }, null);
-  if (nextExpiry === null) return;
-
-  const timer = setTimeout(() => {
-    interventionExpiryTimers.delete(runId);
-    scheduleRunRefresh(runId);
-  }, nextExpiry - now);
-  interventionExpiryTimers.set(runId, timer);
 }
 
 function requestKey(entry: RunViewEntry): string {
@@ -372,6 +347,14 @@ function refreshAgentOrgRunViewInternal(
         if (requestId < latestRequestId) return;
         latestRequestIdByRun.set(runId, requestId);
         publishRunView(view, requestId);
+        // The lifecycle may advance while the first discovery read is in
+        // flight. A run-scoped push cannot target this entry until that read
+        // teaches the store its run id, so perform exactly one follow-up when
+        // bootstrap lands on Starting. Later Starting reads rely on pushes and
+        // the shared slow fallback instead of creating a retry loop.
+        if (!knownRunId && view.runStatus === "starting") {
+          refreshAfterInFlight.add(`run:${runId}`);
+        }
         return;
       }
       missingRunReplacement = publishMissingRun(entry, requestId);
@@ -419,6 +402,22 @@ export function refreshAgentOrgRunView(sessionId: string): Promise<void> {
   return refreshAgentOrgRunViewInternal(sessionId, true);
 }
 
+/**
+ * Reconcile a mounted Agent Org projection after the native Session lifecycle
+ * reports a status change. Ordinary SDE Sessions never have a covering entry,
+ * so this performs no IPC for them. This event-driven read is what lets an
+ * Idle or Paused Member expose Return immediately after its direct Turn ends
+ * even when the optional code-editor websocket is unavailable.
+ */
+export function refreshAgentOrgRunViewForChangedSession(
+  sessionId: string
+): void {
+  const entry =
+    entriesBySessionId.get(sessionId) ?? findEntryCoveringSession(sessionId);
+  if (!entry?.snapshot.view || entry.subscribers.size === 0) return;
+  scheduleRunRefresh(entry.snapshot.view.context.runId);
+}
+
 function scheduleRunRefresh(runId: string): void {
   if (pushDebounceTimers.has(runId)) return;
   const timer = setTimeout(() => {
@@ -433,12 +432,17 @@ function scheduleRunRefresh(runId: string): void {
   pushDebounceTimers.set(runId, timer);
 }
 
-function pollActiveRuns(): void {
+function refreshSubscribedRuns(pollableOnly: boolean): void {
   if (!isDocumentVisible()) return;
 
   const representatives = new Map<string, string>();
   for (const entry of entriesBySessionId.values()) {
-    if (entry.subscribers.size === 0 || isTerminal(entry.snapshot.view))
+    if (
+      entry.subscribers.size === 0 ||
+      (pollableOnly &&
+        entry.snapshot.view !== null &&
+        !isPollable(entry.snapshot.view))
+    )
       continue;
     if (
       entry.snapshot.view === null &&
@@ -453,14 +457,58 @@ function pollActiveRuns(): void {
   }
 }
 
-function handleVisibilityChange(): void {
-  if (isDocumentVisible()) pollActiveRuns();
+function pollActiveRuns(): void {
+  refreshSubscribedRuns(true);
 }
 
-function startScheduler(): void {
+/**
+ * Push notifications are transient. Reconcile every currently observed Run
+ * once after a transport gap so a release/timeout event missed while the
+ * socket was disconnected cannot leave a durable Paused view stuck in
+ * Draining. This is deliberately not the fallback poll: Paused/Idle Runs get
+ * no interval, and representatives keep the reconnect read to one per Run.
+ */
+function reconcileSubscribedRunsAfterTransportGap(): void {
+  refreshSubscribedRuns(false);
+}
+
+function handleVisibilityChange(): void {
+  if (!isDocumentVisible()) {
+    reconcilePollingTimer();
+    return;
+  }
+  reconcileSubscribedRunsAfterTransportGap();
+  reconcilePollingTimer();
+}
+
+function hasPollableSubscriber(): boolean {
+  for (const entry of entriesBySessionId.values()) {
+    if (entry.subscribers.size === 0) continue;
+    if (entry.snapshot.view !== null) {
+      if (isPollable(entry.snapshot.view)) return true;
+      continue;
+    }
+    if (entry.discoveryAttempts < MAX_NON_ORG_DISCOVERY_ATTEMPTS) return true;
+  }
+  return false;
+}
+
+function reconcilePollingTimer(): void {
+  const shouldPoll =
+    activeSubscriberCount > 0 && isDocumentVisible() && hasPollableSubscriber();
+  if (!shouldPoll) {
+    if (pollingTimer) {
+      clearInterval(pollingTimer);
+      pollingTimer = undefined;
+    }
+    return;
+  }
   if (!pollingTimer) {
     pollingTimer = setInterval(pollActiveRuns, AGENT_ORG_RUN_VIEW_FALLBACK_MS);
   }
+}
+
+function startScheduler(): void {
   if (!unsubscribeStateChanges) {
     unsubscribeStateChanges = subscribeAgentOrgStateChanges((sessionId) => {
       const entry =
@@ -500,7 +548,7 @@ function startScheduler(): void {
   if (!unsubscribeWebsocketConnected) {
     unsubscribeWebsocketConnected = getCodeEditorWebSocket()?.on(
       "connected",
-      pollActiveRuns
+      reconcileSubscribedRunsAfterTransportGap
     );
   }
   if (typeof document !== "undefined" && !visibilityListenerInstalled) {
@@ -512,8 +560,8 @@ function startScheduler(): void {
     const view = entry.snapshot.view;
     if (!view || scheduledRuns.has(view.context.runId)) continue;
     scheduledRuns.add(view.context.runId);
-    scheduleInterventionExpiryRefresh(view);
   }
+  reconcilePollingTimer();
 }
 
 function stopScheduler(): void {
@@ -531,8 +579,6 @@ function stopScheduler(): void {
   unsubscribeWebsocketConnected = undefined;
   for (const timer of pushDebounceTimers.values()) clearTimeout(timer);
   pushDebounceTimers.clear();
-  for (const timer of interventionExpiryTimers.values()) clearTimeout(timer);
-  interventionExpiryTimers.clear();
   if (typeof document !== "undefined" && visibilityListenerInstalled) {
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     visibilityListenerInstalled = false;
@@ -552,6 +598,7 @@ export function subscribeAgentOrgRunView(
   entry.subscribers.add(subscription);
   activeSubscriberCount += 1;
   if (activeSubscriberCount === 1) startScheduler();
+  else reconcilePollingTimer();
   if (entry.snapshot.view === null && entry.discoveryAttempts === 0) {
     void refreshAgentOrgRunViewInternal(sessionId, false);
   } else if (isReturningSubscriber && entry.snapshot.view !== null) {
@@ -565,6 +612,7 @@ export function subscribeAgentOrgRunView(
     if (!entry.subscribers.delete(subscription)) return;
     activeSubscriberCount -= 1;
     if (activeSubscriberCount === 0) stopScheduler();
+    else reconcilePollingTimer();
     scheduleEntryEviction(entry);
   };
 }
@@ -580,6 +628,7 @@ export const agentOrgRunViewStoreTestApi = {
   subscribe: subscribeAgentOrgRunView,
   getSnapshot: getAgentOrgRunViewSnapshot,
   refresh: refreshAgentOrgRunView,
+  refreshForChangedSession: refreshAgentOrgRunViewForChangedSession,
   hasEntry(sessionId: string): boolean {
     return entriesBySessionId.has(sessionId);
   },
@@ -591,6 +640,9 @@ export const agentOrgRunViewStoreTestApi = {
           entry.snapshot.view?.context.runId === runId
       )?.sessionId ?? null
     );
+  },
+  hasPollingTimer(): boolean {
+    return pollingTimer !== undefined;
   },
   reset(): void {
     stopScheduler();

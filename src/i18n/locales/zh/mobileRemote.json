@@ -6,18 +6,26 @@
     "redirecting": "正在打开安全登录",
     "exchanging": "正在完成登录",
     "wait": "这通常只需要一点时间",
-    "signIn": "使用 GitHub 继续",
+    "signIn": "登录 ORG2 Cloud",
+    "cancel": "取消并返回登录",
+    "browserWait": "请在浏览器完成登录，或取消后重新登录",
     "errorTitle": "无法完成登录",
     "retry": "重试"
   },
   "welcome": {
     "title": "Mobile Remote",
     "subtitle": "遥控你电脑上的 Agent",
-    "scanQr": "扫描或粘贴配对码",
-    "manualUrl": "输入 WebSocket URL",
-    "tryDemo": "体验演示"
+    "scanQr": "扫描或粘贴配对码"
   },
   "pairing": {
+    "scanCamera": "扫描二维码",
+    "cameraPreview": "相机预览",
+    "scanning": "将电脑上的配对二维码放入画面中",
+    "cancelScan": "取消扫描",
+    "cameraDenied": "未获得相机权限，请在系统设置中允许 ORG2 Remote 使用相机，或粘贴配对码",
+    "cameraUnavailable": "无法使用相机，模拟器请使用粘贴配对码",
+    "scanTimeout": "扫描已超时，相机已关闭，请重新扫描或粘贴配对码",
+    "scanFailed": "扫描失败，请重试或粘贴配对码",
     "scanTitle": "与桌面对齐",
     "scanHint": "扫描桌面设置中的二维码，或粘贴二维码载荷文本。公网 Relay 支持手机使用 4G/5G",
     "urlPlaceholder": "粘贴桌面生成的配对载荷，或 ws:// / wss:// URL",
@@ -56,6 +64,14 @@
     "title": "设置",
     "account": "账号",
     "signedInAs": "当前账号",
+    "signOutConfirmTitle": "退出登录？",
+    "signOutConfirmBody": "退出后需要重新登录才能访问远程电脑，不会停止电脑上正在运行的会话",
+    "cancel": "取消",
+    "manageAccount": "管理 Cloud 账号",
+    "deleteAccount": "前往 Cloud 删除账号…",
+    "privacyPolicy": "隐私政策",
+    "accountWebHint": "打开共用的 Cloud 账号页面，可能需要重新登录；确认删除前，请核对网页邮箱与上方账号一致",
+    "openFailed": "无法打开页面，请重试",
     "signOut": "退出登录",
     "connection": "连接",
     "desktop": "桌面",
@@ -76,6 +92,7 @@
     "notAvailable": "—"
   },
   "stopConfirm": {
+    "failed": "未能停止当前轮次，它可能仍在运行。请重试或检查桌面端。",
     "title": "停止当前 Agent turn？",
     "body": "会向桌面发送 cancel 指令。已运行的 shell 进程是否终止取决于 Agent 策略。",
     "cancel": "取消",
@@ -100,13 +117,6 @@
     }
   },
   "modelPicker": {
-    "title": "选择模型",
-    "selectModel": "选择模型",
-    "loading": "正在加载模型…",
-    "empty": "桌面上没有可用模型"
-  },
-  "modelPicker": {
-    "title": "选择模型",
     "selectModel": "选择模型",
     "loading": "正在加载模型…",
     "empty": "桌面上没有可用模型"
@@ -156,5 +166,15 @@
       "truncated": "内容较长，手机端仅显示摘要"
     }
   },
-  "connectionFailed": "连接失败"
+  "connectionFailed": "连接失败",
+  "sessions": {
+    "limit": "最多显示最近 1,000 条会话",
+    "loadMore": "加载更多",
+    "retry": "重试加载"
+  },
+  "rounds": {
+    "incomplete": "未加载更早的轮次",
+    "truncated": "对话记录已截断",
+    "navigationLabel": "轮次导航"
+  }
 }

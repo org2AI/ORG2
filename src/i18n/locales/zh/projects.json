@@ -1,6 +1,5 @@
 {
   "projects": {
-    "searchPlaceholder": "搜索项目...",
     "loading": "加载项目中...",
     "emptyState": "暂无项目",
     "emptyStateSubtitle": "创建第一个项目开始使用",
@@ -8,14 +7,13 @@
     "noResults": "未找到项目",
     "dashboardTitle": "项目",
     "groupBy": {
-      "org": "按组织",
       "project": "按项目",
       "status": "按状态",
       "priority": "按优先级",
-      "person": "按人员",
       "assignedTo": "按指派对象",
       "createdBy": "按创建者",
-      "targetDate": "按目标日期"
+      "targetDate": "按目标日期",
+      "property": "按属性"
     },
     "source": {
       "localOnly": "仅本地",
@@ -28,44 +26,17 @@
       "later": "更晚",
       "noTargetDate": "无目标日期"
     },
-    "allProjects": "所有项目",
-    "otherRepos": "其他仓库",
-    "noOtherRepos": "没有其他包含项目的仓库",
-    "personalWorkspace": "个人工作区",
-    "personalEmpty": "暂无个人项目",
-    "addProject": "添加项目",
-    "repoFallback": "Repo",
     "loadProjectsFailed": "加载项目失败",
-    "deleteProject": "删除项目",
     "createProject": "创建项目",
     "createMore": "连续创建",
     "newProject": "新项目",
     "columns": {
-      "name": "名称",
       "workItems": "工作项"
-    },
-    "viewModes": {
-      "list": "列表",
-      "settings": "设置"
-    },
-    "syncMethod": {
-      "title": "同步方式",
-      "storage": "存储",
-      "git": "Git（通过 .orgii）"
-    },
-    "errors": {
-      "initFailed": "初始化项目存储失败: {{error}}"
     },
     "editor": {
       "titlePlaceholder": "新项目名称",
       "summaryPlaceholder": "添加简短摘要...",
       "descriptionPlaceholder": "写一段描述、项目简报或收集想法..."
-    },
-    "tooltips": {
-      "dashboard": "仪表盘",
-      "filter": "筛选",
-      "selectPeople": "选择成员",
-      "searchPeople": "搜索成员..."
     },
     "priorityGroups": {
       "unprioritized": "未设优先级"
@@ -75,9 +46,6 @@
   "githubIssuesImport": {
     "title": "导入 GitHub Issues",
     "menuLabel": "导入 GitHub Issues",
-    "createTarget": "GitHub Issues Project",
-    "heading": "从 GitHub Issues 创建 Project",
-    "description": "选择一个 GitHub 仓库，创建 ORGII Project，并将其中的 GitHub Issues 同步为 work items。",
     "importButton": "导入 GitHub Issues",
     "projectDescription": "GitHub Issues · {{owner}}/{{repo}}",
     "fields": {
@@ -96,67 +64,43 @@
     "linkedRepoHint": "此 Project 也会关联到当前 Workspace repo：{{repoName}}",
     "errors": {
       "invalidRepo": "请使用 owner/repo 或 GitHub 仓库 URL。"
-    },
-    "importStatus": {
-      "title": "导入状态",
-      "state": {
-        "pending": "等待中",
-        "running": "运行中",
-        "completed": "已完成",
-        "failed": "失败",
-        "cancelled": "已取消"
-      }
     }
   },
   "orgs": {
-    "yourOrgs": "你的组织",
-    "sectionTitle": "组织",
+    "yourOrgs": "你的工作空间",
     "recentProjects": "最近项目",
-    "personalOrg": "我的个人组织",
-    "linearOrg": "Linear 组织",
-    "noLinearOrgs": "还没有连接的组织",
+    "personalOrg": "我的工作空间",
+    "linearOrg": "Linear 工作空间",
+    "noLinearOrgs": "还没有连接的工作空间",
     "sources": {
       "local": "Local",
-      "cloud": "Cloud",
-      "linear": "Linear"
+      "cloud": "Cloud"
     },
-    "addOrg": "添加组织",
-    "importOrgs": "导入组织",
-    "importLinearOrgs": "导入 Linear 组织",
-    "createOrg": "创建组织",
-    "createOrgHint": "创建原生 ORGII 组织，用来将项目和工作项与 Linear 分开管理。",
-    "createOrgFailed": "创建组织失败",
-    "orgName": "组织名称",
-    "orgNamePlaceholder": "平台团队",
+    "addOrg": "添加工作空间",
+    "importLinearOrgs": "导入 Linear 工作空间",
     "gitFolderPath": "Git 文件夹路径（可选）",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "将此组织绑定到已有 Git 工作区，用于文件夹同步。",
+    "gitFolderPathHint": "将此工作空间绑定到已有 Git 工作区，用于文件夹同步。",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "已与 Git 文件夹同步",
     "pendingSync": "等待同步",
     "management": {
-      "breadcrumb": "组织设置",
       "overview": "概览",
-      "profile": "概览",
       "syncMethods": "同步方式",
-      "orgNameDescription": "此项目组织的显示名称",
-      "orgKey": "组织标识",
-      "orgKeyDescription": "用于组织范围项目 ID 的稳定短标识",
-      "projectCountDescription": "当前归属此组织的原生项目数",
       "gitFolderSync": "Git 文件夹同步",
-      "gitFolderSyncDescription": "通过 Git 工作区镜像此组织的项目和工作项",
+      "gitFolderSyncDescription": "通过 Git 工作区镜像此工作空间的项目和工作项",
       "notConfigured": "未配置",
       "syncNowDescription": "导入远端文件变更并导出本地数据库变更",
       "syncSummary": "{{projects}} 个项目，{{workItems}} 个工作项，{{conflicts}} 个冲突",
-      "syncHowItWorks": "Git 文件夹同步会将此组织连接到现有 Git 仓库。ORGII 会把该组织导出的项目和工作项存放在仓库内的 `.orgii/projects/...` 下，从那里导入文件变更，将本地数据库变更导出回文件，并在遇到冲突时暂停，等待你检查后再覆盖任何内容",
-      "noProjectsForCatalog": "此组织还没有项目。",
-      "noProjectsForCatalogHint": "先在此组织中创建项目，然后再管理共享标签",
+      "syncHowItWorks": "Git 文件夹同步会将此工作空间连接到现有 Git 仓库。ORGII 会把该工作空间导出的项目和工作项存放在仓库内的 `.orgii/projects/...` 下，从那里导入文件变更，将本地数据库变更导出回文件，并在遇到冲突时暂停，等待你检查后再覆盖任何内容",
+      "noProjectsForCatalog": "此工作空间还没有项目。",
+      "noProjectsForCatalogHint": "先在此工作空间中创建项目，然后再管理共享标签",
       "dangerZone": "危险区域",
-      "deleteOrg": "删除此组织",
+      "deleteOrg": "删除此工作空间",
       "deleteOrgDescription": "永久删除 {{org}} 及其所有本地项目和工作项。此操作无法撤销",
-      "personalOrgDeleteDisabled": "默认个人组织是永久的，无法删除",
+      "personalOrgDeleteDisabled": "默认个人工作空间是永久的，无法删除",
       "deleteTypeToConfirm": "输入 {{org}} 以确认",
-      "deleteOrgAction": "删除组织",
+      "deleteOrgAction": "删除工作空间",
       "deletedToast": "已删除 {{org}}"
     }
   },
@@ -173,28 +117,20 @@
     "targetDate": "目标日期",
     "repos": "仓库",
     "completion": "完成度",
-    "statusBreakdown": "状态分布",
     "addLead": "添加负责人",
     "noLead": "无负责人",
     "addMembers": "添加成员",
     "addTeams": "添加团队",
     "addLabels": "添加标签",
     "addRepos": "关联仓库",
-    "searchRepos": "搜索仓库...",
     "noReposHint": "暂无可关联仓库,请先将仓库添加到工作区。",
     "addDate": "添加日期",
     "clearDate": "清除日期",
     "noStatus": "无状态",
     "noUpdates": "无更新",
     "noPriority": "无优先级",
-    "searchMembers": "搜索成员...",
     "searchAssignee": "搜索负责人...",
-    "searchTeams": "搜索团队...",
     "noTeamsHint": "暂无团队。将成员添加到项目中并将他们组织成团队",
-    "searchLabels": "搜索标签...",
-    "searchStatus": "搜索状态...",
-    "searchHealth": "搜索健康状态...",
-    "searchPriority": "搜索优先级...",
     "memberCount_one": "{{count}} 名成员",
     "memberCount_other": "{{count}} 名成员",
     "statusOptions": {
@@ -215,8 +151,7 @@
       "onTrack": "正常",
       "atRisk": "有风险",
       "offTrack": "偏离"
-    },
-    "noProjectSelected": "未选择项目"
+    }
   },
   "workItems": {
     "label": "Work items",
@@ -232,22 +167,6 @@
     "newWorkItem": "新 Work Item",
     "newWorkItemName": "新 Work Item",
     "createWorkItem": "创建 Work Item",
-    "createModes": {
-      "generateWithAi": "使用 AI 创建",
-      "generateWithAgent": "使用 Agent 生成",
-      "manualCreation": "手动创建",
-      "sessionCreatorPrompt": {
-        "promptNameQuestion": "首先询问用户是否想指定一个具体的 Work Item 名称。",
-        "promptInstruction": "为此项目创建 Work Items。",
-        "promptProject": "项目：{{project}}",
-        "promptDraftTitle": "指定的 Work Item 名称：{{title}}",
-        "promptDraftDetails": "草稿详情：\n{{details}}"
-      }
-    },
-    "linkExisting": {
-      "label": "关联现有 Work Item",
-      "placeholder": "选择要关联的 Work Item"
-    },
     "titlePlaceholder": "Work Item 标题",
     "descriptionPlaceholder": "描述 Work Item...",
     "deleteWorkItem": "删除工作项",
@@ -256,8 +175,7 @@
     "showProperties": "显示属性",
     "addStatusItem": "添加{{status}}项",
     "deleteBin": {
-      "title": "删除箱",
-      "subtitle": "7 天内可恢复"
+      "title": "删除箱"
     },
     "tabs": {
       "overview": "概览",
@@ -265,7 +183,8 @@
       "kanban": "看板",
       "gantt": "甘特图",
       "calendar": "日历",
-      "settings": "设置"
+      "settings": "设置",
+      "table": "表格"
     },
     "statusFilters": {
       "all": "全部",
@@ -297,31 +216,20 @@
       "medium": "中",
       "low": "低"
     },
-    "toolLabels": {
-      "edit": "编辑",
-      "new": "新建",
-      "patch": "补丁"
-    },
     "overview": {
       "projectNamePlaceholder": "项目名称",
-      "descriptionPlaceholder": "写一段项目描述...",
-      "stats": "统计",
-      "totalItems": "总数",
-      "completionRate": "完成率",
-      "recentUpdates": "最近更新",
-      "name": "名称",
-      "assignee": "负责人",
-      "lastUpdated": "更新时间"
+      "descriptionPlaceholder": "写一段项目描述..."
     },
     "properties": {
       "title": "工作项属性",
       "propertiesSection": "属性",
+      "filter": "属性筛选",
+      "filterValue": "属性筛选值",
+      "noValue": "无值",
       "assignment": "分配",
       "noAssignee": "未分配",
       "noMembersHint": "暂无成员。前往 Settings > Members 从 Git 同步",
       "noProject": "无关联的项目",
-      "selectProject": "选择项目",
-      "noProjectsHint": "暂无可用项目。",
       "noMilestone": "无里程碑",
       "noDueDate": "无截止日期",
       "noDueDay": "无截止日",
@@ -342,17 +250,26 @@
       "inHours_other": "{{count}} 小时后",
       "inLessThanHour": "不到 1 小时",
       "searchProjects": "搜索项目...",
-      "searchMilestones": "搜索里程碑...",
       "delegations": "委派",
       "delegationsCompleted": "已完成",
       "daysAgo": "{{count}} 天前",
       "hoursAgo": "{{count}} 小时前",
       "inDays": "{{count}} 天后",
       "inHours": "{{count}} 小时后",
-      "membersGroup": "成员"
-    },
-    "history": {
-      "noHistory": "暂无历史记录"
+      "membersGroup": "成员",
+      "archiveNamed": "归档 {{name}}",
+      "add": "添加属性",
+      "archive": "归档属性",
+      "datePlaceholder": "YYYY-MM-DD",
+      "empty": "暂无自定义属性。",
+      "loading": "正在加载属性…",
+      "namePlaceholder": "属性名称",
+      "no": "否",
+      "optionsPlaceholder": "选项，以逗号分隔",
+      "optionsRequired": "选择类属性需要以逗号分隔的选项。",
+      "type": "属性类型",
+      "updateFailed": "属性更新失败",
+      "yes": "是"
     },
     "discussion": {
       "previewWillWake": "将唤醒 agent 回复",
@@ -364,10 +281,10 @@
       "previewThread": "将唤醒该 thread 的 agent",
       "previewAssignee": "将唤醒被指派的 agent",
       "previewAssigneeStart": "将启动被指派的 agent",
-      "previewCoalesce": "并入待处理的唤醒"
+      "previewCoalesce": "并入待处理的唤醒",
+      "previewMemberThread": "成员讨论串——不会唤醒任何 agent"
     },
     "activity": {
-      "title": "动态",
       "discussionTitle": "讨论",
       "activityHistory": "活动记录",
       "activityHistoryCount": "{{count}} 条事件",
@@ -379,7 +296,6 @@
       "mentionAll": "@all — 该事项的所有人",
       "mentionAgentOption": "{{name}}(agent)",
       "mentionAgentOrgOption": "{{name}}(agent org)",
-      "you": "你",
       "createdWorkItem": "创建了工作项",
       "deletedWorkItem": "删除了工作项",
       "restoredWorkItem": "恢复了工作项",
@@ -387,10 +303,6 @@
       "appendedSession": "附加了一个会话",
       "commented": "发表了评论",
       "system": "系统",
-      "wasAssigned": "被分配",
-      "wasUnassigned": "被取消分配",
-      "addedLabel": "添加了标签",
-      "removedLabel": "移除了标签",
       "madeChange": "做了更改",
       "changedField": "将{{field}}从 {{from}} 改为 {{to}}",
       "changedFieldShort": "更新了{{field}}",
@@ -408,10 +320,6 @@
       "todoMarkedPending": "将「{{todo}}」标记为待处理",
       "todoRenamed": "将「{{from}}」重命名为「{{to}}」",
       "todoUpdated": "更新了「{{todo}}」",
-      "justNow": "刚刚",
-      "daysAgo": "{{count}}天前",
-      "hoursAgo": "{{count}}小时前",
-      "minutesAgo": "{{count}}分钟前",
       "agent": "Agent",
       "fields": {
         "title": "标题",
@@ -432,7 +340,22 @@
         "schedule": "计划",
         "orchestratorConfig": "Orchestrator 配置",
         "handoff": "工作交接"
-      }
+      },
+      "edited": "（已编辑）",
+      "commentDeleted": "该评论已删除。",
+      "deleteComment": "删除评论",
+      "deleteCommentConfirm": "确定删除该评论？回复会保留，评论内容将被移除。",
+      "messageCount_one": "{{count}} 条消息",
+      "messageCount_other": "{{count}} 条消息",
+      "cancelReply": "取消回复",
+      "conclusion": "结论",
+      "reopen": "重新打开",
+      "reply": "回复",
+      "replyingInThread": "正在话题中回复",
+      "resolve": "标记已解决",
+      "resolved": "已解决",
+      "submitComment": "提交评论",
+      "openedWorkItem": "创建了此工作项"
     },
     "contextMenu": {
       "status": "状态",
@@ -445,8 +368,6 @@
       "milestone": "里程碑",
       "setDueDate": "设置截止日期",
       "rename": "重命名...",
-      "addLink": "添加链接...",
-      "favorite": "收藏",
       "moreProperties": "更多属性"
     },
     "propertyFields": {
@@ -457,63 +378,10 @@
     },
     "addWorkItem": "添加工作项",
     "agentWorkflow": {
-      "title": "Agent 工作流",
-      "running": "运行中...",
-      "completed": "已完成",
-      "failed": "失败",
-      "interrupted": "已中断",
-      "retry": "重试",
-      "resume": "恢复",
-      "openSession": "打开会话",
-      "viewLiveChat": "查看实时 Chat",
-      "viewConversation": "查看对话记录",
-      "noWorkflowRun": "尚未运行 Agent 工作流",
-      "confirmStart": "在此工作项上启动 SDE Agent？",
-      "sdePhase": "SDE 开发",
-      "totalCost": "总费用",
-      "totalTokens": "总 Token",
-      "proofOfWork": "工作成果",
-      "branch": "分支",
-      "pullRequest": "Pull Request",
-      "filesChanged": "变更文件数",
-      "linesAdded": "新增行数",
-      "linesRemoved": "删除行数",
-      "approved": "已批准",
-      "changesRequested": "请求修改",
-      "inconclusive": "未确定",
-      "failedError": "会话失败",
-      "retryWithContext": "使用上次失败的上下文重试",
-      "interruptedMessage": "应用关闭时工作流已中断",
-      "selectAccount": "选择 Code Account",
-      "noAccountsReady": "没有可用的本地 Account",
-      "sessionOutput": "会话输出",
-      "noOutputYet": "暂无输出",
-      "cycles": "{{count}} 个循环",
-      "whatNext": "下一步做什么？",
-      "acceptAsIs": "直接接受",
-      "fixAndRerun": "修复并重新运行",
-      "roleSde": "SDE",
-      "roleReview": "Review",
-      "roleFollowUp": "Follow-up",
-      "roleAssistant": "Assistant",
-      "roleUser": "User",
       "statusRunning": "运行中",
       "statusCompleted": "已完成",
       "statusFailed": "失败",
-      "statusCancelled": "已取消",
-      "sessionFiles": "文件",
-      "noFilesModified": "没有修改文件",
-      "subAgents": "Sub-Agents",
-      "subAgentSpawn": "正在生成 {{name}} #{{instance}}",
-      "subAgentComplete": "{{name}} #{{instance}} 已完成",
-      "subAgentFailed": "{{name}} #{{instance}} 失败",
-      "tokens": "Token",
-      "subAgentDefault": "Sub-Agent",
-      "toolResult": "{{tool}} 结果",
-      "collabLockRunning": "{{name}} 正在处理",
-      "collabLockHeld": "{{name}} 的 agent 正在处理该工作项",
-      "collabLockConflict": "另一位成员刚刚在该工作项上启动了 agent",
-      "collabLockUnresolved": "无法确认该工作项的协作同步状态，请检查网络后重试"
+      "statusCancelled": "已取消"
     },
     "changedFiles": {
       "title": "变更文件",
@@ -526,17 +394,13 @@
       "notAuthenticated": "未认证。请登录 Marketplace。",
       "noRepoPath": "无可用仓库路径",
       "noOriginRemote": "仓库中未找到 origin 远程",
-      "cannotParseRepoName": "无法解析仓库名：{{url}}",
-      "defaultPrTitle": "[{{shortId}}] Work item 变更"
+      "cannotParseRepoName": "无法解析仓库名：{{url}}"
     },
     "sessions": {
-      "linkedSessions": "已关联 Sessions",
-      "newSession": "新建会话",
-      "starting": "正在启动...",
       "emptyOverview": "暂无 Sessions",
-      "emptyOverviewHint": "启动 Agent Session 后，可在此跟踪执行。",
       "originTitle": "创建来源 Session",
-      "originStatus": "由此 Session 创建"
+      "originStatus": "由此 Session 创建",
+      "runsCount": "{{count}} 次运行"
     },
     "outputTab": {
       "prSection": "Pull Request",
@@ -550,14 +414,14 @@
       "prMerged": "Merged",
       "prClosed": "Closed",
       "prDraft": "Draft",
-      "openPr": "打开 PR",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "无文件变更",
       "fileDiffCleanHint": "未检测到文件变更。",
       "costSummary": "费用摘要",
       "totalCost": "总计",
       "tokens": "Token",
-      "cycles": "轮次"
+      "prBlocked": "完成受阻",
+      "prReady": "可以完成"
     },
     "viewWorkItems": "查看 Work Items",
     "fromRoutine": "来自 Routine：{{name}}",
@@ -576,11 +440,81 @@
       "cancelledStatus": "已取消",
       "createError": "无法创建子任务，请重试。"
     },
-    "sessionRail": {
-      "notOnDeviceTitle": "会话不在此设备",
-      "notOnDeviceHint": "该会话在其他设备上运行，转录未同步到本机。",
-      "finalOutput": "最终输出"
-    }
+    "savedViews": {
+      "placeholder": "视图",
+      "save": "保存当前视图",
+      "saveTitle": "保存视图",
+      "namePlaceholder": "视图名称",
+      "saveHint": "保存当前筛选条件；布局只作为首次打开的种子。",
+      "delete": "删除视图"
+    },
+    "table": {
+      "columnsPicker": "列",
+      "groupByProperty": "按属性分组",
+      "columns": {
+        "shortId": "编号",
+        "title": "标题",
+        "status": "状态",
+        "priority": "优先级",
+        "assignee": "负责人",
+        "targetDate": "截止",
+        "labels": "标签"
+      }
+    },
+    "batchProperty": {
+      "title": "设置属性",
+      "hint": "将一个属性值应用到选中的 {{count}} 个事项；留空表示清除该属性。",
+      "propertyPlaceholder": "属性",
+      "valuePlaceholder": "值",
+      "applied": "已更新 {{count}} 个事项"
+    },
+    "revisionConflict": {
+      "title": "处理编辑冲突",
+      "description": "{{field}} 在版本 {{expected}} 之后已被修改。请将你的编辑与最新版本 {{actual}} 对比，再选择保留哪一版。",
+      "mine": "我的版本",
+      "latest": "最新版本",
+      "useLatest": "使用最新版本",
+      "keepMine": "保留我的版本",
+      "titleField": "标题",
+      "descriptionField": "描述",
+      "commentField": "评论",
+      "reloadNotice": "此工作项已在其他位置更新，现已载入最新版本。",
+      "retryFailed": "最新版本又发生了变化，请重新对比后再试。"
+    },
+    "quickActions": {
+      "title": "快捷指令",
+      "empty": "还没有快捷指令。为常用的 agent 任务保存一条可复用的提示。",
+      "emptyManage": "还没有保存任何指令。",
+      "manageTitle": "管理快捷指令",
+      "namePlaceholder": "指令名称（如：修复 CI）",
+      "targetPlaceholder": "目标 agent",
+      "promptPlaceholder": "希望 agent 做什么？",
+      "archive": "归档指令",
+      "scopeChanged": "快捷指令已不属于当前工作项范围",
+      "started": "快捷指令“{{name}}”已启动"
+    },
+    "batchField": {
+      "hint": "应用到选中的 {{count}} 个事项。"
+    },
+    "batchStatus": {
+      "title": "设置状态"
+    },
+    "batchPriority": {
+      "title": "设置优先级"
+    },
+    "batchAssignee": {
+      "title": "设置负责人"
+    },
+    "detailNavigation": "工作项导航",
+    "linkedSessions": {
+      "title": "会话"
+    },
+    "detail": {
+      "conversation": "对话",
+      "linked": "关联"
+    },
+    "detailSummary": "工作项摘要",
+    "navigationTrail": "工作项导航"
   },
   "settings": {
     "sidebarGeneral": "常规",
@@ -599,35 +533,19 @@
     "githubUsernameDesc": "关联后用于在成员列表中匹配您的身份",
     "profileNotFound": "无法将您的身份与任何团队成员匹配",
     "profileNotFoundHint": "您的 git 邮箱 ({{email}}) 未在成员列表中找到。请同步成员以更新",
-    "teamMembers": "团队成员",
-    "memberCount": "{{active}} / {{total}} 活跃",
-    "activeBadge": "活跃",
-    "inactiveBadge": "已停用",
-    "activateMember": "激活成员",
-    "deactivateMember": "停用成员",
-    "syncFromGit": "从 Git 同步",
-    "membersDescription": "管理团队成员。已停用的成员不会出现在负责人下拉列表中",
     "activeMembers": "当前成员",
     "activeMembersDescription": "出现在负责人下拉列表和报告中的成员",
     "inactiveMembers": "非当前成员",
     "inactiveMembersDescription": "从下拉列表中隐藏。重新激活以再次包含",
     "noActiveMembers": "没有活跃成员",
-    "repoTab": "仓库",
-    "projectTab": "项目",
     "workItemIdTitle": "工作项 ID",
     "workItemIdPrefix": "ID 前缀",
     "workItemIdPrefixDescription": "1-3 个字母或数字，新 ID 使用此前缀",
     "customPrefix": "自定义前缀",
-    "customPrefixDescription": "关闭时，前缀自动取项目名前 3 个字符，重命名时同步更新",
     "customPrefixCurrentValue": "当前值为 {{value}}",
-    "manageInRepoSettings": "在仓库设置中管理",
-    "projectMemberList": "项目成员",
     "projectMemberListDescription": "选择属于此项目的仓库成员",
     "labelsDescription": "管理用于分类工作项的标签",
-    "addLabel": "添加标签",
     "noLabels": "点击 + 添加标签",
-    "deleteLabel": "删除标签",
-    "changeColor": "更改颜色",
     "labelNamePlaceholder": "标签名称...",
     "memberRecentlyActive": "活跃",
     "linkedIdentities": "关联身份",
@@ -646,9 +564,7 @@
     "claimIdentityShowAsAuthor": "在工作项历史中显示您为作者",
     "claimIdentityWarning": "请仅认领属于您的身份",
     "confirmClaim": "确认认领",
-    "alreadyClaimed": "已关联到其他成员",
     "dangerZone": "危险区域",
-    "dangerZoneDescription": "此项目的不可逆操作",
     "deleteProject": "删除此项目",
     "deleteProjectWarning": "这将永久删除 .orgii 中的项目文件夹及其所有工作项。此操作无法撤销",
     "deleteThisProject": "删除此项目...",
@@ -674,41 +590,6 @@
         "title": "账户",
         "empty": "此适配器暂无全局同步账户",
         "previewNote": "选择此项目用于同步的全局账户。"
-      },
-      "token": {
-        "title": "API Token",
-        "placeholder": "粘贴你的个人访问 Token",
-        "save": "保存 Token",
-        "saved": "Token 已保存",
-        "tabs": {
-          "oauth": "OAuth",
-          "personalToken": "个人 Token"
-        },
-        "bothMethodsNote": "两种方式都可以使用——以最近一次登录为准。",
-        "oauth": {
-          "connectButton": "连接 {{adapter}}",
-          "instructions": "在刚打开的浏览器页面中输入下方的验证码，然后授权访问。",
-          "userCodeLabel": "验证码",
-          "openLinkButton": "打开验证页面",
-          "waitingForConfirmation": "等待你在浏览器中确认授权…",
-          "cancel": "取消",
-          "connected": "已通过 OAuth 连接",
-          "reconnect": "重新连接",
-          "codeCopied": "验证码已复制到剪贴板",
-          "errors": {
-            "startFailed": "无法启动 OAuth：{{error}}",
-            "accessDenied": "OAuth 登录被拒绝。",
-            "expired": "验证码已在授权前过期，请重试。",
-            "pollFailed": "登录失败：{{detail}}",
-            "unknown": "登录时发生异常：{{error}}"
-          },
-          "browserOpened": "正在浏览器中打开 {{adapter}}…",
-          "redirect": {
-            "openButton": "打开 {{adapter}} 授权页面",
-            "instructions": "请在浏览器中批准请求以完成 {{adapter}} 的连接。",
-            "expiresAt": "链接将在 {{time}} 过期"
-          }
-        }
       },
       "status": {
         "title": "状态",
@@ -785,7 +666,6 @@
       },
       "problems": {
         "title": "失败条目",
-        "empty": "没有失败条目。",
         "op": {
           "create": "create",
           "update": "update",
@@ -815,10 +695,6 @@
       },
       "conflicts": {
         "title": "同步冲突",
-        "loading": "正在加载冲突…",
-        "empty": "暂无冲突。",
-        "openCount_one": "{{count}} 个未处理冲突",
-        "openCount_other": "{{count}} 个未处理冲突",
         "detectedAt": "{{time}} 检测到",
         "resolvedAt": "{{time}} 已解决",
         "fields_one": "{{count}} 个字段",
@@ -853,13 +729,21 @@
         },
         "errors": {
           "listFailed": "加载冲突失败：{{error}}",
-          "countFailed": "加载冲突计数失败：{{error}}",
           "useLocalFailed": "保留本地值失败：{{error}}",
           "useRemoteFailed": "采用远端值失败：{{error}}",
           "dismissFailed": "忽略冲突失败：{{error}}"
         }
       }
-    }
+    },
+    "sidebarStatuses": "状态",
+    "statusesBuiltin": "内置状态",
+    "statusesBuiltinDescription": "标准工作流状态，始终可用。",
+    "statusesCustom": "自定义状态",
+    "statusesCustomDescription": "映射到某个内置状态桶的别名；筛选、计数与看板按其所属桶处理。",
+    "statusNamePlaceholder": "状态名称",
+    "noCustomStatuses": "还没有自定义状态。",
+    "statusArchive": "归档状态",
+    "statusRestore": "恢复状态"
   },
   "statusBar": {
     "workItemCount": "{{count}}个项目",
@@ -900,29 +784,13 @@
     "views": "Views",
     "more": "More"
   },
-  "teams": {
-    "title": "你的团队",
-    "localTeams": "本地团队",
-    "linearTeams": "Linear 团队",
-    "personalOrg": "Personal Org",
-    "agentOrgs": "Agent 团队",
-    "emptyLinearTeams": "未找到 Linear 团队",
-    "empty": "未找到团队"
-  },
   "linearProjects": {
-    "title": "Linear 项目",
-    "open": "打开 Linear 项目",
-    "subtitle": "实时浏览和编辑 Linear 项目，无需导入 ORGII。",
-    "refresh": "刷新",
     "createProject": "创建项目",
-    "archive": "归档",
-    "searchPlaceholder": "搜索 Linear 项目...",
     "loadingProjects": "正在加载 Linear 项目...",
     "loadingIssues": "正在加载 Linear Issues...",
     "emptyProjects": "未找到 Linear 项目",
     "emptyIssues": "此项目中没有 Linear Issues",
     "unknownState": "未知状态",
-    "updated": "更新于 {{date}}",
     "emptyConnections": {
       "title": "没有 Linear 连接",
       "description": "在 Integrations 中创建 Linear 连接，然后返回这里直接浏览 Linear 项目。"
@@ -931,14 +799,9 @@
       "title": "选择 Linear 项目",
       "description": "从左侧选择一个项目，以查看实时 Linear Issues 并编辑项目详情。"
     },
-    "issues": {
-      "title": "Linear Issues",
-      "subtitle": "Issues 直接通过 Linear API 读取和修改。"
-    },
     "forms": {
       "createProjectTitle": "创建 Linear 项目",
       "projectName": "项目名称",
-      "issueTitle": "Issue 标题",
       "description": "描述"
     },
     "statusPanel": {
@@ -989,6 +852,6 @@
     "noResultTitle": "暂无 Git 同步结果",
     "noResultSubtitle": "从状态栏运行 Git folder 同步后即可检查冲突。",
     "noConflictsTitle": "没有冲突",
-    "noConflictsSubtitle": "这个组织目前没有待处理的 Git folder 冲突。"
+    "noConflictsSubtitle": "这个工作空间目前没有待处理的 Git folder 冲突。"
   }
 }

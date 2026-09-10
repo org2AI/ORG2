@@ -18,10 +18,13 @@
 pub mod auto_detect;
 pub mod commands;
 pub mod e2e_guard;
+pub mod harness_connections;
 pub mod key_extractor;
 pub mod key_store;
+pub(crate) mod model_catalog;
 pub mod provider_config;
 pub mod providers;
+pub mod quota_history;
 pub mod quota_runtime;
 #[cfg(test)]
 pub(crate) mod test_support;
@@ -38,7 +41,10 @@ pub use providers::kiro;
 pub use providers::openai;
 
 // Re-export types only from auto_detect (not the function which is exposed via commands)
-pub use auto_detect::{AutoDetectResult, DetectedKey, QuotaInfo as DetectedQuotaInfo};
+pub use auto_detect::{
+    AutoDetectResult, CredentialSuggestion, DetectedKey, QuotaInfo as DetectedQuotaInfo,
+    SuggestionSourceKind,
+};
 pub use commands::*;
 pub use key_store::*;
 pub use provider_config::ProviderConfig;

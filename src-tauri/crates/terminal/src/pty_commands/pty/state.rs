@@ -49,17 +49,14 @@ impl PtyState {
     /// [`pending_exit_session_leaders`].
     ///
     /// Must be called from a non-runtime thread (it blocks on the session
-    /// map lock); the Tauri run-loop exit handler qualifies.
+    /// map lock). The app lifecycle owns a dedicated shutdown thread for this
+    /// work.
     ///
     /// Thread-safety: `self.sessions.blocking_lock()` calls
     /// `tokio::future::block_on`, which panics if the current thread is a
-    /// tokio runtime worker. This is safe only because the sole caller is the
-    /// `RunEvent::ExitRequested` callback, which Tauri runs synchronously on
-    /// the main (wry/tao event-loop) thread — NOT a tokio async_runtime
-    /// worker (those live in a separate thread pool). Do NOT call this from
-    /// an `async fn`, a `spawn`/`spawn_blocking` task, or any context where
-    /// a tokio runtime guard is entered; move it to a fresh `std::thread`
-    /// before blocking on the lock.
+    /// tokio runtime worker. Do NOT call this from an `async fn` or any
+    /// context where a tokio runtime guard is entered; move it to a fresh
+    /// `std::thread` before blocking on the lock.
     pub fn shutdown_kill_all(&self) {
         let drained: Vec<PtySession> = {
             let mut map = self.sessions.blocking_lock();
@@ -147,5 +144,18 @@ impl PtyState {
 impl Default for PtyState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PtyState;
+
+    #[test]
+    fn shutdown_sweep_is_safe_on_a_dedicated_thread() {
+        let state = PtyState::new();
+        std::thread::spawn(move || state.shutdown_kill_all())
+            .join()
+            .expect("empty PTY shutdown sweep should not panic");
     }
 }

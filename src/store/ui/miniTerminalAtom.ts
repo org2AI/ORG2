@@ -23,6 +23,7 @@ import {
   activeTerminalIdAtom,
   closeTerminalSessionAtom,
   editorAddTerminalSessionAtom,
+  setActiveTerminalAtom,
   terminalSessionsAtom,
 } from "@src/store/workstation/codeEditor/terminal";
 
@@ -178,7 +179,7 @@ export const closeMiniTerminalAtom = atom(null, (get, set) => {
   // Hand focus of the released session to the Workstation pane, so the tab
   // the user was just looking at is the one waiting for them there.
   if (lastActive && get(activeTerminalIdAtom) !== lastActive) {
-    set(activeTerminalIdAtom, lastActive);
+    set(setActiveTerminalAtom, lastActive);
   }
 });
 closeMiniTerminalAtom.debugLabel = "chatPanel/miniTerminal/close";
@@ -186,12 +187,3 @@ closeMiniTerminalAtom.debugLabel = "chatPanel/miniTerminal/close";
 /** Panel folded to just its header row; the PTY stays mounted behind it. */
 export const miniTerminalCollapsedAtom = atom<boolean>(false);
 miniTerminalCollapsedAtom.debugLabel = "chatPanel/miniTerminal/collapsed";
-
-export const toggleMiniTerminalAtom = atom(null, (get, set) => {
-  if (get(miniTerminalVisibleAtom)) {
-    set(closeMiniTerminalAtom);
-    return;
-  }
-  set(openMiniTerminalAtom, get(miniTerminalClaimedIdsAtom)[0] ?? null);
-});
-toggleMiniTerminalAtom.debugLabel = "chatPanel/miniTerminal/toggle";

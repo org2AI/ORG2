@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import ActionCard from "@src/components/ActionCard";
 import AnyIcon from "@src/components/AnyIcon";
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import Switch from "@src/components/Switch";
 import {
   Delete02Icon,
@@ -111,7 +111,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
 
       {/* Error message */}
       {connectionStatus === "error" && connectionError && (
-        <InlineAlert
+        <PageNotice
           type="danger"
           title={t("common:status.error")}
           action={{
@@ -120,7 +120,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
           }}
         >
           {connectionError}
-        </InlineAlert>
+        </PageNotice>
       )}
 
       {/* Action cards */}

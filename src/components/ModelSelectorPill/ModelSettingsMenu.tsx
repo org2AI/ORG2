@@ -322,8 +322,8 @@ export default function ModelSettingsMenu({
                 </div>
               </ActionMenuSurface>
             ) : (
-              <div className={`${DROPDOWN_CLASSES.menuPanelBase} p-2`}>
-                <div className="mb-2 flex items-center justify-between gap-2">
+              <div className={`${DROPDOWN_CLASSES.menuPanelBase} p-1`}>
+                <div className="flex items-center justify-between gap-2">
                   <Button
                     size="small"
                     variant="tertiary"
@@ -334,9 +334,11 @@ export default function ModelSettingsMenu({
                       />
                     }
                     iconPosition="right"
-                    aria-expanded={false}
-                    data-testid="model-settings-advanced"
-                    onClick={() => showAdvanced(true)}
+                    data-testid="model-settings-switch-model"
+                    onClick={() => {
+                      closeDropdown();
+                      onModelClick();
+                    }}
                   >
                     {t("sessions:creator.switchModel")}
                   </Button>

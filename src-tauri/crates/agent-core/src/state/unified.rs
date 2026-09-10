@@ -103,6 +103,21 @@ pub struct AgentAppState {
 
     /// Whether the global agent (OS/Gateway) is initialized and running.
     pub running: Arc<AtomicBool>,
+
+    /// Process lifecycle admission fence. Once set, no new Agent turn may be
+    /// initialized or enqueued while shutdown waits for accepted work to
+    /// persist its terminal boundary.
+    shutting_down: Arc<AtomicBool>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentShutdownReport {
+    pub already_started: bool,
+    pub sessions_signalled: usize,
+    pub sessions_drained: usize,
+    pub sessions_still_processing: Vec<String>,
+    pub elapsed_ms: u128,
 }
 
 impl AgentAppState {
@@ -122,95 +137,10 @@ impl AgentAppState {
         // Clean up stale session registry files from a previous crash
         crate::session::file_registry::cleanup_stale_sessions(&[]);
 
-        // First repair rows whose latest turn already wrote a durable terminal
-        // marker but whose session-level status is still in-flight. This is a
-        // stronger signal than startup crash cleanup: the backend observed a
-        // terminal turn, so don't downgrade it to `abandoned` below.
-        match crate::session::persistence::reconcile_sessions_with_terminal_turn_markers() {
-            Ok(0) => {}
-            Ok(n) => info!(
-                "[agent-state] Reconciled {} session(s) from terminal turn markers on startup",
-                n
-            ),
-            Err(err) => warn!(
-                "[agent-state] Failed to reconcile terminal turn markers on startup: {}",
-                err
-            ),
-        }
-
-        // Mark any remaining DB sessions stuck in "running" (from a prior crash) as abandoned
-        // so the frontend doesn't show phantom active sessions on reload.
-        match crate::session::persistence::mark_stale_running_sessions_abandoned() {
-            Ok(0) => {}
-            Ok(n) => info!(
-                "[agent-state] Marked {} stale running session(s) as abandoned on startup",
-                n
-            ),
-            Err(err) => warn!(
-                "[agent-state] Failed to clean stale sessions on startup: {}",
-                err
-            ),
-        }
-
-        match crate::coordination::agent_org_runs::AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup() {
-            Ok(0) => {}
-            Ok(n) => info!(
-                "[agent-state] Applied failure disposition to {} abandoned Agent Org task(s) on startup",
-                n
-            ),
-            Err(err) => warn!(
-                "[agent-state] Failed to recover abandoned Agent Org tasks on startup: {}",
-                err
-            ),
-        }
-
-        // Interventions cannot survive a process restart: their in-memory
-        // sessions were abandoned above. Clear them before finality checks so
-        // a fully-resolved run is not needlessly paused by an expired control
-        // lease from the previous process.
-        match crate::coordination::agent_member_interventions::AgentMemberInterventionStore::clear_all_active_on_startup() {
-            Ok(0) => {}
-            Ok(n) => info!(
-                "[agent-state] Cleared {} stale member intervention(s) on startup",
-                n
-            ),
-            Err(err) => warn!(
-                "[agent-state] Failed to clear stale member interventions on startup: {}",
-                err
-            ),
-        }
-
-        // Runs whose tasks were already resolved may have been kept open only
-        // by an orphaned queued intent. Close them through the normal atomic
-        // finality path before pausing genuinely unfinished work.
-        match crate::coordination::agent_org_runs::AgentOrgRunStore::reconcile_resolved_running_runs_on_startup() {
-            Ok(0) => {}
-            Ok(n) => info!(
-                "[agent-state] Completed {} fully-resolved Agent Org run(s) during startup recovery",
-                n
-            ),
-            Err(err) => warn!(
-                "[agent-state] Failed to reconcile resolved Agent Org runs on startup: {}",
-                err
-            ),
-        }
-
-        // Transition any Agent Org runs that were `running` when the previous
-        // process exited to `paused`. Their member sessions are now `abandoned`
-        // (see above), so `reconcile_run_finality` would auto-terminate the run
-        // if it remained `running`. By moving to `paused` instead, the run stays
-        // visible (non-terminal) and can be resumed from the UI.
-        match crate::coordination::agent_org_runs::AgentOrgRunStore::mark_all_running_as_paused_on_startup() {
-            Ok(0) => {}
-            Ok(n) => info!(
-                "[agent-state] Paused {} Agent Org run(s) interrupted by app exit",
-                n
-            ),
-            Err(err) => warn!(
-                "[agent-state] Failed to pause interrupted Agent Org runs on startup: {}",
-                err
-            ),
-        }
+        // Persistence reconciliation is owned by the app startup boundary.
+        // Keeping this constructor side-effect-free prevents tests, debug
+        // endpoints, or a second state value from silently rerunning crash
+        // recovery without being able to dispatch its exact durable receipts.
 
         let bus = Arc::new(Mutex::new(AgentMessageBus::new()));
         let sessions: Arc<Mutex<HashMap<String, Arc<AgentSession>>>> =
@@ -232,6 +162,7 @@ impl AgentAppState {
             sessions: Arc::clone(&sessions),
             current_account_id: Arc::new(Mutex::new(None)),
             running: Arc::new(AtomicBool::new(false)),
+            shutting_down: Arc::new(AtomicBool::new(false)),
         };
 
         state.spawn_cleanup_task(sessions);
@@ -242,10 +173,14 @@ impl AgentAppState {
     /// `SESSION_IDLE_EVICTION_TIMEOUT`.  Singleton (OS) sessions are never
     /// evicted — they must be explicitly removed.
     fn spawn_cleanup_task(&self, sessions: Arc<Mutex<HashMap<String, Arc<AgentSession>>>>) {
+        let shutting_down = Arc::clone(&self.shutting_down);
         tauri::async_runtime::spawn(async move {
             let mut ticker = tokio::time::interval(SESSION_CLEANUP_INTERVAL);
             loop {
                 ticker.tick().await;
+                if shutting_down.load(Ordering::Acquire) {
+                    break;
+                }
 
                 let candidates: Vec<(String, Arc<AgentSession>)> = {
                     let guard = sessions.lock().await;
@@ -319,6 +254,64 @@ impl AgentAppState {
         self.app_handle = Some(handle);
     }
 
+    pub fn is_shutting_down(&self) -> bool {
+        self.shutting_down.load(Ordering::Acquire)
+    }
+
+    /// Stop Agent admission, cancel every accepted turn and queued message,
+    /// then wait within a fixed budget for scheduler-owned finalization. The
+    /// database pool fence intentionally runs after this method so terminal
+    /// Turn/Task writes still have a chance to commit.
+    pub async fn begin_shutdown(&self, timeout: Duration) -> AgentShutdownReport {
+        let started = std::time::Instant::now();
+        let already_started = self.shutting_down.swap(true, Ordering::AcqRel);
+        self.running.store(false, Ordering::Release);
+        let sessions = {
+            let sessions = self.sessions.lock().await;
+            sessions.values().cloned().collect::<Vec<_>>()
+        };
+        if !already_started {
+            for session in &sessions {
+                session
+                    .cancel_active_turn(
+                        crate::state::control_flow::CancelReason::ProgrammaticShutdown,
+                    )
+                    .await;
+            }
+        }
+
+        let deadline = started + timeout;
+        loop {
+            let all_drained = sessions.iter().all(|session| {
+                !session.scheduler.is_processing() && session.scheduler.pending_count() == 0
+            });
+            if all_drained || std::time::Instant::now() >= deadline {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+
+        let sessions_still_processing = sessions
+            .iter()
+            .filter(|session| {
+                session.scheduler.is_processing() || session.scheduler.pending_count() > 0
+            })
+            .map(|session| session.id.clone())
+            .collect::<Vec<_>>();
+        for session in &sessions {
+            session.invalidate_runtime().await;
+        }
+        AgentShutdownReport {
+            already_started,
+            sessions_signalled: sessions.len(),
+            sessions_drained: sessions
+                .len()
+                .saturating_sub(sessions_still_processing.len()),
+            sessions_still_processing,
+            elapsed_ms: started.elapsed().as_millis(),
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // Session registry
     // ═══════════════════════════════════════════════════════════════
@@ -375,7 +368,7 @@ impl AgentAppState {
     /// on the next request.
     pub async fn invalidate_session(&self, session_id: &str) {
         if let Some(session) = self.get_session(session_id).await {
-            *session.runtime.write().await = None;
+            session.invalidate_runtime().await;
             info!("[agent-state] Invalidated session runtime: {}", session_id);
         }
     }
@@ -411,13 +404,8 @@ impl AgentAppState {
         let mut count = 0usize;
         for session in &sessions {
             let applies_to_session_definition = session.definition.id == definition_id;
-            let applies_to_runtime_definition = session
-                .runtime
-                .read()
-                .await
-                .as_ref()
-                .and_then(|runtime| runtime.agent_definition_id.as_deref())
-                == Some(definition_id);
+            let applies_to_runtime_definition =
+                session.runtime_agent_definition_id().await.as_deref() == Some(definition_id);
             if applies_to_session_definition || applies_to_runtime_definition {
                 session.invalidate_prompt_cache(reason).await;
                 count += 1;
@@ -440,7 +428,7 @@ impl AgentAppState {
         let mut count = 0usize;
         for (id, session) in sessions.iter() {
             if prefixes.iter().any(|p| id.starts_with(p)) {
-                *session.runtime.write().await = None;
+                session.invalidate_runtime().await;
                 count += 1;
             }
         }
@@ -539,5 +527,28 @@ impl AgentAppState {
 impl Default for AgentAppState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod shutdown_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn shutdown_admission_fence_is_immediate_and_idempotent() {
+        let _sandbox = test_helpers::test_env::sandbox();
+        let state = AgentAppState::new();
+        assert!(!state.is_shutting_down());
+
+        let first = state.begin_shutdown(Duration::ZERO).await;
+        assert!(state.is_shutting_down());
+        assert!(!first.already_started);
+        assert_eq!(first.sessions_signalled, 0);
+        assert_eq!(first.sessions_drained, 0);
+        assert!(first.sessions_still_processing.is_empty());
+
+        let second = state.begin_shutdown(Duration::ZERO).await;
+        assert!(second.already_started);
+        assert_eq!(second.sessions_signalled, 0);
     }
 }

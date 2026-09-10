@@ -6,7 +6,7 @@ import type {
   ChatPanelSelectedProjectOrg,
   ChatPanelSelectedWorkItem,
   ChatPanelSelectedWorkspace,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionTypes";
 import {
   WORK_MANAGEMENT_SECTION,
   type WorkManagementSection,

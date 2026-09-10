@@ -275,7 +275,11 @@ pub async fn create_inline_webview(
     builder = builder
         .initialization_script(ELEMENT_INSPECTOR_SCRIPT)
         .initialization_script(PAGE_AGENT_SCRIPT)
+        .initialization_script(app_window::shortcut_preferences::initialization_script())
         .initialization_script(SHORTCUT_FORWARDING_SCRIPT)
+        .on_page_load(|webview, _| {
+            let _ = webview.eval(app_window::shortcut_preferences::initialization_script());
+        })
         .on_new_window(move |new_window_url, _cookies| {
             let url_str = new_window_url.to_string();
             debug!(url = %url_str, "browser::inline: new window requested");

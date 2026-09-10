@@ -1,7 +1,7 @@
 /**
  * Reveal-navigation side effects for `WorkstationSidebarConnector`
  * (`index.tsx`): when a cross-surface "reveal this session" request lands,
- * un-collapses the sidebar, switches to the Workstation layer, selects the
+ * un-collapses the sidebar, switches to the sessions view, selects the
  * request's cloud org, expands the parent subagent group, and hydrates the
  * target row(s). Separately, once the
  * revealed row's containing section is known (via `revealCandidateMenuItems`),
@@ -17,7 +17,7 @@ import { loadSidebarSessionById } from "@src/store/session";
 import type { SessionSidebarRevealRequest } from "@src/store/ui/sidebarAtom";
 
 import { findSidebarSectionIdForMenuItem } from "../workstationSidebarData";
-import type { WorkstationSidebarKey } from "./types";
+import type { SessionSidebarView } from "./types";
 import { buildCloudOrgSelectorValue } from "./useSidebarOrgScope";
 
 const logger = createLogger("WorkstationSidebar");
@@ -25,9 +25,7 @@ const logger = createLogger("WorkstationSidebar");
 interface UseWorkstationSidebarRevealNavigationEffectsParams {
   sessionSidebarRevealRequest: SessionSidebarRevealRequest | null;
   setSidebarCollapsed: (collapsed: boolean) => void;
-  setActiveSidebarKey: (key: WorkstationSidebarKey) => void;
-  setWorkItemsOpen: (open: boolean) => void;
-  setChannelsOpen: (open: boolean) => void;
+  setActiveViewKey: (key: SessionSidebarView) => void;
   setSelectedOrgId: ReturnType<
     typeof useSetAtom<typeof sidebarSelectedOrgIdAtom>
   >;
@@ -44,9 +42,7 @@ interface UseWorkstationSidebarRevealNavigationEffectsParams {
 export function useWorkstationSidebarRevealNavigationEffects({
   sessionSidebarRevealRequest,
   setSidebarCollapsed,
-  setActiveSidebarKey,
-  setWorkItemsOpen,
-  setChannelsOpen,
+  setActiveViewKey,
   setSelectedOrgId,
   setExpandedSubagentParentIds,
   activeSessionSidebarRevealRequest,
@@ -61,9 +57,7 @@ export function useWorkstationSidebarRevealNavigationEffects({
       sessionSidebarRevealRequest.parentSessionId ??
       sessionSidebarRevealRequest.sessionId;
     const revealFrame = window.requestAnimationFrame(() => {
-      setActiveSidebarKey("workstation");
-      setWorkItemsOpen(false);
-      setChannelsOpen(false);
+      setActiveViewKey("sessions");
       if (sessionSidebarRevealRequest.cloudOrgId) {
         setSelectedOrgId(
           buildCloudOrgSelectorValue(sessionSidebarRevealRequest.cloudOrgId)
@@ -103,12 +97,10 @@ export function useWorkstationSidebarRevealNavigationEffects({
     return () => window.cancelAnimationFrame(revealFrame);
   }, [
     sessionSidebarRevealRequest,
-    setActiveSidebarKey,
-    setChannelsOpen,
+    setActiveViewKey,
     setExpandedSubagentParentIds,
     setSelectedOrgId,
     setSidebarCollapsed,
-    setWorkItemsOpen,
   ]);
 
   const revealedSectionId = useMemo(

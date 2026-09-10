@@ -22,12 +22,15 @@ import {
   type CallbackRefEffectHandle,
   useCallbackRefEffect,
 } from "@src/hooks/dom/useCallbackRefEffect";
+import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 
 const STROKE_DRAW_INTERVAL_MS = 2200;
 
-export function runStrokeDraw(wrapper: HTMLElement) {
+export function runStrokeDraw(wrapper: HTMLElement): () => void {
+  const timers: ReturnType<typeof setTimeout>[] = [];
+  const resets: Array<() => void> = [];
   const svg = wrapper.querySelector("svg");
-  if (!svg) return;
+  if (!svg) return () => {};
 
   const shapes = svg.querySelectorAll(
     "path, line, circle, rect, polyline, polygon, ellipse"
@@ -50,20 +53,28 @@ export function runStrokeDraw(wrapper: HTMLElement) {
     shape.style.opacity = "0.3";
 
     const delay = index * 60;
-    setTimeout(() => {
-      shape.style.transition =
-        "stroke-dashoffset 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease";
-      shape.setAttribute("stroke-dashoffset", "0");
-      shape.style.opacity = "1";
-    }, delay);
+    timers.push(
+      setTimeout(() => {
+        shape.style.transition =
+          "stroke-dashoffset 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease";
+        shape.setAttribute("stroke-dashoffset", "0");
+        shape.style.opacity = "1";
+      }, delay)
+    );
 
-    setTimeout(() => {
+    const reset = () => {
       shape.style.transition = "";
       shape.removeAttribute("stroke-dasharray");
       shape.removeAttribute("stroke-dashoffset");
       shape.style.opacity = "";
-    }, delay + 450);
+    };
+    resets.push(reset);
+    timers.push(setTimeout(reset, delay + 450));
   });
+  return () => {
+    for (const timer of timers) clearTimeout(timer);
+    for (const reset of resets) reset();
+  };
 }
 
 /**
@@ -96,13 +107,24 @@ export function useStrokeDraw(
           if (externalRef) externalRef.current = null;
         };
       }
-      runStrokeDraw(wrapper);
-      const intervalId = setInterval(
-        () => runStrokeDraw(wrapper),
-        STROKE_DRAW_INTERVAL_MS
+      let cancelDraw: (() => void) | undefined;
+      const stopDraw = () => {
+        cancelDraw?.();
+        cancelDraw = undefined;
+      };
+      const draw = () => {
+        stopDraw();
+        cancelDraw = runStrokeDraw(wrapper);
+      };
+      if (document.visibilityState !== "hidden") draw();
+      const stopInterval = startVisibilityAwareInterval(
+        document,
+        draw,
+        STROKE_DRAW_INTERVAL_MS,
+        stopDraw
       );
       return () => {
-        clearInterval(intervalId);
+        stopInterval();
         if (externalRef) externalRef.current = null;
       };
     },

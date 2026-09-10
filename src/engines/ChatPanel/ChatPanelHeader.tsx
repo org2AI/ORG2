@@ -7,7 +7,10 @@ import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut
 import RegionNoticeButton from "@src/components/RegionNoticeButton";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
 import Tooltip from "@src/components/Tooltip";
+import { CHROME_TOOLTIP_HOVER_DELAY } from "@src/config/tooltip";
+import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import type { DropdownEnginePosition } from "@src/hooks/dropdown";
+import { useWorkbenchRightEdgeReservation } from "@src/hooks/ui/workbench/usePinnedWorkbenchChrome";
 import {
   ArrowExpand01Icon,
   ComputerVideoIcon,
@@ -17,8 +20,7 @@ import {
   PanelRightOpenIcon,
   SquareTerminalIcon,
 } from "@src/icons";
-import { HEADER_ICON_SIZE } from "@src/modules/WorkStation/shared/tokens";
-import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanelAtom";
+import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import type { ChatPanelPosition } from "@src/store/ui/workStationLayout/chatPositionAtoms";
 
 import { SessionHeaderActionsMenu } from "./components/SessionHeaderActionsMenu";
@@ -37,6 +39,7 @@ interface ChatPanelHeaderProps {
   chatPanelPosition: ChatPanelPosition;
   copyEventJsonLabel: "idle" | "copied" | "failed";
   currentSessionId: string | null;
+  appOpenSessionId?: string | null;
   displayMode: ChatHistoryDisplayMode;
   eventsLength: number;
   handleChatFocusToggle: () => void;
@@ -96,6 +99,7 @@ export function ChatPanelHeader({
   chatPanelPosition,
   copyEventJsonLabel,
   currentSessionId,
+  appOpenSessionId,
   displayMode,
   eventsLength,
   handleChatFocusToggle,
@@ -140,6 +144,7 @@ export function ChatPanelHeader({
   overlayPublishedHeader = false,
 }: ChatPanelHeaderProps): React.ReactNode {
   const publishedHeaderSlots = useAtomValue(chatPanelHeaderSlotsAtom);
+  const rightEdge = useWorkbenchRightEdgeReservation();
   if (!showHeader) return null;
 
   const chatFocusLabel = isChatFocus
@@ -162,7 +167,7 @@ export function ChatPanelHeader({
               <KeyboardShortcutTooltipContent label={tuiModeLabel} noShortcut />
             }
             position="bottom-end"
-            mouseEnterDelay={200}
+            mouseEnterDelay={CHROME_TOOLTIP_HOVER_DELAY}
             framedPanel
           >
             <span className="inline-flex">
@@ -214,6 +219,7 @@ export function ChatPanelHeader({
             activeSessionExists={activeSessionExists}
             copyEventJsonLabel={copyEventJsonLabel}
             currentSessionId={currentSessionId}
+            appOpenSessionId={appOpenSessionId}
             displayMode={displayMode}
             eventsLength={eventsLength}
             handleCompactDisplayModeToggle={handleCompactDisplayModeToggle}
@@ -244,7 +250,8 @@ export function ChatPanelHeader({
         )}
       </div>
     ) : null;
-  const chatFocusToggleButton = (
+  const pinnedChromeInThisHeader = rightEdge.owner === "chat";
+  const chatFocusToggleButton = pinnedChromeInThisHeader ? null : (
     <span className="inline-flex">
       <TabBarTrailingIconButton
         title={
@@ -256,6 +263,7 @@ export function ChatPanelHeader({
         }
         shortcutId={stationAvailable ? "maximize_chat" : undefined}
         tooltipPosition="bottom-end"
+        tooltipMouseEnterDelay={CHROME_TOOLTIP_HOVER_DELAY}
         nativeTitle={false}
         onClick={stationAvailable ? handleChatFocusToggle : undefined}
         disabled={!stationAvailable}
@@ -307,24 +315,11 @@ export function ChatPanelHeader({
     </span>
   );
 
-  const tabBarToolbar = (
+  const renderTabControls = (collapsed: boolean) => (
     <div
-      className="flex h-9 shrink-0 items-center gap-px"
+      className={`flex ${collapsed ? "h-7" : "h-9"} shrink-0 items-center gap-px`}
       style={CHAT_PANEL_HEADER_NO_DRAG_STYLE}
-    >
-      {tabStripPlus}
-      {chatFocusToggleButton}
-    </div>
-  );
-
-  // The folded tab row's controls, rehomed on the published row. No close
-  // control: closing the pane's last tab only reseeds another one, so it
-  // earned no place in the row it would have crowded.
-  const collapsedTabControls = (
-    <div
-      className="flex h-7 shrink-0 items-center gap-px"
-      style={CHAT_PANEL_HEADER_NO_DRAG_STYLE}
-      data-testid="chat-panel-collapsed-tab-controls"
+      data-testid={collapsed ? "chat-panel-collapsed-tab-controls" : undefined}
     >
       {tabStripPlus}
       {chatFocusToggleButton}
@@ -363,7 +358,7 @@ export function ChatPanelHeader({
               <div className="flex shrink-0 items-center gap-px">
                 {publishedHeaderSlots?.trailing}
                 {sessionPublishedActions}
-                {tabRowCollapsed ? collapsedTabControls : null}
+                {tabRowCollapsed ? renderTabControls(true) : null}
               </div>
             ) : null,
         }
@@ -372,7 +367,10 @@ export function ChatPanelHeader({
   return (
     <ChatPanelChrome
       tabStrip={tabStrip}
-      toolbar={tabBarToolbar}
+      toolbar={renderTabControls(false)}
+      trailingInsetPx={
+        pinnedChromeInThisHeader ? rightEdge.reservedRight : undefined
+      }
       publishedHeaderSlots={effectivePublishedHeaderSlots}
       overlayPublishedHeader={overlayPublishedHeader}
       shouldOffsetHeaderForCollapsedSidebar={

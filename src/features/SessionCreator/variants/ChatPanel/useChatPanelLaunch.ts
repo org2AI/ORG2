@@ -7,9 +7,10 @@
  * limit.
  */
 import type { TFunction } from "i18next";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useStore } from "jotai";
 import { type RefObject, useCallback, useRef, useState } from "react";
 
+import { zodActionRegistry } from "@src/ActionSystem/schema/zodRegistry";
 import {
   cliAgentCreateTuiSession,
   deriveExpectedProcess,
@@ -20,6 +21,8 @@ import type { CliAgentType } from "@src/api/types/keys";
 import type { ComposerInputRef } from "@src/components/ComposerInput";
 import Message from "@src/components/Message";
 import type { AvailableAgent } from "@src/config/cliAgents";
+import { executeComposerCommand } from "@src/engines/ChatPanel/hooks/useInputArea/executeComposerCommand";
+import { parseNativeSlashCommand } from "@src/engines/ChatPanel/hooks/useInputArea/nativeSlashCommands";
 import type { ChatPanelCliTerminalLaunchOptions } from "@src/engines/ChatPanel/types";
 import { getWorktreeFields } from "@src/engines/SessionCore/hooks/session/useSessionCreator/useSessionLaunch/launchPayload";
 import type {
@@ -28,9 +31,12 @@ import type {
 } from "@src/engines/SessionCore/hooks/session/useSessionCreator/useSessionLaunch/types";
 import { createLogger } from "@src/hooks/logger";
 import { worktreeLaunchSelectionAtom } from "@src/store/session";
+import { creatorDefaultExecModeAtom } from "@src/store/session/creatorDefaultExecModeAtom";
+import { creatorDefaultProductModeAtom } from "@src/store/session/creatorDefaultProductModeAtom";
 import type { SessionSource } from "@src/store/session/creatorStateAtom";
 import { runningLocationAtom } from "@src/store/session/runningLocationAtom";
 import { loadSessions } from "@src/store/session/sessionAtom/loaders";
+import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 
 const log = createLogger("ChatPanel");
 
@@ -42,6 +48,7 @@ function isCliAgentType(
 
 interface UseChatPanelLaunchOptions {
   isHumanMode: boolean;
+  hasAttachedImages: boolean;
   isCliTuiMode: boolean;
   composerInputRef: RefObject<ComposerInputRef | null>;
   effectiveSource: SessionSource | null;
@@ -60,6 +67,7 @@ interface UseChatPanelLaunchOptions {
 
 export function useChatPanelLaunch({
   isHumanMode,
+  hasAttachedImages,
   isCliTuiMode,
   composerInputRef,
   effectiveSource,
@@ -73,6 +81,7 @@ export function useChatPanelLaunch({
   setAttachedWorkItemContext,
   t,
 }: UseChatPanelLaunchOptions) {
+  const store = useStore();
   const runningLocation = useAtomValue(runningLocationAtom);
   const worktreeLaunchSelection = useAtomValue(worktreeLaunchSelectionAtom);
 
@@ -167,6 +176,39 @@ export function useChatPanelLaunch({
       }
     }
 
+    const text = composerInputRef.current?.getTextWithPills() ?? "";
+    const command = parseNativeSlashCommand(text);
+    if (command && !hasAttachedImages) {
+      try {
+        if (command.name === "plan" && command.args) {
+          throw new Error(
+            "Use /plan without arguments, then send the first message in the selected mode."
+          );
+        }
+        const remaining = await executeComposerCommand(command, {
+          openModel: () => store.set(modelSelectorAtom, { isOpen: true }),
+          showStatus: () => {
+            throw new Error("Open a session to use /status");
+          },
+          rename: async () => {
+            throw new Error("Open a session to use /rename");
+          },
+          setPlan: async () => {
+            store.set(creatorDefaultExecModeAtom, "plan");
+            store.set(creatorDefaultProductModeAtom, null);
+          },
+          dispatch: (action) => zodActionRegistry.execute(action, {}),
+        });
+        if (remaining !== undefined) {
+          composerInputRef.current?.setContent(remaining);
+          handleContentChangeWithTracking(remaining);
+          if (!remaining) return;
+        }
+      } catch (error) {
+        Message.error(error instanceof Error ? error.message : String(error));
+        return;
+      }
+    }
     return originalHandleLaunch();
   }, [
     cliAgentType,
@@ -178,6 +220,7 @@ export function useChatPanelLaunch({
     handleSessionStart,
     humanTitle,
     isHumanMode,
+    hasAttachedImages,
     isCliTuiMode,
     onOpenCliTerminal,
     originalHandleLaunch,
@@ -186,6 +229,7 @@ export function useChatPanelLaunch({
     setAttachedWorkItemContext,
     t,
     worktreeLaunchSelection,
+    store,
   ]);
 
   return {

@@ -11,6 +11,7 @@ name = "project_management"
 path = "src/lib.rs"
 
 [dependencies]
+notify = { workspace = true }
 core_types = { path = "../types" }
 app_paths = { path = "../app-paths" }
 app_utils = { path = "../app-utils" }
@@ -60,3 +61,6 @@ test_helpers = { path = "../test-helpers" }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "tls12", "ring"] }
 wiremock = "0.6"
 serial_test = "3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+kqueue = "1.2"

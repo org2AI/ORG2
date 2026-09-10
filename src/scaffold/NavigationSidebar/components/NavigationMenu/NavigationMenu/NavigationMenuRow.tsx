@@ -12,6 +12,7 @@ import {
 } from "@src/icons";
 import { ReferenceDragGhost } from "@src/shared/dnd/ReferenceDragGhost";
 
+import { SIDEBAR_STYLE } from "../../../config";
 import type { NavigationMenuItem } from "../config";
 import { NavigationMenuRowAccessorySlot } from "./RowAccessorySlot";
 import { NavigationMenuRowActionButton } from "./RowActionButton";
@@ -126,7 +127,7 @@ export const NavigationMenuParentRow = React.forwardRef<
         tabIndex={item.disabled ? -1 : 0}
         aria-expanded={isOpen}
         aria-disabled={item.disabled || undefined}
-        className={`group/parent flex h-8 items-center ${
+        className={`group/parent flex h-7 items-center ${
           item.disclosureFollowsLabel ? "justify-start" : "justify-between"
         } rounded-lg transition-colors duration-150 ${
           isChild ? "pr-2 pl-5" : "px-2"
@@ -353,6 +354,8 @@ export const NavigationMenuLeafRow = React.forwardRef<
       <div
         data-testid={item.dataTestId}
         data-tour-target={item.tourTarget}
+        // Keep the shared mobile session-row geometry independent of sidebar density.
+        style={{ height: SIDEBAR_STYLE.rowHeight }}
         data-menu-item-id={item.id}
         data-selected={isSelected ? "true" : "false"}
         role="button"

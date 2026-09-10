@@ -24,6 +24,7 @@ const {
 const repoRoot = path.resolve(__dirname, "..");
 
 module.exports = () => {
+  const isE2E = process.env.ORGII_E2E === "1" || process.env.WEBDRIVER === "1";
   const devServerPort = Number.parseInt(
     process.env.WEBPACK_DEV_SERVER_PORT ?? process.env.PORT ?? "1998",
     10
@@ -363,6 +364,11 @@ module.exports = () => {
       new rspack.DefinePlugin({
         "process.env.NODE_ENV": JSON.stringify("development"),
         "process.env.ORGII_DEV_EAGER_APP": JSON.stringify(String(eagerDevApp)),
+        // Match webpack: browser startup must never read a runtime process global.
+        "process.env.ORGII_E2E": JSON.stringify(isE2E ? "1" : "0"),
+        "process.env.ORGII_AGENT_ORG_REDESIGN": JSON.stringify(
+          isE2E ? "1" : (process.env.ORGII_AGENT_ORG_REDESIGN ?? "1")
+        ),
         "process.env.ORGII_IDE_SERVER_PORT": JSON.stringify(
           process.env.ORGII_IDE_SERVER_PORT ?? "13847"
         ),

@@ -39,7 +39,7 @@ import {
   type SessionTabDragStartDetail,
   type SessionTabTransfer,
 } from "@src/shared/dnd/sessionTabDrag";
-import type { ChatPanelSelectedChannel } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelSelectedChannel } from "@src/store/chatPanel/chatPanelTabsModel";
 import {
   LOCAL_CHANNEL_MESSAGES_STORAGE_KEY,
   type LocalChannelMessage,

@@ -1,53 +1,20 @@
-/**
- * ForceVisibleContext
- *
- * Provides context to force sidebar visibility even when collapsed.
- * Used by HoverSidebar to render sidebar content in floating mode.
- */
-import React, { createContext, useContext } from "react";
+/** Hover sidebars remain visible while the docked sidebar is collapsed. */
+import { type ReactNode, createContext, useContext } from "react";
 
-// ============================================
-// Context
-// ============================================
+const ForceVisibleSidebarContext = createContext(false);
 
-interface ForceVisibleSidebarContextValue {
-  forceVisible: boolean;
-}
-
-const ForceVisibleSidebarContext =
-  createContext<ForceVisibleSidebarContextValue>({
-    forceVisible: false,
-  });
-
-// ============================================
-// Hook
-// ============================================
-
-/**
- * Hook to check if sidebar should be forced visible
- */
 export function useForceVisibleSidebar(): boolean {
-  const context = useContext(ForceVisibleSidebarContext);
-  return context.forceVisible;
+  return useContext(ForceVisibleSidebarContext);
 }
 
-// ============================================
-// Provider
-// ============================================
-
-interface ForceVisibleSidebarProviderProps {
-  children: React.ReactNode;
-}
-
-/**
- * Provider that forces nested sidebars to be visible
- */
-export const ForceVisibleSidebarProvider: React.FC<
-  ForceVisibleSidebarProviderProps
-> = ({ children }) => {
+export function ForceVisibleSidebarProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
-    <ForceVisibleSidebarContext.Provider value={{ forceVisible: true }}>
+    <ForceVisibleSidebarContext.Provider value={true}>
       {children}
     </ForceVisibleSidebarContext.Provider>
   );
-};
+}

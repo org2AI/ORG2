@@ -17,7 +17,7 @@ import Button from "@src/components/Button";
 import PersonAvatar from "@src/components/PersonAvatar";
 import { Placeholder } from "@src/components/Placeholder";
 import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
-import { useCopyCheck } from "@src/hooks/ui";
+import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
   ArrowLeft01Icon,
   CancelCircleIcon,
@@ -192,7 +192,7 @@ function PrCommitCard({
   const copySha = useCallback(() => copyText(commit.sha), [commit.sha]);
   const { copied, handleCopy } = useCopyCheck(copySha);
   const commitChecks = readCommitChecks(checks, commit.sha);
-  const relativeTime = formatRelativeTime(commit.author.date, "long", locale);
+  const relativeTime = formatRelativeTime(commit.author.date, "long");
 
   return (
     <article className="group flex min-w-0 items-center overflow-hidden rounded-xl border border-border-1 bg-primary-container transition-colors hover:border-border-2">

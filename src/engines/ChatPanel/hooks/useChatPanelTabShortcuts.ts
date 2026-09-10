@@ -1,14 +1,18 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 
+import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
 import {
   closeAndDestroyChatPanelTabAtom,
   nextChatPanelTabAtom,
   prevChatPanelTabAtom,
 } from "@src/store/chatPanel/chatPanelTabLifecycleAtoms";
+import {
+  goBackChatPanelTabAtom,
+  goForwardChatPanelTabAtom,
+} from "@src/store/chatPanel/chatPanelTabNavigationAtoms";
 import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
-import { isMacOS } from "@src/util/platform/tauri";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 
 import { resolveChatPanelShortcutOwnership } from "./chatPanelShortcutOwnership";
 
@@ -19,19 +23,12 @@ export interface UseChatPanelTabShortcutsOptions {
   containerRef?: RefObject<HTMLElement | null>;
 }
 
-type ModifierState = Pick<KeyboardEvent, "ctrlKey" | "metaKey">;
-
-export function isChatPanelPrimaryModifierPressed(
-  event: ModifierState,
-  macOS = isMacOS()
-): boolean {
-  return macOS ? event.metaKey : event.ctrlKey;
-}
-
 /**
- * Chat-panel-scoped tab shortcuts (⌘W / ⌘] / ⌘[ / ⌘N) plus the global
- * "create-chat-tab" event. Mounted by ChatPanel unconditionally so the
- * shortcuts work even when the visual tab strip is not rendered.
+ * Chat-panel-scoped tab shortcuts plus the global "create-chat-tab" event.
+ * Mounted by ChatPanel unconditionally so the shortcuts work even when the
+ * visual tab strip is not rendered. Bracket bindings follow the browser
+ * convention the editor already uses: ⌘[ / ⌘] walk the active tab's session
+ * history, ⇧⌘[ / ⇧⌘] switch tabs.
  */
 export function useChatPanelTabShortcuts({
   onNewSession,
@@ -43,6 +40,8 @@ export function useChatPanelTabShortcuts({
   const closeTab = useSetAtom(closeAndDestroyChatPanelTabAtom);
   const nextTab = useSetAtom(nextChatPanelTabAtom);
   const prevTab = useSetAtom(prevChatPanelTabAtom);
+  const goBack = useSetAtom(goBackChatPanelTabAtom);
+  const goForward = useSetAtom(goForwardChatPanelTabAtom);
 
   const tabsRef = useRef(state);
   const paneOwnsShortcutsRef = useRef(containerRef === undefined);
@@ -82,9 +81,8 @@ export function useChatPanelTabShortcuts({
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (!isChatPanelMaximized && !paneOwnsShortcutsRef.current) return;
-      if (!isChatPanelPrimaryModifierPressed(event)) return;
 
-      if (event.key.toLowerCase() === "w" && !event.shiftKey) {
+      if (matchesShortcut(event, "close_tab")) {
         const active = tabsRef.current.tabs.find(
           (tab) => tab.id === tabsRef.current.activeTabId
         );
@@ -95,25 +93,34 @@ export function useChatPanelTabShortcuts({
         }
         return;
       }
-      if (event.key === "]") {
+      const navigation = [
+        ["chat_next_tab", nextTab],
+        ["chat_prev_tab", prevTab],
+        ["chat_go_forward", goForward],
+        ["chat_go_back", goBack],
+      ] as const;
+      const action = navigation.find(([id]) => matchesShortcut(event, id));
+      if (action) {
         event.preventDefault();
         event.stopPropagation();
-        nextTab();
+        action[1]();
         return;
       }
-      if (event.key === "[") {
-        event.preventDefault();
-        event.stopPropagation();
-        prevTab();
-        return;
-      }
-      if (event.key.toLowerCase() === "n" && !event.shiftKey) {
+      if (matchesShortcut(event, "new_session")) {
         event.preventDefault();
         event.stopPropagation();
         onNewSession();
       }
     },
-    [closeTab, isChatPanelMaximized, nextTab, onNewSession, prevTab]
+    [
+      closeTab,
+      goBack,
+      goForward,
+      isChatPanelMaximized,
+      nextTab,
+      onNewSession,
+      prevTab,
+    ]
   );
 
   useEffect(() => {

@@ -16,6 +16,7 @@ import type {
   RemoteTeammateSessionMetadata,
 } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session/sessionAtom/types";
+import { isManagedNativeHistoryMirror } from "@src/util/session/sessionVisibility";
 
 import {
   createDefaultAccessSettings,
@@ -86,9 +87,10 @@ export function buildCloudSessionMetadata(
 
 /** True for local sessions that may ever be pushed to the cloud. */
 export function isCloudPushCandidate(
-  session: Pick<Session, "importedFrom">
+  session: Pick<Session, "importedFrom" | "clientOrigin">
 ): boolean {
   // Imported teammate copies must never round-trip under the local user.
-  // The user's own external history has no importedFrom and remains shareable.
-  return !session.importedFrom;
+  // Ordinary external history remains shareable. A managed native mirror is
+  // readable by ID, but only its owning conversation may publish it.
+  return !session.importedFrom && !isManagedNativeHistoryMirror(session);
 }

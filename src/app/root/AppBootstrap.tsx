@@ -20,6 +20,7 @@ import { useModelAliasRegistry } from "@src/hooks/models";
 import {
   useCrossWindowSettingsSync,
   useDevModeGuard,
+  useDockIconPreference,
   useEditorAppearanceStyles,
   usePointerCursorPreference,
   useSleepInhibitor,
@@ -51,7 +52,7 @@ import { usePostPaintGitProbe } from "./usePostPaintGitProbe";
 // to `null`, so the `import()` and its chunk are eliminated with it. E2E specs
 // already poll for `window.__e2e` in `waitForApp` before invoking helpers.
 const E2EBootstrap =
-  process.env.NODE_ENV !== "production"
+  process.env.NODE_ENV !== "production" || process.env.ORGII_E2E === "1"
     ? lazy(() =>
         import("./E2EBootstrap").then((module) => ({
           default: module.E2EBootstrap,
@@ -77,6 +78,7 @@ export const AppBootstrap: FC = () => {
   useEditorAppearanceStyles();
   useAppSkin();
   usePointerCursorPreference();
+  useDockIconPreference();
   useDevModeGuard();
   useSleepInhibitor();
   useAppShellEffects();

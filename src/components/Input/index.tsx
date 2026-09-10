@@ -119,7 +119,17 @@ export interface InputProps extends Omit<
    * Input type
    * @default 'text'
    */
-  type?: "text" | "password" | "email" | "number" | "tel" | "url" | "search";
+  type?:
+    | "text"
+    | "password"
+    | "email"
+    | "number"
+    | "tel"
+    | "url"
+    | "search"
+    | "time"
+    | "date"
+    | "datetime-local";
 
   /**
    * Show password visibility toggle (for password type)

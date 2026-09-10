@@ -3,18 +3,16 @@ import {
   type SettingsKey,
 } from "@src/config/settingsSchema";
 
-import { AGENT_SETTINGS_UI_SECTIONS } from "./sections/agent";
 import { APP_SETTINGS_UI_SECTIONS } from "./sections/app";
 import { INTEGRATIONS_SETTINGS_UI_SECTIONS } from "./sections/integrations";
 import type { SettingsSectionDefinition, SettingsTabId } from "./types";
 
 /**
  * Single source for settings navigation and section rendering metadata.
- * Sections can be fully declarative (containers/rows) or custom-slot based.
+ * App sections render custom slots; integration entries track key coverage.
  */
 const SETTINGS_UI_SECTIONS: SettingsSectionDefinition[] = [
   ...APP_SETTINGS_UI_SECTIONS,
-  ...AGENT_SETTINGS_UI_SECTIONS,
   ...INTEGRATIONS_SETTINGS_UI_SECTIONS,
 ];
 
@@ -35,14 +33,6 @@ export function getManifestCoveredKeys(): SettingsKey[] {
 
   SETTINGS_UI_SECTIONS.forEach((section) => {
     section.coveredKeys?.forEach((key) => keySet.add(key));
-
-    section.containers?.forEach((container) => {
-      container.rows.forEach((row) => {
-        if (row.kind === "field") {
-          keySet.add(row.key);
-        }
-      });
-    });
   });
 
   return [...keySet];

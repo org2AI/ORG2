@@ -15,6 +15,8 @@ export interface NavigationMenuRowAction {
   iconClassName?: string;
   label: string;
   active?: boolean;
+  /** Reveal this section action when the pointer is anywhere in the sidebar. */
+  showOnSidebarHover?: boolean;
   /** Stable rendered selector for high-value header/row actions. */
   dataTestId?: string;
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -23,19 +25,13 @@ export interface NavigationMenuRowAction {
 type NavigationMenuIconAction = NavigationMenuRowAction;
 
 /**
- * Navigation menu item configuration
- * Defines structure for menu items used in sidebar navigation
- *
- * Tab Types:
- * - mainApp: app, terminal, browser
- * - code: editor
+ * Sidebar navigation item configuration, including optional route targets,
+ * nested items, and row actions.
  */
 export interface NavigationMenuItem {
   id: string;
   key: string;
   label: string;
-  /** Optional hidden text used by sidebar search/filtering. */
-  searchText?: string;
   /** Optional secondary line rendered below the label (e.g. branch name). */
   subtitle?: ReactNode;
   /** Glyph data or a brand component (`""` = no icon) — rendered via `AnyIcon`. */
@@ -84,8 +80,6 @@ export interface NavigationMenuItem {
   /** This row opens a chat-panel tab and supports explicit new-tab navigation. */
   opensChatPanelTab?: boolean;
   routePath?: string;
-  /** Tab type for proper tab handling */
-  tabType?: "app" | "terminal" | "browser" | "editor";
   children?: NavigationMenuItem[];
   /**
    * For a row that has `children` (renders as an expandable parent): the row

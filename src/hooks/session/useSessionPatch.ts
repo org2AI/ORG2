@@ -441,3 +441,17 @@ export function useSessionReplyField(sessionId: string) {
     error,
   };
 }
+
+/** Command writes share the same optimistic persistence/rollback owner as pills. */
+export function useSessionCommandActions(sessionId: string) {
+  const { patch } = usePatchSession();
+  const setPlan = useCallback(
+    () => patch(sessionId, { productMode: "plan", agentExecMode: "plan" }),
+    [patch, sessionId]
+  );
+  const rename = useCallback(
+    (name: string) => patch(sessionId, { name }),
+    [patch, sessionId]
+  );
+  return { setPlan, rename };
+}

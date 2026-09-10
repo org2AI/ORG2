@@ -53,6 +53,11 @@ pub(super) struct ClaudeJsonlLine {
     pub(super) r#type: String,
     #[serde(default)]
     pub(super) subtype: String,
+    /// Provider-owned local command output (not an assistant message).
+    #[serde(default)]
+    pub(super) content: Option<String>,
+    #[serde(default)]
+    pub(super) level: String,
     #[serde(default)]
     pub(super) summary: String,
     /// `ai-title` records: the auto-generated title shown in the Claude Code app.
@@ -94,6 +99,12 @@ pub(super) struct ClaudeJsonlLine {
     /// loop ticks) that Claude Code's own UI hides from the conversation.
     #[serde(default)]
     pub(super) is_meta: bool,
+    /// Claude Code writes the model-facing summary immediately after a
+    /// `system/compact_boundary` row as a `user` record. It is provider
+    /// context metadata, not a human-authored turn and must never render as
+    /// "Shared user" or enter ORGII's portable role transcript.
+    #[serde(default)]
+    pub(super) is_compact_summary: bool,
     /// Provenance of a user line. Observed kinds: `human` (typed prompt) and
     /// `task-notification` (background-task completion wake).
     #[serde(default)]
@@ -111,6 +122,10 @@ pub(super) fn is_harness_injected_user_line(parsed: &ClaudeJsonlLine) -> bool {
         parsed.is_meta,
         parsed.origin.as_ref().map(|origin| origin.kind.as_str()),
     )
+}
+
+pub(super) fn is_claude_compact_summary(parsed: &ClaudeJsonlLine) -> bool {
+    parsed.r#type == "user" && parsed.is_compact_summary
 }
 
 #[derive(Debug, Deserialize)]

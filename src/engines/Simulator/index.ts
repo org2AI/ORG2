@@ -4,8 +4,7 @@
  * Activity simulator for replaying agent sessions.
  *
  * @example
- * import { ActivitySimulator, useSimEventRenderer } from "@src/engines/Simulator";
+ * import { ActivitySimulator } from "@src/engines/Simulator";
  */
 
-export { ActivitySimulator } from "./exports";
-export { useSimEventRenderer } from "./hooks/useSimEventRenderer";
+export { default as ActivitySimulator } from "./ActivitySimulator";

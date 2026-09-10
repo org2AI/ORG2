@@ -19,7 +19,7 @@
 import i18next from "i18next";
 import React, { memo } from "react";
 
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import { useResizeContextMenu } from "@src/hooks/ui/useResizeContextMenu";
 import { useResizeHandle } from "@src/hooks/ui/useResizeHandle";
 import {
@@ -133,6 +133,7 @@ export const WorkStationShell: React.FC<WorkStationShellProps> = memo(
     className,
     appClassName,
   }) => {
+    const sidebarShortcut = useShortcutKeys("toggle_workstation_sidebar");
     const resolvedPrimarySidebar = {
       content: primarySidebarConfig?.content,
       collapsed:
@@ -262,7 +263,7 @@ export const WorkStationShell: React.FC<WorkStationShellProps> = memo(
           onMouseDown={handlePrimarySidebarResize}
           onContextMenu={handlePrimarySidebarContextMenu}
           tooltipLabel={i18next.t("common:commands.hidePrimarySidebar")}
-          tooltipShortcut={getShortcutKeys("toggle_workstation_sidebar")}
+          tooltipShortcut={sidebarShortcut}
         />
       );
 

@@ -18,8 +18,7 @@
  * }
  * ```
  */
-import { type UnlistenFn, listen } from "@tauri-apps/api/event";
-import { useEffect } from "react";
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 
 import { useFlowAwareness } from "./useFlowAwareness";
 
@@ -62,42 +61,28 @@ export function useGlobalFlowTracker(): void {
     enabled: true,
   });
 
-  useEffect(() => {
-    const unlistenFns: UnlistenFn[] = [];
+  useTauriListen<FileChangedEvent>("file:changed", ({ path, kind }) => {
+    const editType =
+      kind === "created"
+        ? "create"
+        : kind === "deleted"
+          ? "delete"
+          : kind === "renamed"
+            ? "rename"
+            : "modify";
+    recordFileEdit(path, editType);
+  });
 
-    // ========================================
-    // File Changes (file:changed)
-    // ========================================
-    listen<FileChangedEvent>("file:changed", (event) => {
-      const { path, kind } = event.payload;
-      const editType =
-        kind === "created"
-          ? "create"
-          : kind === "deleted"
-            ? "delete"
-            : kind === "renamed"
-              ? "rename"
-              : "modify";
-      recordFileEdit(path, editType);
-    }).then((unlisten) => unlistenFns.push(unlisten));
+  // Track branch changes as git operations
+  useTauriListen<RepoChangedEvent>("repo:changed", ({ change_type }) => {
+    if (change_type === "branch") {
+      recordGitOperation("branch_switch");
+    }
+  });
 
-    // ========================================
-    // Git Operations (repo:changed with git_meta/branch)
-    // ========================================
-    listen<RepoChangedEvent>("repo:changed", (event) => {
-      const { change_type } = event.payload;
-      // Track branch changes as git operations
-      if (change_type === "branch") {
-        recordGitOperation("branch_switch");
-      }
-    }).then((unlisten) => unlistenFns.push(unlisten));
-
-    // ========================================
-    // Lint Diagnostics (lint:tool_completed)
-    // ========================================
-    listen<LintToolCompletedEvent>("lint:tool_completed", (event) => {
-      const { diagnostics, error } = event.payload;
-
+  useTauriListen<LintToolCompletedEvent>(
+    "lint:tool_completed",
+    ({ diagnostics, error }) => {
       // Record tool-level errors
       if (error) {
         recordError("lint", error);
@@ -109,10 +94,6 @@ export function useGlobalFlowTracker(): void {
           recordError("lint", diag.message, diag.file, diag.line);
         }
       }
-    }).then((unlisten) => unlistenFns.push(unlisten));
-
-    return () => {
-      unlistenFns.forEach((unlisten) => unlisten());
-    };
-  }, [recordFileEdit, recordGitOperation, recordError]);
+    }
+  );
 }

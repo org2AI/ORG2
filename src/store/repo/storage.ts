@@ -49,18 +49,6 @@ export const REPO_STORAGE_KEYS = {
  */
 export const CACHE_INVALIDATION_KEY = "orgii_repo_cache_invalidated_at";
 
-/**
- * Get the last cache invalidation timestamp
- */
-export function getCacheInvalidationTimestamp(): number {
-  try {
-    const stored = localStorage.getItem(CACHE_INVALIDATION_KEY);
-    return stored ? parseInt(stored, 10) : 0;
-  } catch {
-    return 0;
-  }
-}
-
 // ============================================
 // Storage Helpers
 // ============================================
@@ -145,16 +133,7 @@ export function resetRepoStore(): void {
     store.set(atoms.branchesAtom, []);
     store.set(atoms.repoLoadingAtom, false);
     store.set(atoms.branchLoadingAtom, false);
-    store.set(atoms.repoErrorAtom, null);
-    store.set(atoms.repoLastLoadedAtom, null);
     store.set(atoms.repoFilterAtom, "");
-    // Reset freshness tracking
-    store.set(atoms.repoLastCheckAtom, null);
-    store.set(atoms.repoIsFreshAtom, false);
-
-    // Note: globalSelectedRepoIdAtom and globalSelectedBranchAtom in globalSelectorAtom.ts
-    // are just re-exports of selectedRepoIdAtom and selectedBranchAtom, so they're
-    // already reset above. No need to reset them separately.
 
     // 3. Set cache invalidation timestamp for components that check it on mount
     localStorage.setItem(CACHE_INVALIDATION_KEY, Date.now().toString());
@@ -213,8 +192,7 @@ export function getOpenedReposMap(): OpenedReposMap {
  * selection: they live alongside main-app windows but the user never
  * "opens a repo" into them. They still mount React and run
  * `useRepoSelection`, so without filtering they would pollute the
- * cross-window registry and `getWindowIdsForRepo` would return them
- * as candidates for "focus existing window".
+ * cross-window registry with specialty windows.
  *
  * Main-app windows are `"main"` and any timestamp-suffixed clones
  * (e.g. `main-1715648400000`). Anything else listed here is a
@@ -230,23 +208,6 @@ export function isMainAppWindowLabel(windowId: string): boolean {
   if (windowId === "tab") return false;
   if (windowId === "welcome") return false;
   return true;
-}
-
-/**
- * Get all main-app window IDs that have a specific repo open.
- *
- * Specialty windows (wingman, etc.) are filtered out — see
- * `isMainAppWindowLabel`.
- */
-export function getWindowIdsForRepo(repoId: string): string[] {
-  const map = getOpenedReposMap();
-  const windowIds: string[] = [];
-  for (const [windowId, openRepoId] of Object.entries(map)) {
-    if (openRepoId === repoId && isMainAppWindowLabel(windowId)) {
-      windowIds.push(windowId);
-    }
-  }
-  return windowIds;
 }
 
 /**

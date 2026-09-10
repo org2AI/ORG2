@@ -15,9 +15,13 @@ pub mod agent_core_bridge;
 pub mod commands;
 pub mod hook_approvals;
 pub mod launch_profile_store;
+mod native_ir;
+pub mod native_materializer;
+mod native_store;
 pub mod native_transcript;
 pub mod parsers;
 pub mod persistence;
+mod permission_lifecycle;
 pub mod platform_adapters;
 pub mod session_runner;
 pub mod skill_sync;
@@ -61,6 +65,7 @@ pub fn init_cli_agent_tables(conn: &Connection) -> SqliteResult<()> {
             project_slug TEXT,
             work_item_id TEXT,
             agent_role TEXT,
+            agent_definition_id TEXT,
             created_at     TEXT NOT NULL,
             updated_at     TEXT NOT NULL
         );
@@ -84,6 +89,8 @@ pub fn init_cli_agent_tables(conn: &Connection) -> SqliteResult<()> {
             session_id     TEXT NOT NULL REFERENCES code_sessions(session_id) ON DELETE CASCADE,
             profile_key    TEXT NOT NULL,
             cli_session_id TEXT NOT NULL,
+            native_catalog_requested_revision INTEGER NOT NULL DEFAULT 0,
+            native_catalog_applied_revision   INTEGER NOT NULL DEFAULT 0,
             updated_at     TEXT NOT NULL,
             PRIMARY KEY (session_id, profile_key)
         );
@@ -109,6 +116,14 @@ pub fn init_cli_agent_tables(conn: &Connection) -> SqliteResult<()> {
             ON code_session_image_refs(image_path);
         ",
     )?;
+
+    // Existing installations predate durable native-App catalog receipts.
+    // These additive columns deliberately live on the resume binding owner:
+    // they describe whether that exact provider UUID still needs its native
+    // application's discovery metadata refreshed. Do not suppress arbitrary
+    // ALTER failures here; only the standard duplicate-column race is safe to
+    // treat as an already-applied migration.
+    ensure_native_catalog_revision_columns(conn)?;
 
     conn.execute("ALTER TABLE code_session_chunks DROP COLUMN stage_name", [])
         .ok();
@@ -143,6 +158,11 @@ pub fn init_cli_agent_tables(conn: &Connection) -> SqliteResult<()> {
         .ok();
     conn.execute("ALTER TABLE code_sessions ADD COLUMN agent_role TEXT", [])
         .ok();
+    conn.execute(
+        "ALTER TABLE code_sessions ADD COLUMN agent_definition_id TEXT",
+        [],
+    )
+    .ok();
     // Product-mode axis (orgtrack/v1 §5.2) for CLI sessions: parity with
     // agent_sessions so external CLIs can enter Project mode.
     conn.execute("ALTER TABLE code_sessions ADD COLUMN product_mode TEXT", [])
@@ -328,6 +348,40 @@ pub fn init_cli_agent_tables(conn: &Connection) -> SqliteResult<()> {
     Ok(())
 }
 
+fn ensure_native_catalog_revision_columns(conn: &Connection) -> SqliteResult<()> {
+    for (column, statement) in [
+        (
+            "native_catalog_requested_revision",
+            "ALTER TABLE code_session_cli_resume_state
+             ADD COLUMN native_catalog_requested_revision INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "native_catalog_applied_revision",
+            "ALTER TABLE code_session_cli_resume_state
+             ADD COLUMN native_catalog_applied_revision INTEGER NOT NULL DEFAULT 0",
+        ),
+    ] {
+        let present = conn
+            .prepare("PRAGMA table_info(code_session_cli_resume_state)")?
+            .query_map([], |row| row.get::<_, String>(1))?
+            .collect::<Result<Vec<_>, _>>()?
+            .iter()
+            .any(|candidate| candidate == column);
+        if present {
+            continue;
+        }
+        match conn.execute(statement, []) {
+            Ok(_) => {}
+            Err(rusqlite::Error::SqliteFailure(_, Some(message)))
+                if message
+                    .to_ascii_lowercase()
+                    .contains("duplicate column name") => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
 /// One-time migration: remove `<ide_context>...</ide_context>` blocks from stored
 /// user input and user_message chunks so they don't appear in chat history UI.
 fn migrate_strip_ide_context(conn: &Connection) {
@@ -394,4 +448,44 @@ fn migrate_strip_ide_context(conn: &Connection) {
         rusqlite::params![MARKER, chrono::Utc::now().to_rfc3339()],
     )
     .ok();
+}
+
+#[cfg(test)]
+mod native_catalog_revision_migration_tests {
+    use super::*;
+
+    #[test]
+    fn upgrades_legacy_resume_state_idempotently() {
+        let conn = Connection::open_in_memory().expect("open legacy database");
+        init_cli_agent_tables(&conn).expect("prime surrounding CLI schema");
+        conn.execute_batch(
+            "DROP TABLE code_session_cli_resume_state;
+             CREATE TABLE code_session_cli_resume_state (
+                session_id TEXT NOT NULL,
+                profile_key TEXT NOT NULL,
+                cli_session_id TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (session_id, profile_key)
+             );
+             INSERT INTO code_session_cli_resume_state
+                (session_id, profile_key, cli_session_id, updated_at)
+             VALUES ('session-1', 'account-1', 'native-1', '2026-09-04T00:00:00Z');",
+        )
+        .expect("create legacy resume-state schema");
+
+        init_cli_agent_tables(&conn).expect("upgrade legacy schema");
+        init_cli_agent_tables(&conn).expect("repeat upgrade");
+
+        let revisions = conn
+            .query_row(
+                "SELECT native_catalog_requested_revision,
+                        native_catalog_applied_revision
+                 FROM code_session_cli_resume_state
+                 WHERE session_id = 'session-1' AND profile_key = 'account-1'",
+                [],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+            )
+            .expect("read migrated binding");
+        assert_eq!(revisions, (0, 0));
+    }
 }

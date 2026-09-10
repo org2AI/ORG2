@@ -22,7 +22,7 @@ import {
   useWorkItemImageInsert,
   workItemDraftToStubWorkItem,
 } from "@src/hooks/project";
-import { useUndoStackWithRestore } from "@src/hooks/ui";
+import { useUndoStackWithRestore } from "@src/hooks/ui/useUndoableState";
 import { DeliveryBox01Icon, HugeiconsIcon } from "@src/icons";
 import {
   CreateComposerTitleInput,
@@ -88,6 +88,7 @@ export interface InlineCreateWorkItemFieldsState {
   clearDraft: () => void;
   setDraft: (draft: WorkItemDraft) => void;
   showManualInputs: boolean;
+  statusOrgId: string;
   stubWorkItem: WorkItemExtended;
   titleSection: React.ReactNode;
   updateDraft: (patch: Partial<WorkItemDraft>) => void;
@@ -97,6 +98,7 @@ export interface InlineCreateWorkItemFieldsState {
 }
 
 export interface UseInlineCreateWorkItemFieldsOptions {
+  draftId?: string;
   aiGenerateMode?: boolean;
   availableLabels?: WorkItemLabel[];
   availableMembers?: Person[];
@@ -122,6 +124,7 @@ export interface UseInlineCreateWorkItemFieldsOptions {
 }
 
 export function useInlineCreateWorkItemFields({
+  draftId,
   aiGenerateMode = false,
   availableLabels = [],
   availableMembers = [],
@@ -155,6 +158,7 @@ export function useInlineCreateWorkItemFields({
 
   const { draft, updateDraft, setDraft, resetDraft, clearDraft } =
     useWorkItemCreatorDraft({
+      draftId,
       seedProjectId: projectId,
       defaultProjectId,
       onSetUnsaved,
@@ -427,6 +431,7 @@ export function useInlineCreateWorkItemFields({
   const inlinePropertyPills = !propertiesOpen ? (
     <div data-testid="create-work-item-property-pills">
       <WorkItemProperties
+        statusOrgId={effectiveOrgId}
         workItem={stubWorkItem}
         onUpdate={handlePropertyUpdate}
         availableProjects={resolvedProjects}
@@ -511,6 +516,7 @@ export function useInlineCreateWorkItemFields({
     setEditorMode,
     setDraft,
     showManualInputs,
+    statusOrgId: effectiveOrgId,
     stubWorkItem,
     titleSection,
     updateDraft,

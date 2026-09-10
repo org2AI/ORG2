@@ -68,7 +68,7 @@ export function useDecorateSessionRowActions({
             rowActions: [
               {
                 icon: Cancel01Icon,
-                label: tCommon("sessions:sidebar.removeDraft", "Remove draft"),
+                label: tCommon("sessions:kanban.sidebar.removeDraft"),
                 onClick: () => deleteSessionCreatorDraft(draftId),
               },
             ],
@@ -89,8 +89,8 @@ export function useDecorateSessionRowActions({
           rowActions.push({
             icon: expanded ? ChevronsDownUpIcon : UnfoldMoreIcon,
             label: expanded
-              ? tCommon("sessions:sidebar.hideSubagents", "Hide subagents")
-              : tCommon("sessions:sidebar.showSubagents", "Show subagents"),
+              ? tCommon("sessions:kanban.sidebar.hideSubagents")
+              : tCommon("sessions:kanban.sidebar.showSubagents"),
             onClick: () => handleToggleSubagentExpansion(item.id),
           });
         }

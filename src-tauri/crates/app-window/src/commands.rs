@@ -13,10 +13,6 @@
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 #[cfg(target_os = "macos")]
-use objc2::msg_send;
-#[cfg(target_os = "macos")]
-use objc2::runtime::{AnyClass, AnyObject};
-#[cfg(target_os = "macos")]
 use tauri::{LogicalPosition, Position, TitleBarStyle};
 
 /// Set the native zoom factor for the main application WebView.
@@ -45,185 +41,6 @@ pub async fn set_webview_zoom(webview: tauri::Webview, scale_factor: f64) -> Res
         .map_err(|err| format!("Failed to set WebView zoom: {}", err))?;
 
     Ok(())
-}
-
-/// Toggle vibrancy and webview transparency on the main window.
-///
-/// Used before navigating to external pages (e.g. Stripe Checkout)
-/// that don't have full-page opaque backgrounds. Both the vibrancy layer
-/// and the WKWebView's drawsBackground must be toggled to prevent
-/// the desktop from bleeding through.
-///
-/// Accepts either a base64-encoded wallpaper image or a solid RGB color
-/// to set as the native window background while the external page is shown.
-#[tauri::command]
-pub async fn set_window_vibrancy(
-    app: AppHandle,
-    enabled: bool,
-    bg_color: Option<[u8; 3]>,
-    bg_image_base64: Option<String>,
-) -> Result<(), String> {
-    let window = app
-        .get_webview_window("main")
-        .ok_or("Main window not found")?;
-
-    #[cfg(target_os = "macos")]
-    {
-        use base64::Engine as _;
-
-        if enabled {
-            super::apply_macos_window_material(&window);
-        } else {
-            super::clear_macos_window_material(&window);
-        }
-
-        let image_bytes: Option<Vec<u8>> = bg_image_base64
-            .and_then(|b64| base64::engine::general_purpose::STANDARD.decode(b64).ok());
-
-        let ns_window_ptr = window
-            .ns_window()
-            .map_err(|e| format!("Failed to get NSWindow: {}", e))?;
-        let ns_window_addr = ns_window_ptr as usize;
-        let draws_bg = !enabled;
-        let rgb = bg_color.unwrap_or([255, 255, 255]);
-
-        dispatch2::DispatchQueue::main().exec_sync(move || {
-            let ns_win = ns_window_addr as *mut AnyObject;
-            unsafe {
-                remove_bg_image_view(ns_win);
-
-                let ns_color_class = AnyClass::get(c"NSColor").expect("NSColor");
-                if draws_bg {
-                    if let Some(ref bytes) = image_bytes {
-                        add_bg_image_view(ns_win, bytes);
-                    }
-                    let r = rgb[0] as f64 / 255.0;
-                    let g = rgb[1] as f64 / 255.0;
-                    let b = rgb[2] as f64 / 255.0;
-                    let bg: *mut AnyObject = msg_send![
-                        ns_color_class,
-                        colorWithSRGBRed: r,
-                        green: g,
-                        blue: b,
-                        alpha: 1.0_f64,
-                    ];
-                    let _: () = msg_send![ns_win, setBackgroundColor: bg];
-                } else {
-                    let clear: *mut AnyObject = msg_send![ns_color_class, clearColor];
-                    let _: () = msg_send![ns_win, setBackgroundColor: clear];
-                }
-
-                let content_view: *mut AnyObject = msg_send![ns_win, contentView];
-                set_draws_background_recursive(content_view, draws_bg);
-            }
-        });
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    let _ = (window, enabled, bg_color, bg_image_base64);
-
-    Ok(())
-}
-
-// ============================================
-// macOS background-image helpers
-// ============================================
-
-#[cfg(target_os = "macos")]
-const BG_IMAGE_VIEW_TAG: isize = 98765;
-
-/// Create an NSImageView from raw image bytes and insert it behind all
-/// other subviews of the window's contentView.
-#[cfg(target_os = "macos")]
-unsafe fn add_bg_image_view(ns_win: *mut AnyObject, image_bytes: &[u8]) {
-    use objc2_foundation::NSRect;
-
-    let ns_data_class = AnyClass::get(c"NSData").expect("NSData");
-    let ns_data: *mut AnyObject = msg_send![
-        ns_data_class,
-        dataWithBytes: image_bytes.as_ptr(),
-        length: image_bytes.len(),
-    ];
-    if ns_data.is_null() {
-        return;
-    }
-
-    let ns_image_class = AnyClass::get(c"NSImage").expect("NSImage");
-    let ns_image: *mut AnyObject = msg_send![ns_image_class, alloc];
-    let ns_image: *mut AnyObject = msg_send![ns_image, initWithData: ns_data];
-    if ns_image.is_null() {
-        return;
-    }
-
-    let content_view: *mut AnyObject = msg_send![ns_win, contentView];
-    let bounds: NSRect = msg_send![content_view, bounds];
-
-    let image_view_class = AnyClass::get(c"NSImageView").expect("NSImageView");
-    let image_view: *mut AnyObject = msg_send![image_view_class, alloc];
-    let image_view: *mut AnyObject = msg_send![image_view, initWithFrame: bounds];
-    if image_view.is_null() {
-        return;
-    }
-
-    let _: () = msg_send![image_view, setImage: ns_image];
-    // NSImageScaleAxesIndependently = 1 (stretch to fill frame)
-    let _: () = msg_send![image_view, setImageScaling: 1_usize];
-    // NSViewWidthSizable | NSViewHeightSizable = 2 | 16
-    let _: () = msg_send![image_view, setAutoresizingMask: 18_usize];
-    let _: () = msg_send![image_view, setTag: BG_IMAGE_VIEW_TAG];
-
-    let subviews: *mut AnyObject = msg_send![content_view, subviews];
-    let count: usize = msg_send![subviews, count];
-    if count > 0 {
-        let first: *mut AnyObject = msg_send![subviews, objectAtIndex: 0_usize];
-        // NSWindowBelow = -1 → insert behind existing views
-        let _: () = msg_send![
-            content_view,
-            addSubview: image_view,
-            positioned: -1_isize,
-            relativeTo: first,
-        ];
-    } else {
-        let _: () = msg_send![content_view, addSubview: image_view];
-    }
-}
-
-/// Remove the background image view (if any) from the window's contentView.
-#[cfg(target_os = "macos")]
-unsafe fn remove_bg_image_view(ns_win: *mut AnyObject) {
-    let content_view: *mut AnyObject = msg_send![ns_win, contentView];
-    let tagged: *mut AnyObject = msg_send![content_view, viewWithTag: BG_IMAGE_VIEW_TAG];
-    if !tagged.is_null() {
-        let _: () = msg_send![tagged, removeFromSuperview];
-    }
-}
-
-/// Recursively find WKWebView subviews and set their _drawsBackground property.
-#[cfg(target_os = "macos")]
-unsafe fn set_draws_background_recursive(view: *mut AnyObject, draws: bool) {
-    use objc2::runtime::Bool;
-
-    if view.is_null() {
-        return;
-    }
-
-    let class_name: *mut AnyObject = msg_send![view, className];
-    let class_str: *const std::os::raw::c_char = msg_send![class_name, UTF8String];
-    if !class_str.is_null() {
-        let name = std::ffi::CStr::from_ptr(class_str).to_string_lossy();
-        if name.contains("WKWebView") {
-            let val: Bool = Bool::new(draws);
-            let _: () = msg_send![view, _setDrawsBackground: val];
-            return;
-        }
-    }
-
-    let subviews: *mut AnyObject = msg_send![view, subviews];
-    let count: usize = msg_send![subviews, count];
-    for idx in 0..count {
-        let subview: *mut AnyObject = msg_send![subviews, objectAtIndex: idx];
-        set_draws_background_recursive(subview, draws);
-    }
 }
 
 /// Remove the startup background from the CALLING window. Every window's
@@ -276,6 +93,21 @@ pub async fn set_window_root_tint(
     let _ = (window, color);
 
     Ok(())
+}
+
+/// Switch the icon the running app shows in the Dock / taskbar.
+///
+/// `variant` is the `general.dockIcon` setting value (`"dark"` | `"light"` | `"rainbow"`).
+/// Unknown values are rejected rather than coerced so a schema drift between
+/// TS and Rust surfaces as an error instead of silently resetting the icon.
+/// The stored value is re-applied at launch by
+/// [`super::dock_icon::apply_stored_dock_icon`]; this command covers live
+/// changes from the Appearance settings.
+#[tauri::command]
+pub async fn set_dock_icon(app: AppHandle, variant: String) -> Result<(), String> {
+    let variant = super::dock_icon::DockIconVariant::parse(&variant)
+        .ok_or_else(|| format!("Unknown dock icon variant: {variant:?}"))?;
+    super::dock_icon::apply_dock_icon(&app, variant)
 }
 
 // ============================================
@@ -395,22 +227,18 @@ pub async fn open_session_window(
     // Reposition the traffic lights (the builder option alone is unreliable
     // for dynamically created windows), mount the same vibrancy material the
     // main window uses, and then clear the builder's opaque backdrop so the
-    // webview composites onto that material from its very first frame.
-    //
-    // Deliberately NOT `apply_window_background_color` (what
-    // `recreate_main_window` does). That helper enables WKWebView background
-    // drawing, and the webview then paints its own base colour — plus the
-    // opaque `--splash-bg` plate from index.html — over the material for the
-    // whole bundle boot. On a light theme that is a full-window white
-    // rectangle, with the splash mark suppressed in secondary windows, on a
-    // window whose settled appearance is transparent: the white flash. A
-    // detached window ends on vibrancy, so vibrancy is also its honest
-    // pre-paint surface. index.html keeps the splash plate off this window to
-    // match (`html[data-host-desktop="macos"][data-orgii-secondary-window]`).
+    // webview composites onto that material from its very first frame. Same
+    // contract as the main window's setup hook: a macOS window ends on
+    // vibrancy, so vibrancy is also its honest pre-paint surface. Enabling
+    // WKWebView background drawing here instead made the webview paint its
+    // own opaque base under the page for the whole bundle boot — on a light
+    // theme a full-window white rectangle on a window whose settled
+    // appearance is transparent: the white flash. index.html keeps the splash
+    // plate off every macOS window to match (`html[data-host-desktop="macos"]`).
     //
     // The frontend still invokes `remove_window_background` once React paints;
-    // on this window the background clear is a no-op and the call's remaining
-    // job is the post-paint traffic-light re-apply that main also gets.
+    // the background clear is then a no-op and the call's remaining job is the
+    // post-paint traffic-light re-apply.
     #[cfg(target_os = "macos")]
     {
         super::set_traffic_light_position(&window, super::TRAFFIC_LIGHT_X, super::TRAFFIC_LIGHT_Y);

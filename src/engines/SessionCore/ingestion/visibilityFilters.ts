@@ -13,41 +13,23 @@
  */
 import type { SessionEvent } from "../core/types";
 
-// ============================================
-// Utility Functions
-// ============================================
+const INTERNAL_LIFECYCLE_ACTION_TYPES = new Set([
+  "native_command_catalog",
+  "task_start",
+  "task_completed",
+  "task_failed",
+  "stage_error",
+]);
 
 /**
- * Strip triple-backtick code blocks that wrap terminal output.
- *
- * When the agent calls a terminal tool, the output often arrives wrapped in
- * triple-backtick blocks like:
- *   ```shell
- *   actual output
- *   ```
- *
- * For display in the chat history we strip those wrappers so the output
- * renders as plain text instead of a code block inside a code block.
+ * Internal execution bookkeeping is presentation metadata, not conversation
+ * history. Keep this predicate shared by chat visibility and native transcript
+ * projection so a renderer hint can never promote lifecycle rows to tools.
  */
-export function stripTerminalCodeBlocks(text: string): string {
-  // Only strip leading ```xyz and trailing ```
-  // Don't strip all code blocks — only the outermost terminal wrapper
-  let result = text;
-
-  // Strip leading ```xyz\n  (common: shell, bash, sh, zsh, terminal)
-  const leadingMatch = result.match(
-    /^```(?:shell|bash|sh|zsh|terminal|console|output|)[ \t]*\n/i
-  );
-  if (leadingMatch) {
-    result = result.slice(leadingMatch[0].length);
-  }
-
-  // Strip trailing \n``` at end of string
-  if (/\n```\s*$/.test(result)) {
-    result = result.replace(/\n```\s*$/, "");
-  }
-
-  return result;
+export function isInternalLifecycleEvent(
+  event: Pick<SessionEvent, "actionType">
+): boolean {
+  return INTERNAL_LIFECYCLE_ACTION_TYPES.has(event.actionType);
 }
 
 // ============================================
@@ -71,12 +53,7 @@ export function isVisibleInChat(event: SessionEvent): boolean {
 
   // Hide task lifecycle and stage errors from chat (no UI components).
   // Mirrors Rust is_visible_in_chat() in derived.rs.
-  if (
-    event.actionType === "task_start" ||
-    event.actionType === "task_completed" ||
-    event.actionType === "task_failed" ||
-    event.actionType === "stage_error"
-  ) {
+  if (isInternalLifecycleEvent(event)) {
     return false;
   }
 

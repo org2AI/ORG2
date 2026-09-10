@@ -9,24 +9,6 @@ import type { SimulatorGridLayout } from "@src/store/ui/simulatorAtom";
 import type { AppType } from "./appTypes";
 
 // ============================================
-// Event Segment Types (for colored progress bar)
-// ============================================
-
-export type EventTypeForColor =
-  | "file"
-  | "edit"
-  | "shell"
-  | "assistant"
-  | "unknown";
-
-export interface EventSegment {
-  startPercent: number;
-  endPercent: number;
-  type: EventTypeForColor;
-  color: string;
-}
-
-// ============================================
 // Task Thread (multi-screen display)
 // ============================================
 
@@ -40,6 +22,7 @@ export interface TaskThread {
 // ============================================
 
 export interface GridCellProps {
+  historyLoad?: import("../hooks/useMultiSessionSimulatorEvents").SubagentHistoryLoad;
   index: number;
   color: string;
   title: string;

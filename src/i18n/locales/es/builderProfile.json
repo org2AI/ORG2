@@ -11,7 +11,6 @@
   "secondaryNote": "— la mayoría de las verificaciones no deja rastro, así que la confianza es baja.",
   "byTool": "Por herramienta",
   "byToolHint": "Los puntos neutros son iguales en todas partes, así que estas filas son comparables. Una letra que solo se sostiene en una herramienta merece dudas.",
-  "sessionCount": "{{count}} sesiones",
   "overTime": "A lo largo del tiempo",
   "overTimeHint": "Ventanas móviles, las más recientes primero.",
   "status": "Estado",
@@ -47,7 +46,6 @@
   },
   "types": {
     "title": "Tipos de creador",
-    "subtitle": "Conoce las 16 formas en que las personas trabajan con agentes de programación.",
     "howTitle": "Cómo leer el código",
     "howBody": "Cuatro preferencias observadas forman un tipo de creador. Las letras describen un patrón de trabajo, no una identidad fija; pueden cambiar con tus hábitos y herramientas.",
     "galleryTitle": "Los 16 tipos",

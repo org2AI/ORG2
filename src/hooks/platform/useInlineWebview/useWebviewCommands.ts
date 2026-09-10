@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { UnlistenFn } from "@tauri-apps/api/event";
 import type { Webview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -20,11 +19,9 @@ export interface UseWebviewCommandsParams {
   incognito: boolean;
   isDestroyedRef: MutableRefObject<boolean>;
   pollIntervalRef: MutableRefObject<ReturnType<typeof setInterval> | null>;
-  newWindowListenerRef: MutableRefObject<UnlistenFn | null>;
   lastPolledUrlRef: MutableRefObject<string>;
   getContainerRect: () => DOMRect | null;
   log: (...args: unknown[]) => void;
-  safeUnlisten: (listenerFn: UnlistenFn | null) => void;
   onCreated?: (webview: Webview) => void;
   onError?: (error: Error) => void;
   onDestroyed?: () => void;
@@ -57,11 +54,9 @@ export function useWebviewCommands(
     incognito,
     isDestroyedRef,
     pollIntervalRef,
-    newWindowListenerRef,
     lastPolledUrlRef,
     getContainerRect,
     log,
-    safeUnlisten,
     onCreated,
     onError,
     onDestroyed,
@@ -315,11 +310,6 @@ export function useWebviewCommands(
       pollIntervalRef.current = null;
     }
 
-    if (newWindowListenerRef.current) {
-      safeUnlisten(newWindowListenerRef.current);
-      newWindowListenerRef.current = null;
-    }
-
     const label = labelRef.current;
 
     // Move offscreen before closing so the native webview never stays visible
@@ -352,9 +342,7 @@ export function useWebviewCommands(
   }, [
     log,
     onDestroyed,
-    safeUnlisten,
     pollIntervalRef,
-    newWindowListenerRef,
     labelRef,
     isDestroyedRef,
     isUnmountedRef,

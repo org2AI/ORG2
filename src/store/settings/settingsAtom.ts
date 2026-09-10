@@ -33,7 +33,6 @@ const settingsRpc = {
     rpcCall(settingsProcedures.write, input),
   writePartial: (input: { partial: Record<string, unknown> }) =>
     rpcCall(settingsProcedures.writePartial, input),
-  reset: () => rpcCall(settingsProcedures.reset),
   writeSchema: (input: { schemaContent: string }) =>
     rpcCall(settingsProcedures.writeSchema, input),
 };
@@ -282,25 +281,6 @@ export const updateSettingsBatchAtom = atom(
   }
 );
 updateSettingsBatchAtom.debugLabel = "updateSettingsBatchAtom";
-
-/**
- * Atom to reset all settings to defaults.
- * Deletes the file (watcher will detect it), then recreates with defaults.
- */
-export const resetAllSettingsAtom = atom(null, async (_get, set) => {
-  const defaults = getSettingsDefaults();
-  set(settingsAtom, defaults);
-
-  try {
-    await settingsRpc.reset();
-    // Recreate with defaults + comments
-    const jsonc = generateJsoncContent(defaults);
-    await settingsRpc.write({ content: jsonc });
-  } catch (err) {
-    log.error("[Settings] Failed to reset settings:", err);
-  }
-});
-resetAllSettingsAtom.debugLabel = "resetAllSettingsAtom";
 
 // ============================================
 // Initialization (call once on app startup)

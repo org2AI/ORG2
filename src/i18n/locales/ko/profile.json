@@ -1,34 +1,9 @@
 {
-  "connect": "연결",
   "name": "이름",
   "genderOptions": {},
   "role": "직무",
   "location": "위치",
-  "timezone": "시간대",
   "commits": "커밋",
   "activity": "활동",
-  "specialty": {
-    "frontend": "Frontend",
-    "backend": "Backend",
-    "fullstack": "Full Stack",
-    "mobile": "Mobile",
-    "devops": "DevOps",
-    "data": "Data",
-    "systems": "Systems"
-  },
-  "bio": "자기소개",
-  "social": {},
-  "edu": {
-    "edit": "학력 수정",
-    "present": "현재"
-  },
-  "exp": {
-    "edit": "경력 수정"
-  },
-  "sections": {
-    "about": "소개",
-    "developerActivity": "개발 활동",
-    "projectsAndAchievements": "Project 및 업적",
-    "professionalBackground": "직업 배경"
-  }
+  "social": {}
 }

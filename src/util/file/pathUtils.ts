@@ -80,6 +80,10 @@ export function toFsPluginPath(path: string): string {
 
 /**
  * Get file extension from file path
+ *
+ * Only the final path segment is inspected, so dots in directory names never
+ * leak into the result. Handles both `/` and `\` separators.
+ *
  * @param filePath - Full file path or filename
  * @returns File extension (without dot) or empty string if no extension
  *
@@ -87,11 +91,16 @@ export function toFsPluginPath(path: string): string {
  * getFileExtension("src/components/Button.tsx") // "tsx"
  * getFileExtension("README") // ""
  * getFileExtension(".gitignore") // "gitignore"
+ * getFileExtension("src/v1.2/README") // ""
  */
 export function getFileExtension(filePath: string): string {
   if (!filePath) return "";
-  const parts = filePath.split(".");
-  return parts.length > 1 ? parts[parts.length - 1] : "";
+  const separatorIndex = Math.max(
+    filePath.lastIndexOf("/"),
+    filePath.lastIndexOf("\\")
+  );
+  const dotIndex = filePath.lastIndexOf(".");
+  return dotIndex > separatorIndex ? filePath.slice(dotIndex + 1) : "";
 }
 
 /**

@@ -98,7 +98,7 @@ export function FindSkillsResults({
               void onPreview(result);
             }}
           >
-            {t("common:labels.preview")}
+            {t("common:common.preview")}
           </Button>
         ),
       },

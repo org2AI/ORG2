@@ -5,6 +5,8 @@
 //! replay.
 
 mod cache_sync;
+mod context_usage;
+pub use context_usage::load_claude_context_usage_for_session;
 mod discovery;
 mod metadata;
 mod replay;
@@ -28,7 +30,10 @@ const CLAUDE_CODE_PROVIDER_SLUG: &str = "claudecode";
 // survive Claude Code rewriting the first user message during compaction.
 // v12: name subagent rows from their small `.meta.json` sidecar instead of
 // the shared beginning of each child prompt.
-const CLAUDE_CODE_METADATA_PARSER_VERSION: i64 = 14;
+// v15: compact summaries are provider context metadata, not human turns or
+// first-prompt title candidates.
+// v16: replay local-command inputs/results and their completed lifecycle.
+const CLAUDE_CODE_METADATA_PARSER_VERSION: i64 = 16;
 const MAX_COMPACT_BOUNDARY_MARKERS: usize =
     crate::sources::imported_history::cache::MAX_CONTINUATION_MARKERS - 1;
 
@@ -38,11 +43,16 @@ pub type ClaudeCodeHistorySessionPage =
 pub type ClaudeCodeRecentPath = crate::sources::imported_history::ImportedHistoryRecentPath;
 
 pub use cache_sync::{list_claude_code_history_sessions_paginated, list_claude_code_recent_paths};
-pub use replay::load_claude_code_history_for_session;
+pub use discovery::resolve_claude_session_path;
+pub use replay::{
+    load_claude_code_history_for_session, load_claude_code_history_from_path,
+    visit_claude_code_history_from_path,
+};
 pub use windows::{
     load_claude_code_cloud_turn_windows_for_session, load_claude_code_initial_window_for_session,
-    load_claude_code_turn_ids_for_session, load_claude_code_turn_index_for_session,
-    load_claude_code_turn_windows_for_session, stat_claude_code_history_for_session,
+    load_claude_code_initial_window_from_path, load_claude_code_turn_ids_for_session,
+    load_claude_code_turn_index_for_session, load_claude_code_turn_windows_for_session,
+    load_claude_code_turn_windows_from_path, stat_claude_code_history_for_session,
 };
 
 #[cfg(test)]
@@ -74,12 +84,9 @@ use metadata::{
     parse_claude_session_meta_with_title, session_meta_to_cache_input,
 };
 #[cfg(test)]
-use replay::load_claude_code_history_from_path;
-#[cfg(test)]
 use windows::{
     claude_window_turn_id, index_claude_user_turns, load_claude_code_cloud_turn_windows_from_path,
-    load_claude_code_initial_window_from_path, load_claude_turn_range, overlay_indexed_body_counts,
-    CLAUDE_WINDOW_TURN_ID_PREFIX,
+    load_claude_turn_range, overlay_indexed_body_counts, CLAUDE_WINDOW_TURN_ID_PREFIX,
 };
 
 #[cfg(test)]

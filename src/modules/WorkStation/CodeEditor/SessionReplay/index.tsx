@@ -19,7 +19,6 @@ import React, {
 } from "react";
 
 import { SIMULATOR_PRIMARY_SIDEBAR } from "@src/config/simulatorPrimarySidebar";
-import EventWrapper from "@src/engines/ChatPanel/adapters/EventWrapper";
 import { getIDEEventType } from "@src/engines/SessionCore/rendering/registry/toolRegistryDomain";
 import {
   simulatorIdeTerminalRevealRequestAtom,
@@ -31,10 +30,9 @@ import {
 import type { BackendEvent } from "@src/types/session/steps";
 
 import {
+  ReplayShellLayout,
   type ReplayTab,
-  SimulatorReplayChrome,
   type TimestampedReplayTab,
-  WorkStationShell,
   buildPrimarySidebarConfig,
   capNewestWithActive,
   mergeNewestFirstByTimestamp,
@@ -483,34 +481,24 @@ const SessionReplayIDEComponent: React.FC<SimulatorIDEProps> = ({
   );
 
   return (
-    <EventWrapper
-      event={currentEvent as unknown as BackendEvent}
-      mode={mode}
-      expand={true}
-      padding="p-0"
+    <ReplayShellLayout
+      tabs={replayTabs}
+      activeEventId={replayActiveEventId}
+      onTabClick={onReplayTabClick}
+      onTabDoubleClick={onReplayTabDoubleClick}
+      eventWrapper={{ event: currentEvent as unknown as BackendEvent, mode }}
+      workstation={{
+        primarySidebarConfig,
+        layoutMode: primarySidebarPosition === "right" ? "right" : "left",
+        appClassName: "session-replay-ide",
+      }}
     >
-      <SimulatorReplayChrome
-        tabs={replayTabs}
-        activeEventId={replayActiveEventId}
-        onTabClick={onReplayTabClick}
-        onTabDoubleClick={onReplayTabDoubleClick}
-      >
-        <div className="flex min-h-0 flex-1">
-          <WorkStationShell
-            primarySidebarConfig={primarySidebarConfig}
-            content={mainContent}
-            statusBar={null}
-            layoutMode={primarySidebarPosition === "right" ? "right" : "left"}
-            appClassName="session-replay-ide"
-          />
-        </div>
-      </SimulatorReplayChrome>
-    </EventWrapper>
+      {mainContent}
+    </ReplayShellLayout>
   );
 };
 
 export const SessionReplayIDE = memo(SessionReplayIDEComponent);
 SessionReplayIDE.displayName = "SessionReplayIDE";
 
-export { SessionReplayIDE as SimulatorIDE };
 export default SessionReplayIDE;

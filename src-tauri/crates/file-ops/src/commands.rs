@@ -226,180 +226,6 @@ pub fn is_binary_file(
 }
 
 // ============================================
-// macOS Document Conversion (textutil)
-// ============================================
-
-/// Result of converting a .pages file — the frontend uses `kind` to pick a renderer.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PagesPreviewResult {
-    /// `"html"` = rich HTML (render in div), `"pdf"` = temp PDF path (render in iframe)
-    pub kind: String,
-    /// HTML string or absolute path to a temp PDF file
-    pub data: String,
-}
-
-/// Convert a .pages document for preview.
-///
-/// Strategy (macOS only, tried in order):
-/// 1. `textutil -convert html` — fast, works for older XML-based .pages
-/// 2. `osascript` + Pages.app export to PDF — works for all .pages, text selectable
-/// 3. Quick Look thumbnail — image-only fallback if Pages.app is not installed
-#[tauri::command]
-pub async fn convert_pages_to_html(file_path: String) -> Result<PagesPreviewResult, String> {
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = file_path;
-        return Err("Pages preview is only supported on macOS".to_string());
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let path = Path::new(&file_path);
-        if !path.exists() {
-            return Err(format!("File not found: {}", file_path));
-        }
-
-        let output_dir = std::env::temp_dir().join("orgii_pages_preview");
-        std::fs::create_dir_all(&output_dir)
-            .map_err(|err| format!("Failed to create temp dir: {}", err))?;
-
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-
-        // --- Attempt 1: textutil (fast, older XML-based .pages) ---
-        let output_html = format!("{}/pages_{}.html", output_dir.to_string_lossy(), ts);
-        {
-            let textutil_output = output_html.clone();
-            let textutil_input = file_path.clone();
-
-            let textutil_result = tokio::task::spawn_blocking(move || {
-                std::process::Command::new("textutil")
-                    .args([
-                        "-convert",
-                        "html",
-                        "-output",
-                        &textutil_output,
-                        &textutil_input,
-                    ])
-                    .output()
-            })
-            .await
-            .map_err(|err| format!("Task join error: {}", err))?;
-
-            if let Ok(output) = textutil_result {
-                if output.status.success() && Path::new(&output_html).exists() {
-                    let html = std::fs::read_to_string(&output_html)
-                        .map_err(|err| format!("Failed to read converted HTML: {}", err))?;
-                    let _ = std::fs::remove_file(&output_html);
-                    return Ok(PagesPreviewResult {
-                        kind: "html".into(),
-                        data: html,
-                    });
-                }
-            }
-            let _ = std::fs::remove_file(&output_html);
-        }
-
-        // --- Attempt 2: Pages.app export to PDF (text selectable) ---
-        let output_pdf = format!("{}/pages_{}.pdf", output_dir.to_string_lossy(), ts);
-        {
-            let pdf_path = output_pdf.clone();
-            let input_path = file_path.clone();
-
-            let script = format!(
-                r#"
-                    tell application "Pages"
-                        open POSIX file "{input}"
-                        export front document to POSIX file "{output}" as PDF
-                        close front document saving no
-                    end tell
-                "#,
-                input = input_path.replace('"', r#"\""#),
-                output = pdf_path.replace('"', r#"\""#),
-            );
-
-            let osa_result = tokio::task::spawn_blocking(move || {
-                std::process::Command::new("osascript")
-                    .args(["-e", &script])
-                    .output()
-            })
-            .await
-            .map_err(|err| format!("Task join error: {}", err))?;
-
-            if let Ok(output) = osa_result {
-                if output.status.success() && Path::new(&output_pdf).exists() {
-                    return Ok(PagesPreviewResult {
-                        kind: "pdf".into(),
-                        data: output_pdf,
-                    });
-                }
-            }
-            let _ = std::fs::remove_file(&output_pdf);
-        }
-
-        // --- Attempt 3: Quick Look thumbnail (image fallback) ---
-        let ql_dir = format!("{}/ql_{}", output_dir.to_string_lossy(), ts);
-        std::fs::create_dir_all(&ql_dir)
-            .map_err(|err| format!("Failed to create Quick Look temp dir: {}", err))?;
-
-        {
-            let ql_dir_cmd = ql_dir.clone();
-            let ql_input = file_path.clone();
-
-            let ql_result = tokio::task::spawn_blocking(move || {
-                std::process::Command::new("qlmanage")
-                    .args(["-t", "-s", "2048", "-o", &ql_dir_cmd, &ql_input])
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .output()
-            })
-            .await
-            .map_err(|err| format!("Task join error: {}", err))?
-            .map_err(|err| format!("Failed to run qlmanage: {}", err))?;
-
-            if ql_result.status.success() {
-                if let Some(png) = find_png_in_dir(&ql_dir) {
-                    use base64::{engine::general_purpose::STANDARD, Engine as _};
-                    let png_bytes = std::fs::read(&png)
-                        .map_err(|err| format!("Failed to read Quick Look thumbnail: {}", err))?;
-                    let b64 = STANDARD.encode(&png_bytes);
-                    let _ = std::fs::remove_dir_all(&ql_dir);
-
-                    let html = format!(
-                        r#"<div style="display:flex;justify-content:center;padding:16px"><img src="data:image/png;base64,{}" style="max-width:100%;height:auto;border-radius:4px" /></div>"#,
-                        b64,
-                    );
-                    return Ok(PagesPreviewResult {
-                        kind: "html".into(),
-                        data: html,
-                    });
-                }
-            }
-        }
-
-        let _ = std::fs::remove_dir_all(&ql_dir);
-        Err("Could not preview this Pages document".to_string())
-    }
-}
-
-/// Find the first .png file in a directory (used for qlmanage output).
-#[cfg(target_os = "macos")]
-fn find_png_in_dir(dir: &str) -> Option<std::path::PathBuf> {
-    let entries = std::fs::read_dir(dir).ok()?;
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) == Some("png") {
-            return Some(path);
-        }
-    }
-    None
-}
-
-// ============================================
 // Ignore Filter
 // ============================================
 
@@ -877,4 +703,39 @@ fn build_tree_level(
     });
 
     Ok(result)
+}
+
+// ============================================
+// Preview asset scope
+// ============================================
+
+/// Validate a path the frontend wants to stream through the asset protocol:
+/// it must exist and be a regular file. Returns the canonical path, which is
+/// what the scope is widened for and what `convertFileSrc` must receive.
+pub fn validate_preview_asset_path(file_path: &str) -> Result<std::path::PathBuf, String> {
+    let path = std::path::Path::new(file_path);
+    let metadata =
+        std::fs::metadata(path).map_err(|err| format!("Cannot preview {}: {}", file_path, err))?;
+    if !metadata.is_file() {
+        return Err(format!("Cannot preview {}: not a regular file", file_path));
+    }
+    std::fs::canonicalize(path).map_err(|err| format!("Cannot resolve {}: {}", file_path, err))
+}
+
+/// Allow the asset protocol to serve one file the user opened in a preview.
+///
+/// `<video>` and the PDF viewer can then stream the file straight from disk
+/// (the asset handler answers HTTP range requests) instead of the frontend
+/// reading the whole file into a Blob. The scope is widened per file, never
+/// per directory: only files the user explicitly opened become reachable
+/// through `asset://`, and the fs plugin could already read all of them.
+#[tauri::command]
+pub fn allow_preview_asset(app: tauri::AppHandle, file_path: String) -> Result<String, String> {
+    use tauri::Manager;
+
+    let canonical = validate_preview_asset_path(&file_path)?;
+    app.asset_protocol_scope()
+        .allow_file(&canonical)
+        .map_err(|err| format!("Cannot allow preview of {}: {}", file_path, err))?;
+    Ok(canonical.to_string_lossy().into_owned())
 }

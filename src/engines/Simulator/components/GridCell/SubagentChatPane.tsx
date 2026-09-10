@@ -45,8 +45,7 @@
  * A trailing `(i)` Info button injected into `TurnPaginationControls`
  * (via `paginationTrailingSlot`) opens a popover showing the original
  * task prompt — see `SubagentPromptToggle`. A collapse-all button
- * next to it calls the same global atom the main ChatPanel header
- * uses. Todo progress stays on the parent composer and the cell's scoped
+ * next to it updates this session’s collapse scope. Todo progress stays on the parent composer and the cell's scoped
  * title-row preview rather than appearing inside this chat history.
  *
  * "New event" divider
@@ -68,17 +67,21 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { ChatProvider } from "@src/contexts/workspace/ChatContext";
+import {
+  ChatCollapseScope,
+  getSubagentCollapseScope,
+} from "@src/engines/ChatPanel/ChatCollapseScope";
 import ChatHistory from "@src/engines/ChatPanel/ChatHistory";
 import { ChatHistoryOverrideContext } from "@src/engines/ChatPanel/ChatHistoryOverrideContext";
 import { ChatSessionContext } from "@src/engines/ChatPanel/ChatSessionContext";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 import { findIndexAtTime } from "@src/engines/Simulator/utils/findIndexAtTime";
 import { HugeiconsIcon, ListChevronsDownUpIcon } from "@src/icons";
-import { setAllBlocksCollapsedAtom } from "@src/store/ui/collapseStateAtom";
 
 import { SubagentPromptToggle } from "./SubagentPromptToggle";
 
 interface SubagentChatPaneProps {
+  historyLoad?: import("../../hooks/useMultiSessionSimulatorEvents").SubagentHistoryLoad;
   /** Subagent session id — passed to ChatSessionContext so the chat events
    *  atom routes to `chatEventsForSessionAtomFamily(sessionId)`. */
   sessionId: string;
@@ -94,6 +97,7 @@ interface SubagentChatPaneProps {
 
 const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
   sessionId,
+  historyLoad,
   cursorMs = null,
   isSessionLive = false,
 }) => {
@@ -102,7 +106,13 @@ const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
   // ChatHistory re-reads via `useChatHistory()` and picks up our override.
   const allEvents = useAtomValue(chatEventsForSessionAtomFamily(sessionId));
 
-  const setAllBlocksCollapsed = useSetAtom(setAllBlocksCollapsedAtom);
+  const collapseScope = useMemo(
+    () => getSubagentCollapseScope(sessionId),
+    [sessionId]
+  );
+  const setAllBlocksCollapsed = useSetAtom(
+    collapseScope.setAllBlocksCollapsedAtom
+  );
   const handleCollapseAll = useCallback(() => {
     setAllBlocksCollapsed(true);
   }, [setAllBlocksCollapsed]);
@@ -141,11 +151,23 @@ const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
   if (isEmpty) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-chat-pane px-4 text-center">
-        <span className="text-[12px] text-text-3">
-          {t("simulator.subagentPane.waitingForActivity", {
-            defaultValue: "Waiting for activity…",
-          })}
-        </span>
+        {historyLoad?.status === "error" ? (
+          <Button variant="tertiary" size="small" onClick={historyLoad.retry}>
+            {t("simulator.subagentPane.retryHistory", {
+              defaultValue: "Couldn’t load history — Retry",
+            })}
+          </Button>
+        ) : (
+          <span role="status" className="text-[12px] text-text-3">
+            {historyLoad?.status === "loading"
+              ? t("simulator.subagentPane.loadingHistory", {
+                  defaultValue: "Loading history…",
+                })
+              : t("simulator.subagentPane.waitingForActivity", {
+                  defaultValue: "Waiting for activity…",
+                })}
+          </span>
+        )}
       </div>
     );
   }
@@ -165,6 +187,13 @@ const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
   // owns its own popover state — see `SubagentPromptToggle`.
   const paginationTrailingSlot = (
     <>
+      {historyLoad?.status === "error" && (
+        <Button variant="tertiary" size="small" onClick={historyLoad.retry}>
+          {t("simulator.subagentPane.retryHistory", {
+            defaultValue: "Couldn’t load history — Retry",
+          })}
+        </Button>
+      )}
       <SubagentPromptToggle sessionId={sessionId} />
       <Button
         htmlType="button"
@@ -201,25 +230,27 @@ const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
   };
 
   return (
-    <ChatSessionContext.Provider value={sessionId}>
-      <ChatHistoryOverrideContext.Provider value={slicedEvents}>
-        <ChatProvider>
-          <div className="relative flex h-full w-full flex-col overflow-hidden">
-            <div className="relative min-h-0 flex-1 overflow-hidden">
-              <ChatHistory
-                surfaceBgClass="bg-chat-pane"
-                turnPaginationEnabled
-                disableTailCollapse
-                hideGroupUserMessage
-                paginationTrailingSlot={paginationTrailingSlot}
-                newEventDividerLabel={newEventDividerLabel}
-                planningIndicatorScope={planningIndicatorScope}
-              />
+    <ChatCollapseScope.Provider value={collapseScope}>
+      <ChatSessionContext.Provider value={sessionId}>
+        <ChatHistoryOverrideContext.Provider value={slicedEvents}>
+          <ChatProvider>
+            <div className="relative flex h-full w-full flex-col overflow-hidden">
+              <div className="relative min-h-0 flex-1 overflow-hidden">
+                <ChatHistory
+                  surfaceBgClass="bg-chat-pane"
+                  turnPaginationEnabled
+                  disableTailCollapse
+                  hideGroupUserMessage
+                  paginationTrailingSlot={paginationTrailingSlot}
+                  newEventDividerLabel={newEventDividerLabel}
+                  planningIndicatorScope={planningIndicatorScope}
+                />
+              </div>
             </div>
-          </div>
-        </ChatProvider>
-      </ChatHistoryOverrideContext.Provider>
-    </ChatSessionContext.Provider>
+          </ChatProvider>
+        </ChatHistoryOverrideContext.Provider>
+      </ChatSessionContext.Provider>
+    </ChatCollapseScope.Provider>
   );
 };
 

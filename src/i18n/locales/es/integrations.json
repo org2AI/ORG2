@@ -20,12 +20,15 @@
     "confirmRemoveMessage": "Esto eliminará la credencial local. Esta acción no se puede deshacer.",
     "toasts": {
       "refreshed": "{{name}} actualizado correctamente",
+      "refreshPartial": "Modelos actualizados: +{{added}} / -{{removed}}, pero fallaron {{failed}} de {{total}} cuentas",
+      "refreshedNoChange": "Modelos actualizados: sin cambios",
+      "refreshedDelta": "Modelos actualizados: {{added}} añadidos, {{removed}} eliminados",
       "refreshError": "Error al actualizar {{name}}: {{error}}",
       "localRemoved": "{{name}} eliminado",
       "deleteError": "Error al eliminar {{name}}"
     },
-    "configure": "Configurar {{provider}}",
     "providerGroups": {
+      "mostUsed": "Más usados",
       "cloud": "Cloud",
       "local": "Local"
     },
@@ -38,7 +41,6 @@
       "verifying": "Verificando",
       "verifyingKeys": "Verificando credenciales...",
       "verificationFailedMismatch": "Verificación fallida - credenciales no coinciden",
-      "failed": "Fallido",
       "suspendedApiKey": "Suspendido - API Key falló",
       "suspended": "Suspendido",
       "validationFailed": "Validación fallida: {{error}}",
@@ -47,18 +49,14 @@
       "validating": "Validando"
     },
     "info": {
-      "title": "Información de la cuenta",
-      "enable": "Habilitar",
-      "authMethod": "Método de auth",
       "oauthLogin": "OAuth",
       "apiKey": "API Key",
       "configured": "✓ Configurado",
       "cursorSessionAccess": "Sesión de Cursor",
       "cursorSessionReady": "Conectada para refrescar modelos y cuota de Cursor",
       "cursorApiKeyAccess": "Cursor API Key",
-      "cursorApiKeyReady": "Proporcionada para llamadas de Cursor CLI/API",
-      "cursorApiKeyNotProvided": "No proporcionada — llamadas Cursor CLI/API no disponibles",
-      "sessionToken": "Session Token",
+      "cursorApiKeyReady": "Proporcionada para llamadas de Cursor API",
+      "cursorApiKeyNotProvided": "No proporcionada — llamadas Cursor API no disponibles",
       "baseUrl": "Base URL",
       "connectedAt": "Conectado",
       "availableModels": "Modelos disponibles",
@@ -67,24 +65,15 @@
       "supportOrgiiAgents": "Compatible con ORGII Agents",
       "supportCliAgents": "Compatible con CLI Agents",
       "noCliAgentSupport": "Sin soporte de CLI Agent para este proveedor",
-      "accountEmail": "Correo de la cuenta",
-      "organization": "Organización"
-    },
-    "manualModels": {
-      "notice": "No se pudieron detectar automáticamente los modelos disponibles desde este proxy. Puede agregar modelos manualmente a continuación o intentar hacer clic en Validate nuevamente."
+      "accountEmail": "Correo de la cuenta"
     },
     "customModels": {
-      "notice": "Nombre del modelo = id usado para llamar al LLM. Nombre visible = etiqueta en los selectores.",
       "modelNamePlaceholder": "Ingrese el id del modelo...",
-      "displayName": "Nombre visible",
       "displayNamePlaceholder": "Etiqueta opcional",
-      "optional": "Opcional",
       "emptyHint": "No se han agregado modelos personalizados.",
-      "addModel": "Agregar modelo",
-      "icon": "Icono"
+      "addModel": "Agregar modelo"
     },
     "quickActions": {
-      "title": "Acciones rápidas",
       "multipleKeysFound": "Se encontraron múltiples credenciales",
       "useSelected": "Usar seleccionada",
       "valid": "Válida",
@@ -100,8 +89,9 @@
       "saved": "Cambios guardados"
     },
     "quota": {
-      "title": "Información de cuota",
       "plan": "Plan",
+      "balance": "Saldo",
+      "payAsYouGo": "Pago por uso",
       "includedRequests": "Solicitudes incluidas",
       "cursorIncludedRequests": "Cuota Auto/Composer",
       "quotaUsage": "Uso de cuota",
@@ -110,10 +100,13 @@
       "sessionUsage": "Uso de 5h",
       "weeklyUsage": "Uso semanal",
       "monthlyUsage": "Uso mensual",
+      "resetsAvailable": "{{count}} restablecimientos disponibles",
+      "resetsAvailable_one": "{{count}} restablecimiento disponible",
+      "resetsAvailable_few": "{{count}} restablecimientos disponibles",
+      "resetsAvailable_many": "{{count}} restablecimientos disponibles",
+      "resetsAvailable_other": "{{count}} restablecimientos disponibles",
       "percentLeft": "{{percent}}% restante",
       "refreshUsage": "Actualizar uso",
-      "used": "Usado",
-      "limit": "Límite",
       "resets": "Se reinicia el {{date}}",
       "availableNow": "Disponible ahora",
       "nextUsePlusFiveHours": "Próximo uso +5 h"
@@ -121,18 +114,18 @@
     "health": {
       "cloudListingInvalid": "Listado en la nube inválido",
       "cloudListingDegraded": "Listado en la nube degradado",
-      "cloudInvalidMessage": "Tu credencial local funciona, pero el listado del marketplace tiene problemas.",
-      "cloudDegradedMessage": "Tu credencial local funciona, pero el listado en la nube tiene algunos modelos no disponibles.",
-      "invalidListingMessage": "La credencial de este listado es inválida y necesita ser actualizada.",
-      "invalidKeyMessage": "Esta API Key ya no es válida. Por favor actualiza tus credenciales.",
+      "cloudInvalidMessage": "Tu credencial local funciona, pero el listado del marketplace tiene problemas",
+      "cloudDegradedMessage": "Tu credencial local funciona, pero el listado en la nube tiene algunos modelos no disponibles",
+      "invalidListingMessage": "La credencial de este listado es inválida y necesita ser actualizada",
+      "invalidKeyMessage": "Esta API Key ya no es válida. Por favor actualiza tus credenciales",
       "failuresDetected_one": "{{count}} fallo detectado",
       "failuresDetected_other": "{{count}} fallos detectados",
       "errorWithMessage": "Error: {{message}}",
       "degradedListing": "Listado degradado",
       "degradedKey": "Credencial degradada",
-      "modelsUnavailable": "{{disabled}} modelo(s) no disponible(s). Solo {{available}} modelo(s) funcionando.",
-      "someModelsFailures": "Algunos modelos están experimentando fallos.",
-      "someModelsUnavailable": "Algunos modelos no están disponibles."
+      "modelsUnavailable": "{{disabled}} modelo(s) no disponible(s). Solo {{available}} modelo(s) funcionando",
+      "someModelsFailures": "Algunos modelos están experimentando fallos",
+      "someModelsUnavailable": "Algunos modelos no están disponibles"
     },
     "verification": {
       "pendingVerification": "Verificación pendiente",
@@ -258,7 +251,6 @@
     "sessionTokenLabel": "Session Token",
     "sessionTokenAutoHint": "Haz clic para detectar, o el Agent lo detecta automáticamente durante las sesiones",
     "sessionTokenManualHint": "Pega tu token de sesión de Cursor en formato user_id::jwt_token",
-    "baseUrl": "Base URL",
     "pasteConfiguration": "Pegar config",
     "extractParseHint": "Haz clic en Extract para analizar el key y config",
     "switchMethod": "Cambiar método",
@@ -266,7 +258,6 @@
     "quotaUsageLabel": "Uso de cuota",
     "quotaUsageDesc": "Uso actual del plan y disponibilidad restante",
     "providerRequired": "{{label}} (Proveedor requerido)",
-    "creating": "Completando...",
     "keysFoundForAgent": "Encontramos {{count}} credenciales para este agent. Elige cuál usar:",
     "fromCodexAuthLogin": "Desde inicio de sesión Codex auth",
     "openBrowser": "Abrir navegador interno",
@@ -303,21 +294,16 @@
     "filterAllProviders": "Todos los proveedores",
     "filterAllKeyTypes": "Todos los tipos",
     "filterAllEnabled": "Todos los estados",
-    "regionWarning": {
-      "title": "Aviso de disponibilidad regional",
-      "message": "{{provider}} puede no estar disponible oficialmente en tu región detectada. Es posible que algunos modelos no se muestren; cambia de región para usar modelos de OpenAI, Anthropic o Google. Puedes continuar con la configuración."
-    },
-    "auth": "Auth",
     "cursorSessionTokenCapturedTitle": "Cursor conectado",
     "cursorSessionTokenCapturedDesc": "Sesión iniciada como {{user}}…",
     "cursorLoginBrowserTitle": "Inicio de sesión de Cursor",
     "modelCount": "{{count}} modelos",
     "cursorLoginReadyTitle": "Cuenta de Cursor conectada",
-    "cursorLoginReadyDesc": "Genera y pega una API key de Cursor abajo. Cursor CLI agent no funcionará sin esta API key.",
+    "cursorLoginReadyDesc": "Genera y pega una API key de Cursor abajo. Cursor agent no funcionará sin esta API key.",
     "cursorApiKeyBrowserHint": "Después de iniciar sesión, ORGII abre el dashboard de Cursor. Genera allí una User API Key y pégala abajo",
     "cursorApiKeyRecommendedTitle": "Se recomienda una API key de Cursor",
     "cursorApiKeyRecommendedDesc": "Puedes continuar sin una API key de Cursor si solo quieres usar Cursor con los Rust agents de ORGII; solo inicia sesión con el navegador interno o proporciona un token de sesión",
-    "cursorApiKeyRecommendedAction": "Proporciona una API key de Cursor si también quieres usar Cursor CLI dentro de ORGII",
+    "cursorApiKeyRecommendedAction": "Proporciona una API key de Cursor si también quieres usar Cursor dentro de ORGII",
     "openCursorApiKeys": "Abrir Cursor API Keys",
     "codexSetupMethodDesc": "Conecta Codex con inicio de sesión de ChatGPT, detección local o una API key de OpenAI",
     "codexSignInTitle": "Inicio de sesión de Codex",
@@ -333,66 +319,37 @@
     "codexCredentialLabel": "Credencial de Codex",
     "codexCredentialDesc": "Pega un access token OAuth de Codex o una API key de OpenAI",
     "codexCredentialPlaceholder": "eyJ... o sk-...",
-    "codexConnected": "Codex conectado",
     "codexDetectErrorHint": "Inicia sesión con el navegador integrado o pega manualmente una API key de OpenAI",
     "codexValidationErrorHint": "Comprueba que el token o la API key sean válidos e inténtalo de nuevo",
     "claudeCodeAutodetectTitle": "Detectar sesión de Claude Code",
     "claudeCodeAutodetectDesc": "Lee tu inicio de sesión local de Claude Code desde macOS Keychain o ~/.claude/.credentials.json",
-    "claudeCodeConnected": "Claude Code conectado",
     "claudeCodeDetectErrorHint": "Inicia sesión con el navegador integrado o ejecuta claude auth login y vuelve a detectar",
     "refreshModels": {
       "button": "Actualizar lista de modelos de Cursor",
       "failed": "Falló la actualización desde Cursor: {{error}}"
     },
-    "revalidate": "Revalidar"
+    "revalidate": "Revalidar",
+    "confirmRemoveActiveSessions_one": "{{count}} sesión activa sigue usando esta cuenta y fallará en su próximo turno:",
+    "confirmRemoveActiveSessions_other": "{{count}} sesiones activas siguen usando esta cuenta y fallarán en su próximo turno:"
   },
   "integrations": {
-    "title": "Integraciones",
-    "description": "Canales, integraciones de mensajería y control de nodos",
     "searchPlaceholder": "Buscar conexiones...",
     "noConnections": "Aún no hay conexiones",
-    "noConnectionsDesc": "Agrega una integración para comenzar",
-    "active": "Activos",
-    "available": "Disponibles",
-    "enabled": "Habilitado",
     "disabled": "Deshabilitado",
-    "enableChannel": "Habilitado",
-    "enableChannelDesc": "Activar o desactivar este canal",
     "testConnection": "Probar conexión",
     "testConnectionDesc": "Validar claves antes de crear",
     "addAccount": "Agregar conexión",
-    "removeAccount": "Eliminar cuenta",
     "removeAccountTitle": "¿Eliminar \"{{name}}\"?",
     "removeAccountConfirm": "Esto eliminará la conexión y su config. Esta acción no se puede deshacer.",
-    "descriptionDesc": "Nota opcional sobre el propósito de esta conexión",
-    "descriptionPlaceholder": "Soporte al cliente, notificaciones de equipo, etc.",
-    "selectChannelType": "Tipo de canal",
-    "selectChannelTypeDesc": "Plataforma de chat a conectar",
-    "selectServiceType": "Servicio",
-    "selectServiceTypeDesc": "Servicio externo a integrar",
-    "selectCategory": "Tipo de conexión",
-    "selectGitProvider": "Git Provider",
-    "selectGitProviderDesc": "Dónde está alojado tu repositorio",
-    "selectProjectAdapter": "Adaptador de sincronización de projects",
-    "selectProjectAdapterDesc": "Tracker externo para conectar la sincronización de projects",
-    "configured": "Configurado",
     "connected": "Conectado",
     "connecting": "Conectando",
     "reconnecting": "Reconectando",
     "connectionError": "Error de conexión",
     "reconnect": "Reconectar",
-    "gitProviderRequired": "Seleccione un proveedor Git",
-    "defaultAccount": "default",
-    "readyToCreate": "Listo para crear",
     "accountNameDuplicate": "Ya existe una cuenta con este nombre",
-    "channelTypeRequired": "Seleccione un tipo de canal",
     "probeSuccess": "Conexión exitosa",
     "probeFailed": "Conexión fallida",
-    "verified": "Verificado",
-    "sanctionWarning": {
-      "title": "Advertencia de disponibilidad",
-      "message": "{{services}} podrían no estar disponibles en tu región debido a restricciones comerciales"
-    }
+    "verified": "Verificado"
   },
   "channels": {
     "github": "GitHub",
@@ -622,25 +579,18 @@
       "modelPlaceholder": "Seleccionar modelo",
       "groupPerUser": "Aislar sesiones de chat grupal por usuario",
       "groupPerUserDesc": "Cada participante en un chat grupal tiene su propio contexto de sesión."
-    }
-  },
-  "tabs": {
-    "current": "Actual",
-    "add": "Agregar",
-    "discover": "Descubrir"
+    },
+    "emailProtocol": "Protocolo"
   },
   "modelsTabs": {
     "myAccounts": "Mis Keys",
     "models": "Modelos",
-    "available": "Disponibles",
-    "preferred": "Preferidos",
     "comingSoon": "Próximamente",
     "installedClis": "Clientes CLI",
     "myRoles": "Mis roles"
   },
   "wizard": {
     "pickProvider": "Proveedor",
-    "pickProviderDesc": "Selecciona un proveedor",
     "selectVariant": "Método de conexión",
     "variantSubscription": "Suscripción",
     "variantApiKey": "API Key",
@@ -654,7 +604,6 @@
     "groupView": "Vista de grupo",
     "showMoreOlder": "Mostrar más",
     "showLessOlder": "Mostrar menos",
-    "includeOlder": "Incluir modelos anteriores",
     "scopeSelectCurrentModels": "Solo últimos",
     "scopeSelectIncludeOlder": "Todos los modelos",
     "filterAllProvider": "Todos los proveedores",
@@ -687,10 +636,7 @@
     "sortAlphabetical": "Orden: A–Z"
   },
   "modelPreview": {
-    "title": "Detalles del modelo",
-    "noSources": "Ninguna cuenta con este modelo",
-    "specs": "Especificaciones",
-    "capabilities": "Capacidades"
+    "noSources": "Ninguna cuenta con este modelo"
   },
   "cliPreview": {
     "clientSection": "Cliente",
@@ -724,20 +670,7 @@
     "filterReady": "Listo",
     "filterNoSubscriptions": "Sin suscripciones"
   },
-  "lspPreview": {
-    "enable": "Habilitar",
-    "status": "Estado",
-    "language": "Idioma",
-    "command": "Comando",
-    "documentation": "Documentación",
-    "install": "Instalar",
-    "uninstall": "Desinstalar"
-  },
-  "lintPreview": {
-    "version": "Versión"
-  },
   "mcpPreview": {
-    "title": "Info del servidor",
     "status": "Estado",
     "transport": "Transporte",
     "tools": "Herramientas",
@@ -748,20 +681,15 @@
     "toolsList": "Herramientas ({{count}})"
   },
   "skillPreview": {
-    "title": "Info de Skill",
     "source": "Fuente",
-    "path": "Ruta",
     "status": "Estado",
     "issues": "Problemas",
-    "ready": "Listo",
     "version": "Versión",
-    "dependencies": "Dependencias",
     "binaries": "Binarios",
     "envVars": "Variables de entorno",
     "location": "Ubicación"
   },
   "gitPreview": {
-    "title": "Info del Provider",
     "provider": "Provider",
     "connections": "Conexiones"
   },
@@ -771,41 +699,27 @@
     "discover": "Descubrir",
     "comingSoon": "Próximamente"
   },
-  "mcpTabs": {
-    "installed": "Instalados",
-    "discover": "Descubrir"
-  },
-  "skillsTabs": {
-    "installed": "Instalados",
-    "discover": "Descubrir"
-  },
   "externalSkillsets": {
     "tabs": {
       "skills": "Skills",
       "mcp": "MCP",
-      "cursorPlugins": "Plugins",
-      "discoverMcp": "Descubrir MCP",
-      "discoverSkills": "Descubrir Skills"
+      "cursorPlugins": "Plugins"
     }
   },
   "rulesImport": {
-    "title": "Reglas cargables",
-    "description": "Importa reglas detectadas desde Cursor, Claude Code, Copilot, Kiro, Codex y Gemini",
-    "scanning": "Escaneando fuentes externas de reglas…",
-    "empty": "No se encontraron reglas cargables.",
+    "title": "Importar reglas de otras apps",
+    "empty": "No se encontraron reglas para importar.",
     "allImported": "Todas las reglas detectadas ya se han importado"
   },
   "skillsImport": {
     "title": "Importar Skills desde otras apps",
     "itemColumn": "Skill",
-    "scanning": "Escaneando fuentes externas de Skills…",
     "empty": "No se encontraron Skills para importar.",
     "allImported": "Todos los Skills detectados ya se han importado"
   },
   "mcpImport": {
     "title": "Importar MCP servers desde otras apps",
     "itemColumn": "MCP server",
-    "scanning": "Escaneando configs externas de MCP…",
     "empty": "No se encontraron MCP servers para importar.",
     "allImported": "Todos los MCP servers detectados ya se han importado"
   },
@@ -818,7 +732,7 @@
     "servicesDesc": "Claves API de servicios externos",
     "projects": "Projects",
     "projectsDesc": "Seguimiento de issues y sincronización de projects",
-    "models": "Modelos & Keys",
+    "models": "Modelos & claves",
     "myRoles": "Mis roles",
     "clis": "CLI",
     "connections": "Conexiones",
@@ -829,11 +743,11 @@
     "tools": "Herramientas integradas",
     "computerUse": "Computer Use",
     "rulesMemoryEvolution": "Reglas, Memoria & Evolución",
-    "externalSkillsets": "Skills, MCPs & Plugins"
+    "externalSkillsets": "Skills, MCPs & Plugins",
+    "housekeeper": "MiniCPM Housekeeper"
   },
   "projectConnections": {
     "linear": "Linear",
-    "authMethod": "Autenticación",
     "personalAccessToken": "Personal Access Token",
     "personalAccessTokenDesc": "Guardado localmente para esta conexión de sincronización Project",
     "personalAccessTokenPlaceholder": "Pega el token...",
@@ -846,10 +760,24 @@
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "Detección automática",
-    "methodOAuth": "Iniciar sesión con GitHub"
+    "methodOAuth": "Iniciar sesión con GitHub",
+    "methodPickerDesc": "Elige cómo quieres autenticarte en GitHub.",
+    "oauthDeviceDesc": "Abre la URL de verificación e introduce este código para autorizar GitHub.",
+    "scanCredHelper": "Helper de credenciales de Git ({{name}})",
+    "scanEmpty": "No se detectó nada",
+    "scanEmptyDesc": "No se encontraron tokens de gh CLI, helpers de credenciales ni claves SSH. Elige otro método arriba.",
+    "scanGhCli": "GitHub CLI (gh)",
+    "scanResults": "Credenciales detectadas",
+    "scanResultsDesc": "Elige una para importar. Validamos los tokens con GitHub antes de guardarlos.",
+    "scanSshKey": "Clave SSH — {{name}}",
+    "scanning": "Escaneando…",
+    "scanningDesc": "Buscando tokens de gh CLI, helpers de credenciales y claves SSH en este equipo.",
+    "sshKeyPath": "Ruta de la clave SSH",
+    "sshKeyPathDesc": "Ruta absoluta a la clave privada (p. ej. ~/.ssh/id_ed25519). La clave pública correspondiente ya debe estar registrada en GitHub.",
+    "scanSelectRequired": "Elige una credencial detectada para importar.",
+    "sshKeyPathRequired": "La ruta de la clave SSH es obligatoria."
   },
   "builtInTools": {
-    "title": "Herramientas integradas",
     "tabTools": "Herramientas integradas",
     "tabDesktopControl": "Computer Use",
     "computerUsePermissionsSectionTitle": "Permisos",
@@ -890,66 +818,18 @@
     "sidecarLastError": "Último error"
   },
   "toolsArea": {
-    "builtin": "Herramientas integradas",
     "mcp": "MCP",
     "devtools": "Zona de pruebas"
   },
-  "toolsAddMenu": {
-    "title": "Añadir"
-  },
   "toolbarPlusMenu": {
-    "addProviderKey": "Añadir clave de proveedor",
-    "addMcpServer": "Añadir servidor MCP",
-    "createSkill": "Crear skills",
-    "addDatabaseConnection": "Añadir conexión a base de datos",
-    "addChannelOrService": "Añadir canal o servicio",
-    "addGitConnection": "Añadir conexión Git",
-    "addRoutine": "Agregar Routine",
-    "createRule": "Crear política",
-    "importSkill": "Importar skills desde otras apps",
     "addAgent": "Agregar Agent"
   },
   "toolbarEllipsis": {},
-  "webharness": {
-    "title": "Web Apps",
-    "searchPlaceholder": "Buscar comandos…",
-    "installed": "Instalado",
-    "notInstalled": "No instalado",
-    "install": "Instalar",
-    "pipeline": "Columnas de salida",
-    "optional": "Opcional",
-    "defaultValue": "Predeterminado: {{value}}",
-    "domain": "Dominio",
-    "source": "Fuente",
-    "strategy": "Estrategia",
-    "desktopStatus": {
-      "not_installed": "No instalada",
-      "installed": "Instalada",
-      "running": "En ejecución",
-      "connected": "Conectada"
-    },
-    "desktopActions": {
-      "launch": "Iniciar",
-      "connect": "Conectar"
-    }
-  },
-  "webharnessWizard": {
-    "title": "Crear comando Web App",
-    "description": "Descripción",
-    "domain": "Dominio",
-    "strategy": "Estrategia",
-    "columns": "Columnas",
-    "limit": "Límite"
-  },
   "tableHeaders": {
-    "agentType": "Tipo de Agent",
-    "cli": "CLI",
     "type": "Tipo",
     "transport": "Transport",
     "tools": "Herramientas",
-    "category": "Categoría",
-    "added": "Agregado",
-    "enabledModels": "Modelos habilitados"
+    "added": "Agregado"
   },
   "status": {
     "ready": "Listo",
@@ -975,14 +855,6 @@
   "routines": {
     "searchPlaceholder": "Search Routines...",
     "noRoutines": "No Routines defined"
-  },
-  "services": {
-    "smithery": "Smithery",
-    "apiKeySection": "Clave API",
-    "currentKey": "Clave actual",
-    "smitheryApiKey": "Clave API de Smithery",
-    "smitheryApiKeyPlaceholder": "smi_...",
-    "smitheryApiKeyDesc": "API key para explorar servidores MCP en Smithery. Get your key at smithery.ai/account/api-keys"
   },
   "git": {
     "searchPlaceholder": "Buscar proveedores de git...",
@@ -1058,29 +930,13 @@
     "oauthDeviceCodeDesc": "Abre la URL siguiente e introduce este código",
     "oauthOpenGithub": "Abrir GitHub",
     "oauthCancel": "Cancelar",
-    "oauthFailed": "Error de autorización"
+    "oauthFailed": "Error de autorización",
+    "autoCreatePr": "Crear pull requests automáticamente",
+    "autoCreatePrDesc": "Crea automáticamente un pull request en Source Control de Workstation cuando una rama de funcionalidad está completamente subida y limpia"
   },
   "skillsHub": {
-    "title": "Skills Hub",
-    "tab": "Skills",
     "searchPlaceholder": "Buscar skills...",
-    "install": "Instalar",
-    "installing": "Instalando...",
-    "downloads": "Descargas",
-    "stars": "Estrellas",
-    "version": "Versión",
     "noInstalled": "No hay skills instaladas",
-    "marketplace": "Marketplace",
-    "author": "Autor",
-    "createdAt": "Creado",
-    "updatedAt": "Actualizado",
-    "source": "Fuente",
-    "path": "Ruta",
-    "available": "Disponible",
-    "notInstalled": "no instalado",
-    "sources": {
-      "github": "GitHub"
-    },
     "createSkill": "Crear Skill",
     "editSkill": "Editar Skill",
     "nameLabel": "Nombre",
@@ -1095,7 +951,6 @@
     "previewEmpty": "Nada que previsualizar aún",
     "tokenEstimate": "~{{count}} tokens",
     "saveSkill": "Guardar",
-    "nameTaken": "Ya existe un Skill con este nombre",
     "descriptionQualityGood": "Descripción: Buena",
     "descriptionQualityShort": "La descripción es muy corta",
     "descriptionQualityMissing": "Sin descripción — el Agent no descubrirá este Skill",
@@ -1120,8 +975,6 @@
     "compatibilityDesc": "Requisitos del entorno (ej. requiere Python 3.14+ y uv)",
     "compatibilityPlaceholder": "ej. requiere Python 3.14+ y uv",
     "tokenWarning": "supera los 5 000 recomendados",
-    "license": "Licencia",
-    "compatibility": "Compatibilidad",
     "bundledFilesLabel": "Archivos incluidos",
     "bundledFilesDesc": "Agregar scripts, referencias o recursos. Los scripts se ejecutan pero no se cargan en la ventana de contexto",
     "addFileButton": "Agregar archivo",
@@ -1136,7 +989,6 @@
   "mcp": {
     "tab": "MCP",
     "searchPlaceholder": "Buscar servidores MCP...",
-    "serversLabel": "Servidores",
     "noServers": "No hay servidores MCP configurados",
     "noServersDesc": "Agrega un servidor MCP para extender las capacidades del agente con herramientas externas.",
     "addServer": "Agregar servidor MCP",
@@ -1161,7 +1013,6 @@
     "enabled": "Habilitado",
     "enabledDesc": "Habilitar o deshabilitar este servidor MCP",
     "reconnect": "Reconectar",
-    "connecting": "Conectando...",
     "connectingTitle": "Iniciando {{count}} servidor(es) MCP… (puede tardar unos segundos)",
     "connectingSlow": "Conectando todavía…",
     "connectingSlowBody": "Puede tardar un momento en el primer arranque. Si un servidor parece atascado, abre su panel de detalles para reconectarlo",
@@ -1173,52 +1024,17 @@
     "toolsLabel": "Herramientas",
     "noTools": "No hay herramientas disponibles",
     "infoSection": "Información del Server",
-    "saved": "Servidor guardado",
-    "savedDesc": "ha sido agregado a tu config MCP.",
-    "testHint": "Prueba la conexión antes de guardar para verificar que el servidor es accesible.",
-    "discoverServers": "Descubrir servidores MCP",
-    "hubSearchPlaceholder": "Buscar servidores MCP...",
-    "hubNoResults": "No se encontraron servidores MCP",
-    "hubNoResultsDesc": "Intenta con otro término de búsqueda",
-    "addToConfig": "Agregar a config",
-    "addingToConfig": "Agregando...",
-    "addedToConfig": "Servidor agregado",
-    "addedToConfigDesc": "se ha agregado a tu config MCP.",
-    "alreadyConfigured": "Configurado",
-    "publishedAt": "Publicado",
-    "website": "Sitio web",
-    "source": "Código fuente",
-    "viewOnGlama": "Ver en Glama",
-    "remotes": "Endpoints remotos",
-    "packages": "Paquetes",
-    "sourceOfficial": "MCP Registry",
-    "sourceSmithery": "Smithery",
-    "sourceMcpBar": "MCP.Bar",
-    "sourceGlama": "Glama",
-    "selectRegistry": "Registry",
-    "selectRegistryDesc": "Elige un Registry de servidores MCP para explorar",
-    "connections": "Conexiones",
-    "securityPassed": "Escaneo aprobado",
-    "securityFailed": "Escaneo fallido",
-    "serverCommand": "Comando del servidor",
-    "requiredInputs": "Entradas requeridas",
-    "smitheryApiKeyRequired": "Se requiere Smithery API key. Agrégala en Integrations → Connections → Agregar → Servicios.",
-    "smitheryGetKey": "Obtén tu key en smithery.ai/account/api-keys",
     "envVars": "Variables de entorno",
     "envVarsHint": "ej. GITHUB_PERSONAL_ACCESS_TOKEN",
     "envKey": "KEY",
     "envValue": "valor",
     "addEnvVar": "Agregar variable",
-    "envVarCount": "variable(s) de entorno",
     "headers": "Headers",
     "headersHint": "ej. Authorization",
     "headerKey": "Header",
     "headerValue": "valor",
     "addHeader": "Agregar header",
-    "headerCount": "header(s) personalizado(s)",
     "restart": "Reiniciar",
-    "enable": "Habilitar",
-    "disable": "Deshabilitar",
     "uptime": "Tiempo activo",
     "bulkSelected": "{{count}} seleccionado(s)",
     "bulkRestart": "Reiniciar",
@@ -1244,76 +1060,26 @@
     "scopeWorkspace": "Específico del repo",
     "userScopeLabel": "User",
     "workspaceScopeLabel": "Específico del repo",
-    "userServersLabel": "Servidores MCP de usuario",
-    "workspaceServersLabel": "Servidores MCP específicos del repo",
     "noUserServers": "No hay servidores MCP de usuario configurados",
     "noWorkspaceServers": "No hay servidores MCP específicos del repo configurados",
     "deleteConfirmTitle": "¿Eliminar el servidor MCP «{{name}}»?",
     "deleteConfirmMessage": "Esto eliminará el servidor del archivo de configuración. Las sesiones activas se desconectarán."
   },
   "agentOrgs": {
-    "title": "Equipos de agentes",
-    "running": "En ejecución",
-    "fires": "disparos",
-    "addRoutine": "Agregar Routine",
-    "trigger": "Trigger",
-    "triggerDesc": "Which event starts this policy",
-    "scopeDesc": "Which repos this policy applies to",
-    "advancedDesc": "Cooldown and max fires per policy",
-    "action": "Acción",
-    "interval": "Intervalo",
-    "cooldown": "Enfriamiento",
-    "cooldownDesc": "Segundos mínimos entre disparos consecutivos",
-    "maxFires": "Disparos máximos",
-    "maxFiresDesc": "Número máximo de veces que esta regla puede dispararse (0 = ilimitado)",
-    "advanced": "Avanzado",
-    "advancedSettings": "Configuración avanzada",
-    "applicableAgent": "Agent asignado",
-    "applicableAgentDesc": "El Agent que ejecutará esta rutina (dejar vacío para cualquier Agent)",
-    "selectAgent": "Seleccionar Agent…",
     "scope": "Repos aplicables",
     "allRepos": "Todos los repos",
-    "allReposDesc": "Aplicar a todos los repositorios",
-    "specificRepos": "Repos específicos",
-    "specificReposDesc": "Aplicar solo a repositorios seleccionados",
-    "selectRepos": "Seleccionar repos...",
-    "includeRepos": "Incluir",
-    "includeReposDesc": "Repos where this policy applies",
-    "excludeRepos": "Excluir",
-    "excludeReposDesc": "Repos to exclude from this policy",
-    "includeReposPlaceholder": "Seleccionar repositorios…",
-    "excludeReposPlaceholder": "Seleccionar repositorios a excluir…",
-    "step1": "Paso 1 — Config",
-    "step2": "Paso 2 — Acción",
-    "promptPlaceholder": "Ingrese el prompt para enviar al Agent...",
-    "sessionPrompt": "Prompt de Session",
-    "repoPath": "Ruta del repo (opcional)",
-    "sessionId": "ID de Session",
-    "channel": "Nombre del canal",
-    "messageContent": "Contenido del mensaje",
     "enabled": "Habilitado",
     "enabledDesc": "Enable or disable this policy",
-    "disabled": "Deshabilitado",
-    "noTemplates": "Aún no hay plantillas",
     "addOrg": "Añadir equipo de agentes",
     "addAgent": "Agregar Agent",
-    "agentSections": {
-      "builtInAgents": "Agentes integrados",
-      "customAgents": "Agentes personalizados",
-      "cli": "CLI Agents",
-      "orgs": "Equipos"
-    },
     "memorySections": {
       "personalMemory": "Personal",
-      "workspaceMemory": "Espacio de trabajo",
-      "title": "Memoria"
+      "workspaceMemory": "Espacio de trabajo"
     },
-    "importAgent": "Import",
     "agentDetail": {
       "type": "Tipo",
       "builtIn": "Integrado",
-      "custom": "Personalizado",
-      "noModel": "(no configurado)"
+      "custom": "Personalizado"
     },
     "cliAgentDetail": {
       "installed": "Instalado",
@@ -1322,19 +1088,12 @@
       "keyStatus": "Estado de credenciales",
       "keysConfigured": "Configurado",
       "noKeys": "No configurado",
-      "authMethod": "Método de autenticación",
-      "baseUrl": "Base URL",
-      "availableModels": "Modelos disponibles",
-      "noModels": "No hay modelos disponibles",
-      "editKeys": "Editar credenciales",
       "detectKeys": "Detectar credenciales",
       "detectSuccess": "Credenciales detectadas correctamente",
       "keys": "Credenciales",
       "docs": "Documentación",
       "tabCore": "Principal",
-      "tabConfig": "Configuración",
       "addKey": "Agregar credencial",
-      "compatibility": "Compatibilidad",
       "bringYourOwnKeys": "Traiga sus propias claves",
       "supported": "Compatible",
       "notSupported": "No compatible",
@@ -1344,15 +1103,13 @@
       "keyType": "Tipo",
       "typePlan": "Plan",
       "typeApiKey": "API Key",
-      "keyPreview": "Clave",
       "addedTime": "Añadido",
       "secretBearingConfig": "Puede contener claves API o tokens",
       "revealConfigFile": "Mostrar en el gestor de archivos",
       "launchConfiguration": "Configuración de inicio",
       "configFiles": "Archivos de configuración",
       "configFile": "Archivo de configuración",
-      "tokenCount": "~{{count}} Token",
-      "emptyConfigPreview": "Sin contenido de configuración"
+      "tokenCount": "~{{count}} Token"
     },
     "sessionProvenance": {
       "masterToggle": "Hooks de procedencia",
@@ -1362,10 +1119,8 @@
       "title": "Procedencia de sesiones",
       "capture": "Registrar interacciones con archivos",
       "description": "Registra lecturas y escrituras de archivos como metadatos. No se guardan prompts, salidas de herramientas ni contenido de archivos.",
-      "configPath": "Registra lecturas y escrituras de archivos como metadatos. No se guardan prompts, salidas de herramientas ni contenido de archivos. Configuración: {{path}}",
       "installDrift": "La preferencia guardada y el hook instalado son distintos. Cambia la captura para reparar el hook administrado. Configuración: {{path}}",
       "copyPath": "Copiar",
-      "reveal": "Mostrar",
       "col": {
         "source": "Herramienta",
         "config": "Configuración",
@@ -1413,227 +1168,8 @@
         }
       }
     },
-    "codexConfig": {
-      "sectionTitle": "Configuración",
-      "model": "Modelo",
-      "modelDesc": "Modelo predeterminado para sesiones de Codex CLI",
-      "approvalPolicyLabel": "Política de aprobación",
-      "approvalPolicyDesc": "Cuándo Codex solicita confirmación antes de ejecutar comandos",
-      "approvalPolicy": {
-        "untrusted": "No confiable",
-        "on-request": "Bajo demanda",
-        "never": "Nunca"
-      },
-      "sandboxModeLabel": "Modo sandbox",
-      "sandboxModeDesc": "Acceso al sistema de archivos y red para comandos ejecutados",
-      "sandboxMode": {
-        "read-only": "Solo lectura",
-        "workspace-write": "Escritura en workspace",
-        "danger-full-access": "Acceso completo (peligro)"
-      },
-      "webSearchLabel": "Búsqueda web",
-      "webSearchDesc": "Cómo Codex maneja las solicitudes de búsqueda web",
-      "webSearch": {
-        "disabled": "Desactivado",
-        "cached": "En caché",
-        "live": "En vivo"
-      },
-      "reasoningTitle": "Razonamiento y estilo",
-      "reasoningEffortLabel": "Esfuerzo de razonamiento",
-      "reasoningEffortDesc": "Cuánto razonamiento aplica el modelo",
-      "reasoningEffort": {
-        "none": "Ninguno",
-        "minimal": "Mínimo",
-        "low": "Bajo",
-        "medium": "Medio",
-        "high": "Alto",
-        "xhigh": "Extra alto"
-      },
-      "personalityLabel": "Personalidad",
-      "personalityDesc": "Estilo de comunicación de las respuestas",
-      "personality": {
-        "friendly": "Amigable",
-        "pragmatic": "Pragmático",
-        "none": "Ninguno"
-      },
-      "unset": "(no establecido)",
-      "featuresTitle": "Indicadores de funciones",
-      "features": {
-        "shell_snapshot": "Shell Snapshot",
-        "shell_snapshotDesc": "Capturar entorno Shell para acelerar comandos repetidos",
-        "multi_agent": "Multi-Agent",
-        "multi_agentDesc": "Habilitar herramientas de colaboración multi-Agent",
-        "collaboration_modes": "Modos de colaboración",
-        "collaboration_modesDesc": "Habilitar modos de colaboración como el modo plan",
-        "undo": "Deshacer",
-        "undoDesc": "Habilitar deshacer mediante snapshots de git por turno",
-        "shell_tool": "Herramienta Shell",
-        "shell_toolDesc": "Habilitar la herramienta Shell predeterminada",
-        "personality": "Controles de personalidad",
-        "personalityDesc": "Habilitar selección de personalidad en el CLI"
-      }
-    },
-    "cursorConfig": {
-      "sectionTitle": "Configuración",
-      "vimMode": "Modo Vim",
-      "vimModeDesc": "Habilitar atajos de Vim en el editor CLI",
-      "http1Fallback": "HTTP/1.1 Alternativo",
-      "http1FallbackDesc": "Usar HTTP/1.1 en lugar de HTTP/2 para conexiones Agent (para proxies empresariales)",
-      "attributionTitle": "Atribución",
-      "attributeCommits": "Atribuir Commits",
-      "attributeCommitsDesc": "Añadir marcador 'Made with Cursor' a los commits del Agent",
-      "attributePRs": "Atribuir PRs",
-      "attributePRsDesc": "Añadir pie 'Made with Cursor' a los Pull Requests del Agent",
-      "permissionsTitle": "Permisos",
-      "permissionsAllow": "Permitir",
-      "permissionsDeny": "Denegar",
-      "noPermissions": "Sin reglas de permisos configuradas",
-      "sandboxTitle": "Sandbox",
-      "sandboxTypeLabel": "Modo Sandbox",
-      "sandboxTypeDesc": "Controla el acceso al sistema de archivos para comandos en sandbox",
-      "sandboxType": {
-        "workspace_readwrite": "Workspace lectura/escritura",
-        "workspace_readonly": "Workspace solo lectura",
-        "insecure_none": "Desactivado (inseguro)"
-      },
-      "disableTmpWrite": "Deshabilitar escritura /tmp",
-      "disableTmpWriteDesc": "Elimina el acceso de escritura predeterminado a directorios temporales",
-      "sharedBuildCache": "Caché de compilación compartida",
-      "sharedBuildCacheDesc": "Compartir cachés de compilación (npm, cargo, pip) entre comandos sandbox y no sandbox",
-      "networkPolicyTitle": "Política de red",
-      "networkDefaultPolicy": "Política predeterminada",
-      "networkDefaultPolicyDesc": "Acción cuando ninguna regla de permitir/denegar coincide",
-      "networkDefault": {
-        "allow": "Permitir",
-        "deny": "Denegar"
-      },
-      "networkAllow": "Dominios permitidos",
-      "networkDeny": "Dominios denegados"
-    },
-    "claudeCodeConfig": {
-      "sectionTitle": "Configuración",
-      "noItems": "No hay elementos configurados",
-      "model": "Modelo predeterminado",
-      "modelDesc": "Anular el modelo predeterminado para las sesiones de Claude Code",
-      "thinkingMode": "Extended Thinking",
-      "thinkingModeDesc": "Habilitar Extended Thinking (modo de pensamiento) por defecto para todas las sesiones",
-      "gitInstructions": "Instrucciones de Git",
-      "gitInstructionsDesc": "Incluir instrucciones integradas de flujo de trabajo de commit y PR en el prompt del sistema",
-      "cleanupPeriod": "Período de limpieza",
-      "cleanupPeriodDesc": "Las sesiones inactivas durante más tiempo que este período se eliminan al iniciar",
-      "days": "días",
-      "language": "Idioma de respuesta",
-      "languageDesc": "Configurar el idioma de respuesta preferido de Claude (ej. japanese, spanish)",
-      "attributionTitle": "Atribución",
-      "commitAttribution": "Mensaje de commit",
-      "commitAttributionDesc": "Mensaje personalizado añadido a los git commits realizados por Claude Code",
-      "prAttribution": "Mensaje de PR",
-      "prAttributionDesc": "Mensaje personalizado añadido a las PR creadas por Claude Code",
-      "coAuthoredBy": "Co-authored-by",
-      "coAuthoredByDesc": "Incluir 'co-authored-by Claude' en git commits y PRs",
-      "permissionsTitle": "Permisos",
-      "defaultMode": "Modo de permisos predeterminado",
-      "defaultModeDesc": "Modo de permisos predeterminado al abrir Claude Code",
-      "permissionMode": {
-        "default": "Predeterminado",
-        "plan": "Plan",
-        "acceptEdits": "Aceptar ediciones",
-        "bypassPermissions": "Omitir permisos"
-      },
-      "permAllow": "Permitir",
-      "permAsk": "Preguntar",
-      "permDeny": "Denegar",
-      "sandboxTitle": "Sandbox",
-      "sandboxEnabled": "Habilitar Sandbox",
-      "sandboxEnabledDesc": "Aislar los comandos Bash del sistema de archivos y la red",
-      "autoAllowBash": "Aprobar Bash automáticamente",
-      "autoAllowBashDesc": "Aprobar automáticamente los comandos Bash cuando Sandbox está habilitado",
-      "allowLocalBinding": "Permitir enlace a Localhost",
-      "allowLocalBindingDesc": "Permitir enlazar a puertos localhost dentro del Sandbox (solo macOS)",
-      "excludedCommands": "Comandos excluidos",
-      "allowedDomains": "Dominios permitidos",
-      "fsAllowWrite": "Escritura permitida en sistema de archivos",
-      "fsDenyWrite": "Escritura denegada en sistema de archivos",
-      "fsDenyRead": "Lectura denegada en sistema de archivos"
-    },
-    "noMemory": "Aún no hay Memory",
-    "memoryDescription": "Memory almacena conocimientos y contexto que los miembros pueden consultar entre sesiones.",
-    "tabs": {
-      "org": "Equipo",
-      "agents": "Miembros",
-      "integrations": "Integraciones",
-      "rules": "Reglas",
-      "orgs": "Equipos"
-    },
-    "searchPlaceholder": "Buscar reglas…",
-    "searchOrgsPlaceholder": "Buscar equipos...",
-    "searchAgentsPlaceholder": "Buscar miembros...",
-    "searchMemoryPlaceholder": "Buscar Memory...",
-    "searchIntegrationsPlaceholder": "Buscar Integrations...",
-    "integrationsSections": {
-      "core": "Núcleo",
-      "tools": "Herramientas de agente",
-      "connections": "Conexiones",
-      "customization": "Personalización"
-    },
-    "triggerNotConfigurable": "No hay config adicional para este trigger",
     "sections": {
-      "quickActions": "Acciones rápidas",
-      "trigger": "Config del disparador",
-      "actions": "Cadena de acciones"
-    },
-    "quickActions": {
-      "editDesc": "Modificar trigger, acción y config",
-      "delete": "Delete Policy",
-      "deleteDesc": "Permanently remove this policy"
-    },
-    "overview": {
-      "triggerConfig": "Config del trigger",
-      "fireCount": "Cantidad de disparos",
-      "lastFired": "Último disparo",
-      "maxFires": "Disparos máximos",
-      "actions": "Acciones"
-    },
-    "cronExpression": "Expresión cron (ej. 0 9 * * *)",
-    "cronHint": "Cron estándar de 5 campos: minuto hora día mes día_semana",
-    "patternRegex": "Patrón regex (opcional)",
-    "filePathPlaceholder": "Ruta del archivo o directorio a vigilar",
-    "debounce": "Antirrebote",
-    "webhookRoute": "Ruta del webhook (ej. /automation/webhook/deploy)",
-    "webhookHint": "Las solicitudes POST a esta ruta activarán el trigger",
-    "scheduleTimezone": "Zona horaria",
-    "scheduleTimezoneDesc": "Usa tu zona horaria actual por defecto. Los desfases se muestran en formato UTC.",
-    "triggerConfig": {
-      "timer": {
-        "label": "Intervalo",
-        "desc": "How often the policy fires (in seconds)"
-      },
-      "scheduledTime": {
-        "label": "Hora programada",
-        "desc": "Programación tipo calendario con frecuencia, hora y zona horaria"
-      },
-      "cron": {
-        "label": "Programación",
-        "desc": "Cron expression defining when the policy fires"
-      },
-      "gitActivity": {
-        "label": "Eventos Git",
-        "desc": "Which git operations trigger this policy"
-      },
-      "channelMessage": {
-        "label": "Canal",
-        "desc": "Nombre del canal donde escuchar mensajes",
-        "patternDesc": "Regex opcional para filtrar mensajes"
-      },
-      "fileWatch": {
-        "label": "Rutas de vigilancia",
-        "desc": "Archivos y directorios a monitorear",
-        "debounceDesc": "Tiempo de espera tras el último cambio"
-      },
-      "webhook": {
-        "label": "Endpoint Webhook",
-        "desc": "Ruta HTTP que acepta solicitudes POST entrantes"
-      }
+      "quickActions": "Acciones rápidas"
     },
     "orgWizard": {
       "title": "Agregar Org",
@@ -1643,60 +1179,51 @@
       "orgDescription": "Descripción",
       "orgDescriptionDesc": "Resumen opcional de lo que hace esta organización",
       "orgDescriptionPlaceholder": "¿Qué hace esta organización?",
-      "members": "Miembros",
       "addMember": "Agregar Miembro",
-      "editMember": "Editar Miembro",
       "noMembers": "Agrega miembros para construir la jerarquía de tu org",
-      "previewEmpty": "Agrega agentes para ver la vista previa",
-      "hierarchyMode": {
-        "label": "Modo de jerarquía",
-        "description": "Cómo se interpretan en runtime las relaciones Reports-to entre miembros",
-        "flat": {
-          "label": "Plano",
-          "description": "Sin jerarquía. Cada miembro puede escribir directamente a cualquier otro. Se oculta la columna Reports-to"
-        },
-        "soft": {
-          "label": "Suave (recomendado)",
-          "description": "Reports-to se entrega al LLM como pista organizacional. El enrutamiento en runtime es libre — el LLM puede contactar a un par directamente cuando tenga sentido"
-        },
-        "strict": {
-          "label": "Estricto",
-          "description": "Reports-to se aplica en runtime. Un miembro solo puede escribir a su manager, subordinados directos o al coordinador. Los envíos entre pares son rechazados"
-        }
-      },
-      "strictBanner": "Modo estricto: los miembros solo pueden escribir a su manager, subordinados directos o al coordinador. Los mensajes entre pares se bloquean en runtime.",
-      "missingParentWarn": "En modo estricto, los miembros de nivel superior reportan directamente al coordinador y solo pueden contactar con él.",
-      "reachability": {
-        "label": "Alcance en modo estricto",
-        "description": "Previsualización dry-run de quién puede escribir directamente a quién bajo la cadena actual. Útil para detectar miembros aislados antes del lanzamiento",
-        "fromHeader": "de \\ a",
-        "empty": "Añade al menos un miembro para ver cómo se enruta el modo estricto en runtime.",
-        "isolatedWarn": "Estos miembros solo pueden contactar al coordinador — no pueden colaborar con pares en modo estricto: {{names}}",
-        "allowedTitle": "{{from}} puede escribir directamente a {{to}}",
-        "blockedTitle": "{{from}} no puede escribir directamente a {{to}} en modo estricto — escala vía el coordinador"
-      },
       "membersLabel": "Miembros del equipo",
-      "membersDesc": "Cada fila es un alias de enrutamiento. El coordinador se dirige a los miembros por nombre; los nombres deben ser únicos. Role es una pista de especialidad para el LLM",
+      "membersDesc": "Cada fila es un miembro con una concesión de Writer y ajustes de comunicación independientes. Los nombres deben ser únicos; el rol solo describe la especialidad.",
       "memberName": "Nombre",
       "memberNamePlaceholder": "Nombre de enrutamiento único (p. ej. SDE-1)",
       "memberNameDuplicate": "Otro miembro ya usa este nombre. Los nombres deben ser únicos dentro de la organización.",
       "role": "Rol",
       "rolePlaceholder": "Especialidad (p. ej. dev backend)",
       "agent": "Agent",
-      "reportsTo": "Reporta a",
-      "reportsToCoordinator": "Coordinador (nivel superior)",
-      "status": "Estado",
       "coordinator": "Coordinador",
       "coordinatorDesc": "Agente principal que gestiona la sesión de coordinador para esta ejecución de la organización",
       "coordinatorPlaceholder": "Seleccionar agente coordinador",
-      "tabs": {
-        "edit": "Editar",
-        "previewDiagram": "Vista previa del diagrama"
-      },
       "dangerZone": "Zona de peligro",
       "deleteOrg": "Eliminar este Org",
       "deleteOrgDesc": "Elimina permanentemente este Equipo Agent. Los Agents miembros no se verán afectados. Esta acción no se puede deshacer",
-      "deleteThisOrg": "Eliminar este Org"
+      "deleteThisOrg": "Eliminar este Org",
+      "planApprovalPolicy": {
+        "label": "Aprobación del plan",
+        "description": "Quién decide cuándo el plan enviado por un Planner está listo para desbloquear las tareas dependientes",
+        "coordinator": {
+          "label": "Coordinador (recomendado)",
+          "description": "El coordinador revisa el plan dentro de la ejecución y luego lo aprueba o pide cambios al Planner"
+        },
+        "user": {
+          "label": "Usuario",
+          "description": "El chat grupal espera en silencio y te muestra el plan con las acciones Aprobar, Editar y Solicitar cambios"
+        },
+        "automatic": {
+          "label": "Automático",
+          "description": "Un plan enviado válido se acepta de inmediato y se desbloquean sus tareas dependientes"
+        }
+      },
+      "writer": "Writer",
+      "connected": "Conectados",
+      "connectedCount": "Conectado con {{count}}",
+      "manageCommunication": "Gestionar comunicación",
+      "futureTeamsOnly": "Los cambios de esta plantilla solo afectan a los equipos creados en el futuro. No modifican las sesiones de equipo en ejecución.",
+      "communicationPanel": {
+        "title": "Comunicación de {{name}}",
+        "coordinatorAlwaysReachable": "El coordinador siempre tiene comunicación bidireccional con todos los miembros y no aparece aquí.",
+        "search": "Buscar miembros por nombre o rol",
+        "noPeers": "No hay miembros coincidentes",
+        "saveWithTeam": "Los cambios permanecen en el borrador del equipo y se guardan desde la página principal de ajustes del equipo."
+      }
     },
     "agentWizard": {
       "title": "Configurar Agent",
@@ -1706,11 +1233,7 @@
       "namePlaceholder": "ej. Bot de revisión",
       "descriptionLabel": "Descripción",
       "descriptionPlaceholder": "¿Qué hace este agent? (opcional)",
-      "defaultModelLabel": "Modelo predeterminado",
-      "defaultModelDesc": "Modelo de IA utilizado por este Agent",
-      "defaultModelPlaceholder": "Seleccionar modelo...",
       "subAgentsTab": "Subagents",
-      "subAgentConcurrencyTitle": "Control de concurrencia",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
       "maxToolUseConcurrencyDesc": "Llamadas de herramientas simultáneas por mensaje. Predeterminado: 10.",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
@@ -1718,27 +1241,13 @@
       "addSubAgent": "Agregar Sub-Agent...",
       "noSubAgents": "No hay sub-agents configurados."
     },
-    "ruleActions": {
-      "create": "Crear Nuevo",
-      "import": "Importar"
-    },
-    "ruleActionsDesc": {
-      "create": "Escribir una nueva regla Markdown",
-      "import": "Importar .cursor/rules de este espacio de trabajo"
-    },
-    "ruleActionLabel": "Método",
-    "ruleActionDesc": "Escribir desde cero o importar desde una fuente existente",
     "markdownContent": "Policy Content",
     "markdownContentDesc": "Instrucciones Markdown inyectadas en el prompt del sistema del Agent",
-    "markdownContentPlaceholder": "Write markdown policies here...",
     "noMarkdownContent": "Sin contenido",
     "importSelected": "Importar ({{count}})",
     "importRuleColumn": "Regla",
     "allImported": "Todas las {{item}} ya están importadas",
-    "importedItemRules": "reglas",
     "externalImport": {
-      "noResults": "No se encontraron reglas importables. Se buscaron en .cursor/rules, CLAUDE.md, .github/copilot-instructions.md, .kiro/steering y tu directorio personal.",
-      "globalScope": "(global)",
       "applyFailed": "Error al importar: {{message}}",
       "partialFailure": "Algunos elementos no pudieron importarse:",
       "sources": {
@@ -1748,38 +1257,15 @@
         "kiro": "Kiro",
         "codex": "Codex"
       },
-      "noSkillsResults": "No se encontraron skills importables. Buscado en ~/.claude/skills y ~/.claude/commands.",
       "noAgentResults": "Aún no hay agentes para importar",
-      "addManually": "Añadir agente manualmente",
       "readonlyDowngradedBadge": "Solo lectura — herramientas de escritura desactivadas",
-      "readonlyDowngradedTooltip": "La fuente declara readonly:true. Desactivadas: {{tools}}.",
-      "workspaceScope": "(espacio de trabajo)"
+      "readonlyDowngradedTooltip": "La fuente declara readonly:true. Desactivadas: {{tools}}."
     },
-    "previewEmpty": "Nada que previsualizar aún",
-    "editorTabs": {
-      "edit": "Editar",
-      "preview": "Vista previa"
-    },
-    "activeRules": "activas",
     "addRule": "Agregar política",
-    "editRoutine": "Edit Policy",
     "ruleName": "Policy name",
     "ruleNameDesc": "A unique name to identify this policy",
-    "routineNamePlaceholder": "ej. Auto-deploy en commit",
-    "ruleNameRequired": "Policy name is required",
-    "routineName": "Policy name",
-    "routineNameDesc": "A unique name to identify this policy",
-    "routineNameRequired": "Policy name is required",
-    "noRulesOrRoutines": "No policies yet",
-    "ruleKindLabel": "Policy Type",
-    "ruleKindDesc": "Cómo se define esta policy",
     "ruleKinds": {
-      "rule": "Rules",
-      "routine": "Routines"
-    },
-    "ruleKindsDesc": {
-      "rule": "Instrucciones Markdown inyectadas en el prompt del Agent",
-      "routine": "Cadenas automatizadas de trigger + acción"
+      "rule": "Rules"
     },
     "markdownRuleNamePlaceholder": "ej. Guía de estilo de código",
     "editRule": "Edit Policy",
@@ -1795,22 +1281,11 @@
     "ruleRepo": "Repo",
     "ruleRepoDesc": "El único repo al que se aplica esta guía",
     "selectRepo": "Seleccionar repo…",
-    "ruleSourceGlobal": "User",
-    "ruleSourceGlobalDesc": "Guardado en ~/.orgii/rules/. Aplica a todos los repos.",
     "ruleSourcePersonal": "Personal",
     "ruleSourcePersonalDesc": "Guardado en ~/.orgii/personal/rules/. Solo sesiones OS Agent / channel.",
-    "importSkillTitle": "Importar skill desde otro agente",
-    "importSkillColumn": "Skill",
-    "importedItemSkills": "skills",
     "findSkills": {
       "title": "Buscar Skills",
-      "description": "Search skills.sh and press Enter to show matching ORGII skills. Click a result to preview its SKILL.md in WorkStation.",
-      "openDirectory": "Abrir skills.sh",
-      "hint": "Paste a skills.sh URL or id like vercel-labs/skills/find-skills. ORGII downloads the skill snapshot directly from skills.sh.",
       "placeholder": "Buscar Skills...",
-      "install": "Install skill",
-      "installing": "Installing...",
-      "installSuccess": "Installed {{name}}",
       "installs": "Installs",
       "emptyTitle": "Buscar Skills",
       "emptySubtitle": "Introduce al menos 2 caracteres y pulsa Enter para buscar Skills.",
@@ -1820,193 +1295,6 @@
     "importAgentTitle": "Importar Agents desde otras apps",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agentes",
-    "importAgentButton": "Importar desde otra plataforma",
-    "workflowActions": {
-      "categories": {
-        "all": "All",
-        "controls": "Controls",
-        "sessionWorkflow": "Session Workflow",
-        "actions": "Actions"
-      },
-      "inline": {
-        "runWith": "Ejecutar con",
-        "using": "usando",
-        "retryMax": "reintentos máx.",
-        "times": "veces",
-        "timeout": "tiempo de espera",
-        "transitionTo": "Pasar a",
-        "stage": "etapa",
-        "configureAutoApprove": "Configurar flujo: aprobación automática",
-        "onFailure": "en caso de fallo",
-        "open": "Abrir",
-        "inExternalEditor": "en el editor externo",
-        "waitFor": "Esperar",
-        "ifOutput": "Si la salida",
-        "agentPlaceholder": "agente",
-        "modelPlaceholder": "modelo",
-        "stagePlaceholder": "etapa",
-        "stagesPlaceholder": "etapas",
-        "actionPlaceholder": "acción",
-        "repoPlaceholder": "repositorio",
-        "conditionPlaceholder": "condición",
-        "valuePlaceholder": "valor",
-        "autoApproveNone": "Ninguna (manual)",
-        "autoApproveIntake": "Solo Intake",
-        "autoApproveIntakeSpec": "Intake + Spec",
-        "autoApproveExceptReview": "Todo excepto Review",
-        "autoApproveAll": "Todo (automatizado)",
-        "failurePause": "Pausar",
-        "failureRetry": "Reintentar",
-        "failureRollback": "Revertir",
-        "failureSkip": "Omitir",
-        "condEquals": "igual a",
-        "condNotEquals": "distinto de",
-        "condContains": "contiene",
-        "condIsEmpty": "está vacío",
-        "condIsNotEmpty": "no está vacío",
-        "emptyTitle": "Aún no hay acciones",
-        "emptySubtitle": "Selecciona una acción del panel para empezar."
-      },
-      "fields": {
-        "session": "Session",
-        "model": "Model",
-        "agent": "Agent",
-        "timeout": "Timeout",
-        "maxRetries": "Max Retries",
-        "customPrompt": "Custom Prompt",
-        "prompt": "Prompt",
-        "sessionConfig": "Session Configuration",
-        "channel": "Channel",
-        "content": "Content",
-        "message": "Message",
-        "targetStage": "Target Stage",
-        "transitionType": "Transition Type",
-        "stageTimeout": "Stage timeout"
-      },
-      "placeholders": {
-        "selectSession": "Select a session",
-        "selectModel": "Select AI model",
-        "selectAgent": "Select agent",
-        "stageTimeout": "Stage timeout",
-        "maxRetries": "Maximum retry attempts",
-        "customPrompt": "Optional: Override default prompt...",
-        "compareValue": "Compare value",
-        "iterations": "Number of times to repeat",
-        "injectPrompt": "Enter prompt to inject...",
-        "selectSessionOptional": "Select target session (optional)",
-        "selectSessionToStop": "Select session to stop",
-        "channelName": "Channel name",
-        "messageContent": "Message content...",
-        "selectTargetSession": "Select target session",
-        "injectMessage": "Message to inject...",
-        "selectTargetStage": "Select target stage"
-      },
-      "units": {
-        "second": "second"
-      },
-      "stages": {
-        "intake": {
-          "title": "Intake Stage",
-          "description": "Gather initial requirements and clarifications"
-        },
-        "spec": {
-          "title": "Specification Stage",
-          "description": "Define detailed specifications and requirements"
-        },
-        "planning": {
-          "title": "Planning Stage",
-          "description": "Break down work into tasks and milestones"
-        },
-        "execution": {
-          "title": "Execution Stage",
-          "description": "Execute planned tasks with AI agents"
-        },
-        "review": {
-          "title": "Review Stage",
-          "description": "Review changes and validate results"
-        },
-        "merge": {
-          "title": "Merge Stage",
-          "description": "Merge approved changes to target branch"
-        }
-      },
-      "wait": {
-        "title": "Wait",
-        "description": "Pause execution for a specified time"
-      },
-      "if": {
-        "title": "If",
-        "description": "Conditional logic based on output",
-        "condition": "Condition"
-      },
-      "loop": {
-        "title": "Loop",
-        "description": "Repeat actions multiple times",
-        "loopType": "Loop Type",
-        "iterations": "Iterations",
-        "types": {
-          "count": "Fixed Count",
-          "foreach": "For Each Item",
-          "while": "While Condition"
-        }
-      },
-      "operators": {
-        "equals": "Equals",
-        "notEquals": "Not Equals",
-        "contains": "Contains",
-        "greaterThan": "Greater Than",
-        "lessThan": "Less Than",
-        "isEmpty": "Is Empty",
-        "isNotEmpty": "Is Not Empty"
-      },
-      "injectPrompt": {
-        "title": "Inject Prompt",
-        "description": "Send a prompt to the agent"
-      },
-      "startSession": {
-        "title": "Start Session",
-        "description": "Start a new coding agent session"
-      },
-      "killSession": {
-        "title": "Kill Session",
-        "description": "Stop an existing session"
-      },
-      "sendMessage": {
-        "title": "Send Message",
-        "description": "Send a message to a channel"
-      },
-      "injectToSession": {
-        "title": "Inject to Session",
-        "description": "Send a message into a specific session"
-      },
-      "stageTransition": {
-        "title": "Stage Transition",
-        "description": "Configure conditional or unconditional stage transitions"
-      },
-      "workflowConfig": {
-        "title": "Session Workflow Config",
-        "description": "Configure the full session workflow pipeline",
-        "autoApprove": "Auto-approve stages",
-        "onFailure": "On failure"
-      },
-      "transitionTypes": {
-        "unconditional": "Unconditional (always)",
-        "conditional": "Conditional (based on output)"
-      },
-      "autoApproveOptions": {
-        "none": "None (manual approval)",
-        "intake": "Intake only",
-        "intakeSpec": "Intake + Spec",
-        "allExceptReview": "All except Review",
-        "all": "All (fully automated)"
-      },
-      "onFailureOptions": {
-        "pause": "Pause and notify",
-        "retry": "Retry (max 3)",
-        "rollback": "Rollback to previous stage",
-        "skip": "Skip and continue"
-      }
-    },
     "emptySelectionTitle": "Seleccione un miembro o un Equipo Agent",
     "emptySelectionSubtitle": "Elija un Agent o un Equipo Agent en la barra lateral para verlo y configurarlo.",
     "applicableWorkspace": "Workspace aplicable",
@@ -2033,7 +1321,40 @@
     "orgSaveFailed": "No se pudo guardar el equipo",
     "orgDeleteFailed": "No se pudo eliminar el equipo",
     "deleteOrgTitle": "¿Eliminar equipo?",
-    "deleteOrgMessage": "\"{{name}}\" se eliminará permanentemente. Esta acción no se puede deshacer."
+    "deleteOrgMessage": "\"{{name}}\" se eliminará permanentemente. Esta acción no se puede deshacer.",
+    "cliUpdateAlerts": {
+      "label": "Avisar de actualizaciones de CLI",
+      "description": "Comprueba las versiones de las CLI y avisa cuando haya actualizaciones disponibles. Desactivado deshabilita las comprobaciones"
+    },
+    "cliManagedConfig": {
+      "title": "Conmutador de configuración de la CLI",
+      "modeLabel": "Modo",
+      "modeDesc": "Predeterminado restaura la configuración propia de la CLI. Gestionado por ORGII escribe una configuración de proxy con copia de seguridad.",
+      "modeDefault": "Predeterminado",
+      "modeOrgii": "Gestionado por ORGII",
+      "conflict": "Cambio externo",
+      "conflictTitle": "Conflicto",
+      "conflictDesc": "La configuración activa de la CLI cambió después de que ORGII la escribiera.",
+      "proxyStatus": "Proxy",
+      "proxyDefault": "Modo predeterminado",
+      "proxyReady": "Proxy listo",
+      "proxyNotReady": "Proxy no listo",
+      "keyLabel": "Credencial",
+      "keyDesc": "Solo se muestran las claves de API compatibles con esta CLI y el proxy gestionado.",
+      "selectKey": "Seleccionar credencial",
+      "modelLabel": "Modelo",
+      "selectModel": "Seleccionar modelo",
+      "configFile": "Archivos de configuración",
+      "actions": "Acciones",
+      "addKey": "Agregar credencial",
+      "apply": "Aplicar",
+      "restore": "Restaurar predeterminado",
+      "forceApply": "Forzar aplicación",
+      "forceRestore": "Forzar restauración",
+      "applySuccess": "Configuración gestionada por ORGII aplicada",
+      "restoreSuccess": "Configuración predeterminada restaurada",
+      "proxyLifecycleDesc": "Mantén ORGII en ejecución mientras uses este modo. Cerrar la ventana deja el proxy en la bandeja del sistema; salir de ORGII restaura Predeterminado de forma segura, salvo que la configuración haya cambiado externamente."
+    }
   },
   "databases": {
     "title": "Bases de datos",
@@ -2041,38 +1362,24 @@
     "searchPlaceholder": "Buscar bases de datos...",
     "providers": {
       "sqlite": "SQLite",
-      "sqliteDesc": "Archivo de base de datos SQLite local",
       "supabase": "Supabase",
-      "supabaseDesc": "Base de datos PostgreSQL en la nube de Supabase",
       "turso": "Turso",
-      "tursoDesc": "SQLite distribuido de Turso (libSQL)",
       "neon": "Neon",
-      "neonDesc": "PostgreSQL serverless de Neon",
       "postgres": "PostgreSQL",
-      "postgresDesc": "Conexión directa a PostgreSQL",
-      "mysql": "MySQL",
-      "mysqlDesc": "Base de datos MySQL / MariaDB"
+      "mysql": "MySQL"
     },
     "detail": {
       "type": "Tipo",
       "url": "URL",
       "status": "Estado",
-      "enabled": "Habilitado",
-      "disabled": "Deshabilitado",
-      "connectionInfo": "Información de conexión",
-      "actions": "Acciones",
       "testConnection": "Probar conexión",
       "probeSuccess": "Conectado exitosamente",
-      "probeFailed": "Conexión fallida",
-      "disableAgent": "Deshabilitar acceso de Agent",
-      "enableAgent": "Habilitar acceso de Agent"
+      "probeFailed": "Conexión fallida"
     },
     "wizard": {
       "title": "Agregar conexión de base de datos",
       "providerType": "Tipo de base de datos",
       "providerTypeDesc": "Seleccione el motor de base de datos para esta conexión",
-      "connectionDetails": "Detalles de conexión",
-      "connectionNameDesc": "Nombre visible en la barra lateral y herramientas del agente",
       "databaseFileDesc": "Ruta a un archivo local .sqlite, .sqlite3 o .db",
       "projectUrlDesc": "URL de su proyecto Supabase desde el panel",
       "accessTokenDesc": "Clave de servicio o anon para acceso API",
@@ -2084,7 +1391,6 @@
       "mysqlHostDesc": "Nombre de host o dirección IP del servidor MySQL",
       "testConnectionDesc": "Validar la conexión antes de guardar",
       "addConnection": "Añadir",
-      "testPassed": "Prueba de conexión exitosa",
       "saved": "Conexión agregada",
       "savedDesc": "La conexión de base de datos ha sido guardada. Puede cerrar este asistente",
       "connectionNameOptional": "Nombre de conexión (opcional)",
@@ -2093,7 +1399,6 @@
     }
   },
   "devTools": {
-    "mode": "Modo",
     "modeUi": "Vista previa UI",
     "modeTool": "Herramientas",
     "modeInput": "Entrada",
@@ -2105,12 +1410,9 @@
     "toolTypeFilterPlaceholder": "Buscar herramientas…",
     "commands": "Comandos",
     "status": "Estado",
-    "statusRunning": "Ejecutando",
-    "variant": "Variante",
     "variantChat": "Chat Panel",
     "variantSimulator": "Simulator",
     "reset": "Restablecer",
-    "activityData": "ActivityData (JSON)",
     "activityDataPlaceholder": "Ingrese ActivityData JSON...",
     "preview": "Vista previa",
     "jsonParseError": "Error de análisis JSON",
@@ -2119,10 +1421,7 @@
     "queuedMessages": "Mensajes en cola",
     "fileReview": "Revisión de archivos",
     "terminalProcesses": "Procesos de terminal",
-    "chatPreview": "Vista previa del chat",
-    "scenario": "Escenario",
-    "selectScenario": "Selecciona un escenario",
-    "sessionSimulation": "Simulación de sesión"
+    "modeSessionLink": "Enlace de sesión"
   },
   "rulesTabs": {
     "rules": "Reglas",
@@ -2135,33 +1434,15 @@
     "noRules": "No hay reglas definidas"
   },
   "agentTools": {
-    "enabled": "Habilitado",
-    "systemPinned": "Anclado del sistema",
-    "searchPlaceholder": "Buscar herramientas...",
-    "toolColumn": "Herramienta",
-    "typeColumn": "Tipo"
+    "enabled": "Habilitado"
   },
   "dependencies": {
-    "installed": "Instalado",
-    "notFound": "No encontrado",
-    "noDbClientsFound": "No se encontraron clientes de base de datos",
-    "tableClient": "Cliente",
-    "tableName": "Nombre",
-    "tableStatus": "Estado",
-    "tableVersion": "Versión",
-    "tableBinary": "Binario",
-    "tableCategory": "Categoría",
     "categoryDatabase": "Base de datos",
     "categoryPackageManager": "Gestor de paquetes",
     "categoryRuntime": "Tiempo de ejecución",
     "categoryShellUtility": "Utilidad de shell",
     "categoryToolchain": "Cadena de herramientas",
-    "categoryVersionControl": "Control de versiones",
-    "installHintNote": "Instale la dependencia faltante para habilitar esta función",
-    "installSection": "Instalación"
-  },
-  "creator": {
-    "assign": "Asignar"
+    "categoryVersionControl": "Control de versiones"
   },
   "routineFields": {
     "addRoutine": "Agregar Routine",
@@ -2209,7 +1490,21 @@
     "fireHistory": "Run history",
     "noFires": "No runs yet",
     "openSession": "Open session",
-    "openWorkItem": "Open work item"
+    "openWorkItem": "Open work item",
+    "fireError": "No se pudo iniciar la rutina: {{detail}}",
+    "provider": "Proveedor",
+    "eventKind": "Evento",
+    "extraActivations": "Activaciones adicionales",
+    "activationSchedule": "Programación",
+    "activationOneTime": "Una vez",
+    "activationProviderEvent": "Evento de proveedor",
+    "activationManual": "Manual",
+    "providerPlaceholder": "github",
+    "eventKindPlaceholder": "pull_request",
+    "fireAccepted": "Ejecución {{status}}",
+    "openSessionError": "No se pudo abrir la sesión",
+    "openWorkItemError": "No se pudo abrir el elemento de trabajo",
+    "fireStarted": "Ejecución de la rutina iniciada"
   },
   "cursorPlugins": {
     "noPlugins": "No hay plugins de Cursor instalados",
@@ -2223,23 +1518,6 @@
     "searchPlaceholder": "Buscar plugins...",
     "mcpConfigured": "MCP configurado"
   },
-  "localModels": {
-    "title": "On prem",
-    "description": "Detecta este dispositivo y ordena modelos locales compatibles con Ollama / llama.cpp mediante una puntuación ligera de ajuste de hardware.",
-    "searchPlaceholder": "Buscar modelos locales...",
-    "hardware": {
-      "system": "Sistema",
-      "cpu": "CPU",
-      "memory": "Memoria",
-      "gpu": "GPU / Backend"
-    },
-    "fit": {
-      "good": "Bueno"
-    },
-    "runMode": {
-      "gpu": "GPU"
-    }
-  },
   "housekeeper": {
     "addModel": "Agregar modelo",
     "sections": {
@@ -2248,7 +1526,14 @@
       "diagnostics": "Diagnóstico"
     },
     "health": {
-      "status": "Sin comprobar"
+      "status": "Sin comprobar",
+      "title": "Comprobación de estado",
+      "idle": "Comprueba /v1/models y envía una pequeña solicitud de chat.",
+      "checking": "Comprobando el servicio vLLM MiniCPM local...",
+      "checkButton": "Comprobar conexión",
+      "configureFirst": "Configura primero una cuenta vLLM de MiniCPM.",
+      "connectedTo": "Conectado a {{baseUrl}}",
+      "failed": "La comprobación de estado de MiniCPM falló."
     },
     "benchmark": {
       "title": "Velocidad de salida de MiniCPM",
@@ -2260,11 +1545,54 @@
       "tokensPerSecond": "Velocidad de salida: {{value}} tokens/s",
       "completionTokens": "Tokens de salida: {{value}}",
       "elapsed": "Tiempo total: {{value}}s"
+    },
+    "title": "Housekeeper residente",
+    "description": "MiniCPM local se encarga de pulir prompts, explicar pasos brevemente y del control ligero de la UI. Las tareas de programación y la configuración compleja del ADE siguen usando el modelo principal del agent.",
+    "autoAccount": "Seleccionar automáticamente la cuenta vLLM de MiniCPM",
+    "tiles": {
+      "model": "Modelo",
+      "endpoint": "Endpoint",
+      "safeContext": "Contexto seguro"
+    },
+    "settings": {
+      "enabled": {
+        "title": "Activar housekeeper",
+        "description": "Cuando está desactivado, el pulido de prompts, las explicaciones de pasos y el control ligero de la UI no usarán MiniCPM."
+      },
+      "account": {
+        "title": "Cuenta vLLM de MiniCPM",
+        "description": "Reutiliza una cuenta vllm_api existente de Key Vault; no se crea ningún almacén de credenciales aparte."
+      },
+      "model": {
+        "title": "ID del modelo",
+        "description": "Docker vLLM MiniCPM5-1B usa openbmb/MiniCPM5-1B de forma predeterminada."
+      },
+      "context": {
+        "title": "Presupuesto de contexto seguro",
+        "description": "Usa un presupuesto conservador de 10000 tokens en GPU de 4 GB en lugar de confiar en el límite teórico de 32k."
+      }
+    },
+    "features": {
+      "promptPolish": {
+        "title": "Pulido de prompts",
+        "description": "Pule manualmente la entrada antes de enviarla al modelo de programación más potente."
+      },
+      "stepExplain": {
+        "title": "Explicaciones de pasos del agent",
+        "description": "Genera una o dos explicaciones breves en chino para los pasos de la reproducción de la sesión."
+      },
+      "uiControl": {
+        "title": "Control ligero de ADE/UI",
+        "description": "MiniCPM solo puede clasificar las solicitudes dentro de una lista blanca estricta de acciones locales."
+      },
+      "contextCompact": {
+        "title": "Mantenimiento automático del contexto",
+        "description": "Permite que MiniCPM mantenga un resumen continuo y aislado del contexto antiguo mientras las sesiones habilitadas están inactivas."
+      }
     }
   },
   "cliLaunchProfiles": {
     "title": "Perfil de lanzamiento",
-    "plain": "Base",
     "plan": "Plan",
     "fullPermission": "Permiso completo",
     "autoEdit": "Auto edición",
@@ -2276,5 +1604,67 @@
     "unavailable": "Perfil de lanzamiento no disponible",
     "saved": "Perfil de lanzamiento guardado",
     "resetDone": "Perfil de lanzamiento restablecido"
+  },
+  "gitProfiles": {
+    "tab": "Perfiles de Git",
+    "title": "Perfiles de Git",
+    "add": "Agregar perfil",
+    "refresh": "Actualizar perfiles",
+    "refreshed": "Perfil global de Git actualizado",
+    "loading": "Cargando tu perfil global de Git…",
+    "defaultProfile": "Perfil predeterminado",
+    "newProfile": "Nuevo perfil",
+    "copyName": "Copia de {{name}}",
+    "profileName": "Nombre del perfil",
+    "authorName": "Nombre del autor",
+    "email": "Correo electrónico",
+    "selectEmail": "Selecciona un correo electrónico",
+    "signingKey": "Clave de firma",
+    "signingKeyPlaceholder": "ID de clave de firma GPG o SSH",
+    "signCommits": "Firmar commits",
+    "active": "Activo",
+    "activate": "Activar perfil",
+    "activated": "{{name}} es ahora el perfil global de Git",
+    "editRaw": "Editar configuración sin procesar",
+    "hideRaw": "Ocultar configuración sin procesar",
+    "rawTitle": "Perfil de Git sin procesar",
+    "rawConfig": "Configuración de Git",
+    "updateFromRaw": "Actualizar perfil desde la configuración",
+    "rawUpdated": "Perfil actualizado desde la configuración de Git sin procesar",
+    "rawInvalid": "El perfil de Git sin procesar no es válido",
+    "nameEmailRequired": "El nombre del autor y el correo electrónico son obligatorios",
+    "deleteTitle": "Eliminar perfil de Git",
+    "deleteMessage": "¿Eliminar el perfil «{{name}}»? Esto no cambia tu configuración global actual de Git.",
+    "loadFailed": "No se pudo cargar el perfil global de Git",
+    "applyFailed": "No se pudo activar el perfil de Git"
+  },
+  "credentialImport": {
+    "title": "Importar credenciales de otras apps",
+    "itemColumn": "Credencial",
+    "sourceColumn": "Encontrada en",
+    "empty": "No se encontraron credenciales para importar. Se revisaron variables de entorno, perfiles de shell, ajustes de Claude Code, perfiles de cc-switch y los almacenes de inicio de sesión de Claude Code, Codex, Cursor, GitHub CLI, Kiro y OpenCode.",
+    "allImported": "Todas las credenciales detectadas ya se han importado",
+    "authMethod": {
+      "api_key": "Clave de API",
+      "oauth": "Token de inicio de sesión"
+    },
+    "sourceKind": {
+      "env": "Variable de entorno",
+      "shell_profile": "Perfil de shell",
+      "config_file": "Archivo de configuración",
+      "oauth_store": "Almacén de inicio de sesión",
+      "keychain": "Llavero",
+      "state_db": "Estado de la app",
+      "cc_switch": "cc-switch"
+    },
+    "applyFailed": "La importación falló: {{message}}",
+    "partialFailure": "Algunas credenciales no se pudieron importar:"
+  },
+  "skills": {
+    "shareToOrg": "Compartir con la organización",
+    "share": "Compartir",
+    "sharedToOrg": "Skill compartida con la organización",
+    "shareToOrgHint": "Los miembros de la organización reciben la instantánea actual de esta Skill; vuelve a compartirla después de editarla para publicar una actualización.",
+    "shareOrgPlaceholder": "Organización"
   }
 }

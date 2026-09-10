@@ -8,6 +8,7 @@ import { linkSessionToWorkItem } from "@src/api/tauri/agent/session";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Message from "@src/components/Message";
+import PageNotice from "@src/components/PageNotice";
 import {
   Cancel01Icon,
   HugeiconsIcon,
@@ -147,7 +148,7 @@ const LinkSessionToWorkItemModal: React.FC<LinkSessionToWorkItemModalProps> = ({
       data-testid="session-link-work-item-modal"
     >
       <div className="flex max-h-[78vh] w-full max-w-[560px] flex-col overflow-hidden rounded-2xl border border-solid border-border-1 bg-bg-1 shadow-2xl">
-        <div className="flex items-center justify-between gap-3 border-b border-solid border-border-1 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-solid border-border-1 px-3 py-3">
           <div className="flex min-w-0 items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-fill-2 text-text-2">
               <HugeiconsIcon icon={Link02Icon} data-icon="link-2" size={16} />
@@ -197,9 +198,9 @@ const LinkSessionToWorkItemModal: React.FC<LinkSessionToWorkItemModalProps> = ({
               {t("chat.linkWorkItem.loading")}
             </div>
           ) : error ? (
-            <div className="border-danger/30 bg-danger/10 text-danger rounded-xl border border-solid px-4 py-3 text-[12px]">
+            <PageNotice type="danger" role="alert">
               {error}
-            </div>
+            </PageNotice>
           ) : filteredItems.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-2 bg-fill-1 px-4 py-8 text-center text-[12px] text-text-3">
               {t("chat.linkWorkItem.empty")}

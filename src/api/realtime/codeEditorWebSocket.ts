@@ -193,7 +193,10 @@ export function getCodeEditorWebSocket(): CodeEditorWebSocketClient | null {
  * graph. Safe to call repeatedly for secondary mounts/HMR.
  */
 export function initializeCodeEditorWebSocket(): CodeEditorWebSocketClient | null {
-  if (typeof window === "undefined" || process.env.NODE_ENV === "test") {
+  if (
+    typeof window === "undefined" ||
+    (process.env.NODE_ENV === "test" && process.env.ORGII_E2E !== "1")
+  ) {
     return null;
   }
   if (wsClientInstance) return wsClientInstance;

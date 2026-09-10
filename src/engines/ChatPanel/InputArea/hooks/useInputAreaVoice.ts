@@ -1,10 +1,11 @@
 import type React from "react";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ComposerInputRef } from "@src/components/ComposerInput";
 import Message from "@src/components/Message";
 import { type VoiceInputError, useVoiceInput } from "@src/hooks/voice";
+import { useVoiceShortcut } from "@src/hooks/voice/useVoiceShortcut";
 
 interface UseInputAreaVoiceOptions {
   composerInputRef: React.RefObject<ComposerInputRef | null>;
@@ -58,36 +59,7 @@ export function useInputAreaVoice({
     onError: handleVoiceError,
   });
 
-  useEffect(() => {
-    if (!enabled || isEditMode) return;
-    const node = containerRef.current;
-    if (!node) return;
-    let shortcutActive = false;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
-        return;
-      }
-      if (event.key.toLowerCase() !== "m" || event.repeat) return;
-      event.preventDefault();
-      event.stopPropagation();
-      shortcutActive = true;
-      voice.start();
-    };
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (!shortcutActive) return;
-      if (event.key.toLowerCase() !== "m" && event.key !== "Control") return;
-      event.preventDefault();
-      event.stopPropagation();
-      shortcutActive = false;
-      voice.stop();
-    };
-    node.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp, true);
-    return () => {
-      node.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp, true);
-    };
-  }, [containerRef, enabled, isEditMode, voice]);
+  useVoiceShortcut(containerRef, enabled && !isEditMode, voice);
 
   return {
     voice,

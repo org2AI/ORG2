@@ -16,7 +16,7 @@
  */
 import React from "react";
 
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import CanvasInlineCard from "@src/engines/ChatPanel/blocks/CanvasInlineCard";
 import CanvasRevisionActivity from "@src/engines/ChatPanel/blocks/CanvasInlineCard/CanvasRevisionActivity";
 import { isCanvasRevisionToolName } from "@src/engines/ChatPanel/blocks/CanvasInlineCard/canvasRevision";
@@ -96,9 +96,9 @@ export const CanvasInlineAdapter: React.FC<UniversalEventProps> = (props) => {
 
     return (
       <div data-tool-call-event-id={props.eventId}>
-        <InlineAlert type="danger" role="alert" className="my-2">
+        <PageNotice type="danger" role="alert" className="my-2">
           {errorText}
-        </InlineAlert>
+        </PageNotice>
       </div>
     );
   }

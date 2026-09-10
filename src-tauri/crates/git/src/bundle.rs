@@ -1,50 +1,9 @@
-//! Git Bundle Module
-//!
-//! Provides Tauri commands for creating git bundles from local repositories.
-//! Used for uploading local projects to cloud market sessions while
-//! preserving git history.
+//! Git commit command and its retrying subprocess helper.
 
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::Stdio;
 
 use crate::util::{close_inherited_fds, git_command, is_transient_error};
-
-// ============================================
-// Types
-// ============================================
-
-/// Result of git bundle creation
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GitBundleResult {
-    /// Base64-encoded bundle data
-    pub data: String,
-    /// Size of the bundle in bytes
-    pub size: u64,
-    /// Branch name that was bundled
-    pub branch_name: String,
-    /// HEAD commit SHA
-    pub head_sha: String,
-    /// Number of commits in the bundle
-    pub commit_count: usize,
-    /// Original folder name
-    pub folder_name: String,
-}
-
-/// Progress information during bundle creation
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BundleProgress {
-    pub phase: String,
-    pub message: String,
-}
-
-// ============================================
-// Constants
-// ============================================
-
-// ============================================
-// Helper Functions
-// ============================================
 
 /// Helper to run git commands directly, closing inherited file descriptors
 /// Uses pre_exec on Unix to close FDs 3-1024 before exec to avoid WebView FD inheritance issues
@@ -111,70 +70,6 @@ fn run_git_command(repo_path: &PathBuf, args: &[&str]) -> Result<std::process::O
     ))
 }
 
-// ============================================
-// Tauri Commands
-// ============================================
-
-// ============================================
-// Tests
-// ============================================
-
-// ============================================
-// Git Sync Commands (Pull/Push)
-// ============================================
-
-/// Result of applying a git bundle
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ApplyBundleResult {
-    /// Whether the operation succeeded
-    pub success: bool,
-    /// The ref that was created (e.g., "refs/remotes/cloud/main")
-    pub ref_name: String,
-    /// Any message or error
-    pub message: String,
-}
-
-/// Result of creating a push bundle
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PushBundleResult {
-    /// Base64-encoded bundle data
-    pub data: String,
-    /// Size in bytes
-    pub size: u64,
-    /// HEAD commit SHA
-    pub head_sha: String,
-    /// Whether this is incremental or full
-    pub is_incremental: bool,
-}
-
-/// Result of merge operation
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CloudMergeResult {
-    /// Whether merge succeeded
-    pub success: bool,
-    /// Whether there were conflicts
-    pub has_conflicts: bool,
-    /// Conflicting files (if any)
-    pub conflicting_files: Vec<String>,
-    /// Message
-    pub message: String,
-}
-
-/// Response for get_repo_branches
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GetRepoBranchesResult {
-    pub branches: Vec<BranchName>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BranchName {
-    pub name: String,
-}
-
-// ============================================
-// Git Operations for Conflict Resolution
-// ============================================
-
 /// Create a commit with the given message
 /// Uses run_git_command helper with retries and clean environment
 #[tauri::command(rename_all = "camelCase")]
@@ -209,24 +104,3 @@ pub fn git_commit(folder_path: String, message: String) -> Result<(), String> {
     println!("✅ [GitBundle] Commit created: {}", message);
     Ok(())
 }
-
-// ============================================
-// Local Commit History
-// ============================================
-
-/// Commit info for the frontend
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct LocalCommitInfo {
-    pub sha: String,
-    pub message: String,
-    pub author: String,
-    pub timestamp: String,
-}
-
-// ============================================
-// Ahead/Behind Calculation (libgit2)
-// ============================================
-
-// ============================================
-// Tests
-// ============================================

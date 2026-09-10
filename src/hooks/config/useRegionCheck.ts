@@ -9,7 +9,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 
-import type { ModelType } from "@src/assets/providers/types";
+import type { ModelType } from "@src/api/types/keys";
 import {
   type RegionSupportStatus,
   checkRegionSupport,

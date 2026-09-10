@@ -5,8 +5,8 @@ edition = "2021"
 publish = false
 
 # OS-integration Tauri commands: macOS dock + tray + app menu, native
-# notifications, NSDocumentController-backed recent files, VPN interface
-# detection, ipinfo geolocation lookup, host-toolchain dependency probing.
+# notifications, NSDocumentController-backed recent files, LAN IP discovery,
+# ipinfo geolocation lookup, host-toolchain dependency probing.
 # Pure leaf — no back-edges into `app`. Owns ~16 `#[tauri::command]`s,
 # re-registered from `commands/handler_list.inc` via bare
 # `system_services::…` paths. Distinct from `app_platform` (FFI

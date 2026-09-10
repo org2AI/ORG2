@@ -68,8 +68,6 @@ export interface UseWebviewDOMTreeOptions {
   pollInterval?: number;
   /** Maximum depth to fetch */
   maxDepth?: number;
-  /** Callback when tree is fetched */
-  onTreeFetched?: (tree: DOMTreeNode | null) => void;
 }
 
 export interface UseWebviewDOMTreeReturn {
@@ -162,7 +160,6 @@ export function useWebviewDOMTree(
     enabled = true,
     pollInterval = 0,
     maxDepth = 12,
-    onTreeFetched,
   } = options;
 
   const [tree, setTree] = useState<DOMTreeNode | null>(null);
@@ -176,12 +173,6 @@ export function useWebviewDOMTree(
   // In-flight guard — prevents dirty-poll tick or navigation from stacking
   // concurrent refetches on slow pages (YouTube search with 10k nodes).
   const inFlightRef = useRef(false);
-
-  // Keep callback ref up to date
-  const onTreeFetchedRef = useRef(onTreeFetched);
-  useEffect(() => {
-    onTreeFetchedRef.current = onTreeFetched;
-  }, [onTreeFetched]);
 
   // Fetch DOM tree
   const refresh = useCallback(async () => {
@@ -199,7 +190,6 @@ export function useWebviewDOMTree(
       });
 
       setTree(result);
-      onTreeFetchedRef.current?.(result);
 
       // Auto-expand first 2 levels on initial fetch only.
       // Functional update preserves prior expandToNode changes made during
@@ -215,7 +205,6 @@ export function useWebviewDOMTree(
     } catch (err) {
       if (isMissingWebviewError(err)) {
         setTree(null);
-        onTreeFetchedRef.current?.(null);
       } else {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -250,7 +239,6 @@ export function useWebviewDOMTree(
         if (cancelled) return;
 
         setTree(result);
-        onTreeFetchedRef.current?.(result);
 
         if (result) {
           setExpandedNodes((currentExpanded) => {
@@ -264,7 +252,6 @@ export function useWebviewDOMTree(
         if (cancelled) return;
         if (isMissingWebviewError(err)) {
           setTree(null);
-          onTreeFetchedRef.current?.(null);
         } else {
           const message = err instanceof Error ? err.message : String(err);
           setError(message);

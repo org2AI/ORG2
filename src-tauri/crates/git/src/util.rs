@@ -7,6 +7,8 @@
 //! closes all inherited file descriptors (3–1024) to prevent
 //! "Bad file descriptor (os error 9)" from WebView FD leakage.
 //! See: `docs/development/bad-file-descriptor-root-cause-0124.md`
+mod status_process;
+
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
@@ -276,9 +278,35 @@ pub fn run_git_status_with_retry(
     let mut git_args = vec!["--no-optional-locks"];
     git_args.extend_from_slice(args);
 
-    // Convert Vec<&str> to slice for the call
-    let args_slice: Vec<&str> = git_args.to_vec();
-    run_git_with_retry(repo_path, &args_slice, max_retries)
+    let mut last_error = String::new();
+    for attempt in 0..max_retries {
+        let mut command = git_command()?;
+        command
+            .args(&git_args)
+            .current_dir(repo_path)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .env("GIT_TERMINAL_PROMPT", "0");
+        #[cfg(unix)]
+        command.process_group(0);
+        close_inherited_fds(&mut command);
+        match command.spawn() {
+            Ok(child) => return status_process::capture(child, std::time::Duration::from_secs(5)),
+            Err(err) => {
+                last_error = err.to_string();
+                if !is_transient_error(&last_error) {
+                    return Err(last_error);
+                }
+            }
+        }
+        if attempt + 1 < max_retries {
+            std::thread::sleep(std::time::Duration::from_millis(
+                RETRY_BASE_DELAY_MS * (1 << attempt.min(5)),
+            ));
+        }
+    }
+    Err(last_error)
 }
 
 // ============================================

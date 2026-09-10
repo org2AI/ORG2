@@ -26,6 +26,7 @@ import React, { memo, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { hasMacWindowChrome } from "@src/config/windowChromeRadius";
 import { ChatProvider } from "@src/contexts/workspace/ChatContext";
 import { DataProvider } from "@src/contexts/workspace/DataContext";
 import { useReloadSession } from "@src/engines/ChatPanel/ChatHistory/hooks/useReloadSession";
@@ -41,6 +42,7 @@ import {
   CHAT_PANEL_HEADER_NO_DRAG_STYLE,
 } from "@src/engines/ChatPanel/header";
 import { shouldStartHeaderDragFromTarget } from "@src/engines/ChatPanel/header/chatPanelHeaderLayout";
+import { useConversationTargetBinding } from "@src/engines/ChatPanel/hooks/useConversationTargetBinding";
 import { useSessionActionModals } from "@src/engines/ChatPanel/hooks/useSessionActionModals";
 import { useSessionHeaderActions } from "@src/engines/ChatPanel/hooks/useSessionHeaderActions";
 import { useSessionViewMode } from "@src/engines/ChatPanel/hooks/useSessionViewMode";
@@ -48,13 +50,15 @@ import { useEventStoreBridge } from "@src/engines/SessionCore/core/store/useEven
 import GlobalPlanningIndicatorBridgeSync from "@src/engines/SessionCore/hooks/replay/GlobalPlanningIndicatorBridgeSync";
 import { useQueueDispatch } from "@src/engines/SessionCore/hooks/session/useQueueDispatch";
 import SessionSyncProvider from "@src/engines/SessionCore/sync/SessionSyncProvider";
+import { dispatchQueuedCanonicalConversation } from "@src/features/ConversationContinuation/canonicalConversationDispatcher";
 import SessionViewersIndicator from "@src/features/Org2Cloud/SessionViewersIndicator";
 import { useNativeSessionStatusMonitor } from "@src/hooks/session/useNativeSessionStatusMonitor";
 import { getPrimaryPaneBackgroundStyle } from "@src/modules/shared/layouts/viewContainerTokens";
 import { sessionByIdAtom } from "@src/store/session";
 import type { SessionContinuation } from "@src/store/session/sessionTabPlacementAtom";
 import { resolvedBackgroundConfigAtom } from "@src/store/ui/backgroundConfigAtom";
-import { isMacOS, isWindows } from "@src/util/platform/tauri";
+import { windowFullscreenAtom } from "@src/store/ui/uiAtom";
+import { isWindows } from "@src/util/platform/tauri";
 import { isHumanSession } from "@src/util/session/sessionDispatch";
 
 /** Path the detached window navigates to for one session. Must stay in sync
@@ -76,7 +80,7 @@ const MACOS_TRAFFIC_LIGHTS_INSET_PX = 84;
  *  while native notification delivery stays main-window-owned. */
 const SessionWindowBridges: React.FC = () => {
   useEventStoreBridge();
-  useQueueDispatch();
+  useQueueDispatch(dispatchQueuedCanonicalConversation);
   useNativeSessionStatusMonitor({ notifications: false });
   return <GlobalPlanningIndicatorBridgeSync />;
 };
@@ -91,6 +95,7 @@ const SessionWindowContent: React.FC<{ sessionId: string }> = memo(
     ]);
     const navigate = useNavigate();
     const session = useAtomValue(sessionByIdAtom(sessionId));
+    const conversationTargetBinding = useConversationTargetBinding(sessionId);
     const backgroundConfig = useAtomValue(resolvedBackgroundConfigAtom);
     const primaryPaneSurfaceStyle = useMemo(
       () => getPrimaryPaneBackgroundStyle(backgroundConfig.pageOpacity),
@@ -142,6 +147,8 @@ const SessionWindowContent: React.FC<{ sessionId: string }> = memo(
     }, [sessionName]);
 
     const windowsHost = isWindows();
+    // Native full screen hides the macOS traffic lights; drop their reserve.
+    const isFullscreen = useAtomValue(windowFullscreenAtom);
 
     // The `data-tauri-drag-region` attribute only reacts to mousedowns whose
     // TARGET carries the attribute — child elements swallow most of the row.
@@ -177,7 +184,10 @@ const SessionWindowContent: React.FC<{ sessionId: string }> = memo(
           data-tauri-drag-region={windowsHost ? undefined : true}
           onMouseDown={handleHeaderMouseDown}
           style={{
-            paddingLeft: isMacOS() ? MACOS_TRAFFIC_LIGHTS_INSET_PX : 12,
+            paddingLeft:
+              hasMacWindowChrome() && !isFullscreen
+                ? MACOS_TRAFFIC_LIGHTS_INSET_PX
+                : 12,
             ...(windowsHost
               ? CHAT_PANEL_HEADER_NO_DRAG_STYLE
               : CHAT_PANEL_HEADER_DRAG_STYLE),
@@ -209,6 +219,9 @@ const SessionWindowContent: React.FC<{ sessionId: string }> = memo(
               activeSessionExists={Boolean(session)}
               copyEventJsonLabel={headerActions.copyEventJsonLabel}
               currentSessionId={sessionId || null}
+              appOpenSessionId={
+                conversationTargetBinding?.appOpenSessionId ?? null
+              }
               displayMode={headerActions.displayMode}
               eventsLength={headerActions.eventCount}
               handleCompactDisplayModeToggle={
@@ -261,8 +274,8 @@ const SessionWindowContent: React.FC<{ sessionId: string }> = memo(
         >
           <SessionContentView
             sessionId={sessionId}
+            conversationTargetBinding={conversationTargetBinding}
             displayMode={headerActions.displayMode}
-            onSessionContinuation={handleSessionContinuation}
             turnPaginationEnabled={headerActions.paginationEnabled}
           />
         </div>

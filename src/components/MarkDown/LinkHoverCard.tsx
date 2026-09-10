@@ -4,7 +4,6 @@ import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getGitRemotes } from "@src/api/http/git/remotes";
-import { getPRLocal } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
 import Dropdown from "@src/components/Dropdown";
 import Menu from "@src/components/Menu";
@@ -30,7 +29,9 @@ import {
   getHttpLinkPreview,
   remoteUrlsMatchGitHubPullRequest,
 } from "./LinkHoverCard.helpers";
+import LinkPullRequestSummary from "./LinkPullRequestSummary";
 import { openUrlInBrowserApp } from "./markdownUtils";
+import { useLinkPullRequest } from "./useLinkPullRequest";
 
 interface LinkHoverCardProps {
   url: string;
@@ -58,13 +59,20 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
   const [openOptionsVisible, setOpenOptionsVisible] = useState(false);
   const [openingPr, setOpeningPr] = useState(false);
   const pullRequest = parseGitHubPullRequestUrl(preview.url);
+  const {
+    data: prPreview,
+    author,
+    filesChanged,
+    loading: loadingPr,
+    load: loadPr,
+  } = useLinkPullRequest(preview.url);
 
   const handleCopy = useCallback(async () => {
     try {
       await copyText(preview.url);
       Message.success(t("cards.url.copied"));
     } catch {
-      Message.error(t("failedToCopyContent"));
+      Message.error(t("chat.failedToCopyContent"));
     }
   }, [preview.url, t]);
 
@@ -78,9 +86,8 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
 
     setOpeningPr(true);
     try {
-      const repoFullName = `${pullRequest.owner}/${pullRequest.repo}`;
       const [detail, remotes] = await Promise.all([
-        getPRLocal(repoFullName, pullRequest.number),
+        loadPr(),
         getGitRemotes({
           repo_id: workspaceRootRepoId ?? "default",
           repo_path: workspaceRootPath,
@@ -114,6 +121,7 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
     }
   }, [
     openPrInChatPanel,
+    loadPr,
     openingPr,
     preview.url,
     pullRequest,
@@ -130,13 +138,27 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
   }, [preview.url, t]);
 
   return (
-    <HoverCardPanel title={preview.host} allowOverflow>
-      <div
-        className="truncate text-[12px] leading-5 text-text-3"
-        title={preview.url}
-      >
-        {preview.displayUrl}
-      </div>
+    <HoverCardPanel
+      width={pullRequest ? "wide" : "default"}
+      title={pullRequest ? undefined : preview.host}
+      allowOverflow
+    >
+      {pullRequest ? (
+        <LinkPullRequestSummary
+          pullRequest={pullRequest}
+          data={prPreview}
+          author={author}
+          filesChanged={filesChanged}
+          loading={loadingPr}
+        />
+      ) : (
+        <div
+          className="truncate text-xs leading-5 text-text-3"
+          title={preview.url}
+        >
+          {preview.displayUrl}
+        </div>
+      )}
       <div className="flex items-center justify-end gap-1 border-t border-border-1 pt-2">
         <Button
           variant="tertiary"
@@ -168,15 +190,6 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
             variant="primary"
             size="mini"
             loading={openingPr}
-            icon={
-              <HugeiconsIcon
-                icon={GitPullRequestIcon}
-                data-icon="git-pull-request"
-                size={13}
-                strokeWidth={1.75}
-                aria-hidden
-              />
-            }
             onClick={() => void handleOpenAsPullRequest()}
             menuOpen={openOptionsVisible}
             menuButtonLabel={t("cards.actions.moreOpenOptions")}

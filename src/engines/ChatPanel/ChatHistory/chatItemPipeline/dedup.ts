@@ -28,6 +28,8 @@ export interface DedupResult {
   duplicateAssistantIds: Set<string>;
   /** Chunk IDs of duplicate optimistic/persisted user messages that should be skipped */
   duplicateUserIds: Set<string>;
+  /** Shared dispatch failures already represented by a local Retry message. */
+  duplicateDeliveryFailureIds: Set<string>;
 }
 
 function getEventCallId(event: SessionEvent): string | undefined {
@@ -115,7 +117,39 @@ export function buildDedupMaps(events: SessionEvent[]): DedupResult {
     runningArgsMap,
     duplicateAssistantIds,
     duplicateUserIds,
+    duplicateDeliveryFailureIds: buildDeliveryFailureDedupSet(events),
   };
+}
+
+function buildDeliveryFailureDedupSet(events: SessionEvent[]): Set<string> {
+  const failedIntents = new Set<string>();
+  for (const event of events) {
+    const intent = event.result?.turnIntentId;
+    if (
+      isSyntheticUserInputEvent(event) &&
+      event.displayStatus === "failed" &&
+      event.result?.deliveryStatus === "failed" &&
+      typeof intent === "string" &&
+      intent.length > 0
+    )
+      failedIntents.add(intent);
+  }
+  const duplicates = new Set<string>();
+  for (const event of events) {
+    const intent = event.result?.turnIntentId;
+    // Only the canonical dispatch-failure event has this exact identity.
+    // Keep provider errors and remote-only failures; no text matching, and
+    // no mutation of the shared terminal record required by other members.
+    if (
+      typeof intent === "string" &&
+      failedIntents.has(intent) &&
+      event.id === `convturn-error-${intent}` &&
+      event.source === "system" &&
+      event.actionType === "error"
+    )
+      duplicates.add(event.id);
+  }
+  return duplicates;
 }
 
 /**
@@ -152,7 +186,12 @@ function buildUserDedupSet(events: SessionEvent[]): Set<string> {
     if (!text) continue;
 
     if (isOptimisticUserEvent(event)) {
-      pendingOptimisticByText.set(text, event);
+      // A failed optimistic row is the visible retry owner. The provider's
+      // copy of that prompt (recorded before it rejected the turn) must not
+      // collapse the failure and its Retry into a plain duplicate bubble.
+      if (event.result?.["deliveryStatus"] !== "failed") {
+        pendingOptimisticByText.set(text, event);
+      }
       continue;
     }
 

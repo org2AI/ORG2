@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
+import { type ReactNode, act, createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import {
   afterAll,
@@ -12,6 +12,7 @@ import {
   vi,
 } from "vitest";
 
+import { SUPPORTED_LANGUAGES } from "@src/i18n";
 import type { QueuedMessage } from "@src/store/ui/messageQueueAtom";
 
 import QueuedMessages from "./QueuedMessages";
@@ -27,8 +28,11 @@ vi.mock("jotai", async (importOriginal) => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+  useTranslation: (namespace?: string) => ({
+    t: (key: string, fallback?: string) =>
+      namespace === "common" && key === "actions.clearAll"
+        ? "Clear all"
+        : (fallback ?? key),
   }),
 }));
 
@@ -51,9 +55,13 @@ vi.mock("@src/lib/dndKit", () => ({
   useWebViewSensors: () => [],
 }));
 
-vi.mock("./ComposerStackHeader", () => ({
-  default: () => null,
-}));
+vi.mock("./ComposerStackHeader", async () => {
+  const ReactModule = await import("react");
+  return {
+    default: ({ actions }: { actions?: ReactNode }) =>
+      ReactModule.createElement("div", null, actions),
+  };
+});
 
 vi.mock("./QueuedMessageItem", async () => {
   const ReactModule = await import("react");
@@ -123,6 +131,7 @@ describe("QueuedMessages edit seeding", () => {
         createElement(QueuedMessages, {
           messages: [msg],
           onCancel: vi.fn(),
+          onClear: vi.fn(),
           onSendNow: vi.fn(),
           onReorder: vi.fn(),
           onToggle: vi.fn(),
@@ -145,4 +154,42 @@ describe("QueuedMessages edit seeding", () => {
     const seeded = setEditTargetSpy.mock.calls[0]?.[0]?.content as string;
     expect(seeded).not.toContain("[Canvas Creation Request]");
   });
+
+  it("exposes one clear-all action for the visible queue", () => {
+    const onClear = vi.fn();
+    act(() =>
+      root.render(
+        createElement(QueuedMessages, {
+          messages: [queuedCanvasMessage()],
+          onCancel: vi.fn(),
+          onClear,
+          onSendNow: vi.fn(),
+          onReorder: vi.fn(),
+          onToggle: vi.fn(),
+        })
+      )
+    );
+
+    const clearButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="queued-messages-clear-all"]'
+    );
+    expect(clearButton).not.toBeNull();
+    expect(clearButton?.textContent).toBe("Clear all");
+    expect(clearButton?.title).toBe("Clear all");
+    act(() => clearButton?.click());
+    expect(onClear).toHaveBeenCalledOnce();
+  });
+});
+
+describe("QueuedMessages translations", () => {
+  it.each(SUPPORTED_LANGUAGES)(
+    "translates the clear-all queue action in %s",
+    async (language) => {
+      const common = (await import(`@src/i18n/locales/${language}/common.json`))
+        .default as { actions: Record<string, string> };
+
+      expect(common.actions.clearAll).toBeTruthy();
+      expect(common.actions.clearAll).not.toBe("actions.clearAll");
+    }
+  );
 });

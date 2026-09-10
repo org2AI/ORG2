@@ -392,6 +392,9 @@ const GitProfilesTab: React.FC<GitProfilesTabProps> = ({ connectedEmails }) => {
                   <div className={SECTION_ACTION_GAP_CLASSES}>
                     <Button
                       size="small"
+                      iconOnly
+                      aria-label={tCommon("actions.duplicate")}
+                      title={tCommon("actions.duplicate")}
                       icon={
                         <HugeiconsIcon
                           icon={Copy01Icon}
@@ -400,9 +403,7 @@ const GitProfilesTab: React.FC<GitProfilesTabProps> = ({ connectedEmails }) => {
                         />
                       }
                       onClick={handleDuplicate}
-                    >
-                      {tCommon("actions.duplicate")}
-                    </Button>
+                    />
                     {state.profiles.length > 1 && (
                       <Button
                         variant="secondary"

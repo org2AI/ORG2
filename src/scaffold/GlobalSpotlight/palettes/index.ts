@@ -8,29 +8,22 @@
  * `SpotlightShell` / `PaletteBody` from "../shell".
  */
 
-export { WorkspacePalette } from "./WorkspacePalette";
-export type { WorkspacePaletteProps } from "./WorkspacePalette/types";
+export { WorkingDirectoryPalette } from "./WorkingDirectoryPalette";
 
-export { WorkspaceDropdown } from "./WorkspacePalette/WorkspaceDropdown";
+export { WorkingDirectoryDropdown } from "./WorkingDirectoryPalette/WorkingDirectoryDropdown";
 
 export { BranchPalette, WorktreePalette } from "./BranchPalette";
-export type { BranchPaletteProps, WorktreePaletteProps } from "./BranchPalette";
 
 export { BranchDropdown } from "./BranchPalette/BranchDropdown";
 
 export { DatabasePalette } from "./DatabasePalette";
 
 export { UnifiedModelPalette } from "./UnifiedModelPalette";
-export type { UnifiedModelPaletteProps } from "./UnifiedModelPalette";
 
 export { UnifiedModelDropdown } from "./UnifiedModelPalette/UnifiedModelDropdown";
-export type { UnifiedModelDropdownProps } from "./UnifiedModelPalette/UnifiedModelDropdown";
 
 export { DispatchCategoryPalette } from "./DispatchCategoryPalette";
-export type {
-  AgentSelection,
-  DispatchCategoryPaletteProps,
-} from "./DispatchCategoryPalette";
+export type { AgentSelection } from "./DispatchCategoryPalette";
 
 export { DispatchCategoryDropdown } from "./DispatchCategoryPalette/DispatchCategoryDropdown";
 

@@ -6,6 +6,7 @@ import {
   AGENT_ORG_RUN_VIEW_PUSH_DEBOUNCE_MS,
   agentOrgRunViewStoreTestApi,
   getAgentOrgRunViewSnapshot,
+  refreshAgentOrgRunViewForChangedSession,
   subscribeAgentOrgRunView,
 } from "./agentOrgRunViewStore";
 
@@ -33,8 +34,7 @@ async function flushPromises(): Promise<void> {
 }
 
 function runView(
-  runStatus: "running" | "paused" | "completed",
-  interventionResumeAfter?: string
+  runStatus: "starting" | "running" | "paused" | "idle" | "failed" | "archived"
 ) {
   return {
     context: {
@@ -46,10 +46,10 @@ function runView(
       coordinatorName: "Coordinator",
       coordinatorRole: "Lead",
       members: [],
-      hierarchyMode: "flat",
       rootSessionId: "session-root",
     },
     runStatus,
+    runPhase: runStatus === "running" ? "coordinating" : runStatus,
     currentMemberId: "coordinator",
     members: [
       {
@@ -81,18 +81,7 @@ function runView(
           status: "running",
           updatedAt: "2026-07-17T00:00:00Z",
         },
-        intervention: interventionResumeAfter
-          ? {
-              orgRunId: "run-1",
-              memberId: "worker",
-              agentId: "agent-worker",
-              sessionId: "session-worker",
-              status: "user_intervention",
-              enteredAt: "2026-07-17T00:00:00Z",
-              lastUserActivityAt: "2026-07-17T00:00:00Z",
-              resumeAfter: interventionResumeAfter,
-            }
-          : null,
+        intervention: null,
         unreadInboxCount: 0,
         inboxActivityCount: 0,
         activeTaskCount: 0,
@@ -104,6 +93,18 @@ function runView(
     tasks: [],
     inbox: [],
   };
+}
+
+function runViewForRoot(
+  runStatus: "starting" | "running" | "paused" | "idle" | "failed" | "archived",
+  runId: string,
+  rootSessionId: string
+) {
+  const view = runView(runStatus);
+  view.context.runId = runId;
+  view.context.rootSessionId = rootSessionId;
+  view.members[0].sessionRuntime.sessionId = rootSessionId;
+  return view;
 }
 
 function deferred<T>() {
@@ -118,10 +119,11 @@ afterEach(() => {
   agentOrgRunViewStoreTestApi.reset();
   vi.useRealTimers();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("Agent Org run-view store", () => {
-  it("shares one fallback per run, coalesces pushes, and stops terminal runs", async () => {
+  it("shares one fallback per run, coalesces pushes, and stops immediately on Idle", async () => {
     vi.useFakeTimers();
     let stateChangeHandler: ((sessionId: string) => void) | undefined;
     let backendChangeHandler:
@@ -151,7 +153,7 @@ describe("Agent Org run-view store", () => {
     );
     mocks.getAgentOrgSessionRunView
       .mockResolvedValueOnce(runView("running"))
-      .mockResolvedValueOnce(runView("completed"));
+      .mockResolvedValueOnce(runView("idle"));
 
     const rootSubscriber = vi.fn();
     const secondRootSubscriber = vi.fn();
@@ -196,6 +198,47 @@ describe("Agent Org run-view store", () => {
     expect(mocks.unsubscribeBackendChanges).toHaveBeenCalledTimes(3);
   });
 
+  it("reconciles a mounted Idle member exactly once after its native Session terminal", async () => {
+    vi.useFakeTimers();
+    mocks.subscribeAgentOrgStateChanges.mockReturnValue(
+      mocks.unsubscribeStateChanges
+    );
+    mocks.getAgentOrgSessionRunView
+      .mockResolvedValueOnce(runView("idle"))
+      .mockResolvedValueOnce(runView("idle"));
+
+    const unsubscribe = subscribeAgentOrgRunView("session-worker", vi.fn());
+    await flushPromises();
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(1);
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+
+    refreshAgentOrgRunViewForChangedSession("session-worker");
+    refreshAgentOrgRunViewForChangedSession("session-worker");
+    await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_PUSH_DEBOUNCE_MS);
+    await flushPromises();
+
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(2);
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+    unsubscribe();
+  });
+
+  it("does not query for an unrelated native Session status change", async () => {
+    vi.useFakeTimers();
+    mocks.subscribeAgentOrgStateChanges.mockReturnValue(
+      mocks.unsubscribeStateChanges
+    );
+    mocks.getAgentOrgSessionRunView.mockResolvedValue(runView("idle"));
+
+    const unsubscribe = subscribeAgentOrgRunView("session-worker", vi.fn());
+    await flushPromises();
+    refreshAgentOrgRunViewForChangedSession("ordinary-sde");
+    await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_PUSH_DEBOUNCE_MS);
+    await flushPromises();
+
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
   it("stops probing a non-org session after its initial discovery", async () => {
     vi.useFakeTimers();
     mocks.subscribeAgentOrgStateChanges.mockReturnValue(
@@ -209,6 +252,198 @@ describe("Agent Org run-view store", () => {
 
     await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_FALLBACK_MS * 5);
     expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+  });
+
+  it("performs one bounded follow-up when bootstrap first observes Starting", async () => {
+    mocks.subscribeAgentOrgStateChanges.mockReturnValue(
+      mocks.unsubscribeStateChanges
+    );
+    mocks.getAgentOrgSessionRunView
+      .mockResolvedValueOnce(runView("starting"))
+      .mockResolvedValueOnce(runView("running"));
+
+    const unsubscribe = subscribeAgentOrgRunView("session-root", vi.fn());
+    await flushPromises();
+    await flushPromises();
+
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(2);
+    expect(getAgentOrgRunViewSnapshot("session-root").view?.runStatus).toBe(
+      "running"
+    );
+    unsubscribe();
+  });
+
+  it.each(["paused", "idle", "failed", "archived"] as const)(
+    "does not retain a fallback interval when the initial Team is %s",
+    async (status) => {
+      vi.useFakeTimers();
+      mocks.subscribeAgentOrgStateChanges.mockReturnValue(
+        mocks.unsubscribeStateChanges
+      );
+      mocks.getAgentOrgSessionRunView.mockResolvedValue(runView(status));
+
+      const unsubscribe = subscribeAgentOrgRunView("session-root", vi.fn());
+      await flushPromises();
+
+      expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+      await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_FALLBACK_MS * 5);
+      expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(1);
+      unsubscribe();
+    }
+  );
+
+  it("does not poll a Working Team whose derived phase is Idle", async () => {
+    vi.useFakeTimers();
+    mocks.subscribeAgentOrgStateChanges.mockReturnValue(
+      mocks.unsubscribeStateChanges
+    );
+    const idleWorkingView = runView("running");
+    idleWorkingView.runPhase = "idle";
+    mocks.getAgentOrgSessionRunView.mockResolvedValue(idleWorkingView);
+
+    const unsubscribe = subscribeAgentOrgRunView("session-root", vi.fn());
+    await flushPromises();
+
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+    await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_FALLBACK_MS * 5);
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it("reconciles a Paused Run once on WebSocket reconnect without starting polling", async () => {
+    vi.useFakeTimers();
+    let connectedHandler: (() => void) | undefined;
+    mocks.subscribeAgentOrgStateChanges.mockReturnValue(
+      mocks.unsubscribeStateChanges
+    );
+    mocks.websocketOn.mockImplementation(
+      (event: string, handler: () => void) => {
+        if (event === "connected") connectedHandler = handler;
+        return mocks.unsubscribeBackendChanges;
+      }
+    );
+    const draining = runView("paused") as ReturnType<typeof runView> & {
+      pauseHandoff?: {
+        episodeId: string;
+        pauseGeneration: number;
+        totalCount: number;
+        drainingCount: number;
+        timedOutCount: number;
+      };
+    };
+    draining.pauseHandoff = {
+      episodeId: "episode-1",
+      pauseGeneration: 2,
+      totalCount: 2,
+      drainingCount: 2,
+      timedOutCount: 0,
+    };
+    const released = structuredClone(draining);
+    released.pauseHandoff!.drainingCount = 0;
+    mocks.getAgentOrgSessionRunView
+      .mockResolvedValueOnce(draining)
+      .mockResolvedValueOnce(released);
+
+    const unsubscribe = subscribeAgentOrgRunView("session-root", vi.fn());
+    await flushPromises();
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+    expect(
+      getAgentOrgRunViewSnapshot("session-root").view?.pauseHandoff
+        ?.drainingCount
+    ).toBe(2);
+
+    connectedHandler?.();
+    await flushPromises();
+
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(2);
+    expect(
+      getAgentOrgRunViewSnapshot("session-root").view?.pauseHandoff
+        ?.drainingCount
+    ).toBe(0);
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_FALLBACK_MS * 5);
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it("destroys the shared interval when the last pollable Team becomes Idle", async () => {
+    vi.useFakeTimers();
+    mocks.subscribeAgentOrgStateChanges.mockReturnValue(
+      mocks.unsubscribeStateChanges
+    );
+    mocks.getAgentOrgSessionRunView.mockImplementation((sessionId: string) => {
+      if (sessionId === "root-a") {
+        return Promise.resolve(runViewForRoot("running", "run-a", "root-a"));
+      }
+      return Promise.resolve(runViewForRoot("running", "run-b", "root-b"));
+    });
+
+    const unsubscribeA = subscribeAgentOrgRunView("root-a", vi.fn());
+    const unsubscribeB = subscribeAgentOrgRunView("root-b", vi.fn());
+    await flushPromises();
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(true);
+
+    mocks.getAgentOrgSessionRunView.mockImplementation((sessionId: string) =>
+      Promise.resolve(
+        sessionId === "root-a"
+          ? runViewForRoot("idle", "run-a", "root-a")
+          : runViewForRoot("running", "run-b", "root-b")
+      )
+    );
+    await agentOrgRunViewStoreTestApi.refresh("root-a");
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(true);
+
+    mocks.getAgentOrgSessionRunView.mockImplementation((sessionId: string) =>
+      Promise.resolve(
+        sessionId === "root-b"
+          ? runViewForRoot("idle", "run-b", "root-b")
+          : runViewForRoot("idle", "run-a", "root-a")
+      )
+    );
+    await agentOrgRunViewStoreTestApi.refresh("root-b");
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+
+    unsubscribeA();
+    unsubscribeB();
+  });
+
+  it("clears polling while hidden and performs one bounded refresh when visible", async () => {
+    vi.useFakeTimers();
+    let hidden = false;
+    let visibilityChange: (() => void) | undefined;
+    vi.stubGlobal("document", {
+      get hidden() {
+        return hidden;
+      },
+      addEventListener: vi.fn((event: string, handler: () => void) => {
+        if (event === "visibilitychange") visibilityChange = handler;
+      }),
+      removeEventListener: vi.fn(),
+    });
+    mocks.subscribeAgentOrgStateChanges.mockReturnValue(
+      mocks.unsubscribeStateChanges
+    );
+    mocks.getAgentOrgSessionRunView.mockResolvedValue(runView("running"));
+
+    const unsubscribe = subscribeAgentOrgRunView("session-root", vi.fn());
+    await flushPromises();
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(true);
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(1);
+
+    hidden = true;
+    visibilityChange?.();
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+    await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_FALLBACK_MS * 5);
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(1);
+
+    hidden = false;
+    visibilityChange?.();
+    await flushPromises();
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(2);
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(true);
 
     unsubscribe();
   });
@@ -263,13 +498,13 @@ describe("Agent Org run-view store", () => {
     // discovery hangs, the second is released after the bounded join timeout;
     // request ordering must still reject the first request's late result.
     await vi.advanceTimersByTimeAsync(AGENT_ORG_BOOTSTRAP_JOIN_TIMEOUT_MS);
-    workerRequest.resolve(runView("completed"));
+    workerRequest.resolve(runView("idle"));
     await flushPromises();
     rootRequest.resolve(runView("running"));
     await flushPromises();
 
     expect(getAgentOrgRunViewSnapshot("session-root").view?.runStatus).toBe(
-      "completed"
+      "idle"
     );
     unsubscribeRoot();
     unsubscribeWorker();
@@ -313,28 +548,6 @@ describe("Agent Org run-view store", () => {
     await flushPromises();
 
     expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(3);
-    unsubscribe();
-  });
-
-  it("refreshes once when an intervention TTL expires", async () => {
-    vi.useFakeTimers();
-    const expiresAt = new Date(Date.now() + 5_000).toISOString();
-    mocks.subscribeAgentOrgStateChanges.mockReturnValue(
-      mocks.unsubscribeStateChanges
-    );
-    mocks.getAgentOrgSessionRunView
-      .mockResolvedValueOnce(runView("running", expiresAt))
-      .mockResolvedValueOnce(runView("running"));
-
-    const unsubscribe = subscribeAgentOrgRunView("session-root", vi.fn());
-    await flushPromises();
-    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(5_000);
-    await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_PUSH_DEBOUNCE_MS);
-    await flushPromises();
-
-    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(2);
     unsubscribe();
   });
 });

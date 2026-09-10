@@ -58,8 +58,8 @@ vi.mock("@src/hooks/dropdown", () => ({
   }),
 }));
 
-vi.mock("@src/scaffold/GlobalSpotlight/palettes/core", () => ({
-  useSelectorKernel: () => ({
+vi.mock("@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector", () => ({
+  useSelector: () => ({
     searchQuery: "",
     setSearchQuery: vi.fn(),
     setSearchQueryRaw: vi.fn(),

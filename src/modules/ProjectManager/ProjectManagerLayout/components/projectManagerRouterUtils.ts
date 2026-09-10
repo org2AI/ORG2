@@ -27,13 +27,9 @@ function getProjectOrgName(
   tab: WorkStationTab,
   personalOrgLabel: string
 ): string {
-  const orgName = getTabDataString(tab, "orgName");
-  if (orgName) return orgName;
-
   const orgId = getTabDataString(tab, "orgId");
   if (orgId === STORY_PERSONAL_ORG_FILTER_ID) return personalOrgLabel;
-
-  return personalOrgLabel;
+  return getTabDataString(tab, "orgName") ?? personalOrgLabel;
 }
 
 function getLinearOrgName(tab: WorkStationTab, linearOrgLabel: string): string {

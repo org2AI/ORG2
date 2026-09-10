@@ -10,9 +10,12 @@ import React from "react";
 
 import { HugeiconsIcon, Tick01Icon } from "@src/icons";
 
-export function getQuotaTextColorClass(percentage: number): string {
+export function getQuotaTextColorClass(
+  percentage: number,
+  healthyThreshold = 30
+): string {
   if (percentage < 10) return "text-danger-6";
-  if (percentage < 30) return "text-warning-6";
+  if (percentage < healthyThreshold) return "text-warning-6";
   return "text-success-6";
 }
 

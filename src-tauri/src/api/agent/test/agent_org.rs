@@ -3,14 +3,10 @@
 //! Inter-agent E2E observability probes for Agent Org runs. Most
 //! endpoints in this module are **helper-isolation / symbol-pinning**
 //! probes (driving an `AgentInboxStore` / `AgentOrgRunContext` helper
-//! directly, no live session, no LLM). The caller-path exceptions are
-//! `launch-coordinator`, which drives the canonical `session_launch_impl`,
-//! and `session-return-to-work`, which drives the production wake scheduler
-//! and inbox drain on a materialized member session. Each endpoint's
-//! individual doc states which kind it is. Helper-isolation probes catch
-//! contract drift cheaply; the deterministic fake-provider return-to-work
-//! scenario catches regressions where the real turn processor stops draining
-//! or persisting inbox input.
+//! directly, no live session, no LLM). `launch-coordinator` is the one
+//! caller-path exception because it drives the canonical `session_launch_impl`.
+//! User-visible actions such as Direct work and Return to Work deliberately
+//! have no debug HTTP action bridge; rendered E2E must click the packaged UI.
 //!
 //! Currently exposed:
 //!
@@ -38,15 +34,10 @@
 //!   set. Init parity is automatic because we drive the same path the
 //!   production frontend uses; we never re-implement runtime assembly
 //!   here.
-//! - `POST /test/agent-org/session-return-to-work` — call the same
-//!   `agent_org_session_return_to_work_impl` as the Tauri command. This is a
-//!   narrow HTTP bridge, not a replacement drain helper: the production
-//!   scheduler, turn processor, inbox persistence, and provider path all run.
-//!
-//! `payload_kind` and `payload_decoded` are returned alongside the raw
-//! row so a corrupted serde tag (anti-pattern caught by
-//! `kind_tag_matches_serde_tag` in unit tests) shows up here too —
-//! E2E is the second line of defense for the same invariant.
+//!   `payload_kind` and `payload_decoded` are returned alongside the raw
+//!   row so a corrupted serde tag (anti-pattern caught by
+//!   `kind_tag_matches_serde_tag` in unit tests) shows up here too —
+//!   E2E is the second line of defense for the same invariant.
 
 #![cfg(debug_assertions)]
 
@@ -58,8 +49,10 @@ use agent_core::coordination::agent_inbox::AgentInboxStore;
 use agent_core::coordination::agent_org_runs::{
     AgentOrgContextMember, AgentOrgRunContext, AgentOrgRunStore,
 };
-use agent_core::coordination::agent_org_tasks::TASK_METADATA_ELIGIBLE_MEMBER_IDS;
-use agent_core::definitions::orgs::{orgs_store, AgentOrgsStore, OrgDefinition, OrgMember};
+use agent_core::definitions::orgs::{
+    all_member_links, AgentOrgCapabilityIndex, AgentOrgLaunchSnapshot, AgentOrgsStore,
+    FlatOrgMember, OrgDefinition,
+};
 use agent_core::state::commands::session::org_tasks::agent_org_session_run_view_impl;
 use agent_core::tools::error::ToolError;
 use agent_core::tools::impls::orchestration::agent_org::tasks::{
@@ -111,6 +104,23 @@ pub async fn test_agent_org_seed(Json(body): Json<serde_json::Value>) -> Json<se
             )
         }
     };
+    let plan_approval_policy = match obj
+        .get("plan_approval_policy")
+        .and_then(|value| value.as_str())
+        .unwrap_or("coordinator")
+    {
+        "coordinator" => agent_core::definitions::orgs::PlanApprovalPolicy::Coordinator,
+        "user" => agent_core::definitions::orgs::PlanApprovalPolicy::User,
+        "automatic" => agent_core::definitions::orgs::PlanApprovalPolicy::Automatic,
+        value => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": format!(
+                    "plan_approval_policy must be coordinator, user, or automatic; got {value}"
+                )
+            }))
+        }
+    };
     let members_value = obj
         .get("members")
         .cloned()
@@ -125,7 +135,7 @@ pub async fn test_agent_org_seed(Json(body): Json<serde_json::Value>) -> Json<se
             }))
         }
     };
-    let mut children: Vec<OrgMember> = Vec::with_capacity(members_array.len());
+    let mut members: Vec<FlatOrgMember> = Vec::with_capacity(members_array.len());
     for (idx, item) in members_array.into_iter().enumerate() {
         let Some(obj) = item.as_object() else {
             return Json(serde_json::json!({
@@ -161,26 +171,63 @@ pub async fn test_agent_org_seed(Json(body): Json<serde_json::Value>) -> Json<se
             .and_then(|v| v.as_str())
             .map(str::to_string)
             .unwrap_or_else(|| "worker".to_string());
-        children.push(OrgMember {
-            id: member_id,
+        members.push(FlatOrgMember {
+            member_id,
             name: member_name,
             role,
             agent_id,
             runtime_config: None,
-            children: Vec::new(),
         });
     }
 
-    let def = OrgDefinition {
+    let writer_member_ids = match obj.get("additional_task_graph_writer_member_ids") {
+        None | Some(serde_json::Value::Null) => Vec::new(),
+        Some(serde_json::Value::Array(values)) => {
+            let mut ids = Vec::with_capacity(values.len());
+            for (idx, value) in values.iter().enumerate() {
+                let Some(member_id) = value.as_str().map(str::trim).filter(|id| !id.is_empty())
+                else {
+                    return Json(serde_json::json!({
+                        "ok": false,
+                        "error": format!(
+                            "additional_task_graph_writer_member_ids[{idx}] must be a non-empty string"
+                        )
+                    }));
+                };
+                if !members.iter().any(|member| member.member_id == member_id) {
+                    return Json(serde_json::json!({
+                        "ok": false,
+                        "error": format!(
+                            "additional Task graph Writer {member_id} is not a seeded Member"
+                        )
+                    }));
+                }
+                if !ids.iter().any(|existing| existing == member_id) {
+                    ids.push(member_id.to_string());
+                }
+            }
+            ids
+        }
+        Some(_) => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": "additional_task_graph_writer_member_ids must be an array if provided"
+            }))
+        }
+    };
+
+    let mut def = OrgDefinition {
         id: id.clone(),
         name: name.clone(),
         role: "coordinator".to_string(),
         agent_id: coordinator_agent_id.clone(),
         description: Some("E2E test org seeded via /test/agent-org/seed".to_string()),
-        hierarchy_mode: Default::default(),
-        plan_approval_policy: Default::default(),
-        children,
+        plan_approval_policy,
+        members,
+        additional_task_graph_writer_member_ids: writer_member_ids,
+        member_communication_links: Vec::new(),
     };
+    def.member_communication_links = all_member_links(&def.members);
 
     let Some(handle) = crate::api::get_app_handle() else {
         return Json(serde_json::json!({ "ok": false, "error": "AppHandle not initialized." }));
@@ -407,7 +454,7 @@ pub async fn test_agent_org_launch_coordinator(
                         "error": "Session not found after sync init",
                     }));
                 };
-                if let Some(runtime) = session_arc.runtime.read().await.clone() {
+                if let Some(runtime) = session_arc.get_runtime().await {
                     runtime_tool_names = runtime.tool_registry.tool_names();
                     runtime_tool_names.sort();
                 }
@@ -881,11 +928,9 @@ pub async fn test_agent_org_inbox_seed(
 /// commit contract. **What it does NOT cover:** that the production
 /// caller (`UnifiedMessageProcessor::process`) actually invokes
 /// `drain_and_render_deferred` with the correct `org_context` and
-/// `recipient_agent_id` at the start of every turn. The full
-/// caller-path is exercised by
-/// `agent_org::production_return_to_work_drains_inbox_into_member_transcript`,
-/// which launches a real member session and uses the deterministic debug
-/// provider while leaving the scheduler and turn processor unchanged.
+/// `recipient_agent_id` at the start of every formal turn. Caller ownership
+/// is covered by the Rust inbox-drain tests; this helper is not used as a
+/// substitute for a rendered Direct-work or Return action.
 ///
 /// Response shape: `{ ok: true, drained_count: usize, rendered: usize, messages: Value[] }`.
 pub async fn test_agent_org_drain_inbox(
@@ -988,7 +1033,6 @@ pub async fn test_agent_org_drain_inbox(
             name,
             role,
             agent_id,
-            parent_member_id: None,
         });
     }
 
@@ -1001,8 +1045,8 @@ pub async fn test_agent_org_drain_inbox(
         coordinator_name,
         coordinator_role,
         members,
-        hierarchy_mode: Default::default(),
         plan_approval_policy: Default::default(),
+        capability_index: AgentOrgCapabilityIndex::default(),
         root_session_id: None,
     };
 
@@ -1060,60 +1104,6 @@ pub async fn test_agent_org_drain_inbox(
         "rendered": messages.len(),
         "messages": messages,
     }))
-}
-
-/// `POST /test/agent-org/session-return-to-work`
-///
-/// Debug HTTP bridge to the production return-to-work command implementation.
-/// It deliberately does not drain or mark any inbox row itself. The invoked
-/// implementation must resolve the persisted member session, enqueue the
-/// idempotent Agent Org wake, run the real scheduler/turn processor/provider,
-/// and observe the production drain's durable acknowledgement.
-///
-/// Body: `{ "session_id": "agent-..." }`.
-/// Response: `{ "ok": true, "woke": true }` on a real wake, or a structured
-/// error. E2E preconditions may use a seeded inbox row, but the behavior under
-/// test starts at this bridge and cannot pass through `drain-inbox`.
-pub async fn test_agent_org_session_return_to_work(
-    Json(body): Json<serde_json::Value>,
-) -> Json<serde_json::Value> {
-    use tauri::Manager;
-
-    let session_id = match body.get("session_id").and_then(|value| value.as_str()) {
-        Some(value) if !value.trim().is_empty() => value.to_string(),
-        _ => {
-            return Json(serde_json::json!({
-                "ok": false,
-                "error": "session_id is required (non-empty string)"
-            }))
-        }
-    };
-
-    let Some(handle) = crate::api::get_app_handle() else {
-        return Json(serde_json::json!({
-            "ok": false,
-            "error": "AppHandle not initialized."
-        }));
-    };
-    let state = handle.state::<agent_core::state::AgentAppState>();
-
-    match agent_core::state::commands::session::org_tasks::agent_org_session_return_to_work_impl(
-        &state,
-        session_id.clone(),
-    )
-    .await
-    {
-        Ok(woke) => Json(serde_json::json!({
-            "ok": true,
-            "session_id": session_id,
-            "woke": woke,
-        })),
-        Err(error) => Json(serde_json::json!({
-            "ok": false,
-            "session_id": session_id,
-            "error": error,
-        })),
-    }
 }
 
 /// Render a `ToolError` into the stable `{error_kind, error_message}`
@@ -1219,7 +1209,6 @@ fn parse_direct_org_context(
             name,
             role,
             agent_id,
-            parent_member_id: None,
         });
     }
 
@@ -1233,8 +1222,8 @@ fn parse_direct_org_context(
             coordinator_name,
             coordinator_role,
             members,
-            hierarchy_mode: Default::default(),
             plan_approval_policy: Default::default(),
+            capability_index: AgentOrgCapabilityIndex::default(),
             root_session_id: None,
         }),
         sender_agent_id,
@@ -1429,6 +1418,7 @@ pub async fn test_agent_org_task_tool_direct(
         caller_agent_id: sender_agent_id,
         caller_member_id,
         wake_hook: Arc::new(NoopInboxWakeHook),
+        app_state: None,
     });
     let result = match operation {
         "create" => {
@@ -1520,7 +1510,7 @@ pub async fn test_agent_org_run_view(
 pub async fn test_agent_org_durable_invariants(
     Json(body): Json<serde_json::Value>,
 ) -> Json<serde_json::Value> {
-    use rusqlite::{params, OptionalExtension};
+    use rusqlite::params;
 
     let Some(obj) = body.as_object() else {
         return Json(serde_json::json!({ "ok": false, "error": "body must be an object" }));
@@ -1536,10 +1526,12 @@ pub async fn test_agent_org_durable_invariants(
     };
 
     let result = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
+        use rusqlite::OptionalExtension;
+
         let conn = database::db::get_connection().map_err(|err| err.to_string())?;
         let run_row: Option<(String, Option<String>)> = conn
             .query_row(
-                "SELECT status, root_session_id FROM agent_org_runs WHERE id = ?1",
+                "SELECT status, root_session_id FROM agent_org_runtime_runs WHERE id = ?1",
                 params![org_run_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -1551,7 +1543,7 @@ pub async fn test_agent_org_durable_invariants(
 
         let open_task_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_tasks
+                "SELECT COUNT(*) FROM agent_org_runtime_tasks
                  WHERE org_run_id = ?1 AND status IN ('pending', 'in_progress')",
                 params![org_run_id],
                 |row| row.get(0),
@@ -1559,7 +1551,7 @@ pub async fn test_agent_org_durable_invariants(
             .map_err(|err| err.to_string())?;
         let ownerless_in_progress_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_tasks
+                "SELECT COUNT(*) FROM agent_org_runtime_tasks
                  WHERE org_run_id = ?1
                    AND status = 'in_progress'
                    AND (owner IS NULL OR TRIM(owner) = '')",
@@ -1569,7 +1561,7 @@ pub async fn test_agent_org_durable_invariants(
             .map_err(|err| err.to_string())?;
         let unread_inbox_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_inbox
+                "SELECT COUNT(*) FROM agent_org_runtime_inbox
                  WHERE org_run_id = ?1 AND read_at IS NULL",
                 params![org_run_id],
                 |row| row.get(0),
@@ -1638,7 +1630,9 @@ pub async fn test_agent_org_seed_stale_worker_run(
     use agent_core::coordination::agent_org_runs::{
         AgentOrgRunEntryMode, AgentOrgRunStatus, CreateAgentOrgRunParams, COORDINATOR_MEMBER_ID,
     };
-    use agent_core::core::definitions::orgs::{OrgDefinition, OrgMember};
+    use agent_core::core::definitions::orgs::{
+        all_member_links, AgentOrgLaunchSnapshot, FlatOrgMember, OrgDefinition,
+    };
     use agent_core::core::session::persistence::{
         session_type, upsert_session, UnifiedSessionRecord,
     };
@@ -1709,12 +1703,7 @@ pub async fn test_agent_org_seed_stale_worker_run(
         agent_core::foundation::persistence::session_snapshots::ensure_tables_with(&conn)
             .map_err(|err| err.to_string())?;
         agent_core::core::session::persistence::init(&conn).map_err(|err| err.to_string())?;
-        agent_core::coordination::agent_org_runs::init_schema(&conn)
-            .map_err(|err| err.to_string())?;
-        agent_core::coordination::agent_member_interventions::init_schema(&conn)
-            .map_err(|err| err.to_string())?;
-        agent_core::coordination::agent_org_tasks::init_schema(&conn)
-            .map_err(|err| err.to_string())?;
+        agent_core::coordination::init_agent_org_schemas(&conn).map_err(|err| err.to_string())?;
 
         let now = fixture_updated_at.unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
         upsert_session(&UnifiedSessionRecord {
@@ -1732,7 +1721,7 @@ pub async fn test_agent_org_seed_stale_worker_run(
         })
         .map_err(|err| err.to_string())?;
 
-        let org_snapshot_children = workers
+        let org_snapshot_members = workers
             .iter()
             .enumerate()
             .map(|(index, worker)| {
@@ -1751,26 +1740,28 @@ pub async fn test_agent_org_seed_stale_worker_run(
                     .filter(|value| !value.trim().is_empty())
                     .map(str::to_string)
                     .unwrap_or_else(|| format!("worker-{index}"));
-                Ok(OrgMember {
-                    id: member_id.clone(),
+                Ok(FlatOrgMember {
+                    member_id: member_id.clone(),
                     name: member_id,
                     role: "worker".to_string(),
                     agent_id: agent_definition_id,
                     runtime_config: None,
-                    children: Vec::new(),
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;
-        let org_snapshot = OrgDefinition {
+        let mut org_definition = OrgDefinition {
             id: org_id.clone(),
             name: org_id.clone(),
             role: "coordinator".to_string(),
             agent_id: coordinator_agent_id.clone(),
             description: None,
-            hierarchy_mode: Default::default(),
             plan_approval_policy: Default::default(),
-            children: org_snapshot_children,
+            members: org_snapshot_members,
+            additional_task_graph_writer_member_ids: Vec::new(),
+            member_communication_links: Vec::new(),
         };
+        org_definition.member_communication_links = all_member_links(&org_definition.members);
+        let org_snapshot = AgentOrgLaunchSnapshot::from(&org_definition);
 
         let run = AgentOrgRunStore::create(CreateAgentOrgRunParams {
             org_id,
@@ -1907,6 +1898,8 @@ pub async fn test_agent_org_session_delete_snapshot(
     }
 
     let result = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
+        use rusqlite::OptionalExtension;
+
         let conn = database::db::get_connection().map_err(|err| err.to_string())?;
         let mut sessions = serde_json::Map::new();
         for session_id in session_ids {
@@ -1922,20 +1915,51 @@ pub async fn test_agent_org_session_delete_snapshot(
             sessions.insert(session_id, serde_json::Value::Bool(exists));
         }
         let mut runs = serde_json::Map::new();
+        let mut run_details = serde_json::Map::new();
         for run_id in run_ids {
             let exists = conn
                 .query_row(
-                    "SELECT EXISTS(SELECT 1 FROM agent_org_runs WHERE id=?1)",
+                    "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_runs WHERE id=?1)",
                     [&run_id],
                     |row| row.get::<_, bool>(0),
                 )
                 .map_err(|err| err.to_string())?;
+            if exists {
+                let detail: Option<serde_json::Value> = conn
+                    .query_row(
+                        "SELECT run.status,run.activation_generation,run.archived_at,
+                                run.archive_receipt_id,archive.teardown_status,
+                                archive.teardown_attempt_count,archive.retained_runtime_count
+                         FROM agent_org_runtime_runs run
+                         LEFT JOIN agent_org_runtime_archive_episodes archive
+                           ON archive.org_run_id=run.id
+                         WHERE run.id=?1",
+                        [&run_id],
+                        |row| {
+                            Ok(serde_json::json!({
+                                "status": row.get::<_, String>(0)?,
+                                "activation_generation": row.get::<_, i64>(1)?,
+                                "archived_at": row.get::<_, Option<String>>(2)?,
+                                "archive_receipt_id": row.get::<_, Option<String>>(3)?,
+                                "teardown_status": row.get::<_, Option<String>>(4)?,
+                                "teardown_attempt_count": row.get::<_, Option<i64>>(5)?,
+                                "retained_runtime_count": row.get::<_, Option<i64>>(6)?,
+                            }))
+                        },
+                    )
+                    .optional()
+                    .map_err(|err| err.to_string())?;
+                if let Some(detail) = detail {
+                    run_details.insert(run_id.clone(), detail);
+                }
+            }
             runs.insert(run_id, serde_json::Value::Bool(exists));
         }
         Ok(serde_json::json!({
             "ok": true,
             "sessions": sessions,
             "runs": runs,
+            "run_details": run_details,
         }))
     })
     .await;
@@ -2170,7 +2194,6 @@ pub async fn test_agent_org_check_member_spawn_gate(
                         .unwrap_or("worker")
                         .to_string(),
                     agent_id,
-                    parent_member_id: None,
                 });
             }
             Some(AgentOrgRunContext {
@@ -2182,8 +2205,8 @@ pub async fn test_agent_org_check_member_spawn_gate(
                 coordinator_name: pluck_str("coordinator_name"),
                 coordinator_role: pluck_str("coordinator_role"),
                 members,
-                hierarchy_mode: Default::default(),
                 plan_approval_policy: Default::default(),
+                capability_index: AgentOrgCapabilityIndex::default(),
                 root_session_id: None,
             })
         }
@@ -2410,7 +2433,6 @@ pub async fn test_agent_org_post_member_idle(
             name,
             role,
             agent_id,
-            parent_member_id: None,
         });
     }
 
@@ -2423,8 +2445,8 @@ pub async fn test_agent_org_post_member_idle(
         coordinator_name,
         coordinator_role,
         members,
-        hierarchy_mode: Default::default(),
         plan_approval_policy: Default::default(),
+        capability_index: AgentOrgCapabilityIndex::default(),
         root_session_id: None,
     };
 
@@ -2519,7 +2541,7 @@ pub async fn test_agent_org_run_seed(
     let Some(members) = obj.get("members").and_then(|value| value.as_array()) else {
         return Json(serde_json::json!({ "ok": false, "error": "members must be an array" }));
     };
-    let mut children = Vec::with_capacity(members.len());
+    let mut flat_members = Vec::with_capacity(members.len());
     for (index, member) in members.iter().enumerate() {
         let Some(member) = member.as_object() else {
             return Json(serde_json::json!({
@@ -2544,8 +2566,8 @@ pub async fn test_agent_org_run_seed(
                 "error": format!("members[{index}].agent_id is required")
             }));
         };
-        children.push(OrgMember {
-            id: member_id.clone(),
+        flat_members.push(FlatOrgMember {
+            member_id: member_id.clone(),
             name: member
                 .get("name")
                 .and_then(|value| value.as_str())
@@ -2560,25 +2582,27 @@ pub async fn test_agent_org_run_seed(
                 .to_string(),
             agent_id: agent_id.to_string(),
             runtime_config: None,
-            children: Vec::new(),
         });
     }
 
     let result = tokio::task::spawn_blocking(move || {
+        let mut definition = OrgDefinition {
+            id: org_id.clone(),
+            name: org_name,
+            role: org_role,
+            agent_id: coordinator_agent_id.clone(),
+            description: Some("Deterministic real-binary E2E fixture".to_string()),
+            plan_approval_policy: Default::default(),
+            members: flat_members,
+            additional_task_graph_writer_member_ids: Vec::new(),
+            member_communication_links: Vec::new(),
+        };
+        definition.member_communication_links = all_member_links(&definition.members);
         AgentOrgRunStore::create(CreateAgentOrgRunParams {
             org_id: org_id.clone(),
             coordinator_agent_id: coordinator_agent_id.clone(),
             root_session_id: None,
-            org_snapshot: OrgDefinition {
-                id: org_id,
-                name: org_name,
-                role: org_role,
-                agent_id: coordinator_agent_id,
-                description: Some("Deterministic real-binary E2E fixture".to_string()),
-                hierarchy_mode: Default::default(),
-                plan_approval_policy: Default::default(),
-                children,
-            },
+            org_snapshot: AgentOrgLaunchSnapshot::from(&definition),
             entry_mode: AgentOrgRunEntryMode::StandaloneSession,
             status: AgentOrgRunStatus::Running,
             work_item_id: None,
@@ -2623,7 +2647,7 @@ pub async fn test_agent_org_run_cleanup(
             let mut stmt = conn
                 .prepare(
                     "SELECT id
-                     FROM agent_org_runs
+                     FROM agent_org_runtime_runs
                      WHERE org_id LIKE ?1
                        AND (?2 IS NULL OR id = ?2)",
                 )
@@ -2661,272 +2685,17 @@ pub async fn test_agent_org_run_cleanup(
 
 /// `POST /test/agent-org/tasks/seed`
 ///
-/// Insert one row directly via [`AgentOrgTaskStore::create`]. This
-/// bypasses the LLM-callable
-/// `task_create` tool so a deterministic E2E can plant a task in any
-/// initial state (e.g. unowned, owned-and-in-progress, completed) and
-/// then exercise the read paths (`drain-inbox`, explicit assignment,
-/// shutdown-driven unassign, etc.).
-///
-/// Body:
-/// ```json
-/// {
-///   "id": "task-1",
-///   "org_run_id": "run-...",
-///   "subject": "Refactor auth",
-///   "description": "...",
-///   "active_form": "Refactoring auth",
-///   "owner": "alice-agent",
-///   "status": "in_progress",
-///   "blocks": [],
-///   "blocked_by": []
-/// }
-/// ```
-///
-/// `description`/`active_form` default to empty/null. `status` defaults
-/// to `"pending"`. `owner` defaults to null (awaiting assignment). Returns
-/// `{ok, id}` on success.
+/// The Task Store is the final lifecycle authority. Test and debug surfaces
+/// may prepare run identity/configuration or read durable state, but they must
+/// not manufacture Task rows or terminal states.
 pub async fn test_agent_org_tasks_seed(
-    Json(body): Json<serde_json::Value>,
+    Json(_body): Json<serde_json::Value>,
 ) -> Json<serde_json::Value> {
-    use agent_core::coordination::agent_org_plan_approvals::{
-        AgentOrgPlanApprovalStore, CreateAgentOrgPlanApprovalParams,
-    };
-    use agent_core::coordination::agent_org_runs::COORDINATOR_MEMBER_ID;
-    use agent_core::coordination::agent_org_tasks::{
-        AgentOrgTaskStore, CreateTaskParams, TaskStatus, TASK_METADATA_EXECUTION_MODE,
-    };
-    use agent_core::core::session::persistence::{
-        session_type, upsert_session, UnifiedSessionRecord,
-    };
-    use agent_core::core::session::SessionStatus;
-    use agent_core::definitions::orgs::PlanApprovalPolicy;
-
-    let Some(obj) = body.as_object() else {
-        return Json(serde_json::json!({ "ok": false, "error": "body must be an object" }));
-    };
-    let id = match obj.get("id").and_then(|v| v.as_str()) {
-        Some(s) if !s.trim().is_empty() => s.to_string(),
-        _ => return Json(serde_json::json!({ "ok": false, "error": "id is required" })),
-    };
-    let org_run_id = match obj.get("org_run_id").and_then(|v| v.as_str()) {
-        Some(s) if !s.trim().is_empty() => s.to_string(),
-        _ => return Json(serde_json::json!({ "ok": false, "error": "org_run_id is required" })),
-    };
-    let subject = match obj.get("subject").and_then(|v| v.as_str()) {
-        Some(s) if !s.trim().is_empty() => s.to_string(),
-        _ => return Json(serde_json::json!({ "ok": false, "error": "subject is required" })),
-    };
-    let description = obj
-        .get("description")
-        .and_then(|v| v.as_str())
-        .map(str::to_string)
-        .unwrap_or_default();
-    let active_form = obj
-        .get("active_form")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let owner = obj
-        .get("owner")
-        .and_then(|v| v.as_str())
-        .filter(|s| !s.trim().is_empty())
-        .map(str::to_string);
-    let status_str = obj
-        .get("status")
-        .and_then(|v| v.as_str())
-        .unwrap_or("pending");
-    let status = match status_str {
-        "pending" => TaskStatus::Pending,
-        "in_progress" => TaskStatus::InProgress,
-        "completed" => TaskStatus::Completed,
-        other => {
-            return Json(serde_json::json!({
-                "ok": false,
-                "error": format!("unknown status '{other}' — expected pending|in_progress|completed"),
-            }))
-        }
-    };
-    let blocks = obj
-        .get("blocks")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(str::to_string))
-                .collect::<Vec<String>>()
-        })
-        .unwrap_or_default();
-    let blocked_by = obj
-        .get("blocked_by")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(str::to_string))
-                .collect::<Vec<String>>()
-        })
-        .unwrap_or_default();
-    let requested_eligible_member_ids = obj
-        .get("eligible_member_ids")
-        .and_then(|value| value.as_array())
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(|value| value.as_str().map(str::to_string))
-                .collect::<Vec<_>>()
-        });
-    let execution_mode = match obj.get("execution_mode").and_then(|value| value.as_str()) {
-        None => None,
-        Some("build") => Some("build".to_string()),
-        Some("plan") => Some("plan".to_string()),
-        Some(other) => {
-            return Json(serde_json::json!({
-                "ok": false,
-                "error": format!("unknown execution_mode '{other}' — expected build|plan"),
-            }))
-        }
-    };
-    let pending_plan_approval = obj.get("pending_plan_approval").cloned();
-
-    let mut params = CreateTaskParams {
-        id: id.clone(),
-        org_run_id,
-        subject,
-        description,
-        active_form,
-        owner,
-        status,
-        blocks,
-        blocked_by,
-        metadata: None,
-    };
-
-    match tokio::task::spawn_blocking(move || {
-        let eligible_member_ids = match requested_eligible_member_ids {
-            Some(member_ids) => Some(member_ids),
-            None if params.owner.is_none() && params.status == TaskStatus::Pending => Some(
-                AgentOrgRunStore::context_for_run(&params.org_run_id, &orgs_store())?
-                    .map(|context| {
-                        context
-                            .members
-                            .into_iter()
-                            .map(|member| member.member_id)
-                            .collect()
-                    })
-                    .unwrap_or_default(),
-            ),
-            None => None,
-        };
-        let mut metadata = serde_json::Map::new();
-        if let Some(eligible_member_ids) = eligible_member_ids {
-            metadata.insert(
-                TASK_METADATA_ELIGIBLE_MEMBER_IDS.to_string(),
-                serde_json::json!(eligible_member_ids),
-            );
-        }
-        if let Some(execution_mode) = execution_mode {
-            metadata.insert(
-                TASK_METADATA_EXECUTION_MODE.to_string(),
-                serde_json::Value::String(execution_mode),
-            );
-        }
-        if !metadata.is_empty() {
-            params.metadata = Some(serde_json::Value::Object(metadata));
-        }
-
-        let task = AgentOrgTaskStore::create(params)?;
-        let approval = if let Some(pending) = pending_plan_approval {
-            let pending = pending
-                .as_object()
-                .ok_or_else(|| "pending_plan_approval must be an object".to_string())?;
-            let request_id = pending
-                .get("request_id")
-                .and_then(serde_json::Value::as_str)
-                .filter(|value| !value.trim().is_empty())
-                .ok_or_else(|| "pending_plan_approval.request_id is required".to_string())?
-                .to_string();
-            let source_member_id = pending
-                .get("source_member_id")
-                .and_then(serde_json::Value::as_str)
-                .filter(|value| !value.trim().is_empty())
-                .ok_or_else(|| "pending_plan_approval.source_member_id is required".to_string())?
-                .to_string();
-
-            let fixture_id = uuid::Uuid::new_v4();
-            let root_session_id = format!("agent-org-plan-root-{fixture_id}");
-            let source_session_id = format!("agent-org-plan-source-{fixture_id}");
-            let workspace_path =
-                std::env::temp_dir().join(format!("orgii-agent-org-plan-e2e-{fixture_id}"));
-            std::fs::create_dir_all(&workspace_path).map_err(|err| err.to_string())?;
-            let workspace_path = workspace_path.to_string_lossy().into_owned();
-            let now = chrono::Utc::now().to_rfc3339();
-
-            upsert_session(&UnifiedSessionRecord {
-                session_id: root_session_id.clone(),
-                name: "Agent Org plan E2E root".to_string(),
-                status: SessionStatus::Idle.as_str().to_string(),
-                session_type: session_type::GENERIC.to_string(),
-                workspace_path: Some(workspace_path.clone()),
-                agent_definition_id: Some("coord".to_string()),
-                org_member_id: Some(COORDINATOR_MEMBER_ID.to_string()),
-                created_at: now.clone(),
-                updated_at: now.clone(),
-                ..Default::default()
-            })
-            .map_err(|err| err.to_string())?;
-            upsert_session(&UnifiedSessionRecord {
-                session_id: source_session_id.clone(),
-                name: "Agent Org plan E2E source".to_string(),
-                status: SessionStatus::Idle.as_str().to_string(),
-                session_type: session_type::ORG_MEMBER.to_string(),
-                workspace_path: Some(workspace_path),
-                agent_definition_id: Some("alice-agent".to_string()),
-                org_member_id: Some(source_member_id.clone()),
-                parent_session_id: Some(root_session_id.clone()),
-                created_at: now.clone(),
-                updated_at: now,
-                ..Default::default()
-            })
-            .map_err(|err| err.to_string())?;
-
-            let plan_path = AgentOrgPlanApprovalStore::managed_plan_path_for_session(
-                &source_session_id,
-                &format!("{fixture_id}.plan.md"),
-            )?
-            .to_string_lossy()
-            .into_owned();
-            Some(AgentOrgPlanApprovalStore::create_pending(
-                CreateAgentOrgPlanApprovalParams {
-                    request_id,
-                    org_run_id: task.org_run_id.clone(),
-                    source_task_id: task.id.clone(),
-                    source_member_id,
-                    source_session_id,
-                    root_session_id,
-                    policy: PlanApprovalPolicy::Coordinator,
-                    plan_title: "Typed message E2E plan".to_string(),
-                    plan_path,
-                    plan_content: "# Typed message E2E plan\n\nRevise this plan.".to_string(),
-                },
-            )?)
-        } else {
-            None
-        };
-        Ok::<_, String>((task, approval))
-    })
-    .await
-    {
-        Err(join_err) => Json(serde_json::json!({
-            "ok": false,
-            "error": format!("spawn_blocking join error: {join_err}"),
-        })),
-        Ok(Err(err)) => Json(serde_json::json!({ "ok": false, "error": err })),
-        Ok(Ok((_, approval))) => Json(serde_json::json!({
-            "ok": true,
-            "id": id,
-            "plan_approval_id": approval.map(|value| value.approval_id),
-        })),
-    }
+    Json(serde_json::json!({
+        "ok": false,
+        "error": "task_seed_disabled: execute the deterministic provider through the real Tool and CallContext path",
+    }))
 }
-
 /// `POST /test/agent-org/tasks/list`
 ///
 /// Body: `{ "org_run_id": "run-..." }`
@@ -2991,7 +2760,7 @@ pub async fn test_agent_org_tasks_list(
 ///
 /// Seeds a minimal Agent Org run with a CLI member session at a specified
 /// status in `code_sessions`. Used by deterministic E2E scenarios that
-/// verify `reconcile_run_finality` does not prematurely end a run when a
+/// verify Team Quiescence does not prematurely idle a run when a
 /// CLI member session is `idle` (non-terminal, between turns).
 ///
 /// Body:
@@ -3019,7 +2788,9 @@ pub async fn test_agent_org_seed_cli_member_run(
         AgentOrgRunEntryMode, AgentOrgRunStatus, AgentOrgRunStore, CreateAgentOrgRunParams,
         COORDINATOR_MEMBER_ID,
     };
-    use agent_core::core::definitions::orgs::{OrgDefinition, OrgMember};
+    use agent_core::core::definitions::orgs::{
+        AgentOrgLaunchSnapshot, FlatOrgMember, OrgDefinition,
+    };
     use agent_core::core::session::persistence::{
         session_type, upsert_session, UnifiedSessionRecord,
     };
@@ -3047,18 +2818,12 @@ pub async fn test_agent_org_seed_cli_member_run(
         .filter(|s| !s.trim().is_empty())
         .unwrap_or("idle")
         .to_string();
-
     let result = tokio::task::spawn_blocking(move || {
         let conn = database::db::get_connection().map_err(|err| err.to_string())?;
         agent_core::foundation::persistence::session_snapshots::ensure_tables_with(&conn)
             .map_err(|err| err.to_string())?;
         agent_core::core::session::persistence::init(&conn).map_err(|err| err.to_string())?;
-        agent_core::coordination::agent_org_runs::init_schema(&conn)
-            .map_err(|err| err.to_string())?;
-        agent_core::coordination::agent_member_interventions::init_schema(&conn)
-            .map_err(|err| err.to_string())?;
-        agent_core::coordination::agent_org_tasks::init_schema(&conn)
-            .map_err(|err| err.to_string())?;
+        agent_core::coordination::init_agent_org_schemas(&conn).map_err(|err| err.to_string())?;
         crate::agent_sessions::cli::init_cli_agent_tables(&conn).map_err(|err| err.to_string())?;
 
         let now = chrono::Utc::now().to_rfc3339();
@@ -3083,29 +2848,29 @@ pub async fn test_agent_org_seed_cli_member_run(
         })
         .map_err(|err| err.to_string())?;
 
-        let org_snapshot = OrgDefinition {
+        let org_definition = OrgDefinition {
             id: org_id.clone(),
             name: org_id.clone(),
             role: "coordinator".to_string(),
             agent_id: coordinator_agent_id.clone(),
             description: None,
-            hierarchy_mode: Default::default(),
             plan_approval_policy: Default::default(),
-            children: vec![OrgMember {
-                id: member_id.clone(),
+            members: vec![FlatOrgMember {
+                member_id: member_id.clone(),
                 name: member_id.clone(),
                 role: "worker".to_string(),
                 agent_id: format!("cli:{cli_agent_type}"),
                 runtime_config: None,
-                children: Vec::new(),
             }],
+            additional_task_graph_writer_member_ids: Vec::new(),
+            member_communication_links: Vec::new(),
         };
 
         let run = AgentOrgRunStore::create(CreateAgentOrgRunParams {
             org_id,
             coordinator_agent_id,
             root_session_id: Some(root_session_id.clone()),
-            org_snapshot,
+            org_snapshot: AgentOrgLaunchSnapshot::from(&org_definition),
             entry_mode: AgentOrgRunEntryMode::StandaloneSession,
             status: AgentOrgRunStatus::Running,
             work_item_id: None,
@@ -3134,7 +2899,6 @@ pub async fn test_agent_org_seed_cli_member_run(
             ],
         )
         .map_err(|err| err.to_string())?;
-
         Ok::<serde_json::Value, String>(serde_json::json!({
             "ok": true,
             "org_run_id": run.id,
@@ -3154,10 +2918,315 @@ pub async fn test_agent_org_seed_cli_member_run(
     }
 }
 
+/// `POST /test/agent-org/startup-recovery/seed-crashed-task`
+///
+/// Establishes the durable state left immediately after a canonical Rust
+/// Member TaskExecution starts and immediately before its Provider call
+/// returns. Task creation and Pending -> InProgress both go through the
+/// production Task Store; direct inserts are limited to the two Turn identity
+/// rows that represent the intentional process-crash cut.
+pub async fn test_agent_org_seed_crashed_task_execution(
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    use agent_core::coordination::agent_org_runs::{
+        AgentOrgRunEntryMode, AgentOrgRunStatus, AgentOrgRunStore, CreateAgentOrgRunParams,
+        COORDINATOR_MEMBER_ID,
+    };
+    use agent_core::coordination::agent_org_tasks::{
+        AgentOrgTaskStore, CreatePendingTaskParams, TaskCreateSchedulingPolicy, TaskExecutionMode,
+        TaskGraphWriterAdmin, TaskOwnerExecution,
+    };
+    use agent_core::core::definitions::orgs::{
+        AgentOrgLaunchSnapshot, FlatOrgMember, OrgDefinition,
+    };
+    use agent_core::core::session::persistence::{
+        session_type, upsert_session, UnifiedSessionRecord,
+    };
+    use agent_core::core::session::SessionStatus;
+
+    let task_id = body
+        .get("task_id")
+        .and_then(serde_json::Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("crashed-task-{}", uuid::Uuid::new_v4()));
+    let member_id = body
+        .get("member_id")
+        .and_then(serde_json::Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("m-restart")
+        .to_string();
+
+    let result = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
+        let conn = database::db::get_connection().map_err(|error| error.to_string())?;
+        agent_core::foundation::persistence::session_snapshots::ensure_tables_with(&conn)
+            .map_err(|error| error.to_string())?;
+        agent_core::core::session::persistence::init(&conn).map_err(|error| error.to_string())?;
+        agent_core::coordination::init_agent_org_schemas(&conn)
+            .map_err(|error| error.to_string())?;
+
+        let now = chrono::Utc::now().to_rfc3339();
+        let root_session_id = format!("agent-org-crash-root-{}", uuid::Uuid::new_v4());
+        let member_session_id = format!("agent-org-crash-member-{}", uuid::Uuid::new_v4());
+        let org_id = format!(
+            "{E2E_RUN_FIXTURE_ORG_PREFIX}startup-recovery-{}",
+            uuid::Uuid::new_v4()
+        );
+        let agent_id = "builtin:sde".to_string();
+
+        upsert_session(&UnifiedSessionRecord {
+            session_id: root_session_id.clone(),
+            name: "startup-recovery-root".to_string(),
+            status: SessionStatus::Running.as_str().to_string(),
+            session_type: session_type::GENERIC.to_string(),
+            agent_definition_id: Some(agent_id.clone()),
+            org_member_id: Some(COORDINATOR_MEMBER_ID.to_string()),
+            created_at: now.clone(),
+            updated_at: now.clone(),
+            ..Default::default()
+        })
+        .map_err(|error| error.to_string())?;
+        upsert_session(&UnifiedSessionRecord {
+            session_id: member_session_id.clone(),
+            parent_session_id: Some(root_session_id.clone()),
+            name: "startup-recovery-member".to_string(),
+            status: SessionStatus::Failed.as_str().to_string(),
+            session_type: session_type::GENERIC.to_string(),
+            agent_definition_id: Some(agent_id.clone()),
+            org_member_id: Some(member_id.clone()),
+            created_at: now.clone(),
+            updated_at: now.clone(),
+            ..Default::default()
+        })
+        .map_err(|error| error.to_string())?;
+
+        let definition = OrgDefinition {
+            id: org_id.clone(),
+            name: org_id.clone(),
+            role: "coordinator".to_string(),
+            agent_id: agent_id.clone(),
+            description: Some("Deterministic startup-recovery crash fixture".to_string()),
+            plan_approval_policy: Default::default(),
+            members: vec![FlatOrgMember {
+                member_id: member_id.clone(),
+                name: "Recovery Worker".to_string(),
+                role: "worker".to_string(),
+                agent_id: agent_id.clone(),
+                runtime_config: None,
+            }],
+            additional_task_graph_writer_member_ids: Vec::new(),
+            member_communication_links: Vec::new(),
+        };
+        let run = AgentOrgRunStore::create(CreateAgentOrgRunParams {
+            org_id,
+            coordinator_agent_id: agent_id.clone(),
+            root_session_id: Some(root_session_id.clone()),
+            org_snapshot: AgentOrgLaunchSnapshot::from(&definition),
+            entry_mode: AgentOrgRunEntryMode::StandaloneSession,
+            status: AgentOrgRunStatus::Running,
+            work_item_id: None,
+            project_slug: None,
+            routine_fire_id: None,
+        })?;
+        conn.execute(
+            "INSERT INTO agent_org_runtime_member_materializations(
+                 org_run_id,member_id,agent_id,generation,session_id,
+                 authority_class,status,created_at,updated_at
+             ) VALUES (?1,?2,?3,1,?4,'formal','succeeded',?5,?5)",
+            rusqlite::params![&run.id, &member_id, &agent_id, &member_session_id, &now],
+        )
+        .map_err(|error| error.to_string())?;
+
+        let coordinator_turn_id = format!("fixture-coordinator-turn-{}", uuid::Uuid::new_v4());
+        conn.execute(
+            "INSERT INTO session_turn_intents(
+                 session_id,turn_intent_id,org_run_id,source,status,created_at,updated_at
+             ) VALUES (?1,?2,?3,'user_submit','running',?4,?4)",
+            rusqlite::params![&root_session_id, &coordinator_turn_id, &run.id, &now],
+        )
+        .map_err(|error| error.to_string())?;
+        conn.execute(
+            "INSERT INTO agent_org_runtime_turn_contexts(
+                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
+                 source_kind,source_id,activation_generation,created_at
+             ) VALUES (?1,?2,?3,'coordinator','coordinator','root_turn',?2,1,?4)",
+            rusqlite::params![&root_session_id, &coordinator_turn_id, &run.id, &now],
+        )
+        .map_err(|error| error.to_string())?;
+        AgentOrgTaskStore::create_pending_with_transactional_effects(
+            TaskGraphWriterAdmin::new(&root_session_id, &coordinator_turn_id)?,
+            CreatePendingTaskParams {
+                id: task_id.clone(),
+                org_run_id: run.id.clone(),
+                subject: "Interrupted provider execution".to_string(),
+                description: "Deterministic startup-recovery precondition".to_string(),
+                active_form: None,
+                owner: Some(member_id.clone()),
+                execution_mode: TaskExecutionMode::Build,
+                blocked_by: Vec::new(),
+                metadata: None,
+                originating_message_id: None,
+                replaces_task_id: None,
+            },
+            TaskCreateSchedulingPolicy {
+                allow_parallel_with_unlisted_open_tasks: true,
+            },
+            |_connection, _task, _tasks| Ok(()),
+        )?;
+
+        let turn_intent_id = format!("crashed-turn-{}", uuid::Uuid::new_v4());
+        conn.execute(
+            "INSERT INTO session_turn_intents(
+                 session_id,turn_intent_id,org_run_id,source,status,created_at,updated_at
+             ) VALUES (?1,?2,?3,'agent_org','running',?4,?4)",
+            rusqlite::params![&member_session_id, &turn_intent_id, &run.id, &now],
+        )
+        .map_err(|error| error.to_string())?;
+        conn.execute(
+            "INSERT INTO agent_org_runtime_turn_contexts(
+                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
+                 task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
+                 source_kind,source_id,activation_generation,created_at
+             ) VALUES (?1,?2,?3,?4,'task_execution',?5,?4,?4,1,
+                       'task',?5,1,?6)",
+            rusqlite::params![
+                &member_session_id,
+                &turn_intent_id,
+                &run.id,
+                &member_id,
+                &task_id,
+                &now,
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+        AgentOrgTaskStore::owner_start_with_transactional_effects(
+            TaskOwnerExecution::new(&member_session_id, &turn_intent_id)?,
+            &run.id,
+            &task_id,
+            |_connection, _outcome, _tasks| Ok(()),
+        )?;
+
+        Ok(serde_json::json!({
+            "ok": true,
+            "org_run_id": run.id,
+            "root_session_id": root_session_id,
+            "crashed_session_id": member_session_id,
+            "crashed_task_id": task_id,
+            "crashed_turn_intent_id": turn_intent_id,
+        }))
+    })
+    .await;
+
+    match result {
+        Err(join_error) => Json(serde_json::json!({
+            "ok": false,
+            "error": format!("spawn_blocking join error: {join_error}"),
+        })),
+        Ok(Err(error)) => Json(serde_json::json!({ "ok": false, "error": error })),
+        Ok(Ok(value)) => Json(value),
+    }
+}
+
+/// `POST /test/agent-org/startup-recovery/wake-seeded-task`
+///
+/// Delivers one seeded task through the production `TaskAssigned` producer and
+/// production inbox wake hook. This keeps real-provider crash acceptance tests
+/// on the actual member TaskExecution path without spending a separate
+/// Coordinator model turn merely to manufacture the assignment.
+pub async fn test_agent_org_wake_seeded_task(
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    use agent_core::coordination::agent_org_tasks::{enqueue_task_assigned_to, AgentOrgTaskStore};
+    use agent_core::tools::impls::orchestration::inbox_wake::AppHandleInboxWakeHook;
+    use agent_core::tools::impls::orchestration::org_send_message::InboxWakeHook;
+
+    let Some(obj) = body.as_object() else {
+        return Json(serde_json::json!({ "ok": false, "error": "body must be an object" }));
+    };
+    let required = |key: &str| {
+        obj.get(key)
+            .and_then(serde_json::Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .map(str::to_string)
+            .ok_or_else(|| format!("{key} is required (non-empty string)"))
+    };
+    let (org_run_id, task_id, member_id, recipient_agent_id) = match (
+        required("org_run_id"),
+        required("task_id"),
+        required("member_id"),
+        required("recipient_agent_id"),
+    ) {
+        (Ok(run), Ok(task), Ok(member), Ok(agent)) => (run, task, member, agent),
+        values => {
+            let error = [
+                values.0.err(),
+                values.1.err(),
+                values.2.err(),
+                values.3.err(),
+            ]
+            .into_iter()
+            .flatten()
+            .next()
+            .unwrap_or_else(|| "invalid request".to_string());
+            return Json(serde_json::json!({ "ok": false, "error": error }));
+        }
+    };
+
+    let run_for_delivery = org_run_id.clone();
+    let task_for_delivery = task_id.clone();
+    let member_for_delivery = member_id.clone();
+    let agent_for_delivery = recipient_agent_id.clone();
+    let delivered = tokio::task::spawn_blocking(move || -> Result<i64, String> {
+        let task = AgentOrgTaskStore::get(&run_for_delivery, &task_for_delivery)?
+            .ok_or_else(|| "seeded task was not found".to_string())?;
+        enqueue_task_assigned_to(
+            &task,
+            &agent_for_delivery,
+            &member_for_delivery,
+            "builtin:sde",
+            Some(agent_core::coordination::agent_org_runs::COORDINATOR_MEMBER_ID),
+            "Coordinator",
+        )
+    })
+    .await;
+
+    let inbox_id = match delivered {
+        Err(error) => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": format!("spawn_blocking join error: {error}")
+            }))
+        }
+        Ok(Err(error)) => {
+            return Json(serde_json::json!({ "ok": false, "error": error }));
+        }
+        Ok(Ok(inbox_id)) => inbox_id,
+    };
+
+    let Some(handle) = crate::api::get_app_handle() else {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "AppHandle not initialized",
+            "inbox_id": inbox_id,
+        }));
+    };
+    AppHandleInboxWakeHook::new(handle.clone()).wake_member(&member_id, &org_run_id);
+
+    Json(serde_json::json!({
+        "ok": true,
+        "org_run_id": org_run_id,
+        "task_id": task_id,
+        "member_id": member_id,
+        "recipient_agent_id": recipient_agent_id,
+        "inbox_id": inbox_id,
+    }))
+}
+
 /// `POST /test/agent-org/run/pause`
 ///
-/// Transitions the named run `running → paused`. Seed-only path for E2E
-/// tests that verify pause/resume semantics without a live coordinator.
+/// Commits the same durable Pause fence used by the product command. This
+/// seed-only path does not drive runtime teardown; rendered E2E must use the
+/// real product button for Pause itself.
 /// Body: `{ "org_run_id": "<id>" }`
 pub async fn test_agent_org_pause_run(
     Json(body): Json<serde_json::Value>,
@@ -3175,8 +3244,11 @@ pub async fn test_agent_org_pause_run(
         }
     };
 
-    let result =
-        tokio::task::spawn_blocking(move || AgentOrgRunStore::mark_paused(&org_run_id)).await;
+    let request_id = uuid::Uuid::new_v4().to_string();
+    let result = tokio::task::spawn_blocking(move || {
+        agent_core::coordination::agent_org_pause::pause_run(&org_run_id, &request_id)
+    })
+    .await;
 
     match result {
         Err(join_err) => Json(serde_json::json!({
@@ -3184,15 +3256,13 @@ pub async fn test_agent_org_pause_run(
             "error": format!("spawn_blocking join error: {join_err}"),
         })),
         Ok(Err(err)) => Json(serde_json::json!({ "ok": false, "error": err })),
-        Ok(Ok(transitioned)) => {
-            Json(serde_json::json!({ "ok": true, "transitioned": transitioned }))
-        }
+        Ok(Ok(outcome)) => Json(serde_json::json!({ "ok": true, "outcome": outcome })),
     }
 }
 
 /// `POST /test/agent-org/simulate-app-restart`
 ///
-/// Simulates the startup cleanup sequence that runs every time the app
+/// Simulates the startup recovery sequence that runs every time the app
 /// initialises after an unexpected exit or normal quit:
 ///
 /// 1. `reconcile_in_flight_after_restart` — closes turn intents whose
@@ -3204,54 +3274,32 @@ pub async fn test_agent_org_pause_run(
 ///    `waiting_for_funds`) to `abandoned`.
 /// 4. `requeue_abandoned_member_tasks_on_startup` — applies the same failed
 ///    member task disposition as production startup.
-/// 5. `clear_all_active_on_startup` — clears interventions whose in-memory
-///    sessions no longer exist.
-/// 6. `reconcile_resolved_running_runs_on_startup` — completes runs whose
-///    tasks were already fully resolved.
-/// 7. `mark_all_running_as_paused_on_startup` — transitions
-///    every `running` org run to `paused` so `reconcile_run_finality` cannot
-///    auto-terminate the run when it sees all sessions abandoned.
+/// 5. Durable Member interventions remain present; queued direct Turns are
+///    recoverable, while already-started Turns are not replayed.
+/// 6. `reconcile_agent_org_in_flight_after_restart` — fails interrupted
+///    Coordinator Turns, preserves TaskExecution Turns for exact task/process
+///    recovery, and only retains a replayable queued canonical initial input.
 ///
-/// Caller-path probe: drives the same sequence that `AgentAppState::
-/// with_browser` calls, so this endpoint stays in sync if any of those
-/// functions change their signature or semantics. No body required (`{}`).
+/// Run lifecycle state is deliberately not changed here. In particular,
+/// startup never maps `running` to `paused` and never infers terminality from
+/// abandoned Session rows.
+///
+/// Caller-path probe: drives the same production startup owner, then dispatches
+/// only the exact receipts returned by that owner. No body required (`{}`).
 pub async fn test_agent_org_simulate_app_restart() -> Json<serde_json::Value> {
     let result = tokio::task::spawn_blocking(move || {
-        use agent_core::coordination::agent_member_interventions::AgentMemberInterventionStore;
-        use agent_core::coordination::agent_org_runs::AgentOrgRunStore;
-        use agent_core::session::persistence::{
-            mark_stale_running_sessions_abandoned, reconcile_sessions_with_terminal_turn_markers,
-        };
-
+        let report = crate::app::startup_recovery::run_persistence_startup_recovery()?;
         let conn = database::db::get_connection()
-            .map_err(|err| format!("open sessions DB for intent reconciliation failed: {err}"))?;
-        let intents_reconciled =
-            session_persistence::turn_intents::reconcile_in_flight_after_restart(&conn)
-                .map_err(|err| format!("reconcile_in_flight_after_restart failed: {err}"))?;
-        let terminal_sessions_reconciled = reconcile_sessions_with_terminal_turn_markers()
-            .map_err(|err| {
-                format!("reconcile_sessions_with_terminal_turn_markers failed: {err}")
-            })?;
-        let sessions_abandoned = mark_stale_running_sessions_abandoned()
-            .map_err(|err| format!("mark_stale_running_sessions_abandoned failed: {err}"))?;
-        let tasks_requeued = AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup()
-            .map_err(|err| format!("requeue_abandoned_member_tasks_on_startup failed: {err}"))?;
-        let interventions_cleared = AgentMemberInterventionStore::clear_all_active_on_startup()
-            .map_err(|err| format!("clear_all_active_on_startup failed: {err}"))?;
-        let runs_completed = AgentOrgRunStore::reconcile_resolved_running_runs_on_startup()
-            .map_err(|err| format!("reconcile_resolved_running_runs_on_startup failed: {err}"))?;
-        let runs_paused = AgentOrgRunStore::mark_all_running_as_paused_on_startup()
-            .map_err(|err| format!("mark_all_running_as_paused_on_startup failed: {err}"))?;
-        Ok::<serde_json::Value, String>(serde_json::json!({
-            "ok": true,
-            "intents_reconciled": intents_reconciled,
-            "terminal_sessions_reconciled": terminal_sessions_reconciled,
-            "sessions_abandoned": sessions_abandoned,
-            "tasks_requeued": tasks_requeued,
-            "runs_completed": runs_completed,
-            "runs_paused": runs_paused,
-            "interventions_cleared": interventions_cleared,
-        }))
+            .map_err(|err| format!("open sessions DB for recovery inspection failed: {err}"))?;
+        let interventions_preserved: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM agent_org_runtime_member_interventions
+                 WHERE status IN ('yield_requested','active','return_requested')",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|err| format!("read preserved interventions failed: {err}"))?;
+        Ok::<_, String>((report, interventions_preserved))
     })
     .await;
 
@@ -3261,14 +3309,40 @@ pub async fn test_agent_org_simulate_app_restart() -> Json<serde_json::Value> {
             "error": format!("spawn_blocking join error: {join_err}"),
         })),
         Ok(Err(err)) => Json(serde_json::json!({ "ok": false, "error": err })),
-        Ok(Ok(value)) => Json(value),
+        Ok(Ok((report, interventions_preserved))) => {
+            let Some(app_handle) = crate::api::get_app_handle() else {
+                return Json(serde_json::json!({
+                    "ok": false,
+                    "error": "production AppHandle is unavailable; refusing to report recovery before exact doorbell dispatch",
+                }));
+            };
+            crate::app::startup_recovery::dispatch_agent_org_recovery_receipts(
+                app_handle.clone(),
+                &report.agent_org,
+            );
+            Json(serde_json::json!({
+                "ok": true,
+                "intents_reconciled": report.ordinary_turn_intents_reconciled,
+                "agent_org_intents_reconciled": report.agent_org_turn_intents_reconciled,
+                "terminal_sessions_reconciled": report.terminal_sessions_reconciled,
+                "sessions_abandoned": report.sessions_abandoned,
+                "tasks_requeued": report.agent_org.recovered_task_count(),
+                "recovery_plan": report.agent_org,
+                // Kept for old E2E clients; canonical production startup performs neither
+                // transition, so both counters are intentionally always zero.
+                "runs_completed": 0,
+                "runs_paused": 0,
+                "interventions_cleared": 0,
+                "interventions_preserved": interventions_preserved,
+            }))
+        }
     }
 }
 
 /// `POST /test/agent-org/run/resume`
 ///
-/// Transitions the named run `paused → running`. Seed-only path for E2E
-/// tests that verify pause/resume semantics without a live coordinator.
+/// Commits the same durable Resume transaction used by the product command.
+/// Rendered E2E must use the real product button for Resume itself.
 /// Body: `{ "org_run_id": "<id>" }`
 pub async fn test_agent_org_resume_run(
     Json(body): Json<serde_json::Value>,
@@ -3286,8 +3360,11 @@ pub async fn test_agent_org_resume_run(
         }
     };
 
-    let result =
-        tokio::task::spawn_blocking(move || AgentOrgRunStore::mark_resumed(&org_run_id)).await;
+    let request_id = uuid::Uuid::new_v4().to_string();
+    let result = tokio::task::spawn_blocking(move || {
+        agent_core::coordination::agent_org_pause::resume_run(&org_run_id, &request_id)
+    })
+    .await;
 
     match result {
         Err(join_err) => Json(serde_json::json!({
@@ -3295,8 +3372,301 @@ pub async fn test_agent_org_resume_run(
             "error": format!("spawn_blocking join error: {join_err}"),
         })),
         Ok(Err(err)) => Json(serde_json::json!({ "ok": false, "error": err })),
-        Ok(Ok(transitioned)) => {
-            Json(serde_json::json!({ "ok": true, "transitioned": transitioned }))
+        Ok(Ok(outcome)) => Json(serde_json::json!({ "ok": true, "outcome": outcome })),
+    }
+}
+
+async fn collect_agent_org_runtime_evidence(
+    state: &agent_core::state::AgentAppState,
+    session_ids: &[String],
+) -> serde_json::Value {
+    let mut active_runtime_count = 0usize;
+    let mut active_turns = Vec::new();
+    let mut background_shells = Vec::new();
+    for session_id in session_ids {
+        for (pid, command) in
+            agent_core::tools::impls::coding::exec::registry::list_shell_for_session(session_id)
+        {
+            background_shells.push(serde_json::json!({
+                "session_id": session_id,
+                "pid": pid,
+                "command": command,
+            }));
+        }
+        let Some(session) = state.get_session(session_id).await else {
+            continue;
+        };
+        if session.get_runtime().await.is_some() {
+            active_runtime_count += 1;
+        }
+        if let Some(dialog_turn_generation) = session.active_turn_id().await {
+            active_turns.push(serde_json::json!({
+                "session_id": session_id,
+                "dialog_turn_generation": dialog_turn_generation,
+            }));
         }
     }
+    let background_jobs =
+        agent_core::tools::impls::coding::exec::registry::session_runtime_evidence(session_ids, 64);
+    let execution_blockers =
+        agent_core::tools::impls::coding::exec::registry::execution_blockers_for_sessions(
+            session_ids,
+            64,
+        );
+    let retained_tombstone_count =
+        agent_core::tools::impls::coding::exec::registry::retained_tombstone_count(session_ids);
+    serde_json::json!({
+        "active_runtime_count": active_runtime_count,
+        "active_turns": active_turns,
+        "background_shells": background_shells,
+        "background_jobs": background_jobs,
+        "execution_blockers": execution_blockers,
+        "retained_tombstone_count": retained_tombstone_count,
+    })
+}
+
+/// `POST /test/agent-org/runtime-evidence`
+///
+/// Read-only runtime, Turn and background-execution evidence for Archive and
+/// Delete E2E. Product lifecycle actions must still use their real buttons
+/// and Tauri commands.
+pub async fn test_agent_org_runtime_evidence(
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    use tauri::Manager;
+
+    let Some(org_run_id) = body
+        .get("org_run_id")
+        .and_then(serde_json::Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .map(str::to_string)
+    else {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "org_run_id is required (non-empty string)"
+        }));
+    };
+    let query_run_id = org_run_id.clone();
+    let durable = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
+        let run = agent_core::coordination::agent_org_runs::AgentOrgRunStore::load(&query_run_id)?
+            .ok_or_else(|| format!("agent_org_run_not_found: {query_run_id}"))?;
+        let session_ids =
+            agent_core::coordination::agent_org_archive::debug_owned_session_ids_for_run(
+                &query_run_id,
+            )?;
+        let archive = agent_core::coordination::agent_org_archive::summary_for_run(&query_run_id)?;
+        Ok(serde_json::json!({
+            "org_run_id": query_run_id,
+            "run_status": run.status.as_str(),
+            "activation_generation": run.activation_generation,
+            "session_ids": session_ids,
+            "archive": archive,
+        }))
+    })
+    .await;
+    let durable = match durable {
+        Err(error) => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": format!("spawn_blocking join error: {error}")
+            }))
+        }
+        Ok(Err(error)) => return Json(serde_json::json!({ "ok": false, "error": error })),
+        Ok(Ok(value)) => value,
+    };
+    let Some(handle) = crate::api::get_app_handle() else {
+        return Json(serde_json::json!({ "ok": false, "error": "AppHandle not initialized" }));
+    };
+    let state = handle.state::<agent_core::state::AgentAppState>();
+    let session_ids = durable
+        .get("session_ids")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(serde_json::Value::as_str)
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    let runtime = collect_agent_org_runtime_evidence(&state, &session_ids).await;
+    Json(serde_json::json!({
+        "ok": true,
+        "durable": durable,
+        "runtime": runtime,
+    }))
+}
+
+/// `POST /test/agent-org/pause/evidence`
+///
+/// Read-only evidence for the rendered Pause/Resume scenario. The endpoint
+/// never performs the lifecycle transition; E2E must drive the real Tauri
+/// command through the product buttons.
+pub async fn test_agent_org_pause_evidence(
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    use rusqlite::OptionalExtension;
+    use tauri::Manager;
+
+    let Some(org_run_id) = body
+        .get("org_run_id")
+        .and_then(serde_json::Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .map(str::to_string)
+    else {
+        return Json(serde_json::json!({
+            "ok": false,
+            "error": "org_run_id is required (non-empty string)"
+        }));
+    };
+    let query_run_id = org_run_id.clone();
+    let durable = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
+        let conn = database::db::get_connection().map_err(|error| error.to_string())?;
+        let (run_status, activation_generation): (String, i64) = conn
+            .query_row(
+                "SELECT status,activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+                [&query_run_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        let episode: Option<(String, String, i64, Option<i64>)> = conn
+            .query_row(
+                "SELECT episode_id,status,pause_generation,resume_generation
+                 FROM agent_org_runtime_pause_episodes
+                 WHERE org_run_id=?1 ORDER BY created_at DESC LIMIT 1",
+                [&query_run_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .optional()
+            .map_err(|error| error.to_string())?;
+        let mut handoffs = Vec::new();
+        let mut session_ids = Vec::new();
+        if let Some((episode_id, _, _, _)) = episode.as_ref() {
+            let mut statement = conn
+                .prepare(
+                    "SELECT handoff.session_id,handoff.original_turn_intent_id,
+                            handoff.turn_kind,handoff.task_id,handoff.original_intent_status,
+                            handoff.drain_status,handoff.runtime_lease_id,
+                            handoff.dialog_turn_generation,handoff.drain_timeout_at,
+                            handoff.continuation_turn_intent_id,handoff.continuation_status,
+                            handoff.skip_reason,context.member_dispatch_sequence
+                     FROM agent_org_runtime_pause_handoffs handoff
+                     LEFT JOIN agent_org_runtime_turn_contexts context
+                       ON context.session_id=handoff.session_id
+                      AND context.turn_intent_id=handoff.continuation_turn_intent_id
+                     WHERE handoff.episode_id=?1
+                     ORDER BY handoff.created_at,handoff.handoff_id",
+                )
+                .map_err(|error| error.to_string())?;
+            let rows = statement
+                .query_map([episode_id], |row| {
+                    Ok(serde_json::json!({
+                        "session_id": row.get::<_, String>(0)?,
+                        "original_turn_intent_id": row.get::<_, String>(1)?,
+                        "turn_kind": row.get::<_, String>(2)?,
+                        "task_id": row.get::<_, Option<String>>(3)?,
+                        "original_intent_status": row.get::<_, String>(4)?,
+                        "drain_status": row.get::<_, String>(5)?,
+                        "runtime_lease_id": row.get::<_, Option<String>>(6)?,
+                        "dialog_turn_generation": row.get::<_, Option<String>>(7)?,
+                        "drain_timeout_at": row.get::<_, Option<String>>(8)?,
+                        "continuation_turn_intent_id": row.get::<_, Option<String>>(9)?,
+                        "continuation_status": row.get::<_, Option<String>>(10)?,
+                        "skip_reason": row.get::<_, Option<String>>(11)?,
+                        "member_dispatch_sequence": row.get::<_, Option<i64>>(12)?,
+                    }))
+                })
+                .map_err(|error| error.to_string())?;
+            for row in rows {
+                let value = row.map_err(|error| error.to_string())?;
+                if let Some(session_id) = value.get("session_id").and_then(|v| v.as_str()) {
+                    session_ids.push(session_id.to_string());
+                }
+                handoffs.push(value);
+            }
+        }
+        if session_ids.is_empty() {
+            let mut statement = conn
+                .prepare(
+                    "SELECT session_id FROM agent_org_runtime_member_materializations
+                     WHERE org_run_id=?1 AND status='succeeded' ORDER BY member_id",
+                )
+                .map_err(|error| error.to_string())?;
+            session_ids = statement
+                .query_map([&query_run_id], |row| row.get::<_, String>(0))
+                .map_err(|error| error.to_string())?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|error| error.to_string())?;
+        }
+        session_ids.sort();
+        session_ids.dedup();
+        let mut task_statement = conn
+            .prepare(
+                "SELECT id,status,owner,updated_at FROM agent_org_runtime_tasks
+                 WHERE org_run_id=?1 ORDER BY id",
+            )
+            .map_err(|error| error.to_string())?;
+        let tasks = task_statement
+            .query_map([&query_run_id], |row| {
+                Ok(serde_json::json!({
+                    "id": row.get::<_, String>(0)?,
+                    "status": row.get::<_, String>(1)?,
+                    "owner": row.get::<_, Option<String>>(2)?,
+                    "updated_at": row.get::<_, String>(3)?,
+                }))
+            })
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        let inbox_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE org_run_id=?1",
+                [&query_run_id],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        Ok(serde_json::json!({
+            "run_status": run_status,
+            "activation_generation": activation_generation,
+            "episode": episode.map(|(episode_id,status,pause_generation,resume_generation)| serde_json::json!({
+                "episode_id": episode_id,
+                "status": status,
+                "pause_generation": pause_generation,
+                "resume_generation": resume_generation,
+            })),
+            "handoffs": handoffs,
+            "tasks": tasks,
+            "inbox_count": inbox_count,
+            "session_ids": session_ids,
+        }))
+    })
+    .await;
+    let durable = match durable {
+        Err(error) => {
+            return Json(serde_json::json!({
+                "ok": false,
+                "error": format!("spawn_blocking join error: {error}")
+            }))
+        }
+        Ok(Err(error)) => return Json(serde_json::json!({ "ok": false, "error": error })),
+        Ok(Ok(value)) => value,
+    };
+    let Some(handle) = crate::api::get_app_handle() else {
+        return Json(serde_json::json!({ "ok": false, "error": "AppHandle not initialized" }));
+    };
+    let state = handle.state::<agent_core::state::AgentAppState>();
+    let session_ids = durable
+        .get("session_ids")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(serde_json::Value::as_str)
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    let runtime = collect_agent_org_runtime_evidence(&state, &session_ids).await;
+    Json(serde_json::json!({
+        "ok": true,
+        "durable": durable,
+        "active_runtime_count": runtime["active_runtime_count"].clone(),
+        "active_turns": runtime["active_turns"].clone(),
+        "background_shells": runtime["background_shells"].clone(),
+        "runtime": runtime,
+    }))
 }

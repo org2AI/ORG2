@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { isPrimarySessionListSession } from "@src/util/session/sessionVisibility";
+
 import {
   type SessionAggregateRecord,
   toFrontendSession,
@@ -39,6 +41,18 @@ function makeAggregateRecord(
 // ============================================================================
 
 describe("toFrontendSession", () => {
+  it("preserves native mirror provenance through exact-ID hydration", () => {
+    const result = toFrontendSession(
+      makeAggregateRecord({
+        sessionId: "codexapp-rollout-native-mirror",
+        clientOrigin: "org2",
+        clientOriginRaw: "orgii",
+      })
+    );
+    expect(result.clientOrigin).toBe("org2");
+    expect(result.clientOriginRaw).toBe("orgii");
+    expect(isPrimarySessionListSession(result)).toBe(false);
+  });
   it("converts basic fields correctly", () => {
     const record = makeAggregateRecord({
       sessionId: "session-abc",

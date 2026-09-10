@@ -401,6 +401,9 @@ mod tests {
 
     #[test]
     fn provider_skill_catalog_is_stable_bounded_and_keeps_load_paths() {
+        // The production loader also reads global/user roots. Keep those
+        // roots fixed while sibling tests switch the process-wide home.
+        let _sandbox = crate::test_utils::test_env::sandbox();
         let workspace = tempfile::tempdir().expect("workspace");
         for index in 0..80 {
             let skill_dir = workspace

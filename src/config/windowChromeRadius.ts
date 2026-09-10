@@ -47,6 +47,15 @@ export function resolveHostDesktop(): HostDesktop {
 }
 
 /**
+ * True only inside a real macOS window, where the overlay traffic lights and
+ * the pinned sidebar chrome exist. Browser mode on a Mac reports `isMacOS()`
+ * but resolves to the Linux host: no traffic lights, in-flow chrome.
+ */
+export function hasMacWindowChrome(): boolean {
+  return resolveHostDesktop() === HOST_DESKTOP.MACOS;
+}
+
+/**
  * Sets --border-radius-window and --radius-page on the document root so html/body/#root,
  * splash, rounded-page, and ModalSystem track the host OS.
  */

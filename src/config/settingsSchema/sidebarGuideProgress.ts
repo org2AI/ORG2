@@ -22,14 +22,3 @@ export const DEFAULT_SIDEBAR_GUIDE_PROGRESS: SidebarGuideProgress = {
   dismissed: false,
   guideCompletedMilestones: [],
 };
-
-/**
- * Accepts the former walkthrough progress object and strips its retired page
- * fields while preserving completed sidebar-guide milestones.
- */
-export function normalizeSidebarGuideProgress(
-  value: unknown
-): SidebarGuideProgress {
-  const parsed = SidebarGuideProgressSchema.safeParse(value);
-  return parsed.success ? parsed.data : { ...DEFAULT_SIDEBAR_GUIDE_PROGRESS };
-}

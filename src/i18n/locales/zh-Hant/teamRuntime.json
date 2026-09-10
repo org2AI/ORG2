@@ -6,7 +6,6 @@
     "today": "今天",
     "everyone": "所有人",
     "activeMembers": "活躍成員",
-    "systemsCurrent": "{{total}} 台系統中有 {{current}} 台狀態為最新",
     "usageByAgent": "依代理程式統計用量",
     "recentSessions": "最近共享的工作階段",
     "recentLoading": "正在載入共享工作階段…",
@@ -22,17 +21,17 @@
     "action": "登入"
   },
   "noOrgs": {
-    "title": "尚未加入任何雲端組織",
-    "subtitle": "加入或建立組織後，隊友就會出現在這裡。"
+    "title": "尚未加入任何雲端工作空間",
+    "subtitle": "加入或建立工作空間後，隊友就會出現在這裡。"
   },
   "unsupported": {
     "title": "後端需要升級",
-    "subtitle": "此組織的雲端後端尚不支援團隊執行狀態共享。"
+    "subtitle": "此工作空間的雲端後端尚不支援團隊執行狀態共享。"
   },
   "disabled": {
     "title": "團隊執行狀態共享未開啟",
-    "subtitle": "組織管理員可以在組織設定中開啟。",
-    "adminSubtitle": "你可以在組織設定中開啟。"
+    "subtitle": "工作空間管理員可以在工作空間設定中開啟。",
+    "adminSubtitle": "你可以在工作空間設定中開啟。"
   },
   "empty": {
     "title": "尚無成員資料",
@@ -72,13 +71,9 @@
     "totalSessions": "工作階段總數",
     "lastSynced": "最後同步"
   },
-  "selfService": {
-    "hint": "共享開啟期間，你自己的執行狀態會共享給此組織。",
-    "action": "停止共享並刪除我的資料"
-  },
   "orgSettings": {
     "label": "團隊執行狀態共享",
-    "help": "依此間隔向組織共享成員的機器負載、用量彙總和建構者輪廓。僅共享彙總資料——不含逐字稿、儲存庫路徑和標題。",
+    "help": "依此間隔向工作空間共享成員的機器負載、用量彙總和建構者輪廓。僅共享彙總資料——不含逐字稿、儲存庫路徑和標題。",
     "memberNote": "已由管理員開啟。回報間隔：{{interval}}。",
     "off": "關閉",
     "interval": {

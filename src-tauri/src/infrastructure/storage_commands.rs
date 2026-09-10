@@ -89,7 +89,7 @@ pub fn get_disk_usage() -> DiskUsageReport {
         ("cursorConfig", "Session CLI Configs", cursor_config_root()),
         (
             "cursorCliProfiles",
-            "Cursor CLI Profiles",
+            "Cursor Profiles",
             cursor_cli_profile_root(),
         ),
         (

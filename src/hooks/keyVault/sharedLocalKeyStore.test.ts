@@ -19,6 +19,27 @@ beforeEach(() => {
 });
 
 describe("shared local key store", () => {
+  it("publishes one-account health updates without reloading the vault", async () => {
+    const store = await import("./sharedLocalKeyStore");
+    const listener = vi.fn();
+    const unsubscribe = store.subscribeSharedLocalKeys(listener);
+    const ready = { id: "codex-account", health_status: "valid" };
+    const invalid = { id: "codex-account", health_status: "invalid" };
+
+    store.publishSharedLocalKeys([ready] as never);
+    mocks.listKeys.mockClear();
+    listener.mockClear();
+
+    store.upsertSharedLocalKey(invalid as never);
+
+    expect(store.getSharedLocalKeys()).toEqual([invalid]);
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenCalledWith([invalid]);
+    expect(mocks.replaceAliases).toHaveBeenCalledWith([invalid]);
+    expect(mocks.listKeys).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
   it("joins concurrent loads, caches auto-loads, and allows a forced refresh", async () => {
     let resolveFirst: ((keys: Array<{ id: string }>) => void) | undefined;
     const firstKeys = [{ id: "key-1" }];

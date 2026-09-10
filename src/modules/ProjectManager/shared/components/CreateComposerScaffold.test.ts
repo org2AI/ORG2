@@ -61,6 +61,19 @@ describe("CreateComposerScaffold", () => {
     );
   });
 
+  it("omits the bottom glow only for Spotlight", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ManualCreateComposer, {
+        spotlight: true,
+        editorRef,
+        headerContent: null,
+        editorContent: null,
+        pinnedActionsContent: null,
+      })
+    );
+    expect(markup).not.toContain("composer-bottom-glow");
+  });
+
   it("uses body typography for the shared Project and Work Item title", () => {
     const markup = renderToStaticMarkup(
       createElement(CreateComposerTitleInput, {

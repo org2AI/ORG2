@@ -85,7 +85,10 @@ const ProjectOrganizationField: FC<ProjectOrganizationFieldProps> = ({
       data-testid={dataTestId}
     >
       <FieldRow
-        icon={networkIcon}
+        icon={
+          options.find((option) => String(option.value) === value)?.icon ??
+          networkIcon
+        }
         label={label}
         value={valueLabel}
         isSelected
@@ -110,7 +113,7 @@ const ProjectOrganizationField: FC<ProjectOrganizationFieldProps> = ({
               .map((option) => (
                 <Option
                   key={option.value}
-                  icon={networkIcon}
+                  icon={option.icon ?? networkIcon}
                   label={option.displayLabel}
                   isSelected={String(option.value) === value}
                   disabled={option.disabled}

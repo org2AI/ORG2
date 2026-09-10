@@ -10,12 +10,12 @@ import {
   CloneGitHubForm,
   CloneRepoForm,
   CloneUrlForm,
-  CreateWorkspaceFolderForm,
+  CreateWorkingDirectoryForm,
   CreateWorkspaceForm,
 } from "../forms";
 import type { UseCloneFormReturn } from "../hooks/forms/useCloneForm";
 import type { UseCreateWorkspaceFormReturn } from "../hooks/forms/useCreateWorkspaceForm";
-import type { UseWorkspaceFormReturn } from "../hooks/forms/useWorkspaceForm";
+import type { UseWorkingDirectoryFormReturn } from "../hooks/forms/useWorkingDirectoryForm";
 import type { PathSegment } from "../types";
 
 // ============================================
@@ -24,7 +24,7 @@ import type { PathSegment } from "../types";
 
 interface SpotlightModalViewProps {
   sourceSegment: PathSegment;
-  localWorkspaceForm: UseWorkspaceFormReturn;
+  workingDirectoryForm: UseWorkingDirectoryFormReturn;
   cloneForm: UseCloneFormReturn;
   multiRepoWorkspaceForm?: UseCreateWorkspaceFormReturn;
   currentRepoId?: string;
@@ -37,7 +37,7 @@ interface SpotlightModalViewProps {
 
 export const SpotlightModalView: React.FC<SpotlightModalViewProps> = ({
   sourceSegment,
-  localWorkspaceForm,
+  workingDirectoryForm,
   cloneForm,
   multiRepoWorkspaceForm,
   currentRepoId,
@@ -46,24 +46,26 @@ export const SpotlightModalView: React.FC<SpotlightModalViewProps> = ({
   switch (sourceSegment.id) {
     case "add-workspace-new":
       return (
-        <CreateWorkspaceFolderForm
-          workspaceName={localWorkspaceForm.workspaceName}
-          onWorkspaceNameChange={localWorkspaceForm.setWorkspaceName}
-          workspacePath={localWorkspaceForm.workspacePath}
-          onWorkspacePathChange={localWorkspaceForm.setWorkspacePath}
+        <CreateWorkingDirectoryForm
+          directoryName={workingDirectoryForm.directoryName}
+          onDirectoryNameChange={workingDirectoryForm.setDirectoryName}
+          parentDirectoryPath={workingDirectoryForm.parentDirectoryPath}
+          onParentDirectoryPathChange={
+            workingDirectoryForm.setParentDirectoryPath
+          }
           onChoosePath={async () => {
-            const path = await localWorkspaceForm.handleChoosePath("new");
-            if (path) localWorkspaceForm.setWorkspacePath(path);
+            const path = await workingDirectoryForm.handleChoosePath("new");
+            if (path) workingDirectoryForm.setParentDirectoryPath(path);
             return path;
           }}
           onCancel={onCancel}
           onSubmit={() =>
-            localWorkspaceForm.handleCreateWorkspace(
-              localWorkspaceForm.workspaceName,
-              localWorkspaceForm.workspacePath
+            workingDirectoryForm.handleCreateWorkingDirectory(
+              workingDirectoryForm.directoryName,
+              workingDirectoryForm.parentDirectoryPath
             )
           }
-          loading={localWorkspaceForm.loading}
+          loading={workingDirectoryForm.loading}
           hideHeader={true}
         />
       );

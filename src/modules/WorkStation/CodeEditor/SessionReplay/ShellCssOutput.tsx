@@ -1,7 +1,7 @@
 /**
  * Simulator shell replay using DOM + CSS, styled from the same terminal
  * settings as Workstation (theme palette + font atoms). Avoids xterm canvas/WebGL glitches.
- * Command and output render as plain terminal text without syntax highlighting.
+ * Commands use bounded highlighting; output remains plain terminal text.
  */
 import React, { memo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -74,7 +74,6 @@ const SimulatorShellCssOutputComponent: React.FC<
           <TerminalCommand
             command={displayCommand}
             prefix="$"
-            highlighted={false}
             style={{
               color: foreground,
               padding: 0,

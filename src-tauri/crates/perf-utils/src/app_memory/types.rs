@@ -132,28 +132,6 @@ impl AppMemorySnapshot {
     }
 }
 
-/// Classification for a descendant shown only in Settings diagnostics.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ToolProcessCategory {
-    Terminal,
-    AgentCli,
-    McpOrTool,
-}
-
-/// RSS-only diagnostic for an owned tool process.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct ToolProcessMemoryDiagnostic {
-    pub pid: u32,
-    pub parent_pid: Option<u32>,
-    pub process_instance_id: String,
-    pub name: String,
-    pub category: ToolProcessCategory,
-    pub rss_bytes: u64,
-    pub virtual_memory_bytes: u64,
-    pub depth: u32,
-}
-
 #[derive(Debug, Clone)]
 pub(super) struct ProcessDescriptor {
     pub(super) pid: u32,
@@ -163,7 +141,6 @@ pub(super) struct ProcessDescriptor {
     #[cfg(target_os = "macos")]
     pub(super) executable: Option<String>,
     pub(super) rss_bytes: u64,
-    pub(super) virtual_memory_bytes: u64,
     #[cfg(unix)]
     pub(super) belongs_to_current_user: bool,
 }

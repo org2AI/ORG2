@@ -34,6 +34,16 @@ export function updateSharedLocalKeys(
   return next;
 }
 
+export function upsertSharedLocalKey(updated: KeyInfo): void {
+  updateSharedLocalKeys((previous) => {
+    const index = previous.findIndex((key) => key.id === updated.id);
+    if (index < 0) return [...previous, updated];
+    const next = [...previous];
+    next[index] = updated;
+    return next;
+  });
+}
+
 /**
  * Load the local key list once for all mounted consumers.
  *

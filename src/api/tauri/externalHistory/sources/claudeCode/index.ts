@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { readSourceContextUsage } from "@src/api/tauri/session/contextUsage";
 import type { ActivityChunk } from "@src/types/session/session";
 
 export interface ClaudeCodeRecentPath {
@@ -45,4 +46,8 @@ export async function claudeCodeHistoryStat(
   return invoke<ImportedTranscriptStat | null>("claude_code_history_stat", {
     sessionId,
   });
+}
+
+export function claudeCodeContextUsage(sessionId: string) {
+  return readSourceContextUsage("claude_code_context_usage", sessionId);
 }

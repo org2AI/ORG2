@@ -44,11 +44,11 @@ import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { createLogger } from "@src/hooks/logger";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import {
-  activeChatPanelTabAtom,
   closeOtherThanActiveChatPanelTabsAtom,
   openChannelInChatPanelTabAtom,
   reconcileDiscussionChannelTabsAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { popupNativeMenu } from "@src/util/platform/tauri/nativeMenuPopup";
 
 import {

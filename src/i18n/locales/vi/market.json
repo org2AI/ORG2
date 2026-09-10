@@ -1,27 +1,8 @@
 {
-  "selectRepo": {
-    "title": "Orgii",
-    "subtitle": "Chọn kho lưu trữ để bắt đầu",
-    "recentRepos": "Kho gần đây",
-    "loadingProjects": "Đang tải Repo...",
-    "noRepositories": "Chưa có kho lưu trữ",
-    "getStartedHint": "Tạo hoặc clone Repo để bắt đầu",
-    "noPath": "Không có đường dẫn",
-    "searchPlaceholder": "Tìm kiếm Repo...",
-    "loadMore": "Tải thêm",
-    "actions": {
-      "importLocal": "Nhập kho cục bộ",
-      "cloneUrl": "Clone từ URL GitHub",
-      "cloneGithub": "Clone từ GitHub của tôi",
-      "createNew": "Tạo kho mới"
-    }
-  },
   "market": {
     "auth": {
       "noAuthCode": "Không nhận được mã xác thực",
-      "authSessionExpired": "Session xác thực đã hết hạn. Vui lòng thử lại.",
-      "tokenExchangeFailed": "Trao đổi token thất bại",
-      "defaultUser": "Người dùng"
+      "tokenExchangeFailed": "Trao đổi token thất bại"
     }
   }
 }

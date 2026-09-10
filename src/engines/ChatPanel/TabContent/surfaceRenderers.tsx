@@ -11,10 +11,8 @@ import { useSetAtom } from "jotai";
 import React, { Suspense, useCallback } from "react";
 
 import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import {
-  type ChatPanelTab,
-  closeAndDestroyChatPanelTabAtom,
-} from "@src/store/chatPanel/chatPanelTabsAtom";
+import { closeAndDestroyChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { type ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
 const WorkItemPanelView = React.lazy(() =>
   import("../panels/WorkItemPanelView").then((m) => ({

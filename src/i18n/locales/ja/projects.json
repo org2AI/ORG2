@@ -1,6 +1,5 @@
 {
   "projects": {
-    "searchPlaceholder": "Projectを検索...",
     "loading": "Projectを読み込み中...",
     "emptyState": "Projectがまだありません",
     "emptyStateSubtitle": "最初のProjectを作成して始めましょう",
@@ -8,14 +7,13 @@
     "noResults": "Projectが見つかりません",
     "dashboardTitle": "Projects",
     "groupBy": {
-      "org": "Org別",
       "project": "プロジェクト別",
       "status": "ステータス別",
       "priority": "優先度別",
-      "person": "担当者別",
       "assignedTo": "割り当て先別",
       "createdBy": "作成者別",
-      "targetDate": "目標日別"
+      "targetDate": "目標日別",
+      "property": "プロパティ別"
     },
     "source": {
       "localOnly": "ローカルのみ",
@@ -28,44 +26,17 @@
       "later": "後で",
       "noTargetDate": "目標日なし"
     },
-    "allProjects": "すべてのプロジェクト",
-    "otherRepos": "他のリポジトリ",
-    "noOtherRepos": "Projectのある他のリポジトリはありません",
-    "personalWorkspace": "Personal Workspace",
-    "personalEmpty": "個人Projectはまだありません",
-    "addProject": "Projectを追加",
-    "repoFallback": "Repo",
     "loadProjectsFailed": "Projectの読み込みに失敗しました",
-    "deleteProject": "Projectを削除",
     "createProject": "Projectを作成",
     "createMore": "続けて作成",
     "newProject": "新しいProject",
     "columns": {
-      "name": "名前",
       "workItems": "作業項目"
-    },
-    "viewModes": {
-      "list": "リスト",
-      "settings": "設定"
-    },
-    "syncMethod": {
-      "title": "同期方法",
-      "storage": "ストレージ",
-      "git": "Git（.orgii 経由）"
-    },
-    "errors": {
-      "initFailed": "Projectストレージの初期化に失敗しました: {{error}}"
     },
     "editor": {
       "titlePlaceholder": "新しいProject名",
       "summaryPlaceholder": "簡単な概要を追加...",
       "descriptionPlaceholder": "説明、Project概要、またはアイデアを書く..."
-    },
-    "tooltips": {
-      "dashboard": "ダッシュボード",
-      "filter": "フィルター",
-      "selectPeople": "メンバーを選択",
-      "searchPeople": "メンバーを検索..."
     },
     "priorityGroups": {
       "unprioritized": "優先度未設定"
@@ -75,9 +46,6 @@
   "githubIssuesImport": {
     "title": "GitHub Issues をインポート",
     "menuLabel": "GitHub Issues をインポート",
-    "createTarget": "GitHub Issues Project",
-    "heading": "GitHub Issues から Project を作成",
-    "description": "GitHub リポジトリを選択し、ORGII Project を作成して、GitHub Issues を work items として同期します。",
     "importButton": "GitHub Issues をインポート",
     "projectDescription": "GitHub Issues · {{owner}}/{{repo}}",
     "fields": {
@@ -96,67 +64,43 @@
     "linkedRepoHint": "この Project は現在の Workspace repo にもリンクされます: {{repoName}}",
     "errors": {
       "invalidRepo": "owner/repo または GitHub リポジトリ URL を使用してください。"
-    },
-    "importStatus": {
-      "title": "インポート状態",
-      "state": {
-        "pending": "保留中",
-        "running": "実行中",
-        "completed": "完了",
-        "failed": "失敗",
-        "cancelled": "キャンセル済み"
-      }
     }
   },
   "orgs": {
-    "yourOrgs": "あなたの組織",
-    "sectionTitle": "組織",
+    "yourOrgs": "あなたのワークスペース",
     "recentProjects": "最近のプロジェクト",
-    "personalOrg": "自分の個人組織",
-    "linearOrg": "Linear 組織",
-    "noLinearOrgs": "接続済みの組織はまだありません",
+    "personalOrg": "マイワークスペース",
+    "linearOrg": "Linear ワークスペース",
+    "noLinearOrgs": "接続済みのワークスペースはまだありません",
     "sources": {
       "local": "Local",
-      "cloud": "Cloud",
-      "linear": "Linear"
+      "cloud": "Cloud"
     },
-    "addOrg": "組織を追加",
-    "importOrgs": "組織をインポート",
-    "importLinearOrgs": "Linear 組織をインポート",
-    "createOrg": "組織を作成",
-    "createOrgHint": "Linear とは別にプロジェクトと work items をまとめるためのネイティブ ORGII 組織を作成します。",
-    "createOrgFailed": "組織の作成に失敗しました",
-    "orgName": "組織名",
-    "orgNamePlaceholder": "プラットフォームチーム",
+    "addOrg": "ワークスペースを追加",
+    "importLinearOrgs": "Linear ワークスペースをインポート",
     "gitFolderPath": "Git フォルダーのパス（任意）",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "この組織を既存の Git ワークツリーに紐づけてフォルダー同期に使用します。",
+    "gitFolderPathHint": "このワークスペースを既存の Git ワークツリーに紐づけてフォルダー同期に使用します。",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Git フォルダーと同期中",
     "pendingSync": "同期待ち",
     "management": {
-      "breadcrumb": "組織設定",
       "overview": "概要",
-      "profile": "プロフィール",
       "syncMethods": "同期方法",
-      "orgNameDescription": "このプロジェクト組織の表示名です",
-      "orgKey": "組織キー",
-      "orgKeyDescription": "組織スコープのプロジェクト ID に使う安定した短いキーです",
-      "projectCountDescription": "現在この組織に割り当てられているネイティブプロジェクトです",
       "gitFolderSync": "Git フォルダー同期",
-      "gitFolderSyncDescription": "Git worktree を通じて、この組織のプロジェクトと work items をミラーします",
+      "gitFolderSyncDescription": "Git worktree を通じて、このワークスペースのプロジェクトと work items をミラーします",
       "notConfigured": "未設定",
       "syncNowDescription": "リモートのファイル変更をインポートし、ローカル DB の変更をエクスポートします",
       "syncSummary": "{{projects}} 件のプロジェクト、{{workItems}} 件の work items、{{conflicts}} 件の競合",
-      "syncHowItWorks": "Git フォルダー同期は、この組織を既存の Git リポジトリに接続します。ORGII は、この組織からエクスポートされたプロジェクトと work items を、そのリポジトリ内の `.orgii/projects/...` に保存し、そこからファイル変更をインポートし、ローカル DB の変更をファイルへエクスポートし直します。競合がある場合は停止し、上書き前に確認できます",
-      "noProjectsForCatalog": "この組織にはまだプロジェクトがありません。",
-      "noProjectsForCatalogHint": "共有ラベルを管理する前に、この組織でプロジェクトを作成してください",
+      "syncHowItWorks": "Git フォルダー同期は、このワークスペースを既存の Git リポジトリに接続します。ORGII は、このワークスペースからエクスポートされたプロジェクトと work items を、そのリポジトリ内の `.orgii/projects/...` に保存し、そこからファイル変更をインポートし、ローカル DB の変更をファイルへエクスポートし直します。競合がある場合は停止し、上書き前に確認できます",
+      "noProjectsForCatalog": "このワークスペースにはまだプロジェクトがありません。",
+      "noProjectsForCatalogHint": "共有ラベルを管理する前に、このワークスペースでプロジェクトを作成してください",
       "dangerZone": "危険な操作",
-      "deleteOrg": "この組織を削除",
+      "deleteOrg": "このワークスペースを削除",
       "deleteOrgDescription": "{{org}} とそのローカルプロジェクトおよび作業項目を完全に削除します。この操作は元に戻せません",
-      "personalOrgDeleteDisabled": "デフォルトの個人組織は永続的なため削除できません",
+      "personalOrgDeleteDisabled": "デフォルトの個人ワークスペースは永続的なため削除できません",
       "deleteTypeToConfirm": "確認するには {{org}} と入力してください",
-      "deleteOrgAction": "組織を削除",
+      "deleteOrgAction": "ワークスペースを削除",
       "deletedToast": "{{org}} を削除しました"
     }
   },
@@ -173,28 +117,20 @@
     "targetDate": "目標日",
     "repos": "リポジトリ",
     "completion": "完了率",
-    "statusBreakdown": "ステータス内訳",
     "addLead": "リーダーを追加",
     "noLead": "リーダーなし",
     "addMembers": "メンバーを追加",
     "addTeams": "チームを追加",
     "addLabels": "ラベルを追加",
     "addRepos": "リポジトリをリンク",
-    "searchRepos": "リポジトリを検索...",
     "noReposHint": "利用できるリポジトリがありません。まずワークスペースにリポジトリを追加してください。",
     "addDate": "日付を追加",
     "clearDate": "日付をクリア",
     "noStatus": "ステータスなし",
     "noUpdates": "更新なし",
     "noPriority": "優先度なし",
-    "searchMembers": "メンバーを検索...",
     "searchAssignee": "担当者を検索...",
-    "searchTeams": "チームを検索...",
     "noTeamsHint": "チームがまだありません。Projectにメンバーを追加し、チームに整理してください",
-    "searchLabels": "ラベルを検索...",
-    "searchStatus": "ステータスを検索...",
-    "searchHealth": "健全性を検索...",
-    "searchPriority": "優先度を検索...",
     "memberCount_one": "{{count}} 名のメンバー",
     "memberCount_other": "{{count}} 名のメンバー",
     "statusOptions": {
@@ -215,8 +151,7 @@
       "onTrack": "順調",
       "atRisk": "リスクあり",
       "offTrack": "遅延"
-    },
-    "noProjectSelected": "Projectが選択されていません"
+    }
   },
   "workItems": {
     "label": "Work items",
@@ -232,22 +167,6 @@
     "newWorkItem": "新しい Work Item",
     "newWorkItemName": "新規 Work Item",
     "createWorkItem": "Work Item を作成",
-    "createModes": {
-      "generateWithAi": "AI で作成",
-      "generateWithAgent": "Agent で生成",
-      "manualCreation": "手動作成",
-      "sessionCreatorPrompt": {
-        "promptNameQuestion": "まず、特定の Work Item 名を指定したいかどうかをユーザーに確認してください。",
-        "promptInstruction": "このプロジェクトの Work Items を作成してください。",
-        "promptProject": "プロジェクト: {{project}}",
-        "promptDraftTitle": "指定された Work Item 名: {{title}}",
-        "promptDraftDetails": "下書き詳細:\n{{details}}"
-      }
-    },
-    "linkExisting": {
-      "label": "既存の Work Item をリンク",
-      "placeholder": "リンクする Work Item を選択"
-    },
     "titlePlaceholder": "Work Item タイトル",
     "descriptionPlaceholder": "Work Item を説明...",
     "deleteWorkItem": "作業項目を削除",
@@ -256,8 +175,7 @@
     "showProperties": "プロパティを表示",
     "addStatusItem": "{{status}}項目を追加",
     "deleteBin": {
-      "title": "削除ボックス",
-      "subtitle": "7日間復元可能"
+      "title": "削除ボックス"
     },
     "tabs": {
       "overview": "概要",
@@ -265,7 +183,8 @@
       "kanban": "カンバン",
       "gantt": "ガントチャート",
       "calendar": "カレンダー",
-      "settings": "設定"
+      "settings": "設定",
+      "table": "テーブル"
     },
     "statusFilters": {
       "all": "すべて",
@@ -297,21 +216,9 @@
       "medium": "中",
       "low": "低"
     },
-    "toolLabels": {
-      "edit": "編集",
-      "new": "新規",
-      "patch": "パッチ"
-    },
     "overview": {
       "projectNamePlaceholder": "Project名",
-      "descriptionPlaceholder": "Projectの説明を書く...",
-      "stats": "統計",
-      "totalItems": "合計",
-      "completionRate": "完了率",
-      "recentUpdates": "最近の更新",
-      "name": "名前",
-      "assignee": "担当者",
-      "lastUpdated": "更新日"
+      "descriptionPlaceholder": "Projectの説明を書く..."
     },
     "properties": {
       "title": "作業項目プロパティ",
@@ -320,8 +227,6 @@
       "noAssignee": "未割り当て",
       "noMembersHint": "メンバーがいません。Settings > Members で Git から同期してください",
       "noProject": "リンクされたProjectなし",
-      "selectProject": "Projectを選択",
-      "noProjectsHint": "利用できるProjectがありません。",
       "noMilestone": "マイルストーンなし",
       "noDueDate": "期限なし",
       "noDueDay": "期限日なし",
@@ -342,20 +247,31 @@
       "inHours_other": "{{count}} 時間後",
       "inLessThanHour": "1 時間以内",
       "searchProjects": "Projectを検索...",
-      "searchMilestones": "マイルストーンを検索...",
       "delegations": "委任",
       "delegationsCompleted": "完了",
       "daysAgo": "{{count}} 日前",
       "hoursAgo": "{{count}} 時間前",
       "inDays": "{{count}} 日後",
       "inHours": "{{count}} 時間後",
-      "membersGroup": "メンバー"
-    },
-    "history": {
-      "noHistory": "履歴はまだありません"
+      "membersGroup": "メンバー",
+      "filter": "プロパティフィルター",
+      "filterValue": "プロパティフィルターの値",
+      "noValue": "値なし",
+      "archiveNamed": "{{name}} をアーカイブ",
+      "add": "プロパティを追加",
+      "archive": "プロパティをアーカイブ",
+      "datePlaceholder": "YYYY-MM-DD",
+      "empty": "カスタムプロパティはまだありません。",
+      "loading": "プロパティを読み込み中…",
+      "namePlaceholder": "プロパティ名",
+      "no": "いいえ",
+      "optionsPlaceholder": "選択肢（カンマ区切り）",
+      "optionsRequired": "選択型プロパティにはカンマ区切りの選択肢が必要です。",
+      "type": "プロパティの種類",
+      "updateFailed": "プロパティの更新に失敗しました",
+      "yes": "はい"
     },
     "activity": {
-      "title": "アクティビティ",
       "discussionTitle": "ディスカッション",
       "activityHistory": "アクティビティ履歴",
       "activityHistoryCount": "{{count}}件のイベント",
@@ -363,17 +279,12 @@
       "subscribe": "購読する",
       "unsubscribe": "購読解除",
       "commentPlaceholder": "コメントを残す...",
-      "you": "あなた",
       "createdWorkItem": "作業項目を作成しました",
       "deletedWorkItem": "作業項目を削除しました",
       "restoredWorkItem": "作業項目を復元しました",
       "movedFromTo": "{{from}} から {{to}} に移動しました",
       "commented": "コメントしました",
       "system": "システム",
-      "wasAssigned": "割り当てられました",
-      "wasUnassigned": "割り当て解除されました",
-      "addedLabel": "ラベルを追加しました",
-      "removedLabel": "ラベルを削除しました",
       "madeChange": "変更を行いました",
       "changedField": "{{field}}を {{from}} から {{to}} に変更しました",
       "changedFieldShort": "{{field}}を更新しました",
@@ -391,10 +302,6 @@
       "todoMarkedPending": "「{{todo}}」を保留に戻しました",
       "todoRenamed": "「{{from}}」を「{{to}}」に変更しました",
       "todoUpdated": "「{{todo}}」を更新しました",
-      "justNow": "たった今",
-      "daysAgo": "{{count}}日前",
-      "hoursAgo": "{{count}}時間前",
-      "minutesAgo": "{{count}}分前",
       "agent": "Agent",
       "fields": {
         "title": "タイトル",
@@ -415,7 +322,27 @@
         "schedule": "スケジュール",
         "orchestratorConfig": "Orchestrator 設定",
         "handoff": "引き継ぎ"
-      }
+      },
+      "mentionPeople": "メンバーをメンション",
+      "mentionAll": "@all — この項目の全員",
+      "mentionAgentOption": "{{name}}（Agent）",
+      "mentionAgentOrgOption": "{{name}}（Agent 組織）",
+      "appendedSession": "セッションを追加しました",
+      "edited": "（編集済み）",
+      "commentDeleted": "このコメントは削除されました。",
+      "deleteComment": "コメントを削除",
+      "deleteCommentConfirm": "このコメントを削除しますか？返信は残り、コメント本文のみ削除されます。",
+      "messageCount_one": "{{count}} 件のメッセージ",
+      "messageCount_other": "{{count}} 件のメッセージ",
+      "cancelReply": "返信をキャンセル",
+      "conclusion": "結論",
+      "reopen": "再オープン",
+      "reply": "返信",
+      "replyingInThread": "スレッドに返信中",
+      "resolve": "解決",
+      "resolved": "解決済み",
+      "submitComment": "コメントを送信",
+      "openedWorkItem": "この作業項目をオープンしました"
     },
     "contextMenu": {
       "status": "状態",
@@ -428,8 +355,6 @@
       "milestone": "マイルストーン",
       "setDueDate": "期限を設定",
       "rename": "名前を変更...",
-      "addLink": "リンクを追加...",
-      "favorite": "お気に入り",
       "moreProperties": "その他のプロパティ"
     },
     "propertyFields": {
@@ -440,63 +365,10 @@
     },
     "addWorkItem": "ワークアイテムを追加",
     "agentWorkflow": {
-      "title": "Agent ワークフロー",
-      "running": "実行中...",
-      "completed": "完了",
-      "failed": "失敗",
-      "interrupted": "中断済み",
-      "retry": "リトライ",
-      "resume": "再開",
-      "openSession": "セッションを開く",
-      "viewLiveChat": "ライブ Chat を表示",
-      "viewConversation": "会話を表示",
-      "noWorkflowRun": "Agent ワークフローはまだ実行されていません",
-      "confirmStart": "この作業アイテムで SDE Agent を開始しますか？",
-      "sdePhase": "SDE 開発",
-      "totalCost": "合計コスト",
-      "totalTokens": "合計 Token",
-      "proofOfWork": "作業成果",
-      "branch": "ブランチ",
-      "pullRequest": "Pull Request",
-      "filesChanged": "変更ファイル数",
-      "linesAdded": "追加行数",
-      "linesRemoved": "削除行数",
-      "approved": "承認済み",
-      "changesRequested": "修正依頼",
-      "inconclusive": "未確定",
-      "failedError": "セッションが失敗しました",
-      "retryWithContext": "前回の失敗のコンテキストでリトライ",
-      "interruptedMessage": "アプリ終了時にワークフローが中断されました",
-      "selectAccount": "Code Account を選択",
-      "noAccountsReady": "利用可能なローカル Account がありません",
-      "sessionOutput": "セッション出力",
-      "noOutputYet": "まだ出力がありません",
-      "cycles": "{{count}} サイクル",
-      "whatNext": "次に何をしますか？",
-      "acceptAsIs": "そのまま承認",
-      "fixAndRerun": "修正して再実行",
-      "roleSde": "SDE",
-      "roleReview": "Review",
-      "roleFollowUp": "Follow-up",
-      "roleAssistant": "Assistant",
-      "roleUser": "User",
       "statusRunning": "実行中",
       "statusCompleted": "完了",
       "statusFailed": "失敗",
-      "statusCancelled": "キャンセル済み",
-      "sessionFiles": "ファイル",
-      "noFilesModified": "変更されたファイルはありません",
-      "subAgents": "Sub-Agents",
-      "subAgentSpawn": "{{name}} #{{instance}} を生成中",
-      "subAgentComplete": "{{name}} #{{instance}} 完了",
-      "subAgentFailed": "{{name}} #{{instance}} 失敗",
-      "tokens": "Token",
-      "subAgentDefault": "Sub-Agent",
-      "toolResult": "{{tool}} 結果",
-      "collabLockRunning": "{{name}} is running",
-      "collabLockHeld": "{{name}}'s agent is already working on this item",
-      "collabLockConflict": "Another member just started an agent on this item",
-      "collabLockUnresolved": "Could not verify this work item's collaboration status. Check your connection and try again."
+      "statusCancelled": "キャンセル済み"
     },
     "changedFiles": {
       "title": "変更ファイル",
@@ -509,15 +381,13 @@
       "notAuthenticated": "認証されていません。Marketplace にログインしてください。",
       "noRepoPath": "リポジトリパスがありません",
       "noOriginRemote": "リポジトリに origin リモートが見つかりません",
-      "cannotParseRepoName": "リポジトリ名を解析できません: {{url}}",
-      "defaultPrTitle": "[{{shortId}}] Work item 変更"
+      "cannotParseRepoName": "リポジトリ名を解析できません: {{url}}"
     },
     "sessions": {
-      "linkedSessions": "リンク済み Sessions",
-      "newSession": "新しいセッション",
-      "starting": "開始中...",
       "emptyOverview": "Sessions はまだありません",
-      "emptyOverviewHint": "Agent Session を開始すると、ここで実行を追跡できます。"
+      "originTitle": "作成元セッション",
+      "originStatus": "この項目を作成",
+      "runsCount": "{{count}} 回の実行"
     },
     "outputTab": {
       "prSection": "Pull Request",
@@ -531,17 +401,120 @@
       "prMerged": "Merged",
       "prClosed": "Closed",
       "prDraft": "Draft",
-      "openPr": "PR を開く",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "ファイル変更なし",
       "fileDiffCleanHint": "ファイルの変更は検出されませんでした。",
       "costSummary": "コスト概要",
       "totalCost": "合計",
       "tokens": "Token",
-      "cycles": "サイクル"
+      "prBlocked": "完了がブロックされています",
+      "prReady": "完了できます"
     },
     "viewWorkItems": "Work Item を表示",
-    "fromRoutine": "From routine: {{name}}"
+    "fromRoutine": "From routine: {{name}}",
+    "batchField": {
+      "hint": "選択した{{count}}件のアイテムに適用します。"
+    },
+    "batchStatus": {
+      "title": "ステータスを設定"
+    },
+    "batchPriority": {
+      "title": "優先度を設定"
+    },
+    "batchAssignee": {
+      "title": "担当者を設定"
+    },
+    "discussion": {
+      "previewWillWake": "Agent を起こして返信させます",
+      "previewNoteOnly": "メモのみ — Agent はトリガーされません",
+      "previewNoSession": "リンクされた Agent セッションがありません — 何もトリガーされません",
+      "previewMentionResume": "メンションされた Agent を起こします",
+      "previewMentionStart": "メンションされた Agent を開始します",
+      "previewMentionUnroutable": "メンションされた Agent はこの項目に設定されていません — 何もトリガーされません",
+      "previewThread": "このスレッドから Agent を起こします",
+      "previewAssignee": "担当の Agent を起こします",
+      "previewAssigneeStart": "担当の Agent を開始します",
+      "previewCoalesce": "保留中の起動に合流します",
+      "previewMemberThread": "メンバーのスレッド — Agent は起こされません"
+    },
+    "subItems": {
+      "title": "サブ項目",
+      "parent": "親",
+      "progress": "{{total}} 件中 {{completed}} 件完了",
+      "add": "サブ項目を追加",
+      "addFirst": "最初のサブ項目を追加",
+      "titlePlaceholder": "サブ項目のタイトルを入力",
+      "stagePicker": "サブ項目のステージ",
+      "noStage": "ステージなし",
+      "stage": "ステージ {{stage}}",
+      "openStatus": "オープン",
+      "completedStatus": "完了",
+      "cancelledStatus": "キャンセル済み",
+      "createError": "サブ項目を作成できませんでした。再試行してください。"
+    },
+    "savedViews": {
+      "placeholder": "ビュー",
+      "save": "現在のビューを保存",
+      "saveTitle": "ビューを保存",
+      "namePlaceholder": "ビュー名",
+      "saveHint": "現在のフィルターを保存します。レイアウトは初回に開くときの初期値になります。",
+      "delete": "ビューを削除"
+    },
+    "table": {
+      "columnsPicker": "列",
+      "groupByProperty": "プロパティでグループ化",
+      "columns": {
+        "shortId": "ID",
+        "title": "タイトル",
+        "status": "ステータス",
+        "priority": "優先度",
+        "assignee": "担当者",
+        "targetDate": "期限",
+        "labels": "ラベル"
+      }
+    },
+    "batchProperty": {
+      "title": "プロパティを設定",
+      "hint": "選択した {{count}} 件の項目に 1 つのプロパティ値を適用します。値を空にするとクリアされます。",
+      "propertyPlaceholder": "プロパティ",
+      "valuePlaceholder": "値",
+      "applied": "{{count}} 件の項目を更新しました"
+    },
+    "revisionConflict": {
+      "title": "編集の競合を解決",
+      "description": "{{field}} はリビジョン {{expected}} の後に変更されました。あなたの編集をリビジョン {{actual}} と比較し、どちらを残すか選択してください。",
+      "mine": "自分のバージョン",
+      "latest": "最新バージョン",
+      "useLatest": "最新を使用",
+      "keepMine": "自分のを残す",
+      "titleField": "タイトル",
+      "descriptionField": "説明",
+      "commentField": "コメント",
+      "reloadNotice": "この作業項目は別の場所で変更されました。最新バージョンを再読み込みしました。",
+      "retryFailed": "最新バージョンが再び変更されました。再試行する前に両方のバージョンを確認してください。"
+    },
+    "quickActions": {
+      "title": "クイックアクション",
+      "empty": "クイックアクションはまだありません。Agent 用の再利用可能なプロンプトを保存してください。",
+      "emptyManage": "まだ何も保存されていません。",
+      "manageTitle": "クイックアクションを管理",
+      "namePlaceholder": "アクション名（例: CI を修正）",
+      "targetPlaceholder": "対象の Agent",
+      "promptPlaceholder": "Agent に何をさせますか？",
+      "archive": "アクションをアーカイブ",
+      "scopeChanged": "クイックアクションはこの作業項目のスコープ外になりました",
+      "started": "クイックアクション「{{name}}」を開始しました"
+    },
+    "detailNavigation": "作業項目ナビゲーション",
+    "linkedSessions": {
+      "title": "セッション"
+    },
+    "detail": {
+      "conversation": "会話",
+      "linked": "リンク済み"
+    },
+    "detailSummary": "作業項目の概要",
+    "navigationTrail": "作業項目ナビゲーション"
   },
   "settings": {
     "sidebarGeneral": "一般",
@@ -560,41 +533,24 @@
     "githubUsernameDesc": "リンク時にメンバーリストで識別するために使用します",
     "profileNotFound": "あなたの ID をチームメンバーと一致させることができませんでした",
     "profileNotFoundHint": "あなたの git メール ({{email}}) がメンバーリストに見つかりませんでした。メンバーを同期して更新してください",
-    "teamMembers": "チームメンバー",
-    "memberCount": "{{active}} / {{total}} アクティブ",
-    "activeBadge": "アクティブ",
-    "inactiveBadge": "非アクティブ",
-    "activateMember": "メンバーを有効化",
-    "deactivateMember": "メンバーを無効化",
-    "syncFromGit": "Git から同期",
-    "membersDescription": "チームメンバーを管理します。非アクティブなメンバーは担当者ドロップダウンに表示されません",
     "activeMembers": "現在のメンバー",
     "activeMembersDescription": "担当者ドロップダウンやレポートに表示されるメンバー",
     "inactiveMembers": "非アクティブ",
     "inactiveMembersDescription": "ドロップダウンから非表示。再度有効にすると含まれます",
     "noActiveMembers": "アクティブなメンバーがいません",
-    "repoTab": "Repo",
-    "projectTab": "Project",
     "workItemIdTitle": "作業項目 ID",
     "workItemIdPrefix": "ID 接頭辞",
     "workItemIdPrefixDescription": "1〜3文字の英数字。新しい ID にこの接頭辞が使われます",
     "customPrefix": "カスタム接頭辞",
-    "customPrefixDescription": "オフの場合、接頭辞はProject名の最初の3文字から自動生成され、名前変更時に更新されます",
     "customPrefixCurrentValue": "現在の値は {{value}}",
-    "manageInRepoSettings": "Repo 設定で管理",
-    "projectMemberList": "Projectメンバー",
     "projectMemberListDescription": "このProjectに所属する Repo メンバーを選択します",
     "labelsDescription": "作業項目を分類するためのラベルを管理します",
-    "addLabel": "ラベルを追加",
     "noLabels": "+ をクリックしてラベルを追加",
-    "deleteLabel": "ラベルを削除",
-    "changeColor": "色を変更",
     "labelNamePlaceholder": "ラベル名...",
     "memberRecentlyActive": "アクティブ",
     "claimIdentityCombineStats": "アクティビティデータを統合",
     "claimIdentityShowAsAuthor": "作業項目の履歴で作成者として表示",
     "dangerZone": "危険ゾーン",
-    "dangerZoneDescription": "このProjectに対する取り消し不可能な操作です",
     "deleteProject": "このProjectを削除",
     "deleteProjectWarning": ".orgii からProjectフォルダとすべての作業項目が完全に削除されます。この操作は元に戻せません",
     "deleteThisProject": "このProjectを削除...",
@@ -614,7 +570,6 @@
     "claimIdentityLinkEmail": "Link this email to your profile",
     "claimIdentityWarning": "Only claim identities that belong to you",
     "confirmClaim": "Confirm Claim",
-    "alreadyClaimed": "Already linked to another member",
     "sidebarSync": "同期",
     "sync": {
       "title": "外部同期",
@@ -624,47 +579,17 @@
         "notAttached": "未接続",
         "attach": "接続",
         "detach": "切断",
-        "changeWarning": "新しいアダプターを接続する前に、現在のアダプターを切断してください。"
+        "changeWarning": "新しいアダプターを接続する前に、現在のアダプターを切断してください。",
+        "detachProjectMenuLabel": "GitHub のリンクを解除",
+        "detachProjectTitle": "{{project}} から GitHub のリンクを解除しますか？",
+        "detachProjectDescription": "GitHub Issues の同期が停止します。ローカルの Project とインポート済みの作業項目は ORGII に残ります。",
+        "detachProjectAction": "{{project}} から GitHub のリンクを解除",
+        "detachProjectSuccess": "{{project}} から GitHub のリンクを解除しました"
       },
       "accountPicker": {
         "title": "アカウント",
         "empty": "このアダプターのグローバル同期アカウントはありません",
         "previewNote": "この Project が同期に使用するグローバルアカウントを選択します。"
-      },
-      "token": {
-        "title": "API Token",
-        "placeholder": "個人アクセス Token を貼り付けてください",
-        "save": "Token を保存",
-        "saved": "Token を保存しました",
-        "tabs": {
-          "oauth": "OAuth",
-          "personalToken": "個人 Token"
-        },
-        "bothMethodsNote": "どちらの方法でも利用できます — 最後にサインインした方が有効になります。",
-        "oauth": {
-          "connectButton": "{{adapter}} と連携",
-          "instructions": "開いたブラウザータブに下記のコードを入力し、アクセスを承認してください。",
-          "userCodeLabel": "コード",
-          "openLinkButton": "認証ページを開く",
-          "waitingForConfirmation": "ブラウザーでの承認を待っています…",
-          "cancel": "キャンセル",
-          "connected": "OAuth で接続済み",
-          "reconnect": "再接続",
-          "codeCopied": "コードをクリップボードにコピーしました",
-          "errors": {
-            "startFailed": "OAuth を開始できませんでした：{{error}}",
-            "accessDenied": "OAuth サインインが拒否されました。",
-            "expired": "承認前にコードの有効期限が切れました。もう一度お試しください。",
-            "pollFailed": "サインインに失敗しました：{{detail}}",
-            "unknown": "予期しないサインインエラー：{{error}}"
-          },
-          "browserOpened": "{{adapter}} をブラウザで開いています…",
-          "redirect": {
-            "openButton": "{{adapter}} の認証ページを開く",
-            "instructions": "ブラウザでリクエストを承認して {{adapter}} の接続を完了してください。",
-            "expiresAt": "リンクは {{time}} に失効します"
-          }
-        }
       },
       "status": {
         "title": "状態",
@@ -741,7 +666,6 @@
       },
       "problems": {
         "title": "失敗エントリ",
-        "empty": "失敗エントリはありません。",
         "op": {
           "create": "create",
           "update": "update",
@@ -771,10 +695,6 @@
       },
       "conflicts": {
         "title": "同期コンフリクト",
-        "loading": "コンフリクトを読み込み中…",
-        "empty": "コンフリクトはありません。",
-        "openCount_one": "未解決のコンフリクト {{count}} 件",
-        "openCount_other": "未解決のコンフリクト {{count}} 件",
         "detectedAt": "{{time}} に検出",
         "resolvedAt": "{{time}} に解決",
         "fields_one": "{{count}} フィールド",
@@ -809,13 +729,21 @@
         },
         "errors": {
           "listFailed": "コンフリクトの読み込みに失敗しました: {{error}}",
-          "countFailed": "コンフリクト数の読み込みに失敗しました: {{error}}",
           "useLocalFailed": "ローカル値の保持に失敗しました: {{error}}",
           "useRemoteFailed": "リモート値の採用に失敗しました: {{error}}",
           "dismissFailed": "コンフリクトの破棄に失敗しました: {{error}}"
         }
       }
-    }
+    },
+    "sidebarStatuses": "ステータス",
+    "statusesBuiltin": "組み込みステータス",
+    "statusesBuiltinDescription": "標準のワークフロー区分です。常に利用できます。",
+    "statusesCustom": "カスタムステータス",
+    "statusesCustomDescription": "組み込み区分に付けた別名です。フィルター、件数、ボードでは元の区分として扱われます。",
+    "statusNamePlaceholder": "ステータス名",
+    "noCustomStatuses": "カスタムステータスはまだありません。",
+    "statusArchive": "ステータスをアーカイブ",
+    "statusRestore": "ステータスを復元"
   },
   "statusBar": {
     "workItemCount": "{{count}}件",
@@ -856,29 +784,13 @@
     "views": "Views",
     "more": "More"
   },
-  "teams": {
-    "title": "あなたのチーム",
-    "localTeams": "ローカルチーム",
-    "linearTeams": "Linear チーム",
-    "personalOrg": "Personal Org",
-    "agentOrgs": "Agent チーム",
-    "emptyLinearTeams": "Linear チームが見つかりません",
-    "empty": "チームが見つかりません"
-  },
   "linearProjects": {
-    "title": "Linear Projects",
-    "open": "Open Linear Projects",
-    "subtitle": "Browse and edit Linear Projects in real time without importing them into ORGII.",
-    "refresh": "Refresh",
     "createProject": "Create Project",
-    "archive": "Archive",
-    "searchPlaceholder": "Search Linear Projects...",
     "loadingProjects": "Loading Linear Projects...",
     "loadingIssues": "Loading Linear Issues...",
     "emptyProjects": "No Linear Projects found",
     "emptyIssues": "No Linear Issues in this Project",
     "unknownState": "Unknown state",
-    "updated": "Updated {{date}}",
     "emptyConnections": {
       "title": "No Linear connections",
       "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
@@ -887,14 +799,9 @@
       "title": "Select a Linear Project",
       "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
     },
-    "issues": {
-      "title": "Linear Issues",
-      "subtitle": "Issues are read and mutated directly through the Linear API."
-    },
     "forms": {
       "createProjectTitle": "Create Linear Project",
       "projectName": "Project name",
-      "issueTitle": "Issue title",
       "description": "Description"
     },
     "statusPanel": {
@@ -945,6 +852,6 @@
     "noResultTitle": "No Git sync result",
     "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This org has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
   }
 }

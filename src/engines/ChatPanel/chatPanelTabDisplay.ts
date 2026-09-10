@@ -1,5 +1,5 @@
 import { SESSION_CONFIG } from "@src/config/sessionCreatorConfig";
-import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 import type { Session } from "@src/store/session";
 import { WORK_MANAGEMENT_SECTION } from "@src/store/workstation";
 import { stripPillReferences } from "@src/util/session/stripPillReferences";

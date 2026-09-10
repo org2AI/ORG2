@@ -84,6 +84,7 @@ const InlineThinkingBlock: React.FC<{ content: string }> = ({ content }) => {
       <EventBlockHeader
         isCollapsed={isCollapsed}
         withHover={false}
+        onToggleCollapse={handleHeaderClick}
         onMouseEnter={handleHeaderMouseEnter}
         onMouseLeave={handleHeaderMouseLeave}
       >
@@ -91,7 +92,6 @@ const InlineThinkingBlock: React.FC<{ content: string }> = ({ content }) => {
           icon={getEventIcon("agent_message")}
           isCollapsed={isCollapsed}
           isHeaderHovered={isHeaderHovered}
-          onToggle={handleHeaderClick}
           hasContent
         />
         <EventBlockHeaderTitle>{t("tools.thought")}</EventBlockHeaderTitle>
@@ -99,7 +99,7 @@ const InlineThinkingBlock: React.FC<{ content: string }> = ({ content }) => {
 
       {!isCollapsed && (
         <div className={getEventBlockContentClasses({ padding: "p-0" })}>
-          <div className="activity-thinking activity-thinking--no-style allow-select">
+          <div className="activity-thinking allow-select">
             <div className="activity-thinking__content allow-select">
               <Markdown textContent={content} />
             </div>

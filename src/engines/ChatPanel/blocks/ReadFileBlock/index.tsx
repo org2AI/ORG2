@@ -10,7 +10,7 @@ import React, { useMemo } from "react";
 
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import { getToolIcon } from "@src/config/toolIcons";
-import { extractFileData } from "@src/engines/SessionCore/rendering/props/propsDataExtractors";
+import { extractFileData } from "@src/engines/SessionCore/rendering/props/fileExtractors";
 import {
   statusToLifecycle,
   useToolLabelText,
@@ -100,7 +100,6 @@ export const ReadFileBlock: React.FC<ReadFileBlockProps> = (props) => {
       <EventBlockHeader
         isCollapsed
         withHover={false}
-        onClick={handleLocate}
         onNavigate={handleLocate}
         onMouseEnter={handleHeaderMouseEnter}
         onMouseLeave={handleHeaderMouseLeave}
@@ -115,7 +114,6 @@ export const ReadFileBlock: React.FC<ReadFileBlockProps> = (props) => {
           isCollapsed
           isHeaderHovered={isHeaderHovered}
           hasContent={false}
-          revealChevronOnIconHoverOnly={Boolean(eventId)}
           isLoading={isLoading}
           isFailed={isFailed}
         />

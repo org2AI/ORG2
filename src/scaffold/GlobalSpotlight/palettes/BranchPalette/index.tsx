@@ -23,6 +23,7 @@ import {
   Refresh04Icon,
   Tick01Icon,
 } from "@src/icons";
+import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import type { WorktreeLaunchSource } from "@src/store/session/worktreeLaunchSourceAtom";
 import { spotlightShowPathAtom } from "@src/store/ui/spotlightShowPathAtom";
 import { compactRepoPathForDisplay } from "@src/util/file/repoPathDisplay";
@@ -36,7 +37,6 @@ import { ICONS } from "../../config";
 import { useRefreshSpin } from "../../shared";
 import { PaletteBody, ShellFooterAction, SpotlightShell } from "../../shell";
 import type { SpotlightItem } from "../../types";
-import { useSelectorKernel } from "../core";
 import type { WorktreePaletteMode, WorktreePaletteProps } from "./types";
 import {
   refreshWorktreeMap,
@@ -150,11 +150,9 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
         })
         .map((worktree) => {
           const path = normalizeWorktreePath(worktree.path);
-          const label =
-            worktree.branch ||
-            (worktree.is_main
-              ? t("selectors.branch.labels.mainWorktree", "Main")
-              : path.split("/").pop() || path);
+          const label = worktree.is_main
+            ? "main"
+            : path.split("/").pop() || path;
           const isSelected = path === normalizedActivePath;
           const isRemoving = removingPaths.has(path);
           const displayPath = compactRepoPathForDisplay({ path });
@@ -171,7 +169,10 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
               isCurrentSelection: mode === "switch" && isSelected,
               disabled: isRemoving,
               contextMenuCopy: { name: label, path },
-              searchText: `${label} ${displayPath}`,
+              worktreePath: path,
+              branch: worktree.branch || undefined,
+              searchText: `${label} ${worktree.branch ?? ""} ${displayPath}`,
+              rightLabel: worktree.branch || undefined,
               rightContent:
                 mode === "remove"
                   ? renderWorktreeTrashAction(worktree.path, isRemoving)
@@ -195,7 +196,6 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
       removingPaths,
       renderWorktreeTrashAction,
       showPath,
-      t,
       worktrees,
     ]
   );
@@ -449,7 +449,6 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
 export { BranchPalette } from "./BranchPalette";
 
 export type {
-  BranchPaletteProps,
   BranchPaletteMode,
   WorktreePaletteMode,
   WorktreePaletteProps,

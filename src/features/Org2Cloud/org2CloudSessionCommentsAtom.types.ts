@@ -9,6 +9,15 @@ import type {
   CloudSessionComment,
 } from "./org2CloudCommentsClient";
 
+export type SessionCommentDeliveryStatus = "pending" | "sent" | "failed";
+
+/**
+ * Named alias for the canonical comment row. Transient delivery state
+ * (`clientDeliveryStatus`, `clientDeliveryError`, the retry CAS anchors)
+ * lives on `CloudSessionComment` itself — there is no second row shape.
+ */
+export type SessionComment = CloudSessionComment;
+
 export type CloudSessionCommentsFetchState =
   | "idle"
   | "loading"
@@ -63,6 +72,36 @@ export interface AddCommentInput {
   parentId?: string;
   /** Active cloud-org members explicitly notified by this comment. */
   mentionedUserIds?: string[];
+  /**
+   * Stable client id for admission recovery and explicit retries. It is also
+   * the Cloud RPC idempotency key, so a lost response cannot create a second
+   * durable comment when the same failed row is retried.
+   */
+  optimisticId?: string;
+  /** The user edited a previously failed row before retrying it. */
+  replaceExisting?: boolean;
+  /** Original failed-row body for an edited retry's server-side CAS. */
+  expectedBody?: string;
+  /** Original failed-row mentions for an edited retry's server-side CAS. */
+  expectedMentionedUserIds?: string[];
+}
+
+/**
+ * The send failed AFTER the optimistic row was retained as a visible failed
+ * row. `commentId` is that row's stable local id — the same `optimisticId`
+ * the owning surface re-sends under. A plain rejection means nothing was
+ * retained and the caller still owns the only copy of the user's text.
+ */
+export class SessionCommentDeliveryError extends Error {
+  readonly commentId: string;
+  readonly cause: unknown;
+
+  constructor(commentId: string, cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = "SessionCommentDeliveryError";
+    this.commentId = commentId;
+    this.cause = cause;
+  }
 }
 
 export interface UseSessionCommentsResult {
@@ -78,8 +117,15 @@ export interface UseSessionCommentsResult {
    * refetch. No RPC fires; the next TTL refetch reconciles regardless.
    */
   insertLocalComment: (comment: CloudSessionComment) => void;
-  /** Resolves with the created comment (already inserted); rejects on
-   *  failure so composers can keep the draft (design §4 non-goals). */
+  /**
+   * Resolves with the created comment (already inserted). On a transport
+   * rejection the optimistic row stays visible as failed — body and mention
+   * pills intact — and the rejection is a `SessionCommentDeliveryError`
+   * naming that row, so the caller must not restore its draft. Retry is not
+   * a separate operation: the owning surface calls `addComment` again with
+   * the same `optimisticId` (plus the `replaceExisting`/`expected*` CAS
+   * anchors when the user edited the text first).
+   */
   addComment: (input: AddCommentInput) => Promise<CloudSessionComment>;
   editComment: (commentId: string, body: string) => Promise<void>;
   deleteComment: (commentId: string) => Promise<void>;

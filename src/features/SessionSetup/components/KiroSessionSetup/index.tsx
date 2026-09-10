@@ -21,17 +21,15 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import IconButton from "@src/components/IconButton";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import Select from "@src/components/Select";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import { useKiroSessionCapture } from "@src/features/SessionSetup/hooks/useKiroSessionCapture";
 import { useWebviewPositionSync } from "@src/features/SessionSetup/hooks/useWebviewPositionSync";
 import {
-  AlertCircleIcon,
   Cancel01Icon,
-  CheckmarkCircle01Icon,
   Copy01Icon,
   HugeiconsIcon,
   Loading03Icon,
@@ -227,64 +225,29 @@ const KiroSessionSetup: React.FC<KiroSessionSetupProps> = ({
     <div className="flex flex-col gap-4">
       {/* Success State */}
       {isLoggedIn && (
-        <div className="rounded-xl border border-success-6 bg-success-1 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success-6">
-              <HugeiconsIcon
-                icon={CheckmarkCircle01Icon}
-                data-icon="check-circle"
-                size={20}
-                className="text-text-white"
-              />
-            </div>
-            <div>
-              <div className="text-[14px] font-medium text-success-6">
-                {t("keyVault.kiroLoggedInSuccess")}
-              </div>
-              <div className="text-[12px] text-text-3">
-                {t("keyVault.kiroKeysCaptured")}
-              </div>
-            </div>
-          </div>
-          <Button
-            variant="tertiary"
-            appearance="ghost"
-            size="small"
-            onClick={handleReset}
-            className="mt-3 text-[12px]"
-          >
-            {t("keyVault.kiroLoginDifferentAccount")}
-          </Button>
-        </div>
+        <PageNotice
+          type="success"
+          role="status"
+          title={t("keyVault.kiroLoggedInSuccess")}
+          action={{
+            label: t("keyVault.kiroLoginDifferentAccount"),
+            onClick: handleReset,
+          }}
+        >
+          {t("keyVault.kiroKeysCaptured")}
+        </PageNotice>
       )}
 
       {/* Error State */}
       {error && !isLoggingIn && !isLoggedIn && (
-        <div className="rounded-xl border border-danger-6 bg-danger-1 p-4">
-          <div className="flex items-start gap-3">
-            <HugeiconsIcon
-              icon={AlertCircleIcon}
-              data-icon="alert-circle"
-              size={20}
-              className="mt-0.5 text-danger-6"
-            />
-            <div>
-              <div className="text-[13px] font-medium text-danger-6">
-                {t("keyVault.kiroAuthFailed")}
-              </div>
-              <div className="mt-1 text-[12px] text-text-3">{error}</div>
-              <Button
-                variant="tertiary"
-                appearance="ghost"
-                size="small"
-                onClick={handleReset}
-                className="mt-2 text-[12px]"
-              >
-                {t("keyVault.kiroTryAgain")}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <PageNotice
+          type="danger"
+          role="alert"
+          title={t("keyVault.kiroAuthFailed")}
+          action={{ label: t("keyVault.kiroTryAgain"), onClick: handleReset }}
+        >
+          {error}
+        </PageNotice>
       )}
 
       {/* Browser View - When logging in */}
@@ -420,12 +383,12 @@ const KiroSessionSetup: React.FC<KiroSessionSetupProps> = ({
           </SectionContainer>
 
           {startUrl && !isStartUrlValid && (
-            <InlineAlert type="danger" title={t("common:status.error")}>
+            <PageNotice type="danger" title={t("common:status.error")}>
               {t("keyVault.kiroIdentityCenterUrlInvalid")}
-            </InlineAlert>
+            </PageNotice>
           )}
 
-          <InlineAlert
+          <PageNotice
             type="info"
             subtitle={t("keyVault.kiroRequiresCliHint", {
               models: t("categories.models"),
@@ -433,7 +396,7 @@ const KiroSessionSetup: React.FC<KiroSessionSetupProps> = ({
             })}
           >
             {t("keyVault.kiroRequiresCli")}
-          </InlineAlert>
+          </PageNotice>
         </div>
       )}
 

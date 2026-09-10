@@ -1,4 +1,4 @@
-import { useAtomValue, useStore } from "jotai";
+import { useAtomValue } from "jotai";
 import React, {
   useCallback,
   useEffect,
@@ -7,9 +7,10 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import {
   clampSubmenuTop,
   getSubmenuAnchor,
@@ -26,9 +27,10 @@ import {
 } from "@src/components/KeyboardShortcut";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import type { AppearanceMode } from "@src/config/appearance/globalThemes";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
+import { SignInModal } from "@src/features/Org2Cloud/SignInModal";
+import { SignOutConfirmationModal } from "@src/features/Org2Cloud/SignOutConfirmationModal";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
-import { resetOrgEntitlementCoordinator } from "@src/features/Org2Cloud/org2CloudEntitlementCoordinator";
 import {
   type DropdownEnginePosition,
   useDropdownEngine,
@@ -36,6 +38,7 @@ import {
 import { useAppNavigation } from "@src/hooks/navigation";
 import {
   ArrowRight01Icon,
+  BookOpen01Icon,
   CircleIcon,
   ContrastIcon,
   GaugeIcon,
@@ -43,21 +46,26 @@ import {
   Layout01Icon,
   Login02Icon,
   Logout02Icon,
+  RocketIcon,
   Settings01Icon,
 } from "@src/icons";
 import { useAppearanceState } from "@src/modules/MainApp/Settings/sections/useAppearanceState";
+import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "@src/scaffold/NavigationSidebar/config";
+import { TUTORIALS_OPEN_EVENT } from "@src/scaffold/Tutorials/tutorialRegistry";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
 import HoverAnimatedIcon, {
   triggerIconAnimation,
 } from "../components/HoverAnimatedIcon";
-import { SidebarRamMonitorPanel } from "../connectors/SidebarRamMonitorButton";
+import { SidebarRamMonitorPanel } from "../connectors/SidebarRamMonitorButton/index";
 import {
   type SettingsSubmenu,
   SidebarSettingsMenuSubmenus,
   type SubmenuPosition,
 } from "./SidebarSettingsMenuSubmenus";
+
+const WikiModal = React.lazy(() => import("@src/features/Wiki/WikiModal"));
 
 const MENU_ICON_CLASS_NAME = "shrink-0 text-text-2";
 const MENU_ARROW_CLASS_NAME = "text-text-3";
@@ -97,8 +105,11 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
 }) => {
   const { t } = useTranslation("navigation");
   const { t: tSettings } = useTranslation("settings");
+  const { t: tOnboarding } = useTranslation("onboarding");
   const { goToSettings } = useAppNavigation();
-  const store = useStore();
+  const [showWiki, setShowWiki] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
   const signedIn = useAtomValue(org2CloudAuthAtom) !== null;
   const devModeEnabled = useAtomValue(devModeEnabledAtom);
   const utilityPanelRef = useRef<HTMLDivElement | null>(null);
@@ -162,7 +173,7 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
   const { appearanceMode, appearanceModeOptions, handleAppearanceModeChange } =
     useAppearanceState();
 
-  const openSettingsShortcut = getShortcutKeys("open_settings");
+  const openSettingsShortcut = useShortcutKeys("open_settings");
   const settingsButtonClassName = isOpen ? "text-text-1" : "text-text-2";
 
   useEffect(() => {
@@ -216,6 +227,11 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
     [panelPosition.bottom, panelRef]
   );
 
+  const handleOpenOnboarding = useCallback(() => {
+    flushSync(closeAll);
+    window.dispatchEvent(new CustomEvent(TUTORIALS_OPEN_EVENT));
+  }, [closeAll]);
+
   const handleOpenSettings = useCallback(() => {
     closeAll();
     goToSettings();
@@ -244,14 +260,13 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
 
   const handleSignIn = useCallback(() => {
     closeAll();
-    onSignIn?.();
-  }, [closeAll, onSignIn]);
+    setShowSignInModal(true);
+  }, [closeAll]);
 
   const handleSignOut = useCallback(() => {
     closeAll();
-    resetOrgEntitlementCoordinator(store);
-    store.set(org2CloudAuthAtom, null);
-  }, [closeAll, store]);
+    setShowSignOutConfirmation(true);
+  }, [closeAll]);
 
   const handleSelectAppearanceMode = useCallback(
     async (mode: AppearanceMode) => {
@@ -286,30 +301,35 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
           label={t("sidebar.bottomBar.settings")}
           shortcut={openSettingsShortcut}
           position="top"
+          mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
           disabled={isOpen}
         >
           <div ref={triggerRef} className="inline-flex">
-            <button
-              type="button"
+            <Button
+              htmlType="button"
+              variant="tertiary"
+              size="small"
+              iconOnly
               aria-label={t("sidebar.bottomBar.settings")}
-              className={`flex h-[28px] w-[28px] cursor-pointer items-center justify-center rounded-[100px] border-none p-0 transition-colors duration-150 ${
+              className={`${
                 isOpen
-                  ? "bg-sidebar-selected"
-                  : "bg-transparent hover:bg-sidebar-selected"
+                  ? "bg-sidebar-selected! text-text-1!"
+                  : "hover:bg-sidebar-selected!"
               }`}
               onClick={handleToggle}
               onMouseEnter={(event) =>
                 triggerIconAnimation(event.currentTarget)
               }
-            >
-              <HoverAnimatedIcon
-                icon={Settings01Icon}
-                iconName="settings"
-                size={16}
-                strokeWidth={2}
-                className={settingsButtonClassName}
-              />
-            </button>
+              icon={
+                <HoverAnimatedIcon
+                  icon={Settings01Icon}
+                  iconName="settings"
+                  size={16}
+                  strokeWidth={2}
+                  className={settingsButtonClassName}
+                />
+              }
+            />
           </div>
         </ToolbarTooltip>
       )}
@@ -348,6 +368,25 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
                   <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
                 </>
               )}
+              <button
+                type="button"
+                className={`${DROPDOWN_CLASSES.menuActionItem} gap-2`}
+                onMouseEnter={() => setActiveSubmenu(null)}
+                onFocus={() => setActiveSubmenu(null)}
+                onClick={() => {
+                  flushSync(closeAll);
+                  setShowWiki(true);
+                }}
+                aria-haspopup="dialog"
+                data-testid="sidebar-menu-wiki"
+              >
+                <HugeiconsIcon
+                  icon={BookOpen01Icon}
+                  size={DROPDOWN_ITEM.iconSize}
+                  className={MENU_ICON_CLASS_NAME}
+                />
+                <span className="truncate">Wiki</span>
+              </button>
               {devModeEnabled && (
                 <button
                   type="button"
@@ -449,6 +488,26 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
                 />
               </button>
               <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
+              {devModeEnabled && (
+                <button
+                  type="button"
+                  className={`${DROPDOWN_CLASSES.menuActionItem} gap-2`}
+                  onMouseEnter={() => setActiveSubmenu(null)}
+                  onFocus={() => setActiveSubmenu(null)}
+                  onClick={handleOpenOnboarding}
+                  aria-haspopup="dialog"
+                  data-testid="sidebar-menu-onboarding"
+                >
+                  <HugeiconsIcon
+                    icon={RocketIcon}
+                    size={DROPDOWN_ITEM.iconSize}
+                    className={MENU_ICON_CLASS_NAME}
+                  />
+                  <span className="truncate">
+                    {tOnboarding("discovery.title")}
+                  </span>
+                </button>
+              )}
               <button
                 type="button"
                 className={`${DROPDOWN_CLASSES.menuActionItem} justify-between`}
@@ -497,6 +556,22 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
           </div>,
           document.body
         )}
+      {showWiki && (
+        <React.Suspense fallback={null}>
+          <WikiModal open onClose={() => setShowWiki(false)} />
+        </React.Suspense>
+      )}
+      {showSignInModal && onSignIn && (
+        <SignInModal
+          onClose={() => setShowSignInModal(false)}
+          onSignIn={onSignIn}
+        />
+      )}
+      {showSignOutConfirmation && (
+        <SignOutConfirmationModal
+          onClose={() => setShowSignOutConfirmation(false)}
+        />
+      )}
       <SidebarSettingsMenuSubmenus
         activeSubmenu={activeSubmenu}
         appearanceMode={appearanceMode}

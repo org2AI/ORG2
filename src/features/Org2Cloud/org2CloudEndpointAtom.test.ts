@@ -20,7 +20,9 @@ import {
   org2CloudPushCursorsAtom,
   org2CloudPushedMetadataAtom,
   org2CloudRepoScopesAtom,
+  org2CloudRetentionParkedAtom,
   org2CloudSyncEnabledAtom,
+  retentionParkKey,
 } from "./org2CloudSyncAtoms";
 
 const AUTH: Org2CloudAuthState = {
@@ -90,7 +92,11 @@ describe("resetCloudStateForEndpointSwitch", () => {
       "corg-1": { rows: [], state: "ready", fetchedAt: 1 },
     });
 
+    store.set(org2CloudRetentionParkedAtom, {
+      [retentionParkKey("identity", "corg-1", "s1")]: "old",
+    });
     resetCloudStateForEndpointSwitch(store);
+    expect(store.get(org2CloudRetentionParkedAtom)).toEqual({});
 
     expect(store.get(org2CloudAuthAtom)).toBeNull();
     expect(store.get(org2CloudOrgsAtom)).toEqual([]);
@@ -106,7 +112,11 @@ describe("resetCloudStateForEndpointSwitch", () => {
   it("does not touch the endpoint override itself", () => {
     const store = createStore();
     store.set(org2CloudEndpointOverrideAtom, OVERRIDE);
+    store.set(org2CloudRetentionParkedAtom, {
+      [retentionParkKey("identity", "corg-1", "s1")]: "old",
+    });
     resetCloudStateForEndpointSwitch(store);
+    expect(store.get(org2CloudRetentionParkedAtom)).toEqual({});
     expect(store.get(org2CloudEndpointOverrideAtom)).toEqual(OVERRIDE);
     store.set(org2CloudEndpointOverrideAtom, null);
   });
@@ -132,7 +142,11 @@ describe("resetCloudStateForEndpointSwitch", () => {
       "corg-dead": "2026-07-01T00:00:00.000Z",
     });
 
+    store.set(org2CloudRetentionParkedAtom, {
+      [retentionParkKey("identity", "corg-1", "s1")]: "old",
+    });
     resetCloudStateForEndpointSwitch(store);
+    expect(store.get(org2CloudRetentionParkedAtom)).toEqual({});
 
     expect(
       reconcileOrg2CloudPersistedState(store, new Set(["corg-live"]))

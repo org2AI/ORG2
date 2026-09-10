@@ -6,7 +6,6 @@
     "today": "Dzisiaj",
     "everyone": "Wszyscy",
     "activeMembers": "Aktywni członkowie",
-    "systemsCurrent": "Aktualne systemy: {{current}} z {{total}}",
     "usageByAgent": "Użycie według agenta",
     "recentSessions": "Najnowsze udostępnione sesje",
     "recentLoading": "Wczytywanie udostępnionych sesji…",
@@ -22,17 +21,17 @@
     "action": "Zaloguj się"
   },
   "noOrgs": {
-    "title": "Brak organizacji w chmurze",
-    "subtitle": "Dołącz do organizacji lub utwórz ją, a współpracownicy pojawią się tutaj."
+    "title": "Brak obszaru roboczego w chmurze",
+    "subtitle": "Dołącz do obszaru roboczego lub utwórz ją, a współpracownicy pojawią się tutaj."
   },
   "unsupported": {
     "title": "Backend wymaga aktualizacji",
-    "subtitle": "Chmurowy backend tej organizacji nie obsługuje jeszcze udostępniania runtime zespołu."
+    "subtitle": "Chmurowy backend tego obszaru roboczego nie obsługuje jeszcze udostępniania runtime zespołu."
   },
   "disabled": {
     "title": "Udostępnianie runtime zespołu jest wyłączone",
-    "subtitle": "Administrator organizacji może je włączyć w ustawieniach organizacji.",
-    "adminSubtitle": "Możesz je włączyć w ustawieniach organizacji."
+    "subtitle": "Administrator obszaru roboczego może je włączyć w ustawieniach obszaru roboczego.",
+    "adminSubtitle": "Możesz je włączyć w ustawieniach obszaru roboczego."
   },
   "empty": {
     "title": "Brak danych członków",
@@ -72,13 +71,9 @@
     "totalSessions": "Łącznie sesji",
     "lastSynced": "Ostatnia synchronizacja"
   },
-  "selfService": {
-    "hint": "Gdy udostępnianie jest włączone, Twój własny runtime jest udostępniany tej organizacji.",
-    "action": "Przestań udostępniać i usuń moje dane"
-  },
   "orgSettings": {
     "label": "Udostępnianie runtime zespołu",
-    "help": "Obciążenie maszyny, sumy użycia i profil twórcy członków są udostępniane organizacji w tym interwale. Wyłącznie dane zagregowane — nigdy transkrypty, repozytoria ani tytuły.",
+    "help": "Obciążenie maszyny, sumy użycia i profil twórcy członków są udostępniane obszaru roboczego w tym interwale. Wyłącznie dane zagregowane — nigdy transkrypty, repozytoria ani tytuły.",
     "memberNote": "Włączone przez administratora. Interwał: {{interval}}.",
     "off": "Wyłączone",
     "interval": {

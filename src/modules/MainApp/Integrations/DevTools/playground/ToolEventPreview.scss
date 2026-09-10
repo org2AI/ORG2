@@ -138,13 +138,6 @@
   }
 }
 
-// Real simulator frame embed (matches Workstation AppShell SimulatorFrame)
-.tool-event-preview-simulator-frame {
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-}
-
 // Content area
 .tool-event-preview-shell__content {
   flex: 1;
@@ -157,68 +150,6 @@
     flex-direction: column;
     overflow: hidden;
   }
-}
-
-// Session Simulator
-.tool-event-session {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  gap: 16px;
-}
-
-// Session top row: reuse single-event control strip + align labels/controls with select
-.tool-event-session-controls-row {
-  align-items: flex-end;
-}
-
-.tool-event-session-preview {
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.tool-event-live-input {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--color-border-2);
-  border-radius: 8px;
-  background: var(--color-fill-1);
-}
-
-.tool-event-live-input__textarea {
-  min-height: 88px;
-}
-
-.tool-event-live-input__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.tool-event-live-script {
-  display: flex;
-  min-height: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.tool-event-live-script__header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.tool-event-live-script__textarea {
-  min-height: 200px;
 }
 
 // ============================================

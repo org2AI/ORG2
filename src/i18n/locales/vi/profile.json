@@ -1,34 +1,9 @@
 {
-  "connect": "Kết nối",
   "name": "Tên",
   "genderOptions": {},
   "role": "Vai trò",
   "location": "Vị trí",
-  "timezone": "Múi giờ",
   "commits": "commit",
   "activity": "Hoạt động",
-  "specialty": {
-    "frontend": "Frontend",
-    "backend": "Backend",
-    "fullstack": "Full Stack",
-    "mobile": "Mobile",
-    "devops": "DevOps",
-    "data": "Data",
-    "systems": "Systems"
-  },
-  "bio": "Giới thiệu",
-  "social": {},
-  "edu": {
-    "edit": "Sửa Học vấn",
-    "present": "Hiện tại"
-  },
-  "exp": {
-    "edit": "Sửa Kinh nghiệm"
-  },
-  "sections": {
-    "about": "Giới thiệu",
-    "developerActivity": "Hoạt Động Phát Triển",
-    "projectsAndAchievements": "Project & thành tựu",
-    "professionalBackground": "Kinh Nghiệm Nghề Nghiệp"
-  }
+  "social": {}
 }

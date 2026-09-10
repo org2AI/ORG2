@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TurnSummary } from "@src/engines/SessionCore/storage/sqliteCache";
-import { chatTurnMetadataVisibleAtom } from "@src/store/ui/chatPanelAtom";
+import { chatTurnMetadataVisibleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 import {
   turnMetadataAtomFamily,

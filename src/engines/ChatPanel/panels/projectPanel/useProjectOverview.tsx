@@ -6,7 +6,7 @@ import { Placeholder } from "@src/components/Placeholder";
 import { ChatLoadingBlock } from "@src/engines/ChatPanel/blocks/primitives";
 import { createLogger } from "@src/hooks/logger";
 import { ProjectContentEditor } from "@src/modules/ProjectManager/shared";
-import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanelAtom";
+import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanel/selectionAtoms";
 
 const logger = createLogger("ProjectPanelView");
 

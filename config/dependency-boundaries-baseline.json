@@ -1,0 +1,22 @@
+[
+  [
+    "api-to-view",
+    "src/api/http/client/errorHandling.ts",
+    "src/components/Message/index.tsx"
+  ],
+  [
+    "api-to-view",
+    "src/api/tauri/agent/session.ts",
+    "src/modules/MainApp/AgentOrgs/types.ts"
+  ],
+  [
+    "api-to-view",
+    "src/api/tauri/rpc/schemas/agentDef.ts",
+    "src/modules/MainApp/AgentOrgs/types.ts"
+  ],
+  [
+    "api-to-view",
+    "src/api/tauri/rpc/schemas/tools.ts",
+    "src/modules/MainApp/Integrations/Connections/Channels/types.ts"
+  ]
+]

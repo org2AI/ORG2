@@ -66,6 +66,9 @@
 
 // Modal Content Container - Solid Background
 .liquid-modal-content {
+  // Shared panel chrome uses px-3 inside modals, including custom footers.
+  --modal-chrome-padding: calc(var(--spacing) * 3);
+
   position: relative;
   display: flex;
   flex-direction: column;
@@ -89,6 +92,16 @@
       0 30px 90px rgba(0, 0, 0, 0.65),
       0 12px 32px rgba(0, 0, 0, 0.5);
   }
+}
+
+// Optional artwork stays bounded so the header and actions remain visible.
+.liquid-modal-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  max-height: 32vh;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 // Modal Header

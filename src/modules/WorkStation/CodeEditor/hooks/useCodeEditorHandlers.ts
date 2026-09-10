@@ -12,7 +12,7 @@ import { useCallback } from "react";
 
 import { getGitFileContent } from "@src/api/http/git/diff";
 import Message from "@src/components/Message";
-import { useGitStatus } from "@src/contexts/git";
+import { useGitStatus } from "@src/contexts/git/GitStatusContext/useGitStatus";
 import { createLogger } from "@src/hooks/logger";
 import {
   type PanelState,

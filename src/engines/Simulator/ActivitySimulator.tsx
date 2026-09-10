@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
 import { EDITOR_TAB_CANVAS_BG_CLASS } from "@src/config/workstation/tokens";
 import { replayModeAtom } from "@src/engines/SessionCore";
 import type { ReplayMode } from "@src/engines/SessionCore/core/types";
-import { chatVisibleAtom } from "@src/store/ui/chatPanelAtom";
+import { chatVisibleAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import {
   bumpSimulatorDiffRefreshNonceAtom,
   simulatorAutoLayoutAtom,
@@ -33,7 +33,7 @@ import {
   simulatorSelectedAppAtom,
   simulatorShowDockAtom,
 } from "@src/store/ui/simulatorAtom";
-import { workStationLayoutModeAtom } from "@src/store/ui/workStationAtom";
+import { workStationLayoutModeAtom } from "@src/store/ui/workStationLayout/splitLayoutAtoms";
 
 import ActivitySimulatorGrid from "./ActivitySimulatorGrid";
 import {
@@ -298,6 +298,7 @@ const ActivitySimulator: React.FC<ActivitySimulatorProps> = memo(
                   {hasActiveSubagents ? (
                     /* Split view: main agent (top) + subagent banner (bottom) */
                     <SubagentPipCard
+                      key={sessionId}
                       mainContent={
                         <ActivitySimulatorGrid {...splitGridProps} />
                       }

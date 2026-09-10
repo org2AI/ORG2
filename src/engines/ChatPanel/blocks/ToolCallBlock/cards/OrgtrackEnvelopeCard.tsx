@@ -10,7 +10,7 @@ import {
   CheckmarkCircle01Icon,
   HugeiconsIcon,
 } from "@src/icons";
-import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanelAtom";
+import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { createWorkItemDetailTab } from "@src/store/workstation";
 

@@ -7,7 +7,7 @@ import {
   projectApi,
 } from "@src/api/http/project";
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import PrStatusBadge from "@src/components/PrStatusBadge";
 import {
   GitPullRequestIcon,
@@ -80,7 +80,7 @@ const PrSection: React.FC<PrSectionProps> = ({
   const displayPrStatus = prStatus ?? readiness?.prStatus ?? undefined;
   const readinessAlert =
     readiness && readiness.prUrl ? (
-      <InlineAlert
+      <PageNotice
         type={readiness.canComplete ? "success" : "warning"}
         title={
           readiness.canComplete
@@ -104,7 +104,7 @@ const PrSection: React.FC<PrSectionProps> = ({
             verified.
           </p>
         )}
-      </InlineAlert>
+      </PageNotice>
     ) : null;
 
   const handleCreate = useCallback(async () => {
@@ -207,7 +207,7 @@ const PrSection: React.FC<PrSectionProps> = ({
 
   if (prState === "error") {
     return (
-      <InlineAlert
+      <PageNotice
         type="danger"
         title={t("workItems.outputTab.prCreateError")}
         action={{
@@ -219,7 +219,7 @@ const PrSection: React.FC<PrSectionProps> = ({
         {branch && (
           <code className="mt-1 block text-[11px] text-text-3">{branch}</code>
         )}
-      </InlineAlert>
+      </PageNotice>
     );
   }
 

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import * as actionRegistry from "@src/engines/ChatPanel/ChatHistory/ActionRegistry";
 import * as registryBarrel from "@src/engines/SessionCore/rendering/registry";
 import * as contextConfig from "@src/engines/SessionCore/rendering/registry/events/contextConfig";
 import * as eventsIndex from "@src/engines/SessionCore/rendering/registry/events/index";
@@ -18,9 +17,6 @@ describe("registry contextConfig boundary", () => {
     expect(eventsIndex.getChatContextConfig).toBe(
       contextConfig.getChatContextConfig
     );
-    expect(eventsIndex.chatShowsStatusLine).toBe(
-      contextConfig.chatShowsStatusLine
-    );
     expect(eventsIndex.chatRequiresItemIndex).toBe(
       contextConfig.chatRequiresItemIndex
     );
@@ -30,9 +26,6 @@ describe("registry contextConfig boundary", () => {
     expect(registryAccessors.getActionConfig).toBe(
       contextConfig.getActionConfig
     );
-    expect(registryAccessors.shouldShowStatusLine).toBe(
-      contextConfig.shouldShowStatusLine
-    );
     expect(registryAccessors.requiresItemIndex).toBe(
       contextConfig.requiresItemIndex
     );
@@ -40,27 +33,13 @@ describe("registry contextConfig boundary", () => {
     expect(registryBarrel.CONTEXT_CONFIG).toBe(contextConfig.CONTEXT_CONFIG);
   });
 
-  it("ActionRegistry (worker-side entry) resolves the same helpers", () => {
-    expect(actionRegistry.getActionConfig).toBe(contextConfig.getActionConfig);
-    expect(actionRegistry.shouldShowStatusLine).toBe(
-      contextConfig.shouldShowStatusLine
-    );
-    expect(actionRegistry.requiresItemIndex).toBe(
-      contextConfig.requiresItemIndex
-    );
-  });
-
   it("action config answers match the context table", () => {
     expect(contextConfig.getActionConfig("read_file")).toEqual(
       contextConfig.CONTEXT_CONFIG.read_file.chat
     );
-    expect(contextConfig.shouldShowStatusLine("read_file")).toBe(true);
     expect(contextConfig.requiresItemIndex("read_file")).toBe(false);
     // Unknown types fall back to the permissive defaults.
     expect(contextConfig.getActionConfig("definitely_not_a_tool")).toBeNull();
-    expect(contextConfig.shouldShowStatusLine("definitely_not_a_tool")).toBe(
-      true
-    );
     expect(contextConfig.requiresItemIndex("definitely_not_a_tool")).toBe(
       false
     );

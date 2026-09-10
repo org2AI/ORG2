@@ -2,6 +2,7 @@ import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
 
 import type { CursorIdeTurnSummary } from "@src/api/tauri/externalHistory";
+import { useChatCollapseState } from "@src/engines/ChatPanel/ChatCollapseScope";
 import type { SessionLoadStatus } from "@src/engines/SessionCore";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { addressRunActiveAtom } from "@src/features/Org2Cloud/addressCommentsRun";
@@ -9,10 +10,6 @@ import {
   estimateRuntimeValueBytes,
   registerChatRenderedTreeMemoryEntry,
 } from "@src/hooks/perf/runtimeMemoryStats";
-import {
-  collapseAllCommandAtom,
-  turnCollapseOverrideAtom,
-} from "@src/store/ui/collapseStateAtom";
 import { selectedExecutionThreadAtom } from "@src/store/ui/sessionPaginationAtom";
 import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 
@@ -40,6 +37,7 @@ interface UseChatHistoryProjectionModelOptions {
   forceCollapseAllTurns: boolean;
   groupChat: GroupChatContextValue | null;
   hideGroupUserMessage: boolean;
+  isAgentOrgMemberSession: boolean;
   isAgentWorking: boolean;
   planningIndicatorCount: 0 | 1;
   sessionStatus: string | undefined;
@@ -62,12 +60,15 @@ export function useChatHistoryProjectionModel({
   forceCollapseAllTurns,
   groupChat,
   hideGroupUserMessage,
+  isAgentOrgMemberSession,
   isAgentWorking,
   planningIndicatorCount,
   sessionStatus,
   sessionLoadStatus,
   turnPaginationEnabled,
 }: UseChatHistoryProjectionModelOptions) {
+  const { collapseAllCommandAtom, turnCollapseOverrideAtom } =
+    useChatCollapseState();
   const memoryStatsKeyRef = useRef(Symbol("chat-rendered-tree-memory"));
   const memoryStatsSourceRef = useRef<{
     activeId: string | null;
@@ -113,13 +114,16 @@ export function useChatHistoryProjectionModel({
             mode: "agent-org",
             coordinatorSessionId: groupChat.coordinatorSessionId,
           }
-        : { mode: "standard" },
+        : isAgentOrgMemberSession
+          ? { mode: "agent-org-member" }
+          : { mode: "standard" },
     }),
     [
       collapseAllCommand,
       tailTurnPhase,
       forceCollapseAllTurns,
       groupChat,
+      isAgentOrgMemberSession,
       turnCollapseOverrides,
     ]
   );

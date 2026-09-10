@@ -28,6 +28,15 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 
+import {
+  getOverride,
+  matchesDefaultShortcut,
+  matchesShortcut,
+} from "@src/config/keyboard/shortcutBindings";
+import {
+  HEADER_BUTTON,
+  HEADER_ICON_SIZE,
+} from "@src/config/workstation/tokens";
 import { createLogger } from "@src/hooks/logger";
 import {
   DEBOUNCE_DELAYS,
@@ -39,10 +48,6 @@ import {
   Cancel01Icon,
   HugeiconsIcon,
 } from "@src/icons";
-import {
-  HEADER_BUTTON,
-  HEADER_ICON_SIZE,
-} from "@src/modules/WorkStation/shared/tokens";
 
 import { ReplaceInput, SearchInput } from "../../../shared";
 
@@ -281,8 +286,8 @@ const SearchPanel: React.FC<SearchPanelProps> = ({
   // Handle Cmd+F/Cmd+H to close panel when focused inside it
   const handlePanelKeyDown = (event: React.KeyboardEvent) => {
     if (
-      (event.metaKey || event.ctrlKey) &&
-      (event.key === "f" || event.key === "h")
+      matchesShortcut(event.nativeEvent, "find") ||
+      matchesShortcut(event.nativeEvent, "find_replace")
     ) {
       event.preventDefault();
       handleClose();
@@ -428,7 +433,7 @@ function isSearchPanelOpen(view: EditorView): boolean {
 const searchKeymap = EditorView.domEventHandlers({
   keydown(event, view) {
     // Cmd+F - Toggle find (without replace)
-    if ((event.metaKey || event.ctrlKey) && event.key === "f") {
+    if (matchesShortcut(event, "find")) {
       event.preventDefault();
       if (isSearchPanelOpen(view)) {
         closeSearchPanel(view);
@@ -443,7 +448,7 @@ const searchKeymap = EditorView.domEventHandlers({
     }
 
     // Cmd+H - Toggle find & replace
-    if ((event.metaKey || event.ctrlKey) && event.key === "h") {
+    if (matchesShortcut(event, "find_replace")) {
       event.preventDefault();
       if (isSearchPanelOpen(view)) {
         closeSearchPanel(view);
@@ -457,6 +462,14 @@ const searchKeymap = EditorView.domEventHandlers({
       return true;
     }
 
+    if (
+      ["find", "find_replace"].some(
+        (id) => getOverride(id) && matchesDefaultShortcut(event, id)
+      )
+    ) {
+      event.preventDefault();
+      return true;
+    }
     return false;
   },
 });

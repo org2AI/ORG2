@@ -10,8 +10,9 @@ import {
   isOrgTaskEvent,
 } from "../AgentEventBubbles";
 import { ChatBubble, TodoBubble, UnloadedTurnBubble } from "../ChatBubble";
-import { EmailMessageBubble, isEmailBubbleEvent } from "../EmailMessageBubble";
+import { EmailMessageBubble } from "../EmailMessageBubble";
 import { ThinkBubble } from "../ThinkBubble";
+import { isEmailBubbleEvent } from "../emailBubbleEvent";
 import type { MessageEntry, MessageViewMode } from "../types";
 import {
   renderInteractionWidget,

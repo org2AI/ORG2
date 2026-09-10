@@ -1,7 +1,5 @@
 {
   "tutorials": {
-    "modalTitle": "Tutorials",
-    "start": "Start",
     "chrome": {
       "stepProgress": "Step {{current}} of {{total}}",
       "close": "Close",
@@ -16,7 +14,7 @@
     },
     "generalLayout": {
       "title": "General layout tour",
-      "description": "Learn the Session sidebar, Chat Panel, station mode switcher, Workstation, dock, and app areas.",
+      "description": "Learn the Chat Panel, Runtime, station mode switcher, and dock.",
       "duration": "1 min",
       "steps": {
         "chat-panel": {
@@ -25,7 +23,7 @@
         },
         "runtime": {
           "title": "Runtime",
-          "body": "View your own usage and runtime status here. In an organization, you can also inspect member sync status and open a member to review Codex, Claude, and Cursor usage."
+          "body": "View your own usage and runtime status here. In a workspace, you can also inspect member sync status and open a member to review Codex, Claude, and Cursor usage."
         },
         "station-mode-pill": {
           "title": "Switch station modes",
@@ -34,41 +32,17 @@
         "dock": {
           "title": "Agent Station dock",
           "body": "The dock switches apps inside the station. The tour temporarily disables auto-hide so these controls stay visible."
-        },
-        "all-tabs": {
-          "title": "All Tabs",
-          "body": "The first dock icon shows all open tabs together, regardless of which workstation app owns them."
-        },
-        "code-editor": {
-          "title": "Code Editor",
-          "body": "Use Code Editor for files, diffs, terminals, source control, and coding changes made during a session."
-        },
-        "browser": {
-          "title": "Browser",
-          "body": "Use Browser for web pages, previews, app testing, and browser-based investigation alongside the chat."
-        },
-        "projects": {
-          "title": "Projects",
-          "body": "Use Projects to track work items, plans, and project state connected to the current workspace."
         }
       }
     },
     "codeEditor": {
       "title": "Code Editor tour",
-      "description": "Learn tabs, repo and branch switching, Source Control, Git History, and the project dashboard.",
+      "description": "Learn tabs, the editor workspace, Source Control, and Git History.",
       "duration": "2 min",
       "steps": {
         "tabs": {
           "title": "Code Editor tabs",
           "body": "Tabs collect the files, diffs, terminals, source control views, and dashboards you open while working in the repo."
-        },
-        "repo-selector": {
-          "title": "Create or switch repos",
-          "body": "Use the repo selector to switch the active repo or add another repository or workspace."
-        },
-        "branch-selector": {
-          "title": "Change branches",
-          "body": "The branch selector shows the current Git branch and opens the branch switch or create flow for this repo."
         },
         "editor-surface": {
           "title": "Editor workspace",
@@ -85,12 +59,15 @@
         "git-history": {
           "title": "Git history",
           "body": "Git History switches Source Control into commit history mode so you can inspect previous commits and related changes."
-        },
-        "dashboard": {
-          "title": "Code Editor dashboard",
-          "body": "The dashboard is the Code Editor home tab for workspaces. Use it to add repos, open repo details, and jump into project work."
         }
       }
     }
+  },
+  "discovery": {
+    "title": "Onboarding & new features",
+    "getStarted": "Get started",
+    "newFeatures": "New features",
+    "branchesTitle": "Repository branches",
+    "branchesDescription": "Switch repository branches directly from Spotlight."
   }
 }

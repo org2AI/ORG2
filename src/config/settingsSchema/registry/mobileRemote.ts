@@ -20,7 +20,7 @@ export const MOBILE_REMOTE_DEFAULT_LAN_PORT = 13947;
  *
  * Phase 0 uses a LAN WebSocket bridge on its own listener. Phase 1+ adds
  * relay pairing (`mobileRemoteApi`). The Settings → Mobile Remote section
- * gates LAN exposure, token display, and the paired-device list.
+ * gates LAN exposure, Cloud-authenticated relay access, and paired devices.
  */
 export const MOBILE_REMOTE_SETTINGS_REGISTRY = {
   "mobileRemote.enabled": {
@@ -33,13 +33,13 @@ export const MOBILE_REMOTE_SETTINGS_REGISTRY = {
   "mobileRemote.relayEnabled": {
     schema: z.boolean(),
     default: false,
-    description: "Connect this desktop outbound to the configured public relay",
+    description: "Connect this desktop outbound to the configured relay",
     category: "mobileRemote",
   },
   "mobileRemote.relayUrl": {
     schema: z.string(),
     default: "",
-    description: "Public ws:// or wss:// Mobile Remote relay URL",
+    description: "ws:// or wss:// Mobile Remote relay URL",
     category: "mobileRemote",
   },
   "mobileRemote.desktopId": {
@@ -48,11 +48,14 @@ export const MOBILE_REMOTE_SETTINGS_REGISTRY = {
     description: "Stable identity generated for this desktop during pairing",
     category: "mobileRemote",
   },
+  // Compatibility tombstone: older builds persisted this shared secret. Keep
+  // the key round-trippable so upgrading does not silently delete user data,
+  // but do not read it from the Desktop UI or relay connection path.
   "mobileRemote.desktopToken": {
     schema: z.string(),
     default: "",
     description:
-      "Legacy desktop access token for local orgii-mobile-relay dev. Production relay auth uses ORG2 Cloud login instead.",
+      "Deprecated Mobile Remote shared token retained for settings compatibility; relay authentication uses ORG2 Cloud",
     category: "mobileRemote",
   },
   "mobileRemote.allowLanExposure": {

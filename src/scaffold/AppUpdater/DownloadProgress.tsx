@@ -4,22 +4,7 @@ import ProgressBar from "@src/components/ProgressBar";
 import { Download01Icon, HugeiconsIcon } from "@src/icons";
 
 import "./DownloadProgress.scss";
-
-export interface AppUpdateDownloadProgress {
-  active: boolean;
-  collapsed: boolean;
-  downloadedBytes: number;
-  totalBytes: number | null;
-  percent: number | null;
-}
-
-export const EMPTY_APP_UPDATE_DOWNLOAD_PROGRESS: AppUpdateDownloadProgress = {
-  active: false,
-  collapsed: false,
-  downloadedBytes: 0,
-  totalBytes: null,
-  percent: null,
-};
+import type { AppUpdateDownloadProgress } from "./state";
 
 function formatBytes(bytes: number): string {
   const mb = bytes / (1024 * 1024);

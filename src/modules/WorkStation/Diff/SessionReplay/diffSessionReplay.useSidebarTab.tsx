@@ -26,11 +26,13 @@ import {
 import type { SourceControlHistorySelection } from "@src/store/workstation/tabs";
 
 import {
-  type PullRequestSubmission,
-  type SubmissionCommit,
   SubmissionCommitsContent,
   SubmissionPullRequestsContent,
 } from "./SubmissionsContent";
+import type {
+  PullRequestSubmission,
+  SubmissionCommit,
+} from "./submissionsData";
 import type { DiffReplayTab } from "./types";
 
 export interface UseDiffSidebarTabParams {

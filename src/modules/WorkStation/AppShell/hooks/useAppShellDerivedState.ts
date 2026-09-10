@@ -1,10 +1,5 @@
-import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useAtomValue } from "jotai";
 
-import {
-  type StatusBarAppType,
-  activeStatusBarAppAtom,
-} from "@src/store/ui/workStationAtom";
 import { activeHostAtom } from "@src/store/workstation";
 import type { WorkstationTabHost } from "@src/store/workstation/tabHost";
 
@@ -13,9 +8,6 @@ export interface AppShellDerivedState {
   isCodeMode: boolean;
   isBrowserMode: boolean;
   isProjectMode: boolean;
-  codeContentVisible: boolean;
-  browserContentVisible: boolean;
-  projectContentVisible: boolean;
 }
 
 export function useAppShellDerivedState(): AppShellDerivedState {
@@ -30,30 +22,10 @@ export function useAppShellDerivedState(): AppShellDerivedState {
   const isBrowserMode = activeHost === "browser";
   const isProjectMode = activeHost === "project";
 
-  const codeContentVisible = isCodeMode;
-  const browserContentVisible = isBrowserMode;
-  const projectContentVisible = isProjectMode;
-
-  const setActiveStatusBarApp = useSetAtom(activeStatusBarAppAtom);
-  useEffect(() => {
-    let appType: StatusBarAppType;
-    if (activeHost === "browser") {
-      appType = "browser";
-    } else if (activeHost === "project") {
-      appType = "project";
-    } else {
-      appType = "code";
-    }
-    setActiveStatusBarApp(appType);
-  }, [activeHost, setActiveStatusBarApp]);
-
   return {
     activeHost,
     isCodeMode,
     isBrowserMode,
     isProjectMode,
-    codeContentVisible,
-    browserContentVisible,
-    projectContentVisible,
   };
 }

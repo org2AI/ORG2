@@ -12,7 +12,12 @@ import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import {
+  FILE_BAR_ROW_CLASSES,
+  HEADER_ICON_SIZE,
+} from "@src/config/workstation/tokens";
 import { useTauriSelectAllShortcut } from "@src/hooks/keyboard";
 import {
   type WorkstationTabHeaderHost,
@@ -30,10 +35,7 @@ import {
   PencilRulerIcon,
   Refresh04Icon,
 } from "@src/icons";
-import {
-  FILE_BAR_ROW_CLASSES,
-  HEADER_ICON_SIZE,
-} from "@src/modules/WorkStation/shared/tokens";
+import { BROWSER_URL_BAR_FOCUS_EVENT } from "@src/modules/WorkStation/Browser/shared/urlBarFocus";
 import { normalizeBrowserInput } from "@src/util/url/browserUrl";
 
 // ============================================
@@ -61,6 +63,8 @@ interface WebUrlBarProps {
   canGoBack?: boolean;
   /** Whether forward navigation is available */
   canGoForward?: boolean;
+  /** Whether the active browser session owns a native webview. */
+  hasActiveWebview?: boolean;
   /** Open native browser DevTools (Safari Inspector / Edge DevTools) */
   onOpenNativeDevTools?: () => void;
   /** Toggle the WorkStation Browser secondary DevTools pane. */
@@ -89,7 +93,6 @@ interface WebUrlBarProps {
 
 /** After pointer leaves the URL toolbar, blur the input if still focused (inline webview does not take focus from the address field). */
 const AUTO_BLUR_MS_AFTER_LEAVE = 2000;
-const BROWSER_URL_BAR_FOCUS_EVENT = "browser-url-bar-focus";
 const NO_DRAG_STYLE = { WebkitAppRegion: "no-drag" } as React.CSSProperties;
 const TEXT_DRAG_THRESHOLD_PX = 4;
 
@@ -98,14 +101,6 @@ interface UrlInputPointerState {
   startY: number;
   moved: boolean;
   wasFocused: boolean;
-}
-
-export function focusBrowserUrlBar(): void {
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      window.dispatchEvent(new Event(BROWSER_URL_BAR_FOCUS_EVENT));
-    });
-  });
 }
 
 // ============================================
@@ -124,6 +119,7 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
     onStop,
     canGoBack = false,
     canGoForward = false,
+    hasActiveWebview = true,
     onOpenNativeDevTools,
     onToggleDevToolsPane,
     devToolsPaneCollapsed = false,
@@ -372,6 +368,7 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
               size="small"
               iconOnly
               onClick={isLoading ? onStop : onReload}
+              disabled={!hasActiveWebview}
               aria-label={reloadControlLabel}
               icon={
                 isLoading ? (
@@ -391,6 +388,8 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
             />
           </ToolbarTooltip>
         </div>
+
+        <HeaderSectionSeparator />
 
         {/* URL Input Container */}
         <div
@@ -449,6 +448,7 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
                   size="small"
                   iconOnly
                   onClick={onToggleInspectMode}
+                  disabled={!hasActiveWebview}
                   aria-label={t(
                     isInspectMode
                       ? "tooltips.disableInspectMode"
@@ -504,6 +504,7 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
                   size="small"
                   iconOnly
                   onClick={onOpenNativeDevTools}
+                  disabled={!hasActiveWebview}
                   aria-label={t("tooltips.openNativeDevTools")}
                   icon={
                     <HugeiconsIcon

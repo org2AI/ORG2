@@ -1,26 +1,33 @@
 {
+  "tray": {
+    "markAllRead": "Đánh dấu tất cả là đã đọc",
+    "showKanban": "Hiển thị Kanban",
+    "showRuntime": "Hiển thị Runtime",
+    "pinned": "Đã ghim",
+    "unread": "Chưa đọc",
+    "running": "Đang chạy",
+    "recent": "Gần đây",
+    "empty": "Chưa có phiên — Mở ứng dụng",
+    "quit": "Thoát ORG2"
+  },
   "toolUsage": {
-    "estimatedContext": "{{tokenCount}} Token ngữ cảnh",
-    "followup": "{{tokenCount}} Token follow-up",
-    "decision": "{{tokenCount}} Token quyết định",
     "tooltip": "Phân bổ công cụ ước tính. Phương pháp: {{method}}. Đầu vào: {{inputBytes}} bytes. Đầu ra: {{outputBytes}} bytes. Quyết định: {{decisionTokens}} Token. Ngữ cảnh: {{contextTokens}} Token. Follow-up: {{followupTokens}} Token. LLM cache read liên quan: {{cacheReadTokens}} Token. LLM cache write liên quan: {{cacheWriteTokens}} Token."
   },
   "humanSession": {
-    "titlePlaceholder": "Tiêu đề (không bắt buộc)"
+    "titlePlaceholder": "Tiêu đề (không bắt buộc)",
+    "createPlaceholder": "Thêm ghi chú đầu tiên… Gõ / để dùng skills hoặc @ để nhắc đến một phiên.",
+    "createAction": "Tạo nhật ký công việc",
+    "entryLabel": "Mục nhật ký công việc",
+    "appendPlaceholder": "Thêm ghi chú… Gõ / để dùng skills, @ để nhắc đến một phiên, hoặc kéo một phiên vào đây.",
+    "loading": "Đang tải nhật ký công việc",
+    "createFailed": "Không thể tạo nhật ký công việc",
+    "loadFailed": "Không thể tải nhật ký công việc",
+    "appendFailed": "Không thể thêm ghi chú"
   },
   "history": {
     "untitledSession": "Session chưa đặt tên",
-    "prStatus": {
-      "merged": "Đã hợp nhất",
-      "open": "Đang mở",
-      "draft": "Bản nháp"
-    },
     "detail": {
-      "sessionInfo": "Thông tin Session",
-      "repository": "Kho lưu trữ",
-      "branch": "Nhánh",
       "created": "Ngày tạo",
-      "updated": "Đã cập nhật",
       "lastUpdated": "Cập nhật lần cuối",
       "external": "Bên ngoài",
       "internal": "Nội bộ",
@@ -28,70 +35,17 @@
       "roundCount_one": "{{count}} lượt",
       "roundCount_other": "{{count}} lượt",
       "agentWorked": "Agent đã làm",
-      "reasoningModel": "Reasoning Model",
-      "codingModel": "Coding Model",
-      "sessionMode": "Chế độ Session",
-      "fileChanges": "Thay đổi tệp",
-      "filesChanged": "Tệp đã thay đổi",
-      "files": "tệp",
-      "summary": "Tóm tắt",
-      "workflow": "Workflow",
-      "agent": "Agent:",
-      "pilotSession": "Session Pilot",
-      "openSession": "Mở Session",
-      "viewPR": "Xem PR",
-      "rawData": "Dữ liệu thô",
-      "analytics": {
-        "title": "Event Analytics",
-        "toolUsage": "Sử dụng công cụ",
-        "filesTouched": "Tệp liên quan",
-        "conversation": "Hội thoại",
-        "tokenUsage": "Sử dụng Token",
-        "errors": "Lỗi",
-        "duration": "Thời lượng",
-        "events": "Sự kiện",
-        "toolCalls": "Gọi công cụ",
-        "files": "Tệp",
-        "tool": "Công cụ",
-        "calls": "Lượt gọi",
-        "done": "Hoàn thành",
-        "userMessages": "Tin nhắn người dùng",
-        "assistantMessages": "Tin nhắn Agent",
-        "userChars": "Ký tự người dùng",
-        "assistantChars": "Ký tự Agent",
-        "avgResponseTime": "Thời gian phản hồi TB",
-        "thinkingEvents": "Sự kiện suy nghĩ",
-        "inputTokens": "Token đầu vào",
-        "outputTokens": "Token đầu ra",
-        "totalTokens": "Tổng Token",
-        "model": "Mô hình",
-        "input": "Đầu vào",
-        "output": "Đầu ra",
-        "totalErrors": "Lỗi",
-        "totalFailures": "Thất bại",
-        "errorRate": "Tỷ lệ lỗi"
-      },
-      "impact": {
-        "title": "Impact Graph",
-        "files": "Tệp",
-        "functions": "Hàm",
-        "commits": "Commit",
-        "lines": "Dòng",
-        "filesTouched": "Tệp liên quan",
-        "functionsCreated": "Hàm đã tạo",
-        "commitsInfluenced": "Commit bị ảnh hưởng"
-      }
+      "cliNativeStore": "Kho lưu gốc của CLI",
+      "sessionId": "ID phiên"
     }
   },
   "kanban": {
     "card": {
       "openAsFloatingPane": "Mở dạng bảng nổi"
     },
-    "sessions": "Session",
     "view": {
       "list": "Danh sách",
       "diary": "Nhật ký",
-      "kanban": "Kanban",
       "dataSource": "Nguồn dữ liệu"
     },
     "dataSource": {
@@ -157,7 +111,16 @@
           "24h": "24 giờ",
           "7d": "7 ngày",
           "30d": "30 ngày",
-          "all": "Toàn bộ thời gian"
+          "all": "Toàn bộ thời gian",
+          "custom": "Khoảng tùy chỉnh…"
+        },
+        "customRange": {
+          "start": "Bắt đầu",
+          "end": "Kết thúc",
+          "hint": "Giờ địa phương · {{zone}} · Chính xác đến giây, gồm giây kết thúc",
+          "invalid": "Giờ kết thúc không được trước giờ bắt đầu",
+          "apply": "Áp dụng khoảng",
+          "cancel": "Hủy"
         },
         "bucket": {
           "claude": "Claude",
@@ -254,15 +217,16 @@
         "installed": "Đã cài đặt",
         "notInstalled": "Không phát hiện",
         "disabled": "Đã tắt"
-      }
+      },
+      "rescanUpdate": "Cập nhật",
+      "rescanClear": "Xóa + quét lại",
+      "externalSessionsToggle": "Phiên bên ngoài",
+      "externalSessionsToggleDesc": "Khi tắt, không nguồn bên ngoài nào được quét hay tải phiên",
+      "sessions_one": "{{count}} phiên"
     },
     "list": {
-      "updated": "Đã cập nhật",
-      "timeRange": "Khoảng thời gian",
       "started": "Đã bắt đầu",
       "lastUpdated": "Cập nhật lần cuối",
-      "agentModel": "Agent · Mô hình",
-      "searchPlaceholder": "Search sessions...",
       "emptyTitle": "Không có phiên nào khớp với các bộ lọc này",
       "emptyDescription": "Hãy thử trạng thái, loại Agent hoặc khoảng thời gian khác."
     },
@@ -278,7 +242,6 @@
     },
     "autoArchive": {
       "label": "Tự lưu trữ",
-      "shortLabel": "Lưu trữ",
       "never": "Không bao giờ",
       "12h": "12h",
       "24h": "24h",
@@ -290,9 +253,7 @@
       "inProgress": "Đang thực hiện",
       "blocking": "Đang chặn",
       "turnFinished": "Lượt hoàn thành",
-      "archived": "Đã lưu trữ",
-      "yourTurn": "Đến lượt bạn",
-      "finished": "Hoàn tất"
+      "archived": "Đã lưu trữ"
     },
     "boardColumns": {
       "todo": "Cần làm",
@@ -304,41 +265,20 @@
       "cancelled": "Thất bại"
     },
     "sidebar": {
-      "agentTypes": "Loại Agent",
-      "manageItems": "Quản lý mục",
-      "sessionsView": "Sessions View",
-      "workitemView": "Workitem View",
-      "views": "Chế độ xem",
-      "cliAgent": "CLI Agent",
-      "rustAgent": "Rust Agent",
-      "removeDraft": "Xóa bản nháp"
-    },
-    "resultStatus": {
-      "completed": "Hoàn thành",
-      "failed": "Thất bại",
-      "archived": "Đã lưu trữ"
+      "removeDraft": "Xóa bản nháp",
+      "githubIssues": "GitHub Issues",
+      "githubPrs": "GitHub PRs",
+      "runs": "Lần chạy",
+      "showSubagents": "Hiển thị subagent",
+      "hideSubagents": "Ẩn subagent"
     },
     "detail": {
       "title": "Tiêu đề",
-      "tags": "Thẻ",
-      "description": "Mô tả",
-      "status": "Trạng thái"
+      "tags": "Thẻ"
     },
-    "addContent": "Thêm nội dung",
     "merge": {
       "conflictsIn": "Xung đột trong: {{files}}",
       "failed": "Hợp nhất thất bại",
-      "failedToLoadDiff": "Không thể tải diff",
-      "noChanges": "Không có thay đổi",
-      "worktree": "Worktree",
-      "branch": "Nhánh:",
-      "base": "Cơ sở:",
-      "mergeLabel": "Hợp nhất:",
-      "statusPending": "Đang chờ",
-      "statusMerged": "Đã hợp nhất",
-      "statusConflict": "Xung đột",
-      "statusSkipped": "Đã bỏ qua",
-      "statusFailed": "Thất bại",
       "retryMerge": "Thử hợp nhất lại",
       "dirtyRepo": "Không thể hợp nhất: kho lưu trữ có các thay đổi chưa được xác nhận. Vui lòng xác nhận hoặc lưu tạm trước.",
       "strategyLabel": "Chiến lược hợp nhất",
@@ -346,133 +286,41 @@
       "strategyFf": "Chuyển tiếp nhanh",
       "strategyLeave": "Giữ nguyên là nhánh",
       "discardConfirmTitle": "Xóa Worktree?",
-      "discardConfirmMessage": "Thao tác này sẽ xóa vĩnh viễn nhánh và tất cả thay đổi. Không thể hoàn tác.",
-      "merge": "Hợp nhất",
-      "merging": "Đang hợp nhất…",
-      "merged": "Đã hợp nhất"
-    },
-    "discard": {
-      "discard": "Hủy bỏ",
-      "discarding": "Đang hủy…",
-      "confirmMessage": "Hủy tất cả thay đổi trong worktree này? Hành động này không thể hoàn tác."
+      "discardConfirmMessage": "Thao tác này sẽ xóa vĩnh viễn nhánh và tất cả thay đổi. Không thể hoàn tác."
     },
     "diary": {
-      "title": "Nhật ký",
       "previousDay": "Ngày trước",
       "nextDay": "Ngày sau",
-      "subtitle": "Hoạt động Agent hằng ngày",
-      "engineeringHours": "Giờ kỹ thuật",
-      "engineeringHoursHint": "Thời gian Agent tích lũy",
-      "onlineHours": "Giờ online",
-      "onlineHoursHint": "Thời gian song song đã khử trùng lặp",
-      "activeSessions": "Sessions đang hoạt động",
-      "completedSessions": "Đã hoàn tất",
-      "timeline": "Dòng thời gian sự kiện",
       "commits": "Commits",
       "emptyTitle": "Không có sự kiện nhật ký",
       "emptySubtitle": "Hoạt động Agent của ngày này sẽ xuất hiện tại đây.",
-      "event": {
-        "started": "Đã bắt đầu Session",
-        "completed": "Đã hoàn tất Session",
-        "stillWorking": "Vẫn đang làm"
-      },
       "commitsTo": "Commits tới {{repo}}",
       "commitsToMultiple": "Commits tới {{repos}}"
-    },
-    "orgtrack": {
-      "filesChanged_one": "{{count}} tệp",
-      "filesChanged_other": "{{count}} tệp",
-      "commits_one": "{{count}} commit",
-      "commits_other": "{{count}} commit",
-      "committedRateShort": "{{percent}}% đã commit"
     },
     "detailView": {
       "trajectory": "Trajectory",
       "touchedFiles": "Touched files",
       "noTouchedFiles": "No files touched"
-    }
-  },
-  "changes": {
-    "scope": {
-      "thisSession": "Session này",
-      "allUncommitted": "Tất cả chưa commit"
     },
-    "empty": {
-      "workingTreeClean": "Cây làm việc sạch",
-      "noChangesYet": "Chưa có thay đổi",
-      "noUncommittedChanges": "Không có thay đổi chưa commit trong kho lưu trữ",
-      "changesWillAppear": "Các thay đổi do AI thực hiện sẽ hiển thị tại đây"
-    },
-    "noChangesToReview": "Không có thay đổi để xem xét"
-  },
-  "sync": {
-    "preparing": "Đang chuẩn bị tệp...",
-    "uploading": "Đang đồng bộ tệp của bạn...",
-    "processing": "Đang xử lý trên thị trường...",
-    "complete": "Đồng bộ tệp thành công!",
-    "error": "Đồng bộ thất bại",
-    "default": "Đang đồng bộ...",
-    "files": "{{count}} tệp"
+    "openRoutineWorkItemError": "Không thể mở Work Item",
+    "runsEmpty": "Chưa có lần chạy Routine nào"
   },
   "simulator": {
     "captionBarToggleTooltip": "Hiện thanh tin nhắn Agent",
-    "parentSession": "Agent chính",
-    "backgroundTasks": "Background Tasks",
-    "backgroundTasksEmpty": "Không có Background Tasks",
     "noActiveSession": "Không có phiên hoạt động",
     "tabs": {
-      "desktop": "Màn hình",
-      "tasks": "Nhiệm vụ",
-      "kanban": "Kanban",
-      "changes": "Thay đổi",
-      "conflicts": "Xung đột",
-      "plan": "Plan"
-    },
-    "settings": {
-      "title": "Chế độ xem Simulator",
-      "showDock": "Hiển thị Dock",
-      "playback": "Phát lại",
-      "speed": "Tốc độ",
-      "autoScroll": "Tự động cuộn"
-    },
-    "tasks": {
-      "noTasksFound": "Không tìm thấy tác vụ",
-      "tasksWillAppear": "Tác vụ sẽ xuất hiện ở đây khi bắt đầu thực thi",
-      "selectTask": "Chọn tác vụ để xem hoạt động"
-    },
-    "kanban": {
-      "noTasksYet": "Chưa có nhiệm vụ",
-      "tasksWillAppear": "Công việc sẽ hiển thị tại đây khi phiên bắt đầu xử lý"
+      "kanban": "Kanban"
     },
     "replay": {
-      "following": "Đang theo dõi",
-      "freeBrowsing": "Duyệt tự do",
-      "replaying": "Đang phát",
       "freeBrowse": "Duyệt tự do",
       "follow": "Theo dõi",
       "dockShowChatInput": "Hiển thị ô nhập chat",
-      "dockHideChatInput": "Ẩn ô nhập chat",
-      "bottomPanel": {
-        "tabTrajectory": "Trajectory",
-        "tabTodo": "Todo",
-        "expandPanel": "Hiện bảng trajectory và todo",
-        "placeholderTrajectoryTitle": "Chưa có sự kiện",
-        "placeholderTrajectorySubtitle": "Hoạt động phiên sẽ hiển thị khi Agent chạy",
-        "placeholderTodoTitle": "Chưa có danh sách việc",
-        "placeholderTodoSubtitle": "Cập nhật todo sẽ hiện khi Agent ghi việc cần làm"
-      },
       "previousEvent": "Sự kiện trước",
       "nextEvent": "Sự kiện tiếp theo",
       "play": "Phát",
       "pause": "Tạm dừng",
-      "playbackSpeed": "Tốc độ phát",
-      "noEvents": "Không có sự kiện",
-      "agentHasNotUsedTool": "Agent chưa sử dụng công cụ này",
       "browser": {
         "tabs": {
-          "browser": "Trình duyệt",
-          "search": "Tìm kiếm",
-          "fetch": "Tải",
           "agentBrowser": "Trình duyệt Agent",
           "searchFetch": "Tìm kiếm & tải"
         },
@@ -486,8 +334,7 @@
           "noBrowserActivity": "Không có hoạt động trình duyệt",
           "noBrowserInteractions": "Không có tương tác trình duyệt",
           "noWebSearches": "Không có tìm kiếm web",
-          "noPagesFetched": "Không có trang đã tải",
-          "noBrowserActivityYet": "Chưa có hoạt động trình duyệt"
+          "noPagesFetched": "Không có trang đã tải"
         },
         "header": {
           "categoryBrowser": "Trình duyệt",
@@ -505,13 +352,10 @@
           "exitCode": "[mã thoát: {{code}}]"
         },
         "codePanel": {
-          "hiddenLines": "{{count}} dòng đã ẩn",
           "editHeader": "Sửa {{index}}",
           "startingAtLine": "(bắt đầu tại dòng {{line}})",
           "fileEditedSuccess": "✓ Đã sửa tệp thành công",
           "truncatedSuffix": "\n... (đã cắt)",
-          "headerDirectory": "Thư mục",
-          "headerSearchPrefix": "Tìm kiếm: {{query}}",
           "searchResultLinePrefix": "L{{line}}",
           "resultCount_one": "{{count}} kết quả",
           "resultCount_other": "{{count}} kết quả",
@@ -531,23 +375,12 @@
           "emptyNoFilesEdited": "Chưa có tệp đã sửa",
           "emptyNoExploreOperations": "Chưa có hoạt động khám phá",
           "emptyNoCommands": "Không có lệnh",
-          "emptyNoToolCalls": "Chưa có lệnh gọi công cụ",
-          "searchDisplayListDir": "list_dir",
-          "searchDisplaySearch": "Tìm kiếm",
-          "searchSecondaryResults": "{{count}} kết quả"
-        },
-        "terminal": {
-          "tabTerminal": "Terminal",
-          "viewStructured": "Có cấu trúc",
-          "viewRaw": "Thô",
-          "emptySelectCommand": "Chọn một lệnh để xem"
+          "emptyNoToolCalls": "Chưa có lệnh gọi công cụ"
         }
       },
       "diffApp": {
-        "allTabLabel": "Tất cả",
         "tabLabel": "Diff",
         "emptyForFilter": "Chưa có Diff",
-        "emptyDetail": "Chọn một thay đổi để xem Diff.",
         "submissions": {
           "tabLabel": "Bài gửi",
           "commits": "Commits",
@@ -555,57 +388,25 @@
           "empty": "Chưa có bài gửi",
           "selectSubmission": "Chọn một bài gửi để xem chi tiết",
           "noCommits": "Chưa có Commits",
-          "noPullRequests": "Chưa có Pull Requests"
+          "noPullRequests": "Chưa có Pull Requests",
+          "labels": {
+            "created": {
+              "commit": "Đã tạo commit",
+              "pullRequest": "Đã tạo PR"
+            },
+            "mentioned": {
+              "commit": "Commit được nhắc đến",
+              "pullRequest": "PR được nhắc đến"
+            }
+          }
         }
       },
       "channelsSidebar": {
-        "chatHistoryTab": "Lịch sử chat",
         "messages": "Tin nhắn",
         "interactions": "Tương tác",
-        "todoList": "Danh sách việc cần làm",
-        "kanban": "Kanban",
-        "todoUpdate": "Cập nhật việc cần làm",
-        "noMessages": "Chưa có tin nhắn",
-        "noInteractions": "Chưa có tương tác",
-        "noTodos": "Chưa có sự kiện việc cần làm",
-        "interactionAskQuestion": "Câu hỏi",
-        "interactionAskPermission": "Yêu cầu quyền",
-        "interactionModeSwitch": "Chuyển chế độ",
-        "interactionPlanDoc": "Tài liệu Plan",
-        "interactionGeneric": "Tương tác"
+        "kanban": "Kanban"
       },
       "messages": {
-        "viewer": {
-          "think": {
-            "title": "Đối thoại nội bộ",
-            "subtitle_one": "Đang hiển thị {{count}} suy nghĩ",
-            "subtitle_other": "Đang hiển thị {{count}} suy nghĩ"
-          },
-          "todo": {
-            "title": "Danh sách việc cần làm",
-            "subtitle": "Danh sách nhiệm vụ mới nhất"
-          },
-          "chat": {
-            "title": "Trò chuyện với người dùng",
-            "subtitle_one": "{{count}} tin nhắn",
-            "subtitle_other": "{{count}} tin nhắn"
-          },
-          "interaction": {
-            "title": "Tương tác",
-            "subtitle_one": "{{count}} tương tác",
-            "subtitle_other": "{{count}} tương tác"
-          }
-        },
-        "empty": {
-          "think": {
-            "title": "Chưa có suy nghĩ",
-            "subtitle": "Suy nghĩ của Agent sẽ hiển thị tại đây"
-          },
-          "todo": {
-            "title": "Chưa có danh sách việc cần làm",
-            "subtitle": "Danh sách nhiệm vụ sẽ hiển thị tại đây"
-          }
-        },
         "bubble": {
           "smartDateYesterday": "Hôm qua",
           "senderTitle": {
@@ -620,7 +421,15 @@
             "requestedInput": "{{subject}} đã yêu cầu nhập liệu",
             "sentTo": "{{subject}} đã gửi tin nhắn cho {{recipient}}",
             "sentBroadcast": "{{subject}} đã gửi tin nhắn cho nhiều Agent",
-            "sentMessage": "{{subject}} đã gửi tin nhắn"
+            "sentMessage": "{{subject}} đã gửi tin nhắn",
+            "taskCreateRunning": "{{subject}} đang tạo nhiệm vụ",
+            "taskCreateRejected": "Việc tạo nhiệm vụ của {{subject}} cần chỉnh sửa",
+            "taskCreateFailed": "{{subject}} không thể tạo nhiệm vụ",
+            "taskOperationRunning": "{{subject}} đang thực hiện thao tác nhiệm vụ",
+            "taskOperationRejected": "Thao tác nhiệm vụ của {{subject}} cần chỉnh sửa",
+            "taskOperationFailed": "Thao tác nhiệm vụ của {{subject}} thất bại",
+            "turnLoading": "Tin nhắn của {{subject}} đang tải…",
+            "taskOperationDeferred": "{{subject}} đã hoãn hoàn thành tác vụ cho đến khi dọn dẹp xong"
           }
         },
         "divider": {
@@ -640,8 +449,11 @@
             "Không đầu ra. Đôi khi chỉ im lặng. [Không có xem trước suy nghĩ]",
             "Không tin nhắn. Xem trước không tới. [Không có xem trước suy nghĩ]"
           ],
-          "labelLatest": "Suy nghĩ mới nhất",
           "labelThought": "Suy nghĩ"
+        },
+        "unloadedTurn": {
+          "loadingBody": "Đang tải tin nhắn…",
+          "retryBody": "Tin nhắn chưa tải được — chạm để thử lại"
         }
       },
       "project": {
@@ -667,46 +479,7 @@
           "list_contributors": "Danh sách đóng góp",
           "add_delegation": "Thêm ủy quyền"
         },
-        "row": {
-          "projectPrefix": "Project: {{name}}",
-          "workItemPrefix": "Công việc: {{title}}",
-          "resultErrorPrefix": "Lỗi: ",
-          "resultArrowPrefix": "→ "
-        },
         "headerTitle": "Thao tác Project"
-      },
-      "trajectory": {
-        "closeSidebar": "Đóng thanh bên",
-        "toggleSidebar": "Chuyển đổi thanh bên Trajectory",
-        "fallbackUnknownStep": "Bước không xác định",
-        "stepHeader": {
-          "actionsCount": "{{count}} thao tác"
-        },
-        "event": {
-          "unknownFile": "Tệp không xác định",
-          "noCommand": "Không có lệnh",
-          "todoMoreSuffix": "{{first}} (+{{count}} khác)",
-          "todosCount": "{{count}} việc cần làm",
-          "todosUpdated": "{{count}} việc cần làm đã cập nhật",
-          "noQuery": "Không có truy vấn",
-          "activityFallback": "Hoạt động",
-          "processing": "Đang xử lý...",
-          "messageEllipsis": "Tin nhắn...",
-          "readUserMessage": "Đọc tin nhắn người dùng",
-          "sessionFallback": "Session"
-        }
-      },
-      "database": {
-        "operation": {
-          "explore": "Explore",
-          "runSql": "Run SQL"
-        },
-        "row": {
-          "tablePrefix": "Table: {{name}}",
-          "resultErrorPrefix": "Error: ",
-          "resultArrowPrefix": "→ "
-        },
-        "headerTitle": "Database Operations"
       },
       "canvas": {
         "toolbarTitle": "Canvas",
@@ -716,13 +489,22 @@
         "tooltipCloseCanvas": "Close canvas",
         "iframeTitle": "Agent Canvas"
       },
-      "followingApp": "Đang theo dõi: {{appName}}",
       "followingAgent": "Đang theo dõi Agent",
       "trajectoryAgent": "Theo dõi quỹ đạo Agent",
       "trajectoryThisApp": "Theo dõi ứng dụng này",
-      "followAgent": "Theo dõi Agent",
-      "followThisApp": "Theo dõi ứng dụng này",
-      "followApp": "Theo dõi {{appName}}"
+      "filters": {
+        "tooltip": "Lọc sự kiện",
+        "allEvents": "Tất cả sự kiện",
+        "keyInteractions": "Tương tác chính",
+        "fileChanges": "Thay đổi tệp",
+        "terminalEvents": "Sự kiện terminal",
+        "explore": "Khám phá",
+        "other": "Khác",
+        "selectedCount": "{{count}} bộ lọc"
+      },
+      "next": "Sự kiện tiếp theo",
+      "previous": "Sự kiện trước",
+      "scrub": "Thanh tua phát lại"
     },
     "codeEditor": {
       "switchToListView": "Chuyển sang dạng danh sách",
@@ -736,42 +518,17 @@
       "title": "Khởi động hệ thống",
       "subtitle": "Đang khởi tạo môi trường làm việc..."
     },
-    "awaitingActivity": "Chờ hoạt động...",
-    "askUser": {
-      "agentQuestion": "Câu hỏi từ Agent",
-      "submitResponse": "Gửi phản hồi",
-      "responseReceived": "Đã nhận phản hồi",
-      "optional": "Tùy chọn",
-      "defaultQuestion": "Agent có câu hỏi dành cho bạn",
-      "enterField": "Nhập {{field}}..."
-    },
-    "askUserPending": {
-      "incomingRequest": "Có yêu cầu đến",
-      "respondInChat": "Vui lòng phản hồi yêu cầu của Agent trong cuộc trò chuyện"
-    },
     "titleBar": {
-      "switchToRight": "Chuyển sang chế độ phải",
-      "switchToLeft": "Chuyển sang chế độ trái",
       "showSidebar": "Hiện thanh bên",
       "hideSidebar": "Ẩn thanh bên",
-      "showBottomPanel": "Hiện bảng dưới",
-      "hideBottomPanel": "Ẩn bảng dưới"
+      "showBottomPanel": "Hiện bảng dưới"
     },
     "multiTask": {
       "monitoringProgress": "Đang theo dõi tiến độ của {{count}} subagent",
-      "expandView": "Mở rộng",
-      "compactView": "Thu gọn",
       "closePanel": "Đóng bảng Subagent",
-      "minimizePanel": "Thu nhỏ thành hình trong hình",
-      "expandPanel": "Mở rộng bảng",
-      "moreTasks": "+{{count}} khác"
+      "minimizePanel": "Thu nhỏ thành hình trong hình"
     },
     "gridCell": {
-      "copyEventsJson": "Sao chép sự kiện JSON",
-      "detachedTooltip": "Đã tách khỏi con trỏ chính — nhấp để đồng bộ lại",
-      "syncedTooltip": "Đã đồng bộ với con trỏ chính",
-      "detached": "Đã tách",
-      "live": "Trực tiếp",
       "expand": "Mở rộng",
       "collapse": "Thu gọn"
     },
@@ -779,7 +536,9 @@
       "waitingForActivity": "Đang chờ hoạt động…",
       "viewTaskPrompt": "Xem lời nhắc tác vụ",
       "taskPromptTitle": "Lời nhắc tác vụ",
-      "newEventDivider": "Sự kiện mới"
+      "newEventDivider": "Sự kiện mới",
+      "loadingHistory": "Đang tải lịch sử…",
+      "retryHistory": "Không thể tải lịch sử — Thử lại"
     },
     "dock": {
       "switchTo": "Chuyển sang",
@@ -818,7 +577,7 @@
   "input": {
     "editPlaceholder": "Chỉnh sửa tin nhắn...",
     "defaultPlaceholder": "Trò chuyện với Agent",
-    "finishNextStep": "Hoàn thành. Bước tiếp theo!",
+    "commentPlaceholder": "Để lại bình luận…",
     "editingQueuedMessage": "Đang chỉnh sửa tin nhắn trong hàng đợi",
     "editingSentMessage": "Đang chỉnh sửa tin nhắn đã gửi",
     "voiceErrorPermission": "Quyền truy cập micrô bị từ chối. Bật trong cài đặt hệ thống.",
@@ -834,14 +593,19 @@
       "insert": "Chèn"
     },
     "compactArgHint": "<trọng tâm tóm tắt (tùy chọn)>",
+    "nativeCommandDescription": "Chạy {{command}} trong {{provider}}",
     "compactCommandDescription": "Tóm tắt ngữ cảnh cũ để giải phóng dung lượng. Tùy chọn: /compact <trọng tâm tóm tắt>",
     "canvasCommandDescription": "Tạo một Canvas tương tác mới. Tùy chọn: /canvas <nội dung cần tạo>",
     "canvasArgHint": "nội dung cần tạo",
-    "newCanvasAction": "Canvas mới"
-  },
-  "listPanel": {
-    "showingOf": "Hiển thị {{filtered}} / {{total}}",
-    "selectedOf": "Đã chọn {{selected}} / {{total}}"
+    "newCanvasAction": "Canvas mới",
+    "pr": {
+      "open": "Mở PR"
+    },
+    "followUpSuggestions": {
+      "label": "Bước tiếp theo được gợi ý"
+    },
+    "voicePermissionSheetRetry": "Thử lại",
+    "voicePermissionSheetTitle": "Cần quyền truy cập micrô"
   },
   "chat": {
     "planApprovedLabel": "Đang thực hiện kế hoạch đã duyệt",
@@ -892,8 +656,8 @@
       "addApiKey": {
         "title": "Thêm API key"
       },
-      "showRuntime": {
-        "title": "Hiển thị môi trường chạy"
+      "showQuota": {
+        "title": "Xem hạn mức"
       },
       "installLatestUpdate": {
         "title": "Cài đặt bản cập nhật mới nhất"
@@ -997,7 +761,9 @@
     "tabs": {
       "newTerminal": "Terminal Mới",
       "newTab": "Tab mới",
-      "terminals": "Terminal"
+      "terminals": "Terminal",
+      "goBack": "Quay lại",
+      "goForward": "Tiến tới"
     },
     "sideChat": {
       "title": "Trò chuyện bên",
@@ -1154,7 +920,8 @@
         "cli": "CLI Agent",
         "rust": "Rust Agent",
         "cursorIde": "Cursor IDE",
-        "externalHistory": "Lịch sử bên ngoài"
+        "externalHistory": "Lịch sử bên ngoài",
+        "human": "Nhật ký công việc"
       },
       "fields": {
         "session": "Session",
@@ -1228,7 +995,17 @@
         "assignedToMe": "Được giao cho tôi",
         "createdByMe": "Do tôi tạo",
         "filters": "Filters",
-        "openInGitHub": "Open in GitHub"
+        "openInGitHub": "Open in GitHub",
+        "pullRequests": {
+          "reviewRequested": "Yêu cầu đánh giá",
+          "authoredByMe": "Do tôi tạo",
+          "otherTodos": "Việc cần làm khác"
+        },
+        "assigneeUpdateNotApplied": "GitHub chưa áp dụng thay đổi người được giao",
+        "assigneeUpdateSuccess": "Đã cập nhật người được giao trên GitHub",
+        "updateIssueFailed": "Không thể cập nhật GitHub issue",
+        "refreshIssues": "Làm mới vấn đề",
+        "refreshPullRequests": "Làm mới yêu cầu hợp nhất"
       }
     },
     "sessionViews": {
@@ -1243,34 +1020,26 @@
       "fileCount_one": "{{count}} tệp",
       "fileCount_other": "{{count}} tệp",
       "turnCount_one": "{{count}} lượt",
-      "turnCount_other": "{{count}} lượt"
+      "turnCount_other": "{{count}} lượt",
+      "inferredTiming": "Thời điểm kết thúc được suy ra từ lượt tiếp theo"
     },
-    "parentAgentSender": "Tác nhân cha"
-  },
-  "chatStatus": {
-    "approved": "Đã phê duyệt",
-    "skipped": "Đã bỏ qua",
-    "responded": "Đã phản hồi",
-    "ignored": "Đã bỏ qua",
-    "pending": "Đang chờ",
-    "denied": "Đã từ chối"
-  },
-  "conflicts": {
-    "title": "Xung đột",
-    "noConflicts": "Không có xung đột",
-    "noMergeConflicts": "Không có xung đột hợp nhất",
-    "cleanState": "Kho lưu trữ của bạn đang ở trạng thái sạch, không có xung đột cần giải quyết.",
-    "detecting": "Đang phát hiện xung đột...",
-    "allResolved": "Tất cả xung đột trong tệp này đã được giải quyết",
-    "saveAndMark": "Lưu và đánh dấu là đã giải quyết để tiếp tục",
-    "keepCurrent": "Giữ hiện tại",
-    "keepIncoming": "Giữ phiên bản đến",
-    "keepBoth": "Giữ cả hai",
-    "aiResolve": "AI giải quyết",
-    "previousConflict": "Xung đột trước (⌘↑)",
-    "nextConflict": "Xung đột tiếp theo (⌘↓)",
-    "abort": "Hủy bỏ",
-    "complete": "Hoàn thành"
+    "parentAgentSender": "Tác nhân cha",
+    "restoreCheckpoint": "Khôi phục điểm kiểm tra",
+    "trackAsProject": {
+      "menuItem": "Theo dõi dưới dạng dự án",
+      "success": "Phiên hiện được theo dõi dưới dạng Project"
+    },
+    "permissionDismiss": "Bỏ qua trên thiết bị này",
+    "remoteExecutionNotice": "Thao tác này sẽ chạy trên {{desktopName}}.",
+    "conversationNavigator": "Điều hướng cuộc trò chuyện",
+    "goToConversationTurn": "Đi tới lượt {{current}} trên {{total}}: {{preview}}",
+    "send": "Gửi",
+    "sendFailed": "Không thể gửi tin nhắn",
+    "sending": "Đang gửi…",
+    "typeMessage": "Nhập tin nhắn…",
+    "session": "Phiên",
+    "history": "Các phiên",
+    "agentFallback": "Agent"
   },
   "tools": {
     "noResultsFound": "Không tìm thấy kết quả",
@@ -1309,7 +1078,11 @@
       "toolCalls": "{{count}} lần gọi công cụ",
       "filesChanged": "{{count}} tệp thay đổi",
       "toolCalls_one": "{{count}} lệnh gọi công cụ",
-      "filesChanged_one": "{{count}} tệp thay đổi"
+      "filesChanged_one": "{{count}} tệp thay đổi",
+      "segmentAria": "Phát lại lượt {{number}}",
+      "turnBreakpointsAria": "Điểm ngắt lượt phát lại",
+      "segmentTooltip": "Lượt {{number}} · {{duration}} · {{start}}–{{end}}",
+      "segmentTooltipNoRange": "Lượt {{number}} · {{duration}}"
     },
     "turnCollapse": {
       "agentWorkedFor": "Agent đã làm việc trong {{value}}",
@@ -1481,9 +1254,6 @@
     "awaitOutputKilled": "Đã dừng",
     "awaitOutputNotFound": "Tác vụ nền không được theo dõi",
     "awaitOutputExitCode": "exit {{exitCode}}",
-    "skillLoading": "Reading skill",
-    "skillLoaded": "Skill loaded",
-    "skillFailed": "Skill not found",
     "killProcessRunning": "Đang kết thúc tiến trình",
     "killProcessDone": "Đã kết thúc tiến trình",
     "killProcessFailed": "Không thể kết thúc tiến trình",
@@ -2087,14 +1857,9 @@
     "nFiles_one": "{{count}} tệp",
     "nFiles_other": "{{count}} tệp"
   },
-  "hoverCard": {
-    "commits": "Commit",
-    "filesChanged_one": "{{count}} tệp đã thay đổi",
-    "filesChanged_other": "{{count}} tệp đã thay đổi",
-    "branchesTouched": "Branch"
-  },
   "modelPill": {
-    "immutableInSession": "Nguồn khóa, loại Agent và bậc giá được cố định khi bắt đầu phiên. Bắt đầu phiên mới để thay đổi."
+    "immutableInSession": "Nguồn khóa, loại Agent và bậc giá được cố định khi bắt đầu phiên. Bắt đầu phiên mới để thay đổi.",
+    "appliesNextTurn": "Đã chuyển tài khoản. Câu trả lời hiện tại vẫn chạy trên tài khoản trước; tài khoản mới có hiệu lực từ lượt tiếp theo."
   },
   "creator": {
     "repoChromeMenu": {
@@ -2104,26 +1869,20 @@
       "hidePinnedActions": "Ẩn hành động đã ghim"
     },
     "createTarget": {
-      "agentSession": "Phiên Agent",
       "project": "Tạo dự án",
       "parallelRun": "Chạy song song",
       "workItem": "Tạo Work Item"
     },
     "worktreeSource": {
       "title": "Tạo cây làm việc",
-      "confirm": "Dùng cây làm việc",
       "resolving": "Đang phân giải PR…",
       "selectRepository": "Hãy chọn kho mã trước khi chọn nguồn cây làm việc.",
       "sourceTabs": "Nguồn cây làm việc",
       "tabs": {
-        "smart": "Thông minh",
         "github": "GitHub",
         "branch": "Nhánh",
-        "name": "Tên"
+        "pr": "PR"
       },
-      "smartPlaceholder": "Tên, #1234, nhánh hoặc URL GitHub/GitLab",
-      "smartAria": "Nhập tên, số PR, nhánh hoặc URL GitHub/GitLab",
-      "smartHint": "Nhập tên, số PR, nhánh hoặc dán URL PR/MR.",
       "refreshGithub": "Làm mới danh sách GitHub",
       "githubSearch": "Tìm PR và issue trên GitHub",
       "githubSearchAria": "Tìm pull request và issue trên GitHub",
@@ -2138,13 +1897,11 @@
       "branchNoMatches": "Không có nhánh phù hợp.",
       "branchUseAsRef": "Dùng “{{value}}” làm ref",
       "branchCustomRefHint": "Thẻ, commit hoặc bất kỳ Git ref nào",
-      "worktreeLabel": "Nhãn cây làm việc",
-      "namePlaceholder": "ten-tinh-nang",
-      "nameBase": "Cơ sở: {{branch}}",
-      "nameBaseHead": "Cơ sở: HEAD"
+      "sourceTypeAria": "Chọn nhánh hoặc pull request",
+      "prSearch": "Tìm pull request",
+      "prSearchAria": "Tìm pull request",
+      "prNoMatches": "Không có pull request phù hợp."
     },
-    "searchModels": "Tìm kiếm mô hình...",
-    "newItem": "Mục mới",
     "solveWorkItem": "Giải quyết hạng mục công việc",
     "launchpadQuestion": "Bạn muốn xây dựng gì với",
     "launchpadQuestionSuffix": "?",
@@ -2153,39 +1910,24 @@
     "planLaunchpadQuestionSuffix": "?",
     "manualPlanLaunchpadQuestion": "Bạn muốn lên kế hoạch gì?",
     "start": "Bắt đầu",
-    "assign": "Gán",
-    "send": "Gửi",
     "missingGit": {
       "title": "Thiếu Git",
       "body": "Git chưa được cài đặt hoặc không tìm thấy. Hãy yêu cầu ADE Manager hoặc SDE Agent cài đặt Git cho máy này, rồi khởi động lại ORGII."
     },
-    "noProvidersAvailable": "Không có nhà cung cấp nào khả dụng",
-    "enterPublicRepoUrl": "Nhập URL kho lưu trữ công khai",
-    "repoUrlPlaceholder": "https://github.com/owner/repo",
-    "noModelsMatchSearch": "Không có mô hình nào khớp với tìm kiếm",
-    "noModelsAvailable": "Không có mô hình nào khả dụng",
-    "noTiersAvailable": "Không có cấp bậc nào khả dụng",
     "model": "Mô hình",
-    "source": "Tài khoản",
-    "addContext": "Thêm ngữ cảnh",
     "contextMenu": {
       "filesAndFolders": "Tệp và thư mục",
-      "agentSession": "Phiên Agent",
       "workItems": "Hạng mục công việc",
       "back": "Quay lại",
       "recent": "Gần đây",
-      "showMore": "Hiển thị thêm {{remaining}}"
+      "showMore": "Hiển thị thêm {{remaining}}",
+      "session": "Phiên"
     },
-    "slashSearchPlaceholder": "Tìm lệnh…",
     "slashMenu": {
-      "image": "Hình ảnh",
-      "uploadImage": "Tải hình ảnh lên",
+      "commands": "Lệnh",
       "mode": "Chế độ",
-      "models": "Mô hình",
-      "skills": "Skills",
       "workspaceSkills": "Workspace Skills",
-      "userSkills": "User Skills",
-      "commands": "Lệnh"
+      "userSkills": "User Skills"
     },
     "diffMenu": {
       "gitActions": "Hành động GIT",
@@ -2198,13 +1940,6 @@
     },
     "osAgent": "OS Agent",
     "agent": "SDE Agent",
-    "cliAgent": "CLI Agent",
-    "cliAgentDesc": "Kết nối Agent dựa trên CLI",
-    "agentDesc": "Bắt đầu phiên Agent lập trình",
-    "osAgentDesc": "Agent tự động hóa máy tính",
-    "categoryLabel": "Danh mục phiên",
-    "categoryTemplate": "Chọn {category}",
-    "categoryPlaceholder": "Agent",
     "builtIns": "Tích hợp sẵn",
     "humanSession": {
       "name": "Nhật ký công việc"
@@ -2214,81 +1949,31 @@
     "agentOrgs": "Nhóm Agent",
     "orgMembers": {
       "configButton": "Quản lý thành viên",
-      "count": "{{count}} thành viên",
-      "defaultColumn": "Mô hình",
       "empty": "Chưa có thành viên nào trong nhóm này",
       "selectAgent": "Chọn Agent",
       "applyForFutureLabel": "Áp dụng cho các lần dùng sau",
       "selectBaseAgentForRole": "Chọn Agent cơ sở cho {{role}}"
     },
     "externalIdes": "Agent ngoài",
-    "cursorIde": {
-      "label": "Cursor IDE"
-    },
-    "addModel": "Thêm mô hình",
-    "myAgents": "Agent của tôi",
-    "session": "Session",
-    "cloneFromGitHub": "Sao chép từ GitHub",
-    "repoUrl": "URL kho lưu trữ",
-    "pleaseEnterGitHubUrl": "Vui lòng nhập URL GitHub",
-    "pleaseEnterValidGitHubUrl": "Vui lòng nhập URL kho GitHub hợp lệ",
-    "cloning": "Đang sao chép...",
-    "cloneRepo": "Sao chép kho",
-    "repoCloneHelperText": "Kho lưu trữ sẽ được sao chép vào không gian làm việc tạm thời cho Session của bạn.",
-    "yourPrice": "Giá của bạn",
-    "inputPerM": "Đầu vào /M",
-    "outputPerM": "Đầu ra /M",
-    "continueWithTier": "Tiếp tục với {{tier}}",
-    "quota": "Hạn mức: {{value}}",
-    "officialApiPrice": "Giá API chính thức",
-    "input": "Đầu vào",
-    "output": "Đầu ra",
-    "marketPrice": "Giá thị trường",
-    "yourPriceType": "Giá của bạn ({{type}})",
-    "cacheRead": "Cache Read",
-    "cacheWrite": "Cache Write",
-    "saveDiscount": "Tiết kiệm {{discount}}",
-    "standard": "Standard",
-    "global": "Global",
-    "goldUnlocksGlobal": "Gold+ mở khóa giá Global",
-    "limitReached": "Đã đạt giới hạn",
-    "remainingLimit": "Còn {{remaining}}/{{limit}}",
-    "busy": "Bận",
-    "ofOfficialPrice": "giá chính thức",
     "shortInputTitle": "Nội dung ngắn",
     "shortInputMessage": "Nội dung nhập vào có vẻ rất ngắn. Bạn có chắc chắn muốn bắt đầu phiên với nội dung này không?",
     "selectModel": "Chọn mô hình",
+    "selectAgentFirst": "Chọn agent trước",
     "switchModel": "Chuyển mô hình",
-    "switchSource": "Chuyển tài khoản",
-    "switchRunner": "Chuyển Runner",
-    "runnerLockedToWorktree": "Đã khóa với Worktree — không thể đổi Runner sau khi khởi chạy",
     "switchMode": "Chuyển chế độ",
     "switchAgent": "Chuyển Agent",
-    "manageKeys": "Quản lý Keys",
-    "manageModels": "Quản lý mô hình",
-    "changeSource": "Đổi tài khoản",
-    "clearSelection": "Xóa lựa chọn",
     "toolbar": {
       "bold": "Đậm (⌘B)",
       "italic": "Nghiêng (⌘I)",
       "strikethrough": "Gạch ngang",
-      "underline": "Gạch dưới (⌘U)",
       "link": "Liên kết",
-      "enterUrl": "Nhập URL...",
       "quote": "Trích dẫn",
-      "clearFormatting": "Xóa định dạng",
       "inlineCode": "Mã nội tuyến",
-      "highlight": "Đánh dấu",
-      "insertImage": "Chèn hình ảnh",
-      "lists": "Danh sách",
-      "normalText": "Văn bản thường",
-      "heading1": "Tiêu đề 1",
       "heading2": "Tiêu đề 2",
-      "heading3": "Tiêu đề 3",
       "bulletList": "Danh sách có dấu đầu dòng",
       "numberedList": "Danh sách có số",
       "taskList": "Danh sách công việc",
-      "divider": "Đường phân cách"
+      "formatting": "Định dạng văn bản"
     },
     "regionNoticeTitle": "Có thể bị hạn chế theo khu vực",
     "regionNoticeBodyProvider": "Bạn đang ở {{location}}. Một số mô hình có thể không khả dụng tại khu vực của bạn.",
@@ -2296,38 +1981,11 @@
     "regionNoticeBodyBoth": "Bạn đang ở {{location}}. Một số mô hình và dịch vụ như GitHub, npm và Docker Hub có thể không khả dụng do chính sách khu vực và hạn chế thương mại.",
     "selectAgent": "Chọn một agent",
     "placeholderDefault": "Nhập tin nhắn, dùng @ để thêm tệp, dùng / để dùng skills",
-    "agentHeaderPromptVariants": [
-      {
-        "before": "Chúng ta sẽ làm gì với",
-        "after": "?"
-      },
-      {
-        "before": "Hôm nay",
-        "after": "nên giúp gì?"
-      },
-      {
-        "before": "",
-        "after": "nên xử lý việc gì trước?"
-      }
-    ],
     "wingmanPlaceholder": "Mô tả nhiệm vụ của bạn — Wingman nên theo dõi điều gì?",
     "screenPicker": {
       "title": "Chọn màn hình",
-      "screen": "Màn hình {{index}}",
-      "primary": "(chính)",
-      "cancel": "Hủy"
+      "primary": "(chính)"
     },
-    "viewDiff": "Xem diff",
-    "contextBar": {
-      "thisMac": "Mac này",
-      "worktree": "Worktree",
-      "lockedHint": "Worktree đã được khóa cho phiên này"
-    },
-    "skillsAndTools": "Skills và công cụ",
-    "agentSpotlightViewMode": "Chế độ xem Agent",
-    "agentSpotlightListView": "Dạng danh sách",
-    "agentSpotlightCardView": "Dạng thẻ",
-    "agentSpotlightCardHint": "Dùng ←/→ hoặc ↑/↓ để chuyển Agent. Nhấn Enter để chọn.",
     "multiRunner": {
       "exit": "Quay lại một tác nhân",
       "addRunner": "Thêm runner",
@@ -2350,136 +2008,212 @@
         "noRepo": "Hãy chọn một kho lưu trữ — mỗi runner cần worktree riêng",
         "notEnoughRunners": "Hãy thiết lập ít nhất hai runner có thể chạy"
       }
-    }
+    },
+    "cliVersionOutdated": {
+      "title": "{{cli}} cần nâng cấp ({{installed}} > {{latest}})",
+      "muteUntilNextVersion": "Không cảnh báo cho đến phiên bản tiếp theo",
+      "refresh": "Kiểm tra lại phiên bản {{cli}} CLI",
+      "unknownVersion": "không xác định"
+    },
+    "mode": "Chế độ soạn thảo"
   },
   "planner": {
-    "tabs": {
-      "plan": "Kế hoạch",
-      "timeline": "Dòng thời gian"
-    },
     "modes": {
       "build": "Build",
       "ask": "Ask",
       "plan": "Plan",
-      "debug": "Debug",
-      "review": "Review",
-      "wingman": "Trợ Thủ"
+      "project": "Project"
     },
     "runningLocation": {
       "local": "This Mac",
-      "worktree": "New Worktree",
-      "cloud": "Cloud"
+      "worktree": "New Worktree"
     },
     "plan": {
-      "stepsCompleted": "Đã hoàn thành {{completed}} / {{total}} bước",
-      "noStepsYet": "Chưa có bước kế hoạch nào",
       "executePlan": "Thực thi kế hoạch",
-      "noActiveSession": "Không có phiên Agent đang hoạt động",
-      "replan": "Lập kế hoạch lại",
-      "viewPlan": "Xem kế hoạch",
-      "saveToWorkspace": "Lưu vào không gian làm việc",
-      "savedToWorkspace": "Kế hoạch đã được lưu vào không gian làm việc",
-      "noRepoOpen": "Không có kho lưu trữ nào được mở",
-      "collapse": "Thu gọn",
-      "expand": "Mở rộng"
+      "noActiveSession": "Không có phiên Agent đang hoạt động"
     },
     "todoList": {
       "title": "To-do",
       "completedCount": "{{completed}}/{{total}} việc hoàn thành",
       "countOnly": "{{total}} việc cần làm",
-      "doneOf": "{{done}}/{{total}} hoàn thành",
-      "createdAt": "Tạo lúc {{time}}",
-      "updatedAt": "Cập nhật lúc {{time}}",
       "justNow": "vừa xong",
       "minutesAgo": "{{count}} phút trước",
       "yesterday": "Hôm qua",
       "columnOpen": "Đang mở",
       "status": {
-        "pending": "Chờ xử lý",
-        "in_progress": "Đang thực hiện",
         "completed": "Hoàn thành",
         "cancelled": "Đã hủy"
       }
     },
     "agentOrgTasks": {
-      "title": "Nhiệm vụ nhóm",
-      "doneOf": "{{done}}/{{total}} hoàn thành",
       "owner": "Owner: {{owner}}",
       "ownerNoSession": "{{owner}} has no visible member session yet",
-      "loadFailed": "Không tải được nhiệm vụ",
       "statusPending": "Đang chờ",
       "statusInProgress": "Đang làm",
       "statusCompleted": "Hoàn tất",
-      "statusBlocked": "Bị chặn"
+      "statusBlocked": "Bị chặn",
+      "statusFailed": "Thất bại",
+      "statusCancelled": "Đã hủy",
+      "currentWork": "Công việc hiện tại",
+      "currentEmpty": "Không có công việc hiện tại",
+      "history": "Lịch sử",
+      "historyFilter": "Lọc lịch sử tác vụ",
+      "historyEmpty": "Không có tác vụ trong bộ lọc này",
+      "loadingHistory": "Đang tải lịch sử…",
+      "historyLoadFailed": "Không thể tải lịch sử",
+      "previousPage": "Trước",
+      "nextPage": "Tiếp",
+      "details": "Chi tiết",
+      "loadingDetails": "Đang tải chi tiết…",
+      "detailLoadFailed": "Không thể tải chi tiết",
+      "output": "Kết quả",
+      "annotations": "Tiến độ và ghi chú kiểm tra",
+      "loadMoreAnnotations": "Tải thêm",
+      "reassign": "Phân công lại",
+      "cancelTask": "Hủy nhiệm vụ",
+      "reassignTitle": "Phân công lại nhiệm vụ này?",
+      "cancelTitle": "Hủy nhiệm vụ này?",
+      "reassignWarning": "Lần thực thi hiện tại phải dừng trước khi nhiệm vụ thay thế bắt đầu.",
+      "cancelWarning": "Thao tác này loại nhiệm vụ khỏi phạm vi bàn giao hiện tại. Mọi lần thực thi đang chạy sẽ dừng; các nhiệm vụ phụ thuộc cần một quyết định riêng, rõ ràng.",
+      "replacementOwner": "Người phụ trách mới",
+      "handoffFailed": "Không thể cập nhật nhiệm vụ này một cách an toàn",
+      "handoffNeedsDecision": "Việc bàn giao cần quyết định của bạn",
+      "handoffStopping": "Đang dừng lần thực thi trước",
+      "handoffApplyingDecision": "Đang áp dụng {{decision}}",
+      "handoffDecisionFailed": "Quyết định đã được chấp nhận nhưng cần thử dọn dẹp lại",
+      "retryHandoffDecision": "Thử lại quyết định",
+      "handoffEvidence": "Người phụ trách trước: {{owner}} · {{state}} · tiến trình ghi cục bộ: {{count}}",
+      "continueReplacement": "Tiếp tục nhiệm vụ thay thế",
+      "keepStopped": "Giữ trạng thái dừng",
+      "abandonEpisode": "Từ bỏ lượt này",
+      "resolveHandoffTitle": "Xử lý bàn giao nhiệm vụ?",
+      "continueWarning": "Chỉ tiếp tục sau khi thực thi và tiến trình cục bộ đã dừng. Quyết định này chấp nhận kết quả bên ngoài chưa biết.",
+      "keepStoppedWarning": "Nhiệm vụ thay thế sẽ bị hủy. Nhiệm vụ cũ không khởi động lại; các nhiệm vụ khác tiếp tục.",
+      "abandonWarning": "Mọi nhiệm vụ đang mở sẽ dừng và kết quả của nhóm là Đã hủy.",
+      "handoffResolutionFailed": "Không thể xử lý bàn giao",
+      "statusAwaitingApproval": "Đang chờ phê duyệt"
     },
     "agentOrgOverview": {
+      "needsAttention": "Cần xử lý",
+      "coordinatorWorkState": {
+        "active": "Điều phối viên đang hoạt động",
+        "waiting_for_org_event": "Điều phối viên đang chờ sự kiện",
+        "inactive": "Điều phối viên không hoạt động"
+      },
+      "outcome": {
+        "delivered": "Đã giao",
+        "cancelled": "Đã hủy",
+        "failed": "Thất bại"
+      },
       "title": "Tổng quan Nhóm Agent",
-      "summary": "{{active}} đang hoạt động · {{unread}} chưa đọc",
+      "summary": "{{active}} đang hoạt động · {{pending}} chờ xử lý",
       "loadFailed": "Không tải được tổng quan nhóm",
       "tasks": "Nhiệm vụ",
       "doneOf": "{{done}} / {{total}} hoàn thành",
       "members": "Thành viên",
+      "directActivity": "Công việc trực tiếp của thành viên",
       "activeOf": "{{active}} / {{total}} đang hoạt động",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} chưa đọc",
-      "coordinator": "Điều phối viên",
-      "currentSession": "Hiện tại",
-      "inProgressTasks": "{{count}} nhiệm vụ đang thực hiện",
-      "pendingTasks": "{{count}} nhiệm vụ pending",
-      "unreadMessages": "{{count}} tin nhắn chưa đọc",
-      "taskBoard": "Bảng tác vụ",
-      "memberSessions": "Phiên thành viên",
       "pauseRun": "Tạm dừng thực thi",
       "resumeRun": "Tiếp tục thực thi",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "archiveRun": "Lưu trữ nhóm",
+      "archiveTitle": "Lưu trữ nhóm này?",
+      "archiveWorkingWarning": "Lưu trữ là vĩnh viễn. Các tác vụ đang chạy sẽ bị hủy và nhóm sẽ chuyển sang chỉ đọc.",
+      "archiveWarning": "Lưu trữ là vĩnh viễn. Nhóm sẽ chuyển sang chỉ đọc và không thể tiếp tục.",
+      "archivedReadOnly": "Đã lưu trữ — lịch sử chỉ đọc",
+      "archiveFailed": "Không thể lưu trữ nhóm",
+      "archiveTeardownPending": "Đã lưu trữ. Môi trường chạy vẫn đang được dừng trong nền.",
+      "archiveTeardownRetained": "Đã lưu trữ nhưng không thể giải phóng {{count}} môi trường chạy. Việc xóa vẫn bị chặn.",
+      "archiveTeardownQuiesced": "Đã lưu trữ và dừng hoàn toàn. Giờ có thể xóa vĩnh viễn.",
+      "dangerZone": "Vùng nguy hiểm",
+      "deleteDescription": "Xóa vĩnh viễn nhóm này cùng mọi phiên và lịch sử.",
+      "deleteTeam": "Xóa nhóm",
+      "deleteTitle": "Xóa vĩnh viễn nhóm này?",
+      "deleteWarning": "Thao tác này xóa vĩnh viễn mọi phiên và lịch sử của nhóm. Không thể hoàn tác.",
+      "deleteAcknowledge": "Tôi hiểu việc xóa này là vĩnh viễn.",
+      "deleteFailed": "Không thể xóa nhóm",
+      "viewCoordinatorHistory": "Xem lịch sử trò chuyện của điều phối viên",
+      "taskWindowTruncated": "Đang hiển thị {{visible}} nhiệm vụ đầu tiên trên {{total}}. Mở chi tiết nhiệm vụ để xem đầy đủ kết quả.",
       "planApproval": {
-        "title": "Kế hoạch đã sẵn sàng để phê duyệt"
-      }
-    },
-    "agentOrgInbox": {
-      "title": "Tin nhắn Agent",
-      "unreadCount": "{{count}} chưa đọc",
-      "from": "Từ {{sender}}",
-      "kindFallback": "Tin nhắn {{kind}}",
-      "loadFailed": "Không tải được tin nhắn",
-      "overviewOnly": "Có {{count}} tin nhắn nhóm chưa đọc. Lịch sử chi tiết có trong phần phát lại run."
+        "from": "Do {{member}} gửi",
+        "approve": "Phê duyệt kế hoạch",
+        "requestChanges": "Yêu cầu chỉnh sửa",
+        "sendFeedback": "Gửi phản hồi",
+        "feedbackLabel": "Phản hồi cho bản sửa kế hoạch",
+        "feedbackPlaceholder": "Cho Planner biết chính xác nội dung cần thay đổi…",
+        "paused": "Hãy tiếp tục lượt chạy trước khi phản hồi kế hoạch này.",
+        "staleError": "Kế hoạch này đã được xử lý hoặc thay thế. Hãy làm mới để xem bản mới nhất.",
+        "submitFailed": "Không thể lưu phản hồi kế hoạch.",
+        "historyTitle": "Lịch sử kế hoạch",
+        "open": "Mở kế hoạch",
+        "taskOutput": "Đã lưu kết quả tác vụ lập kế hoạch",
+        "status": {
+          "pending": "Đang chờ",
+          "approved": "Đã phê duyệt",
+          "changes_requested": "Đã yêu cầu chỉnh sửa",
+          "superseded": "Đã được thay thế",
+          "cancelled": "Đã hủy"
+        }
+      },
+      "phase": {
+        "coordinating": "Đang điều phối",
+        "dispatching": "Đang phân công",
+        "members_working": "Thành viên đang làm việc",
+        "waiting": "Đang chờ công việc",
+        "awaiting_plan_approval": "Đang chờ phê duyệt kế hoạch",
+        "finalizing": "Đang hoàn tất",
+        "paused": "Đã tạm dừng",
+        "failed": "Thất bại",
+        "starting": "Đang bắt đầu",
+        "idle": "Không hoạt động",
+        "archived": "Đã lưu trữ",
+        "draining": "Đã tạm dừng · đang kết thúc"
+      },
+      "finalSummary": {
+        "failedTitle": "Báo cáo cuối chưa được lưu",
+        "evidencePreserved": "Bằng chứng hoàn thành và kết quả tác vụ vẫn được giữ nguyên.",
+        "retry": "Thử lại báo cáo cuối",
+        "retryFailed": "Không thể bắt đầu thử lại báo cáo cuối."
+      },
+      "idleWithLatestOutcome": "{{phase}} · Episode gần nhất: {{outcome}}",
+      "pendingInboxCount": "{{count}} chờ xử lý",
+      "activeMembers": "Thành viên đang hoạt động",
+      "inFlightTurns": "Lượt đang chạy",
+      "openTasks": "Nhiệm vụ đang mở",
+      "blockingInbox": "Hộp thư đến đang chặn",
+      "blockersTitle": "Những gì vẫn đang cản trở hoàn tất",
+      "unknownBlocker": "Trở ngại hệ thống không xác định"
     },
     "agentOrgIntervention": {
-      "title": "Đang chat với {{member}}",
-      "description": "Tin nhắn Inbox và công việc mới tạm dừng cho đến khi công việc tiếp tục",
+      "directTitle": "Làm việc trực tiếp với {{member}}",
+      "writerBadge": "Writer",
+      "directNotice": "Công việc trực tiếp không vào bảng nhiệm vụ trừ khi dùng công cụ đồ thị được phép",
+      "directPaused": "Có thể làm việc phụ trực tiếp; công việc chính thức của nhóm vẫn tạm dừng",
+      "directUnknown": "Công việc trực tiếp đã kết thúc ngoài dự kiến; hãy kiểm tra tác động có thể có trước khi quay lại",
+      "unavailableStarting": "Có thể giao việc trực tiếp sau khi nhóm khởi động xong",
+      "unavailableFailed": "Không thể giao việc trực tiếp khi nhóm đang lỗi",
       "returnToWork": "Tiếp tục làm việc",
       "returning": "Đang tiếp tục…",
-      "loadFailed": "Không tải được trạng thái can thiệp",
+      "endDirectWork": "Kết thúc việc trực tiếp",
+      "endingDirectWork": "Đang kết thúc…",
+      "directReady": "Việc trực tiếp đã hoàn tất; hãy gửi yêu cầu tiếp theo hoặc kết thúc luồng việc trực tiếp này",
+      "stopping": "Đang dừng…",
+      "actionFailed": "Thao tác công việc trực tiếp thất bại. Vui lòng thử lại.",
       "busyShort": "Chat người dùng",
-      "teammateBusy": "Teammate này đang chat trực tiếp với người dùng"
-    },
-    "timeline": {
-      "askUser": "Hỏi người dùng",
-      "noQuestionProvided": "Không có câu hỏi.",
-      "action": "Hành động",
-      "thought": "Suy nghĩ:",
-      "arguments": "Tham số:",
-      "content": "Nội dung:",
-      "resultLabel": "Kết quả:",
-      "createFile": "Tạo tệp",
-      "fileDiff": "So sánh tệp",
-      "planHint": "Gợi ý kế hoạch",
-      "readFile": "Đọc tệp",
-      "runCommandLine": "Chạy dòng lệnh",
-      "searchInFile": "Tìm trong tệp",
-      "searchCodebase": "Tìm trong mã nguồn",
-      "searchDirectory": "Tìm trong thư mục",
-      "searchLabel": "Tìm kiếm:",
-      "inDirectory": "trong {{directory}}",
-      "foundResults": "Tìm thấy {{count}} kết quả trong {{files}} tệp",
-      "lineRange": "Dòng {{start}}-{{end}}",
-      "clickToViewContent": "Nhấp để xem nội dung",
-      "noResult": "không có kết quả",
-      "event": "Sự kiện",
-      "functionLabel": "Hàm:",
-      "noTimelineEvents": "Không có sự kiện nào",
-      "file": "Tệp",
-      "atlas": "Atlas"
+      "teammateBusy": "Teammate này đang chat trực tiếp với người dùng",
+      "activity": {
+        "yielding": "Đang bàn giao an toàn công việc chính thức…",
+        "user_intervention": "Đang chờ bạn tiếp tục công việc chính thức",
+        "side_quest": "{{count}} lượt trực tiếp đang chạy hoặc xếp hàng",
+        "yield_timeout": "Vẫn đang chờ bàn giao an toàn"
+      },
+      "outcome": {
+        "restoredTask": "Nhiệm vụ ban đầu đã tiếp tục",
+        "clearedPaused": "Việc trực tiếp đã xong; việc chính thức của nhóm vẫn tạm dừng",
+        "clearedIdle": "Việc trực tiếp đã xong; nhóm vẫn ở trạng thái rảnh",
+        "directEnded": "Việc trực tiếp đã xong",
+        "noLongerNeeded": "Việc trực tiếp đã xong; công việc ban đầu đã kết thúc hoặc được giao lại"
+      }
     },
     "agentOrgMemberStatus": {
       "idle": "Rảnh",
@@ -2490,10 +2224,10 @@
       "cancelled": "Đã hủy",
       "userIntervention": "Chat người dùng",
       "noTasks": "Không có nhiệm vụ"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
-    "plan": "Kế hoạch",
     "untitled": "Kế hoạch chưa đặt tên",
     "drafting": "Đang soạn kế hoạch…",
     "readyForReview": "Sẵn sàng để xem xét",
@@ -2508,9 +2242,6 @@
     "emptyPlan": "(kế hoạch trống)",
     "edit": "Chỉnh sửa",
     "cancelEdit": "Hủy",
-    "editAndBuild": "Chỉnh sửa và xây dựng",
-    "openInSimulator": "Mở trong Simulator",
-    "close": "Đóng",
     "collapse": "Thu gọn"
   },
   "workspace": {
@@ -2521,12 +2252,10 @@
     "errorOccurred": "Đã xảy ra lỗi",
     "failedToSendMessage": "Gửi tin nhắn thất bại",
     "noSessionIdFound": "Không tìm thấy ID Session",
-    "failedToContinue": "Tiếp tục Session thất bại",
     "failedToResume": "Tiếp tục lại Session thất bại",
-    "failedToInterrupt": "Ngắt Session thất bại",
-    "failedToStop": "Dừng Agent thất bại",
     "failedToCheckChanges": "Không thể kiểm tra thay đổi tệp. Sẽ tiến hành hoàn tác.",
-    "insufficientBalance": "Số dư không đủ cho dịch vụ ORGII được lưu trữ. Nạp tiền tại orgii.ai/wallet."
+    "insufficientBalance": "Số dư không đủ cho dịch vụ ORGII được lưu trữ. Nạp tiền tại orgii.ai/wallet.",
+    "runQueuedBehindCheckout": "Đang xếp hàng: một lần chạy khác đang dùng checkout này. Sẽ bắt đầu ngay khi lần chạy đó kết thúc."
   },
   "planning": {
     "agentTyping": "Agent đang nhập...",
@@ -2535,12 +2264,6 @@
       "Đang suy nghĩ...",
       "Đang xử lý...",
       "Đang cân nhắc bước tiếp theo..."
-    ],
-    "nextStepSlowVariants": [
-      "Đang lập kế hoạch bước tiếp theo, lâu hơn bình thường...",
-      "Vẫn đang suy nghĩ, lâu hơn bình thường...",
-      "Đang xử lý, lâu hơn bình thường...",
-      "Đang cân nhắc bước tiếp theo, lâu hơn bình thường..."
     ],
     "compacting": "Đang nén ngữ cảnh...",
     "statusTrail": {
@@ -2560,41 +2283,14 @@
     "keepChanges": "Giữ thay đổi"
   },
   "controlTower": {
-    "welcomeMessages": [
-      "Hôm nay bạn xây dựng gì?",
-      "Hôm nay bạn phát hành gì?",
-      "Hôm nay chúng ta giải quyết gì?",
-      "Bước tiếp theo là gì?",
-      "Kế hoạch tiếp theo là gì?"
-    ],
-    "quickActions": "Thao tác nhanh",
-    "recentSessions": "Phiên gần đây",
-    "viewAllSessions": "Xem tất cả phiên",
-    "noSessionsYet": "Chưa có phiên nào",
     "myAgents": "{{count}} Agent của tôi",
-    "myAgentOrgs": "{{count}} Nhóm Agent của tôi",
     "noAgentsAvailable": "Không có Agent khả dụng",
     "newAgentSession": "Phiên {{agent}} mới",
     "addAgent": "Thêm Agent",
     "myApiKeys": "{{count}} Key của tôi",
     "addApiKey": "Thêm API Key",
-    "noRepoSelected": "Chưa chọn kho lưu trữ",
     "diff": {
-      "untitledSession": "Phiên chưa đặt tên",
-      "singleFile": "Tệp đơn",
-      "unified": "Xem thống nhất",
-      "allChanges": "Tất cả thay đổi",
-      "failedToLoadDiffFor": "Không thể tải diff cho {{path}}",
-      "failedToLoadFileContent": "Không thể tải nội dung tệp",
-      "binaryFile": "Tệp nhị phân",
-      "selectFileToView": "Chọn tệp để xem diff",
-      "openProjectToViewDiff": "Mở Project để xem diff",
-      "failedToLoadDiff": "Không thể tải diff",
-      "changes": "Thay đổi",
-      "refresh": "Làm mới",
-      "noUncommittedChanges": "Không có thay đổi chưa commit",
-      "noSessionChanges": "Không có thay đổi chưa commit cho phiên này",
-      "fileCount": "{{count}} tệp"
+      "refresh": "Làm mới"
     },
     "git": {
       "filterUncommitted": "Chưa commit",
@@ -2602,77 +2298,39 @@
       "filterStaged": "Đã stage",
       "filterStashed": "Đã stash",
       "filterCountLabel_one": "{{count}} thay đổi {{label}}",
-      "filterCountLabel_other": "{{count}} thay đổi {{label}}",
-      "failedToLoad": "Không thể tải trạng thái Git",
-      "noBranchChanges": "Không có commit chưa push",
-      "unknownAuthor": "Không xác định"
-    },
-    "groups": {
-      "home": "Trang chủ",
-      "sessions": "Phiên",
-      "git": "Git",
-      "terminal": "Terminal"
+      "filterCountLabel_other": "{{count}} thay đổi {{label}}"
     },
     "history": {
-      "wingmanAgent": "Wingman Agent",
       "agentFallback": "Agent"
     },
     "sidebar": {
       "stopAgentProcess": "Dừng tiến trình Agent",
-      "closeSession": "Đóng phiên",
-      "openInBrowser": "Mở trong trình duyệt",
-      "closeTab": "Đóng tab",
-      "private": "riêng tư",
-      "newTab": "Tab mới",
-      "overview": "Tổng quan",
-      "homeBrowsers": "Thẻ trình duyệt",
-      "homeTerminals": "Phiên Terminal",
-      "openInMyStation": "Mở trong My Station",
-      "openInTerminalTab": "Mở trong thẻ Terminal"
-    },
-    "workspaceTools": {
-      "title": "Công cụ workspace",
-      "description": "Kiểm tra LSP servers và công cụ lint được đề xuất cho workspace này.",
-      "summary": "{{ready}}/{{total}} sẵn sàng",
-      "noRecommendations": "Không có công cụ được đề xuất",
-      "refresh": "Làm mới",
-      "lsp": "LSP servers",
-      "lint": "Công cụ lint",
-      "ready": "Tất cả {{total}} công cụ được đề xuất đã sẵn sàng",
-      "needsSetup": "{{ready}} trong {{total}} công cụ được đề xuất đã sẵn sàng",
-      "notApplicable": "Không có đề xuất riêng cho workspace",
-      "missing": "Thiếu",
-      "disabled": "Đã tắt"
+      "openInMyStation": "Mở trong My Station"
     }
   },
   "groupChat": {
-    "senderTitle": {
-      "message": "{{sender}} đã gửi tin nhắn",
-      "said": "{{sender}} nói"
-    },
     "taskHeader": {
       "createWithOwner": "{{sender}} đã giao tác vụ cho {{ownerName}}",
       "create": "{{sender}} đã giao tác vụ",
       "updateStatus": "{{sender}} đã cập nhật trạng thái tác vụ",
       "updateDetail": "{{sender}} đã cập nhật chi tiết tác vụ",
       "get": "{{sender}} đã xem chi tiết tác vụ",
-      "list": "{{sender}} đã xem danh sách tác vụ"
-    },
-    "messageHeader": {
-      "running": "{{sender}} đang nhắn {{recipient}}",
-      "done": "{{sender}} đã nhắn {{recipient}}",
-      "failed": "{{sender}} không nhắn được {{recipient}}",
-      "broadcastRunning": "{{sender}} đang nhắn nhiều Agent",
-      "broadcastDone": "{{sender}} đã nhắn nhiều Agent",
-      "broadcastFailed": "{{sender}} không nhắn được nhiều Agent"
+      "list": "{{sender}} đã xem danh sách tác vụ",
+      "createRunning": "{{sender}} đang tạo tác vụ",
+      "createRejected": "Việc tạo tác vụ của {{sender}} cần chỉnh sửa",
+      "createFailed": "{{sender}} không thể tạo tác vụ",
+      "updateRunning": "{{sender}} đang cập nhật tác vụ",
+      "updateRejected": "Việc cập nhật tác vụ của {{sender}} cần chỉnh sửa",
+      "updateFailed": "{{sender}} không thể cập nhật tác vụ",
+      "updateDeferred": "{{sender}} đã hoãn hoàn thành tác vụ cho đến khi dọn dẹp xong"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator đã đọc tin nhắn do agents khác gửi"
     },
     "userMessagePending": "{{member}} đang tiếp nhận tin nhắn của bạn",
     "pausedBanner": {
-      "title": "Công việc mới đang tạm dừng",
-      "body": "Tạm dừng sẽ dừng các phản hồi đang chạy, gửi tin nhắn hoặc nhấn Tiếp tục để tiếp tục",
+      "title": "Công việc chính thức đang tạm dừng",
+      "body": "Tiếp tục để làm việc với Coordinator. Bạn vẫn có thể dùng @Member cho việc phụ.",
       "resume": "Tiếp tục"
     },
     "toolUseSummary": {
@@ -2687,18 +2345,74 @@
       "explorations_other": "{{count}} lần khám phá",
       "otherTools_one": "{{count}} lần gọi công cụ khác",
       "otherTools_other": "{{count}} lần gọi công cụ khác"
+    },
+    "triggerLabel": "Trò chuyện nhóm",
+    "userMessageOutcomeUnknown": "Không xác định được kết quả gửi. Hãy thử lại lần gửi ban đầu.",
+    "coordinatorLabel": "Điều phối viên",
+    "youLabel": "Bạn",
+    "retry": "Thử lại",
+    "memberCount_one": "{{count}} thành viên",
+    "memberCount_other": "{{count}} thành viên",
+    "memberFallback": "Thành viên",
+    "retryPossibleDuplicateConfirm": "Không xác định được kết quả gửi này. Thử lại có thể lặp lại thao tác. Vẫn tạo một Turn mới?",
+    "mixedTargetError": "Hãy gửi riêng tin nhắn cho Coordinator và Member.",
+    "submitError": "Không thể gửi tin nhắn nhóm. Vui lòng thử lại.",
+    "projection": {
+      "title": "Cuộc trò chuyện nhóm của Team",
+      "queueGuidance": "Tin nhắn được xếp hàng theo mặc định. Để sửa ngay, hãy mở trang riêng của Member.",
+      "archived": "Team này đã được lưu trữ. Lịch sử nhóm chỉ có thể đọc.",
+      "loadOlder": "Tải tin nhắn cũ hơn",
+      "loadError": "Không thể tải tin nhắn nhóm.",
+      "actionError": "Không thể hoàn tất thao tác nhóm này. Vui lòng thử lại.",
+      "loading": "Đang tải tin nhắn nhóm…",
+      "empty": "Chưa có tin nhắn nhóm.",
+      "unavailable": "Tin nhắn này không khả dụng.",
+      "stop": "Dừng",
+      "retryDelivery": "Thử gửi lại",
+      "retryNewTurn": "Thử lại bằng Turn mới",
+      "activity": {
+        "taskFallback": "Tác vụ chưa đặt tên",
+        "task_created": "Đã tạo tác vụ: {{task}} · {{member}}",
+        "task_started": "{{member}} đã bắt đầu: {{task}}",
+        "task_completed": "{{member}} đã hoàn tất: {{task}}",
+        "task_failed": "{{member}} không thể hoàn tất: {{task}}",
+        "task_cancelled": "Đã hủy tác vụ: {{task}}",
+        "task_reassigned": "Đã chuyển tác vụ từ {{previousMember}} sang {{member}}: {{task}}",
+        "task_replacement_created": "Đã tạo tác vụ thay thế cho {{replacedTask}}: {{task}} · {{member}}",
+        "team_paused": "Team đã tạm dừng",
+        "team_resumed": "Team đã tiếp tục",
+        "member_returned": "{{member}} đã quay lại công việc của Team",
+        "completion_certified": "Đã xác nhận Team hoàn tất: {{outcome}}",
+        "final_report_failed": "Không thể lưu báo cáo cuối cùng",
+        "team_archived": "Team đã được lưu trữ"
+      },
+      "state": {
+        "queued": "Đang chờ",
+        "running": "Đang chạy",
+        "answered": "Đã trả lời",
+        "failed": "Thất bại",
+        "cancelled": "Đã hủy",
+        "unknown": "Không rõ kết quả"
+      }
     }
   },
   "orgTask": {
     "create": {
       "title": "Đã giao việc",
-      "titleWithOwner": "Giao việc cho {{ownerName}}"
+      "titleWithOwner": "Giao việc cho {{ownerName}}",
+      "runningTitle": "Đang tạo nhiệm vụ",
+      "rejectedTitle": "Việc tạo nhiệm vụ cần chỉnh sửa",
+      "failedTitle": "Tạo nhiệm vụ thất bại"
     },
     "update": {
       "titleStatus": "Cập nhật trạng thái việc",
       "titleDetail": "Cập nhật chi tiết việc",
       "markedAs": "Đã đánh dấu là {{status}}",
-      "title": "Đã cập nhật nhiệm vụ"
+      "title": "Đã cập nhật nhiệm vụ",
+      "runningTitle": "Đang cập nhật nhiệm vụ",
+      "rejectedTitle": "Việc cập nhật nhiệm vụ cần chỉnh sửa",
+      "failedTitle": "Cập nhật nhiệm vụ thất bại",
+      "deferredTitle": "Tạm hoãn hoàn thành tác vụ cho đến khi dọn dẹp xong"
     },
     "get": {
       "title": "Xem chi tiết nhiệm vụ"
@@ -2706,7 +2420,8 @@
     "list": {
       "title": "Xem danh sách nhiệm vụ",
       "count": "{{taskCount}} nhiệm vụ",
-      "empty": "Không có nhiệm vụ"
+      "empty": "Không có nhiệm vụ",
+      "countLabel": "Nhiệm vụ"
     },
     "statusLabel": "Trạng thái",
     "assignedBadge": "Đã giao",
@@ -2716,10 +2431,18 @@
       "pending": "Đang chờ",
       "in_progress": "Đang thực hiện",
       "completed": "Hoàn thành"
-    }
-  },
-  "manageProject": {
-    "inProject": "trong {{project}}"
+    },
+    "outcome": {
+      "pending": "Đang thực hiện",
+      "rejected": "Cần chỉnh sửa",
+      "failed": "Thất bại",
+      "deferred": "Đã tạm hoãn hoàn thành · đang chờ dọn dẹp"
+    },
+    "unassignedOwner": "Chưa được giao",
+    "currentRecordUnavailable": "Không có trạng thái hiện tại",
+    "currentStatusLabel": "Trạng thái hiện tại",
+    "currentOwnerLabel": "Người phụ trách hiện tại",
+    "replacementLabel": "Nhiệm vụ thay thế"
   },
   "manageAgentDef": {
     "action": {
@@ -2735,23 +2458,11 @@
       "get_org": "Đã lấy tổ chức"
     }
   },
-  "cursorIde": {
-    "restart": {
-      "title": "Khởi động lại Cursor để ORGII điều khiển?",
-      "message": "ORGII cần khởi động lại Cursor với điều khiển từ xa được bật để các follow-up đi vào đúng cùng một cuộc trò chuyện Cursor. Thao tác này sẽ thoát Cursor và mở lại ở chế độ ẩn với --remote-debugging-port=9230.",
-      "okLabel": "Khởi động lại Cursor",
-      "success": "Cursor đã khởi động lại ở chế độ ẩn với điều khiển từ xa được bật. Đang thử lại…",
-      "failed": "Không thể khởi động lại Cursor: {{reason}}"
-    }
-  },
   "cards": {
     "openFile": "Mở trong trình soạn thảo",
     "openLink": "Mở liên kết",
-    "broadcast": "→ Tất cả Agent",
     "agentMessage": {
       "fallbackTitle": "Tin nhắn",
-      "accepted": "Đã chấp nhận",
-      "rejected": "Đã từ chối",
       "empty": "(không có nội dung tin nhắn)",
       "status": {
         "sending": "Đang gửi…",
@@ -2764,7 +2475,8 @@
       "meta": {
         "sender": "Từ",
         "recipient": "Đến",
-        "subject": "Tiêu đề"
+        "subject": "Tiêu đề",
+        "status": "Trạng thái"
       },
       "broadcastTitle": {
         "running": "Đang gửi tin nhắn đến nhiều Agent",
@@ -2773,43 +2485,27 @@
       },
       "emailBubble": {
         "noSubject": "(không có tiêu đề)",
-        "expand": "Hiển thị toàn bộ tin nhắn",
-        "collapse": "Ẩn tin nhắn",
         "userInbox": "Hộp thư người dùng",
         "currentChannel": "Kênh hiện tại",
-        "subagentMessages": "Tin nhắn subagent",
-        "readMessagesFromSubagents": "{{agent}} đã đọc tin nhắn từ subagent"
+        "subagentMessages": "Tin nhắn subagent"
       }
     },
     "actions": {
       "moreOpenOptions": "Thêm tùy chọn mở",
       "openAsPullRequest": "Thẻ PR",
       "openAsWebPage": "Trang web",
-      "openInApp": "Mở trong ứng dụng",
-      "openWithDefaultBrowser": "Mở bằng trình duyệt mặc định",
-      "revealInFinder": "Hiển thị trong Finder",
-      "revealInExplorer": "Hiển thị trong Explorer",
-      "revealInFileManager": "Hiển thị trong trình quản lý tệp"
+      "openWithDefaultBrowser": "Mở bằng trình duyệt mặc định"
     },
     "url": {
-      "open": "Mở",
       "copyUrl": "Sao chép URL",
       "copied": "Đã sao chép URL",
       "openExternalFailed": "Không thể mở URL trong trình duyệt mặc định",
       "openPullRequestFailed": "Không thể mở thẻ pull request",
-      "groupTitle": "Trang web"
+      "changesCount_one": "{{count}} thay đổi",
+      "changesCount_other": "{{count}} thay đổi"
     },
     "path": {
-      "open": "Mở",
-      "copyPath": "Sao chép đường dẫn",
-      "copied": "Đã sao chép đường dẫn",
-      "copyFailed": "Không thể sao chép đường dẫn",
       "openFailed": "Không thể mở đường dẫn",
-      "revealFailed": "Không thể hiển thị đường dẫn trong trình quản lý tệp",
-      "name": "Tên",
-      "type": "Loại",
-      "directory": "Thư mục",
-      "file": "Tệp",
       "emptyDirectory": "Thư mục trống"
     }
   },
@@ -2830,12 +2526,12 @@
     "titleA2ui": "Agent Xem trước",
     "reload": "Tải lại",
     "openExternal": "Mở trong trình duyệt",
-    "expand": "Mở rộng",
-    "shrink": "Thu nhỏ",
-    "close": "Đóng",
-    "summarize": "Tóm tắt với Agent",
     "waiting": "Đang chờ nội dung…",
-    "empty": "Không có nội dung"
+    "empty": "Không có nội dung",
+    "openUrlDescription": "URL bên ngoài không được nhúng để tránh tốn bộ nhớ cho iframe.",
+    "openUrlTitle": "Bản xem trước không được nhúng",
+    "streaming": "đang truyền",
+    "titleReact": "Xem trước React"
   },
   "runGroup": {
     "open": "Mở",
@@ -2864,5 +2560,113 @@
   "titleBar": {
     "showDevTools": "Hiện DevTools",
     "hideDevTools": "Ẩn DevTools"
+  },
+  "canvasApp": {
+    "empty": "Chưa có Canvas nào được hiển thị",
+    "sidebarTitle": "Canvas",
+    "noCanvases": "Chưa có Canvas nào",
+    "revisionCanvas": "Canvas",
+    "revisionTitle": "Đang cập nhật {{title}}",
+    "revisionReceiving": "Đang tạo thay đổi · {{amount}} ký tự",
+    "revisionApplying": "Đang áp dụng thay đổi đã xác thực…",
+    "revisionDoneTitle": "Đã cập nhật {{title}}",
+    "revisionFailedTitle": "Không thể cập nhật {{title}}",
+    "revisionTargetedSummary": "Thay đổi có mục tiêu: {{amount}} · cùng Canvas",
+    "revisionTargetedSummary_one": "{{count}} thay đổi có mục tiêu · cùng Canvas",
+    "revisionTargetedSummary_other": "{{count}} thay đổi có mục tiêu · cùng Canvas",
+    "revisionReplacementSummary": "Thay thế toàn bộ · {{amount}} ký tự · cùng Canvas",
+    "revisionUrlSummary": "Đã cập nhật URL · cùng Canvas",
+    "revisionGenericSummary": "Canvas hiện có đã được cập nhật tại chỗ",
+    "revisionStepsLabel": "Tiến trình cập nhật Canvas",
+    "compareToggle": "So sánh",
+    "compareMark": "so với",
+    "compareHint": "Đã chọn 2 — đang hiển thị khác biệt",
+    "design": "Thiết kế",
+    "designHint": "Chọn một phần tử để thay đổi",
+    "designUnavailable": "Thiết kế không khả dụng",
+    "designPromptLabel": "Mô tả thay đổi cho Canvas",
+    "designPromptPlaceholder": "Mô tả điều cần thay đổi…",
+    "clearDesignSelection": "Bỏ chọn trên Canvas",
+    "compareTooLarge": "Các phiên bản này quá lớn để so sánh",
+    "revisionReceivingLabel": "Đang tạo thay đổi…",
+    "designHoverHint": "Nhấp để chọn, kéo để vẽ",
+    "share": "Chia sẻ",
+    "shareHint": "Chia sẻ ảnh chụp Canvas này",
+    "shareWaitForRevision": "Hãy đợi cập nhật Canvas hoàn tất",
+    "shareLocalUrlUnavailable": "Người khác không thể mở URL cục bộ",
+    "shareTooLarge": "Canvas này quá lớn để tạo liên kết chia sẻ",
+    "shareEmpty": "Canvas này không có nội dung để chia sẻ",
+    "shareDialogTitle": "Chia sẻ Canvas",
+    "shareDialogScope": "Chỉ ảnh chụp Canvas này được bao gồm. Cuộc trò chuyện, kho lưu trữ, phiên và các bản sửa đổi sau đó không được chia sẻ.",
+    "shareDialogPreparing": "Đang tạo liên kết…",
+    "shareDialogLink": "Liên kết chia sẻ Canvas",
+    "shareDialogCopyFailed": "Sao chép thất bại. Hãy chọn liên kết và sao chép thủ công.",
+    "shareDialogPublic": "Bất kỳ ai có liên kết này đều có thể xem ảnh chụp.",
+    "shareDialogShortExpiry": "Liên kết rút gọn · có hiệu lực đến {{date}}",
+    "shareDialogFallback": "Dịch vụ rút gọn liên kết không khả dụng, nên đã tạo liên kết đầy đủ thay thế.",
+    "shareDialogOpen": "Mở",
+    "shareDialogCopied": "Đã sao chép",
+    "shareDialogCopy": "Sao chép liên kết",
+    "shareDialogTooLarge": "Canvas này quá lớn để tạo liên kết tự chứa đáng tin cậy.",
+    "shareDialogShortUnavailable": "Dịch vụ chia sẻ tạm thời không thể truy cập và Canvas này quá lớn để tạo liên kết tự chứa. Hãy thử lại sau giây lát.",
+    "shareDialogUnsupported": "Phiên bản ứng dụng này không thể tạo liên kết Canvas nén.",
+    "shareDialogInvalid": "Canvas này không chứa ảnh chụp có thể phát hành.",
+    "shareDialogError": "Không thể tạo liên kết Canvas.",
+    "shareDialogRetryShort": "Thử lại liên kết rút gọn",
+    "shareDialogRetryingShort": "Đang thử lại…",
+    "retry": "Thử lại",
+    "reactArtifactFrame": "Xem trước Canvas React"
+  },
+  "domSelection": {
+    "previewTitle": "Xem trước vùng chọn Canvas",
+    "elementsCount_one": "{{count}} phần tử",
+    "elementsCount_other": "{{count}} phần tử",
+    "regionLabel": "Vùng · {{label}}"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "empty": "Chưa có Routine nào — hãy áp dụng một Routine từ CLI trước",
+    "notInstalled": "Chưa cài đặt",
+    "enabled": "Đã bật",
+    "disabled": "Đã tắt",
+    "paused": "Đã tạm dừng sau {{count}} lần thất bại",
+    "install": "Cài đặt webhook",
+    "rotate": "Xoay vòng secret",
+    "enable": "Bật",
+    "disable": "Tắt",
+    "secretHint": "Secret",
+    "secretShownOnce": "Secret chỉ hiển thị một lần — hãy lưu vào nhà cung cấp của bạn ngay.",
+    "noDeliveries": "Chưa có lượt gửi nào",
+    "replay": "Gửi lại",
+    "replayQueued": "Đã gửi lại lượt gửi",
+    "copied": "Đã sao chép",
+    "copyFailed": "Sao chép thất bại"
+  },
+  "conversation": {
+    "promptMode": "Agent",
+    "teamChatMode": "Trò chuyện nhóm",
+    "promptTooltip": "Gửi cho agent",
+    "teamChatTooltip": "Nhắn cho đồng đội — không kích hoạt agent",
+    "imagesUnsupported": "Tin nhắn trò chuyện nhóm không thể chứa hình ảnh",
+    "participantsTooltip": "Người tham gia cuộc trò chuyện và tin nhắn thảo luận",
+    "mentionGroup": "Đồng đội"
+  },
+  "weeklyQuotaHistory": {
+    "previousWeek": "Tuần trước",
+    "nextWeek": "Tuần sau",
+    "emptyWeek": "Không có dữ liệu cho tuần này",
+    "title": "Lịch sử quota hàng tuần",
+    "error": "Lịch sử quota không khả dụng. Sẽ thử lại khi bạn quay lại cửa sổ này",
+    "empty": "Kết nối tài khoản Claude Code, Codex hoặc OpenCode Go trong Key Vault để bắt đầu theo dõi",
+    "loading": "Đang tải lịch sử quota…",
+    "unsupported": "Tài khoản này không báo cáo quota hàng tuần",
+    "unavailable": "Lần đọc mới nhất không khả dụng; hãy kiểm tra kết nối tài khoản trong Key Vault",
+    "pending": "Đang chờ mẫu hàng giờ tiếp theo",
+    "remaining": "% còn lại",
+    "refresh": "Làm mới",
+    "account": "Tài khoản",
+    "stale": "Lần quan sát gần nhất đã hơn hai giờ",
+    "disabled": "Đã tạm dừng lấy mẫu cho tài khoản bị tắt này",
+    "limit": "Hiển thị tối đa 128 tài khoản"
   }
 }

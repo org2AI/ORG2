@@ -1,10 +1,4 @@
-import React, {
-  type ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { type ReactNode, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
@@ -14,6 +8,7 @@ import Select from "@src/components/Select";
 import type { SelectOption, SelectProps } from "@src/components/Select";
 import Table, { type TableColumn } from "@src/components/Table";
 import Tooltip from "@src/components/Tooltip";
+import { useElementDimensions } from "@src/hooks/ui/layout/useElementDimensions";
 import {
   FilterIcon,
   HugeiconsIcon,
@@ -28,67 +23,7 @@ import {
 } from "./SettingsTableAddFooter";
 import { SettingsTablePagination } from "./SettingsTablePagination";
 
-/**
- * Settings Table Cell Tokens
- *
- * All text inside SettingsTable cells inherits font-size: 13px
- * from `.table-settings .table-td` — never override with text-sm/text-xs
- * for regular cell content.
- *
- * Usage:
- * ```tsx
- * import { SETTINGS_TABLE_CELL } from "@src/components/SettingsTable";
- *
- * renderCell: (row) => <span className={SETTINGS_TABLE_CELL.primary}>{row.name}</span>
- * renderCell: (row) => <span className={SETTINGS_TABLE_CELL.value}>{row.size}</span>
- * ```
- */
-export const SETTINGS_TABLE_CELL = {
-  /** Primary label — first column or main identifier */
-  primary: "text-text-1",
-  /** Primary label with leading icon */
-  primaryIcon: "inline-flex items-center gap-1.5 text-text-1",
-  /** Data value — secondary columns like size, version */
-  value: "text-text-2",
-  /** Muted value — tertiary columns like percentage */
-  muted: "text-text-3",
-  /** Subtitle under primary text — deliberately smaller */
-  subtitle: "text-xs text-text-3",
-  /** Status row with icon + label inline */
-  statusRow: "inline-flex items-center gap-1.5",
-} as const;
-
-/**
- * Column width presets for SettingsTable.
- *
- * | Token        | Use for                            | Sizing            |
- * |--------------|------------------------------------|--------------------|
- * | `fill`       | Primary text / label column        | Absorbs remaining  |
- * | `valueSm`    | Short values: "0 B", "Yes", status | Hug content        |
- * | `valueMd`    | Sized values: "93.4 MB", "77.8%"   | Comfortable fixed  |
- * | `valueLg`    | Spread-out tables (e.g. DB)       | 140px              |
- * | `hug`        | Action buttons, icon-only columns  | Shrink-wrap        |
- * | `control`    | Column with Select/Input           | Shrink-wrap        |
- * | `controlStyle` | Inline style for the control     | Fixed 200px        |
- *
- * All value/hug columns pair with `whitespace-nowrap` on cell content.
- */
-export const SETTINGS_TABLE_COL = {
-  /** Primary column — absorbs remaining space (auto layout distributes leftover here) */
-  fill: "",
-  /** Small value — version, status dot, short text — hug content */
-  valueSm: "1%",
-  /** Medium value — "93.4 MB", "77.8%" — guaranteed minimum width */
-  valueMd: "110px",
-  /** Large value — spread-out tables (e.g. DB clients) */
-  valueLg: "140px",
-  /** Shrink-wrap column — action buttons, icons */
-  hug: "1%",
-  /** Column containing a Select or Input — shrink-wraps around the control */
-  control: "1%",
-  /** Inline style for the Select/Input inside a control column */
-  controlStyle: { width: 200 } as React.CSSProperties,
-} as const;
+export { SETTINGS_TABLE_CELL, SETTINGS_TABLE_COL } from "./tokens";
 
 export interface SettingsTableColumn<RowData> {
   key: string;
@@ -160,7 +95,7 @@ export interface SettingsTableProps<RowData> {
     onExpandedRowsChange?: (keys: string[]) => void;
     onSubRowClick?: (parentRecord: RowData, subRowIndex: number) => void;
   };
-  /** Table-level loading overlay; keeps header, toolbar, and columns visible. */
+  /** Body-only loading state; keeps header, toolbar, columns, and footer visible. */
   loading?: boolean;
   /** Custom title for the empty state Placeholder. */
   emptyTitle?: string;
@@ -199,7 +134,7 @@ export interface SettingsTableProps<RowData> {
   /** When true, removes horizontal cell padding on outer edges (first-child left, last-child right).
    *  Use for tables nested inside SectionContainer which already provides px-4. */
   noPx?: boolean;
-  /** Row click handler. Clicks on interactive elements (buttons, links, inputs) are ignored. */
+  /** Row click handler. Non-interactive row clicks also toggle expandable rows; buttons, links, and inputs are ignored. */
   onRowClick?: (row: RowData) => void;
   /** Enable row hover highlight. Default: false */
   hover?: boolean;
@@ -277,7 +212,7 @@ function SettingsTableToolbar({
 
   return (
     <div className="flex min-w-0 flex-col gap-2 pt-2 pb-2 @[640px]:flex-row @[640px]:items-center">
-      <div className="order-2 w-full min-w-0 overflow-x-auto overflow-y-hidden @[640px]:order-1 @[640px]:w-auto @[640px]:flex-none">
+      <div className="order-2 scrollbar-hide w-full min-w-0 overflow-x-auto overflow-y-hidden @[640px]:order-1 @[640px]:w-auto @[640px]:flex-none">
         <div className="flex w-max min-w-full items-center gap-2">
           {searchBar?.leftContent}
           {selectFilters?.map((filter) => {
@@ -369,7 +304,7 @@ function SelectFilterRow({
 }) {
   return (
     <div
-      className={`min-w-0 overflow-x-auto overflow-y-hidden px-1 pb-1 ${hasSearchBarAbove ? "" : "pt-1"}`}
+      className={`scrollbar-hide min-w-0 overflow-x-auto overflow-y-hidden px-1 pb-1 ${hasSearchBarAbove ? "" : "pt-1"}`}
     >
       <div className="flex w-max min-w-full items-center gap-2">
         {filters.map((filter) => {
@@ -436,22 +371,13 @@ export default function SettingsTable<RowData>({
   rootClassName = "",
 }: SettingsTableProps<RowData>) {
   const searchRef = useRef<HTMLDivElement>(null);
-  const [searchHeight, setSearchHeight] = useState(0);
   const hasSelectFilterRow =
     (!!selectFilters && selectFilters.length > 0) || !!selectFiltersExtra;
   const hasSearchBar = !!searchBar || hasSelectFilterRow;
-
-  useEffect(() => {
-    const el = searchRef.current;
-    if (!el) return;
-
-    const measure = () => setSearchHeight(el.offsetHeight);
-    measure();
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasSearchBar]);
+  const searchHeight = useElementDimensions(searchRef, {
+    dimension: "height",
+    deps: [hasSearchBar],
+  });
 
   const resolvedFooter =
     footer ??
@@ -637,17 +563,14 @@ export default function SettingsTable<RowData>({
         rowDataTestId={rowDataTestId}
         rowDataAttributes={rowDataAttributes}
         noDataElement={
-          noDataElement ??
-          (loading ? (
-            <div className="min-h-[120px]" />
-          ) : (
+          noDataElement ?? (
             <Placeholder
               variant="empty"
               title={emptyTitle}
               subtitle={emptySubtitle}
               action={emptyAction}
             />
-          ))
+          )
         }
       />
       {resolvedFooter}

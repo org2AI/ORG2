@@ -8,9 +8,9 @@ import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
 import Markdown from "@src/components/MarkDown";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import Radio from "@src/components/Radio";
 import type { RadioValue } from "@src/components/Radio";
@@ -141,9 +141,9 @@ const SkillEditorPanel: React.FC<SkillEditorPanelProps> = ({
       >
         {errorMessage && (
           <div className="mb-4">
-            <InlineAlert type="danger" title={t("common:status.error")}>
+            <PageNotice type="danger" title={t("common:status.error")}>
               {errorMessage}
-            </InlineAlert>
+            </PageNotice>
           </div>
         )}
 

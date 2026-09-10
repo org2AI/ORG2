@@ -176,11 +176,11 @@ export function GroupChatPausedBanner({
           content: (
             <ChatStatusTwoLineContent
               title={t("groupChat.pausedBanner.title", {
-                defaultValue: "New work is paused",
+                defaultValue: "Formal work is paused",
               })}
               description={t("groupChat.pausedBanner.body", {
                 defaultValue:
-                  "Pause stops active replies, send a message or press Resume to continue",
+                  "Resume for Coordinator work. You can still @Member for a side quest.",
               })}
             />
           ),

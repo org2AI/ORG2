@@ -41,9 +41,9 @@ pub async fn es_load_from_cache(
     state: State<'_, EventStoreState>,
     session_id: String,
 ) -> Result<usize, String> {
-    let existing_count = state
-        .with_store_opt(&session_id, |store| store.events().len())
-        .unwrap_or(0);
+    let (existing_count, observed_version) = state
+        .with_store_opt(&session_id, |store| (store.events().len(), store.version()))
+        .unwrap_or((0, 0));
     if existing_count > 0 {
         schedule_notify(&app, &state, &session_id);
         return Ok(existing_count);
@@ -69,11 +69,21 @@ pub async fn es_load_from_cache(
         }
     }
 
+    let group_root_source_ids =
+        super::agent_org_group_visibility::group_root_source_event_ids(&session_id)?;
+    super::agent_org_group_visibility::retain_ordinary_session_events(
+        &mut events,
+        &group_root_source_ids,
+    );
     let events = prepare_loaded_events(&session_id, events);
-    let count = events.len();
+    let mut count = events.len();
     if count > 0 {
-        state.with_store_mut(&session_id, |store| {
-            store.set(events);
+        count = state.with_store_mut(&session_id, |store| {
+            // Cache hydration is a fallback, never a newer authority than a
+            // native load or live event that completed while SQLite was read.
+            if !store.set_if_version(events, observed_version) {
+                return store.events().len();
+            }
             store.repair_subagent_links();
             // Cancel any orphan interactive tool calls that are still
             // AwaitingUser. When the Rust process restarts the QuestionManager
@@ -88,6 +98,7 @@ pub async fn es_load_from_cache(
                     cancelled,
                 );
             }
+            store.events().len()
         });
     }
     schedule_notify(&app, &state, &session_id);

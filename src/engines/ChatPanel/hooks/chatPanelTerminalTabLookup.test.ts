@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { TerminalSession } from "@src/engines/TerminalCore/types";
-import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
 import { findOpenCliTerminalTab } from "./chatPanelTerminalTabLookup";
 

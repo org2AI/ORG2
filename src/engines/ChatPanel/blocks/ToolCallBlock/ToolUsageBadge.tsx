@@ -8,7 +8,7 @@ import {
   ArrowUpFromDotIcon,
   HugeiconsIcon,
 } from "@src/icons";
-import { chatTokenUsageVisibleAtom } from "@src/store/ui/chatPanelAtom";
+import { chatTokenUsageVisibleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 interface UsagePairBadgeProps {
   inputTokens: number;

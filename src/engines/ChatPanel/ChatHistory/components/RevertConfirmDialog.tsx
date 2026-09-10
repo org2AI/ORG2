@@ -80,7 +80,7 @@ const RevertConfirmDialog: React.FC = () => {
       escToExit
       width={440}
       footer={
-        <div className="flex items-center justify-end gap-2 px-4 pb-4">
+        <div className="flex items-center justify-end gap-2 px-3 pb-4">
           <Button
             size="small"
             data-testid="rewind-file-changes-cancel"

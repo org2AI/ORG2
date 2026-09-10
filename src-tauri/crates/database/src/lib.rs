@@ -30,7 +30,11 @@
 pub mod db;
 
 pub use db::{
-    begin_immediate, configure_connection, get_db_path, init_shell_replay_tables,
-    register_projects_init, register_sessions_init, sessions_writer_guard, with_sessions_writer,
-    SessionsWriterGuard,
+    begin_connection_pool_shutdown, begin_immediate, checkpoint_database,
+    checkpoint_projects_for_shutdown, checkpoint_sessions_for_shutdown,
+    checkpoint_sessions_if_wal_exceeds, configure_connection, connection_pool_metrics, get_db_path,
+    init_shell_replay_tables, register_projects_init, register_sessions_init,
+    sessions_writer_guard, try_with_sessions_writer, wal_bytes, wal_path, with_sessions_writer,
+    ConnectionPoolDrainReport, ConnectionPoolMetrics, ConnectionPoolPathMetrics,
+    SessionsWriterGuard, WalCheckpointMode, WalCheckpointReport, WalMaintenanceOutcome,
 };

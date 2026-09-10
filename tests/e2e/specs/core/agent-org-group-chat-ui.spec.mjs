@@ -20,7 +20,6 @@ import {
   assertRenderedGroupChatToggleIsIdempotent,
   assertRenderedInboxPinBarAbsent,
   clickGroupChatResumeButton,
-  clickRenderedGroupChatLoadOlder,
   clickRenderedMemberSwitcher,
   clickReturnToWorkAndWaitCleared,
   configureCreatorForAgentOrg,
@@ -39,12 +38,12 @@ import {
   parseInboxPayload,
   refreshRenderedAgentOrgOverview,
   removeAgentOrgsByName,
+  seedFlatAgentOrg,
   selectMemberOverrideModel,
   selectPreferredModel,
   selectRenderedAgentOrg,
   selectRenderedDefaultAgentOrg,
   selectRenderedExecMode,
-  selectRenderedTurnPageByPreview,
   sendCoordinatorOrgMessage,
   sendFromRenderedCreator,
   sendRenderedChatPrompt,
@@ -105,10 +104,7 @@ async function pauseDefaultAgentOrgRuns(label) {
     (run) =>
       run?.orgId === DEFAULT_AGENT_ORG_ID &&
       run?.rootSessionId &&
-      run?.status !== "completed" &&
-      run?.status !== "failed" &&
-      run?.status !== "cancelled" &&
-      run?.status !== "paused"
+      run?.status === "running"
   );
   for (const run of activeRuns) {
     unwrap(
@@ -116,6 +112,108 @@ async function pauseDefaultAgentOrgRuns(label) {
       `agentOrgPauseRun(${label}:${run.rootSessionId})`
     );
   }
+}
+
+async function waitForTaskFsmProductionScenario(sessionId, scenarioId) {
+  let latestTasks = [];
+  let latestRunId = null;
+  let latestReadError = null;
+  try {
+    await browser.waitUntil(
+      async () => {
+        try {
+          const view = unwrap(
+            await invokeE2E("agentOrgSessionRunView", sessionId),
+            `agentOrgSessionRunView(Task FSM ${scenarioId})`
+          ).view;
+          latestRunId = view?.context?.runId ?? latestRunId;
+          if (!latestRunId) return false;
+          latestTasks = unwrap(
+            await invokeE2E("debugAgentOrgTasksList", latestRunId),
+            `debugAgentOrgTasksList(Task FSM ${scenarioId})`
+          ).tasks;
+          latestReadError = null;
+          const subject = (prefix) =>
+            latestTasks.find(
+              (task) => task?.subject === `${prefix}:${scenarioId}`
+            );
+          const pagedHistory = latestTasks.filter((task) =>
+            String(task?.subject ?? "").startsWith(
+              `E2E_TASK_FSM_HISTORY:${scenarioId}:`
+            )
+          );
+          return Boolean(
+            subject("E2E_TASK_FSM_PENDING")?.status ===
+              AGENT_ORG_TASK_STATUS.PENDING &&
+            subject("E2E_TASK_FSM_REPLACEMENT")?.status ===
+              AGENT_ORG_TASK_STATUS.PENDING &&
+            subject("E2E_TASK_FSM_COMPLETE")?.status ===
+              AGENT_ORG_TASK_STATUS.COMPLETED &&
+            subject("E2E_TASK_FSM_FAIL")?.status ===
+              AGENT_ORG_TASK_STATUS.FAILED &&
+            subject("E2E_TASK_FSM_LATE")?.status ===
+              AGENT_ORG_TASK_STATUS.CANCELLED &&
+            pagedHistory.length === 20 &&
+            pagedHistory.every(
+              (task) => task.status === AGENT_ORG_TASK_STATUS.COMPLETED
+            )
+          );
+        } catch (error) {
+          latestReadError = String(error);
+          return false;
+        }
+      },
+      {
+        timeout: REPLY_TIMEOUT_MS,
+        interval: 500,
+        timeoutMsg: `Task FSM production scenario ${scenarioId} did not settle`,
+      }
+    );
+  } catch (error) {
+    throw new Error(
+      `Task FSM production scenario ${scenarioId} did not settle: ${JSON.stringify({ latestRunId, latestReadError, latestTasks })}`,
+      { cause: error }
+    );
+  }
+  return latestTasks;
+}
+
+async function waitForRenderedTaskHistory(status, expectedCount, label) {
+  let state = null;
+  try {
+    await browser.waitUntil(
+      async () => {
+        state = await execJS(`
+          const rows = Array.from(document.querySelectorAll('[data-testid="agent-org-task-history-row"]'));
+          return {
+            rows: rows.map((row) => ({
+              id: row.getAttribute('data-task-id') || '',
+              status: row.getAttribute('data-task-status') || '',
+              text: row.textContent || '',
+            })),
+            nextDisabled: document.querySelector('[data-testid="agent-org-task-history-next-page"]')?.disabled ?? null,
+            previousDisabled: document.querySelector('[data-testid="agent-org-task-history-previous-page"]')?.disabled ?? null,
+            error: document.querySelector('[role="alert"]')?.textContent || '',
+          };
+        `);
+        return (
+          state.rows.length === expectedCount &&
+          state.rows.every((row) => row.status === status)
+        );
+      },
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg: `Task History did not render ${label}`,
+      }
+    );
+  } catch (error) {
+    throw new Error(
+      `Task History did not render ${label}: ${JSON.stringify(state)}`,
+      { cause: error }
+    );
+  }
+  return state;
 }
 
 describe("Agent Org group chat and plan rendered UI", () => {
@@ -200,6 +298,348 @@ describe("Agent Org group chat and plan rendered UI", () => {
       },
       "default Agent Org plan members materialized"
     );
+  });
+
+  it("certifies completed work from the atomic snapshot without a task_list refresh", async () => {
+    const account = await getApiAccount();
+    const model = selectPreferredModel(account);
+    await configureCreatorForDefaultAgentOrg({ account, model });
+    await selectRenderedExecMode("build");
+    await selectRenderedDefaultAgentOrg();
+
+    const scenarioId = `certificate_${RUN_ID}`;
+    const sessionId = await sendFromRenderedCreator(
+      `Run E2E_AGENT_ORG_COMPLETION:${scenarioId}`
+    );
+    if (!sessionId) {
+      throw new Error(
+        "completion-candidate regression did not create a session"
+      );
+    }
+
+    let finalView = null;
+    await browser.waitUntil(
+      async () => {
+        finalView = unwrap(
+          await invokeE2E("agentOrgSessionRunView", sessionId),
+          "agentOrgSessionRunView(completion candidate regression)"
+        ).view;
+        return Boolean(
+          finalView?.taskOverview?.total === 1 &&
+          finalView?.taskOverview?.completed === 1 &&
+          finalView?.completion?.state === "certified" &&
+          finalView?.completion?.outcome === "delivered" &&
+          finalView?.completion?.certificateId
+        );
+      },
+      {
+        timeout: REPLY_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg:
+          "completed Task did not produce one published delivery certificate",
+      }
+    );
+
+    const history = await postJson("/agent/test/session/llm-history", {
+      session_id: sessionId,
+    });
+    const names = (history.messages ?? []).flatMap((message) =>
+      (message?.tool_calls ?? []).map(
+        (call) => call?.function?.name ?? call?.name ?? null
+      )
+    );
+    const trajectory = {
+      completionCalls: names.filter((name) => name === "org_run_complete")
+        .length,
+      taskListCalls: names.filter((name) => name === "task_list").length,
+      names,
+    };
+    if (trajectory?.completionCalls !== 1 || trajectory?.taskListCalls !== 0) {
+      throw new Error(
+        `completion trajectory refreshed task_list or issued multiple certificates: ${JSON.stringify(trajectory)}`
+      );
+    }
+
+    await openAgentOrgOverviewPanel("completion candidate Delivered");
+    const completionBadge = await execJS(`
+      const badge = document.querySelector('[data-completion-state]');
+      return badge ? {
+        state: badge.getAttribute('data-completion-state'),
+        outcome: badge.getAttribute('data-completion-outcome'),
+        text: badge.textContent || '',
+      } : null;
+    `);
+    if (
+      completionBadge?.state !== "certified" ||
+      completionBadge?.outcome !== "delivered" ||
+      !String(completionBadge?.text ?? "").match(/Delivered|已验证交付/)
+    ) {
+      throw new Error(
+        `Overview did not render certificate-backed Delivered: ${JSON.stringify({ completionBadge, finalView })}`
+      );
+    }
+  });
+
+  it("enforces the Agent Org Task FSM through the packaged production Tool path", async () => {
+    const account = await getApiAccount();
+    const model = selectPreferredModel(account);
+    await configureCreatorForDefaultAgentOrg({ account, model });
+    await selectRenderedExecMode("build");
+    await selectRenderedDefaultAgentOrg();
+
+    const scenarioIds = [1, 2, 3].map((index) => `page${index}_${RUN_ID}`);
+    const sessionId = await sendFromRenderedCreator(
+      `Run ${`E2E_AGENT_ORG_TASK_FSM:${scenarioIds[0]}`}`
+    );
+    if (!sessionId) {
+      throw new Error(
+        "Task FSM production-path launch did not create a session"
+      );
+    }
+
+    await waitForAgentOrgRunView(
+      sessionId,
+      (view) =>
+        (view?.tasks ?? []).some(
+          (task) => task.status === AGENT_ORG_TASK_STATUS.IN_PROGRESS
+        ) &&
+        (view?.tasks ?? []).some(
+          (task) => task.status === AGENT_ORG_TASK_STATUS.PENDING
+        ),
+      "Task FSM Current Work exposes pending and in-progress"
+    );
+
+    const scenarioTasks = [];
+    scenarioTasks.push(
+      await waitForTaskFsmProductionScenario(sessionId, scenarioIds[0])
+    );
+    for (const scenarioId of scenarioIds.slice(1)) {
+      await sendRenderedChatPrompt(`Run E2E_AGENT_ORG_TASK_FSM:${scenarioId}`);
+      scenarioTasks.push(
+        await waitForTaskFsmProductionScenario(sessionId, scenarioId)
+      );
+    }
+
+    const settledTasks = scenarioTasks.at(-1) ?? [];
+    const statusCounts = settledTasks.reduce((counts, task) => {
+      counts[task.status] = (counts[task.status] ?? 0) + 1;
+      return counts;
+    }, {});
+    const duplicateSubjects = Object.entries(
+      settledTasks.reduce((counts, task) => {
+        counts[task.subject] = (counts[task.subject] ?? 0) + 1;
+        return counts;
+      }, {})
+    ).filter(([, count]) => count > 1);
+    if (
+      settledTasks.length !== 75 ||
+      statusCounts[AGENT_ORG_TASK_STATUS.PENDING] !== 6 ||
+      statusCounts[AGENT_ORG_TASK_STATUS.COMPLETED] !== 63 ||
+      statusCounts[AGENT_ORG_TASK_STATUS.FAILED] !== 3 ||
+      statusCounts[AGENT_ORG_TASK_STATUS.CANCELLED] !== 3
+    ) {
+      throw new Error(
+        `Task FSM production scenarios created an unexpected Task set: ${JSON.stringify({ taskCount: settledTasks.length, statusCounts, duplicateSubjects })}`
+      );
+    }
+
+    for (let index = 0; index < scenarioIds.length; index += 1) {
+      const scenarioId = scenarioIds[index];
+      const tasks = scenarioTasks[index];
+      const find = (prefix) =>
+        tasks.find((task) => task.subject === `${prefix}:${scenarioId}`);
+      const completed = find("E2E_TASK_FSM_COMPLETE");
+      const failed = find("E2E_TASK_FSM_FAIL");
+      const cancelled = find("E2E_TASK_FSM_LATE");
+      const replacement = find("E2E_TASK_FSM_REPLACEMENT");
+      if (
+        completed?.output?.producedByMemberId !==
+          DEFAULT_AGENT_ORG_MEMBER_IDS.REVIEWER ||
+        !completed?.output?.producedAt ||
+        failed?.failureReason?.code !== "e2e.expected_failure" ||
+        cancelled?.cancelReason?.code !== "e2e.replaced" ||
+        cancelled?.output != null ||
+        replacement?.replacesTaskId !== cancelled?.id ||
+        replacement?.owner != null ||
+        !replacement?.sourceTurnIntentId ||
+        replacement?.createdByParticipantId !== AGENT_ORG_COORDINATOR_MEMBER_ID
+      ) {
+        throw new Error(
+          `Task FSM provenance/result invariant failed for ${scenarioId}: ${JSON.stringify({ completed, failed, cancelled, replacement })}`
+        );
+      }
+    }
+
+    await openAgentOrgOverviewPanel("Task FSM Current/History");
+    const collapsed = await execJS(`
+      return {
+        expanded: document.querySelector('[data-testid="agent-org-task-history-toggle"]')?.getAttribute('aria-expanded'),
+        hasHistoryList: Boolean(document.querySelector('[data-testid="agent-org-task-history-list"]')),
+        currentStatuses: Array.from(document.querySelectorAll('[data-testid="agent-org-overview-task-row"]')).map((row) => row.getAttribute('data-task-status')),
+      };
+    `);
+    if (
+      collapsed?.expanded !== "false" ||
+      collapsed?.hasHistoryList !== false ||
+      !collapsed?.currentStatuses.every(
+        (status) => status === AGENT_ORG_TASK_STATUS.PENDING
+      )
+    ) {
+      throw new Error(
+        `Task FSM collapsed History/Current Work invariant failed: ${JSON.stringify(collapsed)}`
+      );
+    }
+
+    const historyToggle = await execJS(
+      js.click('[data-testid="agent-org-task-history-toggle"]')
+    );
+    if (historyToggle !== "clicked") {
+      throw new Error(`Task FSM History toggle failed: ${historyToggle}`);
+    }
+    const completedFirstPage = await waitForRenderedTaskHistory(
+      AGENT_ORG_TASK_STATUS.COMPLETED,
+      50,
+      "completed first page"
+    );
+    if (completedFirstPage.nextDisabled !== false) {
+      throw new Error(
+        `Task FSM completed first page did not expose a next cursor: ${JSON.stringify(completedFirstPage)}`
+      );
+    }
+    const firstPageFirstId = completedFirstPage.rows[0]?.id;
+    const nextPage = await execJS(
+      js.click('[data-testid="agent-org-task-history-next-page"]')
+    );
+    if (nextPage !== "clicked") {
+      throw new Error(`Task FSM History next page failed: ${nextPage}`);
+    }
+    const completedSecondPage = await waitForRenderedTaskHistory(
+      AGENT_ORG_TASK_STATUS.COMPLETED,
+      13,
+      "completed second page"
+    );
+    if (
+      completedSecondPage.previousDisabled !== false ||
+      completedSecondPage.rows[0]?.id === firstPageFirstId
+    ) {
+      throw new Error(
+        `Task FSM completed second page cursor invariant failed: ${JSON.stringify(completedSecondPage)}`
+      );
+    }
+    await execJS(
+      js.click('[data-testid="agent-org-task-history-previous-page"]')
+    );
+    await waitForRenderedTaskHistory(
+      AGENT_ORG_TASK_STATUS.COMPLETED,
+      50,
+      "completed previous page"
+    );
+
+    const completedTaskId = scenarioTasks[0].find(
+      (task) => task.subject === `E2E_TASK_FSM_COMPLETE:${scenarioIds[0]}`
+    )?.id;
+    if (!completedTaskId) {
+      throw new Error(
+        "Task FSM completed Task id was missing from the durable snapshot"
+      );
+    }
+    let completedDetail = await execJS(`
+      const row = Array.from(document.querySelectorAll('[data-testid="agent-org-task-history-row"]'))
+        .find((candidate) => candidate.getAttribute('data-task-id') === ${JSON.stringify(completedTaskId)});
+      const toggle = row?.querySelector('[data-testid="agent-org-task-detail-toggle"]');
+      if (!toggle) return 'missing';
+      toggle.click();
+      return 'clicked';
+    `);
+    if (completedDetail === "missing") {
+      await execJS(
+        js.click('[data-testid="agent-org-task-history-next-page"]')
+      );
+      await waitForRenderedTaskHistory(
+        AGENT_ORG_TASK_STATUS.COMPLETED,
+        13,
+        "completed detail page"
+      );
+      completedDetail = await execJS(`
+        const row = Array.from(document.querySelectorAll('[data-testid="agent-org-task-history-row"]'))
+          .find((candidate) => candidate.getAttribute('data-task-id') === ${JSON.stringify(completedTaskId)});
+        const toggle = row?.querySelector('[data-testid="agent-org-task-detail-toggle"]');
+        if (!toggle) return 'missing';
+        toggle.click();
+        return 'clicked';
+      `);
+    }
+    if (completedDetail !== "clicked") {
+      throw new Error(
+        `Task FSM completed detail toggle failed: ${completedDetail}`
+      );
+    }
+    await browser.waitUntil(
+      async () => {
+        const detail = await execJS(`
+          const row = Array.from(document.querySelectorAll('[data-testid="agent-org-task-history-row"]'))
+            .find((candidate) => candidate.getAttribute('data-task-id') === ${JSON.stringify(completedTaskId)});
+          return row?.querySelector('[data-testid="agent-org-task-detail"]')?.textContent || '';
+        `);
+        return (
+          detail.includes(`E2E completed ${scenarioIds[0]}`) &&
+          detail.includes(`E2E production-path evidence for ${scenarioIds[0]}`)
+        );
+      },
+      { timeout: RENDER_TIMEOUT_MS, interval: 250 }
+    );
+
+    await execJS(
+      js.click('[data-testid="agent-org-task-history-filter-failed"]')
+    );
+    await waitForRenderedTaskHistory(
+      AGENT_ORG_TASK_STATUS.FAILED,
+      3,
+      "failed filter"
+    );
+    const failedDetail = await execJS(`
+      const row = document.querySelector('[data-testid="agent-org-task-history-row"]');
+      row?.querySelector('[data-testid="agent-org-task-detail-toggle"]')?.click();
+      return Boolean(row);
+    `);
+    if (!failedDetail)
+      throw new Error("Task FSM failed detail row was missing");
+    await browser.waitUntil(
+      async () =>
+        String(
+          await execJS(
+            `return document.querySelector('[data-testid="agent-org-task-detail"]')?.textContent || '';`
+          )
+        ).includes("Deterministic E2E failure"),
+      { timeout: RENDER_TIMEOUT_MS, interval: 250 }
+    );
+
+    await execJS(
+      js.click('[data-testid="agent-org-task-history-filter-cancelled"]')
+    );
+    await waitForRenderedTaskHistory(
+      AGENT_ORG_TASK_STATUS.CANCELLED,
+      3,
+      "cancelled filter"
+    );
+    const cancelledState = await execJS(`
+      const rows = Array.from(document.querySelectorAll('[data-testid="agent-org-task-history-row"]'));
+      return rows.map((row) => ({
+        status: row.getAttribute('data-task-status'),
+        text: row.textContent || '',
+      }));
+    `);
+    if (
+      !cancelledState.every(
+        (row) =>
+          row.status === AGENT_ORG_TASK_STATUS.CANCELLED &&
+          !row.text.includes("Late output")
+      )
+    ) {
+      throw new Error(
+        `Task FSM cancelled filter exposed a late result: ${JSON.stringify(cancelledState)}`
+      );
+    }
   });
 
   it("allows switching to a member with inbox activity but no tasks", async () => {
@@ -356,6 +796,19 @@ describe("Agent Org group chat and plan rendered UI", () => {
       sessionId,
       "default Agent Org group chat re-select"
     );
+    await browser.waitUntil(
+      async () =>
+        await execJS(
+          js.exists(
+            '[data-testid="agent-org-group-projection-activity"][data-activity-kind="task_created"]'
+          )
+        ),
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg: "Group timeline did not render the durable Task creation",
+      }
+    );
     await assertRenderedGroupChatNoQuoteOrUnreadPreview(
       "initial group chat entry"
     );
@@ -469,43 +922,32 @@ describe("Agent Org group chat and plan rendered UI", () => {
       await invokeE2E("agentOrgPauseRun", sessionId),
       "agentOrgPauseRun (group chat paused banner)"
     );
-    if (pauseResult.transitioned !== false) {
+    if (pauseResult.outcome?.transitioned !== false) {
       await waitForAgentOrgRunView(
         sessionId,
         (view) => view?.runStatus === "paused",
         "group chat run paused for inline Resume"
       );
       await refreshRenderedAgentOrgOverview("group chat paused banner refresh");
-      await waitForGroupChatPausedBanner("group chat paused send resume");
-
-      const pausedMessage = `E2E group chat paused send resumes ${RUN_ID}`;
-      await sendRenderedChatPrompt(pausedMessage);
-      const pausedInboxRow = await waitForInboxRow(
-        sessionId,
-        (row) => {
-          const payload = parseInboxPayload(row, "paused group chat send");
-          return (
-            row.senderAgentId === "_user" &&
-            row.recipientMemberId === AGENT_ORG_COORDINATOR_MEMBER_ID &&
-            payload.text === pausedMessage
-          );
-        },
-        "paused group chat inbox row persisted"
-      );
-      await waitForRenderedGroupChatUserTurn({
-        text: pausedMessage,
-        label: "paused group chat send resumes",
-      });
+      await waitForGroupChatPausedBanner("group chat paused requires Resume");
+      const pausedSendState = await execJS(`
+        const visible = Array.from(document.querySelectorAll('[data-testid="chat-send-button"]'))
+          .find((element) => {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          });
+        return visible ? { disabled: Boolean(visible.disabled) } : null;
+      `);
+      if (pausedSendState?.disabled !== true) {
+        throw new Error(
+          `Paused Group Chat send must be disabled: ${JSON.stringify(pausedSendState)}`
+        );
+      }
+      await clickGroupChatResumeButton("group chat explicit Resume");
       await waitForAgentOrgRunView(
         sessionId,
         (view) => view?.runStatus !== "paused",
-        "group chat send while paused resumes run"
-      );
-      await waitForInboxRowRead(
-        sessionId,
-        pausedInboxRow.id,
-        "paused group chat inbox row drained after resume",
-        REPLY_TIMEOUT_MS
+        "explicit Group Chat Resume leaves paused state"
       );
       await browser.waitUntil(
         async () =>
@@ -516,13 +958,13 @@ describe("Agent Org group chat and plan rendered UI", () => {
           timeout: RENDER_TIMEOUT_MS,
           interval: 250,
           timeoutMsg:
-            "group chat paused banner did not disappear after sending a message",
+            "group chat paused banner did not disappear after explicit Resume",
         }
       );
     }
   });
 
-  it("reloads more than 200 durable Group Chat messages without truncating long text", async () => {
+  it("reloads the durable Group projection without truncating long text", async () => {
     const account = await getApiAccount();
     const model = selectPreferredModel(account);
 
@@ -530,30 +972,53 @@ describe("Agent Org group chat and plan rendered UI", () => {
     await selectRenderedExecMode("build");
     await selectRenderedDefaultAgentOrg();
 
-    const sessionId = await sendFromRenderedCreator(
-      `E2E durable Group Chat history ${RUN_ID}. Reply briefly.`
-    );
+    const launchPrompt = `E2E durable Group Chat history ${RUN_ID}. Reply briefly.`;
+    const sessionId = await sendFromRenderedCreator(launchPrompt);
     if (!sessionId) {
       throw new Error(
         "Durable Group Chat history launch did not create a session id"
       );
     }
     await waitForRenderedAssistantReply("durable Group Chat history launch");
+    const initialPage = unwrap(
+      await invokeE2E("agentOrgGroupProjectionPage", sessionId, null, 100),
+      "agentOrgGroupProjectionPage(initial Team exchange)"
+    ).page;
+    const initialUser = initialPage?.items?.find(
+      (item) =>
+        item.kind === "user_message" &&
+        item.sourceRef?.kind === "initial_input" &&
+        item.text === launchPrompt
+    );
+    const initialReply = initialPage?.items?.find(
+      (item) =>
+        item.kind === "assistant_reply" &&
+        item.replyToItemId === initialUser?.id
+    );
+    if (!initialUser || !initialReply) {
+      throw new Error(
+        `Public Team timeline omitted the initial requirement or its exact reply: ${JSON.stringify(initialPage)}`
+      );
+    }
 
     let runId = null;
     let coordinator = null;
-    let runStatus = null;
     await waitForAgentOrgRunView(
       sessionId,
       (view) => {
         runId = view?.context?.runId ?? null;
-        runStatus = view?.runStatus ?? null;
         coordinator = (view?.members ?? []).find(
           (member) => member.memberId === AGENT_ORG_COORDINATOR_MEMBER_ID
         );
-        return Boolean(runId && coordinator?.agentId && coordinator?.memberId);
+        return Boolean(
+          runId &&
+          coordinator?.agentId &&
+          coordinator?.memberId &&
+          view?.runStatus === "idle"
+        );
       },
-      "durable Group Chat history coordinator materialized"
+      "durable Group projection coordinator became idle",
+      REPLY_TIMEOUT_MS
     );
     if (!runId || !coordinator?.agentId || !coordinator?.memberId) {
       throw new Error(
@@ -561,70 +1026,43 @@ describe("Agent Org group chat and plan rendered UI", () => {
       );
     }
 
-    if (runStatus === "running") {
-      const pauseResult = unwrap(
-        await invokeE2E("agentOrgPauseRun", sessionId),
-        "agentOrgPauseRun(durable Group Chat history seed)"
-      );
-      if (pauseResult.transitioned !== false) {
-        await waitForAgentOrgRunView(
-          sessionId,
-          (view) => view?.runStatus === "paused",
-          "durable Group Chat history paused before deterministic seed"
-        );
-      }
-    }
-
-    const messageCount = 230;
-    const marker = (index) =>
-      `E2E-GROUP-HISTORY-${String(index).padStart(3, "0")}-${RUN_ID}`;
+    const marker = `E2E-GROUP-PROJECTION-${RUN_ID}`;
     const longEndMarker = `E2E-GROUP-HISTORY-LONG-END-${RUN_ID}`;
+    const messageText = `${marker} ${"durable-long-message ".repeat(40)}${longEndMarker}`;
 
-    // Fixture setup only: leave the live run view before inserting the large
-    // durable history batch so 230 seed notifications cannot keep rebuilding
-    // the rendered projection. The user regression below still reloads the
-    // app, reopens the coordinator, and pages through the production UI.
-    unwrap(
-      await invokeE2E("resetToNewSession"),
-      "resetToNewSession(durable Group Chat history seed)"
-    );
-    for (let index = 1; index <= messageCount; index += 1) {
-      const messageText =
-        index === 1
-          ? `${marker(index)} ${"durable-long-message ".repeat(40)}${longEndMarker}`
-          : marker(index);
-      await postJson("/agent/test/agent-org/inbox/seed", {
-        recipient_agent_id: coordinator.agentId,
-        recipient_member_id: coordinator.memberId,
-        sender_agent_id: "_user",
-        org_run_id: runId,
-        message: {
-          kind: "plain",
-          summary: `E2E durable Group Chat message ${index}`,
-          text: messageText,
-        },
-      });
-    }
+    await openRenderedGroupChatView();
+    await waitForRenderedGroupChatActive("durable Group projection");
+    await waitForRenderedGroupChatUserTurn({
+      text: launchPrompt,
+      label: "initial Team requirement in Group timeline",
+    });
+    await sendRenderedChatPrompt(messageText);
+    await waitForRenderedGroupChatUserTurn({
+      text: longEndMarker,
+      label: "long GroupRoot message before reload",
+    });
 
     const newestPage = unwrap(
-      await invokeE2E("agentOrgGroupChatHistoryPage", sessionId, null, 100),
-      "agentOrgGroupChatHistoryPage(durable history seed)"
+      await invokeE2E("agentOrgGroupProjectionPage", sessionId, null, 100),
+      "agentOrgGroupProjectionPage(durable GroupRoot)"
     ).page;
     if (
-      newestPage?.rows?.length !== 100 ||
-      newestPage?.hasMore !== true ||
-      !newestPage.rows.some((row) =>
-        String(row.displayText ?? "").includes(marker(messageCount))
+      !newestPage?.items?.some(
+        (item) =>
+          item.kind === "user_message" &&
+          item.route === "coordinator" &&
+          String(item.text ?? "").includes(marker) &&
+          String(item.text ?? "").includes(longEndMarker)
       )
     ) {
       throw new Error(
-        `Durable Group Chat production history page was incomplete: ${JSON.stringify(newestPage)}`
+        `Durable Group projection omitted or truncated the GroupRoot item: ${JSON.stringify(newestPage)}`
       );
     }
 
-    // This is the user regression path: rebuild the rendered app state from
-    // durable storage, reopen the coordinator, then page through the actual
-    // Group Chat controls. Debug APIs above only created deterministic rows.
+    // Rebuild the rendered app state from durable storage and reopen the
+    // coordinator. The projection API call above is read-only evidence; the
+    // message, refresh, navigation, and rendered assertion all use the UI.
     await browser.refresh();
     await waitForApp();
     unwrap(
@@ -637,36 +1075,12 @@ describe("Agent Org group chat and plan rendered UI", () => {
       "durable Group Chat run restored after reload"
     );
     await refreshRenderedAgentOrgOverview(
-      "durable Group Chat history after reload"
+      "durable Group projection after reload"
     );
     await openRenderedGroupChatView();
-    await selectRenderedTurnPageByPreview(
-      marker(messageCount),
-      "newest durable Group Chat message after reload"
-    );
-    await waitForRenderedGroupChatUserTurn({
-      text: marker(messageCount),
-      label: "newest durable Group Chat message after reload",
-    });
-
-    await clickRenderedGroupChatLoadOlder("durable history page 2");
-    await selectRenderedTurnPageByPreview(
-      marker(31),
-      "oldest message after first Load older"
-    );
-    await waitForRenderedGroupChatUserTurn({
-      text: marker(31),
-      label: "first older durable Group Chat page",
-    });
-
-    await clickRenderedGroupChatLoadOlder("durable history page 3");
-    await selectRenderedTurnPageByPreview(
-      marker(1),
-      "oldest durable Group Chat message"
-    );
     await waitForRenderedGroupChatUserTurn({
       text: longEndMarker,
-      label: "full long durable Group Chat message after reload",
+      label: "full long GroupRoot message after reload",
     });
   });
 
@@ -774,7 +1188,7 @@ describe("Agent Org group chat and plan rendered UI", () => {
         runId,
         DEFAULT_AGENT_ORG_MEMBER_IDS.PLANNER,
         "task_update",
-        { id: planTaskId, status: AGENT_ORG_TASK_STATUS.IN_PROGRESS }
+        { operation: "start", id: planTaskId }
       ),
       "debugAgentOrgExecuteToolAsAgent(start Plan task)"
     ).result;
@@ -1037,7 +1451,7 @@ describe("Agent Org group chat and plan rendered UI", () => {
     );
   });
 
-  it("lets the user request changes, edit, and approve a member plan in Group chat", async () => {
+  it("lets the user request changes and approve an immutable member plan revision in Group chat", async () => {
     const account = await getApiAccount();
     const model = selectPreferredModel(account);
     const orgName = `E2E User Plan Approval Org ${RUN_ID}`;
@@ -1045,7 +1459,7 @@ describe("Agent Org group chat and plan rendered UI", () => {
     const implementerName = `E2E User Plan Implementer ${RUN_ID}`;
     await removeAgentOrgsByName(orgName);
 
-    const org = await createRenderedStrictTwoMemberAgentOrg({
+    const org = await seedFlatAgentOrg({
       orgName,
       leadName: plannerName,
       childName: implementerName,
@@ -1059,8 +1473,22 @@ describe("Agent Org group chat and plan rendered UI", () => {
     await selectRenderedExecMode("build");
     await selectRenderedAgentOrg(org.id);
 
+    const plannerMember = (org.members ?? []).find(
+      (member) => member.name === plannerName
+    );
+    const implementerMember = (org.members ?? []).find(
+      (member) => member.name === implementerName
+    );
+    if (!plannerMember?.memberId || !implementerMember?.memberId) {
+      throw new Error(
+        `Rendered Team did not persist the scenario members: ${JSON.stringify(org)}`
+      );
+    }
+    const plannerMemberId = plannerMember.memberId;
+    const implementerMemberId = implementerMember.memberId;
+    const scenarioId = `plan_revision_${RUN_ID}`;
     const sessionId = await sendFromRenderedCreator(
-      `E2E rendered user plan approval ${RUN_ID}. Reply briefly.`
+      `Run E2E_AGENT_ORG_PLAN_REVISION:${scenarioId} planner=${plannerMemberId} implementer=${implementerMemberId}`
     );
     if (!sessionId) {
       throw new Error("User plan approval launch did not create a session id");
@@ -1068,171 +1496,44 @@ describe("Agent Org group chat and plan rendered UI", () => {
     await waitForRenderedAssistantReply("user plan approval launch");
 
     let runId = null;
-    let plannerMemberId = null;
     let plannerSessionId = null;
-    let implementerMemberId = null;
+    let planTaskId = null;
+    let downstreamTaskId = null;
     await waitForAgentOrgRunView(
       sessionId,
       (view) => {
         runId = view?.context?.runId ?? null;
         const planner = (view?.members ?? []).find(
-          (member) => member.name === plannerName
-        );
-        const implementer = (view?.members ?? []).find(
-          (member) => member.name === implementerName
-        );
-        plannerMemberId = planner?.memberId ?? null;
-        plannerSessionId = planner?.sessionRuntime?.sessionId ?? null;
-        implementerMemberId = implementer?.memberId ?? null;
-        return Boolean(
-          runId && plannerMemberId && plannerSessionId && implementerMemberId
-        );
-      },
-      "user approval members materialized"
-    );
-    if (
-      !runId ||
-      !plannerMemberId ||
-      !plannerSessionId ||
-      !implementerMemberId
-    ) {
-      throw new Error(
-        `User approval scenario did not materialize runtime ids: ${JSON.stringify({ runId, plannerMemberId, plannerSessionId, implementerMemberId })}`
-      );
-    }
-
-    const planTaskId = `e2e-user-plan-task-${RUN_ID}`;
-    const downstreamTaskId = `e2e-user-plan-build-${RUN_ID}`;
-    const createPlanTask = unwrap(
-      await invokeE2E(
-        "debugAgentOrgExecuteToolAsAgent",
-        runId,
-        AGENT_ORG_COORDINATOR_MEMBER_ID,
-        "task_create",
-        {
-          id: planTaskId,
-          subject: `Draft a user-approved plan ${RUN_ID}`,
-          description: "Submit the complete plan with create_plan.",
-          owner_member_id: plannerMemberId,
-          status: AGENT_ORG_TASK_STATUS.PENDING,
-          dispatch_policy: "immediate",
-          execution_mode: "plan",
-        }
-      ),
-      "debugAgentOrgExecuteToolAsAgent(create user-approved Plan task)"
-    ).result;
-    if (createPlanTask?.ok !== true) {
-      throw new Error(
-        `User-approved Plan task creation failed: ${JSON.stringify(createPlanTask)}`
-      );
-    }
-    const createDownstreamTask = unwrap(
-      await invokeE2E(
-        "debugAgentOrgExecuteToolAsAgent",
-        runId,
-        AGENT_ORG_COORDINATOR_MEMBER_ID,
-        "task_create",
-        {
-          id: downstreamTaskId,
-          subject: `Build after user approval ${RUN_ID}`,
-          description: "Consume the approved plan output.",
-          owner_member_id: implementerMemberId,
-          status: AGENT_ORG_TASK_STATUS.PENDING,
-          dispatch_policy: "after_dependencies",
-          dependency_task_ids: [planTaskId],
-          execution_mode: "build",
-          // The live coordinator may independently create setup work while the
-          // rendered test seeds this isolated chain. The test is explicitly
-          // asserting that this downstream task consumes only planTaskId.
-          allow_parallel_with_unlisted_open_tasks: true,
-        }
-      ),
-      "debugAgentOrgExecuteToolAsAgent(create user-approved downstream task)"
-    ).result;
-    if (createDownstreamTask?.ok !== true) {
-      throw new Error(
-        `User-approved downstream task creation failed: ${JSON.stringify(createDownstreamTask)}`
-      );
-    }
-    const downstreamCreatePayload = JSON.parse(
-      String(createDownstreamTask.result?.text ?? "{}")
-    );
-    if (downstreamCreatePayload?.task?.id !== downstreamTaskId) {
-      throw new Error(
-        `User-approved downstream task was not persisted: ${JSON.stringify(downstreamCreatePayload)}`
-      );
-    }
-
-    const startPlanTask = unwrap(
-      await invokeE2E(
-        "debugAgentOrgExecuteToolAsAgent",
-        runId,
-        plannerMemberId,
-        "task_update",
-        { id: planTaskId, status: AGENT_ORG_TASK_STATUS.IN_PROGRESS }
-      ),
-      "debugAgentOrgExecuteToolAsAgent(start user-approved Plan task)"
-    ).result;
-    if (startPlanTask?.ok !== true) {
-      throw new Error(
-        `User-approved Plan task could not start: ${JSON.stringify(startPlanTask)}`
-      );
-    }
-
-    let latestPlannerRuntime = null;
-    await browser.waitUntil(
-      async () => {
-        const runViewResult = await invokeE2E(
-          "agentOrgSessionRunView",
-          sessionId
-        );
-        const planner = (runViewResult?.view?.members ?? []).find(
           (member) => member.memberId === plannerMemberId
         );
-        const candidateSessionId = planner?.sessionRuntime?.sessionId ?? null;
-        if (!candidateSessionId) {
-          latestPlannerRuntime = { candidateSessionId: null };
-          return false;
-        }
-        const snapshotResult = await invokeE2E(
-          "debugSessionOrgRuntimeSnapshot",
-          candidateSessionId
+        const planTask = (view?.tasks ?? []).find(
+          (task) => task.subject === `E2E_PLAN_REVISION:${scenarioId}`
         );
-        latestPlannerRuntime = {
-          candidateSessionId,
-          snapshotResult,
-        };
-        const snapshot = snapshotResult?.snapshot ?? null;
-        if (
-          snapshotResult?.ok === true &&
-          snapshot?.isOrgMember === true &&
-          (snapshot.registeredOrgToolNames ?? []).includes("create_plan") &&
-          (snapshot.requestedExecMode === "plan" ||
-            snapshot.hasPrePlanMode === true)
-        ) {
-          // A custom member may be rematerialized when its first real wake is
-          // dispatched. Always use the currently registered runtime id rather
-          // than the provisional id from the initial run snapshot.
-          plannerSessionId = candidateSessionId;
-          return true;
-        }
-        return false;
+        const downstreamTask = (view?.tasks ?? []).find(
+          (task) => task.subject === `E2E_PLAN_REVISION_BUILD:${scenarioId}`
+        );
+        plannerSessionId = planner?.sessionRuntime?.sessionId ?? null;
+        planTaskId = planTask?.id ?? null;
+        downstreamTaskId = downstreamTask?.id ?? null;
+        return Boolean(
+          runId &&
+          plannerSessionId &&
+          planTaskId &&
+          downstreamTaskId &&
+          planTask?.status === AGENT_ORG_TASK_STATUS.IN_PROGRESS &&
+          downstreamTask?.status === AGENT_ORG_TASK_STATUS.PENDING
+        );
       },
-      {
-        timeout: REPLY_TIMEOUT_MS,
-        interval: 500,
-        timeoutMsg: `user-approval Planner never reached task-driven Plan mode: ${JSON.stringify(latestPlannerRuntime)}`,
-      }
+      "provider-created immutable Plan graph"
     );
+    if (!runId || !plannerSessionId || !planTaskId || !downstreamTaskId) {
+      throw new Error(
+        `User approval scenario did not materialize its formal graph: ${JSON.stringify({ runId, plannerSessionId, planTaskId, downstreamTaskId })}`
+      );
+    }
 
-    const initialTitle = `E2E User Plan ${RUN_ID}`;
-    const initialContent = `Initial user-reviewed plan ${RUN_ID}: inspect, implement, and verify.`;
-    await executeCreatePlanAsMember(
-      plannerSessionId,
-      initialTitle,
-      initialContent,
-      "planner submits user-reviewed plan"
-    );
+    const initialTitle = `E2E User Plan ${scenarioId}`;
+    const initialContent = `Initial user-reviewed plan ${scenarioId}: inspect, implement, and verify.`;
 
     unwrap(
       await invokeE2E("openSession", sessionId),
@@ -1243,10 +1544,20 @@ describe("Agent Org group chat and plan rendered UI", () => {
       async () => {
         const card = await execJS(`
           const element = document.querySelector('[data-testid="agent-org-plan-approval-card"]');
-          return element ? { text: element.textContent || "" } : null;
+          const task = document.querySelector(
+            '[data-testid="agent-org-overview-task-row"][data-task-id="${planTaskId}"][data-task-status="in_progress"]'
+          );
+          return element ? {
+            text: element.textContent || "",
+            taskAwaiting: Boolean(
+              task?.querySelector('[data-testid="agent-org-task-awaiting-approval-chip"]')
+            ),
+          } : null;
         `);
         return Boolean(
-          card?.text.includes(initialTitle) && card?.text.includes(plannerName)
+          card?.text.includes(initialTitle) &&
+          card?.text.includes(plannerName) &&
+          card?.taskAwaiting === true
         );
       },
       {
@@ -1264,7 +1575,7 @@ describe("Agent Org group chat and plan rendered UI", () => {
         `Request changes button did not click: ${requestChangesClick}`
       );
     }
-    const feedback = `Please add explicit checkpoints ${RUN_ID}.`;
+    const feedback = `Please add explicit checkpoints for ${scenarioId}. E2E_AGENT_ORG_PLAN_REVISION:${scenarioId} task=${planTaskId}`;
     const feedbackType = await execJS(
       js.inputValue(
         '[data-testid="agent-org-plan-approval-feedback"]',
@@ -1306,50 +1617,52 @@ describe("Agent Org group chat and plan rendered UI", () => {
       "user feedback keeps Plan task open"
     );
 
-    const revisedTitle = `E2E Revised User Plan ${RUN_ID}`;
-    const revisedContent = `Revised user-reviewed plan ${RUN_ID}: inspect, implement, review each checkpoint, then verify.`;
-    await executeCreatePlanAsMember(
-      plannerSessionId,
-      revisedTitle,
-      revisedContent,
-      "planner submits revised user-reviewed plan"
-    );
+    const revisedTitle = `E2E Revised User Plan ${scenarioId}`;
+    const revisedContent = `Revised user-reviewed plan ${scenarioId}: inspect, implement, review each checkpoint, then verify.`;
     await refreshRenderedAgentOrgOverview("revised user plan approval card");
     await browser.waitUntil(
       async () => {
-        const cardText = await execJS(
-          js.text('[data-testid="agent-org-plan-approval-card"]')
-        );
-        return String(cardText).includes(revisedTitle);
+        return execJS(`
+          const card = Array.from(document.querySelectorAll('[data-testid="agent-org-plan-approval-card"]'))
+            .find((candidate) => candidate.textContent?.includes(${JSON.stringify(revisedTitle)}));
+          const approve = card?.querySelector('[data-testid="agent-org-plan-approve-button"]');
+          return Boolean(
+            card?.textContent?.includes(${JSON.stringify(revisedContent)}) &&
+            approve instanceof HTMLButtonElement &&
+            !approve.disabled
+          );
+        `);
       },
       {
         timeout: RENDER_TIMEOUT_MS,
         interval: 250,
-        timeoutMsg: "revised user plan approval card never rendered",
+        timeoutMsg:
+          "revised user plan detail never loaded into an enabled approval card",
       }
     );
 
-    const editClick = await execJS(
-      js.click('[data-testid="agent-org-plan-edit-button"]')
-    );
-    if (editClick !== "clicked") {
-      throw new Error(`Edit plan button did not click: ${editClick}`);
+    const legacyEditSurface = await execJS(`
+      return {
+        editButton: Boolean(document.querySelector('[data-testid="agent-org-plan-edit-button"]')),
+        editInput: Boolean(document.querySelector('[data-testid="agent-org-plan-approval-edit"]')),
+      };
+    `);
+    if (legacyEditSurface?.editButton || legacyEditSurface?.editInput) {
+      throw new Error(
+        `Immutable Agent Org plan unexpectedly rendered an edit surface: ${JSON.stringify(legacyEditSurface)}`
+      );
     }
-    const approvedContent = `${revisedContent} User-approved final checkpoint ${RUN_ID}.`;
-    const editType = await execJS(
-      js.inputValue(
-        '[data-testid="agent-org-plan-approval-edit"]',
-        approvedContent
-      )
-    );
-    if (editType !== "typed") {
-      throw new Error(`Edited plan content did not type: ${editType}`);
-    }
-    const approveClick = await execJS(
-      js.click('[data-testid="agent-org-plan-approve-button"]')
-    );
+    const approveClick = await execJS(`
+      const card = Array.from(document.querySelectorAll('[data-testid="agent-org-plan-approval-card"]'))
+        .find((candidate) => candidate.textContent?.includes(${JSON.stringify(revisedTitle)}));
+      const button = card?.querySelector('[data-testid="agent-org-plan-approve-button"]');
+      if (!(button instanceof HTMLButtonElement)) return "missing";
+      if (button.disabled) return "disabled";
+      button.click();
+      return "clicked";
+    `);
     if (approveClick !== "clicked") {
-      throw new Error(`Approve edited plan did not click: ${approveClick}`);
+      throw new Error(`Approve immutable plan did not click: ${approveClick}`);
     }
 
     await waitForInboxRow(
@@ -1369,23 +1682,155 @@ describe("Agent Org group chat and plan rendered UI", () => {
     );
     await waitForAgentOrgRunView(
       sessionId,
-      (view) =>
-        (view?.tasks ?? []).some(
-          (task) =>
-            task.id === planTaskId &&
-            task.status === AGENT_ORG_TASK_STATUS.COMPLETED
-        ),
+      (view) => {
+        const planner = (view?.members ?? []).find(
+          (member) => member.memberId === plannerMemberId
+        );
+        const approvedRevision = (view?.planRevisions ?? []).find(
+          (revision) =>
+            revision.sourceTaskId === planTaskId &&
+            revision.status === "approved"
+        );
+        return Boolean(
+          approvedRevision?.taskOutput?.taskId === planTaskId &&
+          planner?.completedTaskCount === 1 &&
+          (view?.taskOverview?.completed ?? 0) >= 1
+        );
+      },
       "user approval completes Plan task"
     );
+    const approvedPlanRevision = unwrap(
+      await invokeE2E("agentOrgSessionRunView", sessionId),
+      "agentOrgSessionRunView(approved Planner history identity)"
+    ).view?.planRevisions?.find(
+      (revision) =>
+        revision.sourceTaskId === planTaskId && revision.status === "approved"
+    );
+    if (!approvedPlanRevision?.planRevisionId) {
+      throw new Error(
+        `approved Planner revision identity was unavailable: ${JSON.stringify(approvedPlanRevision)}`
+      );
+    }
     await browser.waitUntil(
-      async () =>
-        !(await execJS(
-          js.exists('[data-testid="agent-org-plan-approval-card"]')
-        )),
+      async () => {
+        const history = await execJS(`
+          return Array.from(document.querySelectorAll('[data-testid="agent-org-plan-approval-card"]')).map((card) => ({
+            text: card.textContent || "",
+            status: card.querySelector('[data-testid="agent-org-plan-revision-status"]')?.getAttribute('data-plan-status') || null,
+            hasTaskOutput: Boolean(card.querySelector('[data-testid="agent-org-plan-revision-task-output"]')),
+          }));
+        `);
+        return (
+          history.some(
+            (revision) =>
+              revision.status === "changes_requested" &&
+              revision.text.includes(initialTitle) &&
+              revision.text.includes(feedback)
+          ) &&
+          history.some(
+            (revision) =>
+              revision.status === "approved" &&
+              revision.text.includes(revisedTitle) &&
+              revision.hasTaskOutput
+          )
+        );
+      },
       {
         timeout: RENDER_TIMEOUT_MS,
         interval: 250,
-        timeoutMsg: "resolved user plan approval card remained visible",
+        timeoutMsg:
+          "terminal immutable Plan revisions did not remain visible in rendered history",
+      }
+    );
+
+    // Remount the UI from durable state so the approved terminal card starts
+    // collapsed. The click below then covers the real historical "Open plan"
+    // control instead of reading content left expanded from the approval turn.
+    await browser.refresh();
+    await waitForApp();
+    unwrap(
+      await invokeE2E("openSession", sessionId),
+      "openSession(immutable Plan history after reload)"
+    );
+    await waitForAgentOrgRunView(
+      sessionId,
+      (view) =>
+        (view?.planRevisions ?? []).some(
+          (revision) =>
+            revision.sourceTaskId === planTaskId &&
+            revision.status === "approved" &&
+            revision.taskOutput?.taskId === planTaskId
+        ),
+      "approved immutable Plan history after reload"
+    );
+    await refreshRenderedAgentOrgOverview(
+      "approved immutable Plan history after reload"
+    );
+
+    const openApprovedRevision = await execJS(`
+      const card = Array.from(document.querySelectorAll('[data-testid="agent-org-plan-approval-card"]'))
+        .find((candidate) => candidate.textContent?.includes(${JSON.stringify(revisedTitle)}));
+      const button = card?.querySelector('[data-testid="agent-org-plan-revision-open"]');
+      if (!(button instanceof HTMLElement)) return "missing";
+      button.click();
+      return "clicked";
+    `);
+    if (openApprovedRevision !== "clicked") {
+      throw new Error(
+        `Approved immutable revision could not be reopened: ${openApprovedRevision}`
+      );
+    }
+    await browser.waitUntil(
+      async () => {
+        const approvedText = await execJS(`
+          const card = Array.from(document.querySelectorAll('[data-testid="agent-org-plan-approval-card"]'))
+            .find((candidate) => candidate.textContent?.includes(${JSON.stringify(revisedTitle)}));
+          return card?.textContent || "";
+        `);
+        return String(approvedText).includes(revisedContent);
+      },
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg: "approved immutable Plan body could not be reopened",
+      }
+    );
+
+    // Regression: Team Overview always had the formal PlanRevision, but a
+    // cold Planner transcript previously reloaded only the raw create_plan
+    // provider event. With no plan ids on that raw row PlanDocAdapter returned
+    // null, so the same plan disappeared when the user opened Planner history.
+    // Use the rendered Team Member switcher after the durable reload and
+    // require the transcript card to carry the exact immutable revision
+    // identity. Member sessions intentionally do not appear as ordinary
+    // top-level sidebar sessions.
+    await clickRenderedMemberSwitcher(plannerMemberId, plannerSessionId);
+    await browser.waitUntil(
+      async () => {
+        const plannerHistory = await execJS(`
+          const cards = Array.from(document.querySelectorAll(
+            '[data-testid="create-plan-card"][data-plan-surface="transcript"]'
+          ));
+          const target = cards.find(
+            (card) => card.getAttribute('data-plan-revision-id') === ${JSON.stringify(approvedPlanRevision.planRevisionId)}
+          );
+          return target ? {
+            text: target.textContent || "",
+            status: target.getAttribute('data-plan-approval-status'),
+            revisionId: target.getAttribute('data-plan-revision-id'),
+          } : null;
+        `);
+        return Boolean(
+          plannerHistory?.text.includes(revisedTitle) &&
+          plannerHistory?.status === "approved" &&
+          plannerHistory?.revisionId === approvedPlanRevision.planRevisionId
+        );
+      },
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg:
+          "approved formal plan did not reappear in the rendered Planner transcript after reload",
       }
     );
 

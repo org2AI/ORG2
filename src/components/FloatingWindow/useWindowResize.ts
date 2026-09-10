@@ -12,6 +12,8 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 
+import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
+
 import {
   clamp,
   findFloatingWindow,
@@ -53,7 +55,7 @@ export function useWindowResize({
 
   return useCallback(
     (edge: ResizeEdge) => (event: React.PointerEvent<HTMLElement>) => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || event.isPrimary === false) return;
       const win = findFloatingWindow(event.currentTarget);
       if (!win) return;
       const bounds = readWindowBounds(win);
@@ -67,10 +69,11 @@ export function useWindowResize({
       const startTop = Number.parseFloat(win.style.top) || 0;
       const startWidth = Number.parseFloat(win.style.width) || 0;
       const startHeight = Number.parseFloat(win.style.height) || 0;
+      cleanupRef.current?.();
       const startX = event.clientX;
       const startY = event.clientY;
 
-      const handleMove = (moveEvent: PointerEvent) => {
+      const handleMove = (moveEvent: MouseEvent) => {
         const dx = moveEvent.clientX - startX;
         const dy = moveEvent.clientY - startY;
 
@@ -112,18 +115,19 @@ export function useWindowResize({
       };
 
       const finish = () => {
-        window.removeEventListener("pointermove", handleMove);
-        window.removeEventListener("pointerup", finish);
-        window.removeEventListener("pointercancel", finish);
+        dispose();
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
         cleanupRef.current = null;
       };
 
+      const dispose = listenForDrag({
+        pointerId: event.pointerId,
+        onMove: handleMove,
+        onEnd: finish,
+        onCancel: finish,
+      });
       cleanupRef.current = finish;
-      window.addEventListener("pointermove", handleMove);
-      window.addEventListener("pointerup", finish);
-      window.addEventListener("pointercancel", finish);
       document.body.style.cursor = EDGE_CURSOR[edge];
       document.body.style.userSelect = "none";
     },

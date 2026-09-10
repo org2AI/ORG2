@@ -356,6 +356,13 @@ async fn dispatch_claim(
     lease: &WorkItemDispatchLease,
 ) -> Result<(), String> {
     let run = &lease.run;
+    let consent_snapshot = run.target_snapshot.clone();
+    let consent_org_id = run.org_id.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::skills::work_run_manifest::verify(&consent_org_id, &consent_snapshot)
+    })
+    .await
+    .map_err(|err| format!("skill consent verification task failed: {err}"))??;
     let session_id = match &run.target_snapshot.target {
         WorkItemRunTarget::StartWorkItem {
             account_id,
@@ -545,9 +552,12 @@ async fn dispatch_session_turn(
         None,
         None,
         false,
+        None,
+        None,
         false,
         Some(client_message_id),
         Some(run_id.clone()),
+        None,
         None,
         None,
         crate::foundation::session_bridge::TurnIntentBridgeSource::Queue,

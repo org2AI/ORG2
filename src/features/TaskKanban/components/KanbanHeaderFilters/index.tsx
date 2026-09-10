@@ -83,21 +83,6 @@ const CURSOR_IDE_FILTER_ITEM: KanbanFilterItem<KanbanAgentTypeFilter> = {
   label: "Cursor App",
 };
 
-function formatCliFilterLabel(cliAgentType: CliAgentType): string {
-  switch (cliAgentType) {
-    case CLI_AGENT.CURSOR:
-      return "Cursor CLI";
-    case CLI_AGENT.CLAUDE_CODE:
-      return "Claude CLI";
-    case CLI_AGENT.CODEX:
-      return "Codex CLI";
-    case CLI_AGENT.OPENCODE:
-      return "OpenCode CLI";
-    default:
-      return formatAgentType(cliAgentType);
-  }
-}
-
 const CLI_AGENT_FILTER_ITEMS = new Map<
   CliAgentType,
   KanbanFilterItem<KanbanAgentTypeFilter>
@@ -106,7 +91,7 @@ const CLI_AGENT_FILTER_ITEMS = new Map<
     cliAgentType,
     {
       key: cliAgentType as KanbanAgentTypeFilter,
-      label: formatCliFilterLabel(cliAgentType),
+      label: formatAgentType(cliAgentType),
     },
   ])
 );

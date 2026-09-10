@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import PageNotice from "@src/components/PageNotice";
 import { isWindows } from "@src/util/platform/tauri";
 
 import {
@@ -123,13 +124,16 @@ type PublishState =
 const ArtifactErrorBanner: React.FC<{ error: ReactArtifactError }> = ({
   error,
 }) => (
-  <pre
+  <PageNotice
+    type="danger"
     role="alert"
-    data-testid="react-artifact-error"
-    className="mt-2 max-h-40 overflow-auto rounded-md border border-danger-6/40 bg-danger-6/10 p-2 font-mono text-[11px] leading-4 whitespace-pre-wrap text-danger-6"
+    dataTestId="react-artifact-error"
+    className="mt-2"
   >
-    {error.message}
-  </pre>
+    <pre className="max-h-40 overflow-auto font-mono whitespace-pre-wrap">
+      {error.message}
+    </pre>
+  </PageNotice>
 );
 
 /**

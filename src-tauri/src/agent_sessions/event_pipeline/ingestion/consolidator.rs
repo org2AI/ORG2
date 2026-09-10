@@ -6,8 +6,6 @@
 //! Uses dual accumulators so interleaved thinking + message streams
 //! (e.g. from Copilot ACP) are handled correctly.
 
-use std::collections::HashSet;
-
 use chrono::DateTime;
 
 use crate::agent_sessions::event_pipeline::ingestion::types::RawActivityChunk;
@@ -337,25 +335,37 @@ fn extract_message_content(chunk: &RawActivityChunk) -> String {
     String::new()
 }
 
+/// Collapse adjacent replays of the same identified assistant row only.
+/// Distinct complete messages may legitimately have identical bodies. Delta
+/// accumulation belongs to the streaming groups above; text equality alone
+/// cannot prove that a complete native message is a replay of those deltas.
 fn dedup_assistant_messages(chunks: Vec<RawActivityChunk>) -> Vec<RawActivityChunk> {
-    let mut seen: HashSet<String> = HashSet::new();
-    let mut result = Vec::with_capacity(chunks.len());
+    let mut result: Vec<RawActivityChunk> = Vec::with_capacity(chunks.len());
 
     for chunk in chunks {
         let at = chunk.action_type.as_deref().unwrap_or("");
         let func = chunk.function.as_deref().unwrap_or("");
         let is_assistant = at == "assistant" || func == "message";
 
-        if is_assistant {
-            let text = extract_message_content(&chunk).trim().to_string();
-            if !text.is_empty() && seen.contains(&text) {
-                continue;
-            }
-            if !text.is_empty() {
-                seen.insert(text);
-            }
+        // Equal text is not message identity, even within one assistant run.
+        // Only collapse an exact replay of an explicitly identified row.
+        if is_assistant
+            && result.last().is_some_and(|previous| {
+                chunk.chunk_id.as_deref().is_some_and(|id| !id.is_empty())
+                    && previous.chunk_id == chunk.chunk_id
+                    && previous.session_id == chunk.session_id
+                    && previous.thread_id == chunk.thread_id
+                    && previous.process_id == chunk.process_id
+                    && previous.call_id == chunk.call_id
+                    && previous.created_at == chunk.created_at
+                    && previous.action_type == chunk.action_type
+                    && previous.function == chunk.function
+                    && previous.args == chunk.args
+                    && previous.result == chunk.result
+            })
+        {
+            continue;
         }
-
         result.push(chunk);
     }
 

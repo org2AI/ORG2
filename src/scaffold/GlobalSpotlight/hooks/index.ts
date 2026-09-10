@@ -15,14 +15,11 @@ export { useSpotlight } from "./useSpotlight";
 export { useSpotlightEffects } from "./features/useSpotlightEffects";
 
 // Form hooks (used by palettes)
-export { useAddWorkspaceFlow } from "./forms/useAddWorkspaceFlow";
-export type { AddWorkspaceModalStage } from "./forms/useAddWorkspaceFlow";
+export { useAddWorkingDirectoryFlow } from "./forms/useAddWorkingDirectoryFlow";
+export type { AddWorkingDirectoryModalStage } from "./forms/useAddWorkingDirectoryFlow";
 
 // Shared data hooks (used by palettes and main Spotlight)
-export {
-  EXTERNAL_RECENT_PATH_WORKSPACE_THRESHOLD,
-  useExternalRecentPaths,
-} from "./data/useExternalRecentPaths";
+export { useExternalRecentPaths } from "./data/useExternalRecentPaths";
 export { useSharedRepoList } from "./data/useSharedRepoList";
 export { useWorkspaceSwitch } from "./data/useWorkspaceSwitch";
 export type { WorkspaceSwitchEntry } from "./data/useWorkspaceSwitch";

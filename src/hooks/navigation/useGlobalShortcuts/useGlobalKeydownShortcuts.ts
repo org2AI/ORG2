@@ -1,13 +1,17 @@
 import { type MutableRefObject, useEffect } from "react";
 
+import {
+  getOverride,
+  isRecordingShortcut,
+  matchesShortcut,
+} from "@src/config/keyboard/shortcutBindings";
 import { shortcutRegistry } from "@src/hooks/keyboard";
-import { routeDebugModalOpenAtom } from "@src/store";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
+import { routeDebugModalOpenAtom } from "@src/store/ui/uiAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 import { resolveDigitZeroShortcut } from "./digitZeroShortcut";
 import { isEditableElement, isEditableElementExtended } from "./types";
-import { resolveWorkstationEditorToolShortcut } from "./workstationEditorToolShortcut";
 
 function selectActiveTextControl(): boolean {
   const activeElement = document.activeElement;
@@ -96,32 +100,10 @@ export function useGlobalKeydownShortcuts(
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.isComposing) return;
+      if (event.isComposing || isRecordingShortcut()) return;
 
       const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
       const modifierKey = isMac ? event.metaKey : event.ctrlKey;
-
-      if (
-        !isMac &&
-        modifierKey &&
-        event.code === "KeyQ" &&
-        !event.shiftKey &&
-        !event.altKey
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        openQuitConfirmation();
-        return;
-      }
-
-      if (event.key === "Backspace") {
-        const target = event.target;
-        if (!isEditableElementExtended(target)) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        return;
-      }
 
       if (
         event.key === "Tab" &&
@@ -164,345 +146,174 @@ export function useGlobalKeydownShortcuts(
         }
       }
 
-      if (event.key === "Tab" && event.ctrlKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (event.shiftKey) {
-          shortcutRegistry.dispatch("previous_tab");
-        } else {
-          shortcutRegistry.dispatch("next_tab");
-        }
-        return;
-      }
-
-      if (isMac && event.metaKey && event.altKey) {
-        if (event.key === "ArrowRight") {
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("next_tab_mac");
-          return;
-        }
-        if (event.key === "ArrowLeft") {
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("previous_tab_mac");
-          return;
-        }
-      }
-
-      {
-        const macCombo =
-          isMac &&
-          event.metaKey &&
-          event.altKey &&
-          !event.shiftKey &&
-          !event.ctrlKey;
-        const winCombo =
-          !isMac &&
-          event.ctrlKey &&
-          event.altKey &&
-          !event.shiftKey &&
-          !event.metaKey;
-        if (macCombo || winCombo) {
-          const path = window.location.pathname;
-          const workStationShortcutSurface = path.includes("/workstation");
-          if (workStationShortcutSurface && event.code === "KeyB") {
-            event.preventDefault();
-            event.stopPropagation();
-            handleToggleWorkStationChatFocus();
-            return;
-          }
-          if (event.code === "KeyG") {
-            event.preventDefault();
-            event.stopPropagation();
-            shortcutRegistry.dispatch("toggle_ade_manager");
-            return;
-          }
-          if (event.code === "KeyU") {
-            event.preventDefault();
-            event.stopPropagation();
-            handleToggleWorkstationSidebar();
-            return;
-          }
-        }
-      }
-
-      if (!modifierKey) return;
-
-      // NOTE: The selector shortcuts ⌘. (workspace), ⌥⌘. (branch),
-      // ⇧⌘. (running location) are owned by the native application menu
-      // (View → Switch Workspace.../Switch Branch.../Switch Running
-      // Location... in `app_menu.rs`). Routing them through the menu is
-      // required for plain ⌘. (AppKit captures it as cancelOperation:
-      // before WKWebView delivers a keydown). ⌘/ (model) is handled here
-      // as well as via the menu for dev-browser and cross-platform parity.
-
-      if (event.code === "KeyB" && !event.shiftKey && !event.altKey) {
-        const target = event.target;
-        if (isEditableElementExtended(target)) return;
-        event.preventDefault();
-        event.stopPropagation();
-        handleToggleSidebar();
-        return;
-      }
-
       if (
-        window.location.pathname.startsWith("/orgii/workstation") &&
-        !event.shiftKey &&
-        !event.altKey
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !/^F\d+$/.test(event.key)
       ) {
+        if (
+          event.key === "Backspace" &&
+          !isEditableElementExtended(event.target)
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      const editable = isEditableElementExtended(event.target);
+      const workstation =
+        window.location.pathname.startsWith("/orgii/workstation");
+      const editorTarget =
+        event.target instanceof Element && !!event.target.closest(".cm-editor");
+      const actions: [string, () => unknown, boolean?][] = [
+        ["quit_app", openQuitConfirmation],
+        ["next_tab", () => shortcutRegistry.dispatch("next_tab")],
+        ["previous_tab", () => shortcutRegistry.dispatch("previous_tab")],
+        ["maximize_chat", handleToggleWorkStationChatFocus, workstation],
+        [
+          "toggle_ade_manager",
+          () => shortcutRegistry.dispatch("toggle_ade_manager"),
+        ],
+        ["toggle_workstation_sidebar", handleToggleWorkstationSidebar],
+        ["toggle_sidebar", handleToggleSidebar, !editable],
+        [
+          "open_file_folder_tab",
+          handleOpenCodeEditorFileFolder,
+          workstation && (!editable || isTerminalShortcutTarget(event.target)),
+        ],
+        [
+          "open_source_control_tab",
+          handleOpenCodeEditorSourceControl,
+          workstation && (!editable || isTerminalShortcutTarget(event.target)),
+        ],
+        [
+          "open_terminal_tab",
+          handleOpenCodeEditorTerminal,
+          workstation && (!editable || isTerminalShortcutTarget(event.target)),
+        ],
+        ["open_my_station", () => shortcutRegistry.dispatch("open_my_station")],
+        [
+          "open_agent_station",
+          () => shortcutRegistry.dispatch("open_agent_station"),
+        ],
+        ["open_kanban", () => shortcutRegistry.dispatch("open_kanban")],
+        ["close_tab", handleCloseCurrentTab],
+        [
+          "hide_window",
+          () => shortcutRegistry.dispatch("hide_window"),
+          !(event.ctrlKey && !event.metaKey && editable),
+        ],
+        [
+          "maximize_work_station",
+          () => shortcutRegistry.dispatch("maximize_work_station"),
+        ],
+        ["new_session", () => shortcutRegistry.dispatch("new_session")],
+        ["new_tab", () => shortcutRegistry.dispatch("new_tab")],
+        ["new_tab_alt", () => shortcutRegistry.dispatch("new_tab_alt")],
+        ["open_settings", handleOpenSettings],
+        [
+          "agent_session_search",
+          handleOpenAgentSessionSearch,
+          spotlightOpenRef.current || !editable,
+        ],
+        [
+          "toggle_inspect_mode",
+          () => shortcutRegistry.dispatch("toggle_inspect_mode"),
+        ],
+        [
+          "capture_component",
+          () => shortcutRegistry.dispatch("capture_component"),
+        ],
+        [
+          "toggle_api_panel",
+          () => shortcutRegistry.dispatch("toggle_api_panel"),
+        ],
+        ["zoom_in", () => shortcutRegistry.dispatch("zoom_in")],
+        ["zoom_out", () => shortcutRegistry.dispatch("zoom_out")],
+        ["zoom_reset", () => shortcutRegistry.dispatch("zoom_reset")],
+        [
+          "open_model_selector",
+          () => shortcutRegistry.dispatch("open_model_selector"),
+          !editorTarget,
+        ],
+        [
+          "open_workspace_selector",
+          () => shortcutRegistry.dispatch("open_workspace_selector"),
+        ],
+        [
+          "open_branch_selector",
+          () => shortcutRegistry.dispatch("open_branch_selector"),
+        ],
+        [
+          "open_location_selector",
+          () => shortcutRegistry.dispatch("open_location_selector"),
+        ],
+        ["go_to_symbol", handleOpenWorkStationSymbolPalette, workstation],
+        ["quick_open", handleOpenWorkStationFilePalette, workstation],
+        [
+          "toggle_spotlight",
+          () => shortcutRegistry.dispatch("toggle_spotlight"),
+          spotlightOpenRef.current || !editable,
+        ],
+        ["search_files", handleOpenCodeEditorSearchSidebar],
+        [
+          "window_close",
+          () => {
+            void import("@tauri-apps/api/window").then(({ getCurrentWindow }) =>
+              getCurrentWindow().close()
+            );
+          },
+        ],
+        [
+          "window_open_folder",
+          () => {
+            void import("@tauri-apps/api/event").then(({ emit }) =>
+              emit("menu-file-open-folder")
+            );
+          },
+        ],
+      ];
+      const action = actions.find(
+        ([id, , enabled]) => enabled !== false && matchesShortcut(event, id)
+      );
+      if (action) {
+        event.preventDefault();
+        event.stopPropagation();
+        action[1]();
+        return;
+      }
+
+      if (event.key === "Backspace") {
         const target = event.target;
-        // Editable focus (CodeMirror, chat input) only silences these three
-        // editor-tool chords — ⌘G is find-next inside CodeMirror. It must
-        // NOT abort the handler: ⌘W, ⌘1/2/3 and the global switch below
-        // still apply while typing.
-        const editorTool = resolveWorkstationEditorToolShortcut(event.code, {
-          editableTarget:
-            isEditableElementExtended(target) &&
-            !isTerminalShortcutTarget(target),
-        });
-        if (editorTool) {
+        if (!isEditableElementExtended(target)) {
           event.preventDefault();
           event.stopPropagation();
-          switch (editorTool) {
-            case "open_file_folder_tab":
-              handleOpenCodeEditorFileFolder();
-              break;
-            case "open_source_control_tab":
-              handleOpenCodeEditorSourceControl();
-              break;
-            case "open_terminal_tab":
-              handleOpenCodeEditorTerminal();
-              break;
-          }
-          return;
         }
+        return;
       }
 
-      if (!event.shiftKey && !event.altKey) {
-        if (event.code === "Digit1") {
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("open_my_station");
-          return;
-        }
-
-        if (event.code === "Digit2") {
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("open_agent_station");
-          return;
-        }
-
-        if (event.code === "Digit3") {
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("open_kanban");
-          return;
-        }
-      }
-
+      // Keep non-configurable native editing and the developer inspector scoped
+      // separately from user command bindings.
+      if (!modifierKey) return;
       if (event.code === "Digit0") {
         const target = resolveDigitZeroShortcut(event);
-        if (target) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        if (target === "zoom_reset") {
-          shortcutRegistry.dispatch(target);
-          return;
-        }
         if (target === "route_debug_modal") {
+          event.preventDefault();
           const store = getInstrumentedStore();
-          if (store.get(devModeEnabledAtom)) {
+          if (store.get(devModeEnabledAtom))
             store.set(routeDebugModalOpenAtom, (prev) => !prev);
-          }
-          return;
+        } else if (target === "zoom_reset" && !getOverride("zoom_reset")) {
+          event.preventDefault();
+          shortcutRegistry.dispatch("zoom_reset");
         }
+        return;
       }
-
-      switch (event.key.toLowerCase()) {
-        case "a": {
-          if (event.shiftKey || event.altKey) return;
-          const target = event.target;
-          const terminalEl = document.querySelector(".terminal-core");
-          const isTerminalTarget =
-            target instanceof Node &&
-            (terminalEl?.contains(target) || terminalEl === target);
-          if (isEditableElementExtended(target) && !isTerminalTarget) return;
-          event.preventDefault();
-          event.stopPropagation();
-          handleSelectAllShortcut();
-          break;
-        }
-
-        case "w": {
-          event.preventDefault();
-          event.stopPropagation();
-          handleCloseCurrentTab();
-          break;
-        }
-
-        case "m": {
-          if (event.altKey) return;
-          const target = event.target;
-          if (
-            event.ctrlKey &&
-            !event.metaKey &&
-            isEditableElementExtended(target)
-          ) {
-            return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          if (event.shiftKey) {
-            shortcutRegistry.dispatch("maximize_work_station");
-          } else {
-            shortcutRegistry.dispatch("hide_window");
-          }
-          break;
-        }
-
-        case "n":
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("new_session");
-          break;
-
-        case "t":
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("new_tab");
-          break;
-
-        case "l":
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("new_tab_alt");
-          break;
-
-        case ",":
-          if (event.shiftKey || event.altKey) return;
-          event.preventDefault();
-          event.stopPropagation();
-          handleOpenSettings();
-          break;
-
-        case "k": {
-          if (event.shiftKey || event.altKey) return;
-          const target = event.target;
-          if (!spotlightOpenRef.current && target instanceof HTMLElement) {
-            if (
-              target.tagName === "INPUT" ||
-              target.tagName === "TEXTAREA" ||
-              target.isContentEditable
-            ) {
-              return;
-            }
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          handleOpenAgentSessionSearch();
-          break;
-        }
-
-        case "8":
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("toggle_inspect_mode");
-          break;
-
-        case "9":
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("capture_component");
-          break;
-
-        case "5":
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("toggle_api_panel");
-          break;
-
-        case "=":
-        case "+":
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("zoom_in");
-          break;
-
-        case "-":
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("zoom_out");
-          break;
-
-        case "/": {
-          if (event.shiftKey || event.altKey) return;
-          const target = event.target;
-          // ⌘/ toggles comments inside CodeMirror (defaultKeymap Mod-/).
-          if (target instanceof Element && target.closest(".cm-editor")) {
-            return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("open_model_selector");
-          break;
-        }
-
-        case "o": {
-          if (!event.shiftKey) return;
-          if (!window.location.pathname.startsWith("/orgii/workstation")) {
-            return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          handleOpenWorkStationSymbolPalette();
-          break;
-        }
-
-        case "p": {
-          if (!event.altKey && !event.shiftKey) {
-            if (!window.location.pathname.startsWith("/orgii/workstation")) {
-              return;
-            }
-            event.preventDefault();
-            event.stopPropagation();
-            handleOpenWorkStationFilePalette();
-            break;
-          }
-
-          if (!event.shiftKey) return;
-          const target = event.target;
-          if (!spotlightOpenRef.current && target instanceof HTMLElement) {
-            if (
-              target.tagName === "INPUT" ||
-              target.tagName === "TEXTAREA" ||
-              target.isContentEditable
-            ) {
-              return;
-            }
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          shortcutRegistry.dispatch("toggle_spotlight");
-          break;
-        }
-
-        case "f": {
-          if (event.shiftKey) {
-            event.preventDefault();
-            event.stopPropagation();
-            handleOpenCodeEditorSearchSidebar();
-            break;
-          }
-
-          const target = event.target;
-          if (!(target instanceof Element) || !target.closest(".cm-editor")) {
-            event.preventDefault();
-          }
-          break;
-        }
+      if (event.key.toLowerCase() === "a" && !event.shiftKey && !event.altKey) {
+        if (editable && !isTerminalShortcutTarget(event.target)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        handleSelectAllShortcut();
       }
     };
 

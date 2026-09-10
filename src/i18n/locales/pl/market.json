@@ -1,27 +1,8 @@
 {
-  "selectRepo": {
-    "title": "Orgii",
-    "subtitle": "Wybierz Repo, aby rozpocząć",
-    "recentRepos": "Ostatnie Repo",
-    "loadingProjects": "Ładowanie Repo...",
-    "noRepositories": "Brak Repo",
-    "getStartedHint": "Utwórz lub sklonuj Repo, aby zacząć",
-    "noPath": "Brak ścieżki",
-    "searchPlaceholder": "Szukaj Repo...",
-    "loadMore": "Załaduj więcej",
-    "actions": {
-      "importLocal": "Importuj lokalne Repo",
-      "cloneUrl": "Klonuj z adresu URL GitHub",
-      "cloneGithub": "Klonuj z mojego GitHub",
-      "createNew": "Utwórz nowe Repo"
-    }
-  },
   "market": {
     "auth": {
       "noAuthCode": "Nie otrzymano kodu autoryzacji",
-      "authSessionExpired": "Sesja uwierzytelniania wygasła. Spróbuj ponownie.",
-      "tokenExchangeFailed": "Wymiana Token nie powiodła się",
-      "defaultUser": "Użytkownik"
+      "tokenExchangeFailed": "Wymiana Token nie powiodła się"
     }
   }
 }

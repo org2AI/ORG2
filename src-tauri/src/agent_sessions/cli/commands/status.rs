@@ -82,3 +82,36 @@ pub async fn cli_agent_cancel(
 ) -> Result<bool, String> {
     session_runner::cancel_session(&session_id, reason.unwrap_or_default()).await
 }
+
+/// Source-backed context telemetry for managed native CLI sessions. Never uses
+/// `CodeSession.total_tokens`, which is cumulative billing across requests.
+#[tauri::command]
+pub async fn cli_agent_context_usage(
+    session_id: String,
+) -> Result<
+    Option<orgtrack_core::sources::imported_history::context_usage::ImportedContextUsage>,
+    String,
+> {
+    tokio::task::spawn_blocking(move || {
+        use super::super::native_transcript;
+        use orgtrack_core::sources::{claude_code, codex, imported_history::metadata};
+        let Some((binding, native_id)) =
+            native_transcript::native_store_key_for_managed_session(&session_id)
+        else {
+            return Ok(None);
+        };
+        let conn = database::db::get_connection().map_err(|err| err.to_string())?;
+        let imported_id = binding.imported_session_id(&native_id);
+        match binding.source {
+            metadata::SOURCE_CLAUDE_CODE => {
+                claude_code::history::load_claude_context_usage_for_session(&conn, &imported_id)
+            }
+            metadata::SOURCE_CODEX_APP => {
+                codex::app::load_codex_context_usage_for_session(&conn, &imported_id)
+            }
+            _ => Ok(None),
+        }
+    })
+    .await
+    .map_err(|err| format!("Task error: {err}"))?
+}

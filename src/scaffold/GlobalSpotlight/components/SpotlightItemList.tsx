@@ -8,7 +8,13 @@
  *
  * Row rendering is delegated to SpotlightItemRow.
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import { Placeholder } from "@src/components/Placeholder";
@@ -106,6 +112,10 @@ export const SpotlightItemList: React.FC<SpotlightItemListProps> = ({
     };
   }, [items.length, isLoadingInitial, searchQuery]);
 
+  const stickyIndices = useMemo(
+    () => items.flatMap((item, index) => (item.data?.isHeader ? [index] : [])),
+    [items]
+  );
   const useVirtualization = fixedHeight || items.length > 30;
   const getItemKey = useCallback((index: number) => items[index].id, [items]);
   const estimateSize = useCallback(
@@ -117,10 +127,13 @@ export const SpotlightItemList: React.FC<SpotlightItemListProps> = ({
   );
   const {
     containerRef,
+    stickyIndex,
     rows: virtualRows,
     totalSize,
     handleScroll,
   } = usePickerVirtualization({
+    stickyIndices,
+    scrollPadding: stickyIndices.length ? SPOTLIGHT_TOKENS.itemHeight : 0,
     count: items.length,
     getItemKey,
     estimateSize,
@@ -204,24 +217,36 @@ export const SpotlightItemList: React.FC<SpotlightItemListProps> = ({
       <div
         ref={nonVirtualizedContainerRef}
         className="spotlight-scrollable overflow-y-auto"
-        style={{ maxHeight: containerHeight }}
+        style={{
+          maxHeight: containerHeight,
+          paddingBottom: SPOTLIGHT_TOKENS.listInset - SPOTLIGHT_TOKENS.itemGap,
+          scrollPaddingTop: stickyIndices.length
+            ? SPOTLIGHT_TOKENS.itemHeight
+            : 0,
+        }}
         onScroll={handleScroll}
         onMouseMove={handleMouseMove}
         data-keyboard-mode={dataKeyboardMode}
       >
         {items.map((item, idx) => (
-          <SpotlightItemRow
+          <div
             key={item.id}
-            item={item}
-            selectionState={item.data?.selectionState}
-            index={idx}
-            isSelected={selectedIndex === idx}
-            isKeyboardMode={isKeyboardMode}
-            onSelect={onItemSelect}
-            onHover={onItemHover}
-            onHoverEnd={onItemHoverEnd}
-            searchQuery={searchQuery}
-          />
+            className={
+              item.data?.isHeader ? "sticky top-0 z-10 bg-bg-2" : undefined
+            }
+          >
+            <SpotlightItemRow
+              item={item}
+              selectionState={item.data?.selectionState}
+              index={idx}
+              isSelected={selectedIndex === idx}
+              isKeyboardMode={isKeyboardMode}
+              onSelect={onItemSelect}
+              onHover={onItemHover}
+              onHoverEnd={onItemHoverEnd}
+              searchQuery={searchQuery}
+            />
+          </div>
         ))}
 
         {isLoadingMore && (
@@ -255,7 +280,10 @@ export const SpotlightItemList: React.FC<SpotlightItemListProps> = ({
     <div
       ref={containerRef}
       className="spotlight-scrollable overflow-y-auto"
-      style={{ height: containerHeight }}
+      style={{
+        height: containerHeight,
+        paddingBottom: SPOTLIGHT_TOKENS.listInset - SPOTLIGHT_TOKENS.itemGap,
+      }}
       onScroll={handleScroll}
       onMouseMove={handleMouseMove}
       data-keyboard-mode={dataKeyboardMode}
@@ -264,7 +292,15 @@ export const SpotlightItemList: React.FC<SpotlightItemListProps> = ({
         {virtualRows.map((row) => (
           <div
             key={row.key}
-            style={{ position: "absolute", top: row.start, left: 0, right: 0 }}
+            className={
+              items[row.index].data?.isHeader ? "z-10 bg-bg-2" : undefined
+            }
+            style={{
+              position: row.index === stickyIndex ? "sticky" : "absolute",
+              top: row.index === stickyIndex ? 0 : row.start,
+              left: 0,
+              right: 0,
+            }}
           >
             <SpotlightItemRow
               item={items[row.index]}

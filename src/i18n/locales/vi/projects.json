@@ -1,6 +1,5 @@
 {
   "projects": {
-    "searchPlaceholder": "Tìm kiếm Project...",
     "loading": "Đang tải Project...",
     "emptyState": "Chưa có Project nào",
     "emptyStateSubtitle": "Tạo Project đầu tiên để bắt đầu",
@@ -8,14 +7,13 @@
     "noResults": "Không tìm thấy Project",
     "dashboardTitle": "Projects",
     "groupBy": {
-      "org": "Theo Org",
       "project": "Theo dự án",
       "status": "Theo trạng thái",
       "priority": "Theo độ ưu tiên",
-      "person": "Theo người",
       "assignedTo": "Theo người được giao",
       "createdBy": "Theo người tạo",
-      "targetDate": "Theo ngày mục tiêu"
+      "targetDate": "Theo ngày mục tiêu",
+      "property": "Theo thuộc tính"
     },
     "source": {
       "localOnly": "Chỉ cục bộ",
@@ -28,44 +26,17 @@
       "later": "Sau đó",
       "noTargetDate": "Không có ngày mục tiêu"
     },
-    "allProjects": "Tất cả dự án",
-    "otherRepos": "Repo khác",
-    "noOtherRepos": "Không có repo khác có Project",
-    "personalWorkspace": "Personal Workspace",
-    "personalEmpty": "Chưa có Project cá nhân",
-    "addProject": "Thêm Project",
-    "repoFallback": "Repo",
     "loadProjectsFailed": "Không thể tải Project",
-    "deleteProject": "Xóa Project",
     "createProject": "Tạo Project",
     "createMore": "Tạo thêm",
     "newProject": "Project mới",
     "columns": {
-      "name": "Tên",
       "workItems": "Hạng mục công việc"
-    },
-    "viewModes": {
-      "list": "Danh sách",
-      "settings": "Cài đặt"
-    },
-    "syncMethod": {
-      "title": "Phương thức đồng bộ",
-      "storage": "Lưu trữ",
-      "git": "Git (qua .orgii)"
-    },
-    "errors": {
-      "initFailed": "Không thể khởi tạo bộ nhớ Project: {{error}}"
     },
     "editor": {
       "titlePlaceholder": "Tên Project mới",
       "summaryPlaceholder": "Thêm tóm tắt ngắn...",
       "descriptionPlaceholder": "Viết mô tả, tóm tắt Project hoặc ghi lại ý tưởng..."
-    },
-    "tooltips": {
-      "dashboard": "Bảng điều khiển",
-      "filter": "Bộ lọc",
-      "selectPeople": "Chọn thành viên",
-      "searchPeople": "Tìm thành viên..."
     },
     "priorityGroups": {
       "unprioritized": "Chưa đặt ưu tiên"
@@ -75,9 +46,6 @@
   "githubIssuesImport": {
     "title": "Nhập GitHub Issues",
     "menuLabel": "Nhập GitHub Issues",
-    "createTarget": "GitHub Issues Project",
-    "heading": "Tạo Project từ GitHub Issues",
-    "description": "Chọn một kho GitHub, tạo ORGII Project và đồng bộ GitHub Issues thành work items.",
     "importButton": "Nhập GitHub Issues",
     "projectDescription": "GitHub Issues · {{owner}}/{{repo}}",
     "fields": {
@@ -96,67 +64,43 @@
     "linkedRepoHint": "Project này cũng sẽ được liên kết với Workspace repo hiện tại: {{repoName}}",
     "errors": {
       "invalidRepo": "Dùng owner/repo hoặc URL kho GitHub."
-    },
-    "importStatus": {
-      "title": "Trạng thái nhập",
-      "state": {
-        "pending": "Đang chờ",
-        "running": "Đang chạy",
-        "completed": "Hoàn tất",
-        "failed": "Thất bại",
-        "cancelled": "Đã hủy"
-      }
     }
   },
   "orgs": {
-    "yourOrgs": "Tổ chức của bạn",
-    "sectionTitle": "Tổ chức",
+    "yourOrgs": "Không gian làm việc của bạn",
     "recentProjects": "Dự án gần đây",
-    "personalOrg": "Tổ chức cá nhân của tôi",
-    "linearOrg": "Tổ chức Linear",
-    "noLinearOrgs": "Chưa có tổ chức nào được kết nối",
+    "personalOrg": "Không gian làm việc của tôi",
+    "linearOrg": "Không gian làm việc Linear",
+    "noLinearOrgs": "Chưa có không gian làm việc nào được kết nối",
     "sources": {
       "local": "Local",
-      "cloud": "Cloud",
-      "linear": "Linear"
+      "cloud": "Cloud"
     },
-    "addOrg": "Thêm tổ chức",
-    "importOrgs": "Nhập tổ chức",
-    "importLinearOrgs": "Nhập tổ chức Linear",
-    "createOrg": "Tạo tổ chức",
-    "createOrgHint": "Tạo tổ chức ORGII gốc để nhóm dự án và work items riêng với Linear.",
-    "createOrgFailed": "Không thể tạo tổ chức",
-    "orgName": "Tên tổ chức",
-    "orgNamePlaceholder": "Nhóm nền tảng",
+    "addOrg": "Thêm không gian làm việc",
+    "importLinearOrgs": "Nhập không gian làm việc Linear",
     "gitFolderPath": "Đường dẫn thư mục Git (tùy chọn)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "Liên kết tổ chức này với một cây làm việc Git hiện có để đồng bộ thư mục.",
+    "gitFolderPathHint": "Liên kết không gian làm việc này với một cây làm việc Git hiện có để đồng bộ thư mục.",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Đã đồng bộ với thư mục Git",
     "pendingSync": "Đang chờ đồng bộ",
     "management": {
-      "breadcrumb": "Cài đặt tổ chức",
       "overview": "Tổng quan",
-      "profile": "Hồ sơ",
       "syncMethods": "Phương thức đồng bộ",
-      "orgNameDescription": "Tên hiển thị cho tổ chức dự án này",
-      "orgKey": "Khóa tổ chức",
-      "orgKeyDescription": "Khóa ngắn ổn định dùng cho ID dự án trong phạm vi tổ chức",
-      "projectCountDescription": "Các dự án native hiện được gán cho tổ chức này",
       "gitFolderSync": "Đồng bộ thư mục Git",
-      "gitFolderSyncDescription": "Phản chiếu dự án và work items của tổ chức này thông qua Git worktree",
+      "gitFolderSyncDescription": "Phản chiếu dự án và work items của không gian làm việc này thông qua Git worktree",
       "notConfigured": "Chưa cấu hình",
       "syncNowDescription": "Nhập thay đổi tệp từ xa và xuất thay đổi cơ sở dữ liệu cục bộ",
       "syncSummary": "{{projects}} dự án, {{workItems}} work items, {{conflicts}} xung đột",
-      "syncHowItWorks": "Đồng bộ thư mục Git kết nối tổ chức này với một kho Git hiện có. ORGII lưu các dự án và work items được xuất của tổ chức dưới `.orgii/projects/...` bên trong kho đó, nhập thay đổi tệp từ đó, xuất thay đổi cơ sở dữ liệu cục bộ trở lại thành tệp và tạm dừng khi có xung đột để bạn xem lại trước khi ghi đè bất kỳ nội dung nào",
-      "noProjectsForCatalog": "Tổ chức này chưa có dự án nào.",
-      "noProjectsForCatalogHint": "Tạo một dự án trong tổ chức này trước khi quản lý nhãn dùng chung",
+      "syncHowItWorks": "Đồng bộ thư mục Git kết nối không gian làm việc này với một kho Git hiện có. ORGII lưu các dự án và work items được xuất của không gian làm việc dưới `.orgii/projects/...` bên trong kho đó, nhập thay đổi tệp từ đó, xuất thay đổi cơ sở dữ liệu cục bộ trở lại thành tệp và tạm dừng khi có xung đột để bạn xem lại trước khi ghi đè bất kỳ nội dung nào",
+      "noProjectsForCatalog": "Không gian làm việc này chưa có dự án nào.",
+      "noProjectsForCatalogHint": "Tạo một dự án trong không gian làm việc này trước khi quản lý nhãn dùng chung",
       "dangerZone": "Vùng nguy hiểm",
-      "deleteOrg": "Xóa tổ chức này",
+      "deleteOrg": "Xóa không gian làm việc này",
       "deleteOrgDescription": "Xóa vĩnh viễn {{org}} cùng tất cả dự án và hạng mục công việc cục bộ. Không thể hoàn tác thao tác này",
-      "personalOrgDeleteDisabled": "Tổ chức cá nhân mặc định là vĩnh viễn và không thể xóa",
+      "personalOrgDeleteDisabled": "Không gian làm việc cá nhân mặc định là vĩnh viễn và không thể xóa",
       "deleteTypeToConfirm": "Nhập {{org}} để xác nhận",
-      "deleteOrgAction": "Xóa tổ chức",
+      "deleteOrgAction": "Xóa không gian làm việc",
       "deletedToast": "Đã xóa {{org}}"
     }
   },
@@ -173,28 +117,20 @@
     "targetDate": "Ngày mục tiêu",
     "repos": "Kho lưu trữ",
     "completion": "Tiến độ",
-    "statusBreakdown": "Phân bố trạng thái",
     "addLead": "Thêm trưởng nhóm",
     "noLead": "Không có trưởng nhóm",
     "addMembers": "Thêm thành viên",
     "addTeams": "Thêm nhóm",
     "addLabels": "Thêm nhãn",
     "addRepos": "Liên kết kho lưu trữ",
-    "searchRepos": "Tìm kho lưu trữ...",
     "noReposHint": "Không có kho lưu trữ khả dụng. Hãy thêm kho lưu trữ vào workspace trước.",
     "addDate": "Thêm ngày",
     "clearDate": "Xóa ngày",
     "noStatus": "Không có trạng thái",
     "noUpdates": "Không có cập nhật",
     "noPriority": "Không có ưu tiên",
-    "searchMembers": "Tìm thành viên...",
     "searchAssignee": "Tìm người được giao...",
-    "searchTeams": "Tìm nhóm...",
     "noTeamsHint": "Chưa có nhóm nào. Thêm thành viên vào Project và tổ chức họ thành nhóm",
-    "searchLabels": "Tìm nhãn...",
-    "searchStatus": "Tìm trạng thái...",
-    "searchHealth": "Tìm tình trạng...",
-    "searchPriority": "Tìm mức ưu tiên...",
     "memberCount_one": "{{count}} thành viên",
     "memberCount_other": "{{count}} thành viên",
     "statusOptions": {
@@ -215,8 +151,7 @@
       "onTrack": "Đúng tiến độ",
       "atRisk": "Có rủi ro",
       "offTrack": "Lệch tiến độ"
-    },
-    "noProjectSelected": "Chưa chọn Project"
+    }
   },
   "workItems": {
     "label": "Work items",
@@ -232,22 +167,6 @@
     "newWorkItem": "Work Item Mới",
     "newWorkItemName": "Work Item mới",
     "createWorkItem": "Tạo Work Item",
-    "createModes": {
-      "generateWithAi": "Tạo bằng AI",
-      "generateWithAgent": "Tạo bằng Agent",
-      "manualCreation": "Tạo thủ công",
-      "sessionCreatorPrompt": {
-        "promptNameQuestion": "Trước tiên, hãy hỏi người dùng có muốn chỉ định một tên Work Item cụ thể không.",
-        "promptInstruction": "Tạo các Work Items cho dự án này.",
-        "promptProject": "Dự án: {{project}}",
-        "promptDraftTitle": "Tên Work Item được yêu cầu: {{title}}",
-        "promptDraftDetails": "Chi tiết bản nháp:\n{{details}}"
-      }
-    },
-    "linkExisting": {
-      "label": "Liên kết Work Item hiện có",
-      "placeholder": "Chọn Work Item để liên kết"
-    },
     "titlePlaceholder": "Tiêu đề Work Item",
     "descriptionPlaceholder": "Mô tả Work Item...",
     "deleteWorkItem": "Xóa mục công việc",
@@ -256,8 +175,7 @@
     "showProperties": "Hiện thuộc tính",
     "addStatusItem": "Thêm mục {{status}}",
     "deleteBin": {
-      "title": "Thùng xóa",
-      "subtitle": "Có thể khôi phục trong 7 ngày"
+      "title": "Thùng xóa"
     },
     "tabs": {
       "overview": "Tổng quan",
@@ -265,7 +183,8 @@
       "kanban": "Kanban",
       "gantt": "Gantt",
       "calendar": "Lịch",
-      "settings": "Cài đặt"
+      "settings": "Cài đặt",
+      "table": "Bảng"
     },
     "statusFilters": {
       "all": "Tất cả",
@@ -297,21 +216,9 @@
       "medium": "Trung bình",
       "low": "Thấp"
     },
-    "toolLabels": {
-      "edit": "sửa",
-      "new": "mới",
-      "patch": "vá"
-    },
     "overview": {
       "projectNamePlaceholder": "Tên Project",
-      "descriptionPlaceholder": "Viết mô tả Project...",
-      "stats": "Thống kê",
-      "totalItems": "Tổng",
-      "completionRate": "Tỷ lệ hoàn thành",
-      "recentUpdates": "Cập nhật gần đây",
-      "name": "Tên",
-      "assignee": "Người phụ trách",
-      "lastUpdated": "Cập nhật"
+      "descriptionPlaceholder": "Viết mô tả Project..."
     },
     "properties": {
       "title": "Thuộc tính mục công việc",
@@ -320,8 +227,6 @@
       "noAssignee": "Chưa gán",
       "noMembersHint": "Chưa có thành viên. Vào Settings > Members để đồng bộ từ git",
       "noProject": "Không có Project được liên kết",
-      "selectProject": "Chọn Project",
-      "noProjectsHint": "Không có Project khả dụng.",
       "noMilestone": "Không có cột mốc",
       "noDueDate": "Không có hạn",
       "noDueDay": "Không có ngày hạn",
@@ -342,20 +247,31 @@
       "inHours_other": "Sau {{count}} giờ",
       "inLessThanHour": "Dưới 1 giờ",
       "searchProjects": "Tìm Project...",
-      "searchMilestones": "Tìm cột mốc...",
       "delegations": "Ủy quyền",
       "delegationsCompleted": "đã hoàn thành",
       "daysAgo": "{{count}} ngày trước",
       "hoursAgo": "{{count}} giờ trước",
       "inDays": "trong {{count}} ngày",
       "inHours": "trong {{count}} giờ",
-      "membersGroup": "Thành viên"
-    },
-    "history": {
-      "noHistory": "Chưa có lịch sử"
+      "membersGroup": "Thành viên",
+      "filter": "Bộ lọc thuộc tính",
+      "filterValue": "Giá trị bộ lọc thuộc tính",
+      "noValue": "Không có giá trị",
+      "archiveNamed": "Lưu trữ {{name}}",
+      "add": "Thêm thuộc tính",
+      "archive": "Lưu trữ thuộc tính",
+      "datePlaceholder": "YYYY-MM-DD",
+      "empty": "Chưa có thuộc tính tùy chỉnh.",
+      "loading": "Đang tải thuộc tính…",
+      "namePlaceholder": "Tên thuộc tính",
+      "no": "Không",
+      "optionsPlaceholder": "Các tùy chọn, phân cách bằng dấu phẩy",
+      "optionsRequired": "Thuộc tính kiểu chọn cần các tùy chọn phân cách bằng dấu phẩy.",
+      "type": "Kiểu thuộc tính",
+      "updateFailed": "Cập nhật thuộc tính thất bại",
+      "yes": "Có"
     },
     "activity": {
-      "title": "Hoạt động",
       "discussionTitle": "Thảo luận",
       "activityHistory": "Lịch sử hoạt động",
       "activityHistoryCount": "{{count}} sự kiện",
@@ -363,17 +279,12 @@
       "subscribe": "Theo dõi",
       "unsubscribe": "Bỏ theo dõi",
       "commentPlaceholder": "Để lại bình luận...",
-      "you": "Bạn",
       "createdWorkItem": "đã tạo công việc",
       "deletedWorkItem": "đã xóa công việc",
       "restoredWorkItem": "đã khôi phục công việc",
       "movedFromTo": "đã chuyển từ {{from}} sang {{to}}",
       "commented": "đã bình luận",
       "system": "Hệ thống",
-      "wasAssigned": "đã được gán",
-      "wasUnassigned": "đã bị bỏ gán",
-      "addedLabel": "đã thêm nhãn",
-      "removedLabel": "đã xóa nhãn",
       "madeChange": "đã thay đổi",
       "changedField": "đã đổi {{field}} từ {{from}} sang {{to}}",
       "changedFieldShort": "đã cập nhật {{field}}",
@@ -391,10 +302,6 @@
       "todoMarkedPending": "đã đánh dấu “{{todo}}” là đang chờ",
       "todoRenamed": "đã đổi tên “{{from}}” thành “{{to}}”",
       "todoUpdated": "đã cập nhật “{{todo}}”",
-      "justNow": "vừa xong",
-      "daysAgo": "{{count}} ngày trước",
-      "hoursAgo": "{{count}} giờ trước",
-      "minutesAgo": "{{count}} phút trước",
       "agent": "Agent",
       "fields": {
         "title": "tiêu đề",
@@ -415,7 +322,27 @@
         "schedule": "lịch trình",
         "orchestratorConfig": "cấu hình Orchestrator",
         "handoff": "bàn giao"
-      }
+      },
+      "mentionPeople": "Nhắc đến người",
+      "mentionAll": "@all — mọi người trên mục này",
+      "mentionAgentOption": "{{name}} (agent)",
+      "mentionAgentOrgOption": "{{name}} (agent org)",
+      "appendedSession": "đã đính kèm một phiên",
+      "edited": "(đã chỉnh sửa)",
+      "commentDeleted": "Bình luận này đã bị xóa.",
+      "deleteComment": "Xóa bình luận",
+      "deleteCommentConfirm": "Xóa bình luận này? Các trả lời vẫn được giữ, chỉ nội dung bình luận bị xóa.",
+      "messageCount_one": "{{count}} tin nhắn",
+      "messageCount_other": "{{count}} tin nhắn",
+      "cancelReply": "Hủy trả lời",
+      "conclusion": "Kết luận",
+      "reopen": "Mở lại",
+      "reply": "Trả lời",
+      "replyingInThread": "Đang trả lời trong chuỗi",
+      "resolve": "Giải quyết",
+      "resolved": "Đã giải quyết",
+      "submitComment": "Gửi bình luận",
+      "openedWorkItem": "đã mở mục công việc này"
     },
     "contextMenu": {
       "status": "Trạng thái",
@@ -428,8 +355,6 @@
       "milestone": "Cột mốc",
       "setDueDate": "Đặt hạn",
       "rename": "Đổi tên...",
-      "addLink": "Thêm liên kết...",
-      "favorite": "Yêu thích",
       "moreProperties": "Thuộc tính khác"
     },
     "propertyFields": {
@@ -440,63 +365,10 @@
     },
     "addWorkItem": "Thêm mục công việc",
     "agentWorkflow": {
-      "title": "Agent Workflow",
-      "running": "Đang chạy...",
-      "completed": "Hoàn tất",
-      "failed": "Thất bại",
-      "interrupted": "Đã gián đoạn",
-      "retry": "Thử lại",
-      "resume": "Tiếp tục",
-      "openSession": "Mở phiên",
-      "viewLiveChat": "Xem Chat trực tiếp",
-      "viewConversation": "Xem cuộc trò chuyện",
-      "noWorkflowRun": "Chưa có Agent workflow nào được chạy",
-      "confirmStart": "Bắt đầu SDE Agent cho mục công việc này?",
-      "sdePhase": "Phát triển SDE",
-      "totalCost": "Tổng chi phí",
-      "totalTokens": "Tổng Token",
-      "proofOfWork": "Kết quả công việc",
-      "branch": "Nhánh",
-      "pullRequest": "Pull Request",
-      "filesChanged": "Tệp thay đổi",
-      "linesAdded": "Dòng thêm",
-      "linesRemoved": "Dòng xóa",
-      "approved": "Đã phê duyệt",
-      "changesRequested": "Yêu cầu sửa đổi",
-      "inconclusive": "Chưa xác định",
-      "failedError": "Phiên thất bại",
-      "retryWithContext": "Thử lại với ngữ cảnh từ lần thất bại trước",
-      "interruptedMessage": "Workflow đã bị gián đoạn khi đóng ứng dụng",
-      "selectAccount": "Chọn code account",
-      "noAccountsReady": "Không có tài khoản cục bộ khả dụng",
-      "sessionOutput": "Đầu ra phiên",
-      "noOutputYet": "Chưa có đầu ra",
-      "cycles": "{{count}} chu kỳ",
-      "whatNext": "Bạn muốn làm gì tiếp theo?",
-      "acceptAsIs": "Chấp Nhận Như Hiện Tại",
-      "fixAndRerun": "Sửa và Chạy Lại",
-      "roleSde": "SDE",
-      "roleReview": "Review",
-      "roleFollowUp": "Follow-up",
-      "roleAssistant": "Assistant",
-      "roleUser": "User",
       "statusRunning": "Đang chạy",
       "statusCompleted": "Hoàn thành",
       "statusFailed": "Thất bại",
-      "statusCancelled": "Đã hủy",
-      "sessionFiles": "Tệp",
-      "noFilesModified": "Không có tệp nào được sửa đổi",
-      "subAgents": "Sub-Agents",
-      "subAgentSpawn": "Đang tạo {{name}} #{{instance}}",
-      "subAgentComplete": "{{name}} #{{instance}} hoàn thành",
-      "subAgentFailed": "{{name}} #{{instance}} thất bại",
-      "tokens": "Token",
-      "subAgentDefault": "Sub-Agent",
-      "toolResult": "kết quả {{tool}}",
-      "collabLockRunning": "{{name}} is running",
-      "collabLockHeld": "{{name}}'s agent is already working on this item",
-      "collabLockConflict": "Another member just started an agent on this item",
-      "collabLockUnresolved": "Could not verify this work item's collaboration status. Check your connection and try again."
+      "statusCancelled": "Đã hủy"
     },
     "changedFiles": {
       "title": "Tệp Thay Đổi",
@@ -509,15 +381,13 @@
       "notAuthenticated": "Chưa xác thực. Vui lòng đăng nhập Marketplace.",
       "noRepoPath": "Không có đường dẫn kho lưu trữ",
       "noOriginRemote": "Không tìm thấy origin remote trong kho lưu trữ",
-      "cannotParseRepoName": "Không thể phân tích tên kho từ: {{url}}",
-      "defaultPrTitle": "[{{shortId}}] Thay đổi work item"
+      "cannotParseRepoName": "Không thể phân tích tên kho từ: {{url}}"
     },
     "sessions": {
-      "linkedSessions": "Sessions đã liên kết",
-      "newSession": "Phiên mới",
-      "starting": "Đang bắt đầu...",
       "emptyOverview": "Chưa có Sessions",
-      "emptyOverviewHint": "Bắt đầu một Agent Session để theo dõi quá trình thực thi tại đây."
+      "originTitle": "Phiên khởi tạo",
+      "originStatus": "Đã tạo mục này",
+      "runsCount": "{{count}} lần chạy"
     },
     "outputTab": {
       "prSection": "Pull Request",
@@ -531,17 +401,120 @@
       "prMerged": "Merged",
       "prClosed": "Closed",
       "prDraft": "Draft",
-      "openPr": "Mở PR",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "Không có thay đổi tệp",
       "fileDiffCleanHint": "Không phát hiện thay đổi tệp nào.",
       "costSummary": "Tổng chi phí",
       "totalCost": "Tổng",
       "tokens": "Token",
-      "cycles": "chu kỳ"
+      "prBlocked": "Hoàn tất đang bị chặn",
+      "prReady": "Sẵn sàng hoàn tất"
     },
     "viewWorkItems": "Xem Work Items",
-    "fromRoutine": "From routine: {{name}}"
+    "fromRoutine": "From routine: {{name}}",
+    "batchField": {
+      "hint": "Áp dụng cho {{count}} mục đã chọn."
+    },
+    "batchStatus": {
+      "title": "Đặt trạng thái"
+    },
+    "batchPriority": {
+      "title": "Đặt độ ưu tiên"
+    },
+    "batchAssignee": {
+      "title": "Đặt người được giao"
+    },
+    "discussion": {
+      "previewWillWake": "Sẽ đánh thức agent để trả lời",
+      "previewNoteOnly": "Chỉ là ghi chú — agent sẽ không được kích hoạt",
+      "previewNoSession": "Không có phiên agent liên kết — sẽ không kích hoạt gì",
+      "previewMentionResume": "Sẽ đánh thức agent được nhắc đến",
+      "previewMentionStart": "Sẽ khởi động agent được nhắc đến",
+      "previewMentionUnroutable": "Agent được nhắc đến chưa được cấu hình trên mục này — sẽ không kích hoạt gì",
+      "previewThread": "Sẽ đánh thức agent từ chuỗi này",
+      "previewAssignee": "Sẽ đánh thức agent được giao",
+      "previewAssigneeStart": "Sẽ khởi động agent được giao",
+      "previewCoalesce": "gộp vào lượt đánh thức đang chờ",
+      "previewMemberThread": "Chuỗi của thành viên — sẽ không đánh thức agent nào"
+    },
+    "subItems": {
+      "title": "Mục con",
+      "parent": "Mục cha",
+      "progress": "Đã hoàn tất {{completed}} trên {{total}}",
+      "add": "Thêm mục con",
+      "addFirst": "Thêm mục con đầu tiên",
+      "titlePlaceholder": "Nhập tiêu đề mục con",
+      "stagePicker": "Giai đoạn mục con",
+      "noStage": "Không có giai đoạn",
+      "stage": "Giai đoạn {{stage}}",
+      "openStatus": "Đang mở",
+      "completedStatus": "Đã hoàn tất",
+      "cancelledStatus": "Đã hủy",
+      "createError": "Không thể tạo mục con. Hãy thử lại."
+    },
+    "savedViews": {
+      "placeholder": "Chế độ xem",
+      "save": "Lưu chế độ xem hiện tại",
+      "saveTitle": "Lưu chế độ xem",
+      "namePlaceholder": "Tên chế độ xem",
+      "saveHint": "Ghi lại các bộ lọc hiện tại; bố cục được dùng cho lần mở đầu tiên.",
+      "delete": "Xóa chế độ xem"
+    },
+    "table": {
+      "columnsPicker": "Cột",
+      "groupByProperty": "Nhóm theo thuộc tính",
+      "columns": {
+        "shortId": "ID",
+        "title": "Tiêu đề",
+        "status": "Trạng thái",
+        "priority": "Độ ưu tiên",
+        "assignee": "Người được giao",
+        "targetDate": "Hạn",
+        "labels": "Nhãn"
+      }
+    },
+    "batchProperty": {
+      "title": "Đặt thuộc tính",
+      "hint": "Áp dụng một giá trị thuộc tính cho {{count}} mục đã chọn. Để trống giá trị để xóa.",
+      "propertyPlaceholder": "Thuộc tính",
+      "valuePlaceholder": "Giá trị",
+      "applied": "Đã cập nhật {{count}} mục"
+    },
+    "revisionConflict": {
+      "title": "Giải quyết xung đột chỉnh sửa",
+      "description": "{{field}} đã thay đổi sau bản sửa {{expected}}. Hãy so sánh chỉnh sửa của bạn với bản sửa {{actual}}, rồi chọn phiên bản muốn giữ.",
+      "mine": "Phiên bản của tôi",
+      "latest": "Phiên bản mới nhất",
+      "useLatest": "Dùng bản mới nhất",
+      "keepMine": "Giữ bản của tôi",
+      "titleField": "Tiêu đề",
+      "descriptionField": "Mô tả",
+      "commentField": "Bình luận",
+      "reloadNotice": "Work Item này đã thay đổi ở nơi khác. Phiên bản mới nhất đã được tải lại.",
+      "retryFailed": "Phiên bản mới nhất lại thay đổi. Hãy xem lại cả hai phiên bản trước khi thử lại."
+    },
+    "quickActions": {
+      "title": "Thao tác nhanh",
+      "empty": "Chưa có thao tác nhanh. Hãy lưu một prompt có thể dùng lại cho agent.",
+      "emptyManage": "Chưa lưu gì.",
+      "manageTitle": "Quản lý thao tác nhanh",
+      "namePlaceholder": "Tên thao tác (vd. Sửa CI)",
+      "targetPlaceholder": "Agent đích",
+      "promptPlaceholder": "Agent nên làm gì?",
+      "archive": "Lưu trữ thao tác",
+      "scopeChanged": "Thao tác nhanh không còn trong phạm vi Work Item này",
+      "started": "Đã bắt đầu thao tác nhanh “{{name}}”"
+    },
+    "detailNavigation": "Điều hướng Work Item",
+    "linkedSessions": {
+      "title": "Phiên"
+    },
+    "detail": {
+      "conversation": "Trò chuyện",
+      "linked": "Đã liên kết"
+    },
+    "detailSummary": "Tóm tắt Work Item",
+    "navigationTrail": "Điều hướng Work Item"
   },
   "settings": {
     "sidebarGeneral": "Chung",
@@ -560,35 +533,19 @@
     "githubUsernameDesc": "Khớp danh tính của bạn trong danh sách thành viên khi được liên kết",
     "profileNotFound": "Không thể khớp danh tính của bạn với bất kỳ thành viên nào trong nhóm",
     "profileNotFoundHint": "Email git của bạn ({{email}}) không được tìm thấy trong danh sách thành viên. Đồng bộ thành viên để cập nhật",
-    "teamMembers": "Thành viên nhóm",
-    "memberCount": "{{active}} / {{total}} hoạt động",
-    "activeBadge": "Hoạt động",
-    "inactiveBadge": "Không hoạt động",
-    "activateMember": "Kích hoạt thành viên",
-    "deactivateMember": "Vô hiệu hóa thành viên",
-    "syncFromGit": "Đồng bộ từ Git",
-    "membersDescription": "Quản lý thành viên nhóm. Thành viên không hoạt động sẽ không xuất hiện trong danh sách phân công",
     "activeMembers": "Hiện tại",
     "activeMembersDescription": "Thành viên hiển thị trong danh sách phân công và báo cáo",
     "inactiveMembers": "Không hoạt động",
     "inactiveMembersDescription": "Ẩn khỏi danh sách. Kích hoạt lại để bao gồm lại",
     "noActiveMembers": "Không có thành viên hoạt động",
-    "repoTab": "Repo",
-    "projectTab": "Project",
     "workItemIdTitle": "ID mục công việc",
     "workItemIdPrefix": "Tiền tố ID",
     "workItemIdPrefixDescription": "1-3 chữ cái hoặc số. ID mới sử dụng tiền tố này",
     "customPrefix": "Tiền tố tùy chỉnh",
-    "customPrefixDescription": "Khi tắt, tiền tố được tự động tạo từ 3 ký tự đầu tiên của tên Project",
     "customPrefixCurrentValue": "Giá trị hiện tại: {{value}}",
-    "manageInRepoSettings": "Quản lý trong cài đặt Repo",
-    "projectMemberList": "Thành viên Project",
     "projectMemberListDescription": "Chọn thành viên Repo thuộc Project này",
     "labelsDescription": "Quản lý nhãn để phân loại các mục công việc",
-    "addLabel": "Thêm nhãn",
     "noLabels": "Nhấn + để thêm nhãn",
-    "deleteLabel": "Xóa nhãn",
-    "changeColor": "Đổi màu",
     "labelNamePlaceholder": "Tên nhãn...",
     "memberRecentlyActive": "Hoạt động",
     "linkedIdentities": "Danh tính đã liên kết",
@@ -607,9 +564,7 @@
     "claimIdentityShowAsAuthor": "Hiển thị bạn là tác giả trong lịch sử mục công việc",
     "claimIdentityWarning": "Chỉ nhận các danh tính thuộc về bạn",
     "confirmClaim": "Xác nhận nhận",
-    "alreadyClaimed": "Đã liên kết với thành viên khác",
     "dangerZone": "Vùng nguy hiểm",
-    "dangerZoneDescription": "Các thao tác không thể hoàn tác cho Project này",
     "deleteProject": "Xóa Project này",
     "deleteProjectWarning": "Thao tác này sẽ xóa vĩnh viễn thư mục Project và tất cả các mục công việc khỏi .orgii. Không thể hoàn tác",
     "deleteThisProject": "Xóa Project này...",
@@ -624,47 +579,17 @@
         "notAttached": "Chưa kết nối",
         "attach": "Kết nối",
         "detach": "Ngắt kết nối",
-        "changeWarning": "Hãy ngắt kết nối bộ chuyển đổi hiện tại trước khi kết nối bộ chuyển đổi mới."
+        "changeWarning": "Hãy ngắt kết nối bộ chuyển đổi hiện tại trước khi kết nối bộ chuyển đổi mới.",
+        "detachProjectMenuLabel": "Hủy liên kết GitHub",
+        "detachProjectTitle": "Hủy liên kết GitHub khỏi {{project}}?",
+        "detachProjectDescription": "Đồng bộ GitHub Issues sẽ dừng. Dự án cục bộ và các mục công việc đã nhập vẫn ở lại trong ORGII.",
+        "detachProjectAction": "Hủy liên kết GitHub khỏi {{project}}",
+        "detachProjectSuccess": "Đã hủy liên kết GitHub khỏi {{project}}"
       },
       "accountPicker": {
         "title": "Tài khoản",
         "empty": "Không có tài khoản đồng bộ toàn cục cho bộ điều hợp này",
         "previewNote": "Chọn tài khoản toàn cục mà Project này sẽ dùng để đồng bộ."
-      },
-      "token": {
-        "title": "API Token",
-        "placeholder": "Dán Token truy cập cá nhân của bạn",
-        "save": "Lưu Token",
-        "saved": "Đã lưu Token",
-        "tabs": {
-          "oauth": "OAuth",
-          "personalToken": "Token cá nhân"
-        },
-        "bothMethodsNote": "Cả hai cách đều hoạt động — lần đăng nhập gần nhất sẽ được dùng.",
-        "oauth": {
-          "connectButton": "Kết nối với {{adapter}}",
-          "instructions": "Nhập mã bên dưới vào tab trình duyệt vừa mở, sau đó phê duyệt quyền truy cập.",
-          "userCodeLabel": "Mã",
-          "openLinkButton": "Mở trang xác minh",
-          "waitingForConfirmation": "Đang chờ bạn phê duyệt trong trình duyệt…",
-          "cancel": "Huỷ",
-          "connected": "Đã kết nối qua OAuth",
-          "reconnect": "Kết nối lại",
-          "codeCopied": "Đã sao chép mã vào bảng nhớ tạm",
-          "errors": {
-            "startFailed": "Không thể bắt đầu OAuth: {{error}}",
-            "accessDenied": "Đăng nhập OAuth đã bị từ chối.",
-            "expired": "Mã đã hết hạn trước khi được phê duyệt. Vui lòng thử lại.",
-            "pollFailed": "Đăng nhập thất bại: {{detail}}",
-            "unknown": "Lỗi đăng nhập không mong muốn: {{error}}"
-          },
-          "browserOpened": "Đang mở {{adapter}} trong trình duyệt…",
-          "redirect": {
-            "openButton": "Mở trang ủy quyền {{adapter}}",
-            "instructions": "Phê duyệt yêu cầu trong trình duyệt để hoàn tất kết nối {{adapter}}.",
-            "expiresAt": "Liên kết hết hạn lúc {{time}}"
-          }
-        }
       },
       "status": {
         "title": "Trạng thái",
@@ -741,7 +666,6 @@
       },
       "problems": {
         "title": "Mục thất bại",
-        "empty": "Không có mục thất bại.",
         "op": {
           "create": "create",
           "update": "update",
@@ -771,10 +695,6 @@
       },
       "conflicts": {
         "title": "Xung đột đồng bộ",
-        "loading": "Đang tải xung đột…",
-        "empty": "Không có xung đột.",
-        "openCount_one": "{{count}} xung đột mở",
-        "openCount_other": "{{count}} xung đột mở",
         "detectedAt": "phát hiện {{time}}",
         "resolvedAt": "đã giải quyết {{time}}",
         "fields_one": "{{count}} trường",
@@ -809,13 +729,21 @@
         },
         "errors": {
           "listFailed": "Không tải được xung đột: {{error}}",
-          "countFailed": "Không tải được số lượng xung đột: {{error}}",
           "useLocalFailed": "Không giữ được giá trị cục bộ: {{error}}",
           "useRemoteFailed": "Không chấp nhận được giá trị từ xa: {{error}}",
           "dismissFailed": "Không bỏ qua được xung đột: {{error}}"
         }
       }
-    }
+    },
+    "sidebarStatuses": "Trạng thái",
+    "statusesBuiltin": "Trạng thái tích hợp",
+    "statusesBuiltinDescription": "Các nhóm quy trình tiêu chuẩn. Luôn khả dụng.",
+    "statusesCustom": "Trạng thái tùy chỉnh",
+    "statusesCustomDescription": "Tên gọi khác đặt trên một nhóm tích hợp. Bộ lọc, số đếm và bảng coi chúng như nhóm gốc.",
+    "statusNamePlaceholder": "Tên trạng thái",
+    "noCustomStatuses": "Chưa có trạng thái tùy chỉnh.",
+    "statusArchive": "Lưu trữ trạng thái",
+    "statusRestore": "Khôi phục trạng thái"
   },
   "statusBar": {
     "workItemCount": "{{count}} mục",
@@ -856,29 +784,13 @@
     "views": "Views",
     "more": "More"
   },
-  "teams": {
-    "title": "Nhóm của bạn",
-    "localTeams": "Nhóm cục bộ",
-    "linearTeams": "Nhóm Linear",
-    "personalOrg": "Personal Org",
-    "agentOrgs": "Nhóm Agent",
-    "emptyLinearTeams": "Không tìm thấy nhóm Linear",
-    "empty": "Không tìm thấy nhóm"
-  },
   "linearProjects": {
-    "title": "Linear Projects",
-    "open": "Open Linear Projects",
-    "subtitle": "Browse and edit Linear Projects in real time without importing them into ORGII.",
-    "refresh": "Refresh",
     "createProject": "Create Project",
-    "archive": "Archive",
-    "searchPlaceholder": "Search Linear Projects...",
     "loadingProjects": "Loading Linear Projects...",
     "loadingIssues": "Loading Linear Issues...",
     "emptyProjects": "No Linear Projects found",
     "emptyIssues": "No Linear Issues in this Project",
     "unknownState": "Unknown state",
-    "updated": "Updated {{date}}",
     "emptyConnections": {
       "title": "No Linear connections",
       "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
@@ -887,14 +799,9 @@
       "title": "Select a Linear Project",
       "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
     },
-    "issues": {
-      "title": "Linear Issues",
-      "subtitle": "Issues are read and mutated directly through the Linear API."
-    },
     "forms": {
       "createProjectTitle": "Create Linear Project",
       "projectName": "Project name",
-      "issueTitle": "Issue title",
       "description": "Description"
     },
     "statusPanel": {
@@ -945,6 +852,6 @@
     "noResultTitle": "No Git sync result",
     "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This org has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
   }
 }

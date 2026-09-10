@@ -30,15 +30,21 @@ impl AgentOrgRunStore {
                     org_snapshot_json,
                     entry_mode,
                     status,
+                    activation_generation,
+                    has_initial_work,
                     work_item_id,
                     project_slug,
                     routine_fire_id,
                     summary,
                     last_error,
+                    failure_json,
+                    last_activity_outcome,
                     created_at,
                     updated_at,
-                    completed_at
-             FROM agent_org_runs
+                    idled_at,
+                    archived_at,
+                    archive_receipt_id
+             FROM agent_org_runtime_runs
              WHERE root_session_id IN ({placeholders})
              ORDER BY updated_at DESC, id DESC"
         );
@@ -72,15 +78,21 @@ impl AgentOrgRunStore {
                         org_snapshot_json,
                         entry_mode,
                         status,
+                        activation_generation,
+                        has_initial_work,
                         work_item_id,
                         project_slug,
                         routine_fire_id,
                         summary,
                         last_error,
+                        failure_json,
+                        last_activity_outcome,
                         created_at,
                         updated_at,
-                        completed_at
-                 FROM agent_org_runs
+                        idled_at,
+                        archived_at,
+                        archive_receipt_id
+                 FROM agent_org_runtime_runs
                  WHERE root_session_id IS NOT NULL
                  ORDER BY updated_at DESC
                  LIMIT ?1",
@@ -96,11 +108,24 @@ impl AgentOrgRunStore {
         Ok(out)
     }
 
-    /// List runs currently in `running` status, newest-updated first.
-    /// SQL-side status filter avoids loading terminal runs. Callers that must
-    /// inspect every running run (the watchdog) pass `usize::MAX`, which is
-    /// safely clamped to SQLite's `i64` limit.
+    /// List runs currently in `running` status, oldest-updated first. Periodic
+    /// callers must pass their explicit bounded batch size.
     pub fn list_running_runs(limit: usize) -> Result<Vec<AgentOrgRunRecord>, String> {
+        Self::list_runs_by_status(AgentOrgRunStatus::Running, limit)
+    }
+
+    /// Stable keyset page used by one-shot startup recovery. Run mutations may
+    /// update timestamps while the scan is in progress, so the immutable run
+    /// id—not `updated_at`—owns the cursor.
+    pub fn list_running_runs_after_id(
+        after_id: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<AgentOrgRunRecord>, String> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+        let bounded_limit = i64::try_from(limit)
+            .map_err(|_| format!("Agent Org run list limit is too large: {limit}"))?;
         let conn = get_connection().map_err(|err| err.to_string())?;
         let mut stmt = conn
             .prepare(
@@ -111,29 +136,76 @@ impl AgentOrgRunStore {
                         org_snapshot_json,
                         entry_mode,
                         status,
+                        activation_generation,
+                        has_initial_work,
                         work_item_id,
                         project_slug,
                         routine_fire_id,
                         summary,
                         last_error,
+                        failure_json,
+                        last_activity_outcome,
                         created_at,
                         updated_at,
-                        completed_at
-                 FROM agent_org_runs
+                        idled_at,
+                        archived_at,
+                        archive_receipt_id
+                 FROM agent_org_runtime_runs
                  WHERE root_session_id IS NOT NULL
-                   AND status = ?1
-                 ORDER BY updated_at DESC
+                   AND status='running'
+                   AND (?1 IS NULL OR id>?1)
+                 ORDER BY id ASC
                  LIMIT ?2",
             )
             .map_err(|err| err.to_string())?;
         let rows = stmt
-            .query_map(
-                params![
-                    AgentOrgRunStatus::Running.as_str(),
-                    i64::try_from(limit).unwrap_or(i64::MAX)
-                ],
-                row_to_run,
+            .query_map(params![after_id, bounded_limit], row_to_run)
+            .map_err(|err| err.to_string())?;
+        rows.map(|row| row.map_err(|err| err.to_string())).collect()
+    }
+
+    pub(super) fn list_runs_by_status(
+        status: AgentOrgRunStatus,
+        limit: usize,
+    ) -> Result<Vec<AgentOrgRunRecord>, String> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+        let bounded_limit = i64::try_from(limit)
+            .map_err(|_| format!("Agent Org run list limit is too large: {limit}"))?;
+        let conn = get_connection().map_err(|err| err.to_string())?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT id,
+                        org_id,
+                        coordinator_agent_id,
+                        root_session_id,
+                        org_snapshot_json,
+                        entry_mode,
+                        status,
+                        activation_generation,
+                        has_initial_work,
+                        work_item_id,
+                        project_slug,
+                        routine_fire_id,
+                        summary,
+                        last_error,
+                        failure_json,
+                        last_activity_outcome,
+                        created_at,
+                        updated_at,
+                        idled_at,
+                        archived_at,
+                        archive_receipt_id
+                 FROM agent_org_runtime_runs
+                 WHERE root_session_id IS NOT NULL
+                   AND status = ?1
+                 ORDER BY updated_at ASC, id ASC
+                 LIMIT ?2",
             )
+            .map_err(|err| err.to_string())?;
+        let rows = stmt
+            .query_map(params![status.as_str(), bounded_limit], row_to_run)
             .map_err(|err| err.to_string())?;
         let mut out = Vec::new();
         for row in rows {
@@ -154,7 +226,7 @@ impl AgentOrgRunStore {
     ) -> Result<Option<AgentOrgRunStatus>, String> {
         let status_raw: Option<String> = conn
             .query_row(
-                "SELECT status FROM agent_org_runs WHERE id = ?1 LIMIT 1",
+                "SELECT status FROM agent_org_runtime_runs WHERE id = ?1 LIMIT 1",
                 params![run_id],
                 |row| row.get(0),
             )

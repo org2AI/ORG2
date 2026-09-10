@@ -25,14 +25,9 @@
  * } = useKiroSessionCapture({ debug: true, containerRef });
  */
 import { invoke } from "@tauri-apps/api/core";
-import { type UnlistenFn, listen } from "@tauri-apps/api/event";
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type RefObject, useCallback, useEffect, useState } from "react";
+
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 
 import { useEmbeddedWebview } from "./useEmbeddedWebview";
 
@@ -124,6 +119,10 @@ const KIRO_COMMANDS = {
   // No updatePosition command — base hook falls back to close+recreate
 } as const;
 
+// Listener setup errors are ignored: the login flow degrades to manual
+// browser sign-in and the user sees the CLI-driven state instead.
+function ignoreListenerError(): void {}
+
 // ============================================
 // Hook Implementation
 // ============================================
@@ -161,95 +160,58 @@ export function useKiroSessionCapture(
     debug,
   });
 
-  // Refs for Tauri event listeners
-  const progressListenerRef = useRef<UnlistenFn | null>(null);
-  const completeListenerRef = useRef<UnlistenFn | null>(null);
-
   // ============================================
   // Auth event listeners (Kiro-specific)
   // ============================================
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const setupListeners = async () => {
-      try {
-        const progressUnlisten = await listen<KiroLoginProgressPayload>(
-          "kiro-login-progress",
-          (event) => {
-            if (!isMounted) return;
-
-            const {
-              status,
-              deviceCode: code,
-              verificationUrl: url,
-              error: errMsg,
-            } = event.payload;
-
-            if (status === "browser_ready") {
-              if (code) setDeviceCode(code);
-              if (url) setVerificationUrl(url);
-            }
-
-            if (status === "error" && errMsg) {
-              setError(errMsg);
-              setIsLoggingIn(false);
-            }
-          }
-        );
-        if (isMounted) progressListenerRef.current = progressUnlisten;
-
-        const completeUnlisten = await listen<KiroLoginCompletePayload>(
-          "kiro-login-complete",
-          (event) => {
-            if (!isMounted) return;
-
-            const {
-              success,
-              accessToken: at,
-              refreshToken: rt,
-              clientId: cid,
-              clientSecret: csecret,
-              startUrl: surl,
-              region: reg,
-              expiresAt: exp,
-              error: errMsg,
-            } = event.payload;
-
-            setIsLoggingIn(false);
-
-            if (success && at) {
-              setAccessToken(at);
-              setRefreshToken(rt || null);
-              setClientId(cid || null);
-              setClientSecret(csecret || null);
-              setStartUrl(surl || null);
-              setRegion(reg || null);
-              setExpiresAt(exp || null);
-              setIsLoggedIn(true);
-              setError(null);
-            } else {
-              setError(errMsg || "Login failed");
-              setIsLoggedIn(false);
-            }
-          }
-        );
-        if (isMounted) completeListenerRef.current = completeUnlisten;
-      } catch {
-        // Ignore listener setup errors
+  useTauriListen<KiroLoginProgressPayload>(
+    "kiro-login-progress",
+    ({ status, deviceCode: code, verificationUrl: url, error: errMsg }) => {
+      if (status === "browser_ready") {
+        if (code) setDeviceCode(code);
+        if (url) setVerificationUrl(url);
       }
-    };
 
-    setupListeners();
+      if (status === "error" && errMsg) {
+        setError(errMsg);
+        setIsLoggingIn(false);
+      }
+    },
+    { onError: ignoreListenerError }
+  );
 
-    return () => {
-      isMounted = false;
-      progressListenerRef.current?.();
-      progressListenerRef.current = null;
-      completeListenerRef.current?.();
-      completeListenerRef.current = null;
-    };
-  }, []);
+  useTauriListen<KiroLoginCompletePayload>(
+    "kiro-login-complete",
+    ({
+      success,
+      accessToken: at,
+      refreshToken: rt,
+      clientId: cid,
+      clientSecret: csecret,
+      startUrl: surl,
+      region: reg,
+      expiresAt: exp,
+      error: errMsg,
+    }) => {
+      setIsLoggingIn(false);
+
+      if (success && at) {
+        setAccessToken(at);
+        setRefreshToken(rt || null);
+        setClientId(cid || null);
+        setClientSecret(csecret || null);
+        setStartUrl(surl || null);
+        setRegion(reg || null);
+        setExpiresAt(exp || null);
+        setIsLoggedIn(true);
+        setError(null);
+      } else {
+        setError(errMsg || "Login failed");
+        setIsLoggedIn(false);
+      }
+    },
+    { onError: ignoreListenerError }
+  );
 
   // Close webview automatically when login completes
   useEffect(() => {

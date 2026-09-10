@@ -9,6 +9,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import PageNotice from "@src/components/PageNotice";
 import { createLogger } from "@src/hooks/logger";
 import {
   DatabaseIcon,
@@ -16,11 +17,11 @@ import {
   FolderSearchIcon,
   Link01Icon,
 } from "@src/icons";
+import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 
 import type { BasePaletteProps } from "../../shared";
 import { PaletteBody, SpotlightShell } from "../../shell";
 import type { SpotlightItem } from "../../types";
-import { useSelectorKernel } from "../core";
 
 const log = createLogger("DatabasePalette");
 
@@ -202,9 +203,9 @@ export const DatabasePalette: React.FC<DatabasePaletteProps> = ({
       : t("database.spotlight.placeholderSelect");
 
   const errorDisplay = error ? (
-    <div className="mx-3 my-2 rounded bg-danger-6/10 px-3 py-2 text-xs text-danger-6">
+    <PageNotice type="danger" role="alert" className="mx-3 my-2">
       {error}
-    </div>
+    </PageNotice>
   ) : null;
 
   return (

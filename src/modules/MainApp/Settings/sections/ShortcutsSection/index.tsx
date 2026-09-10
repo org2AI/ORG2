@@ -11,14 +11,19 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import KeyBadge from "@src/components/KeyBadge";
+import Button from "@src/components/Button";
+import Message from "@src/components/Message";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
   type SettingsTableSelectFilter,
 } from "@src/components/SettingsTable";
-
+import {
+  CURRENT_SHORTCUT_PLATFORM,
+  resetShortcutBindings,
+} from "@src/config/keyboard/shortcutBindings";
+import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import {
   ALL_SHORTCUTS,
   CATEGORY_CONFIG,
@@ -26,23 +31,26 @@ import {
   type ShortcutCategory,
   type ShortcutEntry,
   getCategories,
-} from "./config";
+} from "@src/config/keyboard/shortcuts";
+import { useShortcutBindings } from "@src/config/keyboard/useShortcutBindings";
+import {
+  SectionContainer,
+  SectionRow,
+} from "@src/modules/shared/layouts/SectionLayout";
+
+import ShortcutRecorder from "./ShortcutRecorder";
 
 type OsFilter = "mac" | "windows" | "linux";
 
-/** Detect the user's OS from `navigator.platform`; defaults to Windows. */
-function detectCurrentOs(): OsFilter {
-  if (typeof navigator === "undefined") return "windows";
-  const platform = navigator.platform.toUpperCase();
-  if (platform.includes("MAC")) return "mac";
-  if (platform.includes("LINUX")) return "linux";
-  return "windows";
-}
-
-const CURRENT_OS = detectCurrentOs();
+const CURRENT_OS = CURRENT_SHORTCUT_PLATFORM;
 
 const ShortcutsSection: React.FC = () => {
   const { t } = useTranslation("settings");
+  const [recordingId, setRecordingId] = useState<string | null>(null);
+  const overrides = useShortcutBindings();
+  const hasChanges = Object.values(overrides).some(
+    (entries) => entries && Object.keys(entries).length > 0
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<
     ShortcutCategory | "all"
@@ -69,7 +77,10 @@ const ShortcutsSection: React.FC = () => {
           { value: "windows", label: t("shortcuts.systemWindows") },
           { value: "linux", label: t("shortcuts.systemLinux") },
         ],
-        onChange: (value) => setSelectedOs(value as OsFilter),
+        onChange: (value) => {
+          setRecordingId(null);
+          setSelectedOs(value as OsFilter);
+        },
         minWidth: 120,
       },
       {
@@ -92,7 +103,7 @@ const ShortcutsSection: React.FC = () => {
   );
 
   // Filter shortcuts based on search and category
-  const filteredShortcuts = useMemo(() => {
+  const filteredShortcuts = (() => {
     let shortcuts = ALL_SHORTCUTS;
 
     // Filter by category
@@ -108,8 +119,9 @@ const ShortcutsSection: React.FC = () => {
       shortcuts = shortcuts.filter(
         (shortcut) =>
           shortcut.command.toLowerCase().includes(query) ||
-          shortcut.macKeys.toLowerCase().includes(query) ||
-          shortcut.winKeys.toLowerCase().includes(query) ||
+          getShortcutKeys(shortcut.id, { platform: selectedOs })
+            .toLowerCase()
+            .includes(query) ||
           SCOPE_LABELS[shortcut.scope]?.toLowerCase().includes(query) ||
           CATEGORY_CONFIG[shortcut.category]?.label
             .toLowerCase()
@@ -118,7 +130,7 @@ const ShortcutsSection: React.FC = () => {
     }
 
     return shortcuts;
-  }, [searchQuery, selectedCategory]);
+  })();
 
   const columns: SettingsTableColumn<ShortcutEntry>[] = useMemo(
     () => [
@@ -137,9 +149,13 @@ const ShortcutsSection: React.FC = () => {
         label: t("shortcuts.keybinding"),
         width: SETTINGS_TABLE_COL.fill,
         renderCell: (entry) => (
-          <KeyBadge
-            keys={useMacKeys ? entry.macKeys : entry.winKeys}
-            showSeparator={false}
+          <ShortcutRecorder
+            key={`${entry.id}:${selectedOs}`}
+            id={entry.id}
+            command={entry.command}
+            platform={selectedOs}
+            recording={recordingId === entry.id}
+            onRecord={setRecordingId}
           />
         ),
       },
@@ -163,13 +179,34 @@ const ShortcutsSection: React.FC = () => {
         ),
       },
     ],
-    [t, useMacKeys]
+    [t, selectedOs, recordingId]
   );
 
   return (
     <div className="flex w-full flex-col gap-4">
+      {hasChanges && (
+        <SectionContainer>
+          <SectionRow
+            label={t("shortcuts.resetAll")}
+            description={t("shortcuts.resetAllDesc")}
+          >
+            <Button
+              onClick={() => {
+                try {
+                  resetShortcutBindings();
+                } catch {
+                  Message.error(t("shortcuts.saveFailed"));
+                }
+              }}
+            >
+              {t("shortcuts.reset")}
+            </Button>
+          </SectionRow>
+        </SectionContainer>
+      )}
       <SettingsTable<ShortcutEntry>
         hover
+        rowClassName="group/shortcut-row"
         selectFilters={tableFilters}
         searchBar={{
           searchValue: searchQuery,

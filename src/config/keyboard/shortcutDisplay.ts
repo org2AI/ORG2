@@ -4,19 +4,28 @@
  * Platform-aware lookup for shortcut display strings.
  * All UI code should use these functions instead of hardcoding "⌘J" / "Ctrl+J".
  */
+import {
+  CURRENT_SHORTCUT_PLATFORM,
+  type ShortcutPlatform,
+  bindingAccelerator,
+  defaultBindings,
+  formatBinding,
+  getOverride,
+} from "./shortcutBindings";
 import { ALL_SHORTCUTS, type ShortcutEntry } from "./shortcuts";
 
 const IS_MAC =
   typeof navigator !== "undefined" &&
-  navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  (navigator.platform ?? "").toUpperCase().indexOf("MAC") >= 0;
 
 const shortcutMap = new Map<string, ShortcutEntry>();
 for (const entry of ALL_SHORTCUTS) {
   shortcutMap.set(entry.id, entry);
 }
 
-interface ShortcutDisplayOptions {
+export interface ShortcutDisplayOptions {
   chatSendOnEnter?: boolean;
+  platform?: ShortcutPlatform;
 }
 
 /** Get platform-appropriate display string for a shortcut by ID. */
@@ -24,15 +33,29 @@ export function getShortcutKeys(
   id: string,
   options?: ShortcutDisplayOptions
 ): string {
+  const platform = options?.platform ?? CURRENT_SHORTCUT_PLATFORM;
+  const custom = getOverride(id, platform);
+  if (custom) return formatBinding(custom, platform);
   if (id === "chat_send" && options?.chatSendOnEnter) return "Enter";
   const entry = shortcutMap.get(id);
   if (!entry) return "";
-  return IS_MAC ? entry.macKeys : entry.winKeys;
+  return platform === "mac" ? entry.macKeys : entry.winKeys;
 }
 
 /** Get the full ShortcutEntry by ID. */
 export function getShortcutEntry(id: string): ShortcutEntry | undefined {
   return shortcutMap.get(id);
+}
+
+/** Get the Tauri accelerator for a native menu item by shortcut ID. */
+export function getShortcutAccelerator(id: string): string | undefined {
+  const custom = getOverride(id);
+  if (custom) return bindingAccelerator(custom);
+  const entry = shortcutMap.get(id);
+  const binding = defaultBindings(id)[0];
+  return entry?.accelerator && binding
+    ? bindingAccelerator(binding)
+    : undefined;
 }
 
 /** Build a display label like "Search (⌘⇧P)" from a label and shortcut ID. */

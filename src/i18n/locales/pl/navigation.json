@@ -1,6 +1,5 @@
 {
   "labels": {
-    "devRecord": "Dziennik dewelopera",
     "workItems": "Zadania",
     "codeSearch": "Wyszukiwanie kodu",
     "dbManager": "Menedżer DB",
@@ -45,10 +44,9 @@
     "projectManager": "Project Manager",
     "diff": "Diff",
     "colleagues": "Współpracownicy",
-    "terminals": "Terminale"
-  },
-  "trajectoryPanel": {
-    "title": "Trajektoria"
+    "terminals": "Terminale",
+    "openSourceRepo": "Repo Open Source",
+    "teamInbox": "Team Inbox"
   },
   "routes": {
     "session": "Czat",
@@ -65,10 +63,16 @@
     "models": "Modele",
     "signingIn": "Logowanie...",
     "launchpad": "Panel startowy",
-    "ideaArea": "Strefa pomysłów",
     "changelog": "Changelog"
   },
   "sidebar": {
+    "sort": {
+      "dropToUnpin": "Upuść tutaj, aby odpiąć",
+      "title": "Sortuj czaty według",
+      "priority": "Priorytet",
+      "updated": "Ostatnia aktualizacja",
+      "manual": "Kolejność ręczna"
+    },
     "tabs": {
       "workstation": "Workstation",
       "manage": "Zarządzaj",
@@ -78,6 +82,7 @@
       "agentOrgs": "Agent i zespół"
     },
     "groupBy": {
+      "none": "Bez grupowania",
       "title": "Grupuj według",
       "byTime": "Według czasu",
       "byAgent": "Według Agenta",
@@ -122,7 +127,11 @@
     },
     "folderCounts": {
       "repo": "{{count}} Repo",
-      "multiRepoWorkspace": "{{count}} Workspace z wieloma Repo"
+      "multiRepoWorkspace": "{{count}} Workspace z wieloma Repo",
+      "repo_other": "{{count}} repos",
+      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces",
+      "repo_plural": "{{count}} repos",
+      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces"
     },
     "bottomBar": {
       "settings": "Ustawienia",
@@ -157,50 +166,16 @@
       "duration30m": "30 minut",
       "duration1h": "1 godzinę",
       "duration2h": "2 godziny",
-      "durationTomorrow": "Jutro"
+      "durationTomorrow": "Jutro",
+      "unknownRole": "Nieznana rola"
     },
     "guide": {
-      "trigger": "Otwórz przewodnik",
-      "title": "Rozpocznij pracę z ORGII",
       "startSession": "Rozpocznij sesję",
-      "close": "Zamknij przewodnik",
-      "localWorkspace": "Lokalny obszar roboczy",
-      "connectOrganization": "Połącz lub utwórz organizację",
-      "createOrganizationHint": "Wpisz nazwę organizacji i wybierz Utwórz. Po utworzeniu organizacji w chmurze przewodnik przejdzie dalej.",
-      "inviteTeammate": "Zaproś członka zespołu",
-      "inviteTeammateHint": "Utwórz tutaj link z zaproszeniem i wyślij go członkowi zespołu.",
-      "invitePermissionHint": "Tutaj możesz wyświetlić listę członków. Zaproszenie musi utworzyć administrator lub właściciel organizacji.",
-      "viewTeamActivity": "Wyświetl użycie zespołu",
-      "viewTeamActivityHint": "Runtime jest otwarty na karcie Członkowie. Wybierz członka zespołu, aby zobaczyć użycie Codex, Claude i Cursor. Jeśli nie ma danych, najpierw włącz synchronizację środowiska zespołu.",
-      "exploreProduct": "Poznaj główne strony",
-      "nextStep": "Następny krok",
-      "dismiss": "Odrzuć przewodnik"
-    }
-  },
-  "myRole": {
-    "tabs": {
-      "status": "Mój status"
+      "connectOrganization": "Połącz lub utwórz obszar roboczy"
     }
   },
   "launchpad": {
-    "sections": {
-      "other": "Inne"
-    },
-    "searchPlaceholder": "Szukaj obszarów roboczych...",
-    "emptyTitle": "Brak obszarów roboczych",
-    "emptyDescription": "Dodaj repo, aby zacząć",
-    "emptyWorkspaces": "Brak pasujących obszarów roboczych",
-    "myRepos": "Moje repozytoria",
-    "myMultiRepoWorkspaces": "Moje wielo-repo Workspaces",
-    "dashboard": "Panel",
     "myWorkspaces": "Moje obszary robocze",
-    "workspaces": "Obszary robocze",
-    "dashboardTitle": "Obszary robocze",
-    "dashboardSubtitle": "Wybierz obszar roboczy do uruchomienia lub podglądu",
-    "addRepo": "Dodaj obszar roboczy",
-    "activeBadge": "Aktywny",
-    "exploreTitle": "Przeglądaj",
-    "exploreDescription": "Odkryj szablony i publiczne repozytoria (wkrótce)",
     "preview": {
       "repoType": "Typ project",
       "tools": "Narzędzia",
@@ -209,11 +184,7 @@
       "statusNotAnalyzed": "Nieprzeanalizowano",
       "statusReady": "Gotowe",
       "statusParamsMissing": "Brak parametrów",
-      "statusNoEnvConfig": "Konfiguracja env nie jest potrzebna",
-      "setupWithAI": "Zmień w aplikację",
-      "trustRepo": "Zaufaj temu repozytorium",
-      "launchpadPlaceholder": "Dodatkowe instrukcje dla tego uruchomienia...",
-      "launchpadLaunch": "Uruchom"
+      "statusNoEnvConfig": "Konfiguracja env nie jest potrzebna"
     },
     "containers": {
       "title": "Containers",
@@ -222,8 +193,6 @@
       "emptySubtitle": "Uruchom Docker Desktop, Colima lub Rancher Desktop i odśwież, aby zobaczyć lokalne containery.",
       "repoEmptyTitle": "Brak containerów dla tego repo",
       "repoEmptySubtitle": "Containery są dopasowywane przez etykiety katalogu roboczego Docker Compose lub bind mounty w tym repo.",
-      "repoNoDockerTitle": "Nie wykryto konfiguracji Docker",
-      "repoNoDockerSubtitle": "Dodaj Dockerfile lub plik docker-compose, aby powiązać containery z tym repo.",
       "dockerUnavailable": "Docker jest niedostępny",
       "name": "Nazwa",
       "image": "Image",
@@ -259,15 +228,9 @@
       "categoryBuild": "Build",
       "categoryTest": "Testy",
       "categoryLint": "Lint i formatowanie",
-      "categoryOther": "Inne",
-      "noScripts": "Nie znaleziono skryptów",
-      "noScriptsHint": "Dodaj package.json, Makefile lub podobny plik konfiguracyjny",
-      "run": "Uruchom",
-      "launched": "Uruchamianie {{name}}",
-      "launchFailed": "Nie udało się uruchomić skryptu"
+      "categoryOther": "Inne"
     },
     "detail": {
-      "title": "Szczegóły repozytorium",
       "path": "Ścieżka",
       "envVarsTitle": "Zmienne środowiskowe",
       "envKey": "Klucz",
@@ -284,16 +247,10 @@
       "scriptName": "Nazwa",
       "scriptCommand": "Polecenie",
       "scriptCategory": "Kategoria",
-      "scriptSource": "Źródło",
       "scriptNamePlaceholder": "Nazwa skryptu",
       "searchScripts": "Szukaj skryptów…",
       "noScripts": "Nie znaleziono skryptów",
       "addScript": "Dodaj skrypt",
-      "sourceCustom": "Własny",
-      "sourceDiscovered": "Wykryty",
-      "analysisTitle": "Analiza",
-      "clearAnalysis": "Wyczyść analizę",
-      "clearAnalysisHint": "Zresetuj pamięć podręczną analizy i przeskanuj ponownie przy następnej wizycie",
       "analysisCleared": "Analiza wyczyszczona"
     },
     "containerEngines": {
@@ -318,15 +275,11 @@
       "switchToRepo": "Otwórz",
       "startSession": "Rozpocznij sesję",
       "openDetails": "Pokaż szczegóły",
-      "locateInFinder": "Pokaż w Finderze",
       "remove": "Remove from ORGII",
       "removeSuccess": "Linkage to ORGII removed",
       "removeFailed": "Failed to remove linkage to ORGII"
     },
     "addWorkspace": "Dodaj workspace"
-  },
-  "explore": {
-    "title": "Odkrywaj"
   },
   "workstation": {
     "agentComputer": {
@@ -344,28 +297,25 @@
       "title": "Nowa karta",
       "searchFile": "Szukaj pliku",
       "searchSessions": "Tablica Kanban",
-      "newBrowserTab": "Nowa karta przeglądarki",
       "newPrivateBrowserTab": "Nowa prywatna karta przeglądarki",
       "workItems": "Elementy pracy",
       "projects": "Projekty",
-      "recentlyClosed": "Ostatnie"
+      "recent": "Ostatnie"
     }
   },
   "collaboration": {
-    "switchOrg": "Zmień ORG",
-    "addOrg": "Dodaj ORG",
+    "switchOrg": "Zmień obszar roboczy",
+    "addOrg": "Dodaj obszar roboczy",
     "createOrg": "Utwórz",
     "joinOrg": "Dołącz",
-    "orgSource": "Źródło Org",
+    "orgSource": "Źródło obszaru roboczego",
     "localOrg": "Lokalne",
-    "orgName": "Nazwa ORG",
+    "orgName": "Nazwa obszaru roboczego",
     "orgNamePlaceholder": "Team Alpha",
     "inviteCode": "Link lub kod zaproszenia",
     "inviteCodePlaceholder": "Wklej link orgii:// lub kod zaproszenia",
-    "copyInvite": "Kopiuj zaproszenie",
-    "copiedInvite": "Skopiowano",
     "setupMode": "Tryb konfiguracji",
-    "manageOrg": "Zarządzaj ORG",
+    "manageOrg": "Zarządzaj obszarem roboczym",
     "session": {
       "forkFailed": "Failed to fork the session",
       "forkedFromLabel": "⑂ from {{name}}",
@@ -382,11 +332,11 @@
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
       "forkSetupModel": "Model",
-      "forkSetupContinue": "Fork & continue",
       "forkSnapshotIncomplete": "The cloud snapshot is incomplete. Ask the owner to finish syncing, then retry.",
       "forkAgentUnavailable": "Choose a local agent before forking.",
       "forkBackendRegistrationFailed": "The session history was copied, but the runnable fork could not be registered. Retry.",
-      "forkReplayUnavailable": "Full replay is not available for this session. Ask the owner to share the replay, then retry."
+      "forkReplayUnavailable": "Full replay is not available for this session. Ask the owner to share the replay, then retry.",
+      "forkSetupReused": "Kontynuacja z ostatnią konfiguracją · {{model}}"
     },
     "repoPicker": {
       "loading": "Loading repos…",
@@ -397,31 +347,16 @@
     "forkImported": {
       "headerButton": "Fork",
       "headerTooltip": "Utwórz fork tej zaimportowanej sesji jako własną edytowalną sesję",
-      "confirmTitle": "Utworzyć fork i kontynuować?",
-      "confirmBody": "To sesja użytkownika {{name}} — twoja kopia to import tylko do odczytu. Kontynuacja utworzy fork jako twoją własną sesję i tam zostanie wysłana wiadomość.",
-      "confirm": "Fork i kontynuuj",
-      "cancel": "Anuluj",
       "retentionError": "Ta sesja jest poza oknem odtwarzania twojego planu — ulepsz plan, aby utworzyć fork",
       "goneError": "Ta udostępniona sesja nie jest już dostępna (usunięta lub wygasła)",
       "error": "Nie udało się utworzyć forka sesji",
-      "sendFailed": "Fork utworzony, ale wysyłka wiadomości nie powiodła się — treść przywrócono do pola wpisywania",
       "forkedChipTooltip": "Fork od {{name}}",
-      "continuePlaceholder": "Message to fork and continue in ORGII…",
       "snapshotError": "The cloud snapshot is incomplete. Ask the owner to finish syncing, then retry.",
       "agentError": "Choose a local agent before forking.",
       "backendError": "The session history was copied, but the runnable fork could not be registered. Retry.",
       "parentOpenUnavailable": "The source session could not be opened from this fork.",
       "replayError": "Full replay is not available for this session. Ask the owner to share the replay, then retry.",
       "openParentButton": "Otwórz sesję źródłową od {{name}}"
-    },
-    "continueCli": {
-      "headerButton": "Kontynuuj w {{agent}}",
-      "headerTooltip": "Otwórz ponownie tę sesję w {{agent}} w karcie terminala ({{command}})",
-      "notInstalled": "{{agent}} nie jest zainstalowany na tym komputerze",
-      "missingWorkspace": "Oryginalny folder sesji nie istnieje — {{agent}} może ją wznowić tylko z tego folderu",
-      "sourceMissing": "Oryginalne dane sesji nie znajdują się już na dysku",
-      "launchFailed": "Nie udało się otworzyć terminala {{agent}}",
-      "composerPlaceholder": "Napisz, aby kontynuować w nowej sesji…"
     },
     "openInApp": {
       "headerButton": "Otwórz w {{app}}",
@@ -431,13 +366,18 @@
     }
   },
   "cloud": {
-    "title": "ORG2 Cloud",
+    "featureSharingBody": "Udostępniaj sesje członkom zespołu",
+    "featureMobileRemoteBody": "Kontynuuj pracę agentów ze swojego telefonu",
+    "featureMarketBody": "Odkrywaj narzędzia i zasoby w ORG2 Market",
+    "signInModalTitle": "Witaj ponownie",
+    "signInModalBody": "Przejdź do przeglądarki, aby zalogować się na swoje konto",
     "signIn": "Zaloguj się",
     "signOut": "Wyloguj się",
+    "signOutConfirmTitle": "Wylogować się?",
+    "signOutConfirmBody": "Aby uzyskać dostęp do konta, musisz zalogować się ponownie",
     "signedInAs": "Zalogowano jako {{name}}",
     "signedInToast": "Signed in to ORG2 Cloud",
     "sessionExpired": "Sesja ORG2 Cloud wygasła. Zaloguj się ponownie, aby kontynuować.",
-    "recommendedDesc": "Managed session sharing, replay storage, team permissions, and secure share links. No Supabase setup required. ORG2 manages Auth, database migrations, RLS policies, billing, retention, quota, and backend upgrades for you",
     "customEndpoint": {
       "title": "Własny backend ORG2 Cloud",
       "toggleDesc": "Użyj własnego wdrożenia ORG2 Cloud",
@@ -458,9 +398,9 @@
       "membersTitle": "Members",
       "membersEmpty": "No members",
       "loading": "Loading…",
-      "loadError": "Couldn't load cloud org details",
+      "loadError": "Couldn't load cloud workspace details",
       "repoScopesTitle": "Repo scopes",
-      "repoScopesHelp": "Sessions from repos in these scopes sync to this cloud org. Scopes are matched by git remote, so teammates on any machine share the same key",
+      "repoScopesHelp": "Sessions from repos in these scopes sync to this cloud workspace. Scopes are matched by git remote, so teammates on any machine share the same key",
       "repoScopesEmpty": "No repo scopes yet",
       "removeRepoScope": "Remove",
       "saveRepoScopes": "Save repo scopes",
@@ -518,14 +458,14 @@
         "coverageTitle": "Pokrycie sesji",
         "coverageSummary": "Zsynchronizowano {{synced}}/{{syncable}} ({{percent}}%)",
         "coveragePercentLabel": "Pokrycie",
-        "coverageEmpty": "Brak sesji w zakresach repozytoriów tej organizacji",
+        "coverageEmpty": "Brak sesji w zakresach repozytoriów tego obszaru roboczego",
         "logsTitle": "Dziennik synchronizacji",
         "logsHelp": "Ostatnie zdarzenia synchronizacji zapisane na tym urządzeniu. Czyszczone po restarcie i nigdy nie wysyłane",
         "logsEmpty": "Brak zapisanych zdarzeń synchronizacji",
         "logsClear": "Wyczyść",
         "logsCopy": "Kopiuj",
         "logsCopied": "Skopiowano",
-        "logsOrg": "org. {{orgId}}",
+        "logsOrg": "workspace. {{orgId}}",
         "levelInfo": "Informacja",
         "levelWarn": "Ostrzeżenie",
         "levelError": "Błąd"
@@ -534,7 +474,6 @@
     "sidebar": {
       "teamSessions": "Sesje zespołu",
       "mySessions": "Moje sesje",
-      "memberFilter": "Filtruj według członka",
       "sessionFilter": "Filtruj sesje",
       "copyUrl": "Kopiuj URL",
       "directlySharedWithMe": "Udostępnione bezpośrednio mnie",
@@ -554,28 +493,28 @@
     },
     "sessionRef": {
       "chipLabel": "Sesja zespołu",
-      "notMember": "Nie jesteś członkiem organizacji, do której należy ta sesja.",
+      "notMember": "Nie jesteś członkiem obszaru roboczego, do którego należy ta sesja.",
       "signInRequired": "Zaloguj się do ORG2 Cloud, aby otworzyć tę sesję.",
-      "sessionNotFound": "Ta sesja nie należy do tej organizacji.",
-      "notPublished": "Udostępnij tę sesję organizacji, zanim skopiujesz odwołanie.",
-      "chooseOrg": "Ta sesja należy do kilku organizacji. Przełącz się na organizację, do której chcesz się odwołać, i skopiuj ponownie.",
+      "sessionNotFound": "Ta sesja nie należy do tego obszaru roboczego.",
+      "notPublished": "Udostępnij tę sesję obszarowi roboczemu, zanim skopiujesz odwołanie.",
+      "chooseOrg": "Ta sesja należy do kilku obszarów roboczych. Przełącz się na obszar roboczy, do którego chcesz się odwołać, i skopiuj ponownie.",
       "opening": "Otwieranie sesji zespołu…"
     },
     "sync": {
-      "quotaExceededToast": "ORG2 Cloud sync paused: this org's plan quota is exceeded",
-      "syncDisabledToast": "ORG2 Cloud sync paused: session sync is disabled for this org's plan",
+      "quotaExceededToast": "ORG2 Cloud sync paused: this workspace's plan quota is exceeded",
+      "syncDisabledToast": "ORG2 Cloud sync paused: session sync is disabled for this workspace's plan",
       "schemaMismatchToast": "Synchronizacja ORG2 Cloud wstrzymana: wersja schematu backendu {{backend}}, aplikacja oczekuje {{expected}}"
     },
     "moveToOrg": {
-      "menuItem": "Org tags…",
-      "title": "Org tags for this session",
-      "hint": "Zaznacz jedną lub więcej organizacji, aby udostępnić tę sesję — może być jednocześnie w Personal i w wielu organizacjach. Pozostaje zwykłą sesją lokalną; to tylko czyni ją tam widoczną. Można wybrać tylko organizacje, których zakres repozytoriów obejmuje repozytorium tej sesji.",
-      "noOrgs": "No cloud orgs yet — sign in to ORG2 Cloud to create or join one.",
+      "menuItem": "Workspace tags…",
+      "title": "Etykiety",
+      "hint": "Zaznacz jeden lub więcej obszarów roboczych, aby udostępnić tę sesję — może być jednocześnie w Personal i w wielu obszarach roboczych. Pozostaje zwykłą sesją lokalną; to tylko czyni ją tam widoczną. Można wybrać tylko obszary robocze, których zakres repozytoriów obejmuje repozytorium tej sesji.",
+      "noOrgs": "No cloud workspaces yet — sign in to ORG2 Cloud to create or join one.",
       "cloudBadge": "Cloud",
       "added": "Added to {{org}}",
       "removed": "Removed from {{org}}",
       "error": "Could not update — please try again.",
-      "noRemote": "This session's repository has no git remote, so it can't match any org's repo scope.",
+      "noRemote": "This session's repository has no git remote, so it can't match any workspace's repo scope.",
       "noScopes": "No repo scopes",
       "outOfScope": "Out of scope",
       "scopeResolving": "Checking…",
@@ -619,25 +558,25 @@
         "roleChangeAction": "Zmień",
         "remove": "Usuń",
         "removeTitle": "Usuń członka",
-        "removeConfirm": "Usunąć {{member}} z tej organizacji?",
+        "removeConfirm": "Usunąć {{member}} z tego obszaru roboczego?",
         "youTag": "Ty",
         "ownerTag": "Właściciel",
         "floorOff": "Brak minimum",
-        "floorTooltip": "Minimalny poziom udostępniania dla tego członka. Obowiązuje bardziej rygorystyczne z tego i ogólnoorganizacyjnego minimum.",
-        "floorOrgMinimum": "Minimum organizacji ({{mode}})"
+        "floorTooltip": "Minimalny poziom udostępniania dla tego członka. Obowiązuje bardziej rygorystyczne z tego i minimum obszaru roboczego.",
+        "floorOrgMinimum": "Minimum obszaru roboczego ({{mode}})"
       },
       "leave": {
-        "action": "Opuść organizację",
-        "confirmTitle": "Opuścić tę organizację?",
-        "warning": "Utracisz dostęp do udostępnianych sesji tej organizacji, dopóki ktoś nie zaprosi Cię ponownie",
+        "action": "Opuść obszar roboczy",
+        "confirmTitle": "Opuścić ten obszar roboczy?",
+        "warning": "Utracisz dostęp do udostępnianych sesji tego obszaru roboczego, dopóki ktoś nie zaprosi Cię ponownie",
         "confirm": "Opuść",
         "cancel": "Anuluj",
         "leftToast": "Opuszczono {{org}}"
       },
       "settings": {
-        "title": "Ustawienia organizacji",
+        "title": "Ustawienia obszaru roboczego",
         "dangerZone": "Strefa niebezpieczeństwa",
-        "renameLabel": "Nazwa organizacji",
+        "renameLabel": "Nazwa obszaru roboczego",
         "renameSave": "Zmień nazwę",
         "renamed": "Zmieniono nazwę",
         "transferTitle": "Przenieś własność",
@@ -646,64 +585,61 @@
         "transferAction": "Przenieś",
         "transferConfirm": "Przenieść własność {{org}} na {{member}}? Zostaniesz administratorem.",
         "transferredToast": "Własność przeniesiona",
-        "deleteTitle": "Usuń organizację",
+        "deleteTitle": "Usuń obszar roboczy",
         "deleteHint": "Usuwa {{org}} dla wszystkich członków i zatrzymuje udostępnianie sesji. Nie można tego cofnąć z poziomu aplikacji",
         "deleteTypeToConfirm": "Wpisz {{org}}, aby potwierdzić",
-        "deleteAction": "Usuń organizację",
-        "deletedToast": "Organizacja usunięta",
-        "ownerLeaveHint": "Jako właściciel nie możesz opuścić organizacji — najpierw przenieś własność lub ją usuń"
+        "deleteAction": "Usuń obszar roboczy",
+        "deletedToast": "Obszar roboczy usunięty",
+        "ownerLeaveHint": "Jako właściciel nie możesz opuścić obszaru roboczego — najpierw przenieś własność lub go usuń"
       },
       "join": {
-        "dialogTitle": "Dołącz do organizacji w chmurze",
-        "prompt": "Otwarto zaproszenie ORG2 Cloud. Dołączyć do tej organizacji?",
+        "dialogTitle": "Dołącz do obszaru roboczego w chmurze",
+        "prompt": "Otwarto zaproszenie ORG2 Cloud. Dołączyć do tego obszaru roboczego?",
         "codeSuffix": "Kod zaproszenia kończący się na {{suffix}}",
         "confirm": "Dołącz",
         "cancel": "Nie teraz",
         "signInFirst": "Zaloguj się do ORG2 Cloud, aby przyjąć to zaproszenie — pozostanie oczekujące.",
-        "openSettings": "Otwórz ustawienia logowania",
-        "joinedToast": "Dołączono do {{org}}",
-        "joinedFallbackToast": "Dołączono do organizacji w chmurze"
+        "joinedToast": "Dołączono do {{org}}"
       },
       "create": {
         "sourceCloud": "Chmura",
-        "signInFirst": "Zaloguj się do ORG2 Cloud, aby utworzyć zarządzaną organizację lub do niej dołączyć.",
-        "openSettings": "Otwórz ustawienia logowania",
-        "createdToast": "Utworzono organizację w chmurze"
+        "signInFirst": "Zaloguj się do ORG2 Cloud, aby utworzyć zarządzany obszar roboczy lub do niego dołączyć.",
+        "createdToast": "Utworzono obszar roboczy w chmurze"
       },
       "errors": {
-        "lastAdmin": "To ostatni administrator organizacji — najpierw awansuj innego członka.",
-        "ownerMustTransfer": "Właściciel nie może odejść — najpierw przenieś własność lub usuń organizację.",
-        "ownerRequired": "Tylko właściciel organizacji może to zrobić.",
-        "adminRequired": "Tylko administratorzy organizacji mogą to zrobić.",
-        "quotaExceeded": "Osiągnięto limit planu tej organizacji.",
+        "lastAdmin": "To ostatni administrator obszaru roboczego — najpierw awansuj innego członka.",
+        "ownerMustTransfer": "Właściciel nie może odejść — najpierw przenieś własność lub usuń obszar roboczy.",
+        "ownerRequired": "Tylko właściciel obszaru roboczego może to zrobić.",
+        "adminRequired": "Tylko administratorzy obszaru roboczego mogą to zrobić.",
+        "quotaExceeded": "Osiągnięto limit planu tego obszaru roboczego.",
         "forbidden": "Nie masz uprawnień do tej operacji.",
-        "memberNotFound": "Ten członek nie jest już aktywny w tej organizacji.",
+        "memberNotFound": "Ten członek nie jest już aktywny w tym obszarze roboczym.",
         "validation": "Nieprawidłowa wartość — sprawdź dane i spróbuj ponownie.",
         "inviteInvalid": "Ten kod zaproszenia jest nieprawidłowy.",
         "inviteRevoked": "To zaproszenie zostało odwołane.",
         "inviteExpired": "To zaproszenie wygasło.",
         "inviteExhausted": "To zaproszenie nie ma już dostępnych użyć.",
-        "alreadyMember": "Już należysz do tej organizacji.",
+        "alreadyMember": "Już należysz do tego obszaru roboczego.",
         "network": "Nie udało się połączyć z usługą chmurową. Sprawdź sieć i spróbuj ponownie."
       }
     },
     "syncLevel": {
       "menuItem": "Poziom synchronizacji w chmurze…",
       "title": "Poziom synchronizacji w chmurze",
-      "hint": "Wybierz, co ta sesja udostępnia każdej organizacji w chmurze — nic, same metadane lub pełną powtórkę — oraz kto może ją widzieć.",
+      "hint": "Wybierz, co ta sesja udostępnia każdemu obszarowi roboczemu w chmurze — nic, same metadane lub pełną powtórkę — oraz kto może ją widzieć.",
       "modeOff": "Wyłączone",
       "modeMetadata": "Tylko metadane",
       "modeFullReplay": "Pełna powtórka",
-      "visibilityOrg": "Wszyscy w organizacji",
+      "visibilityOrg": "Wszyscy w obszarze roboczym",
       "visibilityRestricted": "Tylko ja",
-      "taggedNote": "Ta sesja została przeniesiona do tej organizacji, więc dopóki jest oznaczona, udostępnia co najmniej metadane.",
-      "floorNote": "Administrator organizacji wymaga udostępniania co najmniej {{mode}}.",
-      "orgMinimumOption": "Minimum organizacji ({{mode}})"
+      "taggedNote": "Ta sesja została przeniesiona do tego obszaru roboczego, więc dopóki jest oznaczona, udostępnia co najmniej metadane.",
+      "floorNote": "Administrator obszaru roboczego wymaga udostępniania co najmniej {{mode}}.",
+      "orgMinimumOption": "Minimum obszaru roboczego ({{mode}})"
     },
     "share": {
       "menuItem": "Udostępnianie w chmurze…",
       "dialogTitle": "Udostępnianie sesji w chmurze",
-      "noOrgs": "Ta sesja nie należy do żadnej organizacji w chmurze.",
+      "noOrgs": "Ta sesja nie należy do żadnego obszaru roboczego w chmurze.",
       "directedTitle": "Udostępnij członkom",
       "directedEmpty": "Brak innych członków do udostępnienia.",
       "createDirected": "Udostępnij",
@@ -724,9 +660,7 @@
       "incomingError": "Ten link jest nieprawidłowy, wygasł lub został cofnięty.",
       "incomingRetryHint": "Import nie został ukończony. Udostępniona sesja może wciąż być przesyłana — spróbuj ponownie.",
       "importEntry": "Importuj sesję",
-      "importDialogTitle": "Importuj udostępnioną sesję",
       "importInputPlaceholder": "orgii://cloud/session?share=…",
-      "importPasteClipboard": "Wklej ze schowka",
       "importSubmit": "Importuj",
       "importInvalidInput": "To nie wygląda na prawidłowy link udostępniania ani token.",
       "selectAll": "Wszyscy ({{count}})",
@@ -739,59 +673,44 @@
       "incomingRetry": "Spróbuj ponownie"
     },
     "comments": {
-      "task": {
-        "assignFailed": "Komentarz opublikowany, ale przypisanie agenta nie powiodło się — ponów próbę z wątku",
-        "assignUnavailableHere": "Komentarz opublikowany — przypisanie agenta nie jest dostępne w tym widoku",
-        "addressingChip": "Obsługiwany komentarz: „{{excerpt}}”",
-        "addressingChipGeneric": "Obsługa komentarza",
-        "addressingChipTooltip": "Fork utworzony, aby obsłużyć wątek komentarzy sesji źródłowej",
-        "mentionSuggestion": "Przypisz ten komentarz agentowi"
-      },
-      "toggleLabel": "Komentarze",
-      "notesButton": "Notatki sesji",
-      "notesTitle": "Notatki sesji",
-      "empty": "Brak komentarzy",
-      "loadError": "Nie udało się wczytać komentarzy",
-      "addPlaceholder": "Dodaj komentarz…",
-      "replyPlaceholder": "Odpowiedz…",
-      "send": "Skomentuj",
-      "reply": "Odpowiedz",
-      "edit": "Edytuj",
-      "save": "Zapisz",
-      "cancel": "Anuluj",
-      "delete": "Usuń",
-      "resolve": "Oznacz jako rozwiązane",
-      "unresolve": "Otwórz ponownie",
-      "resolved": "Rozwiązane",
-      "statusActive": "Aktywny",
-      "wontFix": "Nie zostanie naprawione",
-      "agentAddressing": "Agent się tym zajmuje…",
-      "resolvedToggle": "Rozwiązane ({{count}})",
-      "deletedComment": "Komentarz usunięty",
-      "editedMarker": "edytowano",
-      "earlierVersion": "Z wcześniejszej wersji tej sesji",
-      "replayRequired": "Komentarze do tur wymagają pełnego dostępu do odtwarzania",
-      "addError": "Nie udało się opublikować — szkic został zachowany",
       "actionError": "Akcja nie powiodła się — spróbuj ponownie",
       "unresolvedBadge_one": "Nierozwiązane komentarze: {{count}}",
       "unresolvedBadge": "Nierozwiązane komentarze: {{count}}",
-      "addressButton": "Obsłuż komentarze",
-      "addressPill_one": "obsłuż {{count}} komentarz",
-      "addressPill_other": "obsłuż {{count}} komentarzy",
-      "addressSelectAll": "Zaznacz wszystko",
-      "addressConfirm_one": "Obsłuż {{count}} komentarz",
-      "addressConfirm_other": "Obsłuż {{count}} komentarzy",
+      "unreadBadge_one": "{{count}} nieprzeczytana wiadomość",
+      "unreadBadge": "Nieprzeczytane wiadomości: {{count}}",
+      "addError": "Nie udało się opublikować — szkic został zachowany",
+      "addPlaceholder": "Dodaj komentarz…",
+      "agentAddressing": "Agent się tym zajmuje…",
       "agentAuthor": "Agent @{{name}}",
-      "addressSessionScope": "Session notes",
-      "addressRoundScope": "Round comments",
+      "cancel": "Anuluj",
+      "delete": "Usuń",
+      "deletedComment": "Komentarz usunięty",
+      "earlierVersion": "Z wcześniejszej wersji tej sesji",
+      "edit": "Edytuj",
+      "editedMarker": "edytowano",
+      "empty": "Brak komentarzy",
+      "loadError": "Nie udało się wczytać komentarzy",
       "mentionMembers": "Wspomnij",
-      "searchMembers": "Szukaj członków"
+      "notesButton": "Notatki sesji",
+      "notesTitle": "Notatki sesji",
+      "reply": "Odpowiedz",
+      "replyPlaceholder": "Odpowiedz…",
+      "resolved": "Rozwiązane",
+      "resolvedToggle": "Rozwiązane ({{count}})",
+      "save": "Zapisz",
+      "searchMembers": "Szukaj członków",
+      "send": "Skomentuj",
+      "task": {
+        "assignFailed": "Komentarz opublikowany, ale przypisanie agenta nie powiodło się — ponów próbę z wątku",
+        "mentionSuggestion": "Przypisz ten komentarz agentowi"
+      },
+      "wontFix": "Nie zostanie naprawione"
     },
     "sharingFloor": {
       "label": "Minimalny poziom udostępniania",
-      "help": "Określa minimum, jakie członek może udostępnić dla sesji w repozytoriach tej organizacji. Członkowie nie mogą ustawić niżej. „Brak minimum” zachowuje obecne zachowanie",
+      "help": "Określa minimum, jakie członek może udostępnić dla sesji w repozytoriach tego obszaru roboczego. Członkowie nie mogą ustawić niżej. „Brak minimum” zachowuje obecne zachowanie",
       "optionNone": "Brak minimum",
-      "memberNote": "Administrator organizacji wymaga udostępniania co najmniej {{mode}}, więc nie możesz ustawić sesji poniżej tego poziomu"
+      "memberNote": "Administrator obszaru roboczego wymaga udostępniania co najmniej {{mode}}, więc nie możesz ustawić sesji poniżej tego poziomu"
     },
     "billing": {
       "openFailed": "Couldn't open billing. Please try again."
@@ -841,23 +760,22 @@
         "nameLabel": "Nazwa",
         "namePlaceholder": "np. przeglad-kodu",
         "topicLabel": "Temat",
-        "topicOptional": "(opcjonalnie)",
         "topicPlaceholder": "Czego dotyczy ten kanał?",
         "visibilityLabel": "Widoczność",
         "publicTitle": "Publiczny",
-        "publicDesc": "Każdy w organizacji może zobaczyć rozmowę i dołączyć",
+        "publicDesc": "Każdy w obszarze roboczym może zobaczyć rozmowę i dołączyć",
         "privateTitle": "Prywatny",
         "privateDesc": "Tylko zaproszone osoby mogą zobaczyć ten kanał",
         "membersLabel": "Dodaj członków",
         "membersHint": "Automatycznie zostaniesz menedżerem kanału",
         "membersLoading": "Wczytywanie członków…",
-        "membersEmpty": "W tej organizacji nie ma jeszcze innych członków",
+        "membersEmpty": "W tym obszarze roboczym nie ma jeszcze innych członków",
         "postPolicyLabel": "Kto może publikować",
         "postPolicyEveryone": "Wszyscy",
         "postPolicyManagers": "Tylko menedżerowie kanału",
         "submit": "Utwórz",
         "nameTaken": "Ta nazwa jest już zajęta",
-        "quotaExceeded": "Organizacja osiągnęła limit kanałów",
+        "quotaExceeded": "Obszar roboczy osiągnął limit kanałów",
         "error": "Nie udało się utworzyć kanału. Spróbuj ponownie."
       },
       "archive": {
@@ -872,7 +790,7 @@
         "warning": "Kanał zostanie trwale usunięty dla wszystkich. Tej operacji nie można cofnąć",
         "acknowledge": "Tak, trwale usuń kanał",
         "confirm": "Usuń",
-        "adminRequired": "Tylko administratorzy organizacji mogą usuwać kanały",
+        "adminRequired": "Tylko administratorzy obszaru roboczego mogą usuwać kanały",
         "error": "Nie udało się usunąć kanału. Spróbuj ponownie."
       },
       "members": {
@@ -883,7 +801,7 @@
         "managerBadge": "Menedżer",
         "you": "Ty",
         "addLabel": "Dodaj członków",
-        "addEmpty": "Wszyscy z organizacji są już w tym kanale",
+        "addEmpty": "Wszyscy z obszaru roboczego są już w tym kanale",
         "addSubmit": "Dodaj",
         "actions": "Akcje członka",
         "remove": "Usuń z kanału",
@@ -903,7 +821,6 @@
         "today": "Dzisiaj",
         "yesterday": "Wczoraj",
         "you": "Ty",
-        "memberCount": "liczba członków: {{memberCount}}",
         "emptyTitle": "To początek kanału #{{name}}",
         "emptySubtitle": "Wyślij pierwszą wiadomość, aby rozpocząć rozmowę",
         "missingTitle": "Kanał nie jest już dostępny",
@@ -916,15 +833,7 @@
         "errorQuota": "Ten kanał osiągnął limit wiadomości na tym urządzeniu",
         "errorGeneric": "Nie udało się wysłać wiadomości. Spróbuj ponownie.",
         "dropSessionHint": "Upuść, aby dodać tę sesję jako odniesienie",
-        "messageBodyLabel": "Wiadomość kanału",
-        "sessionCardMissing": "Niedostępne na tym urządzeniu",
         "sessionCardOpen": "Otwórz sesję {{name}}",
-        "workItemCardMissing": "Niedostępne na tym urządzeniu",
-        "workItemCardLoading": "Wczytywanie…",
-        "workItemCardOpen": "Otwórz element pracy {{name}}",
-        "githubCardOpen": "Otwórz {{name}} w GitHubie",
-        "githubIssue": "Zgłoszenie",
-        "githubPullRequest": "Pull request",
         "archivedComposerDisabled": "Ten kanał jest zarchiwizowany. Przywróć go, aby publikować.",
         "errorPostForbidden": "Tylko menedżerowie kanału mogą tu pisać",
         "errorArchived": "Ten kanał jest zarchiwizowany, więc pisanie jest wyłączone",
@@ -939,11 +848,130 @@
     },
     "backgroundUpload": {
       "label": "Przesyłanie w tle",
-      "help": "Przesyła kwalifikujące się sesje członków w tle zgodnie z minimalnym poziomem udostępniania organizacji i ustawieniami sesji, nawet gdy organizacja jest nieaktywna.",
+      "help": "Przesyła kwalifikujące się sesje członków w tle zgodnie z minimalnym poziomem udostępniania obszaru roboczego i ustawieniami sesji, nawet gdy obszar roboczy jest nieaktywny.",
       "on": "Włączone",
       "off": "Wyłączone",
-      "memberNote": "Włączone przez administratora — kwalifikujące się sesje są przesyłane w tle bez otwierania tej organizacji."
+      "memberNote": "Włączone przez administratora — kwalifikujące się sesje są przesyłane w tle bez otwierania tego obszaru roboczego."
     },
-    "userName": "Nazwa użytkownika"
+    "userName": "Nazwa użytkownika",
+    "title": "ORG2 Cloud"
+  },
+  "myRole": {
+    "deleteRoleMessage": "„{{name}}” zostanie usunięta. Tej operacji nie można cofnąć.",
+    "activeBadge": "Aktywna",
+    "addRole": "Dodaj własną rolę",
+    "builtInTitle": "Role wbudowane",
+    "customEmpty": "Brak własnych ról. Dodaj rolę, aby uchwycić postawę, której nie obejmują trzy wbudowane — np. „Głęboka praca”, „Programowanie w parze” lub „Dyżur”.",
+    "customTitle": "Role własne",
+    "deleteRoleCancel": "Anuluj",
+    "deleteRoleOk": "Usuń",
+    "deleteRoleTitle": "Usunąć rolę?",
+    "followUpSuggestionsDesc": "Sugeruj możliwe kolejne kroki po ukończonej turze elementu pracy. Wymaga dodatkowego żądania do modelu.",
+    "followUpSuggestionsLabel": "Sugestie kolejnych kroków Agenta",
+    "goalMaxTurnsDesc": "Kontynuuj pracę nad moim ostatnim żądaniem przez maksymalnie N dodatkowych tur po tym, jak Agent normalnie by się zatrzymał (0 = wył.).",
+    "goalMaxTurnsLabel": "Budżet kontynuacji celu",
+    "guidanceLabel": "Wskazówki dla Agenta",
+    "guidancePlaceholder": "Jak Agent ma dostosować swoje zachowanie, gdy ta rola jest aktywna?",
+    "modeSwitchAutoPlanDesc": "Automatycznie przełączaj oczekujące sugestie trybu Plan, gdy upłynie ich czas na potwierdzenie.",
+    "modeSwitchAutoPlanLabel": "Automatyczne przełączanie w tryb Plan",
+    "newRoleDefaultLabel": "Własna rola",
+    "pageDescription": "Określ rolę, którą właśnie pełnisz. Agent czyta wskazówki aktywnej roli i odpowiednio dostosowuje swoje zachowanie — na przykład zadaje mniej pytań doprecyzowujących, gdy pracujesz w skupieniu, albo grupuje podsumowania, gdy Cię nie ma.",
+    "pageTitle": "Moje role",
+    "planAutoApproveDesc": "Automatycznie zatwierdzaj oczekujące plany po N sekundach (0 = czekaj na mnie).",
+    "planAutoApproveLabel": "Automatyczne zatwierdzanie planu",
+    "questionAutoSkipDesc": "Automatycznie pomijaj oczekujące pytania Agenta po N sekundach (0 = czekaj na mnie).",
+    "questionAutoSkipLabel": "Automatyczne pomijanie pytań",
+    "roleNameLabel": "Nazwa",
+    "roleNamePlaceholder": "Nazwa roli",
+    "stanceAutonomous": "Autonomicznie — nigdy nie czekaj na mnie",
+    "stanceDeferAndBatch": "Odłóż i grupuj — najpierw pracuj, pytaj później",
+    "stanceDesc": "Jak Agent traktuje decyzje blokujące, gdy ta rola jest aktywna.",
+    "stanceInteractive": "Interaktywnie — pytaj mnie swobodnie",
+    "stanceLabel": "Postawa zachowania"
+  },
+  "explore": {
+    "search": "Szukaj",
+    "searching": "Wyszukiwanie...",
+    "searchPlaceholder": "Szukaj repozytoriów GitHub (np. language:rust tauri)",
+    "clone": "Klonuj",
+    "cloning": "Klonowanie...",
+    "openOnGithub": "GitHub",
+    "cloneSuccess": "Sklonowano {{name}}",
+    "cloneFailed": "Klonowanie nie powiodło się",
+    "cloneNoTarget": "Nie skonfigurowano domyślnego folderu obszaru roboczego. Ustaw go w Ustawieniach.",
+    "errorTitle": "Wyszukiwanie nie powiodło się",
+    "noResultsTitle": "Brak pasujących repozytoriów",
+    "noResultsSubtitle": "Spróbuj innego zapytania lub sortowania.",
+    "resultsCount": "{{shown}} z {{total}} repozytoriów",
+    "partial": "(częściowe — upłynął limit czasu wyszukiwania)",
+    "sort": {
+      "bestMatch": "Najlepsze dopasowanie",
+      "stars": "Gwiazdki",
+      "updated": "Ostatnio aktualizowane",
+      "forks": "Forki"
+    }
+  },
+  "web": {
+    "title": "ORG2 Web",
+    "sessionsNav": "Sessions",
+    "loadingSession": "Loading session…",
+    "readOnly": {
+      "headerTrailing": "Cloud · Read only",
+      "barLabel": "Read only",
+      "barPlaceholder": "Cloud session is read-only"
+    },
+    "sessionsPage": {
+      "loadError": "Sessions could not be loaded",
+      "loading": "Loading sessions…",
+      "empty": "No synced sessions",
+      "select": "Select a session",
+      "emptyHint": "Open ORG2 Desktop and enable Cloud sync for a session.",
+      "selectHint": "Choose a Cloud session from the sidebar.",
+      "retry": "Retry",
+      "organizationLoadErrorHint": "Your organizations could not be loaded. Check your connection and try again.",
+      "organizationRetryingHint": "The cloud service could not be reached. Retrying automatically…",
+      "organizationRefreshErrorHint": "Organizations could not be refreshed. Showing the last successful session list.",
+      "sessionRefreshErrorHint": "Some organization sessions could not be refreshed.",
+      "organizationSetupTitle": "Connect an organization",
+      "organizationSetupHint": "Create an organization for your team, or join one with an invite link or code.",
+      "organizationModeLabel": "Organization setup method",
+      "createOrganization": "Create organization",
+      "joinOrganization": "Join organization",
+      "organizationNamePlaceholder": "Team or organization name",
+      "invitePlaceholder": "Paste an invite link or code"
+    },
+    "sessionPage": {
+      "notFound": "Session not found",
+      "notFoundHint": "It may no longer be shared with this account.",
+      "loading": "Loading session…",
+      "workstationLoading": "Loading session workspace…",
+      "workstationEmptyTitle": "No session files were uploaded",
+      "workstationEmptySubtitle": "This session has no readable file or edit payloads yet.",
+      "workstationLoadErrorFallback": "Session files could not be loaded",
+      "workstationLoadErrorSubtitle": "Agent Station replay remains available.",
+      "workstationRefreshFailedBanner": "Refresh failed. Showing files already available from session events.",
+      "chatTab": "Chat",
+      "workstationTab": "WorkStation",
+      "forkContext": "Fork of {{owner}}'s session",
+      "notesButton": "Session notes",
+      "notesTitle": "Session notes",
+      "notesEmpty": "No session notes yet."
+    },
+    "login": {
+      "title": "Sign in to ORG2 Web",
+      "subtitle": "Review shared sessions, chat history, and replay from any browser.",
+      "continue": "Continue with ORG2 Cloud",
+      "hint": "Use the same ORG2 Cloud account as the desktop app."
+    },
+    "authCallback": {
+      "failed": "Sign-in failed",
+      "tryAgain": "Try again",
+      "completing": "Completing sign-in",
+      "missingCredentials": "The sign-in callback is missing valid credentials.",
+      "missingIdentity": "The sign-in token does not contain a user identity."
+    },
+    "sidebar": {
+      "signOut": "Sign out {{name}}"
+    }
   }
 }

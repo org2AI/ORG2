@@ -24,6 +24,7 @@ export type FocusedChatRailItem = {
   icon: FocusedChatRailIcon;
   /** Keyboard hint shown in a tooltip (e.g. "⌘E"). */
   shortcut?: string;
+  shortcutId?: string;
   fileName?: string;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   /**

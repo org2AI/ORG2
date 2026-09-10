@@ -14,22 +14,28 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 
 import {
-  type LayoutMode,
-  type PrimarySidebarTabKey,
   workStationBottomPanelHeightAtom,
   workStationBottomPanelHeightPersistAtom,
-  workStationDevToolsCollapsedAtom,
-  workStationDevToolsCollapsedPersistAtom,
   workStationEditorSecondaryCollapsedAtom,
   workStationEditorSecondaryCollapsedPersistAtom,
-  workStationLayoutModeAtom,
-  workStationLayoutModePersistAtom,
+} from "@src/store/ui/workStationLayout/bottomPanelAtoms";
+import {
+  workStationDevToolsCollapsedAtom,
+  workStationDevToolsCollapsedPersistAtom,
+} from "@src/store/ui/workStationLayout/devToolsCollapsedAtoms";
+import {
+  type PrimarySidebarTabKey,
   workStationPrimarySidebarCollapsedAtom,
   workStationPrimarySidebarCollapsedPersistAtom,
   workStationPrimarySidebarTabAtom,
   workStationPrimarySidebarWidthAtom,
   workStationPrimarySidebarWidthPersistAtom,
-} from "@src/store/ui/workStationAtom";
+} from "@src/store/ui/workStationLayout/primarySidebarAtoms";
+import {
+  type LayoutMode,
+  workStationLayoutModeAtom,
+  workStationLayoutModePersistAtom,
+} from "@src/store/ui/workStationLayout/splitLayoutAtoms";
 
 export interface UseWorkStationPanelsReturn {
   // Layout mode

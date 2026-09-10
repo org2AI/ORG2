@@ -4,34 +4,30 @@ import { useMemo } from "react";
 import type {
   LearningCategoryValue,
   LearningRecord,
-  LearningSourceValue,
   LearningStatusValue,
 } from "@src/api/tauri/rpc/schemas/learning";
 import Button from "@src/components/Button";
 import type { SelectOption } from "@src/components/Select";
+import type {
+  SettingsTableColumn,
+  SettingsTableSelectFilter,
+} from "@src/components/SettingsTable";
 import {
   SETTINGS_TABLE_CELL,
   SETTINGS_TABLE_COL,
-  type SettingsTableColumn,
-  type SettingsTableSelectFilter,
-} from "@src/components/SettingsTable";
+} from "@src/components/SettingsTable/tokens";
 import type { LearningsBrowserFilters } from "@src/hooks/settings/useLearningsBrowser";
 import { Delete02Icon, HugeiconsIcon } from "@src/icons";
 
 import {
   CATEGORY_SELECT_ORDER,
-  PANEL_COLUMN_KEYS,
   READ_ONLY_LEARNING_STATUSES,
-  SOURCE_SELECT_ORDER,
   STATUS_FILTER_ALL,
   STATUS_SELECT_ORDER,
-  STATUS_SELECT_ORDER_FULL,
 } from "./constants";
 import { formatRelativeTime, truncate } from "./formatters";
-import type { LearningsBrowserVariant } from "./types";
 
 interface UseLearningsTableConfigParams {
-  variant: LearningsBrowserVariant;
   filters: LearningsBrowserFilters;
   setFilters: (next: LearningsBrowserFilters) => void;
   actioningId: string | null;
@@ -49,10 +45,7 @@ interface UseLearningsTableConfigReturn {
   selectFilters: SettingsTableSelectFilter[];
 }
 
-const PANEL_COLUMNS = new Set<string>(PANEL_COLUMN_KEYS);
-
 export function useLearningsTableConfig({
-  variant,
   filters,
   setFilters,
   actioningId,
@@ -64,7 +57,7 @@ export function useLearningsTableConfig({
   handleReactivate,
   handleDelete,
 }: UseLearningsTableConfigParams): UseLearningsTableConfigReturn {
-  const allColumns: SettingsTableColumn<LearningRecord>[] = useMemo(
+  const columns: SettingsTableColumn<LearningRecord>[] = useMemo(
     () => [
       {
         key: "takeaway",
@@ -105,38 +98,6 @@ export function useLearningsTableConfig({
         renderCell: (row) => (
           <span className="rounded bg-fill-2 px-2 py-0.5 text-xs text-text-2">
             {t(`learningsBrowser.status.${row.status}`, row.status)}
-          </span>
-        ),
-      },
-      {
-        key: "source",
-        label: t("learningsBrowser.columns.source"),
-        width: "140px",
-        renderCell: (row) => (
-          <span className="text-xs text-text-3">
-            {t(`learningsBrowser.source.${row.source}`, row.source)}
-          </span>
-        ),
-      },
-      {
-        key: "reinforcement",
-        label: t("learningsBrowser.columns.reinforcement"),
-        width: "90px",
-        renderCell: (row) => (
-          <span className="text-xs text-text-3">
-            ×{row.reinforcement_count}
-          </span>
-        ),
-      },
-      {
-        key: "lastRecalled",
-        label: t("learningsBrowser.columns.lastRecalled"),
-        width: "100px",
-        renderCell: (row) => (
-          <span className="text-xs text-text-3">
-            {row.last_recalled_at
-              ? formatRelativeTime(row.last_recalled_at)
-              : "—"}
           </span>
         ),
       },
@@ -218,31 +179,11 @@ export function useLearningsTableConfig({
     ]
   );
 
-  const columns = useMemo(
-    () =>
-      variant === "integrationsPanel"
-        ? allColumns.filter((column) => PANEL_COLUMNS.has(column.key))
-        : allColumns,
-    [variant, allColumns]
-  );
-
   const statusFilterOptions = useMemo<SelectOption[]>(
     () =>
-      (variant === "integrationsPanel"
-        ? STATUS_SELECT_ORDER
-        : STATUS_SELECT_ORDER_FULL
-      ).map((key) => ({
+      STATUS_SELECT_ORDER.map((key) => ({
         value: key,
         label: t(`learningsBrowser.tabs.${key}`),
-      })),
-    [variant, t]
-  );
-
-  const sourceFilterOptions = useMemo<SelectOption[]>(
-    () =>
-      SOURCE_SELECT_ORDER.map((key) => ({
-        value: key,
-        label: t(`learningsBrowser.source.${key}`),
       })),
     [t]
   );
@@ -294,35 +235,8 @@ export function useLearningsTableConfig({
       },
     ];
 
-    if (variant !== "integrationsPanel") {
-      base.splice(1, 0, {
-        key: "source",
-        value: filters.source ?? STATUS_FILTER_ALL,
-        defaultValue: STATUS_FILTER_ALL,
-        options: sourceFilterOptions,
-        minWidth: 180,
-        onChange: (value) => {
-          const nextValue = String(value);
-          setFilters({
-            ...filters,
-            source:
-              nextValue === STATUS_FILTER_ALL
-                ? undefined
-                : (nextValue as LearningSourceValue),
-          });
-        },
-      });
-    }
-
     return base;
-  }, [
-    variant,
-    filters,
-    setFilters,
-    statusFilterOptions,
-    sourceFilterOptions,
-    categoryFilterOptions,
-  ]);
+  }, [filters, setFilters, statusFilterOptions, categoryFilterOptions]);
 
   return { columns, selectFilters };
 }

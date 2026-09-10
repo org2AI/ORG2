@@ -114,20 +114,6 @@ pub fn file_interactions_from_tool(
                 }),
         );
     }
-    // search-rows: turn cards surface only writes and reads, so search results
-    // are no longer harvested. Restore with the sibling `search-rows` sites.
-    // if default_action == ResourceAction::Search {
-    //     interactions.extend(
-    //         tool_result
-    //             .into_iter()
-    //             .chain(successful_result)
-    //             .flat_map(search_result_paths)
-    //             .map(|file_path| FileInteractionCandidate {
-    //                 file_path,
-    //                 action: ResourceAction::Search,
-    //             }),
-    //     );
-    // }
     interactions.sort_by(|left, right| {
         left.file_path
             .cmp(&right.file_path)
@@ -196,48 +182,6 @@ pub fn explicit_file_paths(value: &Value) -> Vec<String> {
                         .map(str::to_string),
                 ),
                 _ => {}
-            }
-        }
-    }
-    paths.sort();
-    paths.dedup();
-    paths
-}
-
-// search-rows: kept intact but unused while search capture is disabled in
-// `file_interactions_from_tool`. Drop the attribute when restoring.
-#[allow(dead_code)]
-fn search_result_paths(value: &Value) -> Vec<String> {
-    const COLLECTION_FIELDS: &[&str] = &["matches", "results", "files", "filePaths"];
-    const ITEM_PATH_FIELDS: &[&str] = &[
-        "file",
-        "path",
-        "file_path",
-        "filePath",
-        "relativeWorkspacePath",
-    ];
-    let mut paths = Vec::new();
-    let Some(object) = value.as_object() else {
-        return paths;
-    };
-    for collection_field in COLLECTION_FIELDS {
-        let Some(items) = object.get(*collection_field).and_then(Value::as_array) else {
-            continue;
-        };
-        for item in items {
-            if let Some(path) = item.as_str().filter(|path| !path.trim().is_empty()) {
-                paths.push(path.to_string());
-                continue;
-            }
-            let Some(item) = item.as_object() else {
-                continue;
-            };
-            if let Some(path) = ITEM_PATH_FIELDS.iter().find_map(|field| {
-                item.get(*field)
-                    .and_then(Value::as_str)
-                    .filter(|path| !path.trim().is_empty())
-            }) {
-                paths.push(path.to_string());
             }
         }
     }

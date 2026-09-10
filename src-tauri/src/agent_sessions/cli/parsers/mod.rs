@@ -15,20 +15,20 @@
 //!   → WebSocket broadcast → frontend normalizeChunk() → UI
 //! ```
 //!
-//! Exception: Copilot uses ACP (Agent Client Protocol) — bidirectional
-//! JSON-RPC over stdin/stdout. See `copilot::run_acp_protocol()`.
+//! Exception: Copilot, Kiro, OpenCode, and DeepSeek Harness use ACP (Agent
+//! Client Protocol) — bidirectional JSON-RPC over stdin/stdout. See
+//! `copilot::run_acp_protocol()`.
 //!
 //! All tool names/args/results are normalized to Cursor's vocabulary:
 //! - Shell, Edit, Read, Grep, Glob, UpdateTodos, etc.
 //!
 //! ## Alias Map
 //!
-//! The `alias_map` module provides dual canonical names for CLI tool aliases:
+//! The `core_types::cli_alias` module provides dual canonical names for CLI tool aliases:
 //! - `storage`: Fine-grained canonical name for database storage
 //! - `ui`: Coarse canonical name for UI component lookup
 
 // Shared utilities
-pub mod alias_map;
 pub mod normalizer;
 pub mod types;
 
@@ -39,6 +39,7 @@ pub mod codex;
 pub mod codex_app_server;
 pub mod copilot;
 pub mod cursor;
+pub mod deepseek;
 pub mod kiro;
 pub mod opencode;
 pub mod plain_text;

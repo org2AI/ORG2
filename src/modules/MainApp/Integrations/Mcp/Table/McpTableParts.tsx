@@ -1,6 +1,5 @@
 /**
  * Shared presentational pieces for McpTable:
- *   - McpTableSkeleton  — loading placeholder rows
  *   - StatusChip        — coloured status pill
  *   - statusDotColor    — status → Tailwind bg class
  *   - formatUptime      — connected_at ms → short human label
@@ -10,17 +9,13 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import { SETTINGS_TABLE_CELL } from "@src/components/SettingsTable";
+import { SETTINGS_TABLE_CELL } from "@src/components/SettingsTable/tokens";
 import StatusDot from "@src/components/StatusDot";
 import Switch from "@src/components/Switch";
 import type {
   McpConnectionStatus,
   McpServerStatus,
 } from "@src/modules/MainApp/AgentOrgs/config/mcp/useMcpServers";
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const SKELETON_ROW_COUNT = 3;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -60,21 +55,6 @@ export function formatUptime(connectedAtMs: number, nowMs: number): string {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-export const McpTableSkeleton: React.FC = () => (
-  <div className="flex flex-col gap-2">
-    {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
-      <div
-        key={i}
-        className="flex animate-pulse items-center gap-4 rounded-md px-3 py-3"
-      >
-        <div className="h-4 w-32 rounded bg-fill-2" />
-        <div className="h-4 w-16 rounded bg-fill-2" />
-        <div className="ml-auto h-3 w-3 rounded-full bg-fill-2" />
-      </div>
-    ))}
-  </div>
-);
 
 export function StatusChip({ status }: { status: McpConnectionStatus }) {
   const { t } = useTranslation("integrations");

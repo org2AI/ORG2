@@ -27,7 +27,6 @@ import { useTranslation } from "react-i18next";
 import { gitApi } from "@src/api/http/git";
 import { CheckoutBlockedDialog } from "@src/components/GitDialogs/CheckoutBlockedDialog";
 import { CheckoutConflictDialog } from "@src/components/GitDialogs/CheckoutConflictDialog";
-import PillGroup from "@src/components/PillGroup";
 import RunningLocationDropdownPanel from "@src/components/RunningLocationDropdownPanel";
 import {
   RUNNING_LOCATIONS,
@@ -37,19 +36,22 @@ import {
   isSystemHomeRepoItem,
   isSystemPathRepoItem,
 } from "@src/features/SessionCreator/utils/systemPathSource";
-import { useActiveCloudOrgRepoFilter } from "@src/features/TeamCollaboration/useActiveCloudOrgRepoFilter";
+import {
+  useActiveCloudOrgName,
+  useActiveCloudOrgRepoFilter,
+} from "@src/features/TeamCollaboration/useActiveCloudOrgRepoFilter";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { BranchPalette } from "@src/scaffold/GlobalSpotlight/palettes/BranchPalette";
 import { BranchDropdown } from "@src/scaffold/GlobalSpotlight/palettes/BranchPalette/BranchDropdown";
-import { WorkspacePalette } from "@src/scaffold/GlobalSpotlight/palettes/WorkspacePalette";
-import { WorkspaceDropdown } from "@src/scaffold/GlobalSpotlight/palettes/WorkspacePalette/WorkspaceDropdown";
+import { WorkingDirectoryPalette } from "@src/scaffold/GlobalSpotlight/palettes/WorkingDirectoryPalette";
+import { WorkingDirectoryDropdown } from "@src/scaffold/GlobalSpotlight/palettes/WorkingDirectoryPalette/WorkingDirectoryDropdown";
 import { runGuardedCheckout } from "@src/services/git/operations/guardedCheckout";
 import { REPO_KIND, type RepoKind } from "@src/store/repo/types";
 import type {
   WorktreeLaunchSelection,
   WorktreeLaunchSource,
 } from "@src/store/session/worktreeLaunchSourceAtom";
-import { modelPickerStyleAtom } from "@src/store/ui/chatPanelAtom";
+import { modelPickerStyleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import {
   branchSelectorOpenAtom,
   locationSelectorOpenAtom,
@@ -59,6 +61,7 @@ import { isMultiRootWorkspaceAtom } from "@src/store/ui/workspaceFoldersAtom";
 import { workspaceNameAtom } from "@src/store/workspace/derived";
 import { showGitActionDialogSafely } from "@src/util/dialogs/gitActionDialog";
 
+import { SessionInfoPillGroup } from "./SessionInfoLine/SessionInfoPillGroup";
 import {
   buildSessionInfoSegments,
   getSessionInfoDisplayState,
@@ -380,6 +383,7 @@ const SessionInfoLine: React.FC<SessionInfoLineProps> = ({
   // the pickers group rows into "This org" / "Outside this org" instead,
   // and out-of-scope repos are legitimate picks (they simply launch
   // without the org tag — autoTagLaunchedSessionToActiveCloudOrg guards).
+  const activeCloudOrgName = useActiveCloudOrgName();
   const orgScopeRepoFilter = useActiveCloudOrgRepoFilter();
 
   const handleBranchSelect = useCallback(
@@ -610,9 +614,7 @@ const SessionInfoLine: React.FC<SessionInfoLineProps> = ({
     return segment;
   });
 
-  const sessionInfoPills = (
-    <PillGroup segments={segments} className="flex-wrap" strongSurface />
-  );
+  const sessionInfoPills = <SessionInfoPillGroup segments={segments} />;
 
   return (
     <>
@@ -631,7 +633,7 @@ const SessionInfoLine: React.FC<SessionInfoLineProps> = ({
 
       {/* Repo Selector */}
       {useDropdownPicker ? (
-        <WorkspaceDropdown
+        <WorkingDirectoryDropdown
           isOpen={isRepoSelectorOpen}
           onClose={handleRepoClose}
           onSelect={handleRepoSelected}
@@ -640,9 +642,10 @@ const SessionInfoLine: React.FC<SessionInfoLineProps> = ({
           placement={dropdownDirection === "up" ? "top" : "bottom"}
           leadingRepos={systemPathSourceItems}
           repoFilter={orgScopeRepoFilter ?? undefined}
+          orgScopeName={activeCloudOrgName ?? undefined}
         />
       ) : (
-        <WorkspacePalette
+        <WorkingDirectoryPalette
           isOpen={isRepoSelectorOpen}
           onClose={handleRepoClose}
           onSelect={handleRepoSelected}
@@ -651,6 +654,7 @@ const SessionInfoLine: React.FC<SessionInfoLineProps> = ({
           hideActionClose
           leadingRepos={systemPathSourceItems}
           repoFilter={orgScopeRepoFilter ?? undefined}
+          orgScopeName={activeCloudOrgName ?? undefined}
         />
       )}
 

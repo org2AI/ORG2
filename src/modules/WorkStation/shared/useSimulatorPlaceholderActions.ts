@@ -10,9 +10,11 @@ import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import {
   workStationEditorSecondaryCollapsedAtom,
   workStationEditorSecondaryCollapsedPersistAtom,
+} from "@src/store/ui/workStationLayout/bottomPanelAtoms";
+import {
   workStationPrimarySidebarCollapsedAtom,
   workStationPrimarySidebarCollapsedPersistAtom,
-} from "@src/store/ui/workStationAtom";
+} from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 
 import type { QuickAction } from "./QuickActionsPanel/types";
 
@@ -55,7 +57,9 @@ export function useSimulatorPlaceholderActions(
         label: bottomPanelCollapsed
           ? t("commands.showBottomPanel")
           : t("commands.hideBottomPanel"),
-        shortcut: getShortcutKeys("toggle_bottom_panel"),
+        get shortcut() {
+          return getShortcutKeys("toggle_bottom_panel");
+        },
         onAction: () => setBottomPanel("toggle"),
       },
       {
@@ -63,7 +67,9 @@ export function useSimulatorPlaceholderActions(
         label: sidebarCollapsed
           ? t("commands.showPrimarySidebar")
           : t("commands.hidePrimarySidebar"),
-        shortcut: getShortcutKeys("toggle_workstation_sidebar"),
+        get shortcut() {
+          return getShortcutKeys("toggle_workstation_sidebar");
+        },
         onAction: () => setPrimarySidebar("toggle"),
       },
     ];

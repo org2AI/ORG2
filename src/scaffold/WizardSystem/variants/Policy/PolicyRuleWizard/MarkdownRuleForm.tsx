@@ -10,9 +10,8 @@ import Select from "@src/components/Select";
 import TabPill from "@src/components/TabPill";
 import type { CursorRepo, PolicySource } from "@src/hooks/policies";
 import type { AgentDefinition } from "@src/modules/MainApp/AgentOrgs/types";
-import MarkdownEditor, {
-  useMarkdownEditorTabs,
-} from "@src/modules/shared/components/MarkdownEditor";
+import MarkdownEditor from "@src/modules/shared/components/MarkdownEditor";
+import { useMarkdownEditorTabs } from "@src/modules/shared/components/MarkdownEditor/useMarkdownEditorTabs";
 import {
   SectionContainer,
   SectionRow,

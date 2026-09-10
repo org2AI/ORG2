@@ -128,7 +128,7 @@ Use the repository rules in `.cursor/rules/` as the source of truth. The most co
 - Use existing shared components, hooks, stores, and design tokens.
 - Prefer typed constants and enums over hardcoded domain strings.
 - Let errors propagate instead of silently returning empty fallback data.
-- Update all supported locales when changing user-facing UI text.
+- Update all supported locales when changing user-facing UI text. `pnpm check:i18n-keys` fails on new findings in five categories: keys code references but English lacks, English keys nothing references, English keys another locale lacks, locale-only keys English no longer defines, and `{{placeholder}}` sets that differ from English. `pnpm check:i18n-keys:report` lists everything (including the dynamic `t()` sites it cannot resolve), and `--write-baseline` refreshes `config/i18n-keys-baseline.json` after a sweep.
 - Follow frontend/backend contract rules when a setting, command, or wire type crosses the TypeScript and Rust boundary.
 
 For deeper guidance, read:

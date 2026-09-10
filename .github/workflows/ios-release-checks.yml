@@ -1,0 +1,43 @@
+name: iOS release tooling checks
+
+on:
+  pull_request:
+    paths:
+      - scripts/ios-release/**
+      - .github/workflows/ios-testflight.yml
+      - .github/workflows/ios-release-checks.yml
+  push:
+    branches: [junyu/ios-release-preparation]
+    paths:
+      - scripts/ios-release/**
+      - .github/workflows/ios-testflight.yml
+      - .github/workflows/ios-release-checks.yml
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: macos-15
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Test release checks without signing secrets
+        run: node --test scripts/ios-release/readiness.test.mjs
+      - name: Validate workflow YAML and shell blocks
+        run: |
+          ruby -ryaml -e '
+            w = YAML.load_file(ARGV[0])
+            w.fetch("jobs").each_value do |job|
+              job.fetch("steps").each do |step|
+                next unless step["run"]
+                IO.popen(["bash", "-n"], "w") { |p| p.write(step["run"]) }
+                abort "Invalid shell" unless $?.success?
+              end
+            end
+          ' .github/workflows/ios-testflight.yml

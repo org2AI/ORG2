@@ -12,8 +12,8 @@ import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import {
   Add01Icon,
   Cancel01Icon,
@@ -101,9 +101,9 @@ const DeploymentModelInput: React.FC<DeploymentModelInputProps> = ({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       {!noticeDismissed && (
-        <InlineAlert type="info" onClose={() => setNoticeDismissed(true)}>
+        <PageNotice type="info" onClose={() => setNoticeDismissed(true)}>
           {t("keyVault.deploymentModels.description")}
-        </InlineAlert>
+        </PageNotice>
       )}
 
       <div className="rounded-lg border border-border-2 bg-bg-1">
@@ -152,9 +152,9 @@ const DeploymentModelInput: React.FC<DeploymentModelInputProps> = ({
       </div>
 
       {testError && (
-        <InlineAlert type="danger" onClose={() => setTestError(null)}>
+        <PageNotice type="danger" onClose={() => setTestError(null)}>
           {testError}
-        </InlineAlert>
+        </PageNotice>
       )}
 
       {onRevalidate && models.length > 0 && (

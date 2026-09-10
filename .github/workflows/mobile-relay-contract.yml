@@ -1,0 +1,25 @@
+name: Mobile Relay contract
+on:
+  pull_request:
+    paths:
+      - "src-tauri/crates/mobile-relay-protocol/**"
+      - "src/contracts/mobile-relay/**"
+      - "scripts/mobile-relay/**"
+      - "src-tauri/Cargo.lock"
+      - ".github/workflows/mobile-relay-contract.yml"
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cargo test --locked --manifest-path src-tauri/Cargo.toml -p mobile-relay-protocol --all-features
+      - run: node --test scripts/mobile-relay/*.test.mjs
+      - run: node scripts/mobile-relay/generate-contract.mjs --check

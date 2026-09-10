@@ -338,7 +338,7 @@ pub(super) const MANAGED_CONFIG_ADAPTERS: &[CliManagedConfigAdapter] = &[
 const MANAGED_CONFIG_UNAVAILABLE: &[(&str, &str)] = &[
     (
         "cursor_cli",
-        "Cursor CLI uses Cursor account/subscription authentication and does not expose a Provider base URL switch",
+        "Cursor uses Cursor account/subscription authentication and does not expose a Provider base URL switch",
     ),
     (
         "kiro",

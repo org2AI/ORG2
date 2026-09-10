@@ -3,7 +3,6 @@ import { getTurnIntentDispatch } from "@src/engines/SessionCore/control/turnInte
 import {
   beginTurnDispatch,
   clearTurnLifecycleSession,
-  getTurnGeneration,
   getTurnPhase,
   markTurnTerminal,
 } from "@src/engines/SessionCore/control/turnLifecycle";
@@ -17,6 +16,7 @@ import {
   toCliSessionStatus,
   toSessionListStatus,
 } from "@src/engines/SessionCore/sync/sessionSyncUtils";
+import { createLogger } from "@src/hooks/logger";
 import { sessionsAtom, updateSessionStatus } from "@src/store/session";
 import {
   getInstrumentedStore,
@@ -29,6 +29,7 @@ export interface CliRunReceipt {
   turnIntentId: string;
   status: string;
 }
+const log = createLogger("CliTurnLifecycle");
 
 export interface CliLifecycleStatus {
   sessionId: string;
@@ -112,8 +113,7 @@ export class CliTurnLifecycleCoordinator {
 
       const generation =
         dispatch?.generation ?? beginTurnDispatch(event.sessionId);
-      markCliRuntimeRunning(event.sessionId, generation);
-      if (getTurnGeneration(event.sessionId) !== generation) return false;
+      if (!markCliRuntimeRunning(event.sessionId, generation)) return false;
       this.setActive(event.sessionId, { turnIntentId, generation });
       return true;
     }
@@ -131,10 +131,21 @@ export class CliTurnLifecycleCoordinator {
       : undefined;
     if (dispatch && dispatch.sessionId !== event.sessionId) return false;
     const generation = existing?.generation ?? dispatch?.generation;
-    markTurnTerminal(event.sessionId, cliTerminalStatus(status), {
-      generation,
-    });
-    markObservedCliTerminalStatus(event.sessionId, status);
+    if (
+      !markTurnTerminal(event.sessionId, cliTerminalStatus(status), {
+        generation,
+      })
+    ) {
+      return false;
+    }
+    void markObservedCliTerminalStatus(event.sessionId, status).catch(
+      (error: unknown) => {
+        log.error("CLI terminal reconciliation failed", {
+          sessionId: event.sessionId,
+          error,
+        });
+      }
+    );
     if (isStoreInitialized()) {
       updateSessionStatus(event.sessionId, toSessionListStatus(status));
     }

@@ -1,0 +1,12 @@
+# Layout token consumers UI audit
+
+| Line                                                               | Element                                                 | Verdict          | Reason                                                                                                                                                                     | Suggested change |
+| ------------------------------------------------------------------ | ------------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `src/modules/shared/layouts/blocks/PanelHeader/index.tsx:49`       | Header button and sizing tokens                         | keep with reason | The renderer and token-only callers share the exact existing token object from a leaf module; button semantics, theme classes, spacing, and context behavior are preserved | None             |
+| `src/modules/shared/layouts/blocks/WorkstationTrailSurface.tsx:15` | Trail surface, icon-button, and responsive width tokens | keep with reason | Extraction preserves existing theme classes and the separate trail/terminal width custom properties; renderer and layout calculations continue sharing one owner           | None             |
+
+Verdict totals: **0 fix**, **2 keep with reason**, **0 abstract**.
+
+Scope includes import-only changes in Calendar and Gantt toolbars, channel header, MoveToOrgDialog, DetailHeaderClose, FileHeader, BuilderTypeDetailPanel, BuilderTypesPanel, PageBreadcrumb, and PropertiesRailFrame. Their JSX, styling values, focus behavior, and accessibility attributes are unchanged. Component-plus-token consumers retain the existing component exports; all token-only consumers import the leaf modules. No visual redesign or new design-system sweep is proposed.
+
+Verification: 22 tests passed across `layoutTokenBoundaries.test.ts`, `WorkstationTrailSurface.test.ts`, `trailWidth.test.ts`, `PropertiesRailFrame.test.ts`, and `GitHubDetailSkeleton/index.test.ts`. These cover renderer markup, responsive widths, and the absence of renderer/React imports from the token and pure-layout boundaries. Native WebView screenshots and performance measurements were not taken; this change makes no measured startup or bundle-size claim.

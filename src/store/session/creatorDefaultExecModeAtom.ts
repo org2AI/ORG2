@@ -18,42 +18,22 @@
  * user installs.
  */
 import { atomWithStorage } from "jotai/utils";
+import { z } from "zod/v4";
 
-import { normalizeAgentExecMode } from "@src/config/sessionCreatorConfig";
+import { ALL_AGENT_EXEC_MODES } from "@src/config/sessionCreatorConfig";
 import type { AgentExecMode } from "@src/features/SessionCreator/config";
+import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
 const STORAGE_KEY = "orgii:agentExecMode";
 
-function migrateLegacyMode(raw: unknown): AgentExecMode {
-  if (typeof raw !== "string") return "build";
-  if (raw === "explore") return "ask";
-  return normalizeAgentExecMode(raw) ?? "build";
-}
-
-const storage = {
-  getItem(key: string, initialValue: AgentExecMode): AgentExecMode {
-    if (typeof window === "undefined") return initialValue;
-    try {
-      const stored = window.localStorage.getItem(key);
-      if (stored == null) return initialValue;
-      const parsed = JSON.parse(stored) as unknown;
-      return migrateLegacyMode(parsed);
-    } catch {
-      return initialValue;
-    }
-  },
-  setItem(key: string, value: AgentExecMode) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(value));
-  },
-  removeItem(key: string) {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
-  },
-};
+const StoredAgentExecModeSchema = z.preprocess(
+  (raw) => (raw === "explore" ? "ask" : raw),
+  z.enum([...ALL_AGENT_EXEC_MODES])
+);
 
 export const creatorDefaultExecModeAtom = atomWithStorage<AgentExecMode>(
   STORAGE_KEY,
   "build",
-  storage
+  createZodJsonStorage(StoredAgentExecModeSchema),
+  { getOnInit: true }
 );

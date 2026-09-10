@@ -32,10 +32,8 @@ import {
   openSessionAtom,
   workstationActiveSessionIdAtom,
 } from "@src/store/session/viewAtom";
-import {
-  chatPanelMaximizedAtom,
-  chatWidthAtom,
-} from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import {
   simulatorFollowAppLockAtom,
   simulatorSelectedAppAtom,

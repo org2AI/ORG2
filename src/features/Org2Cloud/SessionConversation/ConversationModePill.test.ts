@@ -6,15 +6,22 @@ import { type Root, createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 
 import { ConversationModePill } from "./ConversationModePill";
 import { conversationComposerModeAtomFamily } from "./conversationComposerMode";
+import { useConversationComposerMode } from "./useConversationComposer";
 
-const comments = vi.hoisted(() => ({ available: true }));
+const comments = vi.hoisted(() => ({ available: true, authenticated: true }));
 
 vi.mock("../SessionComments/SessionCommentsContext", () => ({
-  useSessionCommentsContext: () => (comments.available ? { target: {} } : null),
+  useSessionCommentsContext: () =>
+    comments.available
+      ? {
+          target: {},
+          viewerUserId: comments.authenticated ? "viewer-1" : null,
+        }
+      : null,
 }));
 
 const SESSION_ID = "conversation-mode-pill-test";
@@ -26,6 +33,7 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.useFakeTimers();
   comments.available = true;
+  comments.authenticated = true;
   store = createStore();
   store.set(chatPanelMaximizedAtom, false);
   container = document.createElement("div");
@@ -52,6 +60,23 @@ function renderPill(sessionId: string | null = SESSION_ID): void {
           { i18n },
           createElement(ConversationModePill, { sessionId })
         )
+      )
+    );
+  });
+}
+
+function EffectiveMode({ sessionId }: { sessionId: string | null }) {
+  const [mode] = useConversationComposerMode(sessionId);
+  return createElement("output", { "data-testid": "effective-mode" }, mode);
+}
+
+function renderEffectiveMode(sessionId: string | null = SESSION_ID): void {
+  act(() => {
+    root.render(
+      createElement(
+        Provider,
+        { store },
+        createElement(EffectiveMode, { sessionId })
       )
     );
   });
@@ -149,16 +174,32 @@ describe("ConversationModePill", () => {
     }
   );
 
-  it.each(["no-session", "no-discussion"])(
+  it.each(["no-session", "no-discussion", "no-auth"])(
     "hides the switch for %s",
     (reason) => {
       comments.available = reason !== "no-discussion";
+      comments.authenticated = reason !== "no-auth";
       renderPill(reason === "no-session" ? null : SESSION_ID);
 
       expect(container.querySelector("button")).toBeNull();
       expect(document.querySelector(".native-tooltip")).toBeNull();
     }
   );
+
+  it("falls back to Agent semantics when the target or auth disappears", () => {
+    store.set(conversationComposerModeAtomFamily(SESSION_ID), "team_chat");
+    renderEffectiveMode();
+    expect(container.textContent).toBe("team_chat");
+
+    comments.authenticated = false;
+    renderEffectiveMode();
+    expect(container.textContent).toBe("prompt");
+
+    comments.authenticated = true;
+    comments.available = false;
+    renderEffectiveMode();
+    expect(container.textContent).toBe("prompt");
+  });
 
   it("does no idle tooltip work and cleans up after repeated open/unmount cycles", () => {
     const addListener = vi.spyOn(window, "addEventListener");

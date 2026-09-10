@@ -23,6 +23,7 @@ import type {
   ToolUsageMetadata,
 } from "@src/engines/SessionCore/core/types";
 import { ShellReplayOutput } from "@src/engines/SessionCore/replay/components/ShellReplayOutput";
+import { renderCommandHighlight } from "@src/engines/TerminalCore/components/TerminalDisplay/commandHighlight";
 import "@src/engines/TerminalCore/components/TerminalDisplay/index.scss";
 import { HugeiconsIcon, SquareIcon } from "@src/icons";
 import {
@@ -288,7 +289,7 @@ const TerminalBlock: React.FC<TerminalBlockProps> = memo(
           <EventBlockHeader
             isCollapsed={isCollapsed}
             withHover={false}
-            onClick={handleLocate}
+            onToggleCollapse={hasContent ? handleHeaderClick : undefined}
             onNavigate={handleLocate}
             onMouseEnter={handleHeaderMouseEnter}
             onMouseLeave={handleHeaderMouseLeave}
@@ -304,9 +305,7 @@ const TerminalBlock: React.FC<TerminalBlockProps> = memo(
               }
               isCollapsed={isCollapsed}
               isHeaderHovered={isHeaderHovered}
-              onToggle={handleHeaderClick}
               hasContent={hasContent}
-              revealChevronOnIconHoverOnly={Boolean(eventId)}
               isLoading={isStillRunning}
               isFailed={isError}
             />
@@ -354,8 +353,8 @@ const TerminalBlock: React.FC<TerminalBlockProps> = memo(
                     <span className="terminal-command__prefix select-none">
                       $
                     </span>
-                    <span className="terminal-command__text">
-                      {commandPreview}
+                    <span className="terminal-command__text prism-html">
+                      {renderCommandHighlight(commandPreview)}
                     </span>
                   </div>
                 </div>

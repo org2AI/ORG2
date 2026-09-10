@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import { AccountInlineDetails } from "@src/modules/shared/keyVault/AccountInlineDetails";
 
@@ -67,7 +67,8 @@ interface AccountInlineExpandedCardProps {
   ) => void;
   onRefresh?: () => Promise<void>;
   onRevalidateAccount?: (accountId: string) => Promise<void>;
-  refreshing?: boolean;
+  refreshingUsage?: boolean;
+  refreshingModels?: boolean;
   onEditSave?: (
     accountId: string,
     name: string,
@@ -92,7 +93,8 @@ const AccountInlineExpandedCard: React.FC<AccountInlineExpandedCardProps> = ({
   onUpdateAccountDefaultVariant,
   onRefresh,
   onRevalidateAccount,
-  refreshing = false,
+  refreshingUsage = false,
+  refreshingModels = false,
   onEditSave,
   editRequested = false,
   onEditCancel,
@@ -334,13 +336,13 @@ const AccountInlineExpandedCard: React.FC<AccountInlineExpandedCardProps> = ({
         return (
           <>
             {refreshModelsError ? (
-              <InlineAlert
+              <PageNotice
                 type="danger"
                 onClose={() => setRefreshModelsError(null)}
                 closeAriaLabel={tCommon("actions.close")}
               >
                 {refreshModelsError}
-              </InlineAlert>
+              </PageNotice>
             ) : null}
             <AccountModelsInlineSplit
               account={account}
@@ -401,15 +403,15 @@ const AccountInlineExpandedCard: React.FC<AccountInlineExpandedCardProps> = ({
           account={account}
           refreshLabel={t("keyVault.quota.refreshUsage")}
           onRefresh={showQuotaRefresh ? handleRefreshUsage : undefined}
-          refreshing={refreshing}
+          refreshing={refreshingUsage}
           onRefreshModels={showModelRefresh ? handleRefreshModels : undefined}
-          refreshingModels={refreshing}
+          refreshingModels={refreshingModels}
         />
       ) : onRevalidateAccount && showModels ? (
         <AccountInlineActionsBar
           account={account}
           onRefreshModels={handleRefreshModels}
-          refreshingModels={refreshing}
+          refreshingModels={refreshingModels}
         />
       ) : null}
     </InlineCardShell>

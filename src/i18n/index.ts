@@ -237,6 +237,9 @@ const NAMESPACES = [
 ] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
+/** Keys already warned about by the dev-only missing-key handler. */
+const reportedMissingKeys = new Set<string>();
+
 /**
  * Get persisted language from localStorage for synchronous i18n init.
  *
@@ -590,6 +593,26 @@ async function initI18n(): Promise<void> {
     defaultNS: "common",
     ns: NAMESPACES,
     showSupportNotice: false,
+
+    // Dev-only runtime net under the static scanner
+    // (scripts/quality/i18n-keys): keys built at runtime from data the
+    // scanner cannot see still surface here the first time they render as a
+    // raw key. Production keeps the silent fallback.
+    ...(process.env.NODE_ENV !== "production"
+      ? {
+          saveMissing: true,
+          missingKeyHandler: (
+            _languages: readonly string[],
+            ns: string,
+            key: string
+          ) => {
+            const id = `${ns}:${key}`;
+            if (reportedMissingKeys.has(id)) return;
+            reportedMissingKeys.add(id);
+            console.warn(`[i18n] missing translation key ${id}`);
+          },
+        }
+      : {}),
 
     interpolation: {
       // React already escapes values, no need for i18next to do it again

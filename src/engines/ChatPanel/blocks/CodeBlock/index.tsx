@@ -18,7 +18,7 @@ import DiffStatsBadge from "@src/components/DiffStatsBadge";
 import ExpandOverlay from "@src/components/ExpandOverlay";
 import { FileTreeHoverPreview } from "@src/components/FileTreePreview/exports";
 import FileTypeIcon from "@src/components/FileTypeIcon";
-import { useCopyCheck } from "@src/hooks/ui";
+import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
   Copy01Icon,
   HugeiconsIcon,
@@ -193,8 +193,6 @@ const ChatCodeBlock: React.FC<ChatCodeBlockProps> = memo(
       contentHeight,
       useVirtualScroll,
       virtualListHeight,
-      isScrolling,
-      containerRefCb,
       streamingWrapperRef,
     } = useCodeBlockState({
       code,
@@ -226,7 +224,7 @@ const ChatCodeBlock: React.FC<ChatCodeBlockProps> = memo(
                 ? "border-b border-solid border-transparent"
                 : "border-b border-solid border-border-1"
             }
-            onClick={hasContent ? handleLocate : undefined}
+            onToggleCollapse={hasContent ? handleHeaderClick : undefined}
             onNavigate={
               eventId && !shouldShowCopyButton ? handleLocate : undefined
             }
@@ -247,9 +245,7 @@ const ChatCodeBlock: React.FC<ChatCodeBlockProps> = memo(
               isCollapsed={isCollapsed}
               isHeaderHovered={isHeaderHovered}
               iconSize={16}
-              onToggle={handleHeaderClick}
               hasContent={hasContent}
-              revealChevronOnIconHoverOnly={Boolean(eventId)}
               isLoading={isLoading}
               isFailed={isFailed}
             />
@@ -567,11 +563,7 @@ const ChatCodeBlock: React.FC<ChatCodeBlockProps> = memo(
                   : "py-1"
               }
             >
-              <div
-                ref={containerRefCb}
-                className="chat-code-block__code-container chat-code-block__scroll-hover w-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden"
-                data-scrolling={isScrolling || undefined}
-              >
+              <div className="chat-code-block__code-container scrollbar-overlay w-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden">
                 <Suspense
                   fallback={
                     <div

@@ -11,7 +11,7 @@
  */
 import type React from "react";
 
-import type { ChatPanelTabType } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelTabType } from "@src/store/chatPanel/chatPanelTabsModel";
 
 import type { ChatPanelSurfaceRendererProps } from "./surfaceRenderers";
 

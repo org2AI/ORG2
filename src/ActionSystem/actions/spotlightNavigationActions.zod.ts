@@ -2,15 +2,8 @@ import { z } from "zod";
 
 import { defineAppActionRegistration } from "@src/ActionSystem/schema/actionRegistration";
 import { defineZodAction } from "@src/ActionSystem/schema/defineZodAction";
+import { navigateApp as appNavigate } from "@src/router/navigateApp";
 import { NAV_DESTINATIONS } from "@src/scaffold/GlobalSpotlight/navDestinations";
-
-function appNavigate(path: string): void {
-  window.dispatchEvent(
-    new CustomEvent("action-system-navigate", {
-      detail: { path },
-    })
-  );
-}
 
 function formatDestinationLabel(destinationId: string): string {
   return destinationId

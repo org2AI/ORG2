@@ -16,6 +16,8 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 
+import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
+
 import {
   applyWindowOffset,
   clamp,
@@ -31,11 +33,11 @@ export function useWindowDrag(enabled: boolean) {
   const cleanupRef = useRef<(() => void) | null>(null);
 
   // Tear down listeners / restore the cursor if the panel unmounts mid-drag.
-  useEffect(() => () => cleanupRef.current?.(), []);
+  useEffect(() => () => cleanupRef.current?.(), [enabled]);
 
   return useCallback(
     (event: React.PointerEvent<HTMLElement>) => {
-      if (!enabled || event.button !== 0) return;
+      if (!enabled || event.button !== 0 || event.isPrimary === false) return;
       const target = event.target;
       if (target instanceof Element && target.closest(INTERACTIVE_SELECTOR)) {
         return;
@@ -50,10 +52,11 @@ export function useWindowDrag(enabled: boolean) {
       // Untransformed origin of the window, so clamps read in viewport space.
       const baseLeft = rect.left - start.x;
       const baseTop = rect.top - start.y;
+      cleanupRef.current?.();
       const startX = event.clientX;
       const startY = event.clientY;
 
-      const handleMove = (moveEvent: PointerEvent) => {
+      const handleMove = (moveEvent: MouseEvent) => {
         let nextX = start.x + (moveEvent.clientX - startX);
         let nextY = start.y + (moveEvent.clientY - startY);
         if (bounds) {
@@ -74,18 +77,19 @@ export function useWindowDrag(enabled: boolean) {
       };
 
       const finish = () => {
-        window.removeEventListener("pointermove", handleMove);
-        window.removeEventListener("pointerup", finish);
-        window.removeEventListener("pointercancel", finish);
+        dispose();
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
         cleanupRef.current = null;
       };
 
+      const dispose = listenForDrag({
+        pointerId: event.pointerId,
+        onMove: handleMove,
+        onEnd: finish,
+        onCancel: finish,
+      });
       cleanupRef.current = finish;
-      window.addEventListener("pointermove", handleMove);
-      window.addEventListener("pointerup", finish);
-      window.addEventListener("pointercancel", finish);
       document.body.style.cursor = "grabbing";
       document.body.style.userSelect = "none";
     },

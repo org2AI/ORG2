@@ -1,10 +1,4 @@
-export type {
-  TabCloseOtherRequest,
-  TabCloseRequest,
-  TabFocusRequest,
-  TabRegistryEntry,
-  TabReorderRequest,
-} from "./types";
+export type { TabCloseRequest, TabFocusRequest } from "./types";
 
 export {
   tabRegistryAtom,
@@ -15,5 +9,5 @@ export {
   closeOtherTabsAtom,
   closeSavedTabsAtom,
   reorderTabAtom,
-  restoreRecentlyClosedWorkstationTabAtom,
+  openRecentWorkstationTabAtom,
 } from "./atoms";

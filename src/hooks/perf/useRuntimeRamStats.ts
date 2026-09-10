@@ -1,5 +1,5 @@
-import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useStore } from "jotai";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { eventsAtom } from "@src/engines/SessionCore/core/atoms";
@@ -8,6 +8,7 @@ import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreP
 import { getLoadedPayloadStats } from "@src/engines/SessionCore/payloads";
 import { getLoadedTurnRegistryStats } from "@src/engines/SessionCore/turns/loadedTurnRegistry";
 import { getHydratedEventStats } from "@src/engines/Simulator/apps/core/fullEventHydrationRegistry";
+import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
 import { screenshotCacheStatsAtom } from "@src/store/workstation/browser/browserAutomationAtom";
 
@@ -60,7 +61,10 @@ function formatTopEntryLabels(
     .join(" · ");
 }
 
-function sampleFps(durationMs: number): Promise<FpsSample> {
+function sampleFps(
+  durationMs: number,
+  signal: AbortSignal
+): Promise<FpsSample> {
   if (typeof window === "undefined" || !window.requestAnimationFrame) {
     return Promise.resolve({ fps: null, frameCount: 0 });
   }
@@ -69,10 +73,23 @@ function sampleFps(durationMs: number): Promise<FpsSample> {
     let frameCount = 0;
     let startedAt = 0;
     let finished = false;
+    let frameId = 0;
+    const cancel = () => {
+      if (finished) return;
+      finished = true;
+      window.cancelAnimationFrame(frameId);
+      resolve({ fps: null, frameCount });
+    };
+    signal.addEventListener("abort", cancel, { once: true });
+    if (signal.aborted) {
+      cancel();
+      return;
+    }
 
     const finish = (timestamp: number) => {
       if (finished) return;
       finished = true;
+      signal.removeEventListener("abort", cancel);
       const elapsedMs = Math.max(1, timestamp - startedAt);
       resolve({
         fps: (frameCount * 1000) / elapsedMs,
@@ -87,63 +104,32 @@ function sampleFps(durationMs: number): Promise<FpsSample> {
         finish(timestamp);
         return;
       }
-      window.requestAnimationFrame(tick);
+      frameId = window.requestAnimationFrame(tick);
     };
 
-    window.requestAnimationFrame(tick);
+    frameId = window.requestAnimationFrame(tick);
   });
 }
 
 export function useRuntimeRamStats(enabled: boolean): UseRuntimeRamStatsResult {
   const { t } = useTranslation();
-  const events = useAtomValue(eventsAtom);
-  const snapshot = useAtomValue(derivedSnapshotAtom);
-  const sessions = useAtomValue(sessionsAtom);
-  const screenshotStats = useAtomValue(screenshotCacheStatsAtom);
+  const store = useStore();
   const [fpsSample, setFpsSample] = useState<FpsSample>({
     fps: null,
     frameCount: 0,
   });
   const [isSamplingFps, setIsSamplingFps] = useState(false);
-  const [refreshSerial, setRefreshSerial] = useState(0);
+  const [rows, setRows] = useState<RuntimeRamPartRow[]>([]);
+  const sampleAbortRef = useRef<AbortController | null>(null);
   const sampleGenerationRef = useRef(0);
   const mountedRef = useRef(true);
+  useMountedCleanup(mountedRef);
 
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-      sampleGenerationRef.current += 1;
-    };
-  }, []);
-
-  const refresh = useCallback(() => {
-    setRefreshSerial((prev) => prev + 1);
-    const generation = sampleGenerationRef.current + 1;
-    sampleGenerationRef.current = generation;
-    setIsSamplingFps(true);
-    void sampleFps(FPS_SAMPLE_MS).then((sample) => {
-      if (!mountedRef.current || sampleGenerationRef.current !== generation) {
-        return;
-      }
-      setFpsSample(sample);
-      setIsSamplingFps(false);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!enabled) {
-      sampleGenerationRef.current += 1;
-      const frameId = window.requestAnimationFrame(() =>
-        setIsSamplingFps(false)
-      );
-      return () => window.cancelAnimationFrame(frameId);
-    }
-    const frameId = window.requestAnimationFrame(() => refresh());
-    return () => window.cancelAnimationFrame(frameId);
-  }, [enabled, refresh]);
-
-  const rows = useMemo<RuntimeRamPartRow[]>(() => {
-    void refreshSerial;
+  const collectRows = useCallback((): RuntimeRamPartRow[] => {
+    const events = store.get(eventsAtom);
+    const snapshot = store.get(derivedSnapshotAtom);
+    const sessions = store.get(sessionsAtom);
+    const screenshotStats = store.get(screenshotCacheStatsAtom);
     const payloadStats = getLoadedPayloadStats();
     const eventStoreStats = eventStoreProxy.getMemoryStats();
     const hydratedEventStats = getHydratedEventStats();
@@ -284,14 +270,49 @@ export function useRuntimeRamStats(enabled: boolean): UseRuntimeRamStatsResult {
         detail: formatTopEntryLabels(codeMirrorStats.topEntries, 3),
       },
     ];
-  }, [
-    events,
-    refreshSerial,
-    screenshotStats.totalBytes,
-    sessions,
-    snapshot,
-    t,
-  ]);
+  }, [store, t]);
+
+  useEffect(() => {
+    const cancel = () => {
+      sampleGenerationRef.current += 1;
+      sampleAbortRef.current?.abort();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        cancel();
+        setIsSamplingFps(false);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancel();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  // Read store values only on a requested sample, never during render or on
+  // session updates. The owner supplies its visibility-aware sampling cadence.
+  const refresh = useCallback(() => {
+    if (!mountedRef.current || document.visibilityState === "hidden") return;
+    sampleAbortRef.current?.abort();
+    const controller = new AbortController();
+    sampleAbortRef.current = controller;
+    const generation = ++sampleGenerationRef.current;
+    setRows(collectRows());
+    setIsSamplingFps(true);
+    void sampleFps(FPS_SAMPLE_MS, controller.signal).then((sample) => {
+      if (!mountedRef.current || sampleGenerationRef.current !== generation)
+        return;
+      setFpsSample(sample);
+      setIsSamplingFps(false);
+    });
+  }, [collectRows]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const frameId = window.requestAnimationFrame(refresh);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [enabled, refresh]);
 
   const fpsValue = isSamplingFps
     ? t("layoutSettings.ramSampling")

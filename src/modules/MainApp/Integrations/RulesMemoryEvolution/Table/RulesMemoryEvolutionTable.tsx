@@ -21,6 +21,7 @@ import TabPill, { type TabPillItem } from "@src/components/TabPill";
 import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
 import type { CursorRepo, PolicyInfo } from "@src/hooks/policies";
 import { Add01Icon, Delete02Icon, HugeiconsIcon, Pen01Icon } from "@src/icons";
+import SecuritySection from "@src/modules/MainApp/Settings/sections/SecuritySection";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
@@ -40,7 +41,11 @@ import AgentEvolutionPanel from "../Evolution/AgentEvolutionPanel";
 import WorkspaceMemoryBrowser from "../Memory/WorkspaceMemoryBrowser";
 import InlineExternalRulesImport from "./InlineExternalRulesImport";
 
-type RulesMemoryEvolutionPageTab = "rules" | "memory" | "evolution";
+type RulesMemoryEvolutionPageTab =
+  | "rules"
+  | "memory"
+  | "evolution"
+  | "security";
 type RuleScopeFilterKey = "all" | "user" | `workspace:${string}`;
 
 interface RulesMemoryEvolutionTableProps {
@@ -150,12 +155,6 @@ export const RulesMemoryEvolutionTable: React.FC<
     },
     [t]
   );
-
-  const setSingleExpandedRule = (rule: PolicyInfo) => {
-    const ruleKey = getRuleKey(rule);
-    const shouldOpen = !expandedRuleKeys.includes(ruleKey);
-    setExpandedRuleKeys(shouldOpen ? [ruleKey] : []);
-  };
 
   const renderExpandedRuleCard = (rule: PolicyInfo) => (
     <InlineInfoCard>
@@ -299,8 +298,12 @@ export const RulesMemoryEvolutionTable: React.FC<
       { key: "rules", label: t("rulesTabs.rules", "Rules") },
       { key: "memory", label: t("rulesTabs.memory", "Memory") },
       { key: "evolution", label: t("rulesTabs.evolution", "Evolution") },
+      {
+        key: "security",
+        label: tSettings("sections.security"),
+      },
     ],
-    [t]
+    [t, tSettings]
   );
 
   const addRuleButton = (
@@ -343,6 +346,12 @@ export const RulesMemoryEvolutionTable: React.FC<
             <AgentEvolutionPanel />
           </div>
         </ScrollPreservation>
+      ) : activeTab === "security" ? (
+        <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
+          <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>
+            <SecuritySection />
+          </div>
+        </ScrollPreservation>
       ) : (
         <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
           <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>
@@ -359,7 +368,6 @@ export const RulesMemoryEvolutionTable: React.FC<
                     onSelectMarkdownRule(
                       selectedRowId === ruleKey ? null : rule.name
                     );
-                    setSingleExpandedRule(rule);
                   }}
                   headerHeight="tall"
                   className="table-expanded-no-hover table-policy-fixed-layout"

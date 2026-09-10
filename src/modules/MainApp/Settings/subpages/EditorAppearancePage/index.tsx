@@ -1,12 +1,4 @@
-/**
- * Editor Appearance Subpage
- *
- * Dedicated subpage for code editor appearance settings:
- *  - Typography (font family, font size, line height, tab size)
- *  - Editor Features (line numbers, word wrap, minimap, indent guides, highlight active line)
- *
- * Uses SubpageLayout with anchor navigation (one anchor per group).
- */
+/** Shared editor appearance sections rendered by the Appearance tab. */
 import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
@@ -21,14 +13,11 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import Input from "@src/components/Input";
 import NumberInput from "@src/components/NumberInput";
 import Select from "@src/components/Select";
 import Switch from "@src/components/Switch";
-import { buildSettingsPath } from "@src/config/mainAppPaths";
-import SubpageLayout from "@src/modules/shared/layouts/SubpageLayout";
 import {
   CODE_FONT_FAMILIES,
   type CodeFontFamily,
@@ -323,32 +312,3 @@ export const FeaturesSection: React.FC = () => {
     </SectionContainer>
   );
 };
-
-// ============================================
-// Page Component
-// ============================================
-
-const EditorAppearancePage: React.FC = () => {
-  const { t } = useTranslation("settings");
-  const navigate = useNavigate();
-
-  const handleBack = useCallback(() => {
-    navigate(buildSettingsPath({ section: "appearance" }));
-  }, [navigate]);
-
-  return (
-    <SubpageLayout
-      onBack={handleBack}
-      breadcrumb={{
-        parent: t("common:tabs.settings"),
-        current: t("editor.codeEditorAppearanceTitle"),
-      }}
-    >
-      <TypographySection />
-      <TerminalSection />
-      <FeaturesSection />
-    </SubpageLayout>
-  );
-};
-
-export default EditorAppearancePage;

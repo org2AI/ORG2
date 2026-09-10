@@ -253,48 +253,8 @@ fn plain_directory_page(
             if sessions.len() >= limit {
                 break;
             }
-            match source.as_str() {
-                s if s == orgtrack_core::canonical::SOURCE_ORGII_CLI_SESSIONS => {
-                    if let Some(session) = cli_session_persistence::get_session(&session_id)
-                        .map_err(|err| format!("hydrate cli session: {err}"))?
-                    {
-                        sessions.push(cli_session_to_aggregate_record(session));
-                    }
-                }
-                s if s == orgtrack_core::canonical::SOURCE_ORGII_RUST_AGENTS => {
-                    let Some(record) = session_persistence::get_session(&session_id)
-                        .map_err(|err| format!("hydrate agent session: {err}"))?
-                    else {
-                        continue;
-                    };
-                    match record.session_type.as_str() {
-                        t if t == session_type::CODING || t == session_type::ORG_MEMBER => {
-                            sessions.push(sde_session_to_aggregate_record(record, &mut resolver));
-                        }
-                        t if t == session_type::DESKTOP => {
-                            sessions.push(os_session_to_aggregate_record(record, &mut resolver));
-                        }
-                        t if t == session_type::HUMAN => {
-                            sessions.push(human_session_to_aggregate_record(record));
-                        }
-                        // Gateway/subagent/custom sessions are infrastructure
-                        // the merge path never lists either.
-                        _ => continue,
-                    }
-                }
-                _ => {
-                    if let Some((cached_source, session)) =
-                        imported_history_cache::query_cached_session_by_session_id_from_conn(
-                            &conn,
-                            &session_id,
-                        )?
-                    {
-                        sessions.push(imported_history_to_aggregate_record(
-                            session.to_row(),
-                            &cached_source,
-                        ));
-                    }
-                }
+            if let Some(row) = hydrate_directory_row(&conn, &session_id, &source, &mut resolver)? {
+                sessions.push(row);
             }
         }
 
@@ -307,6 +267,45 @@ fn plain_directory_page(
     annotate_agent_org_root_rows(&mut sessions)?;
     apply_sorting(&mut sessions, Some(filter));
     Ok(Some(SessionListResponse { sessions }))
+}
+
+/// One hydration boundary shared by the directory and name-search pages.
+pub(super) fn hydrate_directory_row(
+    conn: &rusqlite::Connection,
+    session_id: &str,
+    source: &str,
+    resolver: &mut AgentMetadataResolver,
+) -> Result<Option<SessionAggregateRecord>, String> {
+    Ok(match source {
+        s if s == orgtrack_core::canonical::SOURCE_ORGII_CLI_SESSIONS => {
+            cli_session_persistence::get_session(session_id)
+                .map_err(|err| err.to_string())?
+                .map(cli_session_to_aggregate_record)
+        }
+        s if s == orgtrack_core::canonical::SOURCE_ORGII_RUST_AGENTS => {
+            let Some(record) =
+                session_persistence::get_session(session_id).map_err(|err| err.to_string())?
+            else {
+                return Ok(None);
+            };
+            match record.session_type.as_str() {
+                t if t == session_type::CODING || t == session_type::ORG_MEMBER => {
+                    Some(sde_session_to_aggregate_record(record, resolver))
+                }
+                t if t == session_type::DESKTOP => {
+                    Some(os_session_to_aggregate_record(record, resolver))
+                }
+                t if t == session_type::HUMAN => Some(human_session_to_aggregate_record(record)),
+                _ => None,
+            }
+        }
+        _ => {
+            imported_history_cache::query_cached_session_by_session_id_from_conn(conn, session_id)?
+                .map(|(cached_source, session)| {
+                    imported_history_to_aggregate_record(session.to_row(), &cached_source)
+                })
+        }
+    })
 }
 
 #[cfg(test)]

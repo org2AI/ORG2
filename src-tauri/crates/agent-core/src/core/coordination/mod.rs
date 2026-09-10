@@ -21,27 +21,58 @@
 
 pub mod agent_inbox;
 pub mod agent_member_interventions;
+pub mod agent_org_archive;
+#[cfg(test)]
+mod agent_org_archive_tests;
+pub mod agent_org_final_summary;
+pub(crate) mod agent_org_finality;
+pub mod agent_org_formal_triggers;
+pub(crate) mod agent_org_ownership;
+pub mod agent_org_pause;
 pub mod agent_org_payload_limits;
 pub mod agent_org_plan_approvals;
+pub mod agent_org_run_blockers;
+pub mod agent_org_run_completion;
 pub mod agent_org_run_events;
 pub mod agent_org_runs;
+pub(crate) mod agent_org_task_execution_fence;
+pub mod agent_org_task_handoffs;
 pub mod agent_org_tasks;
+pub(crate) mod agent_org_tool_receipts;
+pub(crate) mod agent_org_turn_contexts;
+#[doc(hidden)]
+pub use agent_org_turn_contexts::group_root_source_event_ids_for_session;
+pub(crate) mod agent_org_user_directed_work;
 pub mod agent_org_watchdog;
+pub(crate) mod agent_org_work_episodes;
 pub mod child_done_wake;
 pub mod routine_scheduler;
 pub mod work_item_recovery;
 pub mod work_item_run_dispatcher;
 pub mod work_item_scheduler;
 
+mod schema;
+
 /// Initialize the complete durable Agent Org runtime schema in dependency
 /// order. Production and sandbox test entry points share this registry so a
 /// newly-added recovery table cannot silently exist in only one environment.
 pub fn init_agent_org_schemas(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
-    agent_org_runs::init_schema(conn)?;
-    agent_inbox::init_schema(conn)?;
-    agent_org_tasks::init_schema(conn)?;
-    agent_org_plan_approvals::init_schema(conn)?;
-    agent_member_interventions::init_schema(conn)?;
-    agent_org_watchdog::init_schema(conn)?;
-    Ok(())
+    schema::initialize(conn)
+}
+
+/// Reconcile Agent Org-owned Turn lifecycle only after its companion schema
+/// has been initialized and verified.
+pub fn reconcile_agent_org_turns_after_restart(
+    conn: &rusqlite::Connection,
+) -> Result<usize, String> {
+    let runtime_absence = agent_org_pause::reconcile_runtime_absence_after_restart(conn)?;
+    let turn_reconciliation = agent_org_turn_contexts::reconcile_in_flight_after_restart(conn)?;
+    let finality_reconciliation = agent_org_finality::reconcile_after_restart(conn)?;
+    let handoff_reconciliation = agent_org_task_handoffs::reconcile_after_restart(conn)?;
+    let summary_reconciliation = agent_org_final_summary::reconcile_after_restart(conn)?;
+    Ok(runtime_absence
+        + turn_reconciliation
+        + finality_reconciliation
+        + handoff_reconciliation
+        + summary_reconciliation)
 }

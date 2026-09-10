@@ -13,7 +13,6 @@
  * because each auth flow uses different Rust commands.
  */
 import { invoke } from "@tauri-apps/api/core";
-import { type UnlistenFn, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   type RefObject,
@@ -25,9 +24,14 @@ import {
 import { v4 as uuidv4 } from "uuid";
 
 import { createLogger } from "@src/hooks/logger";
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 import { toNativeFrame } from "@src/util/platform/tauri/nativeFrame";
 
 const moduleLog = createLogger("useEmbeddedWebview");
+
+// A failed URL-change subscription only loses the live URL readout; the
+// webview itself keeps working.
+function ignoreListenerError(): void {}
 
 /** Tauri command names wired to a specific auth webview type. */
 export interface EmbeddedWebviewCommands {
@@ -81,7 +85,6 @@ export function useEmbeddedWebview({
   const [currentUrl, setCurrentUrl] = useState("");
 
   const [label] = useState(() => `${labelPrefix}-${uuidv4()}`);
-  const urlListenerRef = useRef<UnlistenFn | null>(null);
 
   const log = useCallback(
     (...args: unknown[]) => {
@@ -174,33 +177,16 @@ export function useEmbeddedWebview({
     }
   }, [isOpen, containerRef, commands, currentUrl, extraCreateArgs, label, log]);
 
-  // URL-change event listener
-  useEffect(() => {
-    let isMounted = true;
-
-    const setup = async () => {
-      const unlisten = await listen<{ url: string; webviewLabel?: string }>(
-        commands.urlChangedEvent,
-        (event) => {
-          if (!isMounted) return;
-          const { url, webviewLabel } = event.payload;
-          if (webviewLabel && webviewLabel !== label) return;
-          if (ignoreAboutBlank && url === "about:blank") return;
-          setCurrentUrl(url);
-          log("URL changed:", url);
-        }
-      );
-      if (isMounted) urlListenerRef.current = unlisten;
-    };
-
-    setup().catch(() => {});
-
-    return () => {
-      isMounted = false;
-      urlListenerRef.current?.();
-      urlListenerRef.current = null;
-    };
-  }, [commands.urlChangedEvent, ignoreAboutBlank, label, log]);
+  useTauriListen<{ url: string; webviewLabel?: string }>(
+    commands.urlChangedEvent,
+    ({ url, webviewLabel }) => {
+      if (webviewLabel && webviewLabel !== label) return;
+      if (ignoreAboutBlank && url === "about:blank") return;
+      setCurrentUrl(url);
+      log("URL changed:", url);
+    },
+    { onError: ignoreListenerError }
+  );
 
   // KeepAlive visibility observation — auto-close when the host container is
   // removed from layout. Do not use document.visibilityState here: macOS can

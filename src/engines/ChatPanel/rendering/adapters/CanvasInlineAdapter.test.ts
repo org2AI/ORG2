@@ -96,7 +96,7 @@ describe("CanvasInlineAdapter", () => {
     expect(markup).toContain("Revision failed");
   });
 
-  it("renders a failed Canvas creation as a shared danger InlineAlert", () => {
+  it("renders a failed Canvas creation as a shared danger PageNotice", () => {
     const markup = renderToStaticMarkup(
       createElement(
         CanvasInlineAdapter,

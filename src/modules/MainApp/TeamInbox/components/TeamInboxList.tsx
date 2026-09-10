@@ -10,9 +10,14 @@ import { useTranslation } from "react-i18next";
 import AnyIcon from "@src/components/AnyIcon";
 import Avatar from "@src/components/Avatar";
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import Dropdown from "@src/components/Dropdown";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
-import { LIST_PANEL_SECTIONS, ListPanelItem } from "@src/components/ListPanel";
+import {
+  LIST_PANEL_SECTIONS,
+  ListPanelItem,
+  ListPanelSkeletonRows,
+} from "@src/components/ListPanel";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import { WORKSTATION_TRAIL_SECTION_LABEL } from "@src/config/workstation/tokens";
 import {
@@ -23,6 +28,7 @@ import {
   HugeiconsIcon,
   type IconSvgElement,
   InformationCircleIcon,
+  NotificationOff01Icon,
   TickDouble01Icon,
 } from "@src/icons";
 import {
@@ -48,6 +54,7 @@ import {
 import {
   type TeamInboxFilter,
   type TeamInboxItem,
+  type TeamInboxNotificationKind,
   type TeamInboxUnreadCounts,
   getTeamInboxItemKey,
 } from "../domain";
@@ -74,6 +81,10 @@ export interface TeamInboxListProps {
   onLoadMore?: () => void;
   /** The shared split layout can own this row instead. */
   showControls?: boolean;
+  mutedKinds?: readonly TeamInboxNotificationKind[];
+  mutePreferencesLoading?: boolean;
+  onLoadMutePreferences?: () => void;
+  onSetKindMuted?: (kind: TeamInboxNotificationKind, muted: boolean) => void;
 }
 
 const PULL_REQUEST_ICONS: Record<PrStatusIconName, IconSvgElement> = {
@@ -91,6 +102,7 @@ interface TeamInboxPullRequestSections {
 interface TeamInboxItemSections {
   mentions: TeamInboxItem[];
   assigned: TeamInboxItem[];
+  updates: TeamInboxItem[];
 }
 
 function groupTeamInboxPullRequests(
@@ -116,12 +128,24 @@ function groupTeamInboxItems(
   return items.reduce<TeamInboxItemSections>(
     (sections, item) => {
       if (item.kind === "comment_mention") sections.mentions.push(item);
-      else sections.assigned.push(item);
+      else if (item.kind === "assigned_work_item") sections.assigned.push(item);
+      else sections.updates.push(item);
       return sections;
     },
-    { mentions: [], assigned: [] }
+    { mentions: [], assigned: [], updates: [] }
   );
 }
+
+const TEAM_INBOX_NOTIFICATION_KINDS: readonly TeamInboxNotificationKind[] = [
+  "mention",
+  "discussion_updated",
+  "run_failed",
+  "status_changed",
+  "assignee_changed",
+  "priority_changed",
+  "dates_changed",
+  "child_completed",
+];
 
 export interface TeamInboxListControlsProps {
   filter: TeamInboxFilter;
@@ -135,6 +159,10 @@ export interface TeamInboxListControlsProps {
   onQueryChange: (query: string) => void;
   onRefresh?: () => void;
   onMarkAllRead?: () => void;
+  mutedKinds?: readonly TeamInboxNotificationKind[];
+  mutePreferencesLoading?: boolean;
+  onLoadMutePreferences?: () => void;
+  onSetKindMuted?: (kind: TeamInboxNotificationKind, muted: boolean) => void;
 }
 
 /** Shared Inbox controls used in the page header or compact left pane. */
@@ -149,13 +177,26 @@ export const TeamInboxListControls: React.FC<TeamInboxListControlsProps> = ({
   onQueryChange,
   onRefresh,
   onMarkAllRead,
+  mutedKinds = [],
+  mutePreferencesLoading = false,
+  onLoadMutePreferences,
+  onSetKindMuted,
 }) => {
   const { t } = useTranslation();
-  const activeFilterUnread = unreadCounts[filter];
+  const [muteMenuOpen, setMuteMenuOpen] = useState(false);
+  const activeFilterUnread = filter === "archived" ? 0 : unreadCounts[filter];
+  const muteOptions = useMemo(
+    () =>
+      TEAM_INBOX_NOTIFICATION_KINDS.map((kind) => ({
+        value: kind,
+        label: t(`teamInbox.events.${kind}`),
+      })),
+    [t]
+  );
 
   return (
     <div
-      className={`flex min-w-0 items-center gap-1 ${
+      className={`flex min-w-0 items-center gap-px ${
         placement === "list" || fillSearch ? "flex-1" : ""
       }`.trim()}
     >
@@ -200,6 +241,52 @@ export const TeamInboxListControls: React.FC<TeamInboxListControlsProps> = ({
               onRefresh={onRefresh}
               dataTestId="team-inbox-refresh"
             />
+          ) : null}
+          {onLoadMutePreferences && onSetKindMuted ? (
+            <Dropdown
+              options={muteOptions}
+              mode="multiple"
+              value={[...mutedKinds]}
+              loading={mutePreferencesLoading}
+              popupVisible={muteMenuOpen}
+              position="bottom-end"
+              getPopupContainer={() => document.body}
+              avoidViewportOverflow
+              onVisibleChange={(visible) => {
+                setMuteMenuOpen(visible);
+                if (visible) onLoadMutePreferences();
+              }}
+              onSelect={(nextValue) => {
+                const nextKinds = new Set(
+                  (Array.isArray(nextValue) ? nextValue : []).map(String)
+                );
+                const changedKind = TEAM_INBOX_NOTIFICATION_KINDS.find(
+                  (kind) => nextKinds.has(kind) !== mutedKinds.includes(kind)
+                );
+                if (changedKind) {
+                  onSetKindMuted(changedKind, nextKinds.has(changedKind));
+                }
+              }}
+            >
+              <Button
+                htmlType="button"
+                variant="tertiary"
+                size="small"
+                icon={
+                  <HugeiconsIcon
+                    icon={NotificationOff01Icon}
+                    data-icon="bell-off"
+                    size={14}
+                    strokeWidth={2}
+                  />
+                }
+                iconOnly
+                className="shrink-0"
+                title={t("teamInbox.mute.title")}
+                aria-label={t("teamInbox.mute.title")}
+                data-testid="team-inbox-mute-categories"
+              />
+            </Dropdown>
           ) : null}
           {trailingActions}
         </div>
@@ -262,6 +349,10 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
   loadingMore = false,
   onLoadMore,
   showControls = true,
+  mutedKinds = [],
+  mutePreferencesLoading = false,
+  onLoadMutePreferences,
+  onSetKindMuted,
 }) => {
   const { t } = useTranslation();
   const hasQuery = query.trim().length > 0;
@@ -282,7 +373,11 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
   const orderedInboxItems = useMemo(
     () =>
       filter === "all"
-        ? [...inboxItemSections.mentions, ...inboxItemSections.assigned]
+        ? [
+            ...inboxItemSections.mentions,
+            ...inboxItemSections.assigned,
+            ...inboxItemSections.updates,
+          ]
         : items,
     [filter, inboxItemSections, items]
   );
@@ -329,6 +424,11 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
   const showPullRequestsErrorDetails =
     Boolean(pullRequestsError) && pullRequestsErrorUi.detailed;
   const showLoadingBar = loading || pullRequestsLoading || loadingMore;
+  // A load with nothing to show yet gets skeleton rows instead of a blank pane, so
+  // the list keeps its shape until the real rows arrive. Once any row exists,
+  // that content stays and the progress line alone carries the refresh.
+  const showSkeletonRows =
+    showLoadingBar && items.length === 0 && actionablePullRequestCount === 0;
   const loadMoreAction =
     hasMore && onLoadMore ? (
       <div className="flex shrink-0 justify-center px-3 pt-1 pb-2">
@@ -470,14 +570,18 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
             onQueryChange={onQueryChange}
             onRefresh={onRefresh}
             onMarkAllRead={onMarkAllRead}
+            mutedKinds={mutedKinds}
+            mutePreferencesLoading={mutePreferencesLoading}
+            onLoadMutePreferences={onLoadMutePreferences}
+            onSetKindMuted={onSetKindMuted}
           />
         </CompactListHeader>
       ) : null}
       {showLoadingBar ? <LoadingBar /> : null}
 
-      {items.length === 0 && !hasPullRequestSurface ? (
+      {items.length === 0 && !hasPullRequestSurface && !showSkeletonRows ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          {showLoadingBar ? null : hasQuery ? (
+          {hasQuery ? (
             <Placeholder
               variant="no-results"
               placement="sidebar"
@@ -508,7 +612,7 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
             {PULL_REQUEST_LOAD_WARNING_ENABLED &&
             showPullRequestsError &&
             pullRequestsError ? (
-              <InlineAlert
+              <PageNotice
                 type="warning"
                 className="mx-3 mb-2"
                 title={t("teamInbox.errors.pullRequestsPartialLoad")}
@@ -557,7 +661,7 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
                     </div>
                   </div>
                 ) : null}
-              </InlineAlert>
+              </PageNotice>
             ) : null}
             {showPullRequests &&
             pullRequestSections.reviewRequested.length > 0 ? (
@@ -603,10 +707,23 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
                     )}
                   </TeamInboxListSection>
                 ) : null}
+                {inboxItemSections.updates.length > 0 ? (
+                  <TeamInboxListSection
+                    title={t("teamInbox.sections.updates")}
+                    testId="team-inbox-updates"
+                  >
+                    {renderInboxRows(
+                      inboxItemSections.updates,
+                      t("teamInbox.sections.updates"),
+                      true
+                    )}
+                  </TeamInboxListSection>
+                ) : null}
               </>
             ) : items.length > 0 ? (
               renderInboxRows(items, t("teamInbox.itemsLabel"))
             ) : null}
+            {showSkeletonRows ? <ListPanelSkeletonRows /> : null}
           </div>
           {loadMoreAction}
         </ListPanelScrollArea>

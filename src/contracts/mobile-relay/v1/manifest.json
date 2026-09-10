@@ -1,0 +1,18 @@
+{
+  "artifactVersion": 1,
+  "protocolVersion": 1,
+  "crateVersion": "0.1.0",
+  "source": "org2AI/ORG2:src-tauri/crates/mobile-relay-protocol",
+  "sourceHashes": {
+    "src-tauri/crates/mobile-relay-protocol/src/lib.rs": "01556ebc90cc2a44b7bd861d4ee5512cac5b11caacf7ba8aee88d556d107a700",
+    "src-tauri/crates/mobile-relay-protocol/Cargo.toml": "102effaeda6e47fedfe20cfa3dde70565884df0bb20d79f12bb7a5371f01e2f8",
+    "src-tauri/crates/mobile-relay-protocol/examples/export_contract.rs": "c6f530e79a4c38053bd6706c1deecbefc667f22406f28953493b60b962fa9161",
+    "src-tauri/crates/mobile-relay-protocol/tests/fixtures/v1.json": "fa1bb2d5d0f8a9ae179279069596956bff550b92d0ecc28c089f1cee019291a0",
+    "scripts/mobile-relay/generate-contract.mjs": "5a260d7ebb8fe07f6b537f80c34fc8248270dacdbe32adcb027298a4332504f1"
+  },
+  "files": {
+    "relay.ts": "209ab94e6c0b2c23695de0eeb9f2c88f10656ee9f3408a353c7529a3a4d583c9",
+    "schema.json": "1e192575a87769ee9af84c12553c546106cc58c7c01e14930fc6a3e9e964a539",
+    "fixtures.json": "36afe8c2c80f9822cb3117dee041fc306d3e4e124aa6cfb54d984175cd7989e2"
+  }
+}

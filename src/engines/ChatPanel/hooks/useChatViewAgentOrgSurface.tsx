@@ -2,8 +2,8 @@
  * useChatViewAgentOrgSurface
  *
  * Bundles the Agent-Org / group-chat derived state that ChatView threads
- * through ChatViewHistorySurface, ChatFloatingComposer and the pagination
- * bar's trailing action: run-view fetch, current-member resolution, the
+ * through ChatViewHistorySurface and ChatFloatingComposer: run-view fetch,
+ * current-member resolution, the
  * group-chat controller, message-queue wiring, and the intervention banner.
  * Kept as one hook (mirroring `useAgentOrgGroupChatController`'s own
  * kitchen-sink shape) because these pieces share the same `agentOrgRunView`
@@ -14,28 +14,23 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 
 import { GroupChatPausedBanner } from "@src/engines/ChatPanel/components/ChatStatusBanners";
+import type { ConversationRootLocator } from "@src/engines/SessionCore/conversations/conversationTypes";
 import { activeSessionIdAtom } from "@src/store/session";
-import type { Session } from "@src/store/session";
 
-import { ChatViewGroupChatHistoryAction } from "../ChatViewGroupChatHistoryAction";
-import type { ChatViewProps } from "../ChatViewTypes";
 import { useAgentOrgIntervention } from "../InputArea/components/useAgentOrgIntervention";
 import { useAgentOrgMemberSessionJump } from "../InputArea/components/useAgentOrgMemberSessionJump";
 import { useAgentOrgRunView } from "../InputArea/components/useAgentOrgRunView";
 import { useAgentOrgGroupChatController } from "./useAgentOrgGroupChatController";
 import { useChatViewMessageQueue } from "./useChatViewMessageQueue";
-import { useImportedSessionSubmitOverride } from "./useImportedSessionSubmitOverride";
 
 export function useChatViewAgentOrgSurface({
   sessionId,
-  currentSession,
-  onSessionContinuation,
   showCurrentPlanSurface,
+  conversationRoot,
 }: {
   sessionId: string;
-  currentSession: Session | undefined;
-  onSessionContinuation: ChatViewProps["onSessionContinuation"];
   showCurrentPlanSurface: boolean;
+  conversationRoot: ConversationRootLocator | null;
 }) {
   const {
     view: agentOrgRunView,
@@ -74,17 +69,19 @@ export function useChatViewAgentOrgSurface({
     queueSessionId,
     groupChatViewActive,
     groupChatViewAvailable,
-    groupChatMergedEvents,
-    groupChatAgents,
-    handleGroupChatTapEvents,
+    groupProjectionItems,
+    groupProjectionHasMore,
+    groupProjectionLoading,
+    groupProjectionError,
+    groupProjectionActionError,
+    actionPendingTurns,
+    loadOlderGroupProjection,
+    retryGroupProjection,
+    handleStopGroupDelivery,
+    handleRetryGroupDelivery,
     groupChatMentionOptions,
     groupChatRunPaused,
     groupChatPendingMessage,
-    groupChatHistoryHasMore,
-    groupChatHistoryLoading,
-    groupChatHistoryError,
-    loadOlderGroupChatHistory,
-    retryGroupChatHistory,
     isResumingGroupChat,
     handleResumeGroupChatRun,
     handleGroupChatViewToggle,
@@ -99,16 +96,10 @@ export function useChatViewAgentOrgSurface({
   const handleAgentOrgMemberSessionJump =
     useAgentOrgMemberSessionJump(sessionId);
 
-  const handleMainComposerSubmitOverride = useImportedSessionSubmitOverride({
-    sessionId,
-    currentSession,
-    onFallbackSubmit: handleGroupChatSubmitOverride,
-    onSessionContinuation,
-  });
-
   const {
     cancelQueuedMessage,
-    enqueueCount,
+    queueTailKey,
+    handleClearSessionQueue,
     handleReorderSessionQueue,
     handleSendNow,
     queueEditProps,
@@ -116,6 +107,7 @@ export function useChatViewAgentOrgSurface({
   } = useChatViewMessageQueue({
     pipelineSessionId,
     queueSessionId,
+    conversationRoot,
   });
 
   const groupChatPausedBottomContent = groupChatRunPaused ? (
@@ -129,7 +121,9 @@ export function useChatViewAgentOrgSurface({
     intervention: agentOrgIntervention,
     error: agentOrgInterventionError,
     returning: agentOrgInterventionReturning,
+    stopping: agentOrgInterventionStopping,
     returnToWork: returnAgentOrgMemberToWork,
+    stopUserDirectedWork: stopAgentOrgUserDirectedWork,
   } = useAgentOrgIntervention(
     agentOrgInteractionSessionId,
     agentOrgRunView,
@@ -141,27 +135,19 @@ export function useChatViewAgentOrgSurface({
     showCurrentPlanSurface && !isViewingAgentOrgMemberPlan;
 
   const hasAgentOrgIntervention =
-    agentOrgInterventionError !== null || agentOrgIntervention !== null;
+    currentAgentOrgMember !== null && !currentAgentOrgMember.isCoordinator;
   const agentOrgInterventionSlot = hasAgentOrgIntervention
     ? {
         intervention: agentOrgIntervention,
-        memberName: currentAgentOrgMember?.name,
+        member: currentAgentOrgMember,
+        runStatus: agentOrgRunView?.runStatus ?? null,
         error: agentOrgInterventionError,
         returning: agentOrgInterventionReturning,
+        stopping: agentOrgInterventionStopping,
         onReturnToWork: returnAgentOrgMemberToWork,
+        onStopUserDirectedWork: stopAgentOrgUserDirectedWork,
       }
     : null;
-
-  const groupChatHistoryAction = (
-    <ChatViewGroupChatHistoryAction
-      groupChatViewActive={groupChatViewActive}
-      groupChatHistoryError={groupChatHistoryError}
-      groupChatHistoryHasMore={groupChatHistoryHasMore}
-      groupChatHistoryLoading={groupChatHistoryLoading}
-      onRetry={retryGroupChatHistory}
-      onLoadOlder={() => void loadOlderGroupChatHistory()}
-    />
-  );
 
   return {
     agentOrgRunView,
@@ -173,16 +159,24 @@ export function useChatViewAgentOrgSurface({
     queueSessionId,
     groupChatViewActive,
     groupChatViewAvailable,
-    groupChatMergedEvents,
-    groupChatAgents,
-    handleGroupChatTapEvents,
+    groupProjectionItems,
+    groupProjectionHasMore,
+    groupProjectionLoading,
+    groupProjectionError,
+    groupProjectionActionError,
+    actionPendingTurns,
+    loadOlderGroupProjection,
+    retryGroupProjection,
+    handleStopGroupDelivery,
+    handleRetryGroupDelivery,
     groupChatMentionOptions,
     groupChatPendingMessage,
     handleGroupChatViewToggle,
     handleAgentOrgMemberSessionJump,
-    handleMainComposerSubmitOverride,
+    handleMainComposerSubmitOverride: handleGroupChatSubmitOverride,
     cancelQueuedMessage,
-    enqueueCount,
+    queueTailKey,
+    handleClearSessionQueue,
     handleReorderSessionQueue,
     handleSendNow,
     queueEditProps,
@@ -190,6 +184,5 @@ export function useChatViewAgentOrgSurface({
     groupChatPausedBottomContent,
     shouldShowCurrentPlanSurface,
     agentOrgInterventionSlot,
-    groupChatHistoryAction,
   };
 }

@@ -8,8 +8,10 @@
  * Storage key: `orgii:pinnedActions`
  */
 import { atomWithStorage } from "jotai/utils";
+import { z } from "zod/v4";
 
 import type { SlashItem } from "@src/types/extensions";
+import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
 /** A pinned action — a minimal snapshot of the slash item's identity. */
 export interface PinnedAction {
@@ -73,31 +75,17 @@ function migrate(actions: PinnedAction[]): PinnedAction[] {
   );
 }
 
-const storage = {
-  getItem(key: string, initialValue: PinnedAction[]): PinnedAction[] {
-    if (typeof window === "undefined") return initialValue;
-    try {
-      const stored = window.localStorage.getItem(key);
-      if (stored == null) return initialValue;
-      const parsed = JSON.parse(stored) as unknown;
-      if (!Array.isArray(parsed)) return initialValue;
-      return migrate(parsed as PinnedAction[]);
-    } catch {
-      return initialValue;
-    }
-  },
-  setItem(key: string, value: PinnedAction[]) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(value));
-  },
-  removeItem(key: string) {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
-  },
-};
+/**
+ * Any JSON array is accepted, matching what earlier builds wrote and read
+ * back without per-entry validation; only the legacy filter above runs.
+ */
+const StoredPinnedActionsSchema = z
+  .array(z.unknown())
+  .transform((actions) => migrate(actions as PinnedAction[]));
 
 export const pinnedActionsAtom = atomWithStorage<PinnedAction[]>(
   STORAGE_KEY,
   DEFAULT_PINNED,
-  storage
+  createZodJsonStorage(StoredPinnedActionsSchema),
+  { getOnInit: true }
 );

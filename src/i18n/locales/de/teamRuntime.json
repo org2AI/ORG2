@@ -6,7 +6,6 @@
     "today": "Heute",
     "everyone": "Alle",
     "activeMembers": "Aktive Mitglieder",
-    "systemsCurrent": "{{current}} von {{total}} Systemen aktuell",
     "usageByAgent": "Nutzung nach Agent",
     "recentSessions": "Neueste geteilte Sessions",
     "recentLoading": "Geteilte Sessions werden geladen…",
@@ -22,17 +21,17 @@
     "action": "Anmelden"
   },
   "noOrgs": {
-    "title": "Noch keine Cloud-Organisation",
-    "subtitle": "Tritt einer Organisation bei oder erstelle eine – deine Teamkollegen erscheinen dann hier."
+    "title": "Noch keine Cloud-Arbeitsbereich",
+    "subtitle": "Tritt einem Arbeitsbereich bei oder erstelle eine – deine Teamkollegen erscheinen dann hier."
   },
   "unsupported": {
     "title": "Backend muss aktualisiert werden",
-    "subtitle": "Das Cloud-Backend dieser Organisation unterstützt das Teilen der Team-Runtime noch nicht."
+    "subtitle": "Das Cloud-Backend dieses Arbeitsbereichs unterstützt das Teilen der Team-Runtime noch nicht."
   },
   "disabled": {
     "title": "Team-Runtime-Freigabe ist deaktiviert",
-    "subtitle": "Ein Organisations-Admin kann sie in den Organisationseinstellungen aktivieren.",
-    "adminSubtitle": "Du kannst sie in den Organisationseinstellungen aktivieren."
+    "subtitle": "Ein Arbeitsbereichs-Admin kann sie in den Arbeitsbereichseinstellungen aktivieren.",
+    "adminSubtitle": "Du kannst sie in den Arbeitsbereichseinstellungen aktivieren."
   },
   "empty": {
     "title": "Noch keine Mitgliederdaten",
@@ -72,13 +71,9 @@
     "totalSessions": "Sitzungen gesamt",
     "lastSynced": "Zuletzt synchronisiert"
   },
-  "selfService": {
-    "hint": "Solange die Freigabe aktiv ist, wird deine eigene Runtime mit dieser Organisation geteilt.",
-    "action": "Freigabe beenden & meine Daten entfernen"
-  },
   "orgSettings": {
     "label": "Team-Runtime-Freigabe",
-    "help": "Maschinenlast, Nutzungssummen und Builder-Profil der Mitglieder werden in diesem Intervall mit der Organisation geteilt. Nur Aggregate – niemals Transkripte, Repositories oder Titel.",
+    "help": "Maschinenlast, Nutzungssummen und Builder-Profil der Mitglieder werden in diesem Intervall mit des Arbeitsbereichs geteilt. Nur Aggregate – niemals Transkripte, Repositories oder Titel.",
     "memberNote": "Von einem Admin aktiviert. Intervall: {{interval}}.",
     "off": "Aus",
     "interval": {

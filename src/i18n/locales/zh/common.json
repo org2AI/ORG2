@@ -24,7 +24,7 @@
       "commandPalette": "命令面板",
       "goToFile": "转到文件...",
       "selectModel": "选择模型...",
-      "switchWorkspace": "切换工作区...",
+      "switchWorkspace": "切换工作目录...",
       "switchBranch": "切换分支...",
       "switchRunningLocation": "切换运行位置...",
       "settings": "设置...",
@@ -47,26 +47,25 @@
     "replyEmpty": "回复不能为空",
     "sessionNotFound": "未找到会话",
     "answerSubmitted": "回答提交成功",
-    "answerFailed": "提交回答失败，请重试。",
     "replyError": "发送回复时出错",
     "questionIgnored": "已忽略该问题",
     "addedAsContext": "已将 {{name}} 添加为上下文",
     "addedFilesAsContext": "已添加 {{count}} 个文件作为上下文",
+    "chooseExecutionAgentAi": "使用 AI 创建前请先选择一个 Agent 负责人。",
+    "autoExecuteRequiresExecutionAgent": "自动执行需要指定一个 Agent 负责人。",
     "openSessionBeforeLinking": "请先打开一个会话再关联工作项。",
     "sessionLinkedToWorkItem": "会话已关联到工作项。",
     "sessionLinkFailed": "关联会话失败：{{message}}",
-    "chooseFolderNewWorkspace": "选择用于创建工作区的文件夹",
-    "chooseExistingWorkspace": "选择已有工作区",
+    "chooseFolderNewWorkspace": "选择工作目录的父文件夹",
+    "chooseExistingWorkspace": "选择已有工作目录",
     "selectDirectoryFailed": "选择目录失败",
-    "workspaceCreated": "工作区已创建",
-    "workspaceCreateFailed": "创建工作区失败",
-    "workspaceImported": "工作区已导入",
-    "workspaceImportFailed": "导入工作区失败",
+    "workspaceCreated": "工作目录已创建",
+    "workspaceCreateFailed": "创建工作目录失败",
+    "workspaceImported": "工作目录已导入",
+    "workspaceImportFailed": "导入工作目录失败",
     "chooseFolderCloneRepo": "选择用于克隆仓库的文件夹",
     "repositoryCloned": "仓库已克隆",
-    "repositoryCloneFailed": "克隆仓库失败",
-    "chooseExecutionAgentAi": "使用 AI 创建前请先选择一个 Agent 负责人。",
-    "autoExecuteRequiresExecutionAgent": "自动执行需要指定一个 Agent 负责人。"
+    "repositoryCloneFailed": "克隆仓库失败"
   },
   "previews": {
     "noCanvasAvailable": "暂无画布",
@@ -116,12 +115,10 @@
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
-    "deleteCount": "删除 ({{count}})",
     "removeFromOrgii": "从 ORGII 移除",
     "removeFromOrgiiCount": "从 ORGII 移除 ({{count}})",
     "edit": "编辑",
     "write": "写入",
-    "reply": "回复",
     "close": "关闭",
     "expand": "展开",
     "confirm": "确认",
@@ -131,16 +128,13 @@
     "add": "添加",
     "remove": "移除",
     "create": "创建",
-    "update": "更新",
     "submit": "提交",
     "loadMore": "加载更多",
-    "load": "加载",
     "back": "返回",
     "next": "下一步",
     "previous": "上一步",
     "done": "完成",
     "retry": "重试",
-    "regenerate": "重新生成",
     "refresh": "刷新",
     "rescan": "重新扫描",
     "reload": "重新加载",
@@ -148,35 +142,20 @@
     "reviewPreviousFile": "审查上一个文件",
     "copy": "复制",
     "paste": "粘贴",
-    "cut": "剪切",
     "undo": "撤销",
-    "redo": "重做",
-    "keep": "保留",
-    "reject": "拒绝",
-    "accept": "接受",
     "review": "审查",
     "undoAll": "全部撤销",
-    "redoAll": "全部重做",
-    "keepAll": "全部保留",
-    "select": "选择",
     "selectAll": "全选",
     "unselectAll": "取消全选",
     "clear": "清除",
     "open": "打开",
     "view": "查看",
-    "openInApp": "在 App 中打开",
     "openToRight": "在右侧打开",
-    "new": "新建",
     "rename": "重命名",
     "duplicate": "复制",
-    "export": "导出",
-    "import": "导入",
     "download": "下载",
     "upload": "上传",
-    "insertImage": "插入图片",
     "browse": "浏览",
-    "discover": "发现",
-    "discoverTests": "发现测试",
     "newFile": "新建文件",
     "newFolder": "新建文件夹",
     "copyPath": "复制路径",
@@ -198,17 +177,10 @@
     "configure": "配置",
     "manage": "管理",
     "uninstall": "卸载",
-    "connect": "连接",
-    "customize": "自定义",
-    "goToSettings": "前往设置",
     "restart": "重新启动",
     "switchToStation": "切换到{{station}}",
     "switchMethod": "切换方式",
-    "rate": "评分",
-    "openInTab": "在标签页中打开",
-    "insert": "插入",
     "discard": "丢弃",
-    "disable": "禁用",
     "run": "运行",
     "clone": "克隆",
     "send": "发送",
@@ -220,20 +192,12 @@
     "filter": "筛选",
     "loading": "加载中...",
     "replace": "替换",
-    "publish": "Publish",
-    "acceptAll": "全部接受",
-    "rejectAll": "全部拒绝",
-    "install": "安装",
-    "expandAll": "全部展开",
     "collapseAll": "全部折叠",
     "viewOnGitHub": "在 GitHub 上查看",
     "selectRepository": "选择仓库",
     "all": "全部",
     "collapse": "收起",
     "toggle": "展开/收起",
-    "addRepo": "添加仓库",
-    "addFolder": "添加文件夹",
-    "resume": "继续",
     "yes": "是",
     "more": "更多操作",
     "advanced": "高级选项",
@@ -241,21 +205,17 @@
     "moreSettings": "更多设置",
     "sort": "排序",
     "openFolder": "打开文件夹",
-    "addWorkspace": "添加工作区",
-    "openSpotlight": "打开 Spotlight",
-    "openWorkspace": "打开工作区",
-    "skipThisVersion": "跳过此版本",
+    "addWorkspace": "添加工作目录",
+    "openWorkspace": "打开工作目录",
     "later": "稍后",
     "link": "链接",
     "copyName": "复制名称",
     "dismiss": "忽略",
-    "comingSoon": "即将推出",
     "clearSelection": "清除选择",
     "uiSettings": "界面设置",
-    "clearAll": "全部清除"
-  },
-  "refreshToast": {
-    "successName": "{{name}} 已刷新"
+    "clearAll": "全部清除",
+    "expandView": "展开视图",
+    "restoreSplitView": "恢复分栏视图"
   },
   "status": {
     "yes": "是",
@@ -341,18 +301,13 @@
     "lastPage": "最后一页",
     "selectPage": "选择页码",
     "title": "分页",
-    "roundOf": "第 {{current}} / {{total}} 轮",
     "round": "第 {{current}} 轮",
     "previousRound": "上一轮",
     "nextRound": "下一轮",
-    "latestRound": "最新轮次",
-    "searchRounds": "搜索轮次"
+    "latestRound": "最新轮次"
   },
   "optional": "可选",
   "common": {
-    "yes": "是",
-    "no": "否",
-    "ok": "确定",
     "on": "开",
     "off": "关",
     "default": "默认",
@@ -361,32 +316,20 @@
     "s": "s",
     "multiplier": "倍",
     "spaces": "个空格",
-    "font": "字体",
     "name": "名称",
     "description": "描述",
     "type": "类型",
     "date": "日期",
     "time": "时间",
-    "size": "大小",
-    "path": "路径",
     "status": "状态",
     "actions": "操作",
-    "options": "选项",
     "details": "详情",
     "more": "更多",
-    "less": "收起",
-    "all": "全部",
     "none": "无",
-    "selected": "已选择",
-    "items": "项",
-    "item": "项",
-    "empty": "空",
     "noResults": "未找到结果",
     "searchPlaceholder": "搜索...",
     "properties": "属性",
     "overview": "概览",
-    "appearance": "外观",
-    "theme": "主题",
     "timezone": "时区",
     "language": "语言",
     "preview": "预览",
@@ -394,17 +337,11 @@
     "sourceCode": "源代码",
     "raw": "原始",
     "table": "表格",
-    "filter": "筛选",
-    "filters": "筛选条件",
     "selectDate": "选择日期",
-    "files": "个文件",
-    "required": "必填",
-    "pending": "待处理",
     "error": "错误",
     "pid": "PID",
     "shell": "Shell",
-    "source": "来源",
-    "filterByLanguage": "按语言筛选"
+    "source": "来源"
   },
   "labels": {
     "accounts": "账户",
@@ -534,19 +471,24 @@
     "noAppliedCommit": "No linked commit yet",
     "noSessionsForFile": "No sessions found for this file",
     "committedRate": "已提交",
-    "email": "邮箱"
+    "email": "邮箱",
+    "issues": "Issues",
+    "noIssues": "暂无 issue",
+    "openIssues": "开放",
+    "closedIssues": "已关闭",
+    "issueComments": "{{count}} 条评论",
+    "issueComments_one": "1 条评论",
+    "issueComments_other": "{{count}} 条评论",
+    "tokens": "Token",
+    "actions": "操作",
+    "all": "全部"
   },
   "searchModes": {},
   "tabs": {
     "terminal": "终端",
-    "problems": "问题",
-    "output": "输出",
-    "testResults": "测试结果",
     "explorer": "资源管理器",
     "search": "搜索",
     "sourceControl": "源代码管理",
-    "testing": "测试",
-    "extensions": "扩展",
     "sessions": "Session",
     "myTabs": "我的标签页（{{count}}）",
     "design": "设计",
@@ -555,24 +497,13 @@
     "console": "控制台",
     "network": "网络",
     "css": "CSS",
-    "source": "源码",
-    "connections": "连接",
-    "queryHistory": "查询历史",
-    "table": "表格",
-    "sql": "SQL",
-    "tools": "工具",
-    "overview": "概览"
+    "source": "源码"
   },
   "errors": {
     "generic": "出了点问题",
     "failedToLoad": "加载失败",
-    "networkError": "网络错误，请检查您的连接。",
     "notFound": "未找到",
-    "unauthorized": "未授权，请登录。",
     "forbidden": "访问被拒绝",
-    "serverError": "服务器错误，请稍后再试。",
-    "timeout": "请求超时",
-    "validation": "验证错误",
     "pageNotFound": "页面未找到",
     "failedToLoadComponent": "组件加载失败",
     "networkErrorShort": "网络错误",
@@ -581,13 +512,11 @@
     "couldntConnect": "无法连接到服务器。请检查您的网络连接。",
     "failedToLoadProperly": "组件未能正确加载。",
     "requiredFileCouldntLoad": "无法加载所需文件。通常重新启动即可解决。",
-    "failedToRenderActivity": "渲染活动失败",
-    "failedToRenderEvent": "渲染事件失败",
     "unknown": "未知错误",
     "agentRequestFailed": "Agent 请求失败",
     "codexLoginExpired": "Codex 登录已失效",
     "codexLoginExpiredDescription": "重新连接 Codex 即可修复此账号；登录并保存后会返回当前会话",
-    "reconnectCodex": "重新连接 Codex",
+    "reconnectCodex": "重新连接",
     "technicalDetails": "技术详情",
     "failedToCopy": "复制失败",
     "api": {
@@ -628,13 +557,13 @@
       },
       "workflow": "工作流服务暂时不可用，请稍后重试。"
     },
-    "imageUploadFailed": "上传图片失败",
-    "imageTooLarge": "图片太大",
-    "unknownError": "发生未知错误"
+    "unknownError": "发生未知错误",
+    "componentLoadingFailed": "组件加载失败",
+    "noLocalPath": "没有可用的本地路径",
+    "openInFinderFailed": "在 Finder 中打开失败"
   },
   "confirmation": {
     "delete": "确定要删除吗？",
-    "discard": "放弃更改？",
     "removeTitle": "从 ORGII 中移除「{{name}}」？",
     "removeMessage": "这只会移除它与 ORGII 的关联，不会从磁盘中移除任何内容。",
     "deleteWorkspaceTitle": "删除工作区「{{name}}」？",
@@ -652,32 +581,14 @@
     "unsavedCloseMultipleMessage": "{{count}} 个文件有未保存的更改。仍然关闭？",
     "undoAllChanges": "这将撤销 Agent 所做的全部 {{count}} 个文件更改。此操作不可恢复，确定继续吗？"
   },
-  "dateRange": {
-    "1d": "1天",
-    "7d": "7天",
-    "1w": "1周",
-    "30d": "30天",
-    "1m": "1个月",
-    "3m": "3个月",
-    "1y": "1年"
-  },
   "filters": {
     "all": "全部",
     "source": "来源",
-    "local": "本地",
     "member": "成员",
-    "model": "模型",
-    "custom": "自定义",
     "tokenMarket": "Token Market",
-    "market": "市场",
-    "agentOrAgentOrg": "Session agent",
     "searchAgentOrOrg": "选择 Agent 或 Agent 团队...",
-    "tplSelectAgentOrOrg": "选择 {agent}",
-    "cliAgent": "CLI Agent",
     "searchModel": "搜索模型...",
-    "searchModelFor": "为 {{target}} 选择一个模型...",
-    "tplSelectModel": "选择 {model}",
-    "tplSelectModelFor": "为 {{target}} 选择 {model}"
+    "searchModelFor": "为 {{target}} 选择一个模型..."
   },
   "prerequisite": {
     "missingTitle": "缺少前置依赖",
@@ -687,29 +598,14 @@
     "agent": "Agent",
     "you": "你",
     "session": "Session",
-    "agentSession": "Agent Session",
     "workStation": "工作站",
-    "osAgent": "OS Agent",
-    "coding": "Coding",
     "agentTerminal": "Agent 终端",
     "myStation": "我的工作站",
     "agentStation": "Agent的工作站",
-    "projectManager": "项目管理器",
-    "myTerminal": "我的终端",
-    "myTerminalInfo": "我的终端信息"
-  },
-  "pageSearch": {
-    "placeholder": "搜索页面...",
-    "tooltip": "搜索页面",
-    "categories": {
-      "workspace": "工作区",
-      "tools": "工具",
-      "market": "市场"
-    }
+    "myTerminal": "我的终端"
   },
   "tooltips": {
     "closeEsc": "关闭 (Esc)",
-    "hidePanel": "隐藏面板 (⌘J)",
     "refreshTree": "刷新树",
     "copy": "复制",
     "previous": "上一个",
@@ -720,7 +616,7 @@
     "openInEditorTab": "在编辑器标签中打开",
     "openFile": "打开文件",
     "openNativeDevTools": "打开原生浏览器开发者工具",
-    "captureScreenshot": "截取当前页面并添加到聊天输入",
+    "captureScreenshot": "截图",
     "enableInspectMode": "检查元素",
     "disableInspectMode": "退出检查 (Esc)",
     "killTerminal": "终止终端",
@@ -747,24 +643,20 @@
     "searchInOpenEditors": "仅在已打开的编辑器中搜索",
     "replace": "替换 (Ctrl+Shift+1)",
     "replaceAll": "全部替换 (Ctrl+Alt+Enter)",
-    "uninstall": "卸载",
-    "dismiss": "忽略",
     "moreActions": "更多操作...",
     "formatSql": "格式化 SQL",
     "queryHistory": "查询历史",
-    "executeQuery": "执行查询 (Ctrl+Enter)",
+    "executeQuery": "执行查询 ({{shortcut}})",
     "startVoiceInput": "开始语音输入",
     "cancelRecording": "取消录制",
     "stopAndTranscribe": "停止并转录",
     "htmlPreview": "HTML 预览",
     "manual": "手动",
-    "scrollLeft": "向左滚动标签",
     "toggleFileFilters": "切换文件过滤器",
     "closeDevTools": "关闭开发者工具",
     "movePanelToRight": "面板移至右侧",
     "movePanelToBottom": "面板移至底部",
     "domTree": "DOM 树",
-    "clearUiIndex": "清除组件索引",
     "closeSession": "关闭 Session",
     "clearNetworkLogs": "清除网络日志",
     "clearConsole": "清除控制台",
@@ -780,6 +672,8 @@
     "copyValueRightClickForPath": "单击复制值，右键复制路径"
   },
   "placeholders": {
+    "enterFileName": "输入文件名",
+    "enterFolderName": "输入文件夹名称",
     "loading": "加载中...",
     "selectToViewConfig": "选择 {{type}} 以查看或配置",
     "selectToViewConfigSubtitle": "从左侧列表中选择一项",
@@ -800,7 +694,6 @@
     "failedToParseSymbols": "解析符号失败",
     "outlineParseError": "此文件无法生成大纲",
     "runQueryToSeeResults": "运行查询以查看结果",
-    "noProjectsFound": "未找到项目",
     "failedToLoad": "加载失败",
     "noItems": "暂无项目",
     "nothingHereYet": "暂无内容",
@@ -831,7 +724,6 @@
     "chatHistoryAgentWorkingHint": "首条回复到达后会显示消息，此前工具栏可能显示空闲",
     "pleaseSelect": "请选择",
     "noSessionsFound": "未找到 Session",
-    "noBrowsingHistory": "暂无浏览历史",
     "typeToSearchFiles": "输入以搜索文件...",
     "selectFileToViewChanges": "选择文件以查看变更",
     "failedToLoadHistory": "加载历史记录失败",
@@ -869,16 +761,9 @@
     "noStyles": "无样式",
     "noDomTree": "无 DOM 树",
     "noSourceDetected": "未检测到源代码",
-    "notIndexed": "暂未 Index",
-    "indexedInspectElement": "已索引，请检查元素",
-    "buildIndexToStart": "构建索引以开始",
     "noMatchingFilesFound": "未找到匹配文件",
-    "scanning": "扫描中...",
-    "retryToScanAgain": "重试以重新扫描",
-    "noTokensFound": "未找到 Token",
-    "addCssVariables": "向项目添加 CSS 变量",
-    "noWorkspaceExplorerTitle": "未打开 Workspace",
-    "noWorkspaceExplorerSubtitle": "打开工作区以查看文件",
+    "noWorkspaceExplorerTitle": "未打开工作目录",
+    "noWorkspaceExplorerSubtitle": "打开工作目录以查看文件",
     "cannotFindRepo": "找不到 {{repoName}}",
     "lastSeenAtPath": "上次路径：{{path}}",
     "unsupportedFileType": "不支持的文件类型",
@@ -903,61 +788,44 @@
     "noRepoSelected": "No repository selected",
     "previewUnavailable": "预览不可用",
     "selectRepositoryFromWorkspace": "选择工作区仓库",
-    "noData": "无数据"
+    "noData": "无数据",
+    "noSessionHistoryForFile": "未找到 {{file}} 的会话活动",
+    "noSessionHistory": "暂无会话历史"
   },
   "inbox": {
-    "searchPlaceholder": "搜索消息...",
-    "channels": {
-      "title": "频道",
-      "git": "Git",
-      "workItems": "工作项",
-      "promotions": "推广"
-    },
-    "selectChannel": "选择一个频道",
-    "noMessages": "暂无消息",
-    "noMessagesSubtitle": "事件发生时消息将显示在这里",
-    "composerPlaceholder": "写一条备注…",
     "scrollToBottom": "滚动到底部",
-    "markAllAsRead": "全部标记为已读",
-    "scrollToUnread": "跳转到未读"
+    "markAllAsRead": "全部标记为已读"
   },
   "placeholderTypes": {
     "mcpServer": "MCP 服务器",
-    "connection": "连接",
-    "policy": "政策",
-    "skill": "skill",
-    "message": "消息"
+    "connection": "连接"
   },
   "workstation": {
     "expandReplace": "展开替换",
     "collapseReplace": "收起替换",
     "tooltipRefreshExplorer": "刷新资源管理器",
-    "refreshFiles": "刷新文件",
-    "deleteSelectedRows": "删除 {{count}} 个选中的行",
     "agentBrowser": "Agent 浏览器",
     "userInControl": "用户控制中",
     "agentControlling": "Agent 控制中",
     "returnToAgent": "交还给 Agent",
     "takeOver": "接管",
-    "chromeInForeground": "Chrome 窗口在前台 — 可直接交互",
     "chromeWindowOpen": "Chrome 窗口已打开 — 请直接操作，完成后返回 Agent",
     "waitingForScreenshot": "等待浏览器截图...",
     "unified": "统一",
     "split": "分屏",
-    "reloadFromDiskConfirm": "从磁盘重新加载（将提示确认）",
-    "reloadFromDisk": "从磁盘重新加载",
     "publishingBranch": "正在 Publish...",
-    "refreshGitStatus": "刷新 Git 状态",
     "notGitInitialized": "未初始化 Git",
-    "notGitInitializedTooltip": "此工作区还没有 .git 目录。",
+    "notGitInitializedTooltip": "此工作目录还没有 .git 目录。",
     "publishBranchToOrigin": "Publish 分支 \"{{branch}}\" 到 origin",
-    "syncWithRemote": "与远程同步（{{behind}} 待拉取，{{ahead}} 待推送）",
     "scanningFiles": "正在扫描文件...",
-    "branchTooltip": "分支：{{branch}}",
     "branchTooltipSwitching": "分支：{{branch}}（切换中…）",
-    "switchWorkspaceTooltip": "切换工作区",
+    "switchWorkspaceTooltip": "切换工作目录",
     "switchWorktreeTooltip": "切换 Worktree",
     "switchBranchTooltip": "切换分支",
+    "switchLocalBranchTooltip": "切换本地分支",
+    "sessionEnvCloud": "云",
+    "sessionEnvLocal": "本地",
+    "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Git 操作",
     "switchToSessionRepo": "切换到 {{name}}",
     "embeddingProgress": "嵌入：已处理 {{count}} 个 chunk",
@@ -966,22 +834,19 @@
     "embeddingLabel": "嵌入",
     "indexingProgress": "索引：{{processed}}/{{total}} 个文件（{{percent}}%）",
     "indexingProgressWithFile": "索引：{{processed}}/{{total}} 个文件（{{percent}}%）\n当前：{{file}}",
-    "languageServices": "Language Services",
     "ports": {
       "workspaceSection": "当前工作区",
       "externalSection": "外部",
-      "tooltip": "端口：{{workspace}} 个 Workspace，{{external}} 个外部",
       "viewPortsTooltip": "查看使用中的端口",
       "noWorkspacePorts": "未检测到 Workspace 端口",
-      "externalLabel": "外部",
       "unknownProcess": "未知进程",
       "pidLabel": "PID {{pid}}",
       "openInBrowser": "在浏览器中打开",
-      "openAddress": "打开 {{address}}",
       "copyAddress": "复制地址",
       "stopProcess": "停止进程",
       "searchPlaceholder": "搜索端口…",
       "noSearchResults": "没有匹配的端口",
+      "openAddress": "打开 {{address}}",
       "rescan": "重新扫描",
       "rescanning": "扫描中…",
       "rescanTooltip": "重新扫描正在监听的端口",
@@ -991,72 +856,37 @@
       "openPullRequest": "在 GitHub 中打开 Pull Request",
       "viewDetails": "查看检查详情",
       "refresh": "刷新检查",
+      "refreshing": "刷新中…",
+      "lastFetchedAt": "上次获取于 {{time}}",
       "unavailable": "无法读取检查状态",
       "sections": {
         "failed": "失败",
         "running": "运行中",
         "skipped": "已跳过",
         "passed": "已通过"
-      },
-      "refreshing": "刷新中…",
-      "lastFetchedAt": "上次获取于 {{time}}"
+      }
     },
-    "noLanguageServicesActive": "没有活跃的 Language Service",
     "linesSelected": "已选择 {{count}} 行",
     "charsSelected": "已选择 {{count}} 个字符",
     "nLines": "{{count}} 行",
-    "blameOn": "Blame: 开",
-    "blameOff": "Blame: 关",
     "hideFilter": "隐藏筛选",
     "filterFilesAction": "筛选文件",
     "switchToTreeView": "切换到树形视图",
     "switchToListView": "切换到列表视图",
     "discardChanges": "丢弃更改",
-    "stagedChangesCount": "{{count}} 个已暂存更改",
-    "changesCount": "{{count}} 个更改",
-    "acceptAllMergeChanges": "接受所有合并更改（暂存已解决的文件）",
     "toOrigin": "到 origin",
     "discardChangesConfirm": "丢弃对 {{files}} 的更改？此操作不可撤销。",
     "discardAllUnstagedConfirm": "丢弃所有未暂存的更改？此操作不可撤销。",
     "addedToAgent": "{{fileName}} 已添加到 Agent",
-    "privateBrowsing": "隐私",
-    "standardBrowsing": "标准",
-    "openNativeDevTools": "打开原生浏览器 DevTools（Safari Inspector / Edge DevTools）",
-    "extractingProps": "正在提取属性...",
-    "initializingPreview": "正在初始化预览...",
-    "buildUiIndex": "构建组件索引",
     "componentLabel": "组件",
     "definitionLabel": "定义",
     "findSource": "查找源",
     "preserveConsole": "保留",
     "consoleShowStackTrace": "显示堆栈跟踪",
     "consoleHideStackTrace": "隐藏堆栈跟踪",
-    "loadingData": "正在加载数据...",
-    "noData": "暂无数据",
-    "tokenName": "token-name",
-    "manualMode": "手动",
-    "position": "位置",
-    "flow": "流式",
-    "size": "大小",
-    "paddingLabel": "内边距",
-    "marginLabel": "外边距",
-    "boxModel": "盒模型",
-    "opacityLabel": "不透明度",
-    "cornersLabel": "圆角",
-    "textLabel": "文本",
-    "weightLabel": "字重",
-    "lineLabel": "行",
-    "borderLabel": "边框",
-    "widthLabel": "宽度",
-    "heightLabel": "高度",
-    "colorLabel": "颜色",
-    "shadowAndBlur": "阴影和模糊",
-    "blurLabel": "模糊",
-    "spreadLabel": "扩散",
     "styleEditsCount_one": "{{count}} 处修改",
     "styleEditsCount_other": "{{count}} 处修改",
     "sendStyleEdits": "发送",
-    "addToChat": "添加到对话",
     "browserCore": {
       "desktopOnlyTitle": "浏览器仅在桌面应用可用",
       "desktopOnlyBody": "嵌入式浏览器仅在 Tauri 桌面应用中使用。",
@@ -1064,7 +894,6 @@
       "debugTauriInternals": "__TAURI_INTERNALS__: {{value}}",
       "debugTauriIpc": "__TAURI_IPC__: {{value}}",
       "debugTauri": "__TAURI__: {{value}}",
-      "privateBrowsingLabel": "隐私浏览：",
       "enterUrlToStart": "输入网址以开始",
       "privateBrowsingEmptyTitle": "隐私浏览：输入网址以开始",
       "simulatorBrowserNotice": "此浏览器仅用于会话回放。持久浏览请使用主应用中的浏览器（工具 → 浏览器）。",
@@ -1073,26 +902,10 @@
       "embeddedFallbackTitle": "此网站可能无法在内嵌浏览器中显示",
       "embeddedFallbackBody": "部分网站会拦截或无法渲染在应用内 WebView 中。如果页面一直空白，请用系统浏览器打开。",
       "currentUrl": "当前 URL",
-      "errorTls": "与此站点的连接不安全。HTTPS 站点在开发模式下常会出现此情况。",
-      "errorTimeout": "连接超时，服务器响应时间过长。",
-      "errorDns": "无法解析服务器 DNS。请检查网址是否拼写正确。",
-      "errorRefused": "服务器拒绝了连接。",
-      "errorGeneric": "无法连接到服务器。站点可能已关闭或存在网络问题。",
-      "technicalDetails": "技术详情",
-      "tryHeading": "可尝试：",
-      "tryCheckConnection": "检查网络连接",
-      "tryVerifyUrl": "确认网址是否正确",
-      "tryAgainLater": "稍后再试",
       "webviewHiddenTitle": "网页视图已临时隐藏",
       "webviewHiddenBody": "关闭菜单或弹窗即可重新显示。"
     },
-    "unsavedChangesTitle": "未保存的更改",
-    "prkPlaceholder": "PRJ",
-    "gitSyncMenuTitle": "Git 同步操作",
-    "switchLocalBranchTooltip": "切换本地分支",
-    "sessionEnvCloud": "云",
-    "sessionEnvLocal": "本地",
-    "sessionHarness": "{{name}} Harness"
+    "unsavedChangesTitle": "未保存的更改"
   },
   "git": {
     "loading": "正在加载 Git 状态...",
@@ -1244,6 +1057,79 @@
       "summary": {
         "label": "pull request 摘要"
       },
+      "tabs": {
+        "conversation": "对话",
+        "commits": "提交",
+        "checks": "检查",
+        "changes": "更改"
+      },
+      "checks": {
+        "none": "未报告检查",
+        "noneHint": "此 pull request 的头提交未运行任何 CI 检查或状态。",
+        "allPassed": "所有检查均已通过",
+        "someFailed": "部分检查失败",
+        "pending": "检查进行中",
+        "passedShort": "已通过",
+        "failedShort": "失败",
+        "runningShort": "运行中",
+        "checkingShort": "检查中",
+        "noneShort": "无 CI",
+        "unavailableShort": "CI 不可用",
+        "branchStatus": "Pull request #{{number}} CI：{{status}}"
+      },
+      "mergeStatus": {
+        "label": "合并状态",
+        "viewChecks": "查看全部检查",
+        "ableToMerge": "已准备好合并",
+        "blocked": "合并受阻",
+        "conflicts": "存在合并冲突",
+        "queued": "已排入合并队列",
+        "draft": "草稿 — 暂不可合并",
+        "merged": "拉取请求已合并",
+        "closed": "拉取请求已关闭",
+        "checking": "正在检查可合并性…",
+        "checksPassed": "所有检查均已通过",
+        "checksFailing_one": "{{count}} 项检查失败",
+        "checksFailing_other": "{{count}} 项检查失败",
+        "checksRunning_one": "{{count}} 项检查进行中",
+        "checksRunning_other": "{{count}} 项检查进行中",
+        "checksSkipped_one": "已跳过 {{count}} 项检查",
+        "checksSkipped_other": "已跳过 {{count}} 项检查",
+        "checksNone": "未报告检查",
+        "reviewApproved": "更改已批准",
+        "reviewRequired": "需要评审",
+        "reviewChangesRequested": "已请求更改",
+        "noConflicts": "与基础分支没有冲突",
+        "hasConflicts": "与基础分支存在冲突",
+        "outOfDate": "落后于基础分支",
+        "checkingConflicts": "正在检查冲突…",
+        "autoMergeEnabled": "已启用自动合并",
+        "inMergeQueue": "正在合并队列中等待"
+      },
+      "commits": {
+        "backToList": "全部提交",
+        "none": "无提交",
+        "onDate": "{{date}} 的提交",
+        "unknownDate": "未知日期",
+        "viewCommit": "查看提交 {{sha}}：{{summary}}",
+        "committed": "已提交",
+        "verified": "已验证",
+        "copySha": "复制提交 SHA",
+        "viewDetails": "查看提交详情"
+      },
+      "changes": {
+        "title": "文件更改",
+        "noFiles": "无文件更改",
+        "tooLarge": "文件太大，无法显示差异",
+        "unavailable": "更改不可用",
+        "unavailableHint": "无法解析 pull request 的基准提交和头提交。"
+      },
+      "status": {
+        "open": "打开",
+        "merged": "已合并",
+        "closed": "已关闭",
+        "draft": "草稿"
+      },
       "flow": {
         "wantsToMergeCommitsInto_one": "想要将 {{count}} 个提交合并到",
         "wantsToMergeCommitsInto_other": "想要将 {{count}} 个提交合并到",
@@ -1274,50 +1160,22 @@
         "labelsLoadFailed": "无法加载标签",
         "labelsUpdated": "已更新标签"
       },
-      "tabs": {
-        "conversation": "对话",
-        "commits": "提交",
-        "checks": "检查",
-        "changes": "更改"
+      "creating": "正在创建 pull request…",
+      "createError": "创建 pull request 失败",
+      "readyHint": "分支已推送，可以创建 pull request",
+      "neutralHint": "推送分支后即可创建 pull request",
+      "noBranch": "未选择分支",
+      "noRepoPath": "没有可用的仓库路径",
+      "notAuthenticated": "登录后即可创建 pull request",
+      "noOriginRemote": "未配置 origin 远程仓库",
+      "cannotParseRepoName": "无法从 origin 远程仓库解析仓库名",
+      "authRequired": {
+        "title": "连接 GitHub",
+        "description": "前往 设置 → 连接 以连接你的 GitHub 账号。"
       },
-      "checks": {
-        "none": "未报告检查",
-        "noneHint": "此 pull request 的头提交未运行任何 CI 检查或状态。",
-        "allPassed": "所有检查均已通过",
-        "someFailed": "部分检查失败",
-        "pending": "检查进行中",
-        "passedShort": "已通过",
-        "failedShort": "失败",
-        "runningShort": "运行中",
-        "checkingShort": "检查中",
-        "noneShort": "无 CI",
-        "unavailableShort": "CI 不可用",
-        "branchStatus": "Pull request #{{number}} CI：{{status}}"
-      },
-      "commits": {
-        "backToList": "全部提交",
-        "none": "无提交",
-        "onDate": "{{date}} 的提交",
-        "unknownDate": "未知日期",
-        "viewCommit": "查看提交 {{sha}}：{{summary}}",
-        "committed": "已提交",
-        "verified": "已验证",
-        "copySha": "复制提交 SHA",
-        "viewDetails": "查看提交详情"
-      },
-      "changes": {
-        "title": "文件更改",
-        "noFiles": "无文件更改",
-        "tooLarge": "文件太大，无法显示差异",
-        "unavailable": "更改不可用",
-        "unavailableHint": "无法解析 pull request 的基准提交和头提交。"
-      },
-      "status": {
-        "open": "打开",
-        "merged": "已合并",
-        "closed": "已关闭",
-        "draft": "草稿"
-      }
+      "navigationTrail": "Pull request 导航",
+      "failedToLoad": "加载 pull request 失败",
+      "label": "Pull request"
     },
     "messages": {
       "pushSuccess": "Successfully pushed changes to remote",
@@ -1464,18 +1322,39 @@
         "count_other": "{{count}} 个相关项目",
         "unavailable": "详情不可用",
         "unavailableCount_one": "无法解析 {{count}} 个相关项目",
-        "unavailableCount_other": "无法解析 {{count}} 个相关项目"
-      }
+        "unavailableCount_other": "无法解析 {{count}} 个相关项目",
+        "reference": "GitHub 引用"
+      },
+      "loading": "正在加载 issues…",
+      "empty": "没有{{state}}的 issue",
+      "failedToLoad": "加载 issues 失败",
+      "failedToCreate": "创建 issue 失败",
+      "failedToUpdate": "更新 issue 失败",
+      "failedToComment": "添加评论失败",
+      "filterAll": "全部",
+      "filterOpen": "开放",
+      "filterClosed": "已关闭",
+      "noGitHubRepo": "连接 GitHub 仓库以管理 issues",
+      "commentPlaceholder": "发表评论…",
+      "submitComment": "评论",
+      "newIssueTitlePlaceholder": "Issue 标题",
+      "newIssueBodyPlaceholder": "描述该 issue（可选）…",
+      "authRequired": {
+        "title": "连接 GitHub",
+        "description": "前往 设置 → 连接 以连接你的 GitHub 账号。"
+      },
+      "reAuthRequired": "需要 GitHub 授权",
+      "reAuthDescription": "你的 GitHub token 已过期。请前往 设置 → 连接 重新连接。",
+      "goToSettings": "前往设置",
+      "loadingTimeline": "正在加载活动…",
+      "label": "Issue",
+      "linkedLoading": "正在加载关联项目",
+      "detailNavigation": "Issue 导航"
     }
   },
   "selectors": {
     "shared": {
-      "repo": "仓库",
-      "workspace": "工作区",
-      "folder": "文件夹",
-      "source": "来源",
-      "branch": "分支",
-      "name": "名称"
+      "workspace": "工作区"
     },
     "labels": {
       "recent": "最近"
@@ -1488,9 +1367,9 @@
       "chooseKey": "选择密钥",
       "noCompatibleAccounts": "无兼容密钥",
       "chooseModelHint": "使用键盘导航，或用鼠标点击模型",
-      "selectAccount": "选择账号",
       "chooseKeyHint": "使用键盘导航，或用鼠标点击密钥",
-      "noModelsForKey": "该密钥未启用任何模型"
+      "noModelsForKey": "该密钥未启用任何模型",
+      "selectAccount": "选择账号"
     },
     "modelProperties": {
       "effort": "Effort",
@@ -1505,52 +1384,49 @@
       "off": "关闭"
     },
     "repo": {
-      "workspaceFolders": "工作区文件夹",
       "addEntry": "更多导入选项",
       "sections": {
-        "coding": "工作区",
         "pinned": "固定",
         "current": "当前",
         "recent": "最近",
         "repo": "仓库",
         "systemPaths": "系统路径",
-        "usedElsewhere": "在其他位置使用",
-        "workspace": "工作区",
-        "thisOrg": "本组织",
-        "outsideOrg": "组织外"
+        "usedElsewhere": "在其他应用中使用",
+        "workspace": "工作目录",
+        "thisOrg": "此组织",
+        "outsideOrg": "此组织之外",
+        "outsideNamedOrg": "{{org}}之外"
       },
       "tabs": {},
       "addOptions": {
         "cloneFromGitHubUrl": "通过 GitHub URL 克隆",
         "cloneFromMyGitHub": "从已连接的 GitHub 克隆",
-        "createWorkspace": "创建新工作区"
+        "createWorkspace": "创建新工作目录"
       },
       "sources": {
         "cloningFromGitHub": "正在从 GitHub 克隆",
         "cloningFromGitHubUrl": "通过 GitHub URL 克隆",
         "cloningFromMyGitHub": "从已连接的 GitHub 克隆",
-        "creatingWorkspace": "正在创建新工作区",
-        "creatingMultiRepoWorkspace": "正在组合多仓库工作区"
+        "creatingWorkspace": "正在创建新工作目录",
+        "creatingMultiRepoWorkspace": "正在组合多仓库工作目录"
       },
       "forms": {
-        "repoName": "仓库名称",
         "localPath": "本地路径",
         "chooseDestinationPath": "选择目标路径",
         "choose": "选择",
         "createAt": "创建于 {{path}}",
-        "createWorkspaceTitle": "新工作区",
-        "creatingWorkspace": "正在创建工作区...",
-        "readyToCreateWorkspace": "准备创建工作区",
-        "workspaceName": "工作区名称",
-        "workspaceNamePlaceholder": "我的工作区"
+        "createWorkspaceTitle": "新工作目录",
+        "creatingWorkspace": "正在创建工作目录...",
+        "readyToCreateWorkspace": "准备创建工作目录",
+        "workspaceName": "目录名称",
+        "workspaceNamePlaceholder": "我的目录"
       },
       "path": {
         "switchTo": "切换到",
         "switchToTemplate": "切换到 {workspace}",
-        "search": "搜索",
-        "manageWorkspace": "管理工作区",
-        "addBy": "通过以下方式添加工作区",
-        "addByTemplate": "通过 {source} 添加工作区"
+        "manageWorkspace": "管理工作目录",
+        "addBy": "通过以下方式添加工作目录",
+        "addByTemplate": "通过 {source} 添加工作目录"
       },
       "pathImport": {
         "addLabel": "添加",
@@ -1559,20 +1435,14 @@
       },
       "gitInitPrompt": {
         "title": "初始化 Git？",
-        "message": "此工作区没有 .git 文件夹。要将它初始化为 Git 仓库吗？",
+        "message": "此工作目录没有 .git 文件夹。要将它初始化为 Git 仓库吗？",
         "ok": "初始化 Git",
         "cancel": "保留为文件夹"
       }
     },
     "folder": {
-      "path": {
-        "switchTo": "切换到"
-      },
       "addOptions": {},
-      "sources": {},
-      "forms": {
-        "choose": "选择"
-      }
+      "sources": {}
     },
     "branch": {
       "path": {
@@ -1619,12 +1489,11 @@
         "noGithubRemote": "未配置 GitHub 远程仓库",
         "prSearchScope": "搜索范围为已加载的 {{count}} 个 Pull requests",
         "prLimit": "最多显示 {{count}} 个未关闭的 PR",
-        "noPullRequests": "没有匹配的 Pull requests"
+        "noPullRequests": "没有匹配的 Pull requests",
+        "mainWorktree": "主"
       },
       "placeholders": {
-        "checkout": "分支",
         "add": "新分支名称...",
-        "remove": "分支",
         "pullRequests": "搜索 Pull requests..."
       },
       "tabs": {
@@ -1634,14 +1503,12 @@
     },
     "sessionInfo": {
       "sourcePlaceholder": "选择来源",
-      "start": "开始",
       "sourceAria": "选择工作区来源",
-      "on": "在",
       "branchAria": "选择分支",
-      "switchWorkspace": "切换工作区",
+      "switchWorkspace": "切换工作目录",
       "switchBranch": "切换分支",
       "switchLocation": "切换运行位置",
-      "sessionWorkspace": "切换 Session 工作区",
+      "sessionWorkspace": "切换会话工作目录",
       "locationAria": "选择运行位置",
       "systemPaths": {
         "home": {
@@ -1660,16 +1527,16 @@
       "select": "选择",
       "switchColumn": "切换栏",
       "switchSection": "切换分区",
+      "showPath": "显示路径",
+      "keyFirst": "密钥优先",
+      "showBranchInfo": "显示分支信息",
       "compatibleKeys": "兼容",
       "planSupport": "Plan",
       "byokSupport": "Keys",
       "incompatible": "不兼容",
       "manageModels": "管理模型",
       "manageKeys": "管理密钥",
-      "manageAgents": "管理 Agent",
-      "showPath": "显示路径",
-      "keyFirst": "密钥优先",
-      "showBranchInfo": "显示分支信息"
+      "manageAgents": "管理 Agent"
     },
     "editorSpotlight": {
       "searchPlaceholder": "搜索命令...",
@@ -1721,7 +1588,7 @@
     "spotlight": {
       "placeholder": "搜索或输入命令…",
       "placeholders": {
-        "workspace": "搜索或输入文件夹路径",
+        "workspace": "搜索或输入文件夹路径...",
         "branch": "搜索分支...",
         "source": "搜索来源...",
         "actions": "搜索操作...",
@@ -1729,7 +1596,8 @@
       },
       "groups": {
         "agentSession": "Agent 会话",
-        "workspace": "工作区",
+        "workspace": "工作目录",
+        "organization": "组织 / 工作区",
         "quickNavigation": "快速导航",
         "editor": "编辑器",
         "view": "视图",
@@ -1749,9 +1617,6 @@
           "label": "在 Finder 中定位仓库",
           "pillLabel": "定位"
         },
-        "createSession": {
-          "label": "创建新会话"
-        },
         "searchAgentSessions": {
           "label": "搜索 Agent 会话",
           "pillLabel": "搜索会话",
@@ -1763,16 +1628,17 @@
           "placeholder": "全局搜索会话内容..."
         },
         "switchWorkspace": {
-          "label": "切换工作区"
+          "label": "切换工作目录"
         },
         "switchBranch": {
+          "repoLabel": "切换 {{repoName}} 的分支",
           "label": "切换分支"
         },
         "addWorkspace": {
-          "label": "添加工作区"
+          "label": "添加工作目录"
         },
         "createMultiRepoWorkspace": {
-          "label": "添加多仓库工作区"
+          "label": "添加多仓库工作目录"
         },
         "showSourceControl": {
           "label": "显示 Source Control"
@@ -1826,10 +1692,10 @@
           "label": "创建 Work Item"
         },
         "createOrganization": {
-          "label": "创建组织"
+          "label": "创建工作空间"
         },
         "joinOrganization": {
-          "label": "加入组织"
+          "label": "加入工作空间"
         }
       },
       "toast": {
@@ -1844,20 +1710,14 @@
   },
   "ellipsisMenu": {},
   "layoutSettings": {
-    "chatPanelLocation": "聊天面板位置",
+    "chatPanelLocation": "聊天面板",
     "chatLeft": "左侧聊天",
     "chatRight": "右侧聊天",
-    "full": "全屏",
-    "theme": "主题",
-    "sidebarPosition": "侧边栏位置",
+    "sidebarPosition": "工作站侧边栏",
     "modelPickerStyle": "选择器样式",
+    "paginateChatHistory": "将聊天记录分页",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "菜单",
-    "replaySession": "Replay 会话",
-    "captionBar": "Agent 消息浮窗",
-    "location": "位置",
-    "floating": "悬浮",
-    "pinned": "固定",
     "left": "左侧",
     "right": "右侧",
     "ramFps": "FPS",
@@ -1880,13 +1740,9 @@
     "ramHydratedEvents": "已 hydrate 事件",
     "ramTurnBodies": "历史懒加载",
     "ramFileTrees": "文件树",
-    "ramCodeMirrors": "文件渲染",
-    "paginateChatHistory": "将聊天记录分页"
+    "ramCodeMirrors": "文件渲染"
   },
   "spotlightActions": {
-    "switchToLightTheme": "切换到浅色主题",
-    "switchToDarkTheme": "切换到深色主题",
-    "switchToHighContrastTheme": "切换到高对比度主题",
     "enableChatPagination": "开启聊天分页",
     "disableChatPagination": "关闭聊天分页",
     "useModelPickerSpotlight": "使用 Spotlight 模型选择器",
@@ -1897,13 +1753,12 @@
     "openAgentStation": "前往 Agent 工作站",
     "openKanban": "前往 Kanban",
     "changeLanguage": "更改语言",
-    "switchToSystemTheme": "跟随系统主题",
-    "detectUpdate": "检查更新",
-    "recentlyUsed": "最近使用",
     "changeTheme": "更改主题",
     "changeSkin": "更改皮肤",
     "searchThemes": "搜索主题...",
-    "searchSkins": "搜索皮肤..."
+    "searchSkins": "搜索皮肤...",
+    "detectUpdate": "检查更新",
+    "recentlyUsed": "最近使用"
   },
   "commands": {
     "showBottomPanel": "显示底部面板",
@@ -1911,110 +1766,28 @@
     "showPrimarySidebar": "显示侧边栏",
     "hidePrimarySidebar": "隐藏侧边栏",
     "searchFiles": "搜索文件",
-    "openBrowser": "打开浏览器",
-    "switchWorkspace": "切换 / 添加工作区",
-    "openEditor": "打开编辑器",
-    "hideTerminal": "隐藏终端",
-    "hideFiles": "隐藏文件",
-    "maximizeChat": "聚焦聊天面板",
-    "toggleSidebar": "切换侧边栏",
-    "openDevTools": "打开 DevTools",
-    "showDevTools": "显示 DevTools",
-    "hideDevTools": "隐藏 DevTools",
-    "connections": "连接",
-    "newTab": "新建标签页",
-    "newPrivateTab": "新建隐私标签页",
-    "openDashboard": "打开 Dashboard",
-    "runQuery": "运行查询",
-    "newProject": "新建项目"
-  },
-  "lsp": {
-    "installPrompt": "\"{{language}}\" 的 Language Server 未安装，是否要安装？",
-    "installing": "正在安装 Language Server..."
+    "switchWorkspace": "切换 / 添加工作目录",
+    "newTab": "新建标签页"
   },
   "gitDashboard": {
-    "title": "Git 仪表盘",
     "author": "作者",
-    "commits": "提交",
-    "additions": "新增",
-    "deletions": "删除",
-    "filesChanged": "变更文件",
-    "files": "文件",
-    "other": "其他",
-    "showMore": "显示更多",
-    "showLess": "收起"
+    "commits": "提交"
   },
   "aiImpact": {
-    "title": "AI Impact",
-    "noData": "暂无 AI 会话影响数据",
-    "sessions": "会话",
-    "files": "涉及文件",
-    "functions": "函数",
-    "commits": "Commit",
-    "lines": "代码行",
-    "sessionBreakdown": "会话明细",
-    "human": "Human",
-    "completed": "已完成",
-    "incomplete": "未完成"
+    "lines": "代码行"
   },
   "sessions": {
-    "title": "会话",
-    "myUsage": "我的用量",
-    "teamUsage": "团队用量"
-  },
-  "otherUsage": {
-    "title": "其他使用",
-    "sessions": "会话",
-    "completed": "已完成",
-    "incomplete": "未完成",
-    "tabs": {
-      "overview": "概览",
-      "cursor": "Cursor",
-      "cli": "CLI"
-    }
-  },
-  "devActivity": {
-    "title": "编程档案",
-    "sessions": "会话",
-    "source": "来源",
-    "commits": "Commit 次数",
-    "active": "活跃"
-  },
-  "devRecord": {
-    "loading": "加载中…",
-    "custom": "自定义",
-    "startDate": "开始日期",
-    "endDate": "结束日期",
-    "statCards": {
-      "commits": "提交",
-      "filesChanged": "变更文件",
-      "sessions": "会话",
-      "projects": "热力图"
-    },
-    "team": {
-      "title": "团队活动",
-      "member": "成员",
-      "email": "邮箱",
-      "model": "模型",
-      "sessions": "会话",
-      "tokens": "Token",
-      "days": "天"
-    }
-  },
-  "actionSummary": {
-    "read": "读取"
+    "title": "会话"
   },
   "sourceControl": {
     "notGitInitialized": "未初始化 Git",
-    "notGitInitializedSubtitle": "初始化 Git 后即可在此工作区跟踪更改、创建提交并使用分支工具。",
+    "notGitInitializedSubtitle": "初始化 Git 后即可在此工作目录跟踪更改、创建提交并使用分支工具。",
     "initializeGit": "初始化 Git",
     "initializingGit": "正在初始化 Git...",
-    "noRemoteForPublish": "此工作区现在是 Git 仓库，但还没有 remote。请先添加 origin 等 remote，然后再发布此分支。",
-    "generateCommitMessage": "使用 AI 生成 commit message",
+    "noRemoteForPublish": "此工作目录现在是 Git 仓库，但还没有 remote。请先添加 origin 等 remote，然后再发布此分支。",
     "pull": "Pull",
     "push": "Push",
     "fetch": "Fetch",
-    "sync": "Sync",
     "worktreeActions": "Worktree 操作",
     "removeWorktree": "移除 Worktree",
     "removeWorktreeTitle": "移除 Worktree {{name}}？",
@@ -2032,33 +1805,21 @@
       "allChanges": "全部更改"
     },
     "scope": {
-      "local": "本地",
       "main": "主工作区",
       "worktrees": "Worktree",
       "searchPlaceholder": "筛选 worktree…",
-      "switchScope": "切换源代码管理范围",
       "switchScopeActive": "切换源代码管理范围：{{repo}}，{{branch}}"
     }
   },
   "contextInfo": {
     "contextUsed": "上下文已使用",
     "title": "Context",
-    "full": "已用",
     "ariaLabel": "Context 用量",
-    "categories": {
-      "rules": "Rules",
-      "conversation": "对话内容",
-      "tools": "工具",
-      "skills": "技能",
-      "mcp": "MCP",
-      "subagents": "Subagents"
-    },
     "cacheSaved": "缓存节省：读取 {{read}}，写入 {{write}}",
     "cacheHero": "{{pct}}% 来自缓存 · 本轮复用约 {{tokens}}",
     "cacheHeroSub": "Prompt 缓存最多可降低约 90% 的费用",
     "autoCompactNote": "即将自动总结上下文",
     "compactBoundaryTitle": "上下文已压缩",
-    "compactBoundarySubtitle": "已总结 {{count}} 条较早的消息",
     "compactBoundaryTokens": "{{before}} → {{after}} tokens",
     "manualCompactAction": "手动压缩",
     "manualCompactRunning": "压缩中",
@@ -2074,14 +1835,19 @@
     "manualCompactSectionTitle": "手动压缩",
     "miniCpmCompactTitle": "MiniCPM 静默自动压缩",
     "miniCpmCompactDescription": "自动异步处理旧上下文",
-    "miniCpmCompactToggleAria": "开启 MiniCPM 静默自动压缩"
+    "miniCpmCompactToggleAria": "开启 MiniCPM 静默自动压缩",
+    "categories": {
+      "unattributed": "未归因"
+    },
+    "compactBoundarySubtitle_one": "已总结 {{count}} 条较早的消息",
+    "compactBoundarySubtitle_other": "已总结 {{count}} 条较早的消息",
+    "manualCompactNativeProvider": "此处的手动压缩仅支持内置 Agent 会话。原生 CLI 的历史请在其提供方应用中压缩。"
   },
   "relativeDate": {
+    "justNow": "刚刚",
     "today": "今天",
     "yesterday": "昨天",
-    "tomorrow": "明天",
-    "last7Days": "最近7天",
-    "last30Days": "最近30天"
+    "tomorrow": "明天"
   },
   "cloneForm": {
     "titleCloneFromGitHub": "从 GitHub 克隆",
@@ -2112,54 +1878,32 @@
     "parentFolderPlaceholder": "选择 Parent folder"
   },
   "workspaceForm": {
-    "title": "多仓库工作区",
-    "editTitle": "编辑工作区",
-    "createWorkspace": "创建多仓库工作区",
-    "multiRepoWorkspace": "多仓库工作区",
-    "createWorkspaceDesc": "从多个 Repo 组合工作区",
+    "title": "创建多仓库工作目录",
+    "editTitle": "编辑工作目录",
+    "createWorkspace": "创建多仓库工作目录",
+    "multiRepoWorkspace": "多仓库工作目录",
+    "createWorkspaceDesc": "从多个 Repo 组合工作目录",
     "filterPlaceholder": "筛选 Repo...",
-    "selectRepos": "选择工作区中的 Repo",
+    "selectRepos": "选择工作目录中的 Repo",
     "noReposFound": "没有匹配的 Repo",
     "noRepos": "没有可用的 Repo",
     "current": "当前",
-    "workspaceName": "工作区名称",
-    "workspaceNamePlaceholder": "我的工作区",
-    "willInclude": "工作区将包含 {{count}} 个 Repo",
+    "workspaceName": "工作目录名称",
+    "workspaceNamePlaceholder": "我的工作目录",
+    "willInclude": "工作目录将包含 {{count}} 个 Repo",
     "statusSelectAtLeastTwo": "请至少选择 2 个 Repo",
-    "statusReadyToCreate": "可以创建工作区",
-    "defaultName": "工作区",
-    "defaultNameWithRepo": "{{repo}} 工作区",
-    "windowTitle": "工作区"
+    "statusReadyToCreate": "可以创建工作目录",
+    "defaultName": "工作目录",
+    "defaultNameWithRepo": "{{repo}} 工作目录",
+    "windowTitle": "工作目录",
+    "statusMaxRepos": "最多选择 5 个 Repo"
   },
   "database": {
-    "addConnection": "添加数据库连接",
-    "databaseType": "数据库类型",
-    "connectionName": "连接名称",
     "databaseFile": "数据库文件",
     "projectUrl": "项目 URL",
     "accessToken": "Access Token",
     "databaseUrl": "数据库 URL",
     "authToken": "Auth Token",
-    "testingConnection": "正在测试连接...",
-    "addingConnection": "正在添加连接...",
-    "connectionSuccessful": "连接成功！",
-    "testConnection": "测试连接",
-    "addConnectionAction": "添加",
-    "testing": "测试中...",
-    "adding": "添加中...",
-    "notValidSqlite": "不是有效的 SQLite 数据库文件",
-    "connectionFailed": "连接失败",
-    "failedToAddConnection": "添加连接失败",
-    "supabaseHint": "在 Supabase Dashboard → Project Settings → API 中找到",
-    "supabaseTokenHint": "Personal Access Token (PAT)，在以下位置生成",
-    "tursoTokenHint": "通过 Turso CLI 生成：turso db tokens create",
-    "neonHint": "从 Neon 控制台 → 连接详情获取连接字符串",
-    "sqliteDescription": "本地 .sqlite 文件",
-    "supabaseDescription": "云端 PostgreSQL",
-    "tursoDescription": "边缘 SQLite",
-    "neonDescription": "Serverless PostgreSQL",
-    "postgresDescription": "直连 PostgreSQL",
-    "mysqlDescription": "MySQL / MariaDB",
     "connectionString": "连接字符串",
     "host": "主机",
     "port": "端口",
@@ -2167,10 +1911,6 @@
     "user": "用户名",
     "password": "密码",
     "ssl": "要求 SSL",
-    "requireSsl": "要求 SSL 连接",
-    "newConnection": "新建 {{type}} 连接",
-    "changePending": "个更改",
-    "changesPending": "个更改",
     "spotlight": {
       "scanFolder": "扫描文件夹",
       "scanFolderDesc": "在文件夹中查找所有 .sqlite、.db 文件",
@@ -2190,25 +1930,13 @@
   "dragDrop": {
     "couldNotExtractPathFromItem": "无法从拖放项中提取文件路径"
   },
-  "contextList": {
-    "task": "任务",
-    "repo": "仓库",
-    "ref": "引用",
-    "key": "Key",
-    "image": "图片",
-    "group": "分组",
-    "unknown": "未知"
-  },
   "showMore": "展开更多",
   "showLess": "收起",
   "schedule": {
     "recurring": "周期性",
     "oneShot": "一次性",
     "noSchedule": "无排程",
-    "active": "启用",
-    "inactive": "停用",
     "scheduleType": "调度类型",
-    "dateAndTime": "日期和时间",
     "frequency": "频率",
     "time": "时间",
     "dayOfWeek": "星期几",
@@ -2217,7 +1945,6 @@
     "hideCustomCron": "隐藏自定义 cron",
     "cronHelp": "例如 0 9 * * 1 = 每周一 9:00",
     "lastRun": "上次运行",
-    "enableSchedule": "启用调度",
     "freq": {
       "daily": "每天",
       "weekday": "工作日 (周一至周五)",
@@ -2232,16 +1959,9 @@
       "thu": "周四",
       "fri": "周五",
       "sat": "周六"
-    },
-    "humanReadable": {
-      "daily": "每天 {{time}}",
-      "weekday": "工作日 {{time}}",
-      "weekly": "每{{day}} {{time}}",
-      "monthly": "每月{{day}}号 {{time}}"
     }
   },
   "selectionMenu": {
-    "title": "添加到对话",
     "addToChat": "添加到对话",
     "addThisFile": "添加此文件",
     "addLines": "添加第 {{from}} – {{to}} 行"
@@ -2259,27 +1979,8 @@
     "openedInBrowser": "已在浏览器中打开",
     "goToBrowser": "前往浏览器"
   },
-  "ideaArea": {
-    "menu": {
-      "shared": "社区分享"
-    },
-    "trending": {
-      "title": "热门想法"
-    },
-    "shared": {
-      "title": "社区分享",
-      "searchPlaceholder": "搜索想法..."
-    },
-    "myIdeas": {
-      "title": "我的想法",
-      "empty": "你还没有分享任何想法"
-    }
-  },
   "controlTower": {
     "sidebar": {
-      "terminal": "终端",
-      "browser": "浏览器",
-      "settings": "设置",
       "newTab": "新标签页",
       "newPrivateTab": "新隐私标签页",
       "newTerminal": "新建终端",
@@ -2305,13 +2006,13 @@
     "allRead": "已全部阅读",
     "loadMore": "加载更多",
     "filters": {
-      "all": "全部",
       "mentions": "提及",
       "assigned": "分配给我"
     },
     "sections": {
       "reviewRequested": "已请求审查",
-      "authoredByMe": "由我创建"
+      "authoredByMe": "由我创建",
+      "updates": "动态"
     },
     "status": {
       "read": "已读",
@@ -2325,7 +2026,9 @@
       "multipleBody": "打开团队收件箱查看新的分配和提及。"
     },
     "row": {
-      "ariaLabel": "{{title}}，{{status}}"
+      "ariaLabel": "{{title}}，{{status}}",
+      "issueSource": "{{repository}} issue",
+      "issueSourceFallback": "Issue"
     },
     "empty": {
       "title": "暂无事项",
@@ -2343,6 +2046,10 @@
       "noResults": {
         "title": "无匹配结果",
         "subtitle": "没有与「{{query}}」匹配的事项。"
+      },
+      "archived": {
+        "title": "暂无已归档事项",
+        "subtitle": "你归档的事项会显示在这里。"
       }
     },
     "loading": "正在加载团队收件箱…",
@@ -2363,7 +2070,6 @@
       "cloudDestination": "{{name}} · 团队收件箱",
       "recipientSelf": "{{name}}（我）",
       "chooseRecipient": "选择接收人",
-      "todoCount": "{{count}} 个待办",
       "workItemTitle": "工作项标题",
       "assignTo": "分配给",
       "note": "交接说明",
@@ -2402,7 +2108,9 @@
       "identityUnavailable": "无法验证你的团队身份，请先检查项目个人资料再处理交接。",
       "rowPending": "来自 {{name}} · 等待你处理",
       "rowAccepted": "已接收交接 · {{status}} · {{priority}}",
-      "rowReturned": "{{name}} 已退回 · {{status}} · {{priority}}"
+      "rowReturned": "{{name}} 已退回 · {{status}} · {{priority}}",
+      "todoCount_one": "{{count}} 项待办",
+      "todoCount_other": "{{count}} 项待办"
     },
     "errors": {
       "loadTitle": "无法加载团队收件箱",
@@ -2418,20 +2126,26 @@
       "pullRequestsPartialLoadHelp": "当前可用事项仍会保留显示；请刷新以重新加载缺少的 pull request",
       "workItemContext": "部分项目上下文暂不可用，工作项仍可继续查看和操作。",
       "workItemLoad": "无法加载此工作项，请重试。",
+      "githubIssueLoad": "无法加载该工作项的 GitHub issue，仍显示本地工作项信息。",
       "workItemUpdate": "无法保存刚才的工作项修改，请重试。",
-      "githubIssueLoad": "无法加载该工作项的 GitHub issue，仍显示本地工作项信息。"
+      "archive": "归档失败，请重试。",
+      "unarchive": "恢复到收件箱失败，请重试。",
+      "mutePreferences": "更新通知分类失败，请重试。"
     },
     "detail": {
       "assignedSubtitle": "分配给你的工作项",
       "standaloneProject": "独立工作项",
       "mentionSubtitle": "评论中提及了你",
       "mentionedYou": "提及了你",
-      "threadComments": "该话题中有 {{count}} 条评论"
+      "threadComments_one": "此话题中有 {{count}} 条评论",
+      "threadComments_other": "此话题中有 {{count}} 条评论"
     },
     "actions": {
       "markRead": "标记已读",
       "markUnread": "标记未读",
-      "openWorkItem": "打开工作项"
+      "openWorkItem": "打开工作项",
+      "archive": "归档",
+      "unarchive": "恢复到收件箱"
     },
     "workItemStatus": {
       "backlog": "待办池",
@@ -2448,21 +2162,22 @@
       "medium": "中",
       "high": "高",
       "urgent": "紧急"
+    },
+    "mute": {
+      "title": "静音动态分类"
+    },
+    "events": {
+      "mention": "评论中提及了你",
+      "discussion_updated": "讨论有更新",
+      "run_failed": "运行失败",
+      "status_changed": "状态已变更",
+      "assignee_changed": "负责人已变更",
+      "priority_changed": "优先级已变更",
+      "dates_changed": "日期已变更",
+      "child_completed": "子工作项已完成"
     }
   },
   "globalToolbar": {},
-  "projects": {
-    "title": "热力图",
-    "workspace": "工作区",
-    "duration": "时长",
-    "codingTime": "编码时间",
-    "noData": "暂无项目数据",
-    "topLanguage": "主要语言",
-    "editCount": "编辑次数"
-  },
-  "dashboard": {
-    "other": "其他"
-  },
   "imagePreview": {
     "dialogLabel": "图片预览",
     "copyImage": "复制图片",
@@ -2477,149 +2192,91 @@
     "cancel": "取消",
     "confirm": "退出"
   },
-  "update": {
-    "downloading": "正在下载更新",
-    "installing": "正在安装更新",
-    "progressPercent": "{{percent}}%",
-    "downloadedOfTotal": "{{downloaded}} / {{total}}",
-    "preparingDownload": "正在准备下载…",
-    "downloadingAndInstalling": "正在下载并安装更新 (v{{version}})…"
-  },
-  "gitDialogs": {
-    "common": {
-      "cancel": "取消",
-      "ok": "确定",
-      "currentBranch": "当前分支",
-      "gitSaid": "Git 提示：{{message}}"
-    },
-    "operations": {
-      "push": "推送",
-      "pull": "拉取",
-      "fetch": "获取远程更新",
-      "checkout": "切换分支",
-      "sync": "同步",
-      "merge": "合并",
-      "rebase": "变基",
-      "commit": "提交",
-      "clone": "克隆",
-      "other": "{{operation}}"
-    },
-    "checkoutBlocked": {
-      "worktreeTitle": "该分支已在另一个工作树中打开",
-      "mergeTitle": "请先完成合并",
-      "rebaseTitle": "请先完成变基",
-      "cherryPickTitle": "请先完成拣选提交",
-      "branchNotFoundTitle": "未找到分支",
-      "cannotSwitchTitle": "无法切换分支",
-      "worktreeMessage": "无法切换到“{{branchName}}”，因为 Git 显示该分支已在另一个工作树中检出。\n\n请从源代码管理中打开那个工作树，或为此工作区选择其他分支。",
-      "mergeMessage": "合并正在进行，无法切换到“{{branchName}}”。\n\n请先解决冲突，然后继续或中止合并，再切换分支。",
-      "rebaseMessage": "变基正在进行，无法切换到“{{branchName}}”。\n\n请先继续或中止变基，再切换分支。",
-      "cherryPickMessage": "拣选提交正在进行，无法切换到“{{branchName}}”。\n\n请先继续或中止拣选提交，再切换分支。",
-      "branchNotFoundMessage": "未找到分支“{{branchName}}”。请获取远程分支后重试。",
-      "cannotSwitchMessage": "无法切换到“{{branchName}}”。"
-    },
-    "checkoutConflict": {
-      "title": "切换分支冲突",
-      "message": "切换到“{{branchName}}”会覆盖本地更改。",
-      "stashAndCheckout": "暂存更改并切换",
-      "discardAndCheckout": "丢弃更改并切换"
-    },
-    "detachedHead": {
-      "title": "分离 HEAD 状态",
-      "message": "当前处于提交 {{shortHash}} 的分离 HEAD 状态。\n\n你目前不在任何分支上。如果未先创建新分支就切换到其他分支，在此所做的提交可能会丢失。\n\n⚠️ 分离 HEAD 状态下的提交可能会被 Git 垃圾回收。",
-      "createBranch": "创建分支",
-      "continueWithoutBranch": "不创建分支并继续"
-    },
-    "largePush": {
-      "title": "检测到大量推送",
-      "message_one": "即将向 {{remoteName}}/{{branchName}} 推送 {{count}} 个提交。\n\n此次推送数量较多，确定要继续吗？\n\n💡 建议将大型更改拆分为更小、更聚焦的提交。",
-      "message_other": "即将向 {{remoteName}}/{{branchName}} 推送 {{count}} 个提交。\n\n此次推送数量较多，确定要继续吗？\n\n💡 建议将大型更改拆分为更小、更聚焦的提交。",
-      "pushAllCommits": "推送所有提交"
-    },
-    "protectedBranch": {
-      "title": "受保护分支",
-      "message": "{{remoteName}} 上的分支“{{branchName}}”受保护，无法直接推送。\n\n对受保护分支的更改必须通过 Pull Request 提交。",
-      "createPullRequest": "创建 Pull Request"
-    },
-    "pullConflict": {
-      "title": "存在本地更改，无法拉取",
-      "message": "来自“{{branchName}}”的新更改会覆盖本地更改。{{fileInfo}}\n\n请选择处理方式：",
-      "affectedFiles_one": "（影响 {{count}} 个文件）",
-      "affectedFiles_other": "（影响 {{count}} 个文件）",
-      "stashAndPull": "暂存更改并拉取",
-      "discardAndPull": "丢弃更改并拉取"
-    },
-    "pushRejected": {
-      "title": "推送被拒绝",
-      "message": "无法推送到 {{remoteName}}/{{branchName}}。\n\n远程分支包含本地尚未拥有的提交。{{behindInfo}}\n\n⚠️ 强制推送会永久覆盖远程更改。",
-      "behindInfo_one": "（落后 {{count}} 个提交）",
-      "behindInfo_other": "（落后 {{count}} 个提交）",
-      "pullAndPush": "拉取后推送",
-      "forcePush": "强制推送"
-    },
-    "rebaseConflict": {
-      "mergeTitle": "合并冲突",
-      "rebaseTitle": "变基冲突",
-      "progress": "（第 {{currentStep}} / {{totalSteps}} 步）",
-      "conflictingFiles_one": "\n\n{{count}} 个文件存在冲突。",
-      "conflictingFiles_other": "\n\n{{count}} 个文件存在冲突。",
-      "mergeMessage": "合并“{{targetBranch}}”时发生冲突。{{progressInfo}}{{fileInfo}}\n\n⚠️ 中止操作将取消合并并恢复当前分支。",
-      "rebaseMessage": "变基到“{{targetBranch}}”时发生冲突。{{progressInfo}}{{fileInfo}}\n\n⚠️ 中止操作会将当前分支恢复到变基前的状态。",
-      "resolveConflicts": "解决冲突",
-      "abortMerge": "中止合并",
-      "abortRebase": "中止变基"
-    },
-    "remoteBranchDeleted": {
-      "title": "远程分支已删除",
-      "message": "远程跟踪分支“{{remoteName}}/{{branchName}}”已被删除，但本地分支仍然存在。\n\n⚠️ 删除本地分支会丢弃所有尚未推送的提交。",
-      "switchTo": "切换到 {{branchName}}",
-      "deleteLocalBranch": "删除本地分支",
-      "keepLocalBranch": "保留本地分支"
-    },
-    "gitError": {
-      "titles": {
-        "none": "Git：操作已完成",
-        "nonFastForward": "Git：推送被拒绝",
-        "protectedBranch": "Git：受保护分支",
-        "authenticationFailed": "Git：身份验证失败",
-        "remoteBranchDeleted": "Git：远程分支已删除",
-        "uncommittedChanges": "Git：存在未提交的更改",
-        "networkError": "Git：网络错误",
-        "mergeConflicts": "Git：合并冲突",
-        "permissionDenied": "Git：权限不足",
-        "unknown": "Git：操作失败"
-      },
-      "messages": {
-        "none": "Git 操作已成功完成。",
-        "nonFastForward": "远程分支包含更新的提交，因此推送被拒绝。",
-        "protectedBranch": "目标分支受保护，无法通过此操作更新。",
-        "authenticationFailed": "无法通过远程仓库的身份验证。请检查凭据后重试。",
-        "remoteBranchDeleted": "远程分支似乎已被删除或不再可用。",
-        "uncommittedChanges": "本地更改将被覆盖。请先提交或暂存这些更改再重试。",
-        "networkError": "无法连接到远程仓库。请检查网络连接。",
-        "mergeConflicts": "此操作产生了需要解决的合并冲突。",
-        "permissionDenied": "此仓库操作被拒绝。请检查你的仓库访问权限。",
-        "unknown": "Git 操作意外失败。请查看日志了解详情。"
-      },
-      "operationFailed": "{{operation}}操作失败",
-      "dialogMessage": "{{operation}}失败：{{baseMessage}}\n\n{{detailMessage}}",
-      "stashHint": "\n\n提示：“暂存更改并继续”会暂存本地更改（包括未跟踪文件），重试该操作，然后询问是否恢复这些更改。",
-      "stashAndContinue": "暂存更改并继续",
-      "openGitLog": "打开 Git 日志",
-      "showCommandOutput": "显示命令输出"
-    },
-    "gitAction": {
-      "title": "Git",
-      "transportError": "无法连接到本地 Git 服务。请等待应用启动完成后重试；如果问题持续存在，请重启 ORGII。"
-    }
-  },
-  "destructiveDialog": {
-    "discard": "丢弃",
-    "cancel": "取消"
-  },
   "clientOrigin": {
     "officialApp": "应用",
     "cli": "命令行",
     "thirdParty": "第三方"
+  },
+  "browserCookieImport": {
+    "safari": {
+      "needsFullDiskAccess": "需要“完全磁盘访问”权限",
+      "explain": "Safari 的 Cookie 保存在 macOS 保护的文件夹中。请在系统设置的“完全磁盘访问权限”中允许 ORG2，然后重新检查。",
+      "openSettings": "打开系统设置",
+      "checkAgain": "重新检查"
+    },
+    "title": "从浏览器导入 Cookie",
+    "action": "从浏览器导入 Cookie",
+    "scanning": "正在查找已安装的浏览器…",
+    "reading": "正在从 {{browser}} 读取 Cookie…",
+    "keychainHint": "系统可能会请求权限以读取该浏览器保存的数据",
+    "selectAll": "全选",
+    "selectedSummary": "{{sites}} 个网站 · {{cookies}} 个 Cookie",
+    "cookieCount_one": "{{count}} 个 Cookie",
+    "cookieCount_other": "{{count}} 个 Cookie",
+    "noSites": "该配置文件中未找到 Cookie",
+    "noMatchingSites": "没有匹配的网站",
+    "importAction_one": "导入 {{count}} 个网站",
+    "importAction_other": "导入 {{count}} 个网站",
+    "imported_one": "已导入 {{count}} 个 Cookie",
+    "imported_other": "已导入 {{count}} 个 Cookie",
+    "doneTitle_one": "已导入 {{count}} 个 Cookie",
+    "doneTitle_other": "已导入 {{count}} 个 Cookie",
+    "doneSkipped_one": "已跳过 {{count}} 个 Cookie",
+    "doneSkipped_other": "已跳过 {{count}} 个 Cookie",
+    "empty": {
+      "title": "未找到受支持的浏览器",
+      "body": "请安装带有已保存登录信息的 Chrome、Edge、Brave 或 Firefox。"
+    },
+    "category": {
+      "banking": "银行",
+      "email": "邮箱",
+      "sso": "登录"
+    },
+    "errors": {
+      "openSettingsFailed": "无法打开系统设置",
+      "keychainDenied": "钥匙串访问被拒绝。请重新选择该配置文件并点击“允许”。",
+      "listFailed": "找不到可导入的浏览器",
+      "previewFailed": "无法从该浏览器读取 Cookie",
+      "importFailed": "无法导入所选 Cookie"
+    }
+  },
+  "documentOpen": {
+    "openInDefault": "在 {{name}} 中打开",
+    "openDefaultApp": "在默认应用中打开",
+    "openExternally": "在外部应用中打开",
+    "label": "打开方式…",
+    "defaultApp": "默认应用",
+    "appDefault": "{{name}}（默认）",
+    "loading": "正在加载应用…",
+    "loadFailed": "无法加载应用，请重新展开重试",
+    "openFailed": "无法打开文档",
+    "saveFirst": "请先保存或放弃修改，再使用其他应用打开"
+  },
+  "sqlEditor": {
+    "placeholder": "输入 SQL 查询...",
+    "format": "格式化",
+    "runQueryToSeeResults": "运行查询以查看结果",
+    "executingQuery": "正在执行查询...",
+    "queryFailed": "查询失败",
+    "queryCompleted": "查询完成",
+    "noResults": "查询未返回结果",
+    "rowCount_one": "{{count}} 行",
+    "rowCount_other": "{{count}} 行",
+    "press": "按",
+    "toRun": "运行",
+    "nullValue": "NULL",
+    "booleanTrue": "true",
+    "booleanFalse": "false"
+  },
+  "chatImage": {
+    "maxReached": "最多允许 {{max}} 张图片",
+    "remainingWarning": "只能再添加 {{remaining}} 张图片（最多 {{max}} 张）",
+    "processFailed": "处理图片失败",
+    "loadFailed": "加载图片失败：{{fileName}}"
+  },
+  "navigation": {
+    "goToSection": "前往 {{label}}，第 {{current}} 节，共 {{total}} 节",
+    "section": "第 {{current}} 节",
+    "sectionPosition": "第 {{current}} 节，共 {{total}} 节"
   }
 }

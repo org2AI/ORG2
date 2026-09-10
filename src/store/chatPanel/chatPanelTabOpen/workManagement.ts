@@ -11,7 +11,7 @@ import {
   type ChatPanelSelectedWorkspace,
   type WorkspaceOverviewTab,
   chatPanelWorkspaceOverviewTabAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 import {
   WORK_MANAGEMENT_SECTION,
   type WorkManagementSection,

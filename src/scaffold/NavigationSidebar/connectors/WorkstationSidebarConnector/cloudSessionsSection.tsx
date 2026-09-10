@@ -34,7 +34,6 @@ import { useTranslation } from "react-i18next";
 import { deleteSession as deleteLocalSession } from "@src/api/tauri/agent";
 import { deleteOrgtrackCollaborationSession } from "@src/api/tauri/lineage";
 import Message from "@src/components/Message";
-import { collectConversationRunnerSessionIds } from "@src/features/Org2Cloud/SessionConversation/conversationTurnRunner";
 import {
   hiddenRemoteSessionKey,
   readHiddenRemoteSessionIds,
@@ -76,10 +75,10 @@ import {
   useCloudSessionDownloadProgressEntry,
   useCloudSessionPendingPlayEntry,
 } from "@src/features/Org2Cloud/useCloudSessionDownloadSurface";
-import { useRefreshSpin } from "@src/hooks/ui";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
-import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpenAtoms";
+import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpen/session";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import { loadSidebarSessionById, removeSession } from "@src/store/session";
 import { copyText } from "@src/util/data/clipboard";
@@ -250,10 +249,6 @@ export function useCloudSessionsSection({
       rows,
       selfUserId
     )) {
-      excluded.add(sessionId);
-    }
-    // One-shot conversation runners are execution plumbing, never sessions.
-    for (const sessionId of collectConversationRunnerSessionIds()) {
       excluded.add(sessionId);
     }
     return excluded;
@@ -615,10 +610,10 @@ export function useCloudSessionsSection({
         onCopyUrl: () => {
           void copyText(buildCloudSessionReference(row))
             .then(() => {
-              Message.success(tCommon("actions.copied", "Copied"));
+              Message.success(tCommon("status.copied"));
             })
             .catch(() => {
-              Message.error(tCommon("actions.copyFailed", "Copy failed"));
+              Message.error(tCommon("status.copyFailed"));
             });
         },
         onTogglePin: () => toggleRemoteSessionPin(row.orgId, row.id),

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 
+import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
+
 /**
  * Registers a Cmd+S / Ctrl+S keyboard shortcut that calls `onSave`.
  * Automatically prevents the browser's default save-page dialog.
@@ -22,8 +24,7 @@ export function useKeyboardSave(
     if (!enabled) return;
 
     const handler = (event: KeyboardEvent) => {
-      const mod = event.metaKey || event.ctrlKey;
-      if (!mod || event.key.toLowerCase() !== "s") return;
+      if (!matchesShortcut(event, "save_file")) return;
 
       event.preventDefault();
       onSaveRef.current?.();

@@ -17,6 +17,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
+
 import { QuestionCardLoadingShell } from "./QuestionCardLoadingShell";
 import { QuestionCardShell } from "./QuestionCardShell";
 import type { AskQuestionCardProps } from "./types";
@@ -147,8 +149,12 @@ const AskQuestionCard: React.FC<AskQuestionCardProps> = ({
 
   useEffect(() => {
     if (!autoResolveAt || isSubmitting) return;
-    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(timer);
+    const timer = startVisibilityAwareInterval(
+      document,
+      () => setNowMs(Date.now()),
+      1000
+    );
+    return () => timer();
   }, [autoResolveAt, isSubmitting]);
 
   const autoSkipRemaining =

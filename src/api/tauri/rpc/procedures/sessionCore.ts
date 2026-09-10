@@ -129,7 +129,9 @@ const cache = {
 } as const;
 
 const eventStore = {
-  set: defineProcedure("es_set").input(schemas.sessionCore.EventsInput).build(),
+  set: defineProcedure("es_set")
+    .input(schemas.sessionCore.SetEventsInput)
+    .build(),
   append: defineProcedure("es_append")
     .input(schemas.sessionCore.EventsInput)
     .build(),
@@ -172,6 +174,10 @@ const eventStore = {
   bufferEvents: defineProcedure("es_buffer_events")
     .input(schemas.sessionCore.BufferEventsInput)
     .build(),
+  getChatActivity: defineProcedure("es_get_chat_activity")
+    .input(z.object({ sessionIds: z.array(z.string()).max(64) }))
+    .output(z.record(z.string(), z.boolean()))
+    .build(),
   getSnapshot: defineProcedure("es_get_snapshot")
     .input(schemas.sessionCore.NullableSessionIdInput)
     .output(schemas.sessionCore.DerivedSnapshotSchema)
@@ -185,7 +191,7 @@ const eventStore = {
     .output(schemas.sessionCore.ExtractedEventDataPairsSchema)
     .build(),
   exportMarkdown: defineProcedure("es_export_markdown")
-    .input(schemas.sessionCore.NullableSessionIdInput)
+    .input(schemas.sessionCore.ExportMarkdownInput)
     .output(z.string())
     .build(),
   loadFromCache: defineProcedure("es_load_from_cache")
@@ -257,8 +263,20 @@ const shellReplay = {
     .build(),
 } as const;
 
+const turnIntents = {
+  status: defineProcedure("session_turn_intent_status")
+    .input(schemas.sessionCore.SessionTurnIntentInput)
+    .output(schemas.sessionCore.SessionTurnIntentStatusSchema.nullable())
+    .build(),
+  waitForTerminal: defineProcedure("session_wait_for_turn_terminal")
+    .input(schemas.sessionCore.SessionTurnIntentWaitInput)
+    .output(schemas.sessionCore.SessionTurnIntentStatusSchema)
+    .build(),
+} as const;
+
 export const sessionCore = {
   cache,
   eventStore,
   shellReplay,
+  turnIntents,
 } as const;

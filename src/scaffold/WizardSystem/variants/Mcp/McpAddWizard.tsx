@@ -12,8 +12,8 @@ import { useTranslation } from "react-i18next";
 
 import type { McpConfigScope } from "@src/api/tauri/rpc/schemas/mcp";
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import Switch from "@src/components/Switch";
 import Textarea from "@src/components/Textarea";
 import {
@@ -52,7 +52,11 @@ interface McpAddWizardProps {
     config: McpServerConfig,
     scope: McpConfigScope
   ) => Promise<void>;
-  onTest: (name: string, config: McpServerConfig) => Promise<McpTestResult>;
+  onTest: (
+    name: string,
+    config: McpServerConfig,
+    scope: McpConfigScope
+  ) => Promise<McpTestResult>;
   onCancel: () => void;
   editName?: string;
   editConfig?: McpServerConfig;
@@ -361,7 +365,7 @@ const McpAddWizard: React.FC<McpAddWizardProps> = ({
           </SectionContainer>
 
           {w.testResult && !w.testing && (
-            <InlineAlert
+            <PageNotice
               type={w.testResult.success ? "success" : "danger"}
               title={
                 w.testResult.success
@@ -388,13 +392,13 @@ const McpAddWizard: React.FC<McpAddWizardProps> = ({
                   {w.testResult.error ?? t("mcp.connectionFailed")}
                 </span>
               )}
-            </InlineAlert>
+            </PageNotice>
           )}
 
           {w.error && !w.testing && (
-            <InlineAlert type="danger" title={t("common:status.error")}>
+            <PageNotice type="danger" title={t("common:status.error")}>
               {w.error}
-            </InlineAlert>
+            </PageNotice>
           )}
         </>
       </WizardStepLayout>

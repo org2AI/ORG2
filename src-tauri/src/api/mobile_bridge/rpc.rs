@@ -103,7 +103,7 @@ async fn dispatch_method(
     params: &Value,
 ) -> Result<Value, RpcError> {
     match method {
-        "initialize" => handle_initialize(ctx, params),
+        "initialize" => handle_initialize(ctx, params).await,
         "session/list" => {
             require_initialized(ctx)?;
             session::session_list(params).await
@@ -197,7 +197,7 @@ fn require_full_tier(ctx: &RpcContext) -> Result<(), RpcError> {
     }
 }
 
-fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value, RpcError> {
+async fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value, RpcError> {
     if !ctx.settings.enabled {
         return Err(RpcError::feature_disabled());
     }
@@ -210,6 +210,9 @@ fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value, RpcE
         return Err(RpcError::invalid_params("unsupported protocolVersion"));
     }
 
+    let desktop_identity = tokio::task::spawn_blocking(super::desktop_identity::collect)
+        .await
+        .unwrap_or_default();
     ctx.initialized = true;
     let tier = match ctx.tier {
         MobileTier::Full => "full",
@@ -219,6 +222,8 @@ fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value, RpcE
     Ok(json!({
         "protocolVersion": 1,
         "desktopId": format!("desktop-{}", std::process::id()),
+        "desktopName": desktop_identity.name,
+        "desktopIdentity": desktop_identity,
         "orgiiVersion": env!("CARGO_PKG_VERSION"),
         "tier": tier,
         "capabilities": {
@@ -227,6 +232,7 @@ fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value, RpcE
             "roundHistory": true,
             "openSessionFile": true,
             "modelSelection": true,
+            "sessionSearch": true,
         }
     }))
 }
@@ -276,6 +282,15 @@ mod tests {
         });
         let response = dispatch(&mut ctx, &request).await.expect("response");
         assert!(response.get("result").is_some());
+        let expected_identity = super::super::desktop_identity::collect();
+        assert_eq!(
+            response["result"]["desktopIdentity"],
+            serde_json::to_value(&expected_identity).unwrap()
+        );
+        assert_eq!(
+            response["result"]["desktopName"],
+            serde_json::to_value(&expected_identity.name).unwrap()
+        );
         assert_eq!(
             response
                 .pointer("/result/capabilities/roundHistory")
@@ -288,7 +303,40 @@ mod tests {
                 .and_then(Value::as_bool),
             Some(true)
         );
+        assert_eq!(response["result"]["capabilities"]["sessionSearch"], true);
         assert!(ctx.initialized);
+    }
+
+    #[tokio::test]
+    async fn session_search_validates_query_for_read_only_clients() {
+        let mut ctx = test_context(true);
+        ctx.initialized = true;
+        ctx.tier = MobileTier::ReadOnly;
+        for query in [json!(null), json!(123), json!(" "), json!("x".repeat(201))] {
+            let response = dispatch(
+                &mut ctx,
+                &json!({
+                    "jsonrpc": "2.0", "id": 30, "method": "session/list",
+                    "params": {"query": query}
+                }),
+            )
+            .await
+            .unwrap();
+            // Read-only search reaches input validation, not write-tier denial.
+            assert_eq!(response["error"]["code"], -32602);
+        }
+        for offset in [json!(-1), json!(1.5), json!("50"), json!(u64::MAX)] {
+            let response = dispatch(
+                &mut ctx,
+                &json!({
+                    "jsonrpc": "2.0", "id": 31, "method": "session/list",
+                    "params": {"query": "history", "offset": offset}
+                }),
+            )
+            .await
+            .unwrap();
+            assert_eq!(response["error"]["code"], -32602);
+        }
     }
 
     #[tokio::test]
@@ -323,6 +371,24 @@ mod tests {
             Some("read_only")
         );
         assert_eq!(ctx.tier, MobileTier::ReadOnly);
+        assert!(response["result"]["desktopIdentity"].is_object());
+    }
+
+    #[tokio::test]
+    async fn unsupported_initialize_does_not_disclose_desktop_metadata() {
+        let mut ctx = test_context(true);
+        let response = dispatch(
+            &mut ctx,
+            &json!({
+                "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                "params": { "protocolVersion": 2 }
+            }),
+        )
+        .await
+        .expect("response");
+        assert!(response.get("result").is_none());
+        assert_eq!(response["error"]["message"], "unsupported protocolVersion");
+        assert!(!ctx.initialized);
     }
 
     #[tokio::test]

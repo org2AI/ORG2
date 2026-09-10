@@ -84,9 +84,10 @@ const ConfigGeneralSection: React.FC<ConfigGeneralSectionProps> = ({
           label={t("osAgent.workspace")}
           description={t("osAgent.workspaceDesc")}
         >
-          <div className={SECTION_ACTION_GAP_CLASSES}>
+          <div className={`group ${SECTION_ACTION_GAP_CLASSES}`}>
             <span className={SECTION_PATH_TEXT_CLASSES}>{workspace}</span>
             <Button
+              className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
               icon={
                 <HugeiconsIcon
                   icon={FolderOpenIcon}

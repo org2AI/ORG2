@@ -6,18 +6,26 @@
     "redirecting": "Opening secure sign-in",
     "exchanging": "Finishing sign-in",
     "wait": "This should only take a moment",
-    "signIn": "Continue with GitHub",
+    "signIn": "Sign in to ORG2 Cloud",
+    "cancel": "Cancel and return to sign-in",
+    "browserWait": "Complete sign-in in your browser, or cancel to try again",
     "errorTitle": "Sign-in could not be completed",
     "retry": "Try again"
   },
   "welcome": {
     "title": "Mobile Remote",
     "subtitle": "Control Agents on your desktop",
-    "scanQr": "Scan or paste pairing code",
-    "manualUrl": "Enter WebSocket URL",
-    "tryDemo": "Try demo"
+    "scanQr": "Scan or paste pairing code"
   },
   "pairing": {
+    "scanCamera": "Scan QR code",
+    "cameraPreview": "Camera preview",
+    "scanning": "Point the camera at the pairing QR code on your desktop",
+    "cancelScan": "Cancel scan",
+    "cameraDenied": "Camera access was denied. Allow camera access for ORG2 Remote in Settings, or paste the pairing code",
+    "cameraUnavailable": "Camera unavailable. In the simulator, paste the pairing code instead",
+    "scanTimeout": "Scan timed out and the camera was closed. Scan again or paste the pairing code",
+    "scanFailed": "Scan failed. Try again or paste the pairing code",
     "scanTitle": "Pair with desktop",
     "scanHint": "Scan the QR code in desktop Settings or paste its payload. The public relay works over 4G and 5G",
     "urlPlaceholder": "Paste the desktop pairing payload, or a ws:// / wss:// URL",
@@ -56,6 +64,14 @@
     "title": "Settings",
     "account": "Account",
     "signedInAs": "Signed in as",
+    "signOutConfirmTitle": "Sign out?",
+    "signOutConfirmBody": "You will need to sign in again to access your remote computers. Sessions running on your computer will not be stopped",
+    "cancel": "Cancel",
+    "manageAccount": "Manage Cloud account",
+    "deleteAccount": "Delete account on Cloud…",
+    "privacyPolicy": "Privacy policy",
+    "accountWebHint": "Opens the shared Cloud account page, which may require sign-in — check that the email matches the account above before confirming deletion",
+    "openFailed": "Could not open the page — please try again",
     "signOut": "Sign out",
     "connection": "Connection",
     "desktop": "Desktop",
@@ -76,6 +92,7 @@
     "notAvailable": "—"
   },
   "stopConfirm": {
+    "failed": "Could not stop the turn. It may still be running. Try again or check the desktop.",
     "title": "Stop current Agent turn?",
     "body": "Sends a cancel command to the desktop. Whether running shell processes terminate depends on Agent policy.",
     "cancel": "Cancel",
@@ -100,7 +117,6 @@
     }
   },
   "modelPicker": {
-    "title": "Choose model",
     "selectModel": "Select model",
     "loading": "Loading models…",
     "empty": "No models available on desktop"
@@ -150,5 +166,15 @@
       "truncated": "Long content is summarized on mobile"
     }
   },
-  "connectionFailed": "Connection failed"
+  "connectionFailed": "Connection failed",
+  "sessions": {
+    "limit": "Showing up to 1,000 recent sessions",
+    "loadMore": "Load more",
+    "retry": "Retry loading"
+  },
+  "rounds": {
+    "incomplete": "Earlier rounds are not loaded",
+    "truncated": "Transcript is truncated",
+    "navigationLabel": "Round navigation"
+  }
 }

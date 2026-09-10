@@ -150,7 +150,7 @@ authors = ["you"]
 license = "AGPL-3.0-or-later"
 repository = ""
 edition = "2021"
-rust-version = "1.85.0"
+rust-version = "1.89.0"
 default-run = "org2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -201,11 +201,13 @@ tauri-plugin-notification = "2"
 tauri-plugin-webdriver-automation = { version = "0.1", optional = true }
 portable-pty = "0.9"
 tokio = { workspace = true }
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "v5"] }
 flate2 = "1"
 tar = "0.4"
 plist = "1"
 tempfile = "3.13"
+# Authenticated mobile bridge host/model labels; reuse the workspace-pinned native queries.
+sysinfo = { workspace = true }
 
 # Shared cross-crate type definitions (Phase 1 of workspace migration).
 # See `docs/rust-backend/modularization-plan--0504.md`.
@@ -345,8 +347,8 @@ shared_state = { path = "crates/shared-state" }
 # preference changes into `agent_core` without `settings` knowing about it.
 settings = { path = "crates/settings" }
 
-# Performance-critical leaf utilities: image luminance (rayon-parallel),
-# binary detection (memchr + infer magic-byte sniffing), fast JSON parsing
+# Performance-critical leaf utilities: binary detection (memchr + infer
+# magic-byte sniffing), fast JSON parsing
 # (simd-json), hashing (sha2 + blake3), diff/patch (similar), process
 # metrics (sysinfo). Owns ~36 `#[tauri::command]`s — `app` re-registers them
 # in `commands/handler_list.inc` via bare `perf_utils::…` paths. Pure leaf —
@@ -486,8 +488,8 @@ time = { version = "0.3", features = ["formatting"] }
 # ===========================================
 # Performance Optimizations
 # ===========================================
-# Hot-path leaf utilities (image luminance, simd-json, sha2/blake3 batch
-# hashing, similar diff/patch, sysinfo memory breakdown, memchr binary
+# Hot-path leaf utilities (simd-json, sha2/blake3 batch hashing, similar
+# diff/patch, sysinfo memory breakdown, memchr binary
 # sniffing, infer magic-byte detection) moved to the `perf_utils` workspace
 # crate. `app/src` only needs SHA-256 for OAuth PKCE flows.
 sha2 = "0.10"            # SHA-256 for OAuth PKCE code challenges
@@ -517,7 +519,7 @@ libc = "0.2"
 [features]
 default = []
 # E2E WebDriver automation plugin (debug/test only). Enable with --features webdriver.
-webdriver = ["dep:tauri-plugin-webdriver-automation"]
+webdriver = ["dep:tauri-plugin-webdriver-automation", "agent_core/webdriver"]
 [target."cfg(any(target_os = \"macos\", windows, target_os = \"linux\"))".dependencies]
 tauri-plugin-single-instance = { version = "2.0.0", features = ["deep-link"] }
 
@@ -525,6 +527,7 @@ tauri-plugin-single-instance = { version = "2.0.0", features = ["deep-link"] }
 windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Graphics_Dwm",
+  "Win32_Storage_FileSystem",
 ] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -541,6 +544,9 @@ foreign-types = "0.5"   # ForeignType trait used by core-graphics types
 tauri-plugin-updater = "=2.9.0"
 
 [dev-dependencies]
+
+# Parse ephemeral Codex profile layers in runner security/compatibility tests.
+toml = "0.8"
 
 # `test-util` only for the test build: it is what lets a test drive Tokio's
 # clock (`#[tokio::test(start_paused = true)]`) rather than really sleeping out
@@ -612,7 +618,7 @@ strip = true
 # wall-clock on every fresh `target/`, and ballooned `target/` disk usage.
 # We now leave deps at the default `opt-level = 0` and only opt in the
 # specific crates whose inner loops the user actually feels (tree-sitter
-# parses, image luminance, hashing, diffing, compression, regex, ripgrep
+# parses, image processing, hashing, diffing, compression, regex, ripgrep
 # walkers). See per-package overrides below.
 [profile.dev]
 incremental = true

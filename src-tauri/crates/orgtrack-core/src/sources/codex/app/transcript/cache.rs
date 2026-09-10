@@ -120,17 +120,6 @@ impl CodexTurnCatalogCache {
         Some(catalog)
     }
 
-    pub(super) fn latest_for_path(
-        &self,
-        path: &Path,
-    ) -> Option<(CodexTranscriptSignature, Vec<CodexTurnCatalogEntry>)> {
-        self.entries
-            .iter()
-            .rev()
-            .find(|entry| entry.path == path)
-            .map(|entry| (entry.signature, entry.entries.clone()))
-    }
-
     pub(super) fn insert(
         &mut self,
         path: PathBuf,

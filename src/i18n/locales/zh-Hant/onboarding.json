@@ -1,7 +1,5 @@
 {
   "tutorials": {
-    "modalTitle": "頁面教學",
-    "start": "開始",
     "chrome": {
       "stepProgress": "第 {{current}} / {{total}} 步",
       "close": "關閉",
@@ -16,7 +14,7 @@
     },
     "generalLayout": {
       "title": "整體佈局教學",
-      "description": "了解會話側欄、聊天面板、工作站模式切換、Workstation、Dock 與應用程式區域。",
+      "description": "了解聊天面板、執行階段、工作站模式切換器與 Dock。",
       "duration": "1 分鐘",
       "steps": {
         "chat-panel": {
@@ -25,7 +23,7 @@
         },
         "runtime": {
           "title": "執行階段",
-          "body": "在這裡查看個人用量與執行狀態；切換到組織後，還可以查看成員同步狀態，並進入成員詳情查看 Codex、Claude 和 Cursor 用量。"
+          "body": "在這裡查看個人用量與執行狀態；切換到工作空間後，還可以查看成員同步狀態，並進入成員詳情查看 Codex、Claude 和 Cursor 用量。"
         },
         "station-mode-pill": {
           "title": "切換工作站模式",
@@ -34,41 +32,17 @@
         "dock": {
           "title": "Agent 工作站 Dock",
           "body": "Dock 用於切換工作站內的應用。教學期間會暫時關閉自動隱藏，讓這些控制項保持可見。"
-        },
-        "all-tabs": {
-          "title": "全部標籤頁",
-          "body": "第一個 Dock 圖示會集中顯示所有已開啟的標籤頁，不受其所屬工作站應用程式限制。"
-        },
-        "code-editor": {
-          "title": "程式碼編輯器",
-          "body": "在程式碼編輯器中處理檔案、Diff、終端機、原始碼管理，以及在會話中產生的程式碼變更。"
-        },
-        "browser": {
-          "title": "瀏覽器",
-          "body": "在聊天的同時使用瀏覽器查看網頁與預覽、測試應用，並進行基於瀏覽器的調查。"
-        },
-        "projects": {
-          "title": "專案",
-          "body": "使用專案追蹤與目前 Workspace 相關的工作項、計畫和專案狀態。"
         }
       }
     },
     "codeEditor": {
       "title": "程式碼編輯器教學",
-      "description": "了解標籤頁、倉庫與分支切換、原始碼管理、Git 歷史和專案看板。",
+      "description": "了解分頁、編輯器工作區、原始碼管理與 Git 歷史。",
       "duration": "2 分鐘",
       "steps": {
         "tabs": {
           "title": "程式碼編輯器標籤頁",
           "body": "標籤頁集中承載你在倉庫工作時開啟的檔案、Diff、終端機、原始碼管理檢視和看板。"
-        },
-        "repo-selector": {
-          "title": "建立或切換倉庫",
-          "body": "使用倉庫選擇器切換目前倉庫，或新增另一個倉庫或 Workspace。"
-        },
-        "branch-selector": {
-          "title": "切換分支",
-          "body": "分支選擇器會顯示目前 Git 分支，並開啟該倉庫的分支切換或建立流程。"
         },
         "editor-surface": {
           "title": "編輯器 Workspace",
@@ -85,12 +59,15 @@
         "git-history": {
           "title": "Git 歷史",
           "body": "Git 歷史會把原始碼管理切換到提交歷史模式，供你檢查過去的提交及相關變更。"
-        },
-        "dashboard": {
-          "title": "程式碼編輯器看板",
-          "body": "看板是程式碼編輯器面向 Workspace 的首頁標籤頁，可用於新增倉庫、查看倉庫詳情並進入專案工作。"
         }
       }
     }
+  },
+  "discovery": {
+    "title": "新手入門與新功能",
+    "getStarted": "開始使用",
+    "newFeatures": "新功能",
+    "branchesTitle": "儲存庫分支",
+    "branchesDescription": "直接在 Spotlight 中切換儲存庫分支。"
   }
 }

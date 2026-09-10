@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import ModelIcon, { type IconProvider } from "@src/components/ModelIcon";
 import PersonAvatar from "@src/components/PersonAvatar";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import type {
   MemberInstalledAgent,
   MemberRuntimeListEntry,
@@ -126,7 +127,7 @@ const TeamMemberCard = memo(function TeamMemberCard({
       onClick={() => onOpen(entry.userId)}
       data-testid={`team-member-card-${entry.userId}`}
       data-stale={stale ? "true" : "false"}
-      className="flex w-full flex-col gap-3 rounded-xl border border-border-1 bg-primary-container p-4 text-left transition-colors hover:border-border-2"
+      className={`flex w-full flex-col gap-3 ${DETAIL_PANEL_TOKENS.primaryContainer} text-left transition-colors hover:border-border-2`}
     >
       <div className="flex items-center gap-3">
         <PersonAvatar

@@ -1,34 +1,9 @@
 {
-  "connect": "接続",
   "name": "名前",
   "genderOptions": {},
   "role": "役職",
   "location": "所在地",
-  "timezone": "タイムゾーン",
   "commits": "コミット",
   "activity": "アクティビティ",
-  "specialty": {
-    "frontend": "Frontend",
-    "backend": "Backend",
-    "fullstack": "Full Stack",
-    "mobile": "Mobile",
-    "devops": "DevOps",
-    "data": "Data",
-    "systems": "Systems"
-  },
-  "bio": "自己紹介",
-  "social": {},
-  "edu": {
-    "edit": "学歴を編集",
-    "present": "現在"
-  },
-  "exp": {
-    "edit": "職歴を編集"
-  },
-  "sections": {
-    "about": "概要",
-    "developerActivity": "開発活動",
-    "projectsAndAchievements": "Project と実績",
-    "professionalBackground": "職務経歴"
-  }
+  "social": {}
 }

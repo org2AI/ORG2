@@ -17,10 +17,10 @@ import "@src/util/core/storage/cleanup";
 import { cleanUpBrowserStorage } from "@src/util/core/storage/quotaRecovery";
 import "@src/util/platform/browserModeShim";
 import "@src/util/platform/tauri";
+import { installTransientScrollbars } from "@src/util/ui/transientScrollbars";
 
 import "./index.scss";
 import { clearAllOpenedRepos } from "./store/repo";
-import { initBackgroundImage } from "./util/core/init/backgroundInit";
 import { reloadForChunkError as reloadChunk } from "./util/core/init/chunkReload";
 import { initTheme } from "./util/core/init/themeInit";
 import { initializeTauriAPIs, invokeTauri } from "./util/platform/tauri/init";
@@ -30,6 +30,8 @@ initializeLogging();
 installGlobalTauriSelectAllShortcut();
 const disposeLeadingBlankLineGuard = installLeadingBlankLineGuard();
 module.hot?.dispose(disposeLeadingBlankLineGuard);
+const disposeTransientScrollbars = installTransientScrollbars();
+module.hot?.dispose(disposeTransientScrollbars);
 
 const log = createLogger("Init");
 
@@ -247,10 +249,9 @@ async function initializeApp() {
     clearAllOpenedRepos();
   }
 
-  // All three init operations are independent - run them ALL in parallel:
+  // Startup operations are independent - run them in parallel:
   // - Theme CSS: loads via <link> element (network/cache)
   // - Tauri APIs: imports JS modules (JS parsing)
-  // - Background: loads from IndexedDB + decodes (disk + GPU)
   //
   // Wrap in timeout to prevent hanging forever if any init hangs
   // i18n is NOT degradable: App calls useTranslation() at render, which crashes
@@ -263,7 +264,6 @@ async function initializeApp() {
   const initPromise = Promise.all([
     initTheme(),
     initializeTauriAPIs().then(() => applyWindowsNativeChromeAttribute()),
-    initBackgroundImage(),
     codeEditorWebSocketPromise,
     appModulePromise,
   ]);
@@ -382,24 +382,6 @@ async function initializeApp() {
     // Console / log level gating is already wired synchronously via
     // initializeLogging() at the top of this file, so nothing log-related
     // needs to run here.
-    if (isDev) {
-      const deferredInit = () => {
-        import("@src/util/core/storage/devIndexedDBProtection").then(
-          ({ initDevIndexedDBProtection }) => {
-            initDevIndexedDBProtection();
-          }
-        );
-
-        // Import diagnoseBackgroundStorage for window exports
-        import("@src/util/core/storage/diagnosis");
-      };
-
-      if (typeof requestIdleCallback !== "undefined") {
-        requestIdleCallback(deferredInit, { timeout: 1000 });
-      } else {
-        setTimeout(deferredInit, 100);
-      }
-    }
   } else {
     log.critical("Failed to find the root element");
   }

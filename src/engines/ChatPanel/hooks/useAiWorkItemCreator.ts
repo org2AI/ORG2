@@ -23,7 +23,7 @@ import type { SessionCreatorState } from "@src/store/session/creatorStateAtom";
 import {
   type ChatPanelCreateProjectContext,
   type ChatPanelSelectedProject,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
 import { createWorkItemDetailTab } from "@src/store/workstation/tabs";
@@ -305,7 +305,8 @@ export function useAiWorkItemCreator({
         await projectApi.updateWorkItemPartial(
           metadata.projectSlug,
           metadata.shortId,
-          { linkedSessions: [linkedSession] }
+          { linkedSessions: [linkedSession] },
+          metadata.item.revision
         );
       } else {
         // Partial update in the same org scope as the creating write — an
@@ -314,7 +315,8 @@ export function useAiWorkItemCreator({
         await projectApi.updateStandaloneWorkItemPartial(
           metadata.shortId,
           { linkedSessions: [linkedSession] },
-          metadata.orgId ? { orgId: metadata.orgId } : undefined
+          metadata.orgId ? { orgId: metadata.orgId } : undefined,
+          metadata.item.revision
         );
       }
 

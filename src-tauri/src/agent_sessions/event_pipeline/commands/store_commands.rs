@@ -39,6 +39,34 @@ fn is_synthetic_user_input(event: &SessionEvent) -> bool {
             .unwrap_or(false)
 }
 
+/// A provider-rejected frontend turn has no native transcript row to reload.
+/// Keep that terminal delivery projection in the existing event cache so the
+/// failed bubble (and its retry/edit payload) survives a renderer/app restart.
+/// Pending/accepted placeholders remain transient: their durable owners are
+/// the message-delivery registry and provider transcript respectively.
+fn is_persisted_failed_user_delivery(event: &SessionEvent) -> bool {
+    is_synthetic_user_input(event)
+        && event
+            .result
+            .get("deliveryStatus")
+            .and_then(|value| value.as_str())
+            == Some("failed")
+        && event
+            .result
+            .get("turnIntentId")
+            .and_then(|value| value.as_str())
+            .is_some_and(|value| !value.is_empty())
+}
+
+fn is_agent_org_direct_source(event: &SessionEvent) -> bool {
+    is_synthetic_user_input(event)
+        && event
+            .result
+            .get("agentOrgDirectSource")
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false)
+}
+
 /// Set the active repository context on a session's store.
 #[tauri::command]
 pub async fn es_set_repo_context(
@@ -61,10 +89,20 @@ pub async fn es_set(
     state: State<'_, EventStoreState>,
     session_id: Option<String>,
     mut events: Vec<SessionEvent>,
+    expected_version: Option<u64>,
 ) -> Result<(), String> {
     normalize_events(&mut events);
     let sid = state.resolve_session_id(session_id)?;
-    state.with_store_mut(&sid, |store| store.set(events));
+    let applied = state.with_store_mut(&sid, |store| match expected_version {
+        Some(version) => store.set_if_version(events, version),
+        None => {
+            store.set(events);
+            true
+        }
+    });
+    if !applied {
+        return Err("EventStore changed during native history refresh".to_string());
+    }
     schedule_notify(&app, &state, &sid);
     Ok(())
 }
@@ -112,19 +150,20 @@ pub async fn es_append(
     // only resurface as duplicate user bubbles on the next replay merge.
     // Their edit path (`cli_agent_truncate_after_chunk`) truncates chunks by
     // timestamp and does not consult the `events` table.
-    let user_event_ids: Vec<_> = if session_providers::skips_event_cache_save(&sid) {
-        Vec::new()
-    } else {
-        events
-            .iter()
-            .filter(|event| {
-                event.source == EventSource::User
-                    && !is_ts_placeholder_id(&event.id)
-                    && !is_synthetic_user_input(event)
-            })
-            .map(|event| event.id.clone())
-            .collect()
-    };
+    let durable_direct_source = events.iter().any(is_agent_org_direct_source);
+    let skips_event_cache_save = session_providers::skips_event_cache_save(&sid);
+    let user_event_ids: Vec<_> = events
+        .iter()
+        .filter(|event| {
+            event.source == EventSource::User
+                && !is_ts_placeholder_id(&event.id)
+                && (!skips_event_cache_save
+                    && (!is_synthetic_user_input(event)
+                        || is_agent_org_direct_source(event))
+                    || is_persisted_failed_user_delivery(event))
+        })
+        .map(|event| event.id.clone())
+        .collect();
 
     let user_events = state.with_store_mut(&sid, |store| {
         store.append(events);
@@ -156,11 +195,15 @@ pub async fn es_append(
 
         match persist_result {
             Ok(Ok(())) => {}
+            Ok(Err(err)) if durable_direct_source => {
+                return Err(format!("agent_org_direct_source_persistence_failed: {err}"));
+            }
             Ok(Err(err)) => {
                 tracing::warn!(
                     "[event-pipeline] best-effort es_append_user failed for {sid}: {err}"
                 );
             }
+            Err(err) if durable_direct_source => return Err(err),
             Err(err) => {
                 tracing::warn!("[event-pipeline] es_append_user join failed for {sid}: {err}");
             }
@@ -197,12 +240,96 @@ pub async fn es_update_by_id(
     id: String,
     patch: SessionEventPatch,
 ) -> Result<bool, String> {
+    use super::event_conversion::session_event_to_cached_event;
+    use super::{save_events_retry, BULK_WRITE_MAX_RETRIES};
+
     let sid = state.resolve_session_id(session_id)?;
-    let found = state.with_store_mut(&sid, |store| store.update_by_id(&id, &patch));
+    let (found, failed_delivery) = state.with_store_mut(&sid, |store| {
+        let found = store.update_by_id(&id, &patch);
+        let failed_delivery = found
+            .then(|| store.get_by_id(&id))
+            .flatten()
+            .filter(|event| is_persisted_failed_user_delivery(event))
+            .map(session_event_to_cached_event);
+        (found, failed_delivery)
+    });
     if found {
         schedule_notify(&app, &state, &sid);
     }
+    if let Some(failed_delivery) = failed_delivery {
+        let persist_sid = sid.clone();
+        let persist_result = tokio::task::spawn_blocking(move || {
+            save_events_retry(
+                "es_update_failed_user_delivery",
+                &persist_sid,
+                &[failed_delivery],
+                BULK_WRITE_MAX_RETRIES,
+            )
+        })
+        .await
+        .map_err(|err| format!("es_update_by_id spawn_blocking join failed: {err}"))?;
+        // This update is the ownership-transfer barrier for a rejected send:
+        // the durable queue may retire its recovery row only after the failed
+        // transcript projection is queryable from SQLite. Returning success
+        // after a write failure leaves the bubble only in renderer memory and
+        // makes it disappear on restart.
+        persist_result?;
+    }
     Ok(found)
+}
+
+#[cfg(test)]
+mod failed_user_delivery_tests {
+    use super::*;
+
+    fn synthetic_delivery(status: &str, turn_intent_id: Option<&str>) -> SessionEvent {
+        let display_status = match status {
+            "pending" => "pending",
+            "failed" => "failed",
+            _ => "completed",
+        };
+        serde_json::from_value(serde_json::json!({
+            "id": "queued-user:q1:",
+            "chunk_id": null,
+            "sessionId": "cliagent-test",
+            "createdAt": "2026-09-05T00:00:00Z",
+            "functionName": "user_message",
+            "uiCanonical": "",
+            "actionType": "raw",
+            "args": {},
+            "result": {
+                "syntheticUserInput": true,
+                "deliveryStatus": status,
+                "turnIntentId": turn_intent_id,
+                "message": { "role": "user", "content": "retry me" }
+            },
+            "source": "user",
+            "displayText": "retry me",
+            "displayStatus": display_status,
+            "displayVariant": "message",
+            "activityStatus": "agent"
+        }))
+        .expect("valid delivery event")
+    }
+
+    #[test]
+    fn only_terminal_identified_failed_user_delivery_is_persisted() {
+        assert!(is_persisted_failed_user_delivery(&synthetic_delivery(
+            "failed",
+            Some("turn-1")
+        )));
+        assert!(!is_persisted_failed_user_delivery(&synthetic_delivery(
+            "pending",
+            Some("turn-1")
+        )));
+        assert!(!is_persisted_failed_user_delivery(&synthetic_delivery(
+            "sent",
+            Some("turn-1")
+        )));
+        assert!(!is_persisted_failed_user_delivery(&synthetic_delivery(
+            "failed", None
+        )));
+    }
 }
 
 /// Merge tool_result events into their matching tool_call events (pure transform).

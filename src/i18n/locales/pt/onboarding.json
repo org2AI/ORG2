@@ -1,7 +1,5 @@
 {
   "tutorials": {
-    "modalTitle": "Tutoriais",
-    "start": "Iniciar",
     "chrome": {
       "stepProgress": "Etapa {{current}} de {{total}}",
       "close": "Fechar",
@@ -16,7 +14,7 @@
     },
     "generalLayout": {
       "title": "Tour de layout geral",
-      "description": "Conheça a barra lateral da sessão, painel de bate-papo, alternador de modo de estação, estação de trabalho, dock e áreas de aplicativos.",
+      "description": "Conheça o painel de chat, Runtime, o seletor de modo e o dock.",
       "duration": "1 min",
       "steps": {
         "chat-panel": {
@@ -25,7 +23,7 @@
         },
         "runtime": {
           "title": "Runtime",
-          "body": "Veja aqui seu uso e o status de execução. Em uma organização, você também pode conferir a sincronização dos membros e abrir os detalhes de uso do Codex, Claude e Cursor."
+          "body": "Veja aqui seu uso e o status de execução. Em um espaço de trabalho, você também pode conferir a sincronização dos membros e abrir os detalhes de uso do Codex, Claude e Cursor."
         },
         "station-mode-pill": {
           "title": "Alternar estação modos",
@@ -34,41 +32,17 @@
         "dock": {
           "title": "Agent Station dock",
           "body": "O dock alterna aplicativos dentro da estação. O tour desativa temporariamente a ocultação automática para que esses controles permaneçam visíveis."
-        },
-        "all-tabs": {
-          "title": "Todas as guias",
-          "body": "O primeiro ícone de encaixe mostra todas as guias abertas juntas, independentemente do aplicativo da estação de trabalho que as possui."
-        },
-        "code-editor": {
-          "title": "Editor de código",
-          "body": "Use o Editor de código para arquivos, diferenças, terminais, controle de origem e alterações de codificação feitas durante um sessão."
-        },
-        "browser": {
-          "title": "Navegador",
-          "body": "Use o navegador para páginas da web, visualizações, testes de aplicativos e investigação baseada em navegador junto com o bate-papo."
-        },
-        "projects": {
-          "title": "Projetos",
-          "body": "Use projetos para rastrear itens de trabalho, planos e estado do projeto conectado ao espaço de trabalho atual."
         }
       }
     },
     "codeEditor": {
       "title": "Tour do editor de código",
-      "description": "Aprenda guias, alternância de repositórios e ramificações, controle de origem, histórico do Git e o painel do projeto.",
+      "description": "Conheça as abas, o espaço do editor, o controle de código-fonte e o histórico do Git.",
       "duration": "2 min",
       "steps": {
         "tabs": {
           "title": "Guias do editor de código",
           "body": "As guias coletam os arquivos, diferenças, terminais, visualizações de controle de origem e painéis que você abre enquanto trabalhando no repositório."
-        },
-        "repo-selector": {
-          "title": "Criar ou alternar repositórios",
-          "body": "Use o seletor de repositório para alternar o repositório ativo ou adicionar outro repositório ou espaço de trabalho."
-        },
-        "branch-selector": {
-          "title": "Alterar ramificações",
-          "body": "O seletor de ramificação mostra a ramificação Git atual e abre a opção de ramificação ou cria fluxo para este repositório."
         },
         "editor-surface": {
           "title": "Espaço de trabalho do editor",
@@ -85,12 +59,15 @@
         "git-history": {
           "title": "Histórico do Git",
           "body": "O histórico do Git alterna o controle de origem para o modo de histórico de commits para que você possa inspecionar commits anteriores e alterações relacionadas."
-        },
-        "dashboard": {
-          "title": "Painel do Editor de Código",
-          "body": "O painel é a guia inicial do Editor de Código para espaços de trabalho. Use-o para adicionar repositórios, abrir detalhes do repositório e iniciar o trabalho do projeto."
         }
       }
     }
+  },
+  "discovery": {
+    "title": "Primeiros passos e novidades",
+    "getStarted": "Primeiros passos",
+    "newFeatures": "Novidades",
+    "branchesTitle": "Branches do repositório",
+    "branchesDescription": "Troque de branch do repositório diretamente pelo Spotlight."
   }
 }

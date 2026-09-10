@@ -7,12 +7,13 @@ import {
 } from "@src/engines/SessionCore/core/atoms";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import {
-  chatFindInChatOpenAtomFamily,
   chatHistoryDisplayModeAtom,
   chatTokenUsageVisibleAtom,
   chatTurnMetadataVisibleAtom,
   chatTurnPaginationEnabledAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/displayPrefsAtoms";
+import { chatFindInChatOpenAtomFamily } from "@src/store/ui/chatPanel/miscAtoms";
+import { copyText } from "@src/util/data/clipboard";
 
 interface UseSessionHeaderActionsOptions {
   sessionId: string | null;
@@ -89,8 +90,7 @@ export function useSessionHeaderActions({
 
   const handleCopyEventJson = useCallback(() => {
     const json = JSON.stringify(store.get(eventsAtom), null, 2);
-    navigator.clipboard
-      .writeText(json)
+    copyText(json)
       .then(() => {
         setCopyEventJsonLabel("copied");
         setTimeout(() => setCopyEventJsonLabel("idle"), 2000);

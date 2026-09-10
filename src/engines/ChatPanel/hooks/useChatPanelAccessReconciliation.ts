@@ -11,7 +11,7 @@ import {
   closeProjectOrgChatPanelTabsAtom,
   closeRevokedCloudChannelChatPanelTabsAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
-import type { ChatPanelSelectedCloudOrg } from "@src/store/ui/chatPanelAtom";
+import type { ChatPanelSelectedCloudOrg } from "@src/store/ui/chatPanel/selectionAtoms";
 
 /** Tab access reconciliation runs for the host's lifetime, including hidden tabs. */
 export function useChatPanelAccessReconciliation(

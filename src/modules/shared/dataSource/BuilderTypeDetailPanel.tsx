@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import { ArrowLeft01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
-import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks";
+import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 import Modal from "@src/scaffold/ModalSystem";
 
 import BuilderTypeAvatar from "./BuilderTypeAvatar";
@@ -57,7 +58,7 @@ export function BuilderTypeDetailContent({
 
   return (
     <section
-      className="rounded-xl border border-border-1 bg-primary-container p-4"
+      className={DETAIL_PANEL_TOKENS.primaryContainer}
       aria-labelledby="builder-type-detail-title"
       data-testid="builder-type-detail"
     >

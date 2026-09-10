@@ -6,7 +6,7 @@ import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import { getTerminalDisplayTitle } from "@src/engines/TerminalCore/types";
 import { Refresh04Icon, Search01Icon, SquareTerminalIcon } from "@src/icons";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
-import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { terminalSessionsAtom } from "@src/store/chatPanel/chatPanelTerminalAtom";
 import type { Session, SessionCreatorDraft } from "@src/store/session";
 import { toChatPanelTuiSessionId } from "@src/util/ui/terminal/chatPanelTuiSessionId";
@@ -18,12 +18,12 @@ import {
   buildPinnedMenuItems,
   buildProjectsPinnedMenuItems,
 } from "../workstationSidebarMenuItems";
-import type { WorkstationSidebarViewKey } from "./WorkstationSidebarViewSwitcher";
+import type { SessionSidebarView } from "./types";
 
 const PINNED_SESSION_SEPARATOR_ID = "separator-pinned";
 
 interface UsePinnedMenuItemsParams {
-  activeViewKey: WorkstationSidebarViewKey;
+  activeViewKey: SessionSidebarView;
   createProjectLabel: string;
   createWorkItemLabel: string;
   importGithubIssuesLabel: string;
@@ -64,9 +64,13 @@ export function usePinnedMenuItems({
     () =>
       buildPinnedMenuItems({
         newSessionLabel,
-        newSessionShortcut: getShortcutKeys("new_session"),
+        get newSessionShortcut() {
+          return getShortcutKeys("new_session");
+        },
         kanbanLabel,
-        kanbanShortcut: getShortcutKeys("open_kanban"),
+        get kanbanShortcut() {
+          return getShortcutKeys("open_kanban");
+        },
         runtimeLabel,
         teamInboxLabel,
         teamInboxUnreadCount,
@@ -150,7 +154,9 @@ export function addActionsToFirstSessionSection({
   const sectionWithActions: NavigationMenuItem = {
     ...section,
     rowActions: [
+      ...(section.rowActions ?? []),
       {
+        showOnSidebarHover: true,
         icon: Search01Icon,
         dataIcon: "search",
         label: searchLabel,
@@ -158,6 +164,7 @@ export function addActionsToFirstSessionSection({
         onClick: onSearch,
       },
       {
+        showOnSidebarHover: true,
         icon: Refresh04Icon,
         dataIcon: "refresh-cw",
         iconClassName: refreshIconClassName,
@@ -165,7 +172,6 @@ export function addActionsToFirstSessionSection({
         dataTestId: "sidebar-sessions-refresh",
         onClick: onRefresh,
       },
-      ...(section.rowActions ?? []),
     ],
   };
 

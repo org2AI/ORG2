@@ -12,6 +12,8 @@ import { useTranslation } from "react-i18next";
 
 import PersonAvatar from "@src/components/PersonAvatar";
 import Select from "@src/components/Select";
+import Tag from "@src/components/Tag";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import type {
   MemberRuntimeListEntry,
   OrgRuntimeTelemetry,
@@ -29,6 +31,7 @@ import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 import {
   aggregateMemberRecentUsageTrends,
   buildOrgRuntimeTodaySnapshot,
+  isRuntimeStale,
   recentSharedSessions,
 } from "./teamRuntimeData";
 import { BucketIcon, bucketLabelKey } from "./usageBuckets";
@@ -53,7 +56,7 @@ interface TodayMetricProps {
 function TodayMetric({ label, value, secondary, testId }: TodayMetricProps) {
   return (
     <div
-      className="flex min-w-0 flex-col gap-1.5 rounded-xl border border-border-1 bg-primary-container p-4"
+      className={`flex min-w-0 flex-col gap-1.5 ${DETAIL_PANEL_TOKENS.primaryContainer}`}
       data-testid={testId}
     >
       <span className="truncate text-xs text-text-2">{label}</span>
@@ -163,21 +166,10 @@ function TeamRuntimeToday({
     [members]
   );
 
-  const systemSecondary = [
-    snapshot.averageCpuPercent == null
-      ? null
-      : `${t("card.cpu")} ${Math.round(snapshot.averageCpuPercent)}%`,
-    snapshot.averageRamPercent == null
-      ? null
-      : `${t("card.ram")} ${Math.round(snapshot.averageRamPercent)}%`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
     <div className="flex flex-col gap-5" data-testid="team-runtime-today">
       <div
-        className="flex min-h-9 flex-wrap items-center justify-between gap-3"
+        className="sticky top-0 z-20 flex min-h-9 flex-wrap items-center justify-between gap-3 bg-chat-pane"
         data-testid="team-runtime-title-row"
       >
         <h3 className={SECTION_SUBHEADING_CLASSES}>{t("overview.today")}</h3>
@@ -194,6 +186,10 @@ function TeamRuntimeToday({
                 }
                 appearance="ghost"
                 size="small"
+                showSearch
+                dropdownMinWidth={240}
+                dropdownWidthMode="min-match"
+                className="w-48"
                 dataTestId="team-runtime-person-select"
               />
             ) : null}
@@ -242,19 +238,6 @@ function TeamRuntimeToday({
         />
       </div>
 
-      <div
-        className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-border-1 bg-fill-1 px-3 py-2 text-xs text-text-3"
-        data-testid="team-runtime-system-pulse"
-      >
-        <span className="font-medium text-text-2">
-          {t("overview.systemsCurrent", {
-            current: snapshot.currentSystems,
-            total: snapshot.memberCount,
-          })}
-        </span>
-        {systemSecondary ? <span>{systemSecondary}</span> : null}
-      </div>
-
       <section
         className="flex min-w-0 flex-col gap-3"
         data-testid="team-runtime-usage-trend"
@@ -289,9 +272,6 @@ function TeamRuntimeToday({
           <h3 className={SECTION_SUBHEADING_CLASSES}>
             {t("overview.members")}
           </h3>
-          <span className="shrink-0 text-xs text-text-3">
-            {tUsage("usage.range.24h")}
-          </span>
         </div>
         <SectionContainer>
           {memberUsage.length === 0 ? (
@@ -324,6 +304,16 @@ function TeamRuntimeToday({
                   <span className="min-w-0 flex-1 truncate text-sm text-text-2">
                     {displayName}
                   </span>
+                  {!isRuntimeStale(member.reportedAt, telemetry, nowMs) ? (
+                    <span
+                      className="shrink-0"
+                      data-testid={`team-runtime-member-online-${member.userId}`}
+                    >
+                      <Tag size="mini" color="success" pill>
+                        {t("common:status.online")}
+                      </Tag>
+                    </span>
+                  ) : null}
                   <span className="shrink-0 text-right text-xs text-text-3">
                     {summary ? (
                       <>

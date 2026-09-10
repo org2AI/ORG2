@@ -6,8 +6,8 @@ import {
 import {
   activeChatPanelSurfaceAtom,
   chatPanelMaximizedAtom,
-  chatVisibleAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/surfaceAtoms";
+import { chatVisibleAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { adeManagerEnabledAtom, spotlightOpenAtom } from "@src/store/ui/uiAtom";
 import {

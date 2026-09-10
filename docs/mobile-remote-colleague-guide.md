@@ -42,7 +42,7 @@
 1. 打开 **设置 → 通用**
 2. 点击 **登录**，完成 ORG2 Cloud 账号登录（与云同步、邀请等同一路径）
 
-> 公网 Relay 用你的 ORG2 Cloud 身份识别桌面，**不再使用「桌面访问密钥」**。
+> 所有 Relay 预设都用你的 ORG2 Cloud 身份识别桌面；「本地」与「生产」只切换 Relay 地址。
 
 ### 2. 开启移动遥控
 
@@ -194,7 +194,7 @@
 
 本文面向 **日常使用生产环境** 的同事。若你需要：
 
-- 本地起 Relay（`ORGII_RELAY_DESKTOP_TOKEN`）
+- 本地启动 Relay 并使用 ORG2 Cloud 账号联调
 - `pnpm run tauri:dev` 联调
 - 发布 / 更新 Cloudflare Workers
 

@@ -31,11 +31,11 @@ import Checkbox from "@src/components/Checkbox";
 import Dropdown from "@src/components/Dropdown";
 import Menu from "@src/components/Menu";
 import ModelIcon from "@src/components/ModelIcon";
+import type { SettingsTableColumn } from "@src/components/SettingsTable";
 import {
   SETTINGS_TABLE_CELL,
   SETTINGS_TABLE_COL,
-  type SettingsTableColumn,
-} from "@src/components/SettingsTable";
+} from "@src/components/SettingsTable/tokens";
 import SplitButton from "@src/components/SplitButton";
 import { createLogger } from "@src/hooks/logger";
 import type { CursorRepo } from "@src/hooks/policies";
@@ -305,14 +305,21 @@ export function useExternalImport({
     };
   }, [active, kind, repoKey, cursorRepos, detectionRefreshKey]);
 
-  const handleToggle = useCallback((key: string, checked: boolean) => {
+  const handleToggle = useCallback((key: string, checked?: boolean) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (checked) next.add(key);
+      if (checked ?? !prev.has(key)) next.add(key);
       else next.delete(key);
       return next;
     });
   }, []);
+
+  const handleRowClick = useCallback(
+    (row: ExternalImportRow) => {
+      handleToggle(rowKey(row));
+    },
+    [handleToggle]
+  );
 
   const handleSelectAll = useCallback(() => {
     if (allSelected) {
@@ -411,9 +418,10 @@ export function useExternalImport({
             (warning) => warning.kind === "readonly_downgraded"
           );
           return (
-            <label className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3">
                 <Checkbox
+                  ariaLabel={row.suggestedName}
                   checked={selected.has(rowKey(row))}
                   onCheckedChange={(checked) =>
                     handleToggle(rowKey(row), checked as boolean)
@@ -444,7 +452,7 @@ export function useExternalImport({
                   </span>
                 </div>
               )}
-            </label>
+            </div>
           );
         },
       },
@@ -580,6 +588,7 @@ export function useExternalImport({
     importError,
     importErrors,
     importColumns,
+    handleRowClick,
     handleImport,
   };
 }

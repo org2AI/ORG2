@@ -26,6 +26,8 @@ pub fn turn_max_iterations_from_session_model(max_iterations: u32) -> Option<u32
 }
 
 pub use entry::process_message;
+#[cfg(test)]
+pub(crate) use processor::start_task_execution_before_provider;
 pub use processor::TurnInput;
 
 #[cfg(debug_assertions)]
@@ -75,7 +77,7 @@ pub async fn debug_prompt_cache_benchmark(
     use crate::core::session::turn::event_handler::EventHandlerConfig;
     use crate::core::session::turn::processor::{ProcessorParams, UnifiedMessageProcessor};
 
-    let runtime = match session.runtime.read().await.clone() {
+    let runtime = match session.get_runtime().await {
         Some(runtime) => runtime,
         None => {
             return serde_json::json!({
@@ -113,7 +115,7 @@ pub async fn debug_prompt_cache_benchmark(
     let first_started = std::time::Instant::now();
     let first_system_prompt = processor.build_system_prompt(&session_id).await;
     let (first_dynamic_sections, _) = processor
-        .build_dynamic_sections(&session_id, None, None)
+        .build_dynamic_sections(&session_id, None, None, None, &[])
         .await;
     let first_elapsed_us = first_started.elapsed().as_micros();
     let first_prompt_stats = session.prompt_cache.lock().await.stats();
@@ -130,7 +132,7 @@ pub async fn debug_prompt_cache_benchmark(
     let second_started = std::time::Instant::now();
     let second_system_prompt = processor.build_system_prompt(&session_id).await;
     let (second_dynamic_sections, _) = processor
-        .build_dynamic_sections(&session_id, None, None)
+        .build_dynamic_sections(&session_id, None, None, None, &[])
         .await;
     let second_elapsed_us = second_started.elapsed().as_micros();
     let second_prompt_stats = session.prompt_cache.lock().await.stats();

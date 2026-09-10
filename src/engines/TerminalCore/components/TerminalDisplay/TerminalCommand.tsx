@@ -8,7 +8,7 @@
  * - TerminalCommandView
  *
  * Features:
- * - Prism syntax highlighting (shared lazy hook with caching)
+ * - Bounded shell highlighting using the shared CodeMirror token colors
  * - Customizable prompt prefix
  * - Optional highlighting disable
  * - Consistent styling across all contexts
@@ -16,8 +16,9 @@
  */
 import React, { memo } from "react";
 
-import { useSyntaxHighlight } from "@src/hooks/code";
 import { HugeiconsIcon, SquareIcon } from "@src/icons";
+
+import { renderCommandHighlight } from "./commandHighlight";
 
 export interface TerminalCommandStopAction {
   /** Tooltip for the stop button */
@@ -77,9 +78,6 @@ export const TerminalCommand: React.FC<TerminalCommandProps> = memo(
   }) => {
     const useHighlight = highlighted && !singleLineEllipsis;
     // Single-line ellipsis needs plain text; token spans break text-overflow.
-    const highlightedHtml = useSyntaxHighlight(useHighlight ? command : "", {
-      lang: "bash",
-    });
 
     const rootClass = [
       "terminal-command",
@@ -97,11 +95,10 @@ export const TerminalCommand: React.FC<TerminalCommandProps> = memo(
         title={singleLineEllipsis ? command : undefined}
       >
         <span className="terminal-command__prefix select-none">{prefix}</span>
-        {useHighlight && highlightedHtml ? (
-          <span
-            className="terminal-command__text prism-html"
-            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-          />
+        {useHighlight ? (
+          <span className="terminal-command__text prism-html">
+            {renderCommandHighlight(command)}
+          </span>
         ) : (
           <span className="terminal-command__text">{command}</span>
         )}

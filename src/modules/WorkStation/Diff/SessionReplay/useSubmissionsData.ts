@@ -37,15 +37,15 @@ import { PR_STATUS_UNKNOWN, normalizePrStatus } from "@src/shared/pr/prStatus";
 import type { Repo } from "@src/store/repo/types";
 
 import {
+  type SubmissionRepoContext,
+  collectSubmissionArtifacts,
+} from "./submissionsArtifacts";
+import {
   type PullRequestSubmission,
   type SubmissionCommit,
   type SubmissionsData,
   deriveSubmissionsData,
-} from "./SubmissionsContent";
-import {
-  type SubmissionRepoContext,
-  collectSubmissionArtifacts,
-} from "./submissionsArtifacts";
+} from "./submissionsData";
 
 export type { SubmissionRepoContext } from "./submissionsArtifacts";
 

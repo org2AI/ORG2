@@ -8,8 +8,8 @@ import {
   detectGitHubCredentials,
 } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import {
   InternetIcon,
   Key02Icon,
@@ -87,9 +87,9 @@ export const ChannelContent: React.FC<ChannelContentProps> = ({
       </SectionContainer>
       {probeResult && !probeResult.ok && !probeErrorDismissed && (
         <div className="mt-3">
-          <InlineAlert type="danger" onClose={onDismissProbeError}>
+          <PageNotice type="danger" onClose={onDismissProbeError}>
             {probeResult.error || t("integrations.probeFailed")}
-          </InlineAlert>
+          </PageNotice>
         </div>
       )}
     </>
@@ -240,7 +240,7 @@ export const ProjectContent: React.FC<ProjectContentProps> = ({
 
       {projectSubmitError && (
         <div className="mt-3">
-          <InlineAlert type="danger">{projectSubmitError}</InlineAlert>
+          <PageNotice type="danger">{projectSubmitError}</PageNotice>
         </div>
       )}
     </>
@@ -429,7 +429,7 @@ export const GitContent: React.FC<GitContentProps> = ({
 
       {gitSubmitError && (
         <div className="mt-3">
-          <InlineAlert type="danger">{gitSubmitError}</InlineAlert>
+          <PageNotice type="danger">{gitSubmitError}</PageNotice>
         </div>
       )}
     </>
@@ -547,7 +547,7 @@ const GitScanPanel: React.FC<GitScanPanelProps> = ({
   }
 
   if (detectError) {
-    return <InlineAlert type="danger">{detectError}</InlineAlert>;
+    return <PageNotice type="danger">{detectError}</PageNotice>;
   }
 
   if (candidates.length === 0) {

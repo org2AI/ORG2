@@ -37,7 +37,7 @@ import {
   HugeiconsIcon,
 } from "@src/icons";
 import { projectSyncStatusAtom, syncDeepLinkAtom } from "@src/store/sync";
-import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationAtom";
+import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import { truncate } from "@src/util/string/truncate";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 

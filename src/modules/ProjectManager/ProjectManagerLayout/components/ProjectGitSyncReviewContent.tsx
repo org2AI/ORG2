@@ -10,6 +10,7 @@ import {
 } from "@src/api/http/project";
 import Button from "@src/components/Button";
 import { Message } from "@src/components/Message";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import { CodeMirrorConflictEditor } from "@src/features/CodeMirror";
 import {
@@ -237,9 +238,9 @@ export const ProjectGitSyncReviewContent: React.FC<
                   />
                 ) : (
                   <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden p-4">
-                    <div className="text-warning-7 rounded-md border border-warning-4 bg-warning-1 p-3 text-sm">
+                    <PageNotice type="warning" role="status">
                       {selectedConflict.message}
-                    </div>
+                    </PageNotice>
                     <textarea
                       className="focus:border-accent-9 min-h-0 flex-1 resize-none rounded-md border border-border-2 bg-bg-2 p-3 text-sm text-text-1 outline-none"
                       value={editedContent}

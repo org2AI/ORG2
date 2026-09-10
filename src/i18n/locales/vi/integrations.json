@@ -20,12 +20,15 @@
     "confirmRemoveMessage": "Thông tin xác thực cục bộ sẽ bị xóa. Hành động này không thể hoàn tác.",
     "toasts": {
       "refreshed": "{{name}} đã làm mới thành công",
+      "refreshPartial": "Đã làm mới mô hình: +{{added}} / -{{removed}}, nhưng {{failed}} trên {{total}} tài khoản bị lỗi",
+      "refreshedNoChange": "Đã làm mới mô hình: không có thay đổi",
+      "refreshedDelta": "Đã làm mới mô hình: thêm {{added}}, xóa {{removed}}",
       "refreshError": "Không thể làm mới {{name}}: {{error}}",
       "localRemoved": "{{name}} đã xóa",
       "deleteError": "Không thể xóa {{name}}"
     },
-    "configure": "Cấu hình {{provider}}",
     "providerGroups": {
+      "mostUsed": "Dùng nhiều nhất",
       "cloud": "Cloud",
       "local": "Local"
     },
@@ -38,7 +41,6 @@
       "verifying": "Đang xác minh",
       "verifyingKeys": "Đang xác minh thông tin xác thực...",
       "verificationFailedMismatch": "Xác minh thất bại - thông tin xác thực không khớp",
-      "failed": "Thất bại",
       "suspendedApiKey": "Đã tạm ngưng - API Key xác minh thất bại",
       "suspended": "Đã tạm ngưng",
       "validationFailed": "Xác minh thất bại: {{error}}",
@@ -47,18 +49,14 @@
       "validating": "Đang xác minh"
     },
     "info": {
-      "title": "Thông tin tài khoản",
-      "enable": "Bật",
-      "authMethod": "Phương thức xác thực",
       "oauthLogin": "OAuth",
       "apiKey": "API Key",
       "configured": "✓ Đã cấu hình",
       "cursorSessionAccess": "Phiên Cursor",
       "cursorSessionReady": "Đã kết nối để làm mới mô hình và hạn mức Cursor",
       "cursorApiKeyAccess": "Cursor API Key",
-      "cursorApiKeyReady": "Đã cung cấp cho lệnh gọi Cursor CLI/API",
-      "cursorApiKeyNotProvided": "Chưa cung cấp — không thể gọi Cursor CLI/API",
-      "sessionToken": "Session Token",
+      "cursorApiKeyReady": "Đã cung cấp cho lệnh gọi Cursor API",
+      "cursorApiKeyNotProvided": "Chưa cung cấp — không thể gọi Cursor API",
       "baseUrl": "Base URL",
       "connectedAt": "Đã kết nối",
       "availableModels": "Mô hình khả dụng",
@@ -67,27 +65,15 @@
       "supportOrgiiAgents": "Hỗ trợ ORGII Agents",
       "supportCliAgents": "Hỗ trợ CLI Agents",
       "noCliAgentSupport": "Nhà cung cấp này không hỗ trợ CLI Agent",
-      "accountEmail": "Email tài khoản",
-      "organization": "Tổ chức"
-    },
-    "inlineDetailTabs": {
-      "info": "Thông tin"
-    },
-    "manualModels": {
-      "notice": "Không thể tự động phát hiện các mô hình có sẵn từ proxy này. Bạn có thể thêm mô hình thủ công bên dưới hoặc thử nhấn Validate lại."
+      "accountEmail": "Email tài khoản"
     },
     "customModels": {
-      "notice": "Tên mô hình = id dùng để gọi LLM. Tên hiển thị = nhãn trong bộ chọn.",
       "modelNamePlaceholder": "Nhập id mô hình...",
-      "displayName": "Tên hiển thị",
       "displayNamePlaceholder": "Nhãn tùy chọn",
-      "optional": "Tùy chọn",
       "emptyHint": "Chưa thêm mô hình tùy chỉnh nào.",
-      "addModel": "Thêm mô hình",
-      "icon": "Biểu tượng"
+      "addModel": "Thêm mô hình"
     },
     "quickActions": {
-      "title": "Thao tác nhanh",
       "multipleKeysFound": "Tìm thấy nhiều thông tin xác thực",
       "useSelected": "Sử dụng mục đã chọn",
       "valid": "Hợp lệ",
@@ -103,8 +89,9 @@
       "saved": "Đã lưu thay đổi"
     },
     "quota": {
-      "title": "Thông tin hạn mức",
       "plan": "Gói",
+      "balance": "Số dư",
+      "payAsYouGo": "Trả theo mức dùng",
       "includedRequests": "Yêu cầu đã bao gồm",
       "cursorIncludedRequests": "Hạn mức Auto/Composer",
       "quotaUsage": "Sử dụng hạn mức",
@@ -113,10 +100,13 @@
       "sessionUsage": "Mức dùng 5h",
       "weeklyUsage": "Mức dùng hằng tuần",
       "monthlyUsage": "Mức dùng hằng tháng",
+      "resetsAvailable": "Có {{count}} lượt đặt lại",
+      "resetsAvailable_one": "Có {{count}} lượt đặt lại",
+      "resetsAvailable_few": "Có {{count}} lượt đặt lại",
+      "resetsAvailable_many": "Có {{count}} lượt đặt lại",
+      "resetsAvailable_other": "Có {{count}} lượt đặt lại",
       "percentLeft": "Còn {{percent}}%",
       "refreshUsage": "Làm mới mức dùng",
-      "used": "Đã dùng",
-      "limit": "Giới hạn",
       "resets": "Đặt lại vào {{date}}",
       "availableNow": "Có sẵn ngay",
       "nextUsePlusFiveHours": "Lần dùng tiếp theo +5 giờ"
@@ -124,18 +114,18 @@
     "health": {
       "cloudListingInvalid": "Danh sách đám mây không hợp lệ",
       "cloudListingDegraded": "Danh sách đám mây suy giảm",
-      "cloudInvalidMessage": "Thông tin xác thực cục bộ của bạn hoạt động, nhưng danh sách Marketplace gặp sự cố.",
-      "cloudDegradedMessage": "Thông tin xác thực cục bộ của bạn hoạt động, nhưng một số mô hình trong danh sách đám mây không khả dụng.",
-      "invalidListingMessage": "Thông tin xác thực của danh sách này không hợp lệ và cần được cập nhật.",
-      "invalidKeyMessage": "API Key này không còn hợp lệ. Vui lòng cập nhật thông tin xác thực.",
+      "cloudInvalidMessage": "Thông tin xác thực cục bộ của bạn hoạt động, nhưng danh sách Marketplace gặp sự cố",
+      "cloudDegradedMessage": "Thông tin xác thực cục bộ của bạn hoạt động, nhưng một số mô hình trong danh sách đám mây không khả dụng",
+      "invalidListingMessage": "Thông tin xác thực của danh sách này không hợp lệ và cần được cập nhật",
+      "invalidKeyMessage": "API Key này không còn hợp lệ. Vui lòng cập nhật thông tin xác thực",
       "failuresDetected_one": "Phát hiện {{count}} lỗi",
       "failuresDetected_other": "Phát hiện {{count}} lỗi",
       "errorWithMessage": "Lỗi: {{message}}",
       "degradedListing": "Danh sách suy giảm",
       "degradedKey": "Thông tin xác thực suy giảm",
-      "modelsUnavailable": "{{disabled}} mô hình không khả dụng. Chỉ {{available}} mô hình đang hoạt động.",
-      "someModelsFailures": "Một số mô hình đang gặp lỗi.",
-      "someModelsUnavailable": "Một số mô hình không khả dụng."
+      "modelsUnavailable": "{{disabled}} mô hình không khả dụng. Chỉ {{available}} mô hình đang hoạt động",
+      "someModelsFailures": "Một số mô hình đang gặp lỗi",
+      "someModelsUnavailable": "Một số mô hình không khả dụng"
     },
     "verification": {
       "pendingVerification": "Chờ xác minh",
@@ -261,7 +251,6 @@
     "sessionTokenLabel": "Session Token",
     "sessionTokenAutoHint": "Nhấp để phát hiện, hoặc Agent tự động phát hiện trong phiên làm việc",
     "sessionTokenManualHint": "Dán session token Cursor của bạn theo định dạng user_id::jwt_token",
-    "baseUrl": "Base URL",
     "pasteConfiguration": "Dán cấu hình",
     "extractParseHint": "Nhấp Extract để phân tích key và cài đặt",
     "switchMethod": "Chuyển phương thức",
@@ -269,7 +258,6 @@
     "quotaUsageLabel": "Sử dụng hạn ngạch",
     "quotaUsageDesc": "Mức sử dụng gói hiện tại và hạn mức còn lại",
     "providerRequired": "{{label}} (Cần nhà cung cấp)",
-    "creating": "Đang hoàn tất...",
     "keysFoundForAgent": "Tìm thấy {{count}} thông tin xác thực cho agent này. Chọn để sử dụng:",
     "fromCodexAuthLogin": "Từ đăng nhập Codex auth",
     "openBrowser": "Mở trình duyệt tích hợp",
@@ -306,21 +294,16 @@
     "filterAllProviders": "Tất cả nhà cung cấp",
     "filterAllKeyTypes": "Tất cả loại khóa",
     "filterAllEnabled": "Tất cả trạng thái",
-    "regionWarning": {
-      "title": "Thông báo về khả dụng khu vực",
-      "message": "{{provider}} có thể không khả dụng chính thức tại khu vực được phát hiện của bạn. Một số model có thể không được hiển thị; hãy đổi khu vực để dùng model từ OpenAI, Anthropic hoặc Google. Bạn vẫn có thể tiếp tục thiết lập."
-    },
-    "auth": "Auth",
     "cursorSessionTokenCapturedTitle": "Cursor đã kết nối",
     "cursorSessionTokenCapturedDesc": "Đã đăng nhập với {{user}}…",
     "cursorLoginBrowserTitle": "Đăng nhập Cursor",
     "modelCount": "{{count}} mô hình",
     "cursorLoginReadyTitle": "Tài khoản Cursor đã kết nối",
-    "cursorLoginReadyDesc": "Hãy tạo và dán Cursor API Key bên dưới. Cursor CLI agent sẽ không hoạt động nếu thiếu API Key này.",
+    "cursorLoginReadyDesc": "Hãy tạo và dán Cursor API Key bên dưới. Cursor agent sẽ không hoạt động nếu thiếu API Key này.",
     "cursorApiKeyBrowserHint": "Sau khi đăng nhập, ORGII sẽ mở dashboard Cursor. Hãy tạo User API Key ở đó rồi dán vào bên dưới",
     "cursorApiKeyRecommendedTitle": "Nên cung cấp Cursor API Key",
     "cursorApiKeyRecommendedDesc": "Bạn có thể tiếp tục mà không cần Cursor API Key nếu chỉ muốn dùng Cursor với Rust agents của ORGII; chỉ cần đăng nhập bằng trình duyệt nội bộ hoặc cung cấp session token",
-    "cursorApiKeyRecommendedAction": "Hãy cung cấp Cursor API Key nếu bạn cũng muốn dùng Cursor CLI trong ORGII",
+    "cursorApiKeyRecommendedAction": "Hãy cung cấp Cursor API Key nếu bạn cũng muốn dùng Cursor trong ORGII",
     "openCursorApiKeys": "Mở Cursor API Keys",
     "codexSetupMethodDesc": "Kết nối Codex bằng đăng nhập ChatGPT, tự phát hiện cục bộ hoặc OpenAI API key",
     "codexSignInTitle": "Đăng nhập Codex",
@@ -336,66 +319,37 @@
     "codexCredentialLabel": "Thông tin Codex",
     "codexCredentialDesc": "Dán Codex OAuth access token hoặc OpenAI API key",
     "codexCredentialPlaceholder": "eyJ... hoặc sk-...",
-    "codexConnected": "Codex đã kết nối",
     "codexDetectErrorHint": "Đăng nhập bằng trình duyệt nhúng hoặc dán thủ công OpenAI API key",
     "codexValidationErrorHint": "Kiểm tra token hoặc API key có hợp lệ không rồi thử lại",
     "claudeCodeAutodetectTitle": "Phát hiện phiên Claude Code",
     "claudeCodeAutodetectDesc": "Đọc đăng nhập Claude Code cục bộ từ macOS Keychain hoặc ~/.claude/.credentials.json",
-    "claudeCodeConnected": "Claude Code đã kết nối",
     "claudeCodeDetectErrorHint": "Đăng nhập bằng trình duyệt nhúng hoặc chạy claude auth login rồi thử phát hiện lại",
     "refreshModels": {
       "button": "Làm mới danh sách mô hình Cursor",
       "failed": "Làm mới từ Cursor thất bại: {{error}}"
     },
-    "revalidate": "Xác thực lại"
+    "revalidate": "Xác thực lại",
+    "confirmRemoveActiveSessions_one": "{{count}} phiên đang hoạt động vẫn dùng tài khoản này và sẽ thất bại ở lượt tiếp theo:",
+    "confirmRemoveActiveSessions_other": "{{count}} phiên đang hoạt động vẫn dùng tài khoản này và sẽ thất bại ở lượt tiếp theo:"
   },
   "integrations": {
-    "title": "Tích hợp",
-    "description": "Kênh, tích hợp nhắn tin và điều khiển nút",
     "searchPlaceholder": "Tìm kiếm kết nối...",
     "noConnections": "Chưa có kết nối nào",
-    "noConnectionsDesc": "Thêm tích hợp để bắt đầu",
-    "active": "Đang hoạt động",
-    "available": "Có sẵn",
-    "enabled": "Đã bật",
     "disabled": "Đã tắt",
-    "enableChannel": "Đã bật",
-    "enableChannelDesc": "Bật hoặc tắt kênh này",
     "testConnection": "Kiểm tra kết nối",
     "testConnectionDesc": "Xác thực khóa trước khi tạo",
     "addAccount": "Thêm kết nối",
-    "removeAccount": "Xóa tài khoản",
     "removeAccountTitle": "Xóa \"{{name}}\"?",
     "removeAccountConfirm": "Kết nối và cấu hình sẽ bị xóa. Hành động này không thể hoàn tác.",
-    "descriptionDesc": "Ghi chú tùy chọn về mục đích của kết nối",
-    "descriptionPlaceholder": "Hỗ trợ khách hàng, thông báo nhóm, v.v.",
-    "selectChannelType": "Channel Type",
-    "selectChannelTypeDesc": "Nền tảng trò chuyện để kết nối",
-    "selectServiceType": "Service",
-    "selectServiceTypeDesc": "Dịch vụ bên thứ ba để tích hợp",
-    "selectCategory": "Connection Type",
-    "selectGitProvider": "Git Provider",
-    "selectGitProviderDesc": "Nơi lưu trữ kho của bạn",
-    "selectProjectAdapter": "Bộ điều hợp đồng bộ Project",
-    "selectProjectAdapterDesc": "Trình theo dõi bên ngoài để đồng bộ Project",
-    "configured": "Đã cấu hình",
     "connected": "Đã kết nối",
     "connecting": "Đang kết nối",
     "reconnecting": "Đang kết nối lại",
     "connectionError": "Lỗi kết nối",
     "reconnect": "Kết nối lại",
-    "gitProviderRequired": "Vui lòng chọn một nhà cung cấp Git",
-    "defaultAccount": "default",
-    "readyToCreate": "Sẵn sàng tạo",
     "accountNameDuplicate": "Tài khoản với tên này đã tồn tại",
-    "channelTypeRequired": "Vui lòng chọn loại kênh",
     "probeSuccess": "Kết nối thành công",
     "probeFailed": "Kết nối thất bại",
-    "verified": "Đã xác minh",
-    "sanctionWarning": {
-      "title": "Cảnh báo khả dụng dịch vụ",
-      "message": "{{services}} có thể không khả dụng trong khu vực của bạn do hạn chế thương mại"
-    }
+    "verified": "Đã xác minh"
   },
   "channels": {
     "github": "GitHub",
@@ -625,25 +579,18 @@
       "modelPlaceholder": "Chọn mô hình",
       "groupPerUser": "Cô lập phiên chat nhóm theo người dùng",
       "groupPerUserDesc": "Mỗi người tham gia trong chat nhóm có ngữ cảnh phiên riêng."
-    }
-  },
-  "tabs": {
-    "current": "Hiện tại",
-    "add": "Thêm",
-    "discover": "Khám phá"
+    },
+    "emailProtocol": "Giao thức"
   },
   "modelsTabs": {
     "myAccounts": "Keys của tôi",
     "models": "Mô hình",
-    "available": "Có sẵn",
-    "preferred": "Ưu tiên",
     "comingSoon": "Sắp ra mắt",
     "installedClis": "CLI Clients",
     "myRoles": "Vai trò của tôi"
   },
   "wizard": {
     "pickProvider": "Nhà cung cấp",
-    "pickProviderDesc": "Chọn một nhà cung cấp",
     "selectVariant": "Phương thức kết nối",
     "variantSubscription": "Gói đăng ký",
     "variantApiKey": "API Key",
@@ -657,7 +604,6 @@
     "groupView": "Dạng nhóm",
     "showMoreOlder": "Xem thêm",
     "showLessOlder": "Thu gọn",
-    "includeOlder": "Bao gồm mô hình cũ",
     "scopeSelectCurrentModels": "Chỉ mới nhất",
     "scopeSelectIncludeOlder": "Tất cả mô hình",
     "filterAllProvider": "Tất cả nhà cung cấp",
@@ -690,10 +636,7 @@
     "sortAlphabetical": "Sắp xếp: A–Z"
   },
   "modelPreview": {
-    "title": "Chi tiết mô hình",
-    "noSources": "Không có tài khoản nào có mô hình này",
-    "specs": "Thông số",
-    "capabilities": "Khả năng"
+    "noSources": "Không có tài khoản nào có mô hình này"
   },
   "cliPreview": {
     "clientSection": "Máy khách",
@@ -727,20 +670,7 @@
     "filterReady": "Sẵn sàng",
     "filterNoSubscriptions": "Không có gói đăng ký"
   },
-  "lspPreview": {
-    "enable": "Bật",
-    "status": "Trạng thái",
-    "language": "Ngôn ngữ",
-    "command": "Lệnh",
-    "documentation": "Tài liệu",
-    "install": "Cài đặt",
-    "uninstall": "Gỡ cài đặt"
-  },
-  "lintPreview": {
-    "version": "Phiên bản"
-  },
   "mcpPreview": {
-    "title": "Thông tin máy chủ",
     "status": "Trạng thái",
     "transport": "Phương thức",
     "tools": "Công cụ",
@@ -751,20 +681,15 @@
     "toolsList": "Công cụ ({{count}})"
   },
   "skillPreview": {
-    "title": "Thông tin Skill",
     "source": "Nguồn",
-    "path": "Đường dẫn",
     "status": "Trạng thái",
     "issues": "Vấn đề",
-    "ready": "Sẵn sàng",
     "version": "Phiên bản",
-    "dependencies": "Phụ thuộc",
     "binaries": "Tệp nhị phân",
     "envVars": "Biến môi trường",
     "location": "Vị trí"
   },
   "gitPreview": {
-    "title": "Thông tin Provider",
     "provider": "Provider",
     "connections": "Kết nối"
   },
@@ -774,41 +699,27 @@
     "discover": "Khám phá",
     "comingSoon": "Sắp ra mắt"
   },
-  "mcpTabs": {
-    "installed": "Đã cài đặt",
-    "discover": "Khám phá"
-  },
-  "skillsTabs": {
-    "installed": "Đã cài đặt",
-    "discover": "Khám phá"
-  },
   "externalSkillsets": {
     "tabs": {
       "skills": "Skills",
       "mcp": "MCP",
-      "cursorPlugins": "Plugins",
-      "discoverMcp": "Khám phá MCP",
-      "discoverSkills": "Khám phá Skills"
+      "cursorPlugins": "Plugins"
     }
   },
   "rulesImport": {
-    "title": "Quy tắc có thể tải",
-    "description": "Nhập các quy tắc được phát hiện từ Cursor, Claude Code, Copilot, Kiro, Codex và Gemini",
-    "scanning": "Đang quét nguồn quy tắc bên ngoài…",
-    "empty": "Không tìm thấy quy tắc có thể tải.",
+    "title": "Nhập quy tắc từ ứng dụng khác",
+    "empty": "Không tìm thấy quy tắc để nhập.",
     "allImported": "Tất cả quy tắc được phát hiện đã được nhập"
   },
   "skillsImport": {
     "title": "Nhập Skills từ apps khác",
     "itemColumn": "Skill",
-    "scanning": "Đang quét nguồn Skill bên ngoài…",
     "empty": "Không tìm thấy Skills để nhập.",
     "allImported": "Tất cả Skills được phát hiện đã được nhập"
   },
   "mcpImport": {
     "title": "Nhập MCP servers từ apps khác",
     "itemColumn": "MCP server",
-    "scanning": "Đang quét config MCP bên ngoài…",
     "empty": "Không tìm thấy MCP servers để nhập.",
     "allImported": "Tất cả MCP servers được phát hiện đã được nhập"
   },
@@ -821,7 +732,7 @@
     "servicesDesc": "API Keys dịch vụ bên ngoài",
     "projects": "Projects",
     "projectsDesc": "Trình theo dõi issue và đồng bộ Project",
-    "models": "Mô hình & Keys",
+    "models": "Mô hình & khóa",
     "myRoles": "Vai trò của tôi",
     "clis": "CLI",
     "connections": "Kết nối",
@@ -832,11 +743,11 @@
     "tools": "Công cụ tích hợp",
     "computerUse": "Computer Use",
     "rulesMemoryEvolution": "Quy tắc, Bộ nhớ & Tiến hóa",
-    "externalSkillsets": "Skills, MCPs & Plugins"
+    "externalSkillsets": "Skills, MCPs & Plugins",
+    "housekeeper": "MiniCPM Housekeeper"
   },
   "projectConnections": {
     "linear": "Linear",
-    "authMethod": "Xác thực",
     "personalAccessToken": "Personal Access Token",
     "personalAccessTokenDesc": "Được lưu cục bộ cho kết nối đồng bộ Project này",
     "personalAccessTokenPlaceholder": "Dán token...",
@@ -849,10 +760,24 @@
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "Tự động phát hiện",
-    "methodOAuth": "Đăng nhập bằng GitHub"
+    "methodOAuth": "Đăng nhập bằng GitHub",
+    "methodPickerDesc": "Chọn cách bạn muốn xác thực với GitHub.",
+    "oauthDeviceDesc": "Mở URL xác minh và nhập mã này để ủy quyền GitHub.",
+    "scanCredHelper": "Git credential helper ({{name}})",
+    "scanEmpty": "Không phát hiện gì",
+    "scanEmptyDesc": "Không tìm thấy token gh CLI, credential helper hay khóa SSH nào. Hãy chọn phương thức khác ở trên.",
+    "scanGhCli": "GitHub CLI (gh)",
+    "scanResults": "Thông tin xác thực đã phát hiện",
+    "scanResultsDesc": "Chọn một mục để nhập. Chúng tôi xác minh token với GitHub trước khi lưu.",
+    "scanSshKey": "Khóa SSH — {{name}}",
+    "scanning": "Đang quét…",
+    "scanningDesc": "Đang tìm token gh CLI, credential helper và khóa SSH trên máy này.",
+    "sshKeyPath": "Đường dẫn khóa SSH",
+    "sshKeyPathDesc": "Đường dẫn tuyệt đối đến khóa riêng (vd. ~/.ssh/id_ed25519). Khóa công khai tương ứng phải đã được đăng ký trên GitHub.",
+    "scanSelectRequired": "Chọn một thông tin xác thực đã phát hiện để nhập.",
+    "sshKeyPathRequired": "Cần nhập đường dẫn khóa SSH."
   },
   "builtInTools": {
-    "title": "Công cụ tích hợp",
     "tabTools": "Công cụ tích hợp",
     "tabDesktopControl": "Computer Use",
     "computerUsePermissionsSectionTitle": "Quyền",
@@ -893,66 +818,18 @@
     "sidecarLastError": "Lỗi gần nhất"
   },
   "toolsArea": {
-    "builtin": "Công cụ tích hợp",
     "mcp": "MCP",
     "devtools": "Sân chơi"
   },
-  "toolsAddMenu": {
-    "title": "Thêm"
-  },
   "toolbarPlusMenu": {
-    "addProviderKey": "Thêm khóa nhà cung cấp",
-    "addMcpServer": "Thêm máy chủ MCP",
-    "createSkill": "Tạo Skills",
-    "addDatabaseConnection": "Thêm kết nối cơ sở dữ liệu",
-    "addChannelOrService": "Thêm kênh hoặc dịch vụ",
-    "addGitConnection": "Thêm kết nối Git",
-    "addRoutine": "Thêm Routine",
-    "createRule": "Tạo quy tắc",
-    "importSkill": "Nhập Skills từ Apps khác",
     "addAgent": "Thêm Agent"
   },
   "toolbarEllipsis": {},
-  "webharness": {
-    "title": "Web Apps",
-    "searchPlaceholder": "Tìm kiếm lệnh…",
-    "installed": "Đã cài đặt",
-    "notInstalled": "Chưa cài đặt",
-    "install": "Cài đặt",
-    "pipeline": "Cột đầu ra",
-    "optional": "Tùy chọn",
-    "defaultValue": "Mặc định: {{value}}",
-    "domain": "Tên miền",
-    "source": "Nguồn",
-    "strategy": "Chiến lược",
-    "desktopStatus": {
-      "not_installed": "Chưa cài đặt",
-      "installed": "Đã cài đặt",
-      "running": "Đang chạy",
-      "connected": "Đã kết nối"
-    },
-    "desktopActions": {
-      "launch": "Khởi chạy",
-      "connect": "Kết nối"
-    }
-  },
-  "webharnessWizard": {
-    "title": "Tạo lệnh Web App",
-    "description": "Mô tả",
-    "domain": "Tên miền",
-    "strategy": "Chiến lược",
-    "columns": "Cột",
-    "limit": "Giới hạn"
-  },
   "tableHeaders": {
-    "agentType": "Loại Agent",
-    "cli": "CLI",
     "type": "Loại",
     "transport": "Transport",
     "tools": "Công cụ",
-    "category": "Danh mục",
-    "added": "Ngày thêm",
-    "enabledModels": "Model đã bật"
+    "added": "Ngày thêm"
   },
   "status": {
     "ready": "Sẵn sàng",
@@ -978,14 +855,6 @@
   "routines": {
     "searchPlaceholder": "Search Routines...",
     "noRoutines": "No Routines defined"
-  },
-  "services": {
-    "smithery": "Smithery",
-    "apiKeySection": "API Key",
-    "currentKey": "Current key",
-    "smitheryApiKey": "Smithery API Key",
-    "smitheryApiKeyPlaceholder": "smi_...",
-    "smitheryApiKeyDesc": "API key để duyệt máy chủ MCP trên Smithery. Get your key at smithery.ai/account/api-keys"
   },
   "git": {
     "searchPlaceholder": "Tìm kiếm nhà cung cấp Git...",
@@ -1061,29 +930,13 @@
     "oauthDeviceCodeDesc": "Mở URL bên dưới và nhập mã này",
     "oauthOpenGithub": "Mở GitHub",
     "oauthCancel": "Hủy",
-    "oauthFailed": "Cấp quyền thất bại"
+    "oauthFailed": "Cấp quyền thất bại",
+    "autoCreatePr": "Tự động tạo pull request",
+    "autoCreatePrDesc": "Tự động tạo pull request trong Source Control của Workstation khi nhánh tính năng đã được push đầy đủ và sạch"
   },
   "skillsHub": {
-    "title": "Skills Hub",
-    "tab": "Skills",
     "searchPlaceholder": "Tìm kiếm skill...",
-    "install": "Cài đặt",
-    "installing": "Đang cài đặt...",
-    "downloads": "Lượt tải",
-    "stars": "Sao",
-    "version": "Phiên bản",
     "noInstalled": "Chưa cài đặt skill nào",
-    "marketplace": "Marketplace",
-    "author": "Tác giả",
-    "createdAt": "Ngày tạo",
-    "updatedAt": "Ngày cập nhật",
-    "source": "Nguồn",
-    "path": "Đường dẫn",
-    "available": "Khả dụng",
-    "notInstalled": "chưa cài đặt",
-    "sources": {
-      "github": "GitHub"
-    },
     "createSkill": "Tạo Skill",
     "editSkill": "Chỉnh sửa Skill",
     "nameLabel": "Tên",
@@ -1098,7 +951,6 @@
     "previewEmpty": "Chưa có gì để xem trước",
     "tokenEstimate": "~{{count}} Token",
     "saveSkill": "Lưu",
-    "nameTaken": "Skill với tên này đã tồn tại",
     "descriptionQualityGood": "Mô tả: Tốt",
     "descriptionQualityShort": "Mô tả quá ngắn",
     "descriptionQualityMissing": "Không có mô tả — Agent sẽ không phát hiện Skill này",
@@ -1123,8 +975,6 @@
     "compatibilityDesc": "Yêu cầu môi trường (vd. yêu cầu Python 3.14+ và uv)",
     "compatibilityPlaceholder": "vd. yêu cầu Python 3.14+ và uv",
     "tokenWarning": "vượt quá 5 000 khuyến nghị",
-    "license": "Giấy phép",
-    "compatibility": "Tương thích",
     "bundledFilesLabel": "Tệp đính kèm",
     "bundledFilesDesc": "Thêm script, tài liệu tham khảo hoặc tài nguyên. Script được thực thi nhưng không được tải vào cửa sổ ngữ cảnh",
     "addFileButton": "Thêm tệp",
@@ -1139,7 +989,6 @@
   "mcp": {
     "tab": "MCP",
     "searchPlaceholder": "Tìm máy chủ MCP...",
-    "serversLabel": "Máy chủ",
     "noServers": "Chưa cấu hình máy chủ MCP nào",
     "noServersDesc": "Thêm máy chủ MCP để mở rộng khả năng của Agent với các công cụ bên ngoài.",
     "addServer": "Thêm máy chủ MCP",
@@ -1164,7 +1013,6 @@
     "enabled": "Đã bật",
     "enabledDesc": "Bật hoặc tắt máy chủ MCP này",
     "reconnect": "Kết nối lại",
-    "connecting": "Đang kết nối...",
     "connectingTitle": "Đang khởi động {{count}} MCP server… (có thể mất vài giây)",
     "connectingSlow": "Vẫn đang kết nối…",
     "connectingSlowBody": "Lần chạy đầu tiên có thể mất một chút. Nếu một server có vẻ bị treo, mở bảng chi tiết của nó để kết nối lại",
@@ -1176,52 +1024,17 @@
     "toolsLabel": "Công cụ",
     "noTools": "Không có công cụ nào",
     "infoSection": "Thông tin Server",
-    "saved": "Đã lưu máy chủ",
-    "savedDesc": "đã được thêm vào cấu hình MCP của bạn.",
-    "testHint": "Kiểm tra kết nối trước khi lưu để xác minh máy chủ có thể truy cập được.",
-    "discoverServers": "Khám phá máy chủ MCP",
-    "hubSearchPlaceholder": "Tìm kiếm máy chủ MCP...",
-    "hubNoResults": "Không tìm thấy máy chủ MCP",
-    "hubNoResultsDesc": "Thử từ khóa tìm kiếm khác",
-    "addToConfig": "Thêm vào cấu hình",
-    "addingToConfig": "Đang thêm...",
-    "addedToConfig": "Đã thêm máy chủ",
-    "addedToConfigDesc": "đã được thêm vào cấu hình MCP của bạn.",
-    "alreadyConfigured": "Đã cấu hình",
-    "publishedAt": "Ngày xuất bản",
-    "website": "Trang web",
-    "source": "Mã nguồn",
-    "viewOnGlama": "Xem trên Glama",
-    "remotes": "Điểm cuối từ xa",
-    "packages": "Gói",
-    "sourceOfficial": "MCP Registry",
-    "sourceSmithery": "Smithery",
-    "sourceMcpBar": "MCP.Bar",
-    "sourceGlama": "Glama",
-    "selectRegistry": "Registry",
-    "selectRegistryDesc": "Chọn một Registry máy chủ MCP để duyệt",
-    "connections": "Kết nối",
-    "securityPassed": "Quét đạt",
-    "securityFailed": "Quét thất bại",
-    "serverCommand": "Lệnh máy chủ",
-    "requiredInputs": "Đầu vào bắt buộc",
-    "smitheryApiKeyRequired": "Cần Smithery API key. Thêm trong Integrations → Connections → Thêm → Dịch vụ.",
-    "smitheryGetKey": "Lấy key tại smithery.ai/account/api-keys",
     "envVars": "Biến môi trường",
     "envVarsHint": "ví dụ: GITHUB_PERSONAL_ACCESS_TOKEN",
     "envKey": "KEY",
     "envValue": "giá trị",
     "addEnvVar": "Thêm biến",
-    "envVarCount": "biến môi trường",
     "headers": "Headers",
     "headersHint": "ví dụ: Authorization",
     "headerKey": "Header",
     "headerValue": "giá trị",
     "addHeader": "Thêm header",
-    "headerCount": "header tùy chỉnh",
     "restart": "Khởi động lại",
-    "enable": "Bật",
-    "disable": "Tắt",
     "uptime": "Thời gian chạy",
     "bulkSelected": "Đã chọn {{count}}",
     "bulkRestart": "Khởi động lại",
@@ -1247,76 +1060,26 @@
     "scopeWorkspace": "Theo repo",
     "userScopeLabel": "User",
     "workspaceScopeLabel": "Theo repo",
-    "userServersLabel": "MCP Server của người dùng",
-    "workspaceServersLabel": "Máy chủ MCP theo repo",
     "noUserServers": "Chưa cấu hình MCP server cấp người dùng",
     "noWorkspaceServers": "Chưa cấu hình máy chủ MCP theo repo",
     "deleteConfirmTitle": "Xóa MCP server «{{name}}»?",
     "deleteConfirmMessage": "Máy chủ sẽ bị xóa khỏi file cấu hình. Các phiên đang hoạt động sẽ bị ngắt kết nối."
   },
   "agentOrgs": {
-    "title": "Nhóm Agent",
-    "running": "Đang chạy",
-    "fires": "lần kích hoạt",
-    "addRoutine": "Thêm Routine",
-    "trigger": "Trigger",
-    "triggerDesc": "Sự kiện nào kích hoạt chính sách này",
-    "scopeDesc": "Chính sách này áp dụng cho kho nào",
-    "advancedDesc": "Thời gian chờ và số lần kích hoạt tối đa mỗi chính sách",
-    "action": "Hành động",
-    "interval": "Khoảng thời gian",
-    "cooldown": "Thời gian chờ",
-    "cooldownDesc": "Số giây tối thiểu giữa các lần kích hoạt liên tiếp",
-    "maxFires": "Số lần kích hoạt tối đa",
-    "maxFiresDesc": "Số lần tối đa quy tắc này có thể kích hoạt (0 = không giới hạn)",
-    "advanced": "Nâng cao",
-    "advancedSettings": "Cài đặt nâng cao",
-    "applicableAgent": "Agent được chỉ định",
-    "applicableAgentDesc": "Agent sẽ thực hiện routine này (để trống để dùng bất kỳ Agent)",
-    "selectAgent": "Chọn Agent…",
     "scope": "Kho áp dụng",
     "allRepos": "Tất cả kho",
-    "allReposDesc": "Áp dụng cho tất cả kho",
-    "specificRepos": "Kho cụ thể",
-    "specificReposDesc": "Chỉ áp dụng cho kho đã chọn",
-    "selectRepos": "Chọn kho...",
-    "includeRepos": "Bao gồm",
-    "includeReposDesc": "Kho mà chính sách này áp dụng",
-    "excludeRepos": "Loại trừ",
-    "excludeReposDesc": "Kho cần loại trừ khỏi chính sách này",
-    "includeReposPlaceholder": "Chọn kho lưu trữ…",
-    "excludeReposPlaceholder": "Chọn kho lưu trữ để loại trừ…",
-    "step1": "Bước 1 — Thiết lập",
-    "step2": "Bước 2 — Hành động",
-    "promptPlaceholder": "Nhập prompt để gửi cho Agent...",
-    "sessionPrompt": "Prompt Session",
-    "repoPath": "Đường dẫn kho lưu trữ (tùy chọn)",
-    "sessionId": "ID Session",
-    "channel": "Tên kênh",
-    "messageContent": "Nội dung tin nhắn",
     "enabled": "Đã bật",
     "enabledDesc": "Bật hoặc tắt chính sách này",
-    "disabled": "Đã tắt",
-    "noTemplates": "Chưa có mẫu",
     "addOrg": "Thêm nhóm Agent",
     "addAgent": "Thêm Agent",
-    "agentSections": {
-      "builtInAgents": "Agents tích hợp sẵn",
-      "customAgents": "Agents tùy chỉnh",
-      "cli": "CLI Agents",
-      "orgs": "Nhóm"
-    },
     "memorySections": {
       "personalMemory": "Cá nhân",
-      "workspaceMemory": "Không gian làm việc",
-      "title": "Bộ nhớ"
+      "workspaceMemory": "Không gian làm việc"
     },
-    "importAgent": "Import",
     "agentDetail": {
       "type": "Loại",
       "builtIn": "Tích hợp sẵn",
-      "custom": "Tùy chỉnh",
-      "noModel": "(chưa thiết lập)"
+      "custom": "Tùy chỉnh"
     },
     "cliAgentDetail": {
       "installed": "Đã cài đặt",
@@ -1325,19 +1088,12 @@
       "keyStatus": "Trạng thái thông tin xác thực",
       "keysConfigured": "Đã cấu hình",
       "noKeys": "Chưa cấu hình",
-      "authMethod": "Phương thức xác thực",
-      "baseUrl": "Base URL",
-      "availableModels": "Các mô hình khả dụng",
-      "noModels": "Không có mô hình nào khả dụng",
-      "editKeys": "Chỉnh sửa thông tin xác thực",
       "detectKeys": "Phát hiện thông tin xác thực",
       "detectSuccess": "Phát hiện thông tin xác thực thành công",
       "keys": "Thông tin xác thực",
       "docs": "Tài liệu",
       "tabCore": "Cốt lõi",
-      "tabConfig": "Cấu hình",
       "addKey": "Thêm thông tin xác thực",
-      "compatibility": "Tương thích",
       "bringYourOwnKeys": "Sử dụng khóa riêng",
       "supported": "Hỗ trợ",
       "notSupported": "Không hỗ trợ",
@@ -1347,15 +1103,13 @@
       "keyType": "Loại",
       "typePlan": "Plan",
       "typeApiKey": "API Key",
-      "keyPreview": "Khóa",
       "addedTime": "Đã thêm",
       "secretBearingConfig": "Có thể chứa API key hoặc Token",
       "revealConfigFile": "Hiển thị trong trình quản lý tệp",
       "launchConfiguration": "Cấu hình khởi chạy",
       "configFiles": "Tệp cấu hình",
       "configFile": "Tệp cấu hình",
-      "tokenCount": "~{{count}} Token",
-      "emptyConfigPreview": "Không có nội dung cấu hình"
+      "tokenCount": "~{{count}} Token"
     },
     "sessionProvenance": {
       "masterToggle": "Hook truy xuất nguồn gốc",
@@ -1365,10 +1119,8 @@
       "title": "Nguồn gốc phiên",
       "capture": "Ghi lại tương tác với tệp",
       "description": "Ghi các thao tác đọc và ghi tệp dưới dạng siêu dữ liệu. Không lưu câu lệnh, đầu ra công cụ hoặc nội dung tệp.",
-      "configPath": "Ghi các thao tác đọc và ghi tệp dưới dạng siêu dữ liệu. Không lưu câu lệnh, đầu ra công cụ hoặc nội dung tệp. Cấu hình: {{path}}",
       "installDrift": "Tùy chọn đã lưu và hook đã cài đặt không khớp. Hãy chuyển đổi tính năng ghi để sửa hook được quản lý. Cấu hình: {{path}}",
       "copyPath": "Sao chép",
-      "reveal": "Hiển thị",
       "col": {
         "source": "Công cụ",
         "config": "Cấu hình",
@@ -1416,225 +1168,8 @@
         }
       }
     },
-    "codexConfig": {
-      "sectionTitle": "Cấu hình",
-      "model": "Mô hình",
-      "modelDesc": "Mô hình mặc định cho phiên Codex CLI",
-      "approvalPolicyLabel": "Chính sách phê duyệt",
-      "approvalPolicyDesc": "Khi nào Codex tạm dừng để yêu cầu xác nhận trước khi chạy lệnh",
-      "approvalPolicy": {
-        "untrusted": "Không tin cậy",
-        "on-request": "Theo yêu cầu",
-        "never": "Không bao giờ"
-      },
-      "sandboxModeLabel": "Chế độ sandbox",
-      "sandboxModeDesc": "Quyền truy cập hệ thống tệp và mạng cho các lệnh được thực thi",
-      "sandboxMode": {
-        "read-only": "Chỉ đọc",
-        "workspace-write": "Ghi workspace",
-        "danger-full-access": "Truy cập đầy đủ (nguy hiểm)"
-      },
-      "webSearchLabel": "Tìm kiếm web",
-      "webSearchDesc": "Cách Codex xử lý yêu cầu tìm kiếm web",
-      "webSearch": {
-        "disabled": "Tắt",
-        "cached": "Bộ nhớ đệm",
-        "live": "Trực tiếp"
-      },
-      "reasoningTitle": "Suy luận và phong cách",
-      "reasoningEffortLabel": "Mức độ suy luận",
-      "reasoningEffortDesc": "Mức độ suy luận mà mô hình áp dụng",
-      "reasoningEffort": {
-        "none": "Không",
-        "minimal": "Tối thiểu",
-        "low": "Thấp",
-        "medium": "Trung bình",
-        "high": "Cao",
-        "xhigh": "Rất cao"
-      },
-      "personalityLabel": "Tính cách",
-      "personalityDesc": "Phong cách giao tiếp trong phản hồi",
-      "personality": {
-        "friendly": "Thân thiện",
-        "pragmatic": "Thực dụng",
-        "none": "Không"
-      },
-      "unset": "(chưa đặt)",
-      "featuresTitle": "Cờ tính năng",
-      "features": {
-        "shell_snapshot": "Shell Snapshot",
-        "shell_snapshotDesc": "Chụp môi trường Shell để tăng tốc lệnh lặp lại",
-        "multi_agent": "Đa Agent",
-        "multi_agentDesc": "Bật công cụ cộng tác đa Agent",
-        "collaboration_modes": "Chế độ cộng tác",
-        "collaboration_modesDesc": "Bật chế độ cộng tác như chế độ kế hoạch",
-        "undo": "Hoàn tác",
-        "undoDesc": "Bật hoàn tác qua ảnh chụp git theo lượt",
-        "shell_tool": "Công cụ Shell",
-        "shell_toolDesc": "Bật công cụ Shell mặc định",
-        "personality": "Điều khiển tính cách",
-        "personalityDesc": "Bật lựa chọn tính cách trong CLI"
-      }
-    },
-    "cursorConfig": {
-      "sectionTitle": "Cấu hình",
-      "vimMode": "Chế độ Vim",
-      "vimModeDesc": "Bật phím tắt Vim trong trình soạn CLI",
-      "http1Fallback": "HTTP/1.1 dự phòng",
-      "http1FallbackDesc": "Sử dụng HTTP/1.1 thay vì HTTP/2 cho kết nối Agent (dành cho proxy doanh nghiệp)",
-      "attributionTitle": "Ghi nhận",
-      "attributeCommits": "Ghi nhận Commit",
-      "attributeCommitsDesc": "Thêm nhãn 'Made with Cursor' vào các Commit của Agent",
-      "attributePRs": "Ghi nhận PR",
-      "attributePRsDesc": "Thêm nhãn 'Made with Cursor' vào Pull Request của Agent",
-      "permissionsTitle": "Quyền",
-      "permissionsAllow": "Cho phép",
-      "permissionsDeny": "Từ chối",
-      "noPermissions": "Chưa cấu hình quy tắc quyền",
-      "sandboxTitle": "Sandbox",
-      "sandboxTypeLabel": "Chế độ Sandbox",
-      "sandboxTypeDesc": "Kiểm soát quyền truy cập hệ thống tệp cho các lệnh sandbox",
-      "sandboxType": {
-        "workspace_readwrite": "Workspace đọc/ghi",
-        "workspace_readonly": "Workspace chỉ đọc",
-        "insecure_none": "Tắt (không an toàn)"
-      },
-      "disableTmpWrite": "Tắt ghi /tmp",
-      "disableTmpWriteDesc": "Xóa quyền ghi mặc định vào thư mục tạm",
-      "sharedBuildCache": "Bộ nhớ đệm bản dựng chung",
-      "sharedBuildCacheDesc": "Chia sẻ bộ nhớ đệm bản dựng (npm, cargo, pip) giữa lệnh sandbox và không sandbox",
-      "networkPolicyTitle": "Chính sách mạng",
-      "networkDefaultPolicy": "Chính sách mặc định",
-      "networkDefaultPolicyDesc": "Hành động khi không có quy tắc cho phép/từ chối nào khớp",
-      "networkDefault": {
-        "allow": "Cho phép",
-        "deny": "Từ chối"
-      },
-      "networkAllow": "Tên miền cho phép",
-      "networkDeny": "Tên miền từ chối"
-    },
-    "claudeCodeConfig": {
-      "sectionTitle": "Cấu hình",
-      "noItems": "Chưa có mục nào được cấu hình",
-      "model": "Model mặc định",
-      "modelDesc": "Ghi đè model mặc định cho các phiên Claude Code",
-      "thinkingMode": "Extended Thinking",
-      "thinkingModeDesc": "Bật Extended Thinking (chế độ suy nghĩ) mặc định cho tất cả phiên",
-      "gitInstructions": "Hướng dẫn Git",
-      "gitInstructionsDesc": "Bao gồm hướng dẫn quy trình commit và PR tích hợp trong prompt hệ thống",
-      "cleanupPeriod": "Khoảng thời gian dọn dẹp",
-      "cleanupPeriodDesc": "Các phiên không hoạt động lâu hơn khoảng thời gian này sẽ bị xóa khi khởi động",
-      "days": "ngày",
-      "language": "Ngôn ngữ phản hồi",
-      "languageDesc": "Cấu hình ngôn ngữ phản hồi ưu tiên của Claude (ví dụ: japanese, spanish)",
-      "attributionTitle": "Thông tin tác giả",
-      "commitAttribution": "Thông điệp Commit",
-      "commitAttributionDesc": "Thông điệp tùy chỉnh được thêm vào git commit do Claude Code thực hiện",
-      "prAttribution": "Thông điệp PR",
-      "prAttributionDesc": "Thông điệp tùy chỉnh được thêm vào PR do Claude Code tạo",
-      "coAuthoredBy": "Co-authored-by",
-      "coAuthoredByDesc": "Bao gồm 'co-authored-by Claude' trong git commit và PR",
-      "permissionsTitle": "Quyền hạn",
-      "defaultMode": "Chế độ quyền mặc định",
-      "defaultModeDesc": "Chế độ quyền mặc định khi mở Claude Code",
-      "permissionMode": {
-        "default": "Mặc định",
-        "plan": "Kế hoạch",
-        "acceptEdits": "Chấp nhận chỉnh sửa",
-        "bypassPermissions": "Bỏ qua quyền hạn"
-      },
-      "permAllow": "Cho phép",
-      "permAsk": "Hỏi",
-      "permDeny": "Từ chối",
-      "sandboxTitle": "Sandbox",
-      "sandboxEnabled": "Bật Sandbox",
-      "sandboxEnabledDesc": "Cô lập lệnh Bash khỏi hệ thống tệp và mạng",
-      "autoAllowBash": "Tự động duyệt Bash",
-      "autoAllowBashDesc": "Tự động duyệt lệnh Bash khi Sandbox được bật",
-      "allowLocalBinding": "Cho phép liên kết Localhost",
-      "allowLocalBindingDesc": "Cho phép liên kết đến cổng localhost trong Sandbox (chỉ macOS)",
-      "excludedCommands": "Lệnh bị loại trừ",
-      "allowedDomains": "Tên miền được phép",
-      "fsAllowWrite": "Cho phép ghi hệ thống tệp",
-      "fsDenyWrite": "Từ chối ghi hệ thống tệp",
-      "fsDenyRead": "Từ chối đọc hệ thống tệp"
-    },
-    "tabs": {
-      "org": "Nhóm",
-      "agents": "Thành viên",
-      "integrations": "Tích hợp",
-      "rules": "Quy tắc",
-      "orgs": "Nhóm"
-    },
-    "searchPlaceholder": "Tìm quy tắc…",
-    "searchOrgsPlaceholder": "Tìm nhóm...",
-    "searchAgentsPlaceholder": "Tìm kiếm thành viên...",
-    "searchMemoryPlaceholder": "Tìm kiếm Memory...",
-    "searchIntegrationsPlaceholder": "Tìm kiếm Integrations...",
-    "integrationsSections": {
-      "core": "Lõi",
-      "tools": "Công cụ Agent",
-      "connections": "Kết nối",
-      "customization": "Tuỳ chỉnh"
-    },
-    "triggerNotConfigurable": "Không có cấu hình bổ sung cho trigger này",
     "sections": {
-      "quickActions": "Thao tác nhanh",
-      "trigger": "Cấu hình trigger",
-      "actions": "Chuỗi action"
-    },
-    "quickActions": {
-      "editDesc": "Thay đổi trigger, hành động và cài đặt",
-      "delete": "Xóa chính sách",
-      "deleteDesc": "Xóa vĩnh viễn chính sách này"
-    },
-    "overview": {
-      "triggerConfig": "Cấu hình Trigger",
-      "fireCount": "Số lần kích hoạt",
-      "lastFired": "Lần kích hoạt cuối",
-      "maxFires": "Số lần kích hoạt tối đa",
-      "actions": "Actions"
-    },
-    "cronExpression": "Biểu thức Cron (ví dụ: 0 9 * * *)",
-    "cronHint": "Cron 5 trường tiêu chuẩn: phút giờ ngày tháng thứ",
-    "patternRegex": "Mẫu regex (tùy chọn)",
-    "filePathPlaceholder": "Đường dẫn tệp hoặc thư mục cần theo dõi",
-    "debounce": "Chống rung",
-    "webhookRoute": "Đường dẫn Webhook (ví dụ: /automation/webhook/deploy)",
-    "webhookHint": "Yêu cầu POST đến đường dẫn này sẽ kích hoạt trigger",
-    "scheduleTimezone": "Múi giờ",
-    "scheduleTimezoneDesc": "Mặc định dùng múi giờ hiện tại của bạn. Độ lệch được hiển thị theo định dạng UTC.",
-    "triggerConfig": {
-      "timer": {
-        "label": "Khoảng thời gian",
-        "desc": "Tần suất kích hoạt chính sách (tính bằng giây)"
-      },
-      "scheduledTime": {
-        "label": "Thời gian đã lên lịch",
-        "desc": "Lịch kiểu lịch với tần suất, thời gian và múi giờ"
-      },
-      "cron": {
-        "label": "Lịch trình",
-        "desc": "Biểu thức Cron xác định thời điểm chính sách kích hoạt"
-      },
-      "gitActivity": {
-        "label": "Sự kiện Git",
-        "desc": "Các thao tác Git nào kích hoạt chính sách này"
-      },
-      "channelMessage": {
-        "label": "Kênh",
-        "desc": "Tên kênh để nhận tin nhắn",
-        "patternDesc": "Regex tùy chọn để lọc tin nhắn"
-      },
-      "fileWatch": {
-        "label": "Đường dẫn theo dõi",
-        "desc": "Tệp và thư mục cần giám sát thay đổi",
-        "debounceDesc": "Thời gian chờ sau lần thay đổi cuối cùng"
-      },
-      "webhook": {
-        "label": "Webhook Endpoint",
-        "desc": "Đường dẫn HTTP nhận yêu cầu POST đến"
-      }
+      "quickActions": "Thao tác nhanh"
     },
     "orgWizard": {
       "title": "Thêm Org",
@@ -1644,60 +1179,51 @@
       "orgDescription": "Mô tả",
       "orgDescriptionDesc": "Tóm tắt tùy chọn về công việc của tổ chức này",
       "orgDescriptionPlaceholder": "Tổ chức này làm gì?",
-      "members": "Thành viên",
       "addMember": "Thêm Thành viên",
-      "editMember": "Sửa Thành viên",
       "noMembers": "Thêm thành viên để xây dựng cấu trúc org",
-      "previewEmpty": "Thêm agent để xem trước sơ đồ tổ chức",
-      "hierarchyMode": {
-        "label": "Chế độ phân cấp",
-        "description": "Cách diễn giải quan hệ Reports-to giữa các thành viên tại runtime",
-        "flat": {
-          "label": "Phẳng",
-          "description": "Không có phân cấp. Mỗi thành viên có thể nhắn trực tiếp cho bất kỳ thành viên nào khác. Cột Reports-to bị ẩn"
-        },
-        "soft": {
-          "label": "Mềm (khuyến nghị)",
-          "description": "Reports-to được chuyển cho LLM như gợi ý tổ chức. Định tuyến tại runtime tự do — LLM có thể nhắn cho đồng nghiệp khi cần"
-        },
-        "strict": {
-          "label": "Nghiêm",
-          "description": "Reports-to được thực thi tại runtime. Một thành viên chỉ có thể nhắn cho quản lý, cấp dưới trực tiếp hoặc coordinator. Tin nhắn ngang cấp bị từ chối"
-        }
-      },
-      "strictBanner": "Chế độ nghiêm: thành viên chỉ có thể nhắn cho quản lý, cấp dưới trực tiếp hoặc coordinator. Tin nhắn ngang cấp bị chặn tại runtime.",
-      "missingParentWarn": "Trong chế độ nghiêm, thành viên cấp cao nhất báo cáo trực tiếp cho coordinator và chỉ có thể liên hệ coordinator.",
-      "reachability": {
-        "label": "Khả năng truy cập trong chế độ nghiêm",
-        "description": "Xem trước dry-run ai có thể nhắn trực tiếp cho ai theo chuỗi hiện tại. Phát hiện thành viên bị cô lập trước khi khởi chạy",
-        "fromHeader": "từ \\ đến",
-        "empty": "Thêm ít nhất một thành viên để xem định tuyến chế độ nghiêm tại runtime.",
-        "isolatedWarn": "Các thành viên sau chỉ có thể liên hệ coordinator — không thể hợp tác trực tiếp với đồng nghiệp ở chế độ nghiêm: {{names}}",
-        "allowedTitle": "{{from}} có thể nhắn trực tiếp cho {{to}}",
-        "blockedTitle": "Trong chế độ nghiêm, {{from}} không thể nhắn trực tiếp cho {{to}} — vui lòng chuyển qua coordinator"
-      },
       "membersLabel": "Thành viên nhóm",
-      "membersDesc": "Mỗi hàng là một bí danh định tuyến. Coordinator gọi thành viên theo name; name phải duy nhất. Role được chuyển cho LLM như gợi ý chuyên môn",
+      "membersDesc": "Mỗi hàng là một thành viên với quyền Writer và cài đặt liên lạc độc lập. Tên phải duy nhất; vai trò chỉ mô tả chuyên môn.",
       "memberName": "Tên",
       "memberNamePlaceholder": "Tên định tuyến duy nhất (vd. SDE-1)",
       "memberNameDuplicate": "Một thành viên khác đã dùng name này. Name phải duy nhất trong tổ chức.",
       "role": "Vai trò",
       "rolePlaceholder": "Chuyên môn (vd. dev backend)",
       "agent": "Agent",
-      "reportsTo": "Báo cáo cho",
-      "reportsToCoordinator": "Coordinator (cấp cao nhất)",
-      "status": "Trạng thái",
       "coordinator": "Coordinator",
       "coordinatorDesc": "Agent chủ trì sở hữu phiên coordinator cho lần chạy tổ chức này",
       "coordinatorPlaceholder": "Chọn Agent coordinator",
-      "tabs": {
-        "edit": "Chỉnh sửa",
-        "previewDiagram": "Xem trước sơ đồ"
-      },
       "dangerZone": "Vùng nguy hiểm",
       "deleteOrg": "Xóa Org này",
       "deleteOrgDesc": "Xóa vĩnh viễn Nhóm Agent này. Các Agent thành viên không bị ảnh hưởng. Không thể hoàn tác hành động này",
-      "deleteThisOrg": "Xóa Org này"
+      "deleteThisOrg": "Xóa Org này",
+      "planApprovalPolicy": {
+        "label": "Phê duyệt kế hoạch",
+        "description": "Ai quyết định khi nào kế hoạch do Planner gửi đã sẵn sàng để mở khóa các tác vụ phụ thuộc",
+        "coordinator": {
+          "label": "Điều phối viên (khuyến nghị)",
+          "description": "Điều phối viên xem xét kế hoạch ngay trong lần chạy, rồi phê duyệt hoặc yêu cầu Planner thay đổi"
+        },
+        "user": {
+          "label": "Người dùng",
+          "description": "Trò chuyện nhóm sẽ chờ yên lặng và hiển thị kế hoạch cho bạn với các thao tác Phê duyệt, Chỉnh sửa và Yêu cầu thay đổi"
+        },
+        "automatic": {
+          "label": "Tự động",
+          "description": "Kế hoạch hợp lệ được gửi sẽ được chấp nhận ngay lập tức và các tác vụ phụ thuộc được mở khóa"
+        }
+      },
+      "writer": "Writer",
+      "connected": "Đã kết nối",
+      "connectedCount": "Đã kết nối với {{count}} người",
+      "manageCommunication": "Quản lý liên lạc",
+      "futureTeamsOnly": "Thay đổi mẫu chỉ ảnh hưởng đến các nhóm được tạo trong tương lai, không thay đổi phiên nhóm đang chạy.",
+      "communicationPanel": {
+        "title": "Liên lạc của {{name}}",
+        "coordinatorAlwaysReachable": "Coordinator luôn liên lạc hai chiều với mọi thành viên và không xuất hiện trong danh sách này.",
+        "search": "Tìm thành viên theo tên hoặc vai trò",
+        "noPeers": "Không có thành viên phù hợp",
+        "saveWithTeam": "Thay đổi được giữ trong bản nháp nhóm và lưu từ trang cài đặt nhóm chính."
+      }
     },
     "agentWizard": {
       "title": "Cấu hình Agent",
@@ -1707,11 +1233,7 @@
       "namePlaceholder": "VD: Bot đánh giá",
       "descriptionLabel": "Mô tả",
       "descriptionPlaceholder": "Agent này làm gì? (tùy chọn)",
-      "defaultModelLabel": "Mô hình mặc định",
-      "defaultModelDesc": "Mô hình AI mà Agent này sử dụng",
-      "defaultModelPlaceholder": "Chọn mô hình...",
       "subAgentsTab": "Subagents",
-      "subAgentConcurrencyTitle": "Điều khiển đồng thời",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
       "maxToolUseConcurrencyDesc": "Số lần gọi Tool đồng thời mỗi tin nhắn. Mặc định: 10.",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
@@ -1719,27 +1241,13 @@
       "addSubAgent": "Thêm Sub-Agent...",
       "noSubAgents": "Chưa cấu hình sub-agent."
     },
-    "ruleActions": {
-      "create": "Tạo mới",
-      "import": "Nhập"
-    },
-    "ruleActionsDesc": {
-      "create": "Viết quy tắc Markdown mới",
-      "import": "Nhập .cursor/rules từ Workspace này"
-    },
-    "ruleActionLabel": "Phương thức",
-    "ruleActionDesc": "Viết từ đầu hoặc nhập từ nguồn có sẵn",
     "markdownContent": "Nội dung chính sách",
     "markdownContentDesc": "Hướng dẫn Markdown được chèn vào system prompt của Agent",
-    "markdownContentPlaceholder": "Viết chính sách Markdown ở đây...",
     "noMarkdownContent": "Không có nội dung",
     "importSelected": "Nhập ({{count}})",
     "importRuleColumn": "Quy tắc",
     "allImported": "Tất cả {{item}} đã được nhập",
-    "importedItemRules": "quy tắc",
     "externalImport": {
-      "noResults": "Không tìm thấy quy tắc nào để nhập. Đã quét .cursor/rules, CLAUDE.md, .github/copilot-instructions.md, .kiro/steering và thư mục chính của bạn.",
-      "globalScope": "(toàn cục)",
       "applyFailed": "Nhập thất bại: {{message}}",
       "partialFailure": "Một số mục không thể được nhập:",
       "sources": {
@@ -1749,40 +1257,15 @@
         "kiro": "Kiro",
         "codex": "Codex"
       },
-      "noSkillsResults": "Không tìm thấy skill nào để nhập. Đã tìm trong ~/.claude/skills và ~/.claude/commands.",
       "noAgentResults": "Chưa có agent nào để nhập",
-      "addManually": "Thêm agent thủ công",
       "readonlyDowngradedBadge": "Chỉ đọc — đã tắt công cụ ghi",
-      "readonlyDowngradedTooltip": "Nguồn khai báo readonly:true. Đã tắt: {{tools}}.",
-      "workspaceScope": "(Workspace)"
+      "readonlyDowngradedTooltip": "Nguồn khai báo readonly:true. Đã tắt: {{tools}}."
     },
-    "previewEmpty": "Chưa có nội dung để xem trước",
-    "editorTabs": {
-      "edit": "Chỉnh sửa",
-      "preview": "Xem trước"
-    },
-    "noMemory": "No memory items yet",
-    "memoryDescription": "Memory stores knowledge and context that members can reference across sessions.",
-    "activeRules": "hoạt động",
     "addRule": "Thêm quy tắc",
-    "editRoutine": "Sửa chính sách",
     "ruleName": "Tên chính sách",
     "ruleNameDesc": "Tên duy nhất để xác định chính sách này",
-    "routineNamePlaceholder": "ví dụ: Tự động triển khai khi commit",
-    "ruleNameRequired": "Tên chính sách là bắt buộc",
-    "routineName": "Tên chính sách",
-    "routineNameDesc": "Tên duy nhất để xác định chính sách này",
-    "routineNameRequired": "Tên chính sách là bắt buộc",
-    "noRulesOrRoutines": "Chưa có chính sách",
-    "ruleKindLabel": "Loại chính sách",
-    "ruleKindDesc": "Cách định nghĩa chính sách này",
     "ruleKinds": {
-      "rule": "Rules",
-      "routine": "Routines"
-    },
-    "ruleKindsDesc": {
-      "rule": "Hướng dẫn Markdown được chèn vào prompt của Agent",
-      "routine": "Chuỗi trigger + hành động tự động"
+      "rule": "Rules"
     },
     "markdownRuleNamePlaceholder": "ví dụ: Hướng dẫn phong cách mã",
     "editRule": "Chỉnh sửa chính sách",
@@ -1798,22 +1281,11 @@
     "ruleRepo": "Repo",
     "ruleRepoDesc": "Repo duy nhất mà hướng dẫn này áp dụng",
     "selectRepo": "Chọn repo…",
-    "ruleSourceGlobal": "User",
-    "ruleSourceGlobalDesc": "Lưu tại ~/.orgii/rules/. Áp dụng cho mọi repo.",
     "ruleSourcePersonal": "Cá nhân",
     "ruleSourcePersonalDesc": "Lưu tại ~/.orgii/personal/rules/. Chỉ session OS Agent / channel.",
-    "importSkillTitle": "Nhập skill từ agent khác",
-    "importSkillColumn": "Skill",
-    "importedItemSkills": "skills",
     "findSkills": {
       "title": "Tìm kiếm Skills",
-      "description": "Search skills.sh and press Enter to show matching ORGII skills. Click a result to preview its SKILL.md in WorkStation.",
-      "openDirectory": "Mở skills.sh",
-      "hint": "Paste a skills.sh URL or id like vercel-labs/skills/find-skills. ORGII downloads the skill snapshot directly from skills.sh.",
       "placeholder": "Tìm kiếm Skills...",
-      "install": "Install skill",
-      "installing": "Installing...",
-      "installSuccess": "Installed {{name}}",
       "installs": "Installs",
       "emptyTitle": "Tìm kiếm Skills",
       "emptySubtitle": "Nhập ít nhất 2 ký tự, rồi nhấn Enter để tìm Skills.",
@@ -1823,193 +1295,6 @@
     "importAgentTitle": "Nhập Agents từ apps khác",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agents",
-    "importAgentButton": "Nhập từ nền tảng khác",
-    "workflowActions": {
-      "categories": {
-        "all": "All",
-        "controls": "Controls",
-        "sessionWorkflow": "Session Workflow",
-        "actions": "Actions"
-      },
-      "inline": {
-        "runWith": "Chạy với",
-        "using": "dùng",
-        "retryMax": "thử lại tối đa",
-        "times": "lần",
-        "timeout": "hết giờ",
-        "transitionTo": "Chuyển sang",
-        "stage": "giai đoạn",
-        "configureAutoApprove": "Cấu hình quy trình: tự động phê duyệt",
-        "onFailure": "khi thất bại",
-        "open": "Mở",
-        "inExternalEditor": "trong trình soạn thảo ngoài",
-        "waitFor": "Chờ",
-        "ifOutput": "Nếu đầu ra",
-        "agentPlaceholder": "tác nhân",
-        "modelPlaceholder": "mô hình",
-        "stagePlaceholder": "giai đoạn",
-        "stagesPlaceholder": "giai đoạn",
-        "actionPlaceholder": "hành động",
-        "repoPlaceholder": "kho lưu trữ",
-        "conditionPlaceholder": "điều kiện",
-        "valuePlaceholder": "giá trị",
-        "autoApproveNone": "Không (thủ công)",
-        "autoApproveIntake": "Chỉ Intake",
-        "autoApproveIntakeSpec": "Intake + Spec",
-        "autoApproveExceptReview": "Tất cả trừ Review",
-        "autoApproveAll": "Tất cả (tự động)",
-        "failurePause": "Tạm dừng",
-        "failureRetry": "Thử lại",
-        "failureRollback": "Khôi phục",
-        "failureSkip": "Bỏ qua",
-        "condEquals": "bằng",
-        "condNotEquals": "không bằng",
-        "condContains": "chứa",
-        "condIsEmpty": "rỗng",
-        "condIsNotEmpty": "không rỗng",
-        "emptyTitle": "Chưa có hành động",
-        "emptySubtitle": "Chọn một hành động từ bảng để bắt đầu."
-      },
-      "fields": {
-        "session": "Session",
-        "model": "Model",
-        "agent": "Agent",
-        "timeout": "Timeout",
-        "maxRetries": "Max Retries",
-        "customPrompt": "Custom Prompt",
-        "prompt": "Prompt",
-        "sessionConfig": "Session Configuration",
-        "channel": "Channel",
-        "content": "Content",
-        "message": "Message",
-        "targetStage": "Target Stage",
-        "transitionType": "Transition Type",
-        "stageTimeout": "Stage timeout"
-      },
-      "placeholders": {
-        "selectSession": "Select a session",
-        "selectModel": "Select AI model",
-        "selectAgent": "Select agent",
-        "stageTimeout": "Stage timeout",
-        "maxRetries": "Maximum retry attempts",
-        "customPrompt": "Optional: Override default prompt...",
-        "compareValue": "Compare value",
-        "iterations": "Number of times to repeat",
-        "injectPrompt": "Enter prompt to inject...",
-        "selectSessionOptional": "Select target session (optional)",
-        "selectSessionToStop": "Select session to stop",
-        "channelName": "Channel name",
-        "messageContent": "Message content...",
-        "selectTargetSession": "Select target session",
-        "injectMessage": "Message to inject...",
-        "selectTargetStage": "Select target stage"
-      },
-      "units": {
-        "second": "second"
-      },
-      "stages": {
-        "intake": {
-          "title": "Intake Stage",
-          "description": "Gather initial requirements and clarifications"
-        },
-        "spec": {
-          "title": "Specification Stage",
-          "description": "Define detailed specifications and requirements"
-        },
-        "planning": {
-          "title": "Planning Stage",
-          "description": "Break down work into tasks and milestones"
-        },
-        "execution": {
-          "title": "Execution Stage",
-          "description": "Execute planned tasks with AI agents"
-        },
-        "review": {
-          "title": "Review Stage",
-          "description": "Review changes and validate results"
-        },
-        "merge": {
-          "title": "Merge Stage",
-          "description": "Merge approved changes to target branch"
-        }
-      },
-      "wait": {
-        "title": "Wait",
-        "description": "Pause execution for a specified time"
-      },
-      "if": {
-        "title": "If",
-        "description": "Conditional logic based on output",
-        "condition": "Condition"
-      },
-      "loop": {
-        "title": "Loop",
-        "description": "Repeat actions multiple times",
-        "loopType": "Loop Type",
-        "iterations": "Iterations",
-        "types": {
-          "count": "Fixed Count",
-          "foreach": "For Each Item",
-          "while": "While Condition"
-        }
-      },
-      "operators": {
-        "equals": "Equals",
-        "notEquals": "Not Equals",
-        "contains": "Contains",
-        "greaterThan": "Greater Than",
-        "lessThan": "Less Than",
-        "isEmpty": "Is Empty",
-        "isNotEmpty": "Is Not Empty"
-      },
-      "injectPrompt": {
-        "title": "Inject Prompt",
-        "description": "Send a prompt to the agent"
-      },
-      "startSession": {
-        "title": "Start Session",
-        "description": "Start a new coding agent session"
-      },
-      "killSession": {
-        "title": "Kill Session",
-        "description": "Stop an existing session"
-      },
-      "sendMessage": {
-        "title": "Send Message",
-        "description": "Send a message to a channel"
-      },
-      "injectToSession": {
-        "title": "Inject to Session",
-        "description": "Send a message into a specific session"
-      },
-      "stageTransition": {
-        "title": "Stage Transition",
-        "description": "Configure conditional or unconditional stage transitions"
-      },
-      "workflowConfig": {
-        "title": "Session Workflow Config",
-        "description": "Configure the full session workflow pipeline",
-        "autoApprove": "Auto-approve stages",
-        "onFailure": "On failure"
-      },
-      "transitionTypes": {
-        "unconditional": "Unconditional (always)",
-        "conditional": "Conditional (based on output)"
-      },
-      "autoApproveOptions": {
-        "none": "None (manual approval)",
-        "intake": "Intake only",
-        "intakeSpec": "Intake + Spec",
-        "allExceptReview": "All except Review",
-        "all": "All (fully automated)"
-      },
-      "onFailureOptions": {
-        "pause": "Pause and notify",
-        "retry": "Retry (max 3)",
-        "rollback": "Rollback to previous stage",
-        "skip": "Skip and continue"
-      }
-    },
     "emptySelectionTitle": "Chọn một thành viên hoặc Nhóm Agent",
     "emptySelectionSubtitle": "Chọn một Agent hoặc Nhóm Agent từ thanh bên để xem và cấu hình.",
     "applicableWorkspace": "Workspace áp dụng",
@@ -2036,7 +1321,40 @@
     "orgSaveFailed": "Không thể lưu nhóm",
     "orgDeleteFailed": "Không thể xóa nhóm",
     "deleteOrgTitle": "Xóa nhóm?",
-    "deleteOrgMessage": "\"{{name}}\" sẽ bị xóa vĩnh viễn. Không thể hoàn tác thao tác này."
+    "deleteOrgMessage": "\"{{name}}\" sẽ bị xóa vĩnh viễn. Không thể hoàn tác thao tác này.",
+    "cliUpdateAlerts": {
+      "label": "Cảnh báo cập nhật CLI",
+      "description": "Kiểm tra phiên bản CLI và cảnh báo khi có bản cập nhật. Tắt sẽ vô hiệu hóa việc kiểm tra"
+    },
+    "cliManagedConfig": {
+      "title": "Chuyển đổi cấu hình CLI",
+      "modeLabel": "Chế độ",
+      "modeDesc": "Mặc định khôi phục cấu hình riêng của CLI. ORGII quản lý sẽ ghi một cấu hình proxy đã được sao lưu.",
+      "modeDefault": "Mặc định",
+      "modeOrgii": "ORGII quản lý",
+      "conflict": "Thay đổi bên ngoài",
+      "conflictTitle": "Xung đột",
+      "conflictDesc": "Cấu hình CLI đang hoạt động đã thay đổi sau khi ORGII ghi nó.",
+      "proxyStatus": "Proxy",
+      "proxyDefault": "Chế độ mặc định",
+      "proxyReady": "Proxy đã sẵn sàng",
+      "proxyNotReady": "Proxy chưa sẵn sàng",
+      "keyLabel": "Khóa",
+      "keyDesc": "Chỉ hiển thị các API key tương thích với CLI này và proxy được quản lý.",
+      "selectKey": "Chọn khóa",
+      "modelLabel": "Mô hình",
+      "selectModel": "Chọn mô hình",
+      "configFile": "Tệp cấu hình",
+      "actions": "Thao tác",
+      "addKey": "Thêm khóa",
+      "apply": "Áp dụng",
+      "restore": "Khôi phục mặc định",
+      "forceApply": "Buộc áp dụng",
+      "forceRestore": "Buộc khôi phục",
+      "applySuccess": "Đã áp dụng cấu hình do ORGII quản lý",
+      "restoreSuccess": "Đã khôi phục cấu hình mặc định",
+      "proxyLifecycleDesc": "Hãy giữ ORGII chạy khi dùng chế độ này. Đóng cửa sổ vẫn giữ proxy trong khay hệ thống; thoát ORGII sẽ khôi phục an toàn về Mặc định trừ khi cấu hình đã bị thay đổi từ bên ngoài."
+    }
   },
   "databases": {
     "title": "Cơ sở dữ liệu",
@@ -2044,38 +1362,24 @@
     "searchPlaceholder": "Tìm kiếm cơ sở dữ liệu...",
     "providers": {
       "sqlite": "SQLite",
-      "sqliteDesc": "Tệp cơ sở dữ liệu SQLite cục bộ",
       "postgres": "PostgreSQL",
-      "postgresDesc": "Kết nối trực tiếp PostgreSQL",
       "mysql": "MySQL",
-      "mysqlDesc": "Cơ sở dữ liệu MySQL / MariaDB",
       "supabase": "Supabase",
-      "supabaseDesc": "Cơ sở dữ liệu PostgreSQL đám mây Supabase",
       "turso": "Turso",
-      "tursoDesc": "SQLite phân tán Turso (libSQL)",
-      "neon": "Neon",
-      "neonDesc": "PostgreSQL serverless Neon"
+      "neon": "Neon"
     },
     "detail": {
       "type": "Loại",
       "url": "URL",
       "status": "Trạng thái",
-      "enabled": "Đã bật",
-      "disabled": "Đã tắt",
-      "connectionInfo": "Thông tin kết nối",
-      "actions": "Hành động",
       "testConnection": "Kiểm tra kết nối",
       "probeSuccess": "Kết nối thành công",
-      "probeFailed": "Kết nối thất bại",
-      "disableAgent": "Tắt quyền truy cập Agent",
-      "enableAgent": "Bật quyền truy cập Agent"
+      "probeFailed": "Kết nối thất bại"
     },
     "wizard": {
       "title": "Thêm kết nối cơ sở dữ liệu",
       "providerType": "Loại cơ sở dữ liệu",
       "providerTypeDesc": "Chọn công cụ cơ sở dữ liệu cho kết nối này",
-      "connectionDetails": "Chi tiết kết nối",
-      "connectionNameDesc": "Tên hiển thị trong thanh bên và công cụ Agent",
       "databaseFileDesc": "Đường dẫn đến tệp .sqlite, .sqlite3 hoặc .db cục bộ",
       "projectUrlDesc": "URL dự án Supabase từ bảng điều khiển",
       "accessTokenDesc": "Service Role hoặc Anon Key để truy cập API",
@@ -2087,7 +1391,6 @@
       "mysqlHostDesc": "Tên máy chủ hoặc địa chỉ IP của máy chủ MySQL",
       "testConnectionDesc": "Xác thực kết nối trước khi lưu",
       "addConnection": "Thêm",
-      "testPassed": "Kiểm tra kết nối thành công",
       "saved": "Đã thêm kết nối",
       "savedDesc": "Kết nối cơ sở dữ liệu đã được lưu. Bạn có thể đóng trình hướng dẫn này",
       "connectionNameOptional": "Tên kết nối (tùy chọn)",
@@ -2096,7 +1399,6 @@
     }
   },
   "devTools": {
-    "mode": "Chế độ",
     "modeUi": "Xem trước UI",
     "modeTool": "Công cụ",
     "modeInput": "Đầu vào",
@@ -2108,12 +1410,9 @@
     "toolTypeFilterPlaceholder": "Tìm công cụ…",
     "commands": "Lệnh",
     "status": "Trạng thái",
-    "statusRunning": "Đang chạy",
-    "variant": "Biến thể",
     "variantChat": "Chat Panel",
     "variantSimulator": "Simulator",
     "reset": "Đặt lại",
-    "activityData": "ActivityData (JSON)",
     "activityDataPlaceholder": "Nhập ActivityData JSON...",
     "preview": "Xem trước",
     "jsonParseError": "Lỗi phân tích JSON",
@@ -2122,10 +1421,7 @@
     "queuedMessages": "Tin nhắn đang chờ",
     "fileReview": "Xem lại tệp",
     "terminalProcesses": "Tiến trình terminal",
-    "chatPreview": "Xem trước trò chuyện",
-    "scenario": "Kịch bản",
-    "selectScenario": "Chọn một kịch bản",
-    "sessionSimulation": "Mô phỏng phiên"
+    "modeSessionLink": "Liên kết phiên"
   },
   "rulesTabs": {
     "rules": "Quy tắc",
@@ -2138,33 +1434,15 @@
     "noRules": "Chưa có quy tắc"
   },
   "agentTools": {
-    "enabled": "Đã bật",
-    "systemPinned": "Được ghim bởi hệ thống",
-    "searchPlaceholder": "Tìm kiếm công cụ...",
-    "toolColumn": "Công cụ",
-    "typeColumn": "Loại"
+    "enabled": "Đã bật"
   },
   "dependencies": {
-    "installed": "Đã cài đặt",
-    "notFound": "Không tìm thấy",
-    "noDbClientsFound": "Không tìm thấy máy khách cơ sở dữ liệu",
-    "tableClient": "Máy khách",
-    "tableName": "Tên",
-    "tableStatus": "Trạng thái",
-    "tableVersion": "Phiên bản",
-    "tableBinary": "Nhị phân",
-    "tableCategory": "Danh mục",
     "categoryDatabase": "Cơ sở dữ liệu",
     "categoryPackageManager": "Trình quản lý gói",
     "categoryRuntime": "Môi trường chạy",
     "categoryShellUtility": "Tiện ích shell",
     "categoryToolchain": "Chuỗi công cụ",
-    "categoryVersionControl": "Kiểm soát phiên bản",
-    "installHintNote": "Cài đặt phụ thuộc còn thiếu để kích hoạt tính năng này",
-    "installSection": "Cài đặt"
-  },
-  "creator": {
-    "assign": "Giao việc"
+    "categoryVersionControl": "Kiểm soát phiên bản"
   },
   "routineFields": {
     "addRoutine": "Thêm Routine",
@@ -2212,7 +1490,21 @@
     "fireHistory": "Run history",
     "noFires": "No runs yet",
     "openSession": "Open session",
-    "openWorkItem": "Open work item"
+    "openWorkItem": "Open work item",
+    "fireError": "Không thể bắt đầu Routine: {{detail}}",
+    "provider": "Nhà cung cấp",
+    "eventKind": "Sự kiện",
+    "extraActivations": "Kích hoạt bổ sung",
+    "activationSchedule": "Lịch trình",
+    "activationOneTime": "Một lần",
+    "activationProviderEvent": "Sự kiện nhà cung cấp",
+    "activationManual": "Thủ công",
+    "providerPlaceholder": "github",
+    "eventKindPlaceholder": "pull_request",
+    "fireAccepted": "Lần chạy {{status}}",
+    "openSessionError": "Không thể mở phiên",
+    "openWorkItemError": "Không thể mở Work Item",
+    "fireStarted": "Đã bắt đầu chạy Routine"
   },
   "cursorPlugins": {
     "noPlugins": "Không có plugin Cursor nào được cài đặt",
@@ -2226,23 +1518,6 @@
     "searchPlaceholder": "Tìm kiếm plugin...",
     "mcpConfigured": "MCP đã cấu hình"
   },
-  "localModels": {
-    "title": "On prem",
-    "description": "Phát hiện thiết bị này và xếp hạng các mô hình cục bộ thân thiện với Ollama / llama.cpp bằng điểm phù hợp phần cứng nhẹ.",
-    "searchPlaceholder": "Tìm mô hình cục bộ...",
-    "hardware": {
-      "system": "Hệ thống",
-      "cpu": "CPU",
-      "memory": "Bộ nhớ",
-      "gpu": "GPU / Backend"
-    },
-    "fit": {
-      "good": "Tốt"
-    },
-    "runMode": {
-      "gpu": "GPU"
-    }
-  },
   "housekeeper": {
     "addModel": "Thêm mô hình",
     "sections": {
@@ -2251,7 +1526,14 @@
       "diagnostics": "Chẩn đoán"
     },
     "health": {
-      "status": "Chưa kiểm tra"
+      "status": "Chưa kiểm tra",
+      "title": "Kiểm tra tình trạng",
+      "idle": "Kiểm tra /v1/models và gửi một yêu cầu trò chuyện nhỏ.",
+      "checking": "Đang kiểm tra dịch vụ vLLM MiniCPM cục bộ...",
+      "checkButton": "Kiểm tra kết nối",
+      "configureFirst": "Hãy cấu hình tài khoản vLLM MiniCPM trước.",
+      "connectedTo": "Đã kết nối tới {{baseUrl}}",
+      "failed": "Kiểm tra tình trạng MiniCPM thất bại."
     },
     "benchmark": {
       "title": "Tốc độ đầu ra MiniCPM",
@@ -2263,11 +1545,54 @@
       "tokensPerSecond": "Tốc độ đầu ra: {{value}} tokens/s",
       "completionTokens": "Tokens đầu ra: {{value}}",
       "elapsed": "Tổng thời gian: {{value}}s"
+    },
+    "title": "Housekeeper thường trú",
+    "description": "MiniCPM cục bộ xử lý việc trau chuốt prompt, giải thích ngắn các bước và điều khiển UI nhẹ. Tác vụ lập trình và thiết lập ADE phức tạp vẫn dùng mô hình agent chính.",
+    "autoAccount": "Tự động chọn tài khoản MiniCPM vLLM",
+    "tiles": {
+      "model": "Mô hình",
+      "endpoint": "Endpoint",
+      "safeContext": "Ngữ cảnh an toàn"
+    },
+    "settings": {
+      "enabled": {
+        "title": "Bật housekeeper",
+        "description": "Khi tắt, việc trau chuốt prompt, giải thích bước và điều khiển UI nhẹ sẽ không dùng MiniCPM."
+      },
+      "account": {
+        "title": "Tài khoản vLLM MiniCPM",
+        "description": "Dùng lại tài khoản vllm_api hiện có trong KeyVault; không tạo kho thông tin xác thực riêng."
+      },
+      "model": {
+        "title": "ID mô hình",
+        "description": "Docker vLLM MiniCPM5-1B mặc định là openbmb/MiniCPM5-1B."
+      },
+      "context": {
+        "title": "Ngân sách ngữ cảnh an toàn",
+        "description": "Dùng ngân sách thận trọng 10000 token trên GPU 4GB thay vì tin vào giới hạn lý thuyết 32k."
+      }
+    },
+    "features": {
+      "promptPolish": {
+        "title": "Trau chuốt prompt",
+        "description": "Trau chuốt đầu vào theo cách thủ công trước khi gửi tới mô hình lập trình mạnh hơn."
+      },
+      "stepExplain": {
+        "title": "Giải thích bước của Agent",
+        "description": "Tạo một hoặc hai lời giải thích ngắn bằng tiếng Trung cho các bước phát lại phiên."
+      },
+      "uiControl": {
+        "title": "Điều khiển ADE/UI nhẹ",
+        "description": "MiniCPM chỉ được phép phân loại yêu cầu vào một danh sách trắng thao tác cục bộ nghiêm ngặt."
+      },
+      "contextCompact": {
+        "title": "Tự động bảo trì ngữ cảnh",
+        "description": "Cho phép MiniCPM duy trì một bản tóm tắt cuốn chiếu riêng biệt của ngữ cảnh cũ khi các phiên đã bật đang rảnh."
+      }
     }
   },
   "cliLaunchProfiles": {
     "title": "Hồ sơ khởi chạy",
-    "plain": "Cơ bản",
     "plan": "Kế hoạch",
     "fullPermission": "Toàn quyền",
     "autoEdit": "Tự sửa",
@@ -2279,5 +1604,67 @@
     "unavailable": "Hồ sơ khởi chạy không khả dụng",
     "saved": "Đã lưu hồ sơ khởi chạy",
     "resetDone": "Đã đặt lại hồ sơ khởi chạy"
+  },
+  "gitProfiles": {
+    "tab": "Hồ sơ Git",
+    "title": "Hồ sơ Git",
+    "add": "Thêm hồ sơ",
+    "refresh": "Làm mới hồ sơ",
+    "refreshed": "Đã làm mới hồ sơ Git toàn cục",
+    "loading": "Đang tải hồ sơ Git toàn cục của bạn…",
+    "defaultProfile": "Hồ sơ mặc định",
+    "newProfile": "Hồ sơ mới",
+    "copyName": "Bản sao {{name}}",
+    "profileName": "Tên hồ sơ",
+    "authorName": "Tên tác giả",
+    "email": "Email",
+    "selectEmail": "Chọn một email",
+    "signingKey": "Khóa ký",
+    "signingKeyPlaceholder": "ID khóa ký GPG hoặc SSH",
+    "signCommits": "Ký commit",
+    "active": "Đang hoạt động",
+    "activate": "Kích hoạt hồ sơ",
+    "activated": "{{name}} hiện là hồ sơ Git toàn cục",
+    "editRaw": "Chỉnh sửa cấu hình thô",
+    "hideRaw": "Ẩn cấu hình thô",
+    "rawTitle": "Hồ sơ Git thô",
+    "rawConfig": "Cấu hình Git",
+    "updateFromRaw": "Cập nhật hồ sơ từ cấu hình",
+    "rawUpdated": "Đã cập nhật hồ sơ từ cấu hình Git thô",
+    "rawInvalid": "Hồ sơ Git thô không hợp lệ",
+    "nameEmailRequired": "Cần nhập tên tác giả và email",
+    "deleteTitle": "Xóa hồ sơ Git",
+    "deleteMessage": "Xóa hồ sơ “{{name}}”? Thao tác này không thay đổi cấu hình Git toàn cục hiện tại của bạn.",
+    "loadFailed": "Không thể tải hồ sơ Git toàn cục",
+    "applyFailed": "Không thể kích hoạt hồ sơ Git"
+  },
+  "credentialImport": {
+    "title": "Nhập thông tin xác thực từ ứng dụng khác",
+    "itemColumn": "Thông tin xác thực",
+    "sourceColumn": "Tìm thấy trong",
+    "empty": "Không tìm thấy thông tin xác thực nào để nhập. Đã kiểm tra biến môi trường, shell profile, cài đặt Claude Code, hồ sơ cc-switch và kho đăng nhập của Claude Code, Codex, Cursor, GitHub CLI, Kiro và OpenCode.",
+    "allImported": "Tất cả thông tin xác thực đã phát hiện đều đã được nhập",
+    "authMethod": {
+      "api_key": "API key",
+      "oauth": "Token đăng nhập"
+    },
+    "sourceKind": {
+      "env": "Biến môi trường",
+      "shell_profile": "Shell profile",
+      "config_file": "Tệp cấu hình",
+      "oauth_store": "Kho đăng nhập",
+      "keychain": "Keychain",
+      "state_db": "Trạng thái ứng dụng",
+      "cc_switch": "cc-switch"
+    },
+    "applyFailed": "Nhập thất bại: {{message}}",
+    "partialFailure": "Một số thông tin xác thực không thể nhập:"
+  },
+  "skills": {
+    "shareToOrg": "Chia sẻ với tổ chức",
+    "share": "Chia sẻ",
+    "sharedToOrg": "Đã chia sẻ Skill với tổ chức",
+    "shareToOrgHint": "Thành viên của tổ chức nhận được ảnh chụp hiện tại của skill này; hãy chia sẻ lại sau khi chỉnh sửa để phát hành bản cập nhật.",
+    "shareOrgPlaceholder": "Tổ chức"
   }
 }

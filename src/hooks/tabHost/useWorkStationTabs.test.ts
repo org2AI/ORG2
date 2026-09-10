@@ -5,14 +5,12 @@
  * than reproducing the mutation tests (covered in tabMutations.test.ts),
  * this file tests the thin pure logic that lives inside the hook itself:
  *
- *   • The `closeAllTabs` guard: if `tabs === []` and `activeTabId === null`
- *     the updater is a no-op (returns the same state reference).
  *   • The `updateTabMeta` early-exit: no state change when title+icon
  *     are unchanged.
  *   • The `setTabUnsaved` early-exit: no state change when the flag is
  *     already at the requested value.
  *
- * All three are inline anonymous functions inside the hook; we extract
+ * Both are inline anonymous functions inside the hook; we extract
  * their equivalent logic here as named helpers so they can be unit tested
  * without React.
  */
@@ -32,34 +30,6 @@ function tab(
     ...overrides,
   };
 }
-
-// ── closeAllTabs guard ────────────────────────────────────────────────────────
-
-function closeAllTabsGuard(state: PanelState): PanelState {
-  if (state.tabs.length === 0 && state.activeTabId === null) return state;
-  return { tabs: [], activeTabId: null };
-}
-
-describe("closeAllTabs guard", () => {
-  it("returns the same reference when already empty", () => {
-    const state: PanelState = { tabs: [], activeTabId: null };
-    expect(closeAllTabsGuard(state)).toBe(state);
-  });
-
-  it("clears tabs when there are tabs", () => {
-    const state: PanelState = { tabs: [tab("a")], activeTabId: "a" };
-    const next = closeAllTabsGuard(state);
-    expect(next.tabs).toHaveLength(0);
-    expect(next.activeTabId).toBeNull();
-  });
-
-  it("clears when activeTabId is set but tabs array is empty", () => {
-    const state: PanelState = { tabs: [], activeTabId: "orphaned" };
-    const next = closeAllTabsGuard(state);
-    expect(next.tabs).toHaveLength(0);
-    expect(next.activeTabId).toBeNull();
-  });
-});
 
 // ── updateTabMeta early-exit ──────────────────────────────────────────────────
 

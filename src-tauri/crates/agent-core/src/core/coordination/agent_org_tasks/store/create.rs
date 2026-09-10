@@ -12,14 +12,17 @@ use crate::coordination::agent_org_payload_limits::{
 };
 
 use super::super::helpers::{
-    encode_json_array, encode_metadata, insert_task_history_event, list_tasks_with_conn,
-    now_rfc3339,
+    encode_json_array, encode_metadata, encode_optional_json, insert_task_history_event,
+    list_tasks_with_conn, now_rfc3339,
 };
 use super::super::{
-    task_dependency_closure, CreateTaskParams, Task, TaskCreateSchedulingPolicy, TaskStatus,
-    TASK_EVENT_CREATED, TASK_GRAPH_OPEN_WORK_CONFLICT_ERROR,
+    task_dependency_closure, CreateTaskParams, Task, TaskActorAudit, TaskActorKind,
+    TaskCreateSchedulingPolicy, TaskExecutionMode, TaskOutput, TaskStatus, TASK_EVENT_CREATED,
+    TASK_GRAPH_OPEN_WORK_CONFLICT_ERROR, TASK_METADATA_EXECUTION_MODE, TASK_METADATA_OUTPUT,
 };
-use super::dependencies::{canonicalize_dependencies, persist_dependency_projection};
+use super::dependencies::{
+    canonicalize_dependencies, persist_canonical_blocked_by_for_test_fixture,
+};
 use super::validation::{
     ensure_run_allows_task_mutation, ensure_task_run_capacity, reject_writable_blocks,
     validate_task_persistence_invariants, validate_task_text_fields,
@@ -85,7 +88,17 @@ impl AgentOrgTaskStore {
         }
         reject_writable_blocks(&params.blocks)?;
 
-        let metadata_json = encode_metadata(params.metadata.as_ref())?;
+        let execution_mode = legacy_execution_mode(params.metadata.as_ref())?;
+        let output = legacy_output(params.metadata.as_ref())?;
+        let mut canonical_metadata = params.metadata.clone();
+        if let Some(object) = canonical_metadata
+            .as_mut()
+            .and_then(serde_json::Value::as_object_mut)
+        {
+            object.remove(TASK_METADATA_EXECUTION_MODE);
+            object.remove(TASK_METADATA_OUTPUT);
+        }
+        let metadata_json = encode_metadata(canonical_metadata.as_ref())?;
         let now = now_rfc3339();
 
         let (task, effect) = with_sessions_writer(|| -> Result<(Task, T), String> {
@@ -102,19 +115,40 @@ impl AgentOrgTaskStore {
                 params.metadata.as_ref(),
             )?;
             let mut candidate_tasks = list_tasks_with_conn(&tx, &params.org_run_id)?;
+            let activation_generation: i64 = tx
+                .query_row(
+                    "SELECT activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+                    [&params.org_run_id],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
             let existing_task_count = candidate_tasks.len();
-            ensure_task_run_capacity(existing_task_count, 1)?;
+            let existing_open_task_count = candidate_tasks
+                .iter()
+                .filter(|task| task.status.is_open())
+                .count();
+            ensure_task_run_capacity(existing_open_task_count, 1)?;
             candidate_tasks.push(Task {
                 id: params.id.clone(),
                 org_run_id: params.org_run_id.clone(),
+                activation_generation,
                 subject: params.subject.clone(),
                 description: params.description.clone(),
                 active_form: params.active_form.clone(),
                 owner: params.owner.clone(),
                 status: params.status,
+                execution_mode,
                 blocks: Vec::new(),
                 blocked_by: params.blocked_by.clone(),
-                metadata: params.metadata.clone(),
+                metadata: canonical_metadata,
+                output,
+                failure_reason: None,
+                cancel_reason: None,
+                created_by_participant_id:
+                    crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID.to_string(),
+                source_turn_intent_id: format!("legacy-create:{}", params.id),
+                originating_message_id: None,
+                replaces_task_id: None,
                 created_at: now.clone(),
                 updated_at: now.clone(),
             });
@@ -123,7 +157,7 @@ impl AgentOrgTaskStore {
                 .last()
                 .cloned()
                 .expect("candidate graph contains the task being created");
-            if !task.status.is_resolved()
+            if task.status.is_open()
                 && scheduling_policy
                     .is_some_and(|policy| !policy.allow_parallel_with_unlisted_open_tasks)
             {
@@ -131,7 +165,7 @@ impl AgentOrgTaskStore {
                     task_dependency_closure(&task.blocked_by, &candidate_tasks);
                 let omitted_open_task_ids = candidate_tasks[..existing_task_count]
                     .iter()
-                    .filter(|existing| !existing.status.is_resolved())
+                    .filter(|existing| existing.status.is_open())
                     .filter(|existing| !covered_dependency_ids.contains(&existing.id))
                     .map(|existing| existing.id.clone())
                     .collect::<Vec<_>>();
@@ -142,30 +176,44 @@ impl AgentOrgTaskStore {
                     ));
                 }
             }
-            let blocks_json = encode_json_array(&task.blocks)?;
             let blocked_by_json = encode_json_array(&task.blocked_by)?;
+            let output_json = encode_optional_json("task output", task.output.as_ref())?;
 
             tx.execute(
-                "INSERT INTO agent_org_tasks (
-                    id, org_run_id, subject, description, active_form, owner,
-                    status, blocks_json, blocked_by_json, metadata_json,
-                    created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)",
+                "INSERT INTO agent_org_runtime_tasks (
+                    id, org_run_id, activation_generation, subject, description, active_form, owner,
+                    status, execution_mode, blocked_by_json, metadata_json,
+                    output_json, failure_reason_json, cancel_reason_json,
+                    created_by_participant_id, source_turn_intent_id,
+                    originating_message_id, replaces_task_id, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12,
+                          NULL, NULL, ?13, ?14, NULL, NULL, ?15, ?15)",
                 params![
                     &task.id,
                     &task.org_run_id,
+                    task.activation_generation,
                     &task.subject,
                     &task.description,
                     task.active_form.as_deref(),
                     task.owner.as_deref(),
                     task.status.as_wire(),
-                    &blocks_json,
+                    task.execution_mode.as_wire(),
                     &blocked_by_json,
                     metadata_json.as_deref(),
+                    output_json.as_deref(),
+                    &task.created_by_participant_id,
+                    &task.source_turn_intent_id,
                     &now,
                 ],
             )
             .map_err(|err| err.to_string())?;
+            crate::coordination::agent_org_work_episodes::associate_task_in_tx(
+                &tx,
+                &task.org_run_id,
+                &task.id,
+                task.activation_generation,
+                &task.source_turn_intent_id,
+            )?;
 
             insert_task_history_event(
                 &tx,
@@ -176,8 +224,17 @@ impl AgentOrgTaskStore {
                 &task,
                 task.owner.as_deref(),
             )?;
-            persist_dependency_projection(&tx, &candidate_tasks)?;
-            crate::coordination::agent_org_runs::bump_work_revision_in_tx(&tx, &task.org_run_id)?;
+            persist_canonical_blocked_by_for_test_fixture(&tx, &candidate_tasks)?;
+            crate::coordination::agent_org_finality::record_task_mutation_in_tx(
+                &tx,
+                &task.org_run_id,
+                &TaskActorAudit {
+                    kind: TaskActorKind::GraphWriter,
+                    participant_id: task.created_by_participant_id.clone(),
+                    turn_intent_id: Some(task.source_turn_intent_id.clone()),
+                    activation_generation: task.activation_generation,
+                },
+            )?;
             let effect = effects(&tx, &task, &candidate_tasks)?;
             tx.commit().map_err(|err| err.to_string())?;
 
@@ -212,7 +269,13 @@ impl AgentOrgTaskStore {
         if params_list.is_empty() {
             return Err("task graph must contain at least one task".to_string());
         }
-        ensure_task_run_capacity(0, params_list.len())?;
+        ensure_task_run_capacity(
+            0,
+            params_list
+                .iter()
+                .filter(|params| params.status.is_open())
+                .count(),
+        )?;
         let org_run_id = params_list[0].org_run_id.clone();
         if org_run_id.trim().is_empty() {
             return Err("org_run_id must be non-empty".to_string());
@@ -242,7 +305,17 @@ impl AgentOrgTaskStore {
             ensure_run_allows_task_mutation(&tx, &org_run_id)?;
 
             let existing_tasks = list_tasks_with_conn(&tx, &org_run_id)?;
-            ensure_task_run_capacity(existing_tasks.len(), params_list.len())?;
+            let incoming_open_task_count = params_list
+                .iter()
+                .filter(|params| params.status.is_open())
+                .count();
+            ensure_task_run_capacity(
+                existing_tasks
+                    .iter()
+                    .filter(|task| task.status.is_open())
+                    .count(),
+                incoming_open_task_count,
+            )?;
             if !allow_parallel_with_existing_open_tasks {
                 let existing_ids = existing_tasks
                     .iter()
@@ -258,7 +331,7 @@ impl AgentOrgTaskStore {
                     task_dependency_closure(&referenced_existing_ids, &existing_tasks);
                 let omitted_open_task_ids = existing_tasks
                     .iter()
-                    .filter(|task| !task.status.is_resolved())
+                    .filter(|task| task.status.is_open())
                     .filter(|task| !covered_existing_ids.contains(&task.id))
                     .map(|task| task.id.clone())
                     .collect::<Vec<_>>();
@@ -299,23 +372,42 @@ impl AgentOrgTaskStore {
             }
 
             let now = now_rfc3339();
+            let activation_generation: i64 = tx
+                .query_row(
+                    "SELECT activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+                    [&org_run_id],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
             let new_tasks = params_list
                 .iter()
-                .map(|params| Task {
-                    id: params.id.clone(),
-                    org_run_id: params.org_run_id.clone(),
-                    subject: params.subject.clone(),
-                    description: params.description.clone(),
-                    active_form: params.active_form.clone(),
-                    owner: params.owner.clone(),
-                    status: params.status,
-                    blocks: params.blocks.clone(),
-                    blocked_by: params.blocked_by.clone(),
-                    metadata: params.metadata.clone(),
-                    created_at: now.clone(),
-                    updated_at: now.clone(),
+                .map(|params| -> Result<Task, String> {
+                    Ok(Task {
+                        id: params.id.clone(),
+                        org_run_id: params.org_run_id.clone(),
+                        activation_generation,
+                        subject: params.subject.clone(),
+                        description: params.description.clone(),
+                        active_form: params.active_form.clone(),
+                        owner: params.owner.clone(),
+                        status: params.status,
+                        execution_mode: legacy_execution_mode(params.metadata.as_ref())?,
+                        blocks: params.blocks.clone(),
+                        blocked_by: params.blocked_by.clone(),
+                        metadata: params.metadata.clone(),
+                        output: legacy_output(params.metadata.as_ref())?,
+                        failure_reason: None,
+                        cancel_reason: None,
+                        created_by_participant_id:
+                            crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID.to_string(),
+                        source_turn_intent_id: format!("legacy-create:{}", params.id),
+                        originating_message_id: None,
+                        replaces_task_id: None,
+                        created_at: now.clone(),
+                        updated_at: now.clone(),
+                    })
                 })
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
             let existing_task_count = existing_tasks.len();
             let mut candidate_graph = existing_tasks;
             candidate_graph.extend(new_tasks);
@@ -323,30 +415,44 @@ impl AgentOrgTaskStore {
             let new_tasks = candidate_graph.split_off(existing_task_count);
 
             for task in &new_tasks {
-                let blocks_json = encode_json_array(&task.blocks)?;
                 let blocked_by_json = encode_json_array(&task.blocked_by)?;
                 let metadata_json = encode_metadata(task.metadata.as_ref())?;
+                let output_json = encode_optional_json("task output", task.output.as_ref())?;
                 tx.execute(
-                    "INSERT INTO agent_org_tasks (
-                        id, org_run_id, subject, description, active_form, owner,
-                        status, blocks_json, blocked_by_json, metadata_json,
-                        created_at, updated_at
-                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)",
+                        "INSERT INTO agent_org_runtime_tasks (
+                        id, org_run_id, activation_generation, subject, description, active_form, owner,
+                        status, execution_mode, blocked_by_json, metadata_json,
+                        output_json, failure_reason_json, cancel_reason_json,
+                        created_by_participant_id, source_turn_intent_id,
+                        originating_message_id, replaces_task_id, created_at, updated_at
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12,
+                              NULL, NULL, ?13, ?14, NULL, NULL, ?15, ?15)",
                     params![
                         &task.id,
                         &task.org_run_id,
+                        task.activation_generation,
                         &task.subject,
                         &task.description,
                         task.active_form.as_deref(),
                         task.owner.as_deref(),
                         task.status.as_wire(),
-                        &blocks_json,
+                        task.execution_mode.as_wire(),
                         &blocked_by_json,
                         metadata_json.as_deref(),
+                        output_json.as_deref(),
+                        &task.created_by_participant_id,
+                        &task.source_turn_intent_id,
                         &now,
                     ],
                 )
                 .map_err(|err| err.to_string())?;
+                crate::coordination::agent_org_work_episodes::associate_task_in_tx(
+                    &tx,
+                    &task.org_run_id,
+                    &task.id,
+                    task.activation_generation,
+                    &task.source_turn_intent_id,
+                )?;
                 insert_task_history_event(
                     &tx,
                     &org_run_id,
@@ -357,8 +463,20 @@ impl AgentOrgTaskStore {
                     task.owner.as_deref(),
                 )?;
             }
-            persist_dependency_projection(&tx, &candidate_graph)?;
-            crate::coordination::agent_org_runs::bump_work_revision_in_tx(&tx, &org_run_id)?;
+            persist_canonical_blocked_by_for_test_fixture(&tx, &candidate_graph)?;
+            let source = new_tasks
+                .first()
+                .expect("validated Task batch is non-empty");
+            crate::coordination::agent_org_finality::record_task_mutation_in_tx(
+                &tx,
+                &org_run_id,
+                &TaskActorAudit {
+                    kind: TaskActorKind::GraphWriter,
+                    participant_id: source.created_by_participant_id.clone(),
+                    turn_intent_id: Some(source.source_turn_intent_id.clone()),
+                    activation_generation: source.activation_generation,
+                },
+            )?;
             let effect = effects(&tx, &new_tasks, &candidate_graph)?;
             tx.commit().map_err(|err| err.to_string())?;
             Ok((new_tasks, effect))
@@ -366,4 +484,29 @@ impl AgentOrgTaskStore {
         crate::coordination::agent_org_run_events::notify_agent_org_run_changed(&org_run_id);
         Ok((tasks, effect))
     }
+}
+
+fn legacy_execution_mode(
+    metadata: Option<&serde_json::Value>,
+) -> Result<TaskExecutionMode, String> {
+    metadata
+        .and_then(|value| value.get(TASK_METADATA_EXECUTION_MODE))
+        .map(|value| {
+            value
+                .as_str()
+                .ok_or_else(|| "execution_mode must be build or plan".to_string())
+                .and_then(TaskExecutionMode::from_wire)
+        })
+        .transpose()
+        .map(|mode| mode.unwrap_or(TaskExecutionMode::Build))
+}
+
+fn legacy_output(metadata: Option<&serde_json::Value>) -> Result<Option<TaskOutput>, String> {
+    metadata
+        .and_then(|value| value.get(TASK_METADATA_OUTPUT))
+        .cloned()
+        .map(|value| {
+            serde_json::from_value(value).map_err(|error| format!("invalid task output: {error}"))
+        })
+        .transpose()
 }

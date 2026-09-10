@@ -132,5 +132,3 @@ export function useEditorAppearanceStyles(): void {
     };
   }, [isDark]);
 }
-
-export default useEditorAppearanceSettings;

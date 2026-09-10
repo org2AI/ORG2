@@ -1,10 +1,11 @@
-import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { useCallback, useEffect, useRef } from "react";
 
 import * as repoApi from "@src/api/tauri/repo";
+import { useMounted } from "@src/hooks/lifecycle/useMounted";
 import { createLogger } from "@src/hooks/logger";
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 import { REPO_KIND, type Repo } from "@src/store/repo";
 import {
   matchRepoByPath,
@@ -13,6 +14,17 @@ import {
 import { isTauriDesktop } from "@src/util/platform/tauri";
 
 const log = createLogger("useRecentFolderEvents");
+
+function reportListenerError(error: unknown): void {
+  log.error(
+    "[useRecentFolderEvents] Failed to setup recent folder listeners:",
+    error
+  );
+}
+
+function reportHandlerError(error: unknown): void {
+  log.error("[useRecentFolderEvents] Menu event handler failed:", error);
+}
 
 interface UseRecentFolderEventsOptions {
   repos: Repo[];
@@ -76,9 +88,7 @@ export function useRecentFolderEvents({
   const forceRefreshReposRef = useRef(forceRefreshRepos);
   const addWorkspaceFolderRef = useRef(addWorkspaceFolder);
   const resetWorkspaceFoldersRef = useRef(resetWorkspaceFolders);
-  const onSaveWorkspaceAsRef = useRef(onSaveWorkspaceAs);
-  const onOpenWorkspaceFileRef = useRef(onOpenWorkspaceFile);
-  const onCloseWorkspaceRef = useRef(onCloseWorkspace);
+  const mountedRef = useMounted();
 
   useEffect(() => {
     reposRef.current = repos;
@@ -99,18 +109,6 @@ export function useRecentFolderEvents({
   useEffect(() => {
     resetWorkspaceFoldersRef.current = resetWorkspaceFolders;
   }, [resetWorkspaceFolders]);
-
-  useEffect(() => {
-    onSaveWorkspaceAsRef.current = onSaveWorkspaceAs;
-  }, [onSaveWorkspaceAs]);
-
-  useEffect(() => {
-    onOpenWorkspaceFileRef.current = onOpenWorkspaceFile;
-  }, [onOpenWorkspaceFile]);
-
-  useEffect(() => {
-    onCloseWorkspaceRef.current = onCloseWorkspace;
-  }, [onCloseWorkspace]);
 
   const openRecentFolder = useCallback(async (candidatePath: unknown) => {
     const folderPath = toRecentFolderPath(candidatePath);
@@ -198,93 +196,63 @@ export function useRecentFolderEvents({
     }
   }, []);
 
-  useEffect(() => {
-    if (!isTauriDesktop()) {
-      return;
-    }
+  const listenOptions = {
+    enabled: isTauriDesktop(),
+    onError: reportListenerError,
+  };
 
-    let cancelled = false;
-    const unlisteners: Array<() => void> = [];
+  useTauriListen<unknown>(
+    "menu-open-recent",
+    (payload) => {
+      openRecentFolder(payload).catch(reportHandlerError);
+    },
+    listenOptions
+  );
 
-    const setupListeners = async () => {
-      const unlistenOpenRecent = await listen<unknown>(
-        "menu-open-recent",
-        (event) => {
-          if (cancelled) {
-            return;
-          }
-          openRecentFolder(event.payload);
-        }
-      );
-      unlisteners.push(unlistenOpenRecent);
-
-      const unlistenOpenFolder = await listen("menu-file-open-folder", () => {
-        if (cancelled) {
+  useTauriListen(
+    "menu-file-open-folder",
+    () => {
+      (async () => {
+        const selectedPath = await open({
+          directory: true,
+          multiple: false,
+        });
+        if (
+          !mountedRef.current ||
+          !selectedPath ||
+          typeof selectedPath !== "string"
+        ) {
           return;
         }
+        await openRecentFolder(selectedPath);
+      })().catch(reportHandlerError);
+    },
+    listenOptions
+  );
 
-        (async () => {
-          const selectedPath = await open({
-            directory: true,
-            multiple: false,
-          });
-          if (cancelled || !selectedPath || typeof selectedPath !== "string") {
-            return;
-          }
-          await openRecentFolder(selectedPath);
-        })();
-      });
-      unlisteners.push(unlistenOpenFolder);
+  useTauriListen(
+    "menu-add-folder-to-workspace",
+    () => {
+      addFolderToWorkspace().catch(reportHandlerError);
+    },
+    listenOptions
+  );
 
-      const unlistenAddFolder = await listen(
-        "menu-add-folder-to-workspace",
-        () => {
-          if (cancelled) return;
-          addFolderToWorkspace();
-        }
-      );
-      unlisteners.push(unlistenAddFolder);
+  useTauriListen(
+    "menu-save-workspace-as",
+    () => onSaveWorkspaceAs?.(),
+    listenOptions
+  );
 
-      const unlistenSaveWorkspaceAs = await listen(
-        "menu-save-workspace-as",
-        () => {
-          if (cancelled) return;
-          onSaveWorkspaceAsRef.current?.();
-        }
-      );
-      unlisteners.push(unlistenSaveWorkspaceAs);
+  useTauriListen(
+    "menu-open-workspace-file",
+    () => onOpenWorkspaceFile?.(),
+    listenOptions
+  );
 
-      const unlistenOpenWorkspaceFile = await listen(
-        "menu-open-workspace-file",
-        () => {
-          if (cancelled) return;
-          onOpenWorkspaceFileRef.current?.();
-        }
-      );
-      unlisteners.push(unlistenOpenWorkspaceFile);
-
-      const unlistenCloseWorkspace = await listen(
-        "menu-close-workspace",
-        () => {
-          if (cancelled) return;
-          onCloseWorkspaceRef.current?.();
-        }
-      );
-      unlisteners.push(unlistenCloseWorkspace);
-    };
-
-    setupListeners().catch((error) => {
-      log.error(
-        "[useRecentFolderEvents] Failed to setup recent folder listeners:",
-        error
-      );
-    });
-
-    return () => {
-      cancelled = true;
-      unlisteners.forEach((unlisten) => {
-        unlisten();
-      });
-    };
-  }, [openRecentFolder, addFolderToWorkspace]);
+  useTauriListen(
+    "menu-close-workspace",
+    () => onCloseWorkspace?.(),
+    listenOptions
+  );
 }

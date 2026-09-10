@@ -1,11 +1,9 @@
-//! Codex `app-server` JSON-RPC transport (experimental).
+//! Codex `app-server` JSON-RPC transport.
 //!
-//! Alternative to the per-turn `codex exec --json` shell-out: spawns
+//! Native alternative to the per-turn `codex exec --json` shell-out: spawns
 //! `codex app-server` (a JSON-RPC-over-stdio server) and drives one turn per
-//! managed-session message. Default OFF — enabled only when the codex CLI
-//! launch profile carries `"transport": "app-server"`
-//! (see `launch_profiles::uses_codex_app_server`). Shell-out stays the
-//! fallback whenever the flag is absent.
+//! managed-session message. It is the default Codex transport; a launch
+//! profile may explicitly select `"transport": "exec"` as a recovery hatch.
 //!
 //! ## Verified protocol (codex-cli 0.143.0)
 //!
@@ -17,16 +15,19 @@
 //! Client → server requests:
 //! - `initialize` `{clientInfo: {name, title?, version}}` → `{userAgent, codexHome, ...}`;
 //!   then the client sends the `initialized` notification.
-//! - `thread/start` `{cwd?, model?, approvalPolicy?, sandbox?, ...}` →
+//! - `thread/start` `{cwd?, model?, developerInstructions?, approvalPolicy?, sandbox?, ...}` →
 //!   `{thread: {id, ...}, model, ...}`. `thread.id` (UUIDv7) is the rollout
 //!   file stem suffix (`CODEX_HOME/sessions/YYYY/MM/DD/rollout-<ts>-<id>.jsonl`)
 //!   — verified live: a non-ephemeral thread materializes the rollout on
 //!   disk, so native-transcript replay and managed-mirror suffix dedup keep
 //!   working unchanged.
-//! - `thread/resume` `{threadId, cwd?, model?, approvalPolicy?, sandbox?}` →
-//!   same response shape; falls back to `thread/start` here on error.
+//! - `thread/resume` `{threadId, cwd?, model?, developerInstructions?, approvalPolicy?, sandbox?}` →
+//!   same response shape. Resume failures are terminal: silently starting a
+//!   fresh thread would discard native conversation history.
 //! - `turn/start` `{threadId, input: [{type:"text",text} | {type:"localImage",path}]}`
 //!   → `{turn: {id, status: "inProgress"}}`.
+//! - A user-only context-overflow turn is recovered once with native
+//!   `thread/rollback` → `thread/compact/start` → the same `turn/start`.
 //! - `turn/interrupt` `{threadId, turnId}` → `{}`.
 //!
 //! Server → client notifications (subset we map):
@@ -54,11 +55,14 @@
 //! profile's permission mode and surfaced as `approval_response` chunks.
 
 use std::collections::HashMap;
+use std::path::Path;
+use std::process::Stdio;
 use std::sync::{LazyLock, Mutex as StdMutex};
+use std::time::Duration;
 
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{ChildStdin, ChildStdout};
+use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 use tokio::sync::mpsc;
 
 use core_types::activity::ActivityChunk;
@@ -68,9 +72,22 @@ use super::normalizer::{normalize_tool_name, unwrap_codex_command};
 use super::types::{CliAgentType, TokenUsage};
 use crate::agent_sessions::cli::session_runner::launch_profiles::CliPermissionMode;
 
+mod catalog;
+mod slash;
+pub(crate) use catalog::{
+    archive_thread, ensure_project, native_codex_app_server_command, register_thread,
+    synchronize_thread,
+};
+
 /// How long to keep draining after `turn/interrupt` before giving up on a
 /// graceful `turn/completed`.
 const INTERRUPT_DRAIN_SECS: u64 = 10;
+
+/// Keep provider-native context recovery bounded. Real large transcripts can
+/// take well over a minute to compact even after the provider has accepted the
+/// request, so this budget must not race Codex's own successful compactor. The
+/// owning conversation turn still has its stricter end-to-end deadline.
+const CONTEXT_RECOVERY_TIMEOUT_SECS: u64 = 180;
 
 // ============================================
 // Interrupt registry (session_id → signal)
@@ -124,13 +141,21 @@ fn interrupt_registered(session_id: &str) -> bool {
         .contains_key(session_id)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GracefulInterruptOutcome {
+    NotRunning,
+    Completed,
+    TimedOut,
+}
+
 /// Ask a running app-server turn to interrupt gracefully and wait (bounded)
 /// for it to finish so codex can finalize the rollout before the caller
-/// kills the process tree. No-op (returns false immediately) when the
-/// session has no registered app-server turn.
-pub async fn interrupt_session_gracefully(session_id: &str) -> bool {
+/// kills the process tree. A timeout is deliberately distinct from success:
+/// the runner JSONL may be syntactically valid while its current turn is only
+/// partially flushed, so callers must not publish it over the native App copy.
+pub async fn interrupt_session_gracefully(session_id: &str) -> GracefulInterruptOutcome {
     let Some(tx) = interrupt_sender(session_id) else {
-        return false;
+        return GracefulInterruptOutcome::NotRunning;
     };
     if tx.try_send(()).is_err() {
         // Full (already signalled) or closed — either way just wait below.
@@ -139,10 +164,13 @@ pub async fn interrupt_session_gracefully(session_id: &str) -> bool {
             session_id
         );
     }
-    let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_secs(2);
+    // The transport itself drains for INTERRUPT_DRAIN_SECS. Give its task one
+    // extra second to unregister after receiving turn/completed.
+    let deadline =
+        tokio::time::Instant::now() + tokio::time::Duration::from_secs(INTERRUPT_DRAIN_SECS + 1);
     while tokio::time::Instant::now() < deadline {
         if !interrupt_registered(session_id) {
-            return true;
+            return GracefulInterruptOutcome::Completed;
         }
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     }
@@ -150,7 +178,7 @@ pub async fn interrupt_session_gracefully(session_id: &str) -> bool {
         "[CodexAppServer] Graceful interrupt window elapsed for {}; caller will kill",
         session_id
     );
-    true
+    GracefulInterruptOutcome::TimedOut
 }
 
 // ============================================
@@ -160,14 +188,24 @@ pub async fn interrupt_session_gracefully(session_id: &str) -> bool {
 /// Per-turn configuration for the app-server transport.
 pub struct CodexAppServerTurn {
     pub session_id: String,
-    pub task: String,
+    /// Literal user-authored text rendered in the native Codex transcript.
+    pub user_input: String,
+    /// ORGII execution/workspace/IDE context carried on Codex's native
+    /// developer channel. Never copied into `turn/start.input`.
+    pub developer_instructions: Option<String>,
     pub working_dir: String,
+    /// Desktop project resolved from the session repository, not its execution worktree.
+    pub project_id: Option<String>,
     /// Stored codex thread id to resume; `None` starts a fresh thread.
     pub resume_thread_id: Option<String>,
     /// Base model name for `thread/start` (already variant-mapped).
     pub model: Option<String>,
     pub permission_mode: CliPermissionMode,
+    /// Secret-bearing MCP/session overrides sent only over JSON-RPC.
+    pub config: Option<Value>,
     pub image_paths: Vec<String>,
+    /// Enabled only on a fresh episode rebuilt from canonical SessionEvents.
+    pub allow_native_context_recovery: bool,
 }
 
 /// Result of a completed app-server turn.
@@ -191,6 +229,59 @@ pub(crate) fn thread_permission_params(mode: CliPermissionMode) -> (&'static str
         CliPermissionMode::AutoEdit => ("never", "workspace-write"),
         CliPermissionMode::FullPermission => ("never", "danger-full-access"),
     }
+}
+
+/// Build the strict fresh/resume request for one app-server launch.
+///
+/// `developerInstructions` is deliberately separate from `baseInstructions`:
+/// Codex appends/overrides the caller-owned developer layer while retaining
+/// its provider base prompt. The complete current context is sent on every
+/// launch, including resume, so a per-launch replacement cannot drop prior
+/// ORGII workspace instructions.
+pub(crate) fn build_thread_launch_request(turn: &CodexAppServerTurn) -> (&'static str, Value) {
+    let (approval_policy, sandbox) = thread_permission_params(turn.permission_mode);
+    let mut params = serde_json::json!({
+        "cwd": &turn.working_dir,
+        "approvalPolicy": approval_policy,
+        "sandbox": sandbox,
+    });
+    if let Some(ref model) = turn.model {
+        params["model"] = Value::String(model.clone());
+    }
+    if let Some(ref config) = turn.config {
+        params["config"] = config.clone();
+    }
+    if let Some(instructions) = turn
+        .developer_instructions
+        .as_deref()
+        .filter(|instructions| !instructions.trim().is_empty())
+    {
+        params["developerInstructions"] = Value::String(instructions.to_string());
+    }
+    if let Some(ref resume_id) = turn.resume_thread_id {
+        params["threadId"] = Value::String(resume_id.clone());
+        ("thread/resume", params)
+    } else {
+        if let Some(ref project_id) = turn.project_id {
+            params["projectId"] = Value::String(project_id.clone());
+        }
+        ("thread/start", params)
+    }
+}
+
+/// Build only the native user turn items. Provider context belongs on the
+/// thread's developer channel and must never become a `userMessage` item.
+pub(crate) fn build_turn_input(turn: &CodexAppServerTurn) -> Vec<Value> {
+    let mut input = vec![serde_json::json!({
+        "type": "text",
+        "text": &turn.user_input,
+    })];
+    input.extend(
+        turn.image_paths
+            .iter()
+            .map(|path| serde_json::json!({"type": "localImage", "path": path})),
+    );
+    input
 }
 
 /// Whether an approval request is auto-accepted for this permission mode.
@@ -224,6 +315,10 @@ pub(crate) struct CodexAppServerEventParser {
     /// `turn/completed` that reports failure without an error body leaves the
     /// turn with no message at all, and this is the only thing left to say.
     last_retry_notice: Option<String>,
+    /// `thread/rollback` removes history, not filesystem changes. Automatic
+    /// replay is therefore allowed only before output or tools have started.
+    replay_unsafe_output_seen: bool,
+    compaction_marker_emitted: bool,
 }
 
 impl CodexAppServerEventParser {
@@ -239,6 +334,8 @@ impl CodexAppServerEventParser {
             error_deduper: super::BoundedCliErrorDeduper::default(),
             pending_error_message: None,
             last_retry_notice: None,
+            replay_unsafe_output_seen: false,
+            compaction_marker_emitted: false,
         }
     }
 
@@ -262,6 +359,59 @@ impl CodexAppServerEventParser {
         self.turn_error.as_deref()
     }
 
+    fn completed_turn_error<'a>(&'a self, params: &'a Value) -> Option<&'a str> {
+        params
+            .get("turn")
+            .and_then(|turn| turn.get("error"))
+            .and_then(|error| error.get("message"))
+            .and_then(Value::as_str)
+            .or(self.pending_error_message.as_deref())
+            .or(self.last_retry_notice.as_deref())
+    }
+
+    fn should_recover_context_exhaustion(&self, params: &Value) -> bool {
+        params
+            .get("turn")
+            .and_then(|turn| turn.get("status"))
+            .and_then(Value::as_str)
+            == Some("failed")
+            // A provider-observed compaction already advanced this logical
+            // turn's native history. Never issue ORG2's recovery compact on
+            // the same turn as well: that would roll twice and can discard
+            // the first compacted episode's resume boundary.
+            && !self.compaction_marker_emitted
+            && !self.replay_unsafe_output_seen
+            && self
+                .completed_turn_error(params)
+                .is_some_and(app_utils::runtime_errors::is_context_exhausted_message)
+    }
+
+    fn reset_turn_state(&mut self) {
+        self.turn_id = None;
+        self.usage = None;
+        self.turn_status = None;
+        self.turn_error = None;
+        self.pending_error_message = None;
+        self.last_retry_notice = None;
+        self.error_deduper = super::BoundedCliErrorDeduper::default();
+        self.replay_unsafe_output_seen = false;
+    }
+
+    fn native_compaction_marker(&mut self) -> Vec<ActivityChunk> {
+        if self.compaction_marker_emitted {
+            return vec![];
+        }
+        self.compaction_marker_emitted = true;
+        let mut chunk =
+            ActivityChunk::new(&self.session_id, "context_compacted", "context_compacted");
+        chunk.result = serde_json::json!({
+            "success": true,
+            "native": true,
+            "provider": "codex",
+        });
+        vec![chunk]
+    }
+
     /// Record the thread id from a `thread/start` / `thread/resume` response
     /// and emit the `session_start` chunk (carrying `thread_id` so the
     /// runner can early-bind the rollout-compatible id).
@@ -274,6 +424,32 @@ impl CodexAppServerEventParser {
             self.thread_id = Some(tid.to_string());
         }
         self.emit_session_start()
+    }
+
+    /// Publish a provider-native UUID rollover immediately.
+    ///
+    /// A context-recovery fork happens inside one app-server transport turn,
+    /// after the ordinary `session_start` was already emitted. Waiting for
+    /// finalization to persist the fork id leaves a short but real window in
+    /// which an immediate follow-up resumes the overflowing source UUID and
+    /// compacts again. A lifecycle-only session_start chunk reuses the normal
+    /// CLI binding channel without adding a chat-visible transcript row.
+    fn on_thread_rebound(&mut self, result: &Value) -> Vec<ActivityChunk> {
+        let tid = result
+            .get("thread")
+            .and_then(|thread| thread.get("id"))
+            .and_then(Value::as_str);
+        let Some(tid) = tid else {
+            return vec![];
+        };
+        self.thread_id = Some(tid.to_string());
+        let mut chunk = ActivityChunk::new(&self.session_id, "session_start", "session_start");
+        chunk.result = serde_json::json!({
+            "success": true,
+            "native_rollover": true,
+        });
+        chunk.thread_id = Some(tid.to_string());
+        vec![chunk]
     }
 
     fn emit_session_start(&mut self) -> Vec<ActivityChunk> {
@@ -315,6 +491,7 @@ impl CodexAppServerEventParser {
             "item/started" => self.parse_item(params, false),
             "item/completed" => self.parse_item(params, true),
             "item/agentMessage/delta" => {
+                self.replay_unsafe_output_seen = true;
                 let text = params.get("delta").and_then(|v| v.as_str()).unwrap_or("");
                 if text.is_empty() {
                     return vec![];
@@ -327,6 +504,7 @@ impl CodexAppServerEventParser {
                 vec![chunk]
             }
             "item/reasoning/summaryTextDelta" | "item/reasoning/textDelta" => {
+                self.replay_unsafe_output_seen = true;
                 let text = params.get("delta").and_then(|v| v.as_str()).unwrap_or("");
                 if text.is_empty() {
                     return vec![];
@@ -340,6 +518,7 @@ impl CodexAppServerEventParser {
                 vec![chunk]
             }
             "turn/plan/updated" => {
+                self.replay_unsafe_output_seen = true;
                 let todos: Vec<Value> = params
                     .get("plan")
                     .and_then(|v| v.as_array())
@@ -394,6 +573,7 @@ impl CodexAppServerEventParser {
                 }
                 vec![]
             }
+            "thread/compacted" => self.native_compaction_marker(),
             "turn/completed" => {
                 let status = params
                     .get("turn")
@@ -495,6 +675,10 @@ impl CodexAppServerEventParser {
             .get("id")
             .and_then(|v| v.as_str())
             .filter(|id| !id.is_empty());
+
+        if !matches!(v2_type, "userMessage" | "hookPrompt" | "contextCompaction") {
+            self.replay_unsafe_output_seen = true;
+        }
 
         match item_type {
             // The runner already emits the user bubble; codex echoes it back.
@@ -624,6 +808,12 @@ impl CodexAppServerEventParser {
                 Self::stamp_tool_call_identity(&mut chunk, call_id);
                 vec![chunk]
             }
+            "contextCompaction" => {
+                if !completed {
+                    return vec![];
+                }
+                self.native_compaction_marker()
+            }
             other => {
                 tracing::debug!("[CodexAppServer] Ignoring item type: {}", other);
                 vec![]
@@ -715,6 +905,117 @@ async fn read_message(
             }
             Err(err) => return Err(format!("app-server read error: {}", err)),
         }
+    }
+}
+
+/// Reusable app-server RPC owner for non-turn operations such as native
+/// thread registration. It shares the exact JSON-RPC codec used by managed
+/// turns; callers no longer spawn a second blocking protocol client.
+pub(crate) struct CodexAppServerRpcClient {
+    _child: Child,
+    stdin: ChildStdin,
+    reader: BufReader<ChildStdout>,
+    buffer: String,
+    next_id: u64,
+}
+
+impl CodexAppServerRpcClient {
+    pub(crate) async fn launch(
+        command_path: &Path,
+        codex_home: &Path,
+        cwd: &Path,
+    ) -> Result<Self, String> {
+        std::fs::create_dir_all(codex_home).map_err(|error| {
+            format!(
+                "create Codex native profile {}: {error}",
+                codex_home.display()
+            )
+        })?;
+        // This client publishes the *Codex App* catalog. It is intentionally
+        // independent from the CLI runner launch profile: that profile may
+        // select an older shell-installed binary or inject a session-scoped
+        // provider environment that the native App cannot read later.
+        let mut command = Command::new(command_path);
+        command
+            .arg("app-server")
+            .env("CODEX_HOME", codex_home)
+            .current_dir(cwd)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+        let mut child = command.spawn().map_err(|error| {
+            format!(
+                "start Codex app-server {} for native profile {}: {error}",
+                command_path.display(),
+                codex_home.display()
+            )
+        })?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| "Codex app-server stdin was not piped".to_string())?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| "Codex app-server stdout was not piped".to_string())?;
+        let mut client = Self {
+            _child: child,
+            stdin,
+            reader: BufReader::new(stdout),
+            buffer: String::new(),
+            next_id: 0,
+        };
+        client
+            .request(
+                "initialize",
+                serde_json::json!({
+                    "clientInfo": {
+                        "name": "orgii",
+                        "title": "ORGII",
+                        "version": env!("CARGO_PKG_VERSION")
+                    },
+                    "capabilities": {"experimentalApi": true}
+                }),
+                Duration::from_secs(20),
+            )
+            .await?;
+        client.notify("initialized").await?;
+        Ok(client)
+    }
+
+    pub(crate) async fn notify(&mut self, method: &str) -> Result<(), String> {
+        rpc_notify(&mut self.stdin, method).await
+    }
+
+    pub(crate) async fn request(
+        &mut self,
+        method: &str,
+        params: Value,
+        timeout: Duration,
+    ) -> Result<Value, String> {
+        self.next_id += 1;
+        let request_id = self.next_id;
+        rpc_send(&mut self.stdin, request_id, method, params).await?;
+        tokio::time::timeout(timeout, async {
+            loop {
+                let response = read_message(&mut self.reader, &mut self.buffer).await?;
+                if response.get("id").and_then(Value::as_u64) != Some(request_id)
+                    || response.get("method").is_some()
+                {
+                    continue;
+                }
+                if let Some(error) = response.get("error") {
+                    return Err(format!("Codex app-server {method} failed: {error}"));
+                }
+                return response
+                    .get("result")
+                    .cloned()
+                    .ok_or_else(|| format!("Codex app-server {method} returned no result"));
+            }
+        })
+        .await
+        .map_err(|_| format!("Codex app-server {method} reached its request deadline"))?
     }
 }
 
@@ -833,6 +1134,159 @@ async fn emit_approval_chunk(
     let _ = chunk_tx.send(chunk).await;
 }
 
+struct ContextRecovery<'a> {
+    stdin: &'a mut ChildStdin,
+    reader: &'a mut BufReader<ChildStdout>,
+    buf: &'a mut String,
+    request_id: &'a mut u64,
+    parser: &'a mut CodexAppServerEventParser,
+    chunk_tx: &'a mpsc::Sender<ActivityChunk>,
+    mode: CliPermissionMode,
+}
+
+impl ContextRecovery<'_> {
+    async fn rollback_failed_turn(&mut self, thread_id: &str) -> Result<(), String> {
+        *self.request_id += 1;
+        rpc_send(
+            self.stdin,
+            *self.request_id,
+            "thread/rollback",
+            serde_json::json!({"threadId": thread_id, "numTurns": 1}),
+        )
+        .await?;
+        match await_response(
+            self.reader,
+            self.stdin,
+            self.buf,
+            *self.request_id,
+            self.parser,
+            self.chunk_tx,
+            self.mode,
+        )
+        .await?
+        {
+            Ok(_) => Ok(()),
+            Err(error) => Err(format!("app-server thread/rollback error: {error}")),
+        }
+    }
+
+    /// Run Codex's provider-native compactor and drain its internal turn
+    /// without exposing that turn as the user's terminal `session_end`.
+    async fn compact_native_thread(&mut self, thread_id: &str) -> Result<(), String> {
+        *self.request_id += 1;
+        let compact_request_id = *self.request_id;
+        rpc_send(
+            self.stdin,
+            compact_request_id,
+            "thread/compact/start",
+            serde_json::json!({"threadId": thread_id}),
+        )
+        .await?;
+
+        let mut response_received = false;
+        let mut turn_completed = false;
+        while !response_received || !turn_completed {
+            let message = read_message(self.reader, self.buf).await?;
+            if message.get("id").and_then(Value::as_u64) == Some(compact_request_id)
+                && message.get("method").is_none()
+            {
+                if let Some(error) = message.get("error") {
+                    return Err(format!("app-server thread/compact/start error: {error}"));
+                }
+                response_received = true;
+                continue;
+            }
+
+            if message.get("method").and_then(Value::as_str) == Some("turn/completed") {
+                let params = message.get("params").cloned().unwrap_or(Value::Null);
+                // Record the compactor's terminal state, but suppress its
+                // session_end: the original user turn is still running.
+                let _ = self.parser.handle_notification("turn/completed", &params);
+                if self.parser.turn_status() != Some("completed") {
+                    return Err(format!(
+                        "Codex native compaction ended with status {}: {}",
+                        self.parser.turn_status().unwrap_or("unknown"),
+                        self.parser.turn_error().unwrap_or("no error details")
+                    ));
+                }
+                turn_completed = true;
+                continue;
+            }
+
+            dispatch_server_message(&message, self.stdin, self.parser, self.chunk_tx, self.mode)
+                .await;
+        }
+        Ok(())
+    }
+
+    /// Fork the compacted provider thread before replaying the user's turn.
+    ///
+    /// Codex keeps cumulative window accounting on the source UUID. Resuming
+    /// that UUID after a successful compact can therefore auto-compact again
+    /// at the beginning of every later turn even though the replacement
+    /// history is small. `thread/fork` is Codex's native rollover primitive:
+    /// it carries the structured compacted history (including encrypted
+    /// provider state) into a fresh UUID without rendering it into a prompt.
+    async fn fork_compacted_thread(&mut self, thread_id: &str) -> Result<String, String> {
+        *self.request_id += 1;
+        rpc_send(
+            self.stdin,
+            *self.request_id,
+            "thread/fork",
+            serde_json::json!({"threadId": thread_id}),
+        )
+        .await?;
+        let result = match await_response(
+            self.reader,
+            self.stdin,
+            self.buf,
+            *self.request_id,
+            self.parser,
+            self.chunk_tx,
+            self.mode,
+        )
+        .await?
+        {
+            Ok(result) => result,
+            Err(error) => return Err(format!("app-server thread/fork error: {error}")),
+        };
+        for chunk in self.parser.on_thread_rebound(&result) {
+            let _ = self.chunk_tx.send(chunk).await;
+        }
+        self.parser
+            .thread_id()
+            .filter(|forked| *forked != thread_id)
+            .map(str::to_string)
+            .ok_or_else(|| "app-server thread/fork returned no fresh thread id".to_string())
+    }
+
+    async fn run(&mut self, thread_id: &str) -> Result<String, String> {
+        self.rollback_failed_turn(thread_id).await?;
+        self.parser.reset_turn_state();
+        self.compact_native_thread(thread_id).await?;
+        self.parser.reset_turn_state();
+        self.fork_compacted_thread(thread_id).await
+    }
+}
+
+async fn start_turn(
+    stdin: &mut ChildStdin,
+    request_id: &mut u64,
+    thread_id: &str,
+    input: &[Value],
+) -> Result<u64, String> {
+    *request_id += 1;
+    let turn_request_id = *request_id;
+    rpc_send(
+        stdin,
+        turn_request_id,
+        "turn/start",
+        serde_json::json!({"threadId": thread_id, "input": input}),
+    )
+    .await?;
+    Ok(turn_request_id)
+}
+
 // ============================================
 // Protocol flow
 // ============================================
@@ -849,6 +1303,7 @@ pub async fn run_app_server_turn(
     turn: CodexAppServerTurn,
     chunk_tx: mpsc::Sender<ActivityChunk>,
 ) -> Result<CodexAppServerResult, String> {
+    let native_command = slash::parse(&turn.user_input, !turn.image_paths.is_empty())?;
     let (_registration, mut interrupt_rx) = InterruptRegistration::register(&turn.session_id);
     let mut reader = BufReader::new(stdout);
     let mut parser = CodexAppServerEventParser::new(&turn.session_id);
@@ -868,6 +1323,7 @@ pub async fn run_app_server_turn(
                 "title": "ORGII",
                 "version": env!("CARGO_PKG_VERSION"),
             },
+            "capabilities": {"experimentalApi": true},
         }),
     )
     .await?;
@@ -895,69 +1351,29 @@ pub async fn run_app_server_turn(
     }
     rpc_notify(&mut stdin, "initialized").await?;
 
-    // ── Step 2: thread/resume (with fallback) or thread/start ──
-    let (approval_policy, sandbox) = thread_permission_params(mode);
-    let mut thread_params = serde_json::json!({
-        "cwd": &turn.working_dir,
-        "approvalPolicy": approval_policy,
-        "sandbox": sandbox,
-    });
-    if let Some(ref model) = turn.model {
-        thread_params["model"] = Value::String(model.clone());
-    }
-
-    let mut thread_result: Option<Value> = None;
-    if let Some(ref resume_id) = turn.resume_thread_id {
-        let mut resume_params = thread_params.clone();
-        resume_params["threadId"] = Value::String(resume_id.clone());
-        request_id += 1;
-        rpc_send(&mut stdin, request_id, "thread/resume", resume_params).await?;
-        match await_response(
-            &mut reader,
-            &mut stdin,
-            &mut buf,
-            request_id,
-            &mut parser,
-            &chunk_tx,
-            mode,
-        )
-        .await?
-        {
-            Ok(result) => thread_result = Some(result),
-            Err(err) => {
-                tracing::warn!(
-                    "[CodexAppServer] thread/resume failed ({}); starting fresh thread",
-                    err
-                );
-            }
-        }
-    }
-    let thread_result = match thread_result {
-        Some(result) => result,
-        None => {
-            request_id += 1;
-            rpc_send(&mut stdin, request_id, "thread/start", thread_params).await?;
-            match await_response(
-                &mut reader,
-                &mut stdin,
-                &mut buf,
-                request_id,
-                &mut parser,
-                &chunk_tx,
-                mode,
-            )
-            .await?
-            {
-                Ok(result) => result,
-                Err(err) => return Err(format!("app-server thread/start error: {}", err)),
-            }
-        }
+    // ── Step 2: strict thread/resume or explicit fresh thread/start ──
+    let (thread_method, thread_params) = build_thread_launch_request(&turn);
+    request_id += 1;
+    rpc_send(&mut stdin, request_id, thread_method, thread_params).await?;
+    let thread_result = match await_response(
+        &mut reader,
+        &mut stdin,
+        &mut buf,
+        request_id,
+        &mut parser,
+        &chunk_tx,
+        mode,
+    )
+    .await?
+    {
+        Ok(result) => result,
+        Err(err) => return Err(format!("app-server {thread_method} error: {err}")),
     };
 
     for chunk in parser.on_thread_response(&thread_result) {
         let _ = chunk_tx.send(chunk).await;
     }
-    let thread_id = parser
+    let mut thread_id = parser
         .thread_id()
         .ok_or_else(|| "app-server: thread response carried no thread id".to_string())?
         .to_string();
@@ -972,25 +1388,91 @@ pub async fn run_app_server_turn(
         turn.resume_thread_id.is_some()
     );
 
-    // ── Step 3: turn/start ──
-    let mut input: Vec<Value> = vec![serde_json::json!({"type": "text", "text": &turn.task})];
-    for path in &turn.image_paths {
-        input.push(serde_json::json!({"type": "localImage", "path": path}));
-    }
+    // Read the native catalog on active turn setup, never from a background
+    // menu poll. It includes project, user and installed plugin skills.
     request_id += 1;
-    let turn_req_id = request_id;
     rpc_send(
         &mut stdin,
-        turn_req_id,
-        "turn/start",
-        serde_json::json!({"threadId": &thread_id, "input": input}),
+        request_id,
+        "skills/list",
+        serde_json::json!({"cwds": [&turn.working_dir]}),
     )
     .await?;
+    let catalog = tokio::time::timeout(
+        tokio::time::Duration::from_secs(15),
+        await_response(
+            &mut reader,
+            &mut stdin,
+            &mut buf,
+            request_id,
+            &mut parser,
+            &chunk_tx,
+            mode,
+        ),
+    )
+    .await;
+    let skills = match catalog {
+        Ok(Ok(Ok(value))) => slash::skills(&value),
+        _ => {
+            if native_command.is_none() && slash::skill_name(&turn.user_input).is_some() {
+                return Err("Could not discover Codex native skills; the command was not sent as a model prompt.".into());
+            }
+            tracing::warn!("Codex skill catalog unavailable");
+            Vec::new()
+        }
+    };
+    let mut catalog_chunk = ActivityChunk::new(
+        &turn.session_id,
+        "native_command_catalog",
+        "native_command_catalog",
+    );
+    catalog_chunk.args = serde_json::json!({"native_provider": "codex", "slash_commands": skills.iter().map(|(name, _)| name).collect::<Vec<_>>()});
+    catalog_chunk.result = serde_json::json!({"success": true});
+    let _ = chunk_tx.send(catalog_chunk).await;
+
+    // ── Step 3: native command or turn/start ──
+    let mut input = build_turn_input(&turn);
+    if let Some(slash::NativeCommand::Init(instructions)) = &native_command {
+        input[0] = serde_json::json!({"type": "text", "text": slash::init_prompt(instructions)});
+    }
+    if native_command.is_none() {
+        if let Some(skill) = slash::skill_input(&turn.user_input, &skills) {
+            input.push(skill);
+        } else if let Some(name) = slash::skill_name(&turn.user_input) {
+            if turn.image_paths.is_empty() {
+                return Err(format!("Codex does not expose /{name} through this runtime. Use an ORG2 control or the embedded native terminal for terminal-only commands."));
+            }
+        }
+    }
+    let mut turn_req_id = if native_command == Some(slash::NativeCommand::Compact) {
+        request_id += 1;
+        rpc_send(
+            &mut stdin,
+            request_id,
+            "thread/compact/start",
+            serde_json::json!({"threadId": &thread_id}),
+        )
+        .await?;
+        request_id
+    } else if let Some(slash::NativeCommand::Review(instructions)) = &native_command {
+        request_id += 1;
+        rpc_send(
+            &mut stdin,
+            request_id,
+            "review/start",
+            slash::review_params(&thread_id, instructions),
+        )
+        .await?;
+        request_id
+    } else {
+        start_turn(&mut stdin, &mut request_id, &thread_id, &input).await?
+    };
 
     // ── Step 4: notification loop until turn/completed ──
     let mut turn_started = false;
     let mut interrupt_sent = false;
     let mut interrupt_deadline: Option<tokio::time::Instant> = None;
+    let mut context_recovery_attempted = false;
 
     loop {
         // After turn/interrupt is sent, drain with a bounded deadline so a
@@ -1048,7 +1530,78 @@ pub async fn run_app_server_turn(
             continue;
         }
 
-        dispatch_server_message(&msg, &mut stdin, &mut parser, &chunk_tx, mode).await;
+        if msg.get("method").and_then(Value::as_str) == Some("turn/completed") {
+            let params = msg.get("params").cloned().unwrap_or(Value::Null);
+            let original_terminal_error = parser.completed_turn_error(&params).map(str::to_string);
+            let should_recover = native_command.is_none()
+                && turn.allow_native_context_recovery
+                && !context_recovery_attempted
+                && parser.should_recover_context_exhaustion(&params);
+            if should_recover {
+                context_recovery_attempted = true;
+                tracing::info!(
+                    thread_id,
+                    "Codex context exhausted before output; applying native compaction"
+                );
+                let recovery = {
+                    let mut recovery = ContextRecovery {
+                        stdin: &mut stdin,
+                        reader: &mut reader,
+                        buf: &mut buf,
+                        request_id: &mut request_id,
+                        parser: &mut parser,
+                        chunk_tx: &chunk_tx,
+                        mode,
+                    };
+                    tokio::time::timeout(
+                        tokio::time::Duration::from_secs(CONTEXT_RECOVERY_TIMEOUT_SECS),
+                        recovery.run(&thread_id),
+                    )
+                    .await
+                };
+                match recovery {
+                    Ok(Ok(forked_thread_id)) => {
+                        thread_id = forked_thread_id;
+                        turn_req_id =
+                            start_turn(&mut stdin, &mut request_id, &thread_id, &input).await?;
+                        turn_started = false;
+                        interrupt_deadline = None;
+                        tracing::info!(
+                            thread_id,
+                            "Codex native compaction rolled to a fresh thread; retrying original turn"
+                        );
+                        continue;
+                    }
+                    Ok(Err(error)) => tracing::warn!(
+                        thread_id,
+                        error = %error,
+                        "Codex native context recovery failed"
+                    ),
+                    Err(_) => tracing::warn!(
+                        thread_id,
+                        timeout_secs = CONTEXT_RECOVERY_TIMEOUT_SECS,
+                        "Codex native context recovery timed out"
+                    ),
+                }
+                // Recovery maintenance turns reset parser-local state. If the
+                // authoritative failed completion carried its error through a
+                // preceding `error` notification rather than `turn.error`,
+                // restore it before parsing that original terminal event.
+                parser.pending_error_message = original_terminal_error;
+            }
+            // Successful recovery deliberately suppresses the overflowing
+            // attempt's terminal event. If rollback/compact/fork fails, parse
+            // the original authoritative completion only now. Recovery resets
+            // parser turn state while driving its maintenance turns; parsing
+            // up front used to lose the failed status and leave this loop
+            // waiting forever after a maintenance error.
+            let terminal_chunks = parser.handle_notification("turn/completed", &params);
+            for chunk in terminal_chunks {
+                let _ = chunk_tx.send(chunk).await;
+            }
+        } else {
+            dispatch_server_message(&msg, &mut stdin, &mut parser, &chunk_tx, mode).await;
+        }
 
         if parser.turn_status().is_some() {
             break;

@@ -18,6 +18,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import * as streamHelpers from "@src/engines/SessionCore/sync/adapters/rustAgent/eventHandlers/streamHelpers";
 import { conversationComposerModeAtomFamily } from "@src/features/Org2Cloud/SessionConversation/conversationComposerMode";
+import {
+  pendingPermissionRequestsAtom,
+  upsertPendingPermissionRequest,
+} from "@src/store/session/permissionRequestAtom";
 import { pendingPlanApprovalForSessionAtomFamily } from "@src/store/session/planApprovalAtom";
 import {
   chatFindInChatOpenAtomFamily,
@@ -304,6 +308,23 @@ describe("updateSessionStatus", () => {
 });
 
 describe("removeSession", () => {
+  it("evicts only the removed session's permission prompts", () => {
+    const store = getInstrumentedStore();
+    for (const sessionId of ["gone", "keep"])
+      store.set(pendingPermissionRequestsAtom, (prev) =>
+        upsertPendingPermissionRequest(prev, {
+          sessionId,
+          requestId: sessionId,
+          tool: "bash",
+          args: {},
+        })
+      );
+    mutations.removeSession("gone");
+    expect([...store.get(pendingPermissionRequestsAtom).keys()]).toEqual([
+      "keep",
+    ]);
+  });
+
   it("drops the session and disposes its rust-agent streaming state", async () => {
     const { upsertSession, sessionsAtom, store } = await loadModule();
 

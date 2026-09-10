@@ -28,6 +28,7 @@ const CursorPinnedSection: React.FC<CursorPinnedSectionProps> = ({
         <SectionContainer>
           <SectionRow
             label={t("keyVault.apiKeyLabel")}
+            layout="vertical"
             description={t("keyVault.cursorApiKeyBrowserHint")}
           >
             <Input

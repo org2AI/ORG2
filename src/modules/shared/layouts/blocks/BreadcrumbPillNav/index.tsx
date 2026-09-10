@@ -1,13 +1,13 @@
 /**
  * BreadcrumbPillNav
  *
- * Page header row: leading label, chevron, then breadcrumb select triggers
- * (tab-pill geometry: h-[28px], rounded-[100px]). Use BreadcrumbPillNavTrigger
+ * Breadcrumb select triggers (tab-pill geometry: h-[28px], rounded-[100px]).
+ * Use BreadcrumbPillNavTrigger
  * for transparent ghost select triggers with consistent open state styling.
  */
 import React, { forwardRef } from "react";
 
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
+import { ArrowDown01Icon, HugeiconsIcon } from "@src/icons";
 import { classNames } from "@src/util/ui/classNames";
 
 // ============================================
@@ -15,44 +15,9 @@ import { classNames } from "@src/util/ui/classNames";
 // ============================================
 
 const BREADCRUMB_PILL_NAV_TOKENS = {
-  row: "flex min-w-0 flex-1 items-center gap-1.5",
-  leading:
-    "inline-flex items-center whitespace-nowrap text-[13px] font-medium text-text-1",
-  chevron: "shrink-0 text-fill-4",
   triggerBase:
     "inline-flex h-[28px] shrink-0 items-center gap-1.5 rounded-[100px] px-1 text-[13px] transition-colors",
 } as const;
-
-// ============================================
-// Layout
-// ============================================
-
-interface BreadcrumbPillNavProps {
-  /** First breadcrumb segment (e.g. project name) */
-  leading: React.ReactNode;
-  /** Select triggers, optional separator, dropdown portals */
-  children: React.ReactNode;
-  className?: string;
-}
-
-export const BreadcrumbPillNav: React.FC<BreadcrumbPillNavProps> = ({
-  leading,
-  children,
-  className = "",
-}) => (
-  <div className={classNames(BREADCRUMB_PILL_NAV_TOKENS.row, className)}>
-    <span className={BREADCRUMB_PILL_NAV_TOKENS.leading}>{leading}</span>
-    <HugeiconsIcon
-      icon={ArrowRight01Icon}
-      data-icon="chevron-right"
-      size={14}
-      strokeWidth={1.75}
-      className={BREADCRUMB_PILL_NAV_TOKENS.chevron}
-      aria-hidden
-    />
-    {children}
-  </div>
-);
 
 // ============================================
 // Ghost select trigger (matches TabPill segment height)

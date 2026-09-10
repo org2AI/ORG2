@@ -3,7 +3,7 @@
  *
  * Pane-side helper for the global 40px tab-header strip rendered by
  * {@link WorkstationTabHeader}. The active My Station pane (Code / Browser /
- * Database / Project) calls this hook with its own header content (e.g. a
+ * Project) calls this hook with its own header content (e.g. a
  * file breadcrumb, a URL bar, a commit-info panel); the strip reads the
  * matching host slot via {@link activeWorkstationTabHeaderAtom} and renders
  * it on the right side of the global header.

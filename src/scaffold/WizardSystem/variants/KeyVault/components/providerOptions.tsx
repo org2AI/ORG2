@@ -68,7 +68,7 @@ function variantIconNode(
 }
 
 interface ProviderGridOptionGroup {
-  group: ProviderGroup;
+  group: ProviderGroup | "mostUsed";
   options: SelectionGridOption[];
 }
 
@@ -119,9 +119,29 @@ export function buildProviderGridOptionGroups(
   providers: UnifiedProvider[]
 ): ProviderGridOptionGroup[] {
   const groups: ProviderGridOptionGroup[] = [];
+  const mostUsed = [
+    "openai_api",
+    "anthropic_api",
+    "deepseek_api",
+    "cursor_cli",
+    "zhipu_api",
+    "opencode",
+  ].flatMap((modelType) => {
+    const provider = providers.find((provider) =>
+      provider.variants.some((variant) => variant.modelType === modelType)
+    );
+    return provider ? [buildProviderGridOption(provider)] : [];
+  });
+  if (mostUsed.length > 0) {
+    groups.push({ group: "mostUsed", options: mostUsed });
+  }
+  const mostUsedKeys = new Set(mostUsed.map((option) => option.key));
   for (const group of ["cloud", "local"] as ProviderGroup[]) {
     const options = providers
-      .filter((provider) => provider.group === group)
+      .filter(
+        (provider) =>
+          provider.group === group && !mostUsedKeys.has(provider.key)
+      )
       .map(buildProviderGridOption);
     if (options.length > 0) groups.push({ group, options });
   }

@@ -32,7 +32,9 @@ export function createFileOpenActions(repoPath: string) {
           .min(1, "Path cannot be empty")
           .describe("File name or path to search for and open"),
       }),
-      shortcut: getShortcutKeys("quick_open"),
+      get shortcut() {
+        return getShortcutKeys("quick_open");
+      },
       examples: ["open package.json", "show src/index.ts"],
     },
     async ({ path }) => {
@@ -181,7 +183,9 @@ export function createFileOpenActions(repoPath: string) {
           .min(1, "Query cannot be empty")
           .describe("File name or pattern to search for"),
       }),
-      shortcut: getShortcutKeys("quick_open"),
+      get shortcut() {
+        return getShortcutKeys("quick_open");
+      },
       examples: ["find package.json", "search for index.ts"],
     },
     async ({ query }) => {

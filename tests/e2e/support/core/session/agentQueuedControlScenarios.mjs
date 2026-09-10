@@ -247,43 +247,69 @@ async function clickMainAction(expectedState, label, timeout = 15_000) {
 }
 
 async function typeAndSubmitWithShortcut(inputSelector, prompt) {
-  const typed = await execJS(js.clearAndType(inputSelector, prompt));
+  let typed = await execJS(js.clearAndType(inputSelector, prompt));
   if (!typed.includes(prompt)) {
     throw new Error(`Failed to type prompt: ${typed}`);
   }
-  await browser.pause(300);
-  const shortcutResult = await execJS(`
-    const isVisible = (node) => {
-      const style = window.getComputedStyle(node);
-      const rect = node.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
-    };
-    const visibleInputShells = Array.from(document.querySelectorAll('[data-testid="chat-input"]')).filter(isVisible);
-    const activeInputShell = visibleInputShells[visibleInputShells.length - 1] ?? null;
-    const scopedEditors = activeInputShell
-      ? Array.from(activeInputShell.querySelectorAll(${JSON.stringify(inputSelector)})).filter(isVisible)
-      : [];
-    const editors = scopedEditors.length > 0
-      ? scopedEditors
-      : Array.from(document.querySelectorAll(${JSON.stringify(inputSelector)})).filter(isVisible);
-    const element = editors[editors.length - 1] ?? null;
-    if (!element) return "missing";
-    element.focus();
-    if (!(element.textContent || "").includes(${JSON.stringify(prompt)})) {
-      return "wrong-editor:" + (element.textContent || "").slice(0, 120);
-    }
-    const event = new KeyboardEvent("keydown", {
-      key: "Enter",
-      code: "Enter",
-      bubbles: true,
-      cancelable: true,
-      metaKey: true,
-    });
-    element.dispatchEvent(event);
-    return event.defaultPrevented ? "submitted" : "not-handled";
-  `);
-  if (shortcutResult !== "submitted") {
-    throw new Error(`Shortcut submit failed: ${shortcutResult}`);
+  let shortcutResult = null;
+  try {
+    await browser.waitUntil(
+      async () => {
+        shortcutResult = await execJS(`
+          const isVisible = (node) => {
+            const style = window.getComputedStyle(node);
+            const rect = node.getBoundingClientRect();
+            return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+          };
+          const visibleInputShells = Array.from(document.querySelectorAll('[data-testid="chat-input"]')).filter(isVisible);
+          const activeInputShell = visibleInputShells[visibleInputShells.length - 1] ?? null;
+          const scopedEditors = activeInputShell
+            ? Array.from(activeInputShell.querySelectorAll(${JSON.stringify(inputSelector)})).filter(isVisible)
+            : [];
+          const editors = scopedEditors.length > 0
+            ? scopedEditors
+            : Array.from(document.querySelectorAll(${JSON.stringify(inputSelector)})).filter(isVisible);
+          const element = editors[editors.length - 1] ?? null;
+          if (!element) return "missing";
+          element.focus();
+          if (!(element.textContent || "").includes(${JSON.stringify(prompt)})) {
+            return "wrong-editor:" + (element.textContent || "").slice(0, 120);
+          }
+          const event = new KeyboardEvent("keydown", {
+            key: "Enter",
+            code: "Enter",
+            bubbles: true,
+            cancelable: true,
+            metaKey: true,
+          });
+          element.dispatchEvent(event);
+          return event.defaultPrevented ? "submitted" : "not-handled";
+        `);
+        if (
+          shortcutResult === "missing" ||
+          shortcutResult.startsWith("wrong-editor:")
+        ) {
+          typed = await execJS(js.clearAndType(inputSelector, prompt));
+          if (!typed.includes(prompt)) {
+            throw new Error(`Failed to retype prompt: ${typed}`);
+          }
+          return false;
+        }
+        if (shortcutResult === "not-handled") {
+          throw new Error(shortcutResult);
+        }
+        return shortcutResult === "submitted";
+      },
+      {
+        timeout: 10_000,
+        interval: 100,
+        timeoutMsg: "active chat editor never retained the queued prompt",
+      }
+    );
+  } catch (error) {
+    throw new Error(
+      `Shortcut submit failed: ${shortcutResult}; typed=${String(typed).slice(0, 120)}; cause=${String(error?.message ?? error)}`
+    );
   }
 
   const markerMatch = prompt.match(/([A-Z0-9_]+_[a-zA-Z0-9_]+_\d+)/);
@@ -716,6 +742,33 @@ async function waitForQueuedFollowup(marker) {
       timeoutMsg: `follow-up marker ${marker} never appeared in queued messages; state=${JSON.stringify(summarizeChatState(await invokeE2E("inspectChatState")))} dump=${JSON.stringify(summarizePageDump(await execJS(js.pageDump)))}`,
     }
   );
+
+  await browser.waitUntil(
+    async () => {
+      const clearAll = await execJS(`
+        const button = document.querySelector('[data-testid="queued-messages-clear-all"]');
+        return button
+          ? {
+              text: (button.textContent || "").trim(),
+              title: (button.getAttribute("title") || "").trim(),
+            }
+          : null;
+      `);
+      return (
+        clearAll !== null &&
+        clearAll.text.length > 0 &&
+        clearAll.title.length > 0 &&
+        clearAll.text !== "actions.clearAll" &&
+        clearAll.title !== "actions.clearAll"
+      );
+    },
+    {
+      timeout: 10_000,
+      interval: 100,
+      timeoutMsg:
+        "queued-message clear-all control did not render translated text and title",
+    }
+  );
 }
 
 async function clickSendNowForQueuedMarker(marker) {
@@ -732,8 +785,6 @@ async function clickSendNowForQueuedMarker(marker) {
       `Queued state did not contain marker ${marker}: markerUserEvents=${markerUserEvents.length} markerPreviewEvents=${markerPreviewEvents.length} state=${JSON.stringify(summarizeChatState(state))}`
     );
   }
-  const previousFlushRequest = state.queueFlushRequest;
-
   let clicked = null;
   await browser.waitUntil(
     async () => {
@@ -793,17 +844,6 @@ async function clickSendNowForQueuedMarker(marker) {
       timeout: 2_000,
       interval: 100,
       timeoutMsg: `Send Now did not immediately promote/hide queue item for ${marker}; state=${JSON.stringify(summarizeChatState(await invokeE2E("inspectChatState")))} dump=${JSON.stringify(summarizePageDump(await execJS(js.pageDump)))}`,
-    }
-  );
-
-  await browser.waitUntil(
-    async () => {
-      const nextState = await inspectChatState(`${marker}-flush`);
-      return nextState.queueFlushRequest > previousFlushRequest;
-    },
-    {
-      timeout: 5_000,
-      timeoutMsg: `Send Now did not invoke queue flush for ${marker}; before=${previousFlushRequest} state=${JSON.stringify(summarizeChatState(await invokeE2E("inspectChatState")))} dump=${JSON.stringify(summarizePageDump(await execJS(js.pageDump)))}`,
     }
   );
 

@@ -23,10 +23,10 @@ import {
 import { cliAdapter } from "@src/engines/SessionCore/sync/adapters";
 import { getAdapterForSession } from "@src/engines/SessionCore/sync/types";
 import {
-  chatPanelTabsAtom,
   openOrFocusChatPanelStartPageTabAtom,
   openOrFocusSessionInChatPanelTabAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { reposAtom, selectedRepoIdAtom } from "@src/store/repo/atoms";
 import {
   type ContextUsageSnapshot,
@@ -60,20 +60,19 @@ import {
   DEFAULT_CHAT_PANEL_CREATE_TARGET,
   chatPanelContentModeAtom,
   chatPanelCreateTargetAtom,
-  chatPanelMaximizedAtom,
   chatPanelSelectedWorkItemAtom,
-  chatWidthAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import {
   messageQueueAtom,
   queueEditTargetAtom,
-  queueFlushRequestAtom,
 } from "@src/store/ui/messageQueueAtom";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {
   workStationPrimarySidebarCollapsedAtom,
   workStationPrimarySidebarTabAtom,
-} from "@src/store/ui/workStationAtom";
+} from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import { workspaceFoldersAtom } from "@src/store/ui/workspaceFoldersAtom";
 import {
   type WorkStationLayoutState,
@@ -292,7 +291,6 @@ export function createSessionHelpers(store: E2EStore) {
       store.set(sessionIdAtom, null);
       store.set(messageQueueAtom, []);
       store.set(queueEditTargetAtom, null);
-      store.set(queueFlushRequestAtom, 0);
       resetTurnLifecycleForTests();
       store.set(chatImageAttachmentsAtom, []);
       store.set(isPendingCancelAtom, false);

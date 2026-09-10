@@ -16,7 +16,6 @@ import { REPLAY_CONFIG } from "@src/config/workspace/replayConfig";
 import { clearLoadedPayloads } from "@src/engines/SessionCore/payloads";
 import { clearLoadedTurnRegistry } from "@src/engines/SessionCore/turns/loadedTurnRegistry";
 import { createLogger } from "@src/hooks/logger";
-import { messageQueueAtom } from "@src/store/ui/messageQueueAtom";
 import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 
 import { isVisibleInChat } from "../../ingestion/visibilityFilters";
@@ -37,7 +36,6 @@ import {
   getUserMessageContent,
   getUserMessageImages,
   hasUserMessageImages,
-  syntheticMatchesQueuedMessage,
   syntheticSettledByScope,
   withUserMessageImages,
 } from "./actions.userMessageSync";
@@ -131,6 +129,8 @@ clearSessionAtom.debugLabel = "session/clear";
  * Sets all relevant state at once.
  */
 interface LoadSessionPayload {
+  /** A completed idle native load already wrote this projection to Rust. */
+  storeHydrated?: boolean;
   sessionId: string;
   events: SessionEvent[];
   specs?: SessionSpec[];
@@ -159,6 +159,7 @@ export const loadSessionAtom = atom(
       specs = [],
       isFromCache = false,
       replace = false,
+      storeHydrated = false,
     } = payload;
 
     // Preserve synthetic user events (injected by session launch or a queue
@@ -260,6 +261,7 @@ export const loadSessionAtom = atom(
       set(transcriptReplaceEpochAtom, get(transcriptReplaceEpochAtom) + 1);
     }
     const baseEvents =
+      !storeHydrated &&
       !replaceForSession &&
       currentSessionId === sessionId &&
       existingSameSessionEvents.length > 0
@@ -291,40 +293,21 @@ export const loadSessionAtom = atom(
     const argsMap = extendRunningArgsCache(eventsForLoad);
     const enrichedEvents = applyRunningArgs(argsMap, eventsForLoad);
 
-    const queuedMessagesForSession = get(messageQueueAtom).filter(
-      (message) => message.sessionId === sessionId
-    );
-    const queuedSyntheticEvents = new Set<string>();
-    for (const event of enrichedEvents) {
-      if (
-        isSyntheticUserInputEvent(event) &&
-        queuedMessagesForSession.some((message) =>
-          syntheticMatchesQueuedMessage(event, message)
-        )
-      ) {
-        queuedSyntheticEvents.add(event.id);
-      }
-    }
-    const transcriptEvents =
-      queuedSyntheticEvents.size > 0
-        ? enrichedEvents.filter((event) => !queuedSyntheticEvents.has(event.id))
-        : enrichedEvents;
+    // Queue state is delivery metadata, not a second transcript. Never remove
+    // a canonical user row merely because its durable queue job is still
+    // parked or recovering: pending/failed rows must survive hydration and a
+    // repeated prompt is a distinct turn. Exact event-id dedupe below is the
+    // only safe transcript dedupe boundary.
+    const transcriptEvents = enrichedEvents;
 
-    // Deduplicate: when events already contains the synthetic event (e.g.
-    // the initial loadSessionAtom call from launchSession passes it directly),
-    // don't prepend a second copy. Synthetic events that correspond to a
-    // still-parked frontend queue item are not transcript turns yet; keeping
-    // them here makes queued follow-ups cross the rendered round boundary
-    // before dispatch.
+    // Deduplicate exact event identities only. Queue delivery state is
+    // projected separately and matching by text used to hide a different
+    // repeated message during hydration.
     let mergedEvents: SessionEvent[];
     if (syntheticUserEvents.length > 0) {
       const enrichedIds = new Set(transcriptEvents.map((evt) => evt.id));
       const uniqueSynthetic = syntheticUserEvents.filter(
-        (evt) =>
-          !enrichedIds.has(evt.id) &&
-          !queuedMessagesForSession.some((message) =>
-            syntheticMatchesQueuedMessage(evt, message)
-          )
+        (evt) => !enrichedIds.has(evt.id)
       );
       if (uniqueSynthetic.length > 0) {
         // A rescued synthetic newer than the replayed transcript is a
@@ -434,9 +417,17 @@ export const loadSessionAtom = atom(
     //
     // Explicit sessionId avoids the "active session" fallback that crashes on
     // app restart when Rust has no active session but localStorage has a stale id.
-    const rustStoreWrite = replaceForSession
-      ? eventStoreProxy.set(mergedEvents, sessionId)
-      : eventStoreProxy.mergeEvents(mergedEvents, sessionId);
+    // An idle native cold load already completed its authoritative write.
+    // Re-merging the full input here resurrects the prefix evicted by Rust's
+    // event cap. Only newly rescued frontend placeholders still need a write.
+    const rustStoreWrite = storeHydrated
+      ? eventStoreProxy.mergeEvents(
+          mergedEvents.filter(isSyntheticUserInputEvent),
+          sessionId
+        )
+      : replaceForSession
+        ? eventStoreProxy.set(mergedEvents, sessionId)
+        : eventStoreProxy.mergeEvents(mergedEvents, sessionId);
     rustStoreWrite.catch((err) => {
       log.warn("[loadSession] Failed to sync events to Rust store:", err);
     });

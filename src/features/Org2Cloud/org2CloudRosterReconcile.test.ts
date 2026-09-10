@@ -18,7 +18,9 @@ import {
   org2CloudPushCursorsAtom,
   org2CloudPushedMetadataAtom,
   org2CloudRepoScopesAtom,
+  org2CloudRetentionParkedAtom,
   org2CloudSyncEnabledAtom,
+  retentionParkKey,
 } from "./org2CloudSyncAtoms";
 
 const LIVE = "e0e22b9d-b596-48a2-94d7-0f354fa3318b";
@@ -112,7 +114,14 @@ describe("reconcileOrg2CloudPersistedState", () => {
       [ZOMBIE]: "2026-01-01T00:00:00Z",
     });
 
+    store.set(org2CloudRetentionParkedAtom, {
+      [retentionParkKey("identity", LIVE, "s1")]: "old",
+      [retentionParkKey("identity", ZOMBIE, "s1")]: "old",
+    });
     const pruned = reconcileOrg2CloudPersistedState(store, new Set([LIVE]));
+    expect(store.get(org2CloudRetentionParkedAtom)).toEqual({
+      [retentionParkKey("identity", LIVE, "s1")]: "old",
+    });
 
     expect(pruned).toEqual([ZOMBIE]);
     expect(store.get(org2CloudRepoScopesAtom)).toEqual({
@@ -147,7 +156,13 @@ describe("reconcileOrg2CloudPersistedState", () => {
       [ZOMBIE]: "metadata_only",
     });
 
+    store.set(org2CloudRetentionParkedAtom, {
+      [retentionParkKey("identity", LIVE, "s1")]: "old",
+    });
     const pruned = reconcileOrg2CloudPersistedState(store, new Set([LIVE]));
+    expect(store.get(org2CloudRetentionParkedAtom)).toEqual({
+      [retentionParkKey("identity", LIVE, "s1")]: "old",
+    });
 
     expect(pruned).toEqual([]);
     expect(Object.keys(store.get(org2CloudAccessSettingsAtom)).sort()).toEqual(
@@ -167,7 +182,13 @@ describe("reconcileOrg2CloudPersistedState", () => {
     const store = createStore();
     store.set(org2CloudRepoScopesAtom, { [LIVE]: ["github.com/a/b"] });
 
+    store.set(org2CloudRetentionParkedAtom, {
+      [retentionParkKey("identity", LIVE, "s1")]: "old",
+    });
     const pruned = reconcileOrg2CloudPersistedState(store, new Set([LIVE]));
+    expect(store.get(org2CloudRetentionParkedAtom)).toEqual({
+      [retentionParkKey("identity", LIVE, "s1")]: "old",
+    });
 
     expect(pruned).toEqual([]);
     expect(store.get(org2CloudRepoScopesAtom)).toEqual({

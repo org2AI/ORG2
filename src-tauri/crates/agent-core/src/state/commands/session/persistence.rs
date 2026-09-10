@@ -1,20 +1,19 @@
 //! Persistence commands for session data.
 
-use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Duration;
 
+use crate::coordination::agent_org_ownership::AgentOrgTeamOwnership as AgentOrgSessionDeletePlan;
 use crate::coordination::agent_org_runs::AgentOrgRunStore;
 use crate::interaction::plan_approval::persistence::PlanApprovalStore;
 use crate::persistence::db_helpers as shared;
 use crate::persistence::session_snapshots;
 use crate::session::persistence as session_persistence;
-use crate::session::{SessionListFilter, SessionStatus};
+use crate::session::SessionListFilter;
 use crate::state::control_flow::CancelReason;
 use crate::state::{AgentAppState, AgentSession};
 use crate::tools::file_history;
 use database::db::{get_connection, with_sessions_writer};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;
 
 use super::common::review_session_ids;
@@ -51,30 +50,10 @@ pub async fn agent_list_all_sessions() -> Result<Vec<serde_json::Value>, String>
     .await
 }
 
-const MAX_AGENT_ORG_DELETE_SESSIONS: usize = 1_024;
-const AGENT_ORG_DELETE_STOP_TIMEOUT: Duration = Duration::from_secs(10);
-const AGENT_ORG_DELETE_STOP_POLL_INTERVAL: Duration = Duration::from_millis(50);
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteSessionReceipt {
     pub deleted_session_ids: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct AgentOrgSessionDeleteNode {
-    session_id: String,
-    parent_session_id: Option<String>,
-    status: SessionStatus,
-    depth: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct AgentOrgSessionDeletePlan {
-    run_id: String,
-    root_session_id: String,
-    run_status: crate::coordination::agent_org_runs::AgentOrgRunStatus,
-    sessions: Vec<AgentOrgSessionDeleteNode>,
 }
 
 /// Delete a session and all related data.
@@ -105,57 +84,108 @@ pub async fn agent_delete_session(
         });
     };
 
-    let (plan, quiesced_runtime_session_ids) = if matches!(
-        plan.run_status,
-        crate::coordination::agent_org_runs::AgentOrgRunStatus::Running
-            | crate::coordination::agent_org_runs::AgentOrgRunStatus::Paused
-            | crate::coordination::agent_org_runs::AgentOrgRunStatus::Cancelled
-    ) {
-        let fenced_plan =
-            tokio::task::spawn_blocking(move || establish_agent_org_delete_fence(&plan))
-                .await
-                .map_err(|err| format!("Agent Org deletion fence worker failed: {err}"))??;
-        let quiesced_runtime_session_ids = if fenced_plan.run_status
-            == crate::coordination::agent_org_runs::AgentOrgRunStatus::Cancelled
-        {
-            stop_agent_org_runtime_sessions(&state, &fenced_plan).await?
-        } else {
-            ensure_agent_org_runtime_sessions_idle(&state, &fenced_plan).await?;
-            HashSet::new()
-        };
-        let root_session_id = fenced_plan.root_session_id.clone();
-        let current_plan = tokio::task::spawn_blocking(move || {
-            let conn = get_connection().map_err(|err| err.to_string())?;
-            load_agent_org_session_delete_plan(&conn, &root_session_id)?.ok_or_else(|| {
-                format!(
-                    "Refusing to delete Agent Org root {root_session_id}: ownership disappeared while stopping"
-                )
-            })
-        })
-        .await
-        .map_err(|err| format!("Agent Org post-stop planning worker failed: {err}"))??;
-        if !agent_org_delete_topology_matches(&fenced_plan, &current_plan) {
-            return Err(format!(
-                "Refusing to delete Agent Org run {}: session hierarchy changed while stopping",
-                fenced_plan.run_id
-            ));
-        }
-        (current_plan, quiesced_runtime_session_ids)
-    } else {
-        ensure_agent_org_runtime_sessions_idle(&state, &plan).await?;
-        (plan, HashSet::new())
-    };
+    Err(format!(
+        "agent_org_team_delete_required: session {} belongs to Agent Org Team {} and must use Team Delete",
+        session_id, plan.run_id
+    ))
+}
 
-    validate_agent_org_delete_ready(&plan, &quiesced_runtime_session_ids)?;
-    ensure_agent_org_runtime_sessions_idle(&state, &plan).await?;
-
-    let receipt = tokio::task::spawn_blocking(move || {
-        delete_agent_org_session_hierarchy(&plan, &quiesced_runtime_session_ids)
+/// Permanently delete one already-Archived Team after its bounded runtime
+/// teardown receipt proves every captured owner is quiesced.
+#[tauri::command]
+pub async fn agent_org_delete_team(
+    state: tauri::State<'_, AgentAppState>,
+    session_id: String,
+) -> Result<DeleteSessionReceipt, String> {
+    crate::coordination::agent_org_runs::require_agent_org_redesign()?;
+    let planned_session_id = session_id.clone();
+    let plan = tokio::task::spawn_blocking(move || {
+        let conn = get_connection().map_err(|err| err.to_string())?;
+        load_agent_org_session_delete_plan(&conn, &planned_session_id)
     })
     .await
-    .map_err(|err| format!("Agent Org session deletion worker failed: {err}"))??;
+    .map_err(|err| format!("Team deletion planning worker failed: {err}"))??
+    .ok_or_else(|| format!("agent_org_team_not_found: session {session_id} has no Team"))?;
 
+    validate_agent_org_delete_ready(&plan)?;
+    let runtime_sessions = acquire_agent_org_runtime_delete_fence(&state, &plan).await?;
+    let planned_session_ids = plan
+        .sessions
+        .iter()
+        .map(|node| node.session_id.clone())
+        .collect::<Vec<_>>();
+    let background_blockers =
+        crate::tools::impls::coding::exec::registry::execution_blockers_for_sessions(
+            &planned_session_ids,
+            16,
+        );
+    if !background_blockers.is_empty() {
+        for (_, session) in &runtime_sessions {
+            session.clear_team_delete_runtime_fence();
+        }
+        let evidence = background_blockers
+            .iter()
+            .map(|job| {
+                format!(
+                    "{}:{}:{}:{}",
+                    job.session_id, job.kind, job.handle, job.execution_state
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        return Err(format!(
+            "team_background_jobs_not_quiesced: Team {} still owns executing background jobs: {evidence}",
+            plan.run_id
+        ));
+    }
+
+    let delete_plan = plan.clone();
+    let delete_result =
+        tokio::task::spawn_blocking(move || delete_agent_org_session_hierarchy(&delete_plan))
+            .await
+            .map_err(|err| format!("Agent Org Team deletion worker failed: {err}"))
+            .and_then(|result| result);
+    let receipt = match delete_result {
+        Ok(receipt) => receipt,
+        Err(error) => {
+            for (_, session) in &runtime_sessions {
+                session.clear_team_delete_runtime_fence();
+            }
+            return Err(error);
+        }
+    };
+
+    let purged_jobs =
+        crate::tools::impls::coding::exec::registry::purge_deleted_sessions(
+            &receipt.deleted_session_ids,
+        )
+        .map_err(|error| {
+            format!(
+                "team_deleted_but_background_job_purge_failed: Team {} was deleted from the database but its in-memory job registry could not be purged: {error}",
+                plan.run_id
+            )
+        })?;
+    if purged_jobs.live_jobs > 0 || purged_jobs.tombstones > 0 {
+        tracing::info!(
+            live_jobs = purged_jobs.live_jobs,
+            tombstones = purged_jobs.tombstones,
+            "Team Delete purged background-job registry state for physically deleted sessions"
+        );
+    }
     state.remove_sessions(&receipt.deleted_session_ids).await;
+    let forgotten_memory_job_seals = receipt
+        .deleted_session_ids
+        .iter()
+        .filter(|session_id| {
+            crate::memory::background::forget_memory_job_seal_for_deleted_session(session_id)
+        })
+        .count();
+    if forgotten_memory_job_seals > 0 {
+        tracing::info!(
+            forgotten_memory_job_seals,
+            "Team Delete released memory-job seals for physically deleted sessions"
+        );
+    }
     if let Some(app_handle) = state.app_handle.as_ref() {
         for deleted_session_id in &receipt.deleted_session_ids {
             crate::bus::event_pipeline_bridge::evict_session(app_handle, deleted_session_id);
@@ -166,323 +196,165 @@ pub async fn agent_delete_session(
 
 fn load_agent_org_session_delete_plan(
     conn: &Connection,
-    root_session_id: &str,
+    session_id: &str,
 ) -> Result<Option<AgentOrgSessionDeletePlan>, String> {
-    let run_rows = {
-        let mut stmt = conn
-            .prepare(
-                "SELECT id, status
-                 FROM agent_org_runs
-                 WHERE root_session_id=?1
-                 ORDER BY id",
-            )
-            .map_err(|err| err.to_string())?;
-        let rows = stmt
-            .query_map([root_session_id], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })
-            .map_err(|err| err.to_string())?;
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|err| err.to_string())?
-    };
+    crate::coordination::agent_org_ownership::resolve_team_for_session(conn, session_id)
+}
 
-    let Some((run_id, run_status_raw)) = run_rows.first() else {
-        return Ok(None);
-    };
-    if run_rows.len() != 1 {
+/// OrgTrack rows whose lifetime is exactly the owning Session's history.
+///
+/// Team Delete already removes the canonical Agent Org/EventStore/Session
+/// rows in one transaction. These projections live in the same SQLite file,
+/// so leaving them behind would retain the deleted Team's file-edit and
+/// resource-access history even though the UI promises that all Team history
+/// is permanently removed. Shared resource identities/revision clocks are not
+/// listed here: they can be referenced by other Sessions and contain no
+/// deleted Session id.
+const AGENT_ORG_SESSION_HISTORY_TABLES: &[&str] = &[
+    "orgtrack_core_activities",
+    "orgtrack_core_file_changes",
+    "orgtrack_core_edit_artifacts",
+    "orgtrack_core_diff_chunks",
+    "orgtrack_core_final_diffs",
+    "orgtrack_core_session_checkpoints",
+    "orgtrack_core_checkpoint_file_states",
+    "orgtrack_core_session_signals",
+    "orgtrack_core_interaction_import_checkpoints",
+    "orgtrack_core_session_usage",
+];
+
+fn delete_agent_org_session_history_with_connection(
+    conn: &Connection,
+    session_id: &str,
+) -> rusqlite::Result<()> {
+    for table in AGENT_ORG_SESSION_HISTORY_TABLES {
+        conn.execute(
+            &format!("DELETE FROM {table} WHERE session_id=?1"),
+            [session_id],
+        )?;
+    }
+    conn.execute(
+        "DELETE FROM orgtrack_core_resource_interactions
+         WHERE session_id=?1 OR source_session_id=?1",
+        [session_id],
+    )?;
+    conn.execute(
+        "DELETE FROM orgtrack_core_session_actors
+         WHERE session_id=?1 OR source_session_id=?1 OR transcript_session_id=?1",
+        [session_id],
+    )?;
+    conn.execute(
+        "DELETE FROM orgtrack_core_sessions
+         WHERE session_id=?1 OR source_session_id=?1",
+        [session_id],
+    )?;
+    conn.execute(
+        "DELETE FROM orgtrack_core_commit_links
+         WHERE EXISTS (
+             SELECT 1
+             FROM json_each(orgtrack_core_commit_links.payload_json, '$.sessionIds')
+             WHERE json_each.value=?1
+         )",
+        [session_id],
+    )?;
+    Ok(())
+}
+
+fn first_agent_org_session_history_residual(
+    conn: &Connection,
+    session_id: &str,
+) -> rusqlite::Result<Option<String>> {
+    for table in AGENT_ORG_SESSION_HISTORY_TABLES {
+        let exists = conn.query_row(
+            &format!("SELECT EXISTS(SELECT 1 FROM {table} WHERE session_id=?1)"),
+            [session_id],
+            |row| row.get::<_, bool>(0),
+        )?;
+        if exists {
+            return Ok(Some((*table).to_string()));
+        }
+    }
+    for (table, predicate) in [
+        (
+            "orgtrack_core_resource_interactions",
+            "session_id=?1 OR source_session_id=?1",
+        ),
+        (
+            "orgtrack_core_session_actors",
+            "session_id=?1 OR source_session_id=?1 OR transcript_session_id=?1",
+        ),
+        (
+            "orgtrack_core_sessions",
+            "session_id=?1 OR source_session_id=?1",
+        ),
+        (
+            "orgtrack_core_commit_links",
+            "EXISTS (
+                 SELECT 1
+                 FROM json_each(orgtrack_core_commit_links.payload_json, '$.sessionIds')
+                 WHERE json_each.value=?1
+             )",
+        ),
+    ] {
+        let exists = conn.query_row(
+            &format!("SELECT EXISTS(SELECT 1 FROM {table} WHERE {predicate})"),
+            [session_id],
+            |row| row.get::<_, bool>(0),
+        )?;
+        if exists {
+            return Ok(Some(table.to_string()));
+        }
+    }
+    Ok(None)
+}
+
+fn validate_agent_org_delete_ready(plan: &AgentOrgSessionDeletePlan) -> Result<(), String> {
+    let conn = get_connection().map_err(|error| error.to_string())?;
+    validate_agent_org_delete_ready_with_connection(&conn, plan)
+}
+
+fn validate_agent_org_delete_ready_with_connection(
+    conn: &Connection,
+    plan: &AgentOrgSessionDeletePlan,
+) -> Result<(), String> {
+    if plan.run_status != crate::coordination::agent_org_runs::AgentOrgRunStatus::Archived {
         return Err(format!(
-            "Refusing to delete Agent Org root {root_session_id}: {} runs claim the same root",
-            run_rows.len()
+            "team_delete_requires_archived: Team {} status is {}",
+            plan.run_id, plan.run_status
         ));
     }
-    let run_status = crate::coordination::agent_org_runs::AgentOrgRunStatus::parse(run_status_raw)
-        .ok_or_else(|| {
-            format!(
-                "Refusing to delete Agent Org run {run_id}: unknown run status {run_status_raw:?}"
-            )
-        })?;
-
-    let mut stmt = conn
-        .prepare(
-            "WITH RECURSIVE descendants(
-                 session_id, parent_session_id, status, depth, path, cycle
-             ) AS (
-                 SELECT session_id,
-                        parent_session_id,
-                        status,
-                        0,
-                        '/' || hex(session_id) || '/',
-                        0
-                 FROM agent_sessions
-                 WHERE session_id=?1
-                 UNION ALL
-                 SELECT child.session_id,
-                        child.parent_session_id,
-                        child.status,
-                        parent.depth + 1,
-                        parent.path || hex(child.session_id) || '/',
-                        instr(parent.path, '/' || hex(child.session_id) || '/') > 0
-                 FROM agent_sessions child
-                 JOIN descendants parent
-                   ON child.parent_session_id=parent.session_id
-                 WHERE parent.cycle=0
-                   AND parent.depth < ?3
-             )
-             SELECT descendant.session_id,
-                    descendant.parent_session_id,
-                    descendant.status,
-                    descendant.depth,
-                    descendant.cycle,
-                    (
-                        SELECT nested.id
-                        FROM agent_org_runs nested
-                        WHERE nested.id<>?2
-                          AND nested.root_session_id=descendant.session_id
-                        ORDER BY nested.id
-                        LIMIT 1
-                    ) AS nested_run_id,
-                    EXISTS(
-                        SELECT 1
-                        FROM agent_sessions child
-                        WHERE child.parent_session_id=descendant.session_id
-                    ) AS has_children
-             FROM descendants descendant",
+    let receipt_id = plan.archive_receipt_id.as_deref().ok_or_else(|| {
+        format!(
+            "team_runtime_not_quiesced: Team {} has no Archive receipt",
+            plan.run_id
         )
-        .map_err(|err| err.to_string())?;
-    let rows = stmt
-        .query_map(
-            params![
-                root_session_id,
-                run_id,
-                MAX_AGENT_ORG_DELETE_SESSIONS as i64
-            ],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, Option<String>>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, i64>(3)?,
-                    row.get::<_, bool>(4)?,
-                    row.get::<_, Option<String>>(5)?,
-                    row.get::<_, bool>(6)?,
-                ))
-            },
-        )
-        .map_err(|err| err.to_string())?;
-
-    let mut sessions = Vec::new();
-    let mut visited = std::collections::HashSet::new();
-    for row in rows {
-        let (session_id, parent_session_id, status_raw, depth, cycle, nested_run_id, has_children) =
-            row.map_err(|err| err.to_string())?;
-        if cycle {
-            return Err(format!(
-                "Refusing to delete Agent Org run {run_id}: session ancestry contains a cycle at {session_id}"
-            ));
-        }
-        if !visited.insert(session_id.clone()) {
-            return Err(format!(
-                "Refusing to delete Agent Org run {run_id}: session hierarchy visits {session_id} more than once"
-            ));
-        }
-        if depth < 0 {
-            return Err(format!(
-                "Refusing to delete Agent Org run {run_id}: invalid depth for {session_id}"
-            ));
-        }
-        let depth = usize::try_from(depth).map_err(|err| err.to_string())?;
-        if depth >= MAX_AGENT_ORG_DELETE_SESSIONS && has_children {
-            return Err(format!(
-                "Refusing to delete Agent Org run {run_id}: session hierarchy exceeds {MAX_AGENT_ORG_DELETE_SESSIONS} nodes"
-            ));
-        }
-        if depth > 0 {
-            if let Some(nested_run_id) = nested_run_id {
-                return Err(format!(
-                    "Refusing to delete Agent Org run {run_id}: descendant session {session_id} is root of unsupported nested run {nested_run_id}"
-                ));
-            }
-        }
-        let status = SessionStatus::parse(&status_raw).ok_or_else(|| {
-            format!(
-                "Refusing to delete Agent Org run {run_id}: session {session_id} has unknown status {status_raw:?}"
-            )
-        })?;
-        sessions.push(AgentOrgSessionDeleteNode {
-            session_id,
-            parent_session_id,
-            status,
-            depth,
-        });
-        if sessions.len() > MAX_AGENT_ORG_DELETE_SESSIONS {
-            return Err(format!(
-                "Refusing to delete Agent Org run {run_id}: session hierarchy exceeds {MAX_AGENT_ORG_DELETE_SESSIONS} nodes"
-            ));
-        }
+    })?;
+    if plan.archived_at.is_none() {
+        return Err(format!(
+            "team_runtime_not_quiesced: Team {} has no Archive timestamp",
+            plan.run_id
+        ));
     }
-    if sessions.is_empty()
-        || sessions
-            .iter()
-            .all(|node| node.session_id != root_session_id)
+    let summary = crate::coordination::agent_org_archive::summary_for_run_with_connection(
+        conn,
+        &plan.run_id,
+    )?
+    .ok_or_else(|| {
+        format!(
+            "team_runtime_not_quiesced: Team {} has no teardown receipt",
+            plan.run_id
+        )
+    })?;
+    if summary.receipt_id != receipt_id
+        || summary.status != crate::coordination::agent_org_archive::ArchiveTeardownStatus::Quiesced
+        || summary.retained_runtime_count != 0
     {
         return Err(format!(
-            "Refusing to delete Agent Org run {run_id}: root session {root_session_id} is missing"
-        ));
-    }
-    let depths = sessions
-        .iter()
-        .map(|node| (node.session_id.as_str(), node.depth))
-        .collect::<std::collections::HashMap<_, _>>();
-    for node in &sessions {
-        if node.depth == 0 {
-            if node.session_id != root_session_id {
-                return Err(format!(
-                    "Refusing to delete Agent Org run {run_id}: unexpected depth-zero session {}",
-                    node.session_id
-                ));
-            }
-            continue;
-        }
-        let parent_session_id = node.parent_session_id.as_deref().ok_or_else(|| {
-            format!(
-                "Refusing to delete Agent Org run {run_id}: descendant session {} has no parent",
-                node.session_id
-            )
-        })?;
-        let parent_depth = depths.get(parent_session_id).ok_or_else(|| {
-            format!(
-                "Refusing to delete Agent Org run {run_id}: descendant session {} references missing parent {parent_session_id}",
-                node.session_id
-            )
-        })?;
-        if parent_depth.saturating_add(1) != node.depth {
-            return Err(format!(
-                "Refusing to delete Agent Org run {run_id}: descendant session {} has inconsistent depth",
-                node.session_id
-            ));
-        }
-    }
-
-    sessions.sort_by(|left, right| {
-        right
-            .depth
-            .cmp(&left.depth)
-            .then_with(|| left.session_id.cmp(&right.session_id))
-    });
-    Ok(Some(AgentOrgSessionDeletePlan {
-        run_id: run_id.clone(),
-        root_session_id: root_session_id.to_string(),
-        run_status,
-        sessions,
-    }))
-}
-
-fn agent_org_delete_topology_matches(
-    expected: &AgentOrgSessionDeletePlan,
-    current: &AgentOrgSessionDeletePlan,
-) -> bool {
-    expected.run_id == current.run_id
-        && expected.root_session_id == current.root_session_id
-        && expected.sessions.len() == current.sessions.len()
-        && expected
-            .sessions
-            .iter()
-            .zip(&current.sessions)
-            .all(|(left, right)| {
-                left.session_id == right.session_id
-                    && left.parent_session_id == right.parent_session_id
-                    && left.depth == right.depth
-            })
-}
-
-fn establish_agent_org_delete_fence(
-    expected_plan: &AgentOrgSessionDeletePlan,
-) -> Result<AgentOrgSessionDeletePlan, String> {
-    let (current_plan, changed) = with_sessions_writer(|| {
-        let mut conn = get_connection().map_err(|err| err.to_string())?;
-        let tx = conn
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .map_err(|err| err.to_string())?;
-        let mut current_plan =
-            load_agent_org_session_delete_plan(&tx, &expected_plan.root_session_id)?.ok_or_else(
-                || {
-                    format!(
-                "Refusing to delete Agent Org run {}: root ownership changed before stopping",
-                expected_plan.run_id
-            )
-                },
-            )?;
-        if !agent_org_delete_topology_matches(expected_plan, &current_plan) {
-            return Err(format!(
-                "Refusing to delete Agent Org run {}: session hierarchy changed before stopping",
-                expected_plan.run_id
-            ));
-        }
-
-        let changed = match current_plan.run_status {
-            crate::coordination::agent_org_runs::AgentOrgRunStatus::Running
-            | crate::coordination::agent_org_runs::AgentOrgRunStatus::Paused => {
-                let changed =
-                    AgentOrgRunStore::cancel_for_delete_with_connection(&tx, &current_plan.run_id)?;
-                if !changed {
-                    return Err(format!(
-                        "Refusing to delete Agent Org run {}: run status changed before cancellation",
-                        current_plan.run_id
-                    ));
-                }
-                current_plan.run_status =
-                    crate::coordination::agent_org_runs::AgentOrgRunStatus::Cancelled;
-                true
-            }
-            crate::coordination::agent_org_runs::AgentOrgRunStatus::Cancelled => false,
-            status if status.is_terminal() => false,
-            status => {
-                return Err(format!(
-                    "Refusing to delete Agent Org run {}: unsupported run status {}",
-                    current_plan.run_id,
-                    status.as_str()
-                ));
-            }
-        };
-        tx.commit().map_err(|err| err.to_string())?;
-        Ok::<_, String>((current_plan, changed))
-    })?;
-    if changed {
-        crate::coordination::agent_org_run_events::notify_agent_org_run_changed(
-            &current_plan.run_id,
-        );
-    }
-    Ok(current_plan)
-}
-
-fn validate_agent_org_delete_ready(
-    plan: &AgentOrgSessionDeletePlan,
-    quiesced_runtime_session_ids: &HashSet<String>,
-) -> Result<(), String> {
-    if !plan.run_status.is_terminal() {
-        return Err(format!(
-            "Refusing to delete Agent Org run {}: run status is {}",
+            "team_runtime_not_quiesced: Team {} Archive teardown is {} with {} retained runtime(s)",
             plan.run_id,
-            plan.run_status.as_str()
+            summary.status.as_str(),
+            summary.retained_runtime_count
         ));
-    }
-
-    for node in &plan.sessions {
-        let allowed = node.status == SessionStatus::Idle
-            || node.status.is_terminal()
-            || (plan.run_status
-                == crate::coordination::agent_org_runs::AgentOrgRunStatus::Cancelled
-                && (matches!(node.status, SessionStatus::Pending | SessionStatus::Paused)
-                    || (node.status.is_in_flight()
-                        && quiesced_runtime_session_ids.contains(&node.session_id))));
-        if !allowed {
-            return Err(format!(
-                "Refusing to delete Agent Org run {}: session {} status is {}",
-                plan.run_id,
-                node.session_id,
-                node.status.as_str()
-            ));
-        }
     }
     Ok(())
 }
@@ -508,70 +380,37 @@ async fn agent_org_runtime_blockers(
 ) -> Vec<String> {
     let mut blockers = Vec::new();
     for (session_id, session) in runtime_sessions {
+        let runtime_lease = session.runtime_lease_identity().await;
         let scheduler_processing = session.scheduler.is_processing();
         let pending_count = session.scheduler.pending_count();
         let active_turn = session.active_turn.lock().await.is_some();
-        if active_turn || scheduler_processing || pending_count > 0 {
+        if runtime_lease.is_some() || active_turn || scheduler_processing || pending_count > 0 {
             blockers.push(format!(
-                "{session_id}(active_turn={active_turn},scheduler_processing={scheduler_processing},pending={pending_count})"
+                "{session_id}(runtime_lease={},active_turn={active_turn},scheduler_processing={scheduler_processing},pending={pending_count})",
+                runtime_lease.is_some()
             ));
         }
     }
     blockers
 }
 
-async fn stop_agent_org_runtime_sessions(
+async fn acquire_agent_org_runtime_delete_fence(
     state: &AgentAppState,
     plan: &AgentOrgSessionDeletePlan,
-) -> Result<HashSet<String>, String> {
-    stop_agent_org_runtime_sessions_with_timeout(state, plan, AGENT_ORG_DELETE_STOP_TIMEOUT).await
-}
-
-async fn stop_agent_org_runtime_sessions_with_timeout(
-    state: &AgentAppState,
-    plan: &AgentOrgSessionDeletePlan,
-    timeout: Duration,
-) -> Result<HashSet<String>, String> {
+) -> Result<Vec<(String, Arc<AgentSession>)>, String> {
     let runtime_sessions = agent_org_runtime_sessions(state, plan).await;
-    let runtime_session_ids = runtime_sessions
-        .iter()
-        .map(|(session_id, _)| session_id.clone())
-        .collect::<HashSet<_>>();
-
     for (_, session) in &runtime_sessions {
-        session
-            .cancel_active_turn(CancelReason::AgentOrgDelete)
-            .await;
+        session.begin_team_delete_runtime_fence().await;
     }
-
-    let deadline = tokio::time::Instant::now() + timeout;
-    loop {
-        let blockers = agent_org_runtime_blockers(&runtime_sessions).await;
-        if blockers.is_empty() {
-            return Ok(runtime_session_ids);
-        }
-        if tokio::time::Instant::now() >= deadline {
-            return Err(format!(
-                "Timed out stopping Agent Org run {} before deletion: {}",
-                plan.run_id,
-                blockers.join(", ")
-            ));
-        }
-        tokio::time::sleep(AGENT_ORG_DELETE_STOP_POLL_INTERVAL).await;
-    }
-}
-
-async fn ensure_agent_org_runtime_sessions_idle(
-    state: &AgentAppState,
-    plan: &AgentOrgSessionDeletePlan,
-) -> Result<(), String> {
-    let runtime_sessions = agent_org_runtime_sessions(state, plan).await;
     let blockers = agent_org_runtime_blockers(&runtime_sessions).await;
     if blockers.is_empty() {
-        Ok(())
+        Ok(runtime_sessions)
     } else {
+        for (_, session) in &runtime_sessions {
+            session.clear_team_delete_runtime_fence();
+        }
         Err(format!(
-            "Refusing to delete Agent Org run {}: active Rust runtime sessions: {}",
+            "team_runtime_not_quiesced: Team {} still owns in-memory runtime state: {}",
             plan.run_id,
             blockers.join(", ")
         ))
@@ -580,7 +419,6 @@ async fn ensure_agent_org_runtime_sessions_idle(
 
 fn delete_agent_org_session_hierarchy(
     expected_plan: &AgentOrgSessionDeletePlan,
-    quiesced_runtime_session_ids: &HashSet<String>,
 ) -> Result<DeleteSessionReceipt, String> {
     for node in &expected_plan.sessions {
         session_persistence::prepare_session_delete(&node.session_id)
@@ -605,18 +443,32 @@ fn delete_agent_org_session_hierarchy(
                 expected_plan.run_id
             ));
         }
-        validate_agent_org_delete_ready(&current_plan, quiesced_runtime_session_ids)?;
+        validate_agent_org_delete_ready_with_connection(&tx, &current_plan)?;
 
-        for node in &expected_plan.sessions {
-            session_persistence::delete_session_with_connection(&tx, &node.session_id)
-                .map_err(|err| format!("delete session {}: {err}", node.session_id))?;
-        }
+        // Run-owned coordination rows include Linked Inbox children whose
+        // authority intentionally RESTRICTs deletion of their parent Turn and
+        // Inbox. Remove that run-owned causal graph first; the Run store does
+        // so leaf-first, while this same transaction still owns the complete
+        // Team plan and can roll everything back on any later Session error.
         let outcome = AgentOrgRunStore::delete_by_id_with_connection(&tx, &expected_plan.run_id)?;
         if !outcome.deleted() {
             return Err(format!(
                 "Refusing to commit Agent Org run {} deletion: run row disappeared during deletion",
                 expected_plan.run_id
             ));
+        }
+
+        for node in &expected_plan.sessions {
+            delete_agent_org_session_history_with_connection(&tx, &node.session_id).map_err(
+                |err| {
+                    format!(
+                        "delete Session history {} for Team {}: {err}",
+                        node.session_id, expected_plan.run_id
+                    )
+                },
+            )?;
+            session_persistence::delete_session_with_connection(&tx, &node.session_id)
+                .map_err(|err| format!("delete session {}: {err}", node.session_id))?;
         }
         ensure_agent_org_hierarchy_absent(&tx, expected_plan)?;
         tx.commit().map_err(|err| err.to_string())?;
@@ -660,10 +512,18 @@ fn ensure_agent_org_hierarchy_absent(
                 plan.run_id, node.session_id
             ));
         }
+        if let Some(table) = first_agent_org_session_history_residual(conn, &node.session_id)
+            .map_err(|err| err.to_string())?
+        {
+            return Err(format!(
+                "Refusing to commit Agent Org run {} deletion: residual Session history in {table} references deleted session {}",
+                plan.run_id, node.session_id
+            ));
+        }
     }
     let run_exists = conn
         .query_row(
-            "SELECT EXISTS(SELECT 1 FROM agent_org_runs WHERE id=?1)",
+            "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_runs WHERE id=?1)",
             [&plan.run_id],
             |row| row.get::<_, bool>(0),
         )

@@ -7,7 +7,6 @@ import { Placeholder } from "@src/components/Placeholder";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
 import { SIMULATOR_PRIMARY_SIDEBAR } from "@src/config/simulatorPrimarySidebar";
 import { useBrowserAutomation } from "@src/engines/BrowserCore/hooks/useBrowserAutomation";
-import EventWrapper from "@src/engines/ChatPanel/adapters/EventWrapper";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
 import {
@@ -21,8 +20,7 @@ import { buildDomComponentJsonFromElementInfo } from "@src/modules/WorkStation/B
 import { useBrowserSessions } from "@src/modules/WorkStation/Browser/hooks/useBrowserSessions";
 import {
   NoTabsPlaceholder,
-  SimulatorReplayChrome,
-  WorkStationShell,
+  ReplayShellLayout,
   buildPrimarySidebarConfig,
   buildSecondaryPanelConfig,
   useSimulatorAwaitingAgentCaption,
@@ -172,7 +170,6 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
     handleNewPrivateMyTabsSession,
     handleSelectMyTabsSession,
     handleCloseMyTabsSession,
-    handleOpenMyTabsHistoryUrl,
   } = useBrowserReplayTabs({
     browserEntries,
     internalBrowserEntries,
@@ -274,7 +271,6 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
                 onNewSession={handleNewMyTabsSession}
                 onNewPrivateSession={handleNewPrivateMyTabsSession}
                 onCloseSession={handleCloseMyTabsSession}
-                onOpenHistoryUrl={handleOpenMyTabsHistoryUrl}
               />
             </div>
             <div
@@ -316,7 +312,6 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
       handleCloseMyTabsSession,
       handleNewMyTabsSession,
       handleNewPrivateMyTabsSession,
-      handleOpenMyTabsHistoryUrl,
       handleSelectAgentEntry,
       primarySidebarCollapsed,
       primarySidebarWidth,
@@ -563,44 +558,36 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
   }
 
   return (
-    <EventWrapper
-      event={currentEvent as unknown as BackendEvent}
-      mode={mode}
-      expand={true}
-      padding="p-0"
-    >
-      <SimulatorReplayChrome
-        tabs={browserTabs}
-        activeEventId={visibleActiveTabId}
-        onTabClick={handleBrowserTabClick}
-        trailingSlot={
-          <TabBarTrailingIconButton
-            data-action="browser.newTab"
-            title={tCommon("commands.newTab")}
-            shortcutId="browser_new_tab"
-            onClick={handleNewMyTabsSession}
-          >
-            <HugeiconsIcon
-              icon={Add01Icon}
-              data-icon="plus"
-              size={18}
-              strokeWidth={2}
-            />
-          </TabBarTrailingIconButton>
-        }
-      >
-        <div className="flex min-h-0 flex-1">
-          <WorkStationShell
-            primarySidebarConfig={primarySidebarConfig}
-            secondaryPanelConfig={secondaryPanelConfig}
-            content={mainContent}
-            statusBar={myTabsStatusBar}
-            layoutMode={primarySidebarPosition === "right" ? "right" : "left"}
-            appClassName="session-replay-browser"
+    <ReplayShellLayout
+      tabs={browserTabs}
+      activeEventId={visibleActiveTabId}
+      onTabClick={handleBrowserTabClick}
+      trailingSlot={
+        <TabBarTrailingIconButton
+          data-action="browser.newTab"
+          title={tCommon("commands.newTab")}
+          shortcutId="browser_new_tab"
+          onClick={handleNewMyTabsSession}
+        >
+          <HugeiconsIcon
+            icon={Add01Icon}
+            data-icon="plus"
+            size={18}
+            strokeWidth={2}
           />
-        </div>
-      </SimulatorReplayChrome>
-    </EventWrapper>
+        </TabBarTrailingIconButton>
+      }
+      eventWrapper={{ event: currentEvent as unknown as BackendEvent, mode }}
+      workstation={{
+        primarySidebarConfig,
+        secondaryPanelConfig,
+        statusBar: myTabsStatusBar,
+        layoutMode: primarySidebarPosition === "right" ? "right" : "left",
+        appClassName: "session-replay-browser",
+      }}
+    >
+      {mainContent}
+    </ReplayShellLayout>
   );
 };
 

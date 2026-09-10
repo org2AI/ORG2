@@ -3,15 +3,19 @@ import { createStore } from "jotai/vanilla";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 
 import {
+  MAX_QUEUED_MESSAGES_PER_SESSION,
+  MAX_QUEUED_MESSAGE_CHARS,
   type QueueEditTarget,
   type QueuedMessage,
+  clearQueuedMessagesAtom,
   clearSessionQueueAtom,
   dequeueMessageAtom,
   editMessageAtom,
   enqueueMessageAtom,
   forceSendMessageAtom,
-  holdSessionQueueForStopAtom,
   messageQueueAtom,
+  messageQueueHandoffIdsAtom,
+  parkSessionQueuedMessagesAfterStopAtom,
   queueEditTargetAtom,
   queueEditingAtom,
   reorderQueueAtom,
@@ -96,8 +100,8 @@ describe("messageQueueAtom", () => {
         content: "same",
         displayContent: "same display",
       });
-      store.set(enqueueMessageAtom, msg1);
-      store.set(enqueueMessageAtom, msg2);
+      expect(store.set(enqueueMessageAtom, msg1)).toBe("enqueued");
+      expect(store.set(enqueueMessageAtom, msg2)).toBe("duplicate");
       expect(store.get(messageQueueAtom)).toEqual([msg1]);
     });
 
@@ -117,9 +121,43 @@ describe("messageQueueAtom", () => {
         content: "same",
         displayContent: "same display",
       });
-      store.set(enqueueMessageAtom, msg1);
-      store.set(enqueueMessageAtom, msg2);
+      expect(store.set(enqueueMessageAtom, msg1)).toBe("enqueued");
+      expect(store.set(enqueueMessageAtom, msg2)).toBe("enqueued");
       expect(store.get(messageQueueAtom)).toEqual([msg1, msg2]);
+    });
+
+    it("rejects per-session overflow without incrementing the queue", () => {
+      for (let index = 0; index < MAX_QUEUED_MESSAGES_PER_SESSION; index++) {
+        expect(
+          store.set(
+            enqueueMessageAtom,
+            makeMessage({ id: `m${index}`, sessionId: "bounded-session" })
+          )
+        ).toBe("enqueued");
+      }
+
+      expect(
+        store.set(
+          enqueueMessageAtom,
+          makeMessage({ id: "overflow", sessionId: "bounded-session" })
+        )
+      ).toBe("session_limit");
+      expect(store.get(messageQueueAtom)).toHaveLength(
+        MAX_QUEUED_MESSAGES_PER_SESSION
+      );
+    });
+
+    it("rejects one oversized message at the producing boundary", () => {
+      const oversized = makeMessage({
+        id: "oversized",
+        content: "x".repeat(MAX_QUEUED_MESSAGE_CHARS + 1),
+        displayContent: "",
+      });
+
+      expect(store.set(enqueueMessageAtom, oversized)).toBe(
+        "message_too_large"
+      );
+      expect(store.get(messageQueueAtom)).toEqual([]);
     });
   });
 
@@ -128,6 +166,24 @@ describe("messageQueueAtom", () => {
   // =============================================
 
   describe("dequeueMessageAtom", () => {
+    it("freezes queue mutations while ownership is being handed off", () => {
+      const message = makeMessage({ id: "m1" });
+      store.set(enqueueMessageAtom, message);
+      store.set(messageQueueHandoffIdsAtom, new Set([message.id]));
+
+      store.set(forceSendMessageAtom, message.id);
+      expect(
+        store.set(editMessageAtom, {
+          messageId: message.id,
+          content: "edited too late",
+        })
+      ).toBe(false);
+      store.set(dequeueMessageAtom, message.id);
+      store.set(clearQueuedMessagesAtom, [message.id]);
+
+      expect(store.get(messageQueueAtom)).toEqual([message]);
+    });
+
     it("removes message by ID", () => {
       store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
       store.set(enqueueMessageAtom, makeMessage({ id: "m2" }));
@@ -177,6 +233,53 @@ describe("messageQueueAtom", () => {
       });
     });
 
+    it("clears a held delivery failure when the user explicitly retries", () => {
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({
+          id: "m1",
+          requiresExplicitDispatch: true,
+          deliveryError: "provider unavailable",
+        })
+      );
+
+      store.set(forceSendMessageAtom, "m1");
+
+      expect(store.get(messageQueueAtom)[0]).toMatchObject({
+        priority: "now",
+        requiresExplicitDispatch: false,
+      });
+      expect(store.get(messageQueueAtom)[0].deliveryError).toBeUndefined();
+    });
+
+    it("keeps an edited retry intent instead of minting it twice", () => {
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({
+          id: "m1",
+          requiresExplicitDispatch: true,
+          deliveryError: "provider unavailable",
+        })
+      );
+      store.set(editMessageAtom, {
+        messageId: "m1",
+        content: "@VantaNode retry with attachment",
+        imageDataUrls: ["data:image/png;base64,retry"],
+        turnIntentId: "terminal-retry-intent",
+      });
+
+      store.set(forceSendMessageAtom, "m1");
+
+      expect(store.get(messageQueueAtom)[0]).toMatchObject({
+        id: "m1",
+        turnIntentId: "terminal-retry-intent",
+        displayContent: "@VantaNode retry with attachment",
+        imageDataUrls: ["data:image/png;base64,retry"],
+        priority: "now",
+        requiresExplicitDispatch: false,
+      });
+    });
+
     it("is idempotent", () => {
       store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
 
@@ -217,10 +320,10 @@ describe("messageQueueAtom", () => {
   });
 
   // =============================================
-  // holdSessionQueueForStopAtom
+  // parkSessionQueuedMessagesAfterStopAtom
   // =============================================
 
-  describe("holdSessionQueueForStopAtom", () => {
+  describe("parkSessionQueuedMessagesAfterStopAtom", () => {
     it("parks every queued message of the session", () => {
       store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
       store.set(enqueueMessageAtom, makeMessage({ id: "m2" }));
@@ -229,7 +332,7 @@ describe("messageQueueAtom", () => {
         makeMessage({ id: "m3", sessionId: "session-2" })
       );
 
-      store.set(holdSessionQueueForStopAtom, "session-1");
+      store.set(parkSessionQueuedMessagesAfterStopAtom, "session-1");
 
       const queue = store.get(messageQueueAtom);
       expect(queue.find((m) => m.id === "m1")?.requiresExplicitDispatch).toBe(
@@ -245,7 +348,7 @@ describe("messageQueueAtom", () => {
 
     it("Send Now lifts the hold afterwards", () => {
       store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
-      store.set(holdSessionQueueForStopAtom, "session-1");
+      store.set(parkSessionQueuedMessagesAfterStopAtom, "session-1");
 
       store.set(forceSendMessageAtom, "m1");
 
@@ -314,6 +417,22 @@ describe("messageQueueAtom", () => {
     });
   });
 
+  describe("clearQueuedMessagesAtom", () => {
+    it("removes only the projected message ids", () => {
+      store.set(messageQueueAtom, [
+        makeMessage({ id: "m1", sessionId: "session-parent" }),
+        makeMessage({ id: "m2", sessionId: "session-member" }),
+        makeMessage({ id: "m3", sessionId: "session-unrelated" }),
+      ]);
+
+      store.set(clearQueuedMessagesAtom, ["m1", "m2"]);
+
+      expect(store.get(messageQueueAtom).map((message) => message.id)).toEqual([
+        "m3",
+      ]);
+    });
+  });
+
   // =============================================
   // editMessageAtom
   // =============================================
@@ -338,6 +457,19 @@ describe("messageQueueAtom", () => {
       const msg = store.get(messageQueueAtom)[0];
       expect(msg.content).toBe("updated");
       expect(msg.displayContent).toBe("updated");
+    });
+
+    it("keeps the original row when an edit exceeds the message bound", () => {
+      const original = makeMessage({ id: "m1" });
+      store.set(enqueueMessageAtom, original);
+
+      expect(
+        store.set(editMessageAtom, {
+          messageId: "m1",
+          content: "x".repeat(MAX_QUEUED_MESSAGE_CHARS + 1),
+        })
+      ).toBe(false);
+      expect(store.get(messageQueueAtom)).toEqual([original]);
     });
 
     it("updates imageDataUrls when provided", () => {

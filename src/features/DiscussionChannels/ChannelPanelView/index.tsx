@@ -46,7 +46,7 @@ import {
 import { useOrgChannels } from "@src/features/Org2Cloud/channels/useOrgChannels";
 import { HugeiconsIcon, MessageMultiple01Icon } from "@src/icons";
 import { SESSION_TAB_DROP_TARGET_HIGHLIGHT_CLASS } from "@src/shared/dnd/sessionTabDrag";
-import type { ChatPanelSelectedChannel } from "@src/store/chatPanel/chatPanelTabsAtom";
+import type { ChatPanelSelectedChannel } from "@src/store/chatPanel/chatPanelTabsModel";
 import {
   deleteLocalChannelMessageAtom,
   editLocalChannelMessageAtom,

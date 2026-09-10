@@ -30,6 +30,26 @@ const translations: Record<string, string> = {
 const translate: Translator = (key) => translations[key] ?? key;
 
 describe("Spotlight settings item builders", () => {
+  it("groups repo commands under Workspace and app preferences under View", () => {
+    const onSelectAction = vi.fn();
+    const workspace = buildActionItems(onSelectAction, translate, "workspace");
+    const view = buildActionItems(onSelectAction, translate, "view");
+
+    expect(workspace.map((item) => item.id)).toEqual(["show-in-finder"]);
+    expect(view.map((item) => item.label)).toEqual([
+      "common:spotlightActions.changeLanguage",
+      "Change theme",
+      "Change skin",
+    ]);
+    expect([...workspace, ...view]).toHaveLength(ACTIONS.length);
+    for (const item of view) {
+      item.action?.();
+      expect(onSelectAction).toHaveBeenLastCalledWith(
+        ACTIONS.find((action) => action.id === item.id)
+      );
+    }
+  });
+
   it("shows Follow system with a native-language suffix", () => {
     const items = buildLanguageItems(
       LANGUAGE_PREFERENCE.SYSTEM,

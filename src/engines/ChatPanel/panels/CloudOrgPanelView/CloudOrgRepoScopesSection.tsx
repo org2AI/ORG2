@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import PageNotice from "@src/components/PageNotice";
 import type { ScopeQuotaView } from "@src/features/Org2Cloud/org2CloudScopeQuota";
 import RepoScopePicker from "@src/features/TeamCollaboration/components/RepoScopePicker";
 import {
@@ -244,27 +245,26 @@ export function CloudOrgRepoScopesSection({
             </SectionRow>
             {scopeQuota?.atCap ? (
               <SectionRow showHeader={false}>
-                <div
-                  className="flex flex-wrap items-center gap-2 rounded-lg bg-warning-1 px-3 py-2 text-[12px] text-warning-6"
-                  data-testid="cloud-org-scope-cap-upgrade"
+                <PageNotice
+                  type="warning"
+                  dataTestId="cloud-org-scope-cap-upgrade"
+                  action={
+                    <Button
+                      htmlType="button"
+                      size="small"
+                      variant="secondary"
+                      onClick={openCloudBillingPage}
+                      data-testid="cloud-org-scope-cap-upgrade-link"
+                    >
+                      {t("cloud.orgPanel.upgrade")}
+                    </Button>
+                  }
                 >
-                  <span>
-                    {t("cloud.orgPanel.scopeCapReached", {
-                      used: scopeQuota.used,
-                      cap: scopeQuota.cap,
-                    })}
-                  </span>
-                  <Button
-                    htmlType="button"
-                    size="default"
-                    variant="warning"
-                    appearance="ghost"
-                    onClick={openCloudBillingPage}
-                    data-testid="cloud-org-scope-cap-upgrade-link"
-                  >
-                    {t("cloud.orgPanel.upgrade")}
-                  </Button>
-                </div>
+                  {t("cloud.orgPanel.scopeCapReached", {
+                    used: scopeQuota.used,
+                    cap: scopeQuota.cap,
+                  })}
+                </PageNotice>
               </SectionRow>
             ) : null}
           </>

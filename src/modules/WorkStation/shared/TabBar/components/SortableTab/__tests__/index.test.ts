@@ -2,9 +2,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { CODE_EDITOR_MAIN_TERMINAL_TAB_ID } from "@src/store/workstation/tabs";
 import type { WorkStationTab } from "@src/store/workstation/tabs/types";
 
 import { SortableTab, resolveWorkstationTabIntegrationIcon } from "..";
+import { WorkstationTabContent } from "../../WorkstationTabContent";
 
 vi.mock("@src/components/IntegrationIcon", () => ({
   default: ({ type, size }: { type: string; size: number }) =>
@@ -87,5 +89,66 @@ describe("resolveWorkstationTabIntegrationIcon", () => {
     expect(markup).toMatch(
       /<svg[^>]*class="[^"]*text-text-1[^"]*"[^>]*data-icon="layout-grid"/
     );
+  });
+});
+
+describe("Workstation tab drag content", () => {
+  it.each([
+    ["file", "test:file", "custom-name"],
+    ["terminal", "custom-terminal", "custom-name"],
+    ["terminal", CODE_EDITOR_MAIN_TERMINAL_TAB_ID, "common:tabs.terminal"],
+  ] as const)(
+    "preserves the title policy for %s / %s",
+    (type, id, expected) => {
+      const markup = renderToStaticMarkup(
+        createElement(WorkstationTabContent, {
+          tab: { ...tab(type), id, title: "custom-name" },
+          isActive: true,
+        })
+      );
+      expect(markup).toContain(expected);
+      if (id === CODE_EDITOR_MAIN_TERMINAL_TAB_ID) {
+        expect(markup).not.toContain("custom-name");
+      }
+    }
+  );
+
+  it("renders a tool glyph and localized label instead of the stored title", () => {
+    const markup = renderToStaticMarkup(
+      createElement(WorkstationTabContent, {
+        tab: {
+          ...tab("start"),
+          title: "Stale stored title",
+          icon: "LayoutGrid",
+        },
+        isActive: true,
+      })
+    );
+
+    expect(markup).toContain('data-icon="layout-grid"');
+    expect(markup).toContain("navigation:routes.launchpad");
+    expect(markup).not.toContain("Stale stored title");
+  });
+
+  it("preserves timeline revisions and the comparison glyph", () => {
+    const markup = renderToStaticMarkup(
+      createElement(WorkstationTabContent, {
+        tab: {
+          ...tab("git-diff", {
+            isTimeline: true,
+            shortSha: "abc123",
+            headShortSha: "def456",
+          }),
+          title: "index.ts",
+        },
+        isActive: false,
+      })
+    );
+
+    expect(markup).toContain("index.ts (abc123)");
+    expect(markup).toContain("(def456)");
+    expect(markup).toContain('data-icon="move-horizontal"');
+    expect(markup).toContain('data-icon="lock"');
+    expect(markup).not.toContain("Working Tree");
   });
 });

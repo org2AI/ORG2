@@ -32,34 +32,25 @@ pub fn file_metadata_signature(path: &Path, source_name: &str) -> Result<(i64, i
     Ok((modified_at_ns, metadata.len() as i64))
 }
 
-/// Build a change-signature component from a SQLite database's WAL/`-shm`
-/// sidecar files.
+/// Track SQLite content still in the WAL, alongside the caller's main-file
+/// metadata. Checkpoint/truncation/removal also invalidates the signature.
 ///
-/// Writes to a SQLite database in WAL mode land in the `-wal` sidecar and are
-/// only folded back into the main file at checkpoint time. Reading only the
-/// main file's mtime/size therefore misses not-yet-checkpointed sessions. This
-/// folds each sidecar's size and nanosecond mtime into a compact string so a
-/// pending write invalidates dependent caches. Missing sidecars contribute a
-/// stable placeholder so checkpoint (which deletes `-wal`) also changes it.
+/// Do not include `-shm`: it is a coordination index that read-only connections
+/// can create or rewrite without any change to the transcript. Including it
+/// makes our own history reads invalidate the next scan's cache.
 pub fn sqlite_sidecar_signature(db_path: &Path) -> String {
-    ["-wal", "-shm"]
-        .iter()
-        .map(
-            |suffix| match sqlite_sidecar_path(db_path, suffix).metadata() {
-                Ok(metadata) => {
-                    let mtime_ns = metadata
-                        .modified()
-                        .ok()
-                        .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
-                        .map(|since| since.as_nanos() as i64)
-                        .unwrap_or_default();
-                    format!("{suffix}:{}:{mtime_ns}", metadata.len())
-                }
-                Err(_) => format!("{suffix}:-"),
-            },
-        )
-        .collect::<Vec<_>>()
-        .join("|")
+    match sqlite_sidecar_path(db_path, "-wal").metadata() {
+        Ok(metadata) => {
+            let mtime_ns = metadata
+                .modified()
+                .ok()
+                .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|since| since.as_nanos() as i64)
+                .unwrap_or_default();
+            format!("-wal:{}:{mtime_ns}", metadata.len())
+        }
+        Err(_) => "-wal:-".to_owned(),
+    }
 }
 
 /// Fold independent per-session count/size components into the `u64` half of
@@ -245,6 +236,62 @@ mod tests {
         )
         .expect("seed fixture");
         (path, conn)
+    }
+
+    #[test]
+    fn sqlite_content_signature_ignores_readers_but_detects_writes_and_checkpoint() {
+        let (writer_path, writer) = fixture_db("wal-writer");
+        writer.execute_batch("PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; INSERT INTO part VALUES ('wal', 'a', 30, '{}');").unwrap();
+        let reader_path = writer_path.with_extension("reader.sqlite");
+        std::fs::copy(&writer_path, &reader_path).unwrap();
+        std::fs::copy(
+            sqlite_sidecar_path(&writer_path, "-wal"),
+            sqlite_sidecar_path(&reader_path, "-wal"),
+        )
+        .unwrap();
+        let signature = |path: &Path| {
+            (
+                file_metadata_signature(path, "test").unwrap(),
+                sqlite_sidecar_signature(path),
+            )
+        };
+        let before = signature(&reader_path);
+        assert!(!sqlite_sidecar_path(&reader_path, "-shm").exists());
+        for _ in 0..4 {
+            let reader = Connection::open_with_flags(
+                &reader_path,
+                rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_URI,
+            )
+            .unwrap();
+            let count: i64 = reader
+                .query_row("SELECT count(*) FROM part", [], |row| row.get(0))
+                .unwrap();
+            assert_eq!(count, 3);
+            drop(reader);
+            assert!(sqlite_sidecar_path(&reader_path, "-shm").exists());
+            assert_eq!(
+                signature(&reader_path),
+                before,
+                "read-only WAL recovery must not invalidate history"
+            );
+        }
+        let before_write = signature(&writer_path);
+        writer
+            .execute("INSERT INTO part VALUES ('new', 'a', 40, '{}')", [])
+            .unwrap();
+        let after_write = signature(&writer_path);
+        assert_eq!(before_write.0, after_write.0, "write is still in WAL");
+        assert_ne!(before_write.1, after_write.1);
+        writer
+            .execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")
+            .unwrap();
+        assert_ne!(signature(&writer_path), after_write);
+        drop(writer);
+        for path in [&writer_path, &reader_path] {
+            std::fs::remove_file(path).ok();
+            std::fs::remove_file(sqlite_sidecar_path(path, "-wal")).ok();
+            std::fs::remove_file(sqlite_sidecar_path(path, "-shm")).ok();
+        }
     }
 
     #[test]

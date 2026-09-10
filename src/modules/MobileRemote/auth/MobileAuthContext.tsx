@@ -5,6 +5,7 @@ import type { MobileAuthSession } from "./mobileAuthState";
 export interface MobileAuthContextValue {
   session: MobileAuthSession;
   signOut: () => void;
+  getConnectionSession?: () => Promise<MobileAuthSession>;
   /** True only for the compile-time guarded local native development shell. */
   isDevelopmentBypass: boolean;
 }

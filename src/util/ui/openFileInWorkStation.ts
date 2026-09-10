@@ -19,7 +19,7 @@
  * is already visible in the right pane and we want to act on a file without
  * yanking the user out of their current view.
  */
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {
   createFileTab,

@@ -30,7 +30,7 @@ import {
   DEFAULT_CHAT_WIDTH,
   chatPanelDraggingAtom,
   chatWidthAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/widthAtoms";
 
 import {
   CHAT_WIDTH_CSS_VAR,

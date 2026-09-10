@@ -202,6 +202,50 @@ fn parses_codex_jsonl_into_replay_chunks() {
 }
 
 #[test]
+fn deduplicates_native_assistant_context_and_visible_event_mirror() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-codex-native-mirror-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("rollout-native-mirror.jsonl");
+    let content = r#"{"timestamp":"2026-08-26T06:00:00.000Z","type":"event_msg","payload":{"type":"user_message","message":"hello","images":[],"local_images":[],"text_elements":[]}}
+{"timestamp":"2026-08-26T06:00:01.000Z","type":"response_item","payload":{"type":"message","id":"a1","role":"assistant","content":[{"type":"output_text","text":"one answer"}]}}
+{"timestamp":"2026-08-26T06:00:01.001Z","type":"event_msg","payload":{"type":"agent_message","message":"one answer","phase":"final_answer","memory_citation":null}}
+{"timestamp":"2026-08-26T06:00:02.000Z","type":"event_msg","payload":{"type":"user_message","message":"continue","images":[],"local_images":[],"text_elements":[]}}
+{"timestamp":"2026-08-26T06:00:03.000Z","type":"event_msg","payload":{"type":"agent_message","message":"two answer","phase":"final_answer","memory_citation":null}}
+{"timestamp":"2026-08-26T06:00:03.001Z","type":"response_item","payload":{"type":"message","id":"a2","role":"assistant","content":[{"type":"output_text","text":"two answer"}]}}
+"#;
+    std::fs::write(&path, content).expect("write fixture");
+
+    let chunks = load_codex_app_from_path("codexapp-native-mirror", &path).expect("parse");
+    let assistant = chunks
+        .iter()
+        .filter(|chunk| chunk.function == imported_history::FUNCTION_ASSISTANT)
+        .collect::<Vec<_>>();
+    assert_eq!(assistant.len(), 2);
+    assert_eq!(
+        assistant[0]
+            .result
+            .get("observation")
+            .or_else(|| assistant[0].result.get("content"))
+            .and_then(Value::as_str),
+        Some("one answer")
+    );
+    assert_eq!(
+        assistant[1]
+            .result
+            .get("observation")
+            .or_else(|| assistant[1].result.get("content"))
+            .and_then(Value::as_str),
+        Some("two answer")
+    );
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
 fn parses_paginated_codex_user_items_without_model_context_duplicates() {
     let temp_dir = std::env::temp_dir().join(format!(
         "orgii-codex-paginated-history-test-{}",
@@ -602,7 +646,7 @@ fn codex_initial_window_keeps_one_hundred_rounds_discoverable() {
 }
 
 #[test]
-fn codex_turn_catalog_incrementally_discovers_an_appended_round() {
+fn codex_turn_catalog_discovers_an_appended_round() {
     use std::io::Write;
 
     let temp_dir = std::env::temp_dir().join(format!(
@@ -1321,6 +1365,58 @@ fn codex_write_stdin_polls_merge_into_originating_exec_command() {
 }
 
 #[test]
+fn codex_background_command_partial_output_is_an_interrupted_result() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-codex-background-partial-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("rollout-background-partial.jsonl");
+    let content = [
+        json!({
+            "timestamp": "2026-07-18T01:00:00Z",
+            "type": "response_item",
+            "payload": {
+                "type": "custom_tool_call",
+                "name": "exec",
+                "call_id": "call_shell",
+                "input": r#"const r = await tools.exec_command({cmd:"cargo test",workdir:"/tmp/project",yield_time_ms:10000,max_output_tokens:3000}); text(r)"#,
+            }
+        }),
+        json!({
+            "timestamp": "2026-07-18T01:00:10Z",
+            "type": "response_item",
+            "payload": {
+                "type": "custom_tool_call_output",
+                "call_id": "call_shell",
+                "output": [
+                    { "type": "input_text", "text": "Script running with session ID 82118\n" },
+                    { "type": "input_text", "text": r#"{"session_id":82118,"output":"Compiling\n"}"# },
+                ],
+            }
+        }),
+    ]
+    .into_iter()
+    .map(|line| line.to_string())
+    .collect::<Vec<_>>()
+    .join("\n");
+    std::fs::write(&path, content).expect("write fixture");
+
+    let chunks = load_codex_app_from_path("codexapp-background-partial", &path).expect("parse");
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(
+        chunks[0].function,
+        imported_history::FUNCTION_RUN_COMMAND_LINE
+    );
+    assert_eq!(chunks[0].result["status"], "interrupted");
+    assert_eq!(chunks[0].result["interrupted"], true);
+    assert_eq!(chunks[0].result["output"], "Compiling\n");
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
 fn codex_write_stdin_cell_wait_still_merges_into_originating_command() {
     let temp_dir = std::env::temp_dir().join(format!(
         "orgii-codex-write-stdin-cell-test-{}",
@@ -1415,6 +1511,109 @@ fn codex_write_stdin_cell_wait_still_merges_into_originating_command() {
 }
 
 #[test]
+fn codex_desktop_exec_keeps_heredoc_bodies_in_one_invocation() {
+    for command in [
+        "python3 - <<'PY'\nfrom pathlib import Path\nprint('done')\nPY",
+        "cat <<EOF\nhello\nEOF",
+        "cat <<-\"EOF\"\n\thello\n\tEOF\nprintf done",
+        "cat <<< 'hello'\nprintf done",
+    ] {
+        let payload = json!({
+            "name": "exec",
+            "call_id": "heredoc",
+            "input": format!("text(await tools.exec_command({{cmd:{}}}));", serde_json::to_string(command).unwrap()),
+        });
+        let (_, calls) =
+            pending_custom_tool_calls_from_payload(&payload, "2026-09-10T16:50:00Z").unwrap();
+        assert_eq!(calls.len(), 1, "{command}");
+        assert_eq!(
+            calls[0].canonical_name,
+            imported_history::FUNCTION_RUN_COMMAND_LINE
+        );
+        assert_eq!(calls[0].args["command"], command);
+    }
+}
+
+#[test]
+fn codex_desktop_background_heredoc_completion_pairs_with_batched_next_command() {
+    let temp_dir = std::env::temp_dir().join(format!("orgii-codex-heredoc-{}", std::process::id()));
+    std::fs::create_dir_all(&temp_dir).unwrap();
+    let path = temp_dir.join("rollout.jsonl");
+    let command = "python3 - <<'PY'\nfrom pathlib import Path\nprint('created')\nPY";
+    let next_command = "python3 - <<'PY'\nimport json\nprint('verified')\nPY";
+    let call = |id: &str, input: String| {
+        json!({
+            "timestamp": "2026-09-10T16:50:00Z", "type": "response_item",
+            "payload": {"type": "custom_tool_call", "name": "exec", "call_id": id, "input": input},
+        })
+    };
+    let output = |id: &str, results: Vec<Value>| {
+        json!({
+            "timestamp": "2026-09-10T16:50:01Z", "type": "response_item",
+            "payload": {"type": "custom_tool_call_output", "call_id": id, "output":
+                std::iter::once(json!({"type": "input_text", "text": "Script completed\nOutput:\n"}))
+                    .chain(results.into_iter().map(|result| json!({"type": "input_text", "text": result.to_string()})))
+                    .collect::<Vec<_>>()},
+        })
+    };
+    let start = [
+        call(
+            "start",
+            format!(
+                "text(await tools.exec_command({{cmd:{}}}));",
+                serde_json::to_string(command).unwrap()
+            ),
+        ),
+        output("start", vec![json!({"session_id": 65005, "output": ""})]),
+        call(
+            "poll",
+            "text(await tools.write_stdin({session_id:65005,chars:\"\"}));".to_string(),
+        ),
+        output(
+            "poll",
+            vec![json!({"session_id": 65005, "output": "created\n"})],
+        ),
+    ];
+    let completion = [
+        call("finish", format!("text(await tools.write_stdin({{session_id:65005,chars:\"\"}}));\ntext(await tools.exec_command({{cmd:{}}}));", serde_json::to_string(next_command).unwrap())),
+        output("finish", vec![json!({"exit_code": 0, "output": "finished\n"}), json!({"exit_code": 0, "output": "verified\n"})]),
+    ];
+    let encode = |rows: &[Value]| {
+        rows.iter()
+            .map(Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    std::fs::write(&path, encode(&start)).unwrap();
+    let pending = load_codex_app_from_path("codexapp-heredoc", &path).unwrap();
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].args["command"], command);
+    std::fs::write(
+        &path,
+        format!("{}\n{}", encode(&start), encode(&completion)),
+    )
+    .unwrap();
+    for _ in 0..2 {
+        let chunks = load_codex_app_from_path("codexapp-heredoc", &path).unwrap();
+        assert_eq!(chunks.len(), 2);
+        for (expected_command, expected_output) in [
+            (command, "created\nfinished\n"),
+            (next_command, "verified\n"),
+        ] {
+            let chunk = chunks
+                .iter()
+                .find(|chunk| chunk.args["command"] == expected_command)
+                .unwrap();
+            assert_eq!(chunk.result["exit_code"], 0);
+            assert_ne!(chunk.result["success"], false);
+            assert_ne!(chunk.result["status"], "interrupted");
+            assert_eq!(chunk.result["output"], expected_output);
+        }
+    }
+    std::fs::remove_dir_all(temp_dir).unwrap();
+}
+
+#[test]
 fn codex_desktop_exec_preserves_multiline_shell_script() {
     let command = "sed -n '1,180p' src/scaffold/NavigationSidebar/connectors/useSessionMenuItems/menuItemBuilders.tsx\nsed -n '250,370p' src/scaffold/NavigationSidebar/connectors/useSessionMenuItems/index.tsx\nsed -n '1,180p' src/config/agentIcons.tsx\nrg -n \"interface.*MenuItem|type.*MenuItem|renderStatusDot|agentIconId\" src/scaffold/NavigationSidebar src/scaffold -g '*.tsx' -g '*.ts' | head -200";
     let script = format!(
@@ -1475,6 +1674,13 @@ fn codex_desktop_exec_preserves_multiline_shell_script() {
     assert_eq!(parts[1].lines().count(), 121);
     assert_eq!(parts[2].lines().count(), 180);
     assert_eq!(parts[3].lines().count(), 2);
+
+    for output in ["", "你好\r\n\nlast line", "first\n", "\n\n"] {
+        let parts = output_parts_for_tool_calls(&calls, output);
+        assert_eq!(parts.concat(), output);
+        assert_eq!(parts[0], output);
+        assert!(parts[1..].iter().all(String::is_empty));
+    }
 }
 
 #[test]
@@ -1602,6 +1808,58 @@ fn codex_desktop_exec_unwraps_web_search_query() {
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0].canonical_name, "web_search");
     assert_eq!(calls[0].args["query"], "Codex app event format");
+}
+
+#[test]
+fn codex_native_canonical_tool_args_are_not_normalized_twice() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-codex-materialized-tool-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("rollout-materialized-tool.jsonl");
+    let canonical_args = json!({
+        "action": "search",
+        "query": "Codex app event format",
+        "queries": [],
+        "url": "",
+        "pattern": "",
+        "payload": {"search_query": [{"q": "Codex app event format"}]}
+    });
+    let payload = json!({
+        "type": "function_call",
+        "id": "tool-item-1",
+        "name": "web_search",
+        "arguments": canonical_args.to_string(),
+        "call_id": "call_materialized_web",
+    });
+    let output = json!({
+        "type": "function_call_output",
+        "call_id": "call_materialized_web",
+        "output": "search result",
+    });
+    std::fs::write(
+        &path,
+        format!(
+            "{}\n{}\n",
+            json!({"timestamp": "2026-08-26T00:00:01Z", "type": "response_item", "payload": payload}),
+            json!({"timestamp": "2026-08-26T00:00:02Z", "type": "response_item", "payload": output})
+        ),
+    )
+    .expect("write materialized canonical tool fixture");
+
+    let chunks = load_codex_app_from_path("codexapp-materialized-tool", &path)
+        .expect("parse materialized canonical tool call");
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(chunks[0].function, "web_search");
+    assert_eq!(chunks[0].args["action"], canonical_args["action"]);
+    assert_eq!(chunks[0].args["query"], canonical_args["query"]);
+    assert_eq!(chunks[0].args["payload"], canonical_args["payload"]);
+    assert_eq!(chunks[0].args["__orgiiSourceEventId"], "tool-item-1");
+    assert_eq!(chunks[0].result["output"], "search result");
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
 }
 
 #[test]
@@ -2437,6 +2695,19 @@ fn strips_orgii_exec_mode_bridge_from_codex_user_text() {
 }
 
 #[test]
+fn strips_orgii_provider_context_from_codex_user_text() {
+    let wrapped = "<orgii_provider_context>\nworkspace instructions\n</orgii_provider_context>\n\n<orgii_cli_exec_mode_bridge>\nbuild mode\n</orgii_cli_exec_mode_bridge>\n\n<ide_context>\nopen file: src/app.ts\n</ide_context>\n\ncontinue the shared session";
+    assert_eq!(
+        strip_orgii_exec_mode_bridge(wrapped),
+        "continue the shared session"
+    );
+
+    let provider_only =
+        "<orgii_provider_context>\nworkspace instructions\n</orgii_provider_context>";
+    assert_eq!(strip_orgii_exec_mode_bridge(provider_only), "");
+}
+
+#[test]
 fn strips_ide_context_from_codex_user_text() {
     // Bridge + ide_context prefixes followed by the real user text → only
     // the user text.
@@ -2715,4 +2986,25 @@ fn rollout_without_originator_has_no_client_origin() {
     assert_eq!(cache_input.client_origin_raw, None);
 
     std::fs::remove_dir_all(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn codex_window_discards_old_catalog_after_larger_atomic_replacement() {
+    let dir = std::env::temp_dir().join(format!("orgii-codex-rotation-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("rollout.jsonl");
+    let transcript = |label: &str| (0..3).map(|i| format!("{}\n{}\n",
+        serde_json::json!({"type":"event_msg","timestamp":"2026-09-09T00:00:00Z","payload":{"type":"user_message","message":format!("{label}-question-{i}")}}),
+        serde_json::json!({"type":"event_msg","timestamp":"2026-09-09T00:00:01Z","payload":{"type":"agent_message","message":format!("{label}-answer-{i}")}})
+    )).collect::<String>();
+    std::fs::write(&path, transcript("old")).unwrap();
+    load_codex_app_initial_window_from_path("codexapp-rotation", &path, 1).unwrap();
+    let replacement = dir.join("replacement.jsonl");
+    std::fs::write(&replacement, transcript("replacement-is-longer")).unwrap();
+    std::fs::rename(replacement, &path).unwrap();
+    let window = load_codex_app_initial_window_from_path("codexapp-rotation", &path, 1).unwrap();
+    let encoded = serde_json::to_string(&window.chunks).unwrap();
+    assert!(!encoded.contains("old-question"), "rotated source must not keep stale catalog rows");
+    assert!(encoded.contains("replacement-is-longer-question-0"));
+    std::fs::remove_dir_all(dir).unwrap();
 }

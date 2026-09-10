@@ -62,6 +62,8 @@ export const AGENT_ORG_TASK_STATUS = {
   PENDING: "pending",
   IN_PROGRESS: "in_progress",
   COMPLETED: "completed",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
 };
 const AGENT_SESSION_ACTIVE_STATUSES = new Set([
   "running",
@@ -306,7 +308,9 @@ export const js = {
 };
 
 export async function waitForApp() {
-  await waitForFrontendReady();
+  if (!process.env.E2E_APP_BINARY) {
+    await waitForFrontendReady();
+  }
   await browser.setTimeout({ script: 10_000 });
   await browser.waitUntil(
     async () => {
@@ -345,9 +349,9 @@ export async function waitForApp() {
             && window.__e2e.getActiveSessionId
             && window.__e2e.getSessionAggregateRow
             && window.__e2e.promptDump
+            && window.__e2e.debugAgentOrgEnableRedesign
             && window.__e2e.agentOrgSessionRunView
             && window.__e2e.agentOrgSessionInterventionState
-            && window.__e2e.agentOrgSendGroupChatMessage
             && window.__e2e.agentOrgRunList
             && window.__e2e.debugSessionExecuteOrgTool);`
         );
@@ -359,6 +363,10 @@ export async function waitForApp() {
       timeout: 30_000,
       timeoutMsg: "required __e2e helpers never exposed",
     }
+  );
+  unwrap(
+    await invokeE2E("debugAgentOrgEnableRedesign"),
+    "enable Agent Org redesign in WebDriver artifact"
   );
   let shellState = null;
   await browser.waitUntil(
@@ -526,6 +534,10 @@ export async function configureCreatorForAgentOrg({
   await navigateToWorkstationCode("before configure creator");
   unwrap(await invokeE2E("resetToNewSession"), "resetToNewSession");
   unwrap(
+    await invokeE2E("debugAgentOrgEnableRedesign"),
+    "re-enable Agent Org redesign after creator reset"
+  );
+  unwrap(
     await invokeE2E("setAgentOrgMemberDraftConfig", {}, agentOrgId),
     "clear agent org member draft config"
   );
@@ -581,6 +593,37 @@ export async function waitForAgentOrgByName(name, label) {
   return org;
 }
 
+export async function seedFlatAgentOrg({
+  orgName,
+  leadName,
+  childName,
+  memberAgentId = BUILTIN_SDE_AGENT_ID,
+  planApprovalPolicy = "coordinator",
+}) {
+  const id = `e2e-agent-org-fixture:${crypto.randomUUID()}`;
+  await postDebugJson("/agent/test/agent-org/seed", {
+    id,
+    name: orgName,
+    coordinator_agent_id: BUILTIN_SDE_AGENT_ID,
+    plan_approval_policy: planApprovalPolicy,
+    members: [
+      {
+        id: `${id}:lead`,
+        name: leadName,
+        role: "Lead planner",
+        agent_id: memberAgentId,
+      },
+      {
+        id: `${id}:child`,
+        name: childName,
+        role: "Child implementer",
+        agent_id: memberAgentId,
+      },
+    ],
+  });
+  return waitForAgentOrgByName(orgName, "flat Team seed");
+}
+
 export async function createRenderedStrictTwoMemberAgentOrg({
   orgName,
   leadName,
@@ -631,11 +674,6 @@ export async function createRenderedStrictTwoMemberAgentOrg({
     "Agent Org coordinator"
   );
   await selectRenderedOption(
-    '[data-testid="agent-orgs-hierarchy-mode-select"]',
-    '[data-testid="agent-orgs-hierarchy-mode-strict"]',
-    "Agent Org strict hierarchy mode"
-  );
-  await selectRenderedOption(
     '[data-testid="agent-orgs-plan-approval-policy-select"]',
     `[data-testid="agent-orgs-plan-approval-policy-${planApprovalPolicy}"]`,
     `Agent Org ${planApprovalPolicy} plan approval policy`
@@ -679,48 +717,30 @@ export async function createRenderedStrictTwoMemberAgentOrg({
 
   const leadId = await addMember(leadName, "Lead planner");
   const childId = await addMember(childName, "Child implementer");
-  const reportsToTriggerClick = await execJS(
-    js.click(`[data-testid="agent-orgs-member-${childId}-reports-to-select"]`)
-  );
-  if (reportsToTriggerClick !== "clicked") {
-    throw new Error(
-      `child reports-to trigger did not click: ${reportsToTriggerClick}`
-    );
-  }
-  let reportsToContract = null;
+  let communicationContract = null;
   await browser.waitUntil(
     async () => {
-      reportsToContract = await execJS(`
+      communicationContract = await execJS(`
         return {
-          hasCoordinator: !!document.querySelector('[data-testid="agent-orgs-member-reports-to-coordinator"]'),
-          hasLead: !!document.querySelector('[data-testid="agent-orgs-member-reports-to-${leadId}"]'),
-          hasUser: !!document.querySelector('[data-testid="agent-orgs-member-reports-to-user"]'),
-          options: Array.from(document.querySelectorAll('[data-testid^="agent-orgs-member-reports-to-"]')).map((option) => ({
-            testId: option.getAttribute('data-testid'),
-            text: option.textContent || '',
-          })),
+          leadCount: document.querySelector('[data-testid="agent-orgs-member-${leadId}-connected-count"]')?.textContent ?? '',
+          childCount: document.querySelector('[data-testid="agent-orgs-member-${childId}-connected-count"]')?.textContent ?? '',
+          hasLeadManage: !!document.querySelector('[data-testid="agent-orgs-member-${leadId}-manage-communication"]'),
+          hasChildManage: !!document.querySelector('[data-testid="agent-orgs-member-${childId}-manage-communication"]'),
         };
       `);
       return (
-        reportsToContract.hasCoordinator &&
-        reportsToContract.hasLead &&
-        !reportsToContract.hasUser
+        communicationContract.hasLeadManage &&
+        communicationContract.hasChildManage &&
+        communicationContract.leadCount.includes("1") &&
+        communicationContract.childCount.includes("1")
       );
     },
     {
       timeout: RENDER_TIMEOUT_MS,
       interval: 100,
-      timeoutMsg: `Reports-to dropdown contract mismatch: ${JSON.stringify(reportsToContract)}`,
+      timeoutMsg: `Flat communication summary contract mismatch: ${JSON.stringify(communicationContract)}`,
     }
   );
-  const reportsToLeadClick = await execJS(
-    js.click(`[data-testid="agent-orgs-member-reports-to-${leadId}"]`)
-  );
-  if (reportsToLeadClick !== "clicked") {
-    throw new Error(
-      `child reports-to lead option did not click: ${reportsToLeadClick}`
-    );
-  }
 
   let saveState = null;
   try {
@@ -768,21 +788,27 @@ export async function createRenderedStrictTwoMemberAgentOrg({
     throw new Error(`Agent Org save did not click: ${saveResult}`);
   }
   const org = await waitForAgentOrgByName(orgName, "rendered org create");
-  if (org?.hierarchyMode !== "strict") {
-    throw new Error(
-      `Created org did not persist strict hierarchy: ${JSON.stringify(org)}`
-    );
-  }
   if (org?.planApprovalPolicy !== planApprovalPolicy) {
     throw new Error(
       `Created org did not persist plan approval policy ${planApprovalPolicy}: ${JSON.stringify(org)}`
     );
   }
-  const lead = (org.children ?? []).find((member) => member.name === leadName);
-  const child = lead?.children?.find((member) => member.name === childName);
+  const lead = (org.members ?? []).find((member) => member.name === leadName);
+  const child = (org.members ?? []).find((member) => member.name === childName);
   if (!lead || !child) {
     throw new Error(
-      `Created org did not persist nested members: ${JSON.stringify(org)}`
+      `Created org did not persist flat members: ${JSON.stringify(org)}`
+    );
+  }
+  if (
+    org.memberCommunicationLinks?.length !== 1 ||
+    org.memberCommunicationLinks[0]?.memberAId !==
+      [lead.memberId, child.memberId].sort()[0] ||
+    org.memberCommunicationLinks[0]?.memberBId !==
+      [lead.memberId, child.memberId].sort()[1]
+  ) {
+    throw new Error(
+      `Created org did not persist one canonical Member pair: ${JSON.stringify(org)}`
     );
   }
   return org;
@@ -1069,54 +1095,102 @@ export async function selectRenderedOrgMemberAgentDefinition({
 
 export async function sendRenderedChatPrompt(prompt) {
   const inputSelector = '[data-testid="chat-input"] [contenteditable="true"]';
+  const marker = prompt.match(/([A-Z0-9_]+_[a-zA-Z0-9_]+_\d+)/)?.[1] ?? prompt;
   console.log("[agent-org-send] waiting for chat input");
   await browser.waitUntil(async () => execJS(js.exists(inputSelector)), {
     timeout: MOUNT_TIMEOUT_MS,
     timeoutMsg: `chat input (${inputSelector}) never mounted`,
   });
-  console.log("[agent-org-send] chat input mounted, typing");
-  const typeResult = await execJS(js.type(inputSelector, prompt));
-  if (typeResult !== "typed") {
-    throw new Error(`chat input did not accept typed prompt: ${typeResult}`);
-  }
-  await browser.pause(300);
-  const editorText = await execJS(js.editorText(inputSelector));
-  if (!String(editorText ?? "").includes(prompt)) {
-    throw new Error(`chat input text mismatch: ${editorText}`);
-  }
-  console.log("[agent-org-send] typed, waiting for send button");
-  await browser.waitUntil(
-    async () => {
-      const sendState = await execJS(js.sendState);
-      return sendState?.state === "submit" && !sendState.disabled;
-    },
-    {
-      timeout: RENDER_TIMEOUT_MS,
-      timeoutMsg: `chat-send-button never became ready: ${JSON.stringify(await execJS(js.sendState))}`,
-    }
-  );
-  console.log("[agent-org-send] send button ready, clicking");
-  const clickResult = await execJS(`
-    const visibleInputShells = Array.from(document.querySelectorAll('[data-testid="chat-input"]')).filter((inputShell) => {
-      const rect = inputShell.getBoundingClientRect();
-      const style = window.getComputedStyle(inputShell);
-      return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
-    });
-    const activeInputShell = visibleInputShells[visibleInputShells.length - 1] ?? null;
-    const button = activeInputShell?.querySelector('[data-testid="chat-send-button"]') ?? null;
-    if (!button) return "missing";
-    if (button.disabled) return "disabled";
-    button.scrollIntoView({ block: "center", inline: "center" });
-    button.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }));
-    button.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, button: 0 }));
-    button.click();
-    return "clicked";
-  `);
-  if (clickResult !== "clicked") {
-    throw new Error(
-      `chat-send-button did not click: ${clickResult} ${JSON.stringify(await execJS(js.sendState))}`
+  console.log("[agent-org-send] chat input mounted, stabilizing draft");
+  let typeResult = null;
+  let editorText = null;
+  let sendState = null;
+  let clickResult = null;
+  let acceptedState = null;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    acceptedState = unwrap(
+      await invokeE2E("inspectChatState"),
+      `inspectChatState(rendered-send-${attempt}-before)`
     );
+    if (JSON.stringify(acceptedState).includes(marker)) return;
+
+    try {
+      await browser.waitUntil(
+        async () => {
+          editorText = await execJS(js.editorText(inputSelector));
+          if (!String(editorText ?? "").includes(prompt)) {
+            typeResult = await execJS(js.type(inputSelector, prompt));
+            if (typeResult !== "typed") {
+              throw new Error(
+                `chat input did not accept prompt: ${typeResult}`
+              );
+            }
+            return false;
+          }
+
+          sendState = await execJS(js.sendState);
+          if (sendState?.state !== "submit" || sendState.disabled) return false;
+
+          clickResult = await execJS(`
+            const isVisible = (node) => {
+              const rect = node.getBoundingClientRect();
+              const style = window.getComputedStyle(node);
+              return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+            };
+            const visibleInputShells = Array.from(document.querySelectorAll('[data-testid="chat-input"]')).filter(isVisible);
+            const activeInputShell = visibleInputShells[visibleInputShells.length - 1] ?? null;
+            const editor = activeInputShell?.querySelector('[contenteditable="true"]') ?? null;
+            const button = activeInputShell?.querySelector('[data-testid="chat-send-button"]') ?? null;
+            if (!editor || !(editor.textContent || "").includes(${JSON.stringify(prompt)})) {
+              return "draft-lost:" + (editor?.textContent || "").slice(0, 120);
+            }
+            if (!button) return "missing";
+            if (button.disabled) return "disabled";
+            button.scrollIntoView({ block: "center", inline: "center" });
+            button.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }));
+            button.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, button: 0 }));
+            button.click();
+            return "clicked";
+          `);
+          return clickResult === "clicked";
+        },
+        {
+          timeout: RENDER_TIMEOUT_MS,
+          interval: 100,
+          timeoutMsg:
+            "active chat editor never retained the prompt through submit",
+        }
+      );
+    } catch (error) {
+      throw new Error(
+        `chat prompt submit failed: editor=${JSON.stringify(String(editorText ?? "").slice(0, 120))} type=${typeResult} send=${JSON.stringify(sendState)} click=${clickResult} cause=${String(error?.message ?? error)}`
+      );
+    }
+
+    try {
+      await browser.waitUntil(
+        async () => {
+          acceptedState = unwrap(
+            await invokeE2E("inspectChatState"),
+            `inspectChatState(rendered-send-${attempt}-acceptance)`
+          );
+          return JSON.stringify(acceptedState).includes(marker);
+        },
+        {
+          timeout: 5_000,
+          interval: 250,
+          timeoutMsg: `rendered send did not create authoritative message ${marker}`,
+        }
+      );
+      console.log("[agent-org-send] authoritative message accepted");
+      return;
+    } catch (_error) {
+      if (attempt === 2) break;
+    }
   }
+  throw new Error(
+    `rendered send never created authoritative message ${marker}; editor=${JSON.stringify(String(editorText ?? "").slice(0, 120))} type=${typeResult} send=${JSON.stringify(sendState)} click=${clickResult} state=${JSON.stringify(acceptedState).slice(0, 1200)}`
+  );
 }
 
 export async function waitForRenderedGroupChatActive(label) {
@@ -1160,14 +1234,29 @@ export async function assertRenderedGroupChatComposerResponsive(label) {
 }
 
 export async function assertAgentOrgOverviewHasRunControl(label) {
-  await openAgentOrgOverviewPanel(label);
-  const state = await execJS(`
-    return {
-      overviewPause: Boolean(document.querySelector('[data-testid="agent-org-overview-pause-button"]')),
-      overviewResume: Boolean(document.querySelector('[data-testid="agent-org-overview-resume-button"]')),
-    };
-  `);
-  if (!state.overviewPause && !state.overviewResume) {
+  await refreshRenderedAgentOrgOverview(label);
+  let state = null;
+  try {
+    await browser.waitUntil(
+      async () => {
+        state = await execJS(`
+          const panel = document.querySelector('[data-testid="agent-org-overview-panel"]');
+          return {
+            overviewPause: Boolean(document.querySelector('[data-testid="agent-org-overview-pause-button"]')),
+            overviewResume: Boolean(document.querySelector('[data-testid="agent-org-overview-resume-button"]')),
+            runId: panel?.getAttribute('data-run-id') ?? null,
+            runPhase: panel?.getAttribute('data-run-phase') ?? null,
+            panelText: panel?.textContent?.slice(0, 500) ?? null,
+          };
+        `);
+        return state.overviewPause || state.overviewResume;
+      },
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 100,
+      }
+    );
+  } catch {
     throw new Error(
       `Agent Org overview did not expose Pause/Resume for ${label}: ${JSON.stringify(state)}`
     );
@@ -1259,14 +1348,16 @@ export async function waitForRenderedGroupChatMessage({
     async () => {
       try {
         state = await execJS(`
-          const messages = Array.from(document.querySelectorAll('[data-testid="agent-org-group-chat-message"]'));
+          const messages = Array.from(document.querySelectorAll('[data-testid="agent-org-group-projection-item"]'));
           return {
             groupChatMessageCount: messages.length,
-            groupChatText: document.querySelector('[data-testid="agent-org-group-chat"]')?.textContent || '',
+            groupChatText: document.querySelector('[data-testid="agent-org-group-projection"]')?.textContent || '',
             bodyText: document.body?.textContent?.slice(0, 1200) || '',
             messages: messages.map((element) => ({
-              sender: element.getAttribute('data-sender-name') || '',
-              recipient: element.getAttribute('data-recipient-name') || '',
+              sender: element.getAttribute('data-item-kind') === 'assistant_reply'
+                ? (element.getAttribute('data-responder-name') || element.getAttribute('data-target-name') || '')
+                : 'User',
+              recipient: element.getAttribute('data-target-name') || '',
               text: element.textContent || '',
             })),
           };
@@ -1313,20 +1404,12 @@ export async function waitForRenderedGroupChatUserTurn({ text, label }) {
       async () => {
         try {
           state = await execJS(`
-            const userHeaders = Array.from(document.querySelectorAll('[data-testid="chat-message-user-editable"], [data-testid="chat-message-user"]')).map((element) => ({
+            const userBubbles = Array.from(document.querySelectorAll('[data-testid="agent-org-group-projection-item"][data-item-kind="user_message"]')).map((element) => ({
               text: element.textContent || '',
+              recipient: element.getAttribute('data-target-name') || '',
             }));
-            const userBubbles = Array.from(document.querySelectorAll('[data-testid="agent-org-group-chat-message"][data-sender-name="User"]')).map((element) => ({
-              text: element.textContent || '',
-              recipient: element.getAttribute('data-recipient-name') || '',
-            }));
-            const groupChatText = document.querySelector('[data-testid="agent-org-group-chat"]')?.textContent || '';
-            const historyText = document.querySelector('[data-testid="chat-message-list"]')?.textContent || '';
             return {
-              userHeaders,
               userBubbles,
-              groupChatText,
-              historyText,
               bodyText: document.body?.textContent?.slice(0, 1600) || '',
             };
           `);
@@ -1334,13 +1417,15 @@ export async function waitForRenderedGroupChatUserTurn({ text, label }) {
           state = { error: String(err?.message || err) };
           return false;
         }
-        const textSurfaces = [
-          ...(state?.userHeaders ?? []).map((row) => String(row.text ?? "")),
-          String(state?.groupChatText ?? ""),
-          String(state?.historyText ?? ""),
-        ];
-        return textSurfaces.some((surface) =>
-          normalizeRenderedText(surface).includes(normalizedExpectedText)
+        return (
+          (state?.userBubbles ?? []).some((row) =>
+            normalizeRenderedText(row.text).includes(normalizedExpectedText)
+          ) ||
+          (state?.userBubbles ?? []).some((row) =>
+            normalizeRenderedText(`${row.recipient} ${row.text}`).includes(
+              normalizedExpectedText
+            )
+          )
         );
       },
       {
@@ -1354,14 +1439,6 @@ export async function waitForRenderedGroupChatUserTurn({ text, label }) {
       `rendered group chat user turn did not appear for ${label}: ${JSON.stringify(state)}`
     );
   }
-  const duplicateBubble = (state?.userBubbles ?? []).find((row) =>
-    normalizeRenderedText(row.text).includes(normalizedExpectedText)
-  );
-  if (duplicateBubble) {
-    throw new Error(
-      `group chat user message rendered as bubble instead of turn header for ${label}: ${JSON.stringify(state)}`
-    );
-  }
 }
 
 export async function assertRenderedGroupChatNoQuoteOrUnreadPreview(label) {
@@ -1369,8 +1446,7 @@ export async function assertRenderedGroupChatNoQuoteOrUnreadPreview(label) {
     const suspiciousSelectors = [
       '[data-testid*="quote"]',
       '[data-testid*="unread"]',
-      '[class*="agent-org-group-chat-flash"]',
-      '[data-testid="agent-org-group-chat-message"][data-sender-name="User"]'
+      '[class*="agent-org-group-chat-flash"]'
     ];
     return {
       matches: suspiciousSelectors.flatMap((selector) =>
@@ -1382,12 +1458,12 @@ export async function assertRenderedGroupChatNoQuoteOrUnreadPreview(label) {
           text: element.textContent || '',
         }))
       ),
-      groupChatText: document.querySelector('[data-testid="agent-org-group-chat"]')?.textContent || '',
+      groupChatText: document.querySelector('[data-testid="agent-org-group-projection"]')?.textContent || '',
     };
   `);
   if ((state?.matches ?? []).length > 0) {
     throw new Error(
-      `quote/unread/user-bubble group chat UI should not render for ${label}: ${JSON.stringify(state)}`
+      `quote/unread group projection UI should not render for ${label}: ${JSON.stringify(state)}`
     );
   }
 }
@@ -1462,30 +1538,20 @@ async function assertTurnPageListShowsPreview(previewSnippet, label) {
 }
 
 export async function clickRenderedGroupChatLoadOlder(label) {
-  const loadOlderLabels = new Set(["Load older messages", "加载更早消息"]);
+  const loadOlderSelector =
+    '[data-testid="agent-org-group-projection-load-older"]';
   let state = null;
   await browser.waitUntil(
     async () => {
       state = await execJS(`
-        const isVisible = (element) => {
-          const rect = element.getBoundingClientRect();
-          const style = window.getComputedStyle(element);
-          return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+        const button = document.querySelector(${JSON.stringify(loadOlderSelector)});
+        return {
+          exists: Boolean(button),
+          disabled: button ? Boolean(button.disabled) : null,
+          itemCount: document.querySelectorAll('[data-testid="agent-org-group-projection-item"]').length,
         };
-        return Array.from(document.querySelectorAll('button'))
-          .filter(isVisible)
-          .map((button) => ({
-            text: (button.textContent || '').trim(),
-            title: button.getAttribute('title') || '',
-            disabled: button.disabled,
-          }));
       `);
-      return (state ?? []).some(
-        (button) =>
-          !button.disabled &&
-          (loadOlderLabels.has(button.text) ||
-            loadOlderLabels.has(button.title))
-      );
+      return state?.exists === true && state?.disabled === false;
     },
     {
       timeout: RENDER_TIMEOUT_MS,
@@ -1493,23 +1559,8 @@ export async function clickRenderedGroupChatLoadOlder(label) {
       timeoutMsg: `Load older Group Chat history button was unavailable for ${label}: ${JSON.stringify(state)}`,
     }
   );
-  const clickResult = await execJS(`
-    const labels = new Set(["Load older messages", "加载更早消息"]);
-    const isVisible = (element) => {
-      const rect = element.getBoundingClientRect();
-      const style = window.getComputedStyle(element);
-      return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
-    };
-    const button = Array.from(document.querySelectorAll('button')).find(
-      (candidate) =>
-        isVisible(candidate) &&
-        !candidate.disabled &&
-        (labels.has((candidate.textContent || '').trim()) || labels.has(candidate.getAttribute('title') || ''))
-    );
-    if (!button) return "missing";
-    button.click();
-    return "clicked";
-  `);
+  const beforeCount = state.itemCount;
+  const clickResult = await execJS(js.visibleClick(loadOlderSelector));
   if (clickResult !== "clicked") {
     throw new Error(
       `Load older Group Chat history button did not click for ${label}: ${clickResult}`
@@ -1523,20 +1574,16 @@ export async function clickRenderedGroupChatLoadOlder(label) {
   await browser.waitUntil(
     async () => {
       const buttonState = await execJS(`
-        const labels = new Set(["Load older messages", "加载更早消息"]);
-        const isVisible = (element) => {
-          const rect = element.getBoundingClientRect();
-          const style = window.getComputedStyle(element);
-          return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+        const button = document.querySelector(${JSON.stringify(loadOlderSelector)});
+        return {
+          present: Boolean(button),
+          disabled: button ? Boolean(button.disabled) : false,
+          itemCount: document.querySelectorAll('[data-testid="agent-org-group-projection-item"]').length,
         };
-        const button = Array.from(document.querySelectorAll('button')).find(
-          (candidate) =>
-            isVisible(candidate) &&
-            (labels.has((candidate.textContent || '').trim()) || labels.has(candidate.getAttribute('title') || ''))
-        );
-        return button ? { present: true, disabled: button.disabled } : { present: false, disabled: false };
       `);
-      return buttonState?.present === false || buttonState?.disabled === false;
+      return (
+        buttonState?.disabled === false && buttonState?.itemCount > beforeCount
+      );
     },
     {
       timeout: RENDER_TIMEOUT_MS,
@@ -1544,84 +1591,6 @@ export async function clickRenderedGroupChatLoadOlder(label) {
       timeoutMsg: `Load older Group Chat history did not settle for ${label}`,
     }
   );
-}
-
-export async function selectRenderedTurnPageByPreview(previewSnippet, label) {
-  const triggerSelector = '[data-testid="turn-pagination-current-round"]';
-  await browser.waitUntil(async () => execJS(js.exists(triggerSelector)), {
-    timeout: RENDER_TIMEOUT_MS,
-    timeoutMsg: `turn pagination trigger missing for ${label}`,
-  });
-  const openClick = await execJS(js.visibleClick(triggerSelector));
-  if (openClick !== "clicked") {
-    throw new Error(
-      `turn pagination trigger did not click for ${label}: ${openClick}`
-    );
-  }
-
-  const matchingVisibleRow = async () =>
-    execJS(`
-      const snippet = ${JSON.stringify(previewSnippet)};
-      const isVisible = (element) => {
-        const rect = element.getBoundingClientRect();
-        const style = window.getComputedStyle(element);
-        return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
-      };
-      const rows = Array.from(document.querySelectorAll('button'))
-        .filter(isVisible)
-        .filter((button) => (button.textContent || '').trim().startsWith('#'));
-      const matching = rows.find((button) => (button.textContent || '').includes(snippet));
-      return {
-        found: Boolean(matching),
-        rows: rows.map((button) => (button.textContent || '').trim()),
-      };
-    `);
-
-  let state = await matchingVisibleRow();
-  if (!state?.found) {
-    const sortClick = await execJS(
-      js.visibleClick('[aria-label="Sort"], [aria-label="排序"]')
-    );
-    if (sortClick !== "clicked") {
-      throw new Error(
-        `turn page sort did not click for ${label}: ${sortClick} ${JSON.stringify(state)}`
-      );
-    }
-  }
-
-  await browser.waitUntil(
-    async () => {
-      state = await matchingVisibleRow();
-      return state?.found === true;
-    },
-    {
-      timeout: RENDER_TIMEOUT_MS,
-      interval: 250,
-      timeoutMsg: `turn page preview did not appear for ${label}: ${JSON.stringify(state)}`,
-    }
-  );
-  const selectResult = await execJS(`
-    const snippet = ${JSON.stringify(previewSnippet)};
-    const isVisible = (element) => {
-      const rect = element.getBoundingClientRect();
-      const style = window.getComputedStyle(element);
-      return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
-    };
-    const button = Array.from(document.querySelectorAll('button')).find(
-      (candidate) =>
-        isVisible(candidate) &&
-        (candidate.textContent || '').trim().startsWith('#') &&
-        (candidate.textContent || '').includes(snippet)
-    );
-    if (!button) return "missing";
-    button.click();
-    return "clicked";
-  `);
-  if (selectResult !== "clicked") {
-    throw new Error(
-      `turn page preview did not select for ${label}: ${selectResult}`
-    );
-  }
 }
 
 async function waitForAgentOrgMentionMenuOption(memberName, label) {
@@ -1903,7 +1872,10 @@ export async function waitForGroupChatPendingTarget(targetName, label) {
   await browser.waitUntil(
     async () => {
       state = await execJS(`
-        const element = document.querySelector('[data-testid="agent-org-group-chat-pending"]');
+        const element = Array.from(document.querySelectorAll('[data-testid="agent-org-group-projection-item"][data-item-kind="user_message"]')).find((row) => {
+          const state = row.getAttribute('data-state') || '';
+          return row.getAttribute('data-target-name') === ${JSON.stringify(targetName)} && (state === 'queued' || state === 'running');
+        });
         return element ? {
           target: element.getAttribute('data-target-name') || '',
           text: element.textContent || '',
@@ -1912,9 +1884,7 @@ export async function waitForGroupChatPendingTarget(targetName, label) {
       return (
         state?.target === targetName &&
         String(state?.text ?? "").includes(targetName) &&
-        String(state?.text ?? "")
-          .toLowerCase()
-          .includes("message")
+        String(state?.text ?? "").length > 0
       );
     },
     {
@@ -1948,7 +1918,7 @@ export async function waitForGroupChatPausedBanner(label) {
         const text = String(state?.bannerText ?? "").toLowerCase();
         return (
           text.includes("new work is paused") &&
-          text.includes("pause stops active replies") &&
+          text.includes("resume this agent team before sending a message") &&
           state?.resumeVisible === true &&
           state?.resumeDisabled === false
         );
@@ -1967,14 +1937,11 @@ export async function waitForGroupChatPausedBanner(label) {
 }
 
 export async function clickGroupChatResumeButton(label) {
-  const clickResult = await execJS(
-    js.click('[data-testid="agent-org-group-chat-resume-button"]')
+  await waitForGroupChatPausedBanner(label);
+  const button = await browser.$(
+    '[data-testid="agent-org-group-chat-resume-button"]'
   );
-  if (clickResult !== "clicked") {
-    throw new Error(
-      `group chat Resume click failed for ${label}: ${clickResult}`
-    );
-  }
+  await button.click();
 }
 
 export async function sendFromRenderedCreator(prompt) {
@@ -2075,17 +2042,15 @@ export async function waitForRenderedAssistantReply(label) {
     async () => {
       state = await execJS(`
         const assistantRows = Array.from(document.querySelectorAll('[data-testid="chat-message-assistant"]'));
-        const groupChatRows = Array.from(document.querySelectorAll('[data-testid="agent-org-group-chat-message"]'));
+        const groupChatRows = Array.from(document.querySelectorAll('[data-testid="agent-org-group-projection-item"][data-item-kind="assistant_reply"]'));
         const userRows = Array.from(document.querySelectorAll('[data-testid="chat-message-user-editable"]'));
         const assistantTexts = assistantRows.map((row) => row.textContent || "");
-        const groupChatAssistantTexts = groupChatRows
-          .filter((row) => (row.getAttribute('data-sender-name') || '') !== 'User')
-          .map((row) => row.textContent || "");
+        const groupChatAssistantTexts = groupChatRows.map((row) => row.textContent || "");
         return {
           assistantTexts: [...assistantTexts, ...groupChatAssistantTexts].filter((text) => text.trim().length > 0),
           userTexts: userRows.map((row) => row.textContent || ""),
           historyText: document.querySelector('[data-testid="chat-message-list"]')?.textContent || "",
-          groupChatText: document.querySelector('[data-testid="agent-org-group-chat"]')?.textContent || "",
+          groupChatText: document.querySelector('[data-testid="agent-org-group-projection"]')?.textContent || "",
         };
       `);
       return state.assistantTexts.some((text) => text.trim().length > 0);
@@ -2545,23 +2510,34 @@ export async function ensureMemberHasSwitchableInbox(
 
 export async function clickRenderedMemberSwitcher(memberId, expectedSessionId) {
   const optionSelector = `[data-testid="agent-org-member-switcher-option-${memberId}"]`;
+  const visibleMarker = "data-e2e-visible-member-switch-option";
   const startedAt = Date.now();
   let optionState = null;
   while (Date.now() - startedAt < RENDER_TIMEOUT_MS) {
     optionState = await execJS(`
       try {
         const optionSelector = ${JSON.stringify(optionSelector)};
-        const option = document.querySelector(optionSelector);
-        const trigger = document.querySelector('[data-testid="agent-org-member-switcher-trigger"]');
+        const visibleMarker = ${JSON.stringify(visibleMarker)};
+        const isVisible = (element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+        };
+        const candidates = Array.from(document.querySelectorAll(optionSelector));
+        for (const candidate of candidates) candidate.removeAttribute(visibleMarker);
+        const option = candidates.find(isVisible) ?? null;
+        const trigger = Array.from(document.querySelectorAll('[data-testid="agent-org-member-switcher-trigger"]')).find(isVisible) ?? null;
         const options = Array.from(document.querySelectorAll('[data-testid^="agent-org-member-switcher-option-"]')).map((candidate) => ({
           testId: candidate.getAttribute('data-testid'),
           disabled: Boolean(candidate.disabled),
           ariaDisabled: candidate.getAttribute('aria-disabled'),
+          visible: isVisible(candidate),
           text: candidate.textContent || '',
         }));
         if (!option && trigger && !trigger.disabled) {
           trigger.click();
         }
+        if (option) option.setAttribute(visibleMarker, "true");
         return {
           present: Boolean(option),
           disabled: Boolean(option?.disabled),
@@ -2587,17 +2563,12 @@ export async function clickRenderedMemberSwitcher(memberId, expectedSessionId) {
       `member switch option was not clickable: ${JSON.stringify(optionState)}`
     );
   }
-  const clicked = await execJS(`
-    const option = document.querySelector(${JSON.stringify(optionSelector)});
-    if (!option || option.disabled) return false;
-    option.click();
-    return true;
-  `);
-  if (clicked !== true) {
-    throw new Error(
-      `member switch option click failed after option became clickable: ${JSON.stringify(optionState)}`
-    );
-  }
+  // Re-resolve the element after the menu-open loop and let WebDriver perform
+  // the product click. A DOM `option.click()` can return success before
+  // WebKit dispatches React's pointer-backed menu action, leaving the active
+  // pipeline session unchanged and making the fixture report false success.
+  const option = await browser.$(`[${visibleMarker}="true"]`);
+  await option.click();
   await browser.waitUntil(
     async () => {
       const activeSessionId = unwrap(
@@ -2638,19 +2609,19 @@ export async function waitForRenderedInterventionPin(memberId, label) {
   await browser.waitUntil(
     async () => {
       state = await execJS(`
-        const element = document.querySelector('[data-testid="agent-org-intervention-pin-bar"]');
+        const element = document.querySelector('[data-testid="agent-org-member-direct-work-bar"]');
         if (!element) return { exists: false };
         return {
           exists: true,
           memberId: element.getAttribute('data-member-id') || '',
           text: element.textContent || '',
-          hasReturnButton: !!element.querySelector('[data-testid="agent-org-return-to-work-button"]'),
+          hasResolveButton: !!element.querySelector('[data-testid="agent-org-return-to-work-button"], [data-testid="agent-org-end-direct-work-button"]'),
         };
       `);
       return (
         state?.exists === true &&
         state.memberId === memberId &&
-        state.hasReturnButton === true
+        state.hasResolveButton === true
       );
     },
     {
@@ -2727,18 +2698,27 @@ export async function waitForRenderedReleasedTask(taskId, subject, label) {
 }
 
 export async function clickReturnToWorkAndWaitCleared(sessionId, label) {
-  const clickState = await execJS(`
-    const button = document.querySelector('[data-testid="agent-org-return-to-work-button"]');
-    if (!button) return { clicked: false, reason: "missing" };
-    if (button.disabled) return { clicked: false, reason: "disabled" };
-    button.click();
-    return { clicked: true };
-  `);
-  if (clickState?.clicked !== true) {
+  let button = null;
+  for (const selector of [
+    '[data-testid="agent-org-return-to-work-button"]',
+    '[data-testid="agent-org-end-direct-work-button"]',
+  ]) {
+    const candidates = await browser.$$(selector);
+    for (const candidate of candidates) {
+      if ((await candidate.isDisplayed()) && (await candidate.isEnabled())) {
+        button = candidate;
+        break;
+      }
+    }
+    if (button) break;
+  }
+  if (!button) {
     throw new Error(
-      `Return to work did not click for ${label}: ${JSON.stringify(clickState)}`
+      `Return/end direct-work control was unavailable for ${label}`
     );
   }
+  await button.scrollIntoView({ block: "center", inline: "center" });
+  await button.click();
 
   let state = null;
   await browser.waitUntil(
@@ -2782,7 +2762,6 @@ export async function createLongTaskPrecondition(
         subject,
         description: subject,
         owner_member_id: memberId,
-        status: AGENT_ORG_TASK_STATUS.PENDING,
         dispatch_policy: "immediate",
         execution_mode: "build",
         allow_parallel_with_unlisted_open_tasks: true,

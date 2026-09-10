@@ -13,7 +13,7 @@ import {
   CHAT_PANEL_CREATE_TARGET,
   type ChatPanelCreateProjectContext,
   type ChatPanelCreateTarget,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 import { primaryWorkspaceRootAtom } from "@src/store/workspace";
 import {
   PROJECT_CREATOR_DRAFT_ID,
@@ -86,7 +86,6 @@ interface ChatPanelEmptyContentProps {
   handleStartPageAddApiKey: () => void;
   handleCreateTargetChange: (target: string) => void;
   handleStartPageInstallLatestUpdate: () => void;
-  handleStartPageShowRuntime: () => void;
   handleStartPageSessionStart: (info: SessionLaunchSuccessInfo) => void;
   handleProjectAgentCreatorToggle: (enabled: boolean) => void;
   handleWorkItemAgentCreatorToggle: (enabled: boolean) => void;
@@ -117,7 +116,6 @@ export function ChatPanelEmptyContent({
   handleStartPageAddApiKey,
   handleCreateTargetChange,
   handleStartPageInstallLatestUpdate,
-  handleStartPageShowRuntime,
   handleStartPageSessionStart,
   handleProjectAgentCreatorToggle,
   handleWorkItemAgentCreatorToggle,
@@ -224,24 +222,17 @@ export function ChatPanelEmptyContent({
     handleCreateTargetChange(CHAT_PANEL_CREATE_TARGET.AGENT_SESSION);
   }, [handleCreateTargetChange]);
 
-  const renderSessionLauncher = (
-    className: string,
-    layout: "default" | "launchpad" = "default",
-    heroFooterSlot?: React.ReactNode,
-    multiRunnerLauncher = false,
-    hideWorkItemAttachmentControl = false
-  ) =>
+  const renderParallelRunLauncher = (className: string) =>
     SessionCreatorSlot ? (
       <SessionCreatorSlot
         className={className}
         variant={creatorVariant}
-        layout={layout}
-        heroFooterSlot={heroFooterSlot}
+        layout="launchpad"
         hidePresenceButton
-        hideWorkItemAttachmentControl={hideWorkItemAttachmentControl}
+        hideWorkItemAttachmentControl={false}
         // Only the Parallel-run create target fans out. Every other launcher
         // — Session, work item, project — starts one agent.
-        multiRunnerLauncher={multiRunnerLauncher}
+        multiRunnerLauncher
         onExitMultiRunner={handleExitMultiRunner}
         onOpenCliTerminal={handleOpenCliTerminal}
         onRegionNoticeChange={handleRegionNoticeChange}
@@ -309,7 +300,7 @@ export function ChatPanelEmptyContent({
     ) =>
       moreCreateTarget === CHAT_PANEL_CREATE_TARGET.PROJECT
         ? renderProjectCreator(manualMiddleContent, creatorModeControl)
-        : renderSessionLauncher("h-full", "launchpad", undefined, true);
+        : renderParallelRunLauncher("h-full");
 
     return (
       <ChatPanelStartPage
@@ -348,7 +339,6 @@ export function ChatPanelEmptyContent({
         onAddApiKey={handleStartPageAddApiKey}
         onCreateTarget={handleCreateTargetChange}
         onInstallLatestUpdate={handleStartPageInstallLatestUpdate}
-        onShowRuntime={handleStartPageShowRuntime}
         onProjectAgentModeChange={handleProjectAgentCreatorToggle}
         onWorkItemAgentModeChange={handleWorkItemAgentCreatorToggle}
         moreLauncher={moreLauncher}
@@ -371,12 +361,7 @@ export function ChatPanelEmptyContent({
   }
 
   if (createTarget === CHAT_PANEL_CREATE_TARGET.PARALLEL_RUN) {
-    return renderSessionLauncher(
-      creatorClassName,
-      "launchpad",
-      undefined,
-      true
-    );
+    return renderParallelRunLauncher(creatorClassName);
   }
 
   return null;

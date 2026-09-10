@@ -172,7 +172,7 @@ function buildStaticMatches(
 ): SpotlightItem[] {
   const results: SpotlightItem[] = [];
   staticCommandActions.forEach((action) => {
-    const label = translate(action.labelKey);
+    const label = translate(action.labelKey, action.labelValues);
     const labelMatch = !queryLower || label.toLowerCase().includes(queryLower);
     const keywordMatch = action.keywords.some((keyword) =>
       keyword.toLowerCase().includes(queryLower)

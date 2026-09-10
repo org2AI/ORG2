@@ -5,7 +5,7 @@ import type { SelectOption } from "@src/components/Select";
 import {
   CHAT_PANEL_CREATE_TARGET,
   type ChatPanelCreateTarget,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
 
 interface UseChatPanelCreateTargetOptions {

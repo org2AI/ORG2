@@ -1,5 +1,7 @@
 import type React from "react";
 
+import type { SessionFollowUpSuggestion } from "@src/api/services/sessionFollowUpSuggestions";
+
 import type { ScrollNavState } from "./ChatHistory";
 import type { InlineSection } from "./InputArea/components/CollapsedInlineRow";
 import type { FileChangesResult } from "./InputArea/components/compactFileChangesHelpers";
@@ -19,19 +21,29 @@ interface AgentOrgInterventionView {
   intervention:
     | import("@src/api/tauri/agent").AgentOrgMemberIntervention
     | null;
-  memberName?: string | null;
+  member: import("@src/api/tauri/agent").AgentOrgRunMemberView;
+  runStatus: import("@src/api/tauri/agent").AgentOrgRunStatus | null;
   error: string | null;
   returning: boolean;
-  onReturnToWork: () => Promise<boolean>;
+  stopping: boolean;
+  onReturnToWork: () => Promise<
+    import("@src/api/tauri/agent").ReturnToWorkResult | null
+  >;
+  onStopUserDirectedWork: () => Promise<boolean>;
 }
 
 interface GroupChatPendingMessageView {
   targetMemberName: string;
+  retryError: string | null;
+  retrying: boolean;
+  onRetry: () => Promise<void>;
 }
 
 export interface ChatViewComposerSectionProps {
   sessionId: string;
   inputAreaSessionId: string;
+  /** Native execution episode controlled by Stop while the source stays visible. */
+  controlSessionId?: string | null;
   showMainComposer: boolean;
   composerRef: React.Ref<HTMLDivElement>;
   inputBoxRef?: React.Ref<HTMLDivElement>;
@@ -51,6 +63,7 @@ export interface ChatViewComposerSectionProps {
   processExpanded: boolean;
   queuedMessages: import("@src/store/ui/messageQueueAtom").QueuedMessage[];
   onCancelQueuedMessage: (messageId: string) => void;
+  onClearQueuedMessages: () => void;
   onSendQueuedMessageNow: (messageId: string) => void;
   onReorderQueuedMessages: (fromIndex: number, toIndex: number) => void;
   onToggleQueue: () => void;
@@ -72,4 +85,7 @@ export interface ChatViewComposerSectionProps {
   customMentionOptions: ReadonlyArray<CustomMentionOption>;
   queueEditProps: QueueEditInputAreaProps;
   disableStopWhenEmpty?: boolean;
+  followUpSuggestions: ReadonlyArray<SessionFollowUpSuggestion>;
+  onFollowUpSuggestionSent: () => void;
+  submitDisabled?: boolean;
 }

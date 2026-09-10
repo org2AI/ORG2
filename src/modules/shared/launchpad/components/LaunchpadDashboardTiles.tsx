@@ -7,13 +7,18 @@
  *
  * Extracted from LaunchpadDashboard.tsx to keep it under 600 lines.
  */
-import React, { memo, useLayoutEffect, useRef, useState } from "react";
+import React, { memo, useRef } from "react";
 
+import { useElementDimensions } from "@src/hooks/ui/layout/useElementDimensions";
 import { Add01Icon, HugeiconsIcon } from "@src/icons";
 import { CollapsibleSection } from "@src/modules/shared/layouts/blocks";
 import type { Repo } from "@src/store/repo/types";
 
 import MacFolderIcon from "./MacFolderIcon";
+
+/** Tile footprint (`w-20`) and wrap gap (`gap-2`) in px, used to derive the column count. */
+const LAUNCHPAD_TILE_WIDTH_PX = 80;
+const LAUNCHPAD_TILE_GAP_PX = 8;
 
 const LAUNCHPAD_TILE_CLASS =
   "group/launchpadtile flex w-20 shrink-0 flex-col items-center gap-1.5 border-none bg-transparent p-0 text-center outline-none";
@@ -57,29 +62,17 @@ export const LaunchpadTileWrap: React.FC<{
   action?: React.ReactNode;
 }> = ({ children, actionAfterIndex = -1, action }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [columnCount, setColumnCount] = useState(1);
+  const containerWidth = useElementDimensions(containerRef, {
+    dimension: "width",
+  });
+  const columnCount = Math.max(
+    1,
+    Math.floor(
+      (containerWidth + LAUNCHPAD_TILE_GAP_PX) /
+        (LAUNCHPAD_TILE_WIDTH_PX + LAUNCHPAD_TILE_GAP_PX)
+    )
+  );
   const items = React.Children.toArray(children);
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const updateColumnCount = (): void => {
-      const tileWidth = 80;
-      const gap = 8;
-      setColumnCount(
-        Math.max(
-          1,
-          Math.floor((container.clientWidth + gap) / (tileWidth + gap))
-        )
-      );
-    };
-
-    updateColumnCount();
-    const observer = new ResizeObserver(updateColumnCount);
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
 
   const rowEndIndex =
     actionAfterIndex >= 0

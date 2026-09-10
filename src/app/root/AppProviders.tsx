@@ -10,12 +10,17 @@
 import { Provider } from "jotai";
 import React, { useMemo } from "react";
 
+import { initializeChatWidthStyles } from "@src/store/ui/chatPanel/widthAtoms";
 import { createInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 export const AppProviders: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const instrumentedStore = useMemo(() => createInstrumentedStore(), []);
+  const instrumentedStore = useMemo(() => {
+    const store = createInstrumentedStore();
+    initializeChatWidthStyles(store);
+    return store;
+  }, []);
 
   return <Provider store={instrumentedStore}>{children}</Provider>;
 };

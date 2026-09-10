@@ -3,6 +3,7 @@ import React, { Suspense } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Placeholder } from "@src/components/Placeholder";
+import { WORK_STATION_PLACEHOLDER_PAGE_BG_CLASS } from "@src/config/workstation/tokens";
 import { useBrowserContextOptional } from "@src/contexts/workstation/BrowserContext";
 import { CODE_EDITOR_TOUR_TARGETS } from "@src/scaffold/Tutorials/codeEditorTourConfig";
 import {
@@ -19,7 +20,6 @@ import {
 } from "@src/store/workstation/workstationTabBarAtoms";
 
 import CodeEditor from "../CodeEditor";
-import { WORK_STATION_PLACEHOLDER_PAGE_BG_CLASS } from "../shared/tokens";
 import { WorkStationStartPage } from "./StartPage";
 import {
   shouldMountAgentStationHost,
@@ -54,9 +54,6 @@ interface AppShellContentProps {
   isCodeMode: boolean;
   isBrowserMode: boolean;
   isProjectMode: boolean;
-  codeContentVisible: boolean;
-  browserContentVisible: boolean;
-  projectContentVisible: boolean;
   handleSelectRepo: () => void;
 }
 
@@ -85,9 +82,6 @@ export function AppShellContent({
   isCodeMode,
   isBrowserMode,
   isProjectMode,
-  codeContentVisible,
-  browserContentVisible,
-  projectContentVisible,
   handleSelectRepo,
 }: AppShellContentProps) {
   const { t } = useTranslation();
@@ -173,7 +167,7 @@ export function AppShellContent({
       <CodeEditor
         repoPath={repoPath}
         repoName={repoName}
-        isActive={codeContentVisible}
+        isActive={isCodeMode}
       />
     );
   };
@@ -215,7 +209,7 @@ export function AppShellContent({
             className="relative h-full w-full"
             data-tour-target={CODE_EDITOR_TOUR_TARGETS.editorSurface}
             style={{
-              display: !showStartPage && codeContentVisible ? "block" : "none",
+              display: !showStartPage && isCodeMode ? "block" : "none",
             }}
           >
             {renderCodeEditor()}
@@ -226,15 +220,14 @@ export function AppShellContent({
           <div
             className="h-full w-full"
             style={{
-              display:
-                !showStartPage && browserContentVisible ? "block" : "none",
+              display: !showStartPage && isBrowserMode ? "block" : "none",
             }}
           >
             <Suspense fallback={<AppShellLoadingPlaceholder />}>
               <Browser
                 repoPath={repoPath}
                 repoName={repoName}
-                isActive={isActive && !showStartPage && browserContentVisible}
+                isActive={isActive && !showStartPage && isBrowserMode}
               />
             </Suspense>
           </div>
@@ -244,8 +237,7 @@ export function AppShellContent({
           <div
             className="h-full w-full"
             style={{
-              display:
-                !showStartPage && projectContentVisible ? "block" : "none",
+              display: !showStartPage && isProjectMode ? "block" : "none",
             }}
           >
             <Suspense fallback={<AppShellLoadingPlaceholder />}>

@@ -105,10 +105,6 @@ export function CreateIssueModal({
       visible={open}
       title={labels.title}
       onCancel={handleCancel}
-      onOk={handleCreate}
-      okText={creating ? labels.creating : labels.create}
-      cancelText={labels.cancel}
-      okButtonProps={{ loading: creating, disabled: !source || !title.trim() }}
       footer={
         <PanelFooter
           left={

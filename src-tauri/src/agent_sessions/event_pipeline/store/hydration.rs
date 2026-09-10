@@ -7,7 +7,8 @@ use std::collections::HashSet;
 
 use super::helpers::{
     is_authoritative_transcript_message, is_turn_placeholder, loaded_turn_ids_from_events,
-    placeholder_turn_id, reconcile_loaded_synthetic_transcript_placeholders, timeline_source_order,
+    placeholder_turn_id, reconcile_loaded_duplicate_user_turns,
+    reconcile_loaded_synthetic_transcript_placeholders, timeline_source_order,
 };
 use super::{
     active_shell_replays_for_session, capture_shell_replay_bookmarks, hydrate_shell_event_bounded,
@@ -19,7 +20,30 @@ use crate::agent_sessions::event_pipeline::types::{ActivityStatus, EventDisplayS
 impl EventStore {
     /// Replace all events (session load / clear).
     pub fn set(&mut self, events: Vec<crate::agent_sessions::event_pipeline::types::SessionEvent>) {
-        self.set_with_hydration(events, HydrationMode::Full);
+        // Native preview IPC uses the same atomic replacement boundary as full
+        // history. A placeholder proves this is not a canonical full snapshot.
+        let mode = if events
+            .iter()
+            .any(|event| placeholder_turn_id(event).is_some())
+        {
+            HydrationMode::RoundWindow
+        } else {
+            HydrationMode::Full
+        };
+        self.set_with_hydration(events, mode);
+    }
+
+    /// Compare and replace while the caller holds the EventStore lock.
+    pub fn set_if_version(
+        &mut self,
+        events: Vec<crate::agent_sessions::event_pipeline::types::SessionEvent>,
+        expected_version: u64,
+    ) -> bool {
+        if self.version() != expected_version {
+            return false;
+        }
+        self.set(events);
+        true
     }
 
     pub fn set_round_window(
@@ -43,6 +67,7 @@ impl EventStore {
         hydration_mode: HydrationMode,
     ) {
         reconcile_loaded_synthetic_transcript_placeholders(&mut events);
+        reconcile_loaded_duplicate_user_turns(&mut events);
         for event in &mut events {
             hydrate_shell_event_bounded(event);
         }
@@ -74,8 +99,12 @@ impl EventStore {
                 continue;
             }
             self.stamp_repo(&mut event);
+            if let Some(replaced) = self.reconcile_duplicate_user_turn(&mut event) {
+                changed |= replaced;
+                continue;
+            }
             if is_authoritative_transcript_message(&event) {
-                self.remove_matching_synthetic_transcript_placeholders(&event);
+                self.remove_matching_synthetic_transcript_placeholder(&mut event);
             }
             let event_id = event.id.clone();
             let idx = self.events.len();
@@ -136,6 +165,10 @@ impl EventStore {
                 capture_shell_replay_bookmarks(&mut event, active);
             } else {
                 hydrate_shell_event_bounded(&mut event);
+            }
+            if let Some(replaced) = self.reconcile_duplicate_user_turn(&mut event) {
+                changed |= replaced;
+                continue;
             }
             if event.action_type == "tool_result" {
                 if let Some(ref call_id) = event.call_id {
@@ -248,7 +281,7 @@ impl EventStore {
                 changed = true;
             } else {
                 if is_authoritative_transcript_message(&event) {
-                    self.remove_matching_synthetic_transcript_placeholders(&event);
+                    self.remove_matching_synthetic_transcript_placeholder(&mut event);
                 }
                 let event_id = event.id.clone();
                 let idx = self.events.len();

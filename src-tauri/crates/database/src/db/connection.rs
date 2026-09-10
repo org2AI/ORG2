@@ -32,6 +32,7 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::{Condvar, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 /// Per-connection PRAGMA settings (must run on every new connection).
 ///
@@ -202,6 +203,19 @@ struct IdleConnection {
     identity: Option<FileIdentity>,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum PoolPhase {
+    #[default]
+    Running,
+    Draining,
+}
+
+#[derive(Debug)]
+struct CheckedOutConnection {
+    path: PathBuf,
+    borrowed_at: Instant,
+}
+
 #[derive(Default)]
 struct ConnectionPool {
     /// Bumped whenever pooled connections must not be reused (an init
@@ -209,12 +223,44 @@ struct ConnectionPool {
     /// or an explicit reset). A guard whose generation is older closes its
     /// connection instead of returning it.
     generation: u64,
+    phase: PoolPhase,
+    next_checkout_id: u64,
     idle: HashMap<PathBuf, Vec<IdleConnection>>,
+    checked_out: HashMap<u64, CheckedOutConnection>,
 }
 
-fn connection_pool() -> &'static Mutex<ConnectionPool> {
-    static POOL: OnceLock<Mutex<ConnectionPool>> = OnceLock::new();
-    POOL.get_or_init(|| Mutex::new(ConnectionPool::default()))
+#[derive(Default)]
+struct ConnectionPoolState {
+    pool: Mutex<ConnectionPool>,
+    returned: Condvar,
+}
+
+fn connection_pool() -> &'static ConnectionPoolState {
+    static POOL: OnceLock<ConnectionPoolState> = OnceLock::new();
+    POOL.get_or_init(ConnectionPoolState::default)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConnectionPoolPathMetrics {
+    pub path: PathBuf,
+    pub idle: usize,
+    pub checked_out: usize,
+    pub oldest_checkout_ms: Option<u128>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConnectionPoolMetrics {
+    pub accepting_new_connections: bool,
+    pub paths: Vec<ConnectionPoolPathMetrics>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConnectionPoolDrainReport {
+    pub drained: bool,
+    pub elapsed_ms: u128,
+    pub idle_connections_closed: usize,
+    pub remaining_checked_out: usize,
+    pub metrics: ConnectionPoolMetrics,
 }
 
 /// Serializes tests that assert on the *contents* of the process-global
@@ -243,11 +289,127 @@ fn pool_test_guard() -> std::sync::MutexGuard<'static, ()> {
 /// already have been opened without it, and by tests that rotate the
 /// database path.
 pub fn reset_connection_pool() {
-    let mut pool = connection_pool()
+    let state = connection_pool();
+    let idle = {
+        let mut pool = state
+            .pool
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        pool.generation = pool.generation.saturating_add(1);
+        std::mem::take(&mut pool.idle)
+    };
+    drop(idle);
+}
+
+pub fn connection_pool_metrics() -> ConnectionPoolMetrics {
+    let pool = connection_pool()
+        .pool
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    pool.generation += 1;
-    pool.idle.clear();
+    pool_metrics_locked(&pool, Instant::now())
+}
+
+/// Fence new checkouts, close every idle connection, and wait up to `timeout`
+/// for borrowed guards to return. A timed-out connection is never force-closed
+/// underneath its owner; it is reported and will close naturally on drop.
+pub fn begin_connection_pool_shutdown(timeout: Duration) -> ConnectionPoolDrainReport {
+    let started = Instant::now();
+    let state = connection_pool();
+    let (idle, idle_connections_closed) = {
+        let mut pool = state
+            .pool
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        pool.phase = PoolPhase::Draining;
+        pool.generation = pool.generation.saturating_add(1);
+        let idle = std::mem::take(&mut pool.idle);
+        let count = idle.values().map(Vec::len).sum();
+        (idle, count)
+    };
+    // SQLite connection destructors may do filesystem work. Never run them
+    // while holding the pool mutex needed by checked-out guard destructors.
+    drop(idle);
+
+    let deadline = started + timeout;
+    let mut pool = state
+        .pool
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    while !pool.checked_out.is_empty() {
+        let now = Instant::now();
+        if now >= deadline {
+            break;
+        }
+        let wait = deadline.saturating_duration_since(now);
+        let (next, timed_out) = state
+            .returned
+            .wait_timeout(pool, wait)
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        pool = next;
+        if timed_out.timed_out() {
+            break;
+        }
+    }
+    let remaining_checked_out = pool.checked_out.len();
+    let metrics = pool_metrics_locked(&pool, Instant::now());
+    ConnectionPoolDrainReport {
+        drained: remaining_checked_out == 0,
+        elapsed_ms: started.elapsed().as_millis(),
+        idle_connections_closed,
+        remaining_checked_out,
+        metrics,
+    }
+}
+
+#[cfg(test)]
+fn resume_connection_pool_for_test() {
+    let state = connection_pool();
+    let idle = {
+        let mut pool = state
+            .pool
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        assert!(
+            pool.checked_out.is_empty(),
+            "test may not reopen the pool while a connection is borrowed"
+        );
+        pool.phase = PoolPhase::Running;
+        pool.generation = pool.generation.saturating_add(1);
+        std::mem::take(&mut pool.idle)
+    };
+    drop(idle);
+}
+
+fn pool_metrics_locked(pool: &ConnectionPool, now: Instant) -> ConnectionPoolMetrics {
+    let mut by_path = HashMap::<PathBuf, (usize, usize, Option<Instant>)>::new();
+    for (path, connections) in &pool.idle {
+        by_path.entry(path.clone()).or_default().0 = connections.len();
+    }
+    for checkout in pool.checked_out.values() {
+        let entry = by_path.entry(checkout.path.clone()).or_default();
+        entry.1 = entry.1.saturating_add(1);
+        entry.2 = Some(match entry.2 {
+            Some(previous) => previous.min(checkout.borrowed_at),
+            None => checkout.borrowed_at,
+        });
+    }
+    let mut paths = by_path
+        .into_iter()
+        .map(
+            |(path, (idle, checked_out, oldest))| ConnectionPoolPathMetrics {
+                path,
+                idle,
+                checked_out,
+                oldest_checkout_ms: oldest
+                    .map(|instant| now.saturating_duration_since(instant).as_millis()),
+            },
+        )
+        .collect::<Vec<_>>();
+    paths.sort_by(|left, right| left.path.cmp(&right.path));
+    ConnectionPoolMetrics {
+        accepting_new_connections: pool.phase == PoolPhase::Running,
+        paths,
+    }
 }
 
 /// A pooled SQLite connection. Derefs to [`rusqlite::Connection`]; on drop
@@ -258,6 +420,7 @@ pub struct PooledConnection {
     path: PathBuf,
     identity: Option<FileIdentity>,
     generation: u64,
+    checkout_id: u64,
 }
 
 impl PooledConnection {
@@ -266,12 +429,14 @@ impl PooledConnection {
         path: PathBuf,
         identity: Option<FileIdentity>,
         generation: u64,
+        checkout_id: u64,
     ) -> Self {
         Self {
             conn: Some(conn),
             path,
             identity,
             generation,
+            checkout_id,
         }
     }
 }
@@ -302,46 +467,81 @@ impl Drop for PooledConnection {
         // A connection left inside a transaction (a caller that began one
         // and never committed, or unwound mid-write) must not be reused:
         // the next caller would silently inherit its open write lock.
-        if !conn.is_autocommit() {
-            return;
-        }
-        let mut pool = connection_pool()
+        let reusable = conn.is_autocommit();
+        let state = connection_pool();
+        let mut pool = state
+            .pool
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if pool.generation != self.generation {
-            return;
+        pool.checked_out.remove(&self.checkout_id);
+        if reusable && pool.phase == PoolPhase::Running && pool.generation == self.generation {
+            let idle = pool.idle.entry(self.path.clone()).or_default();
+            if idle.len() < MAX_IDLE_CONNECTIONS_PER_PATH {
+                idle.push(IdleConnection {
+                    conn,
+                    identity: self.identity,
+                });
+                state.returned.notify_all();
+                return;
+            }
         }
-        let idle = pool.idle.entry(self.path.clone()).or_default();
-        if idle.len() < MAX_IDLE_CONNECTIONS_PER_PATH {
-            idle.push(IdleConnection {
-                conn,
-                identity: self.identity,
-            });
-        }
+        state.returned.notify_all();
+        drop(pool);
+        drop(conn);
     }
 }
 
-/// Pop an idle connection for `path` whose file identity still matches the
-/// file currently at that path; stale ones (file replaced) are closed.
-fn take_idle_connection(path: &Path, current: Option<FileIdentity>) -> Option<(Connection, u64)> {
-    let mut pool = connection_pool()
+fn pool_draining_error() -> rusqlite::Error {
+    rusqlite::Error::SqliteFailure(
+        rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+        Some("database connection pool is draining for app shutdown".to_string()),
+    )
+}
+
+/// Reserve a checkout before opening a physical connection. This closes the
+/// race where shutdown fences the pool while a caller is between its phase
+/// check and `Connection::open`.
+fn reserve_checkout(
+    path: &Path,
+    current: Option<FileIdentity>,
+) -> SqliteResult<(Option<Connection>, u64, u64)> {
+    let state = connection_pool();
+    let mut pool = state
+        .pool
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let generation = pool.generation;
-    let idle = pool.idle.get_mut(path)?;
-    while let Some(candidate) = idle.pop() {
-        if candidate.identity == current {
-            return Some((candidate.conn, generation));
-        }
+    if pool.phase == PoolPhase::Draining {
+        return Err(pool_draining_error());
     }
-    None
+    let idle_connection = pool.idle.get_mut(path).and_then(|idle| {
+        while let Some(candidate) = idle.pop() {
+            if candidate.identity == current {
+                return Some(candidate.conn);
+            }
+        }
+        None
+    });
+    let generation = pool.generation;
+    let checkout_id = pool.next_checkout_id;
+    pool.next_checkout_id = pool.next_checkout_id.saturating_add(1);
+    pool.checked_out.insert(
+        checkout_id,
+        CheckedOutConnection {
+            path: path.to_path_buf(),
+            borrowed_at: Instant::now(),
+        },
+    );
+    Ok((idle_connection, generation, checkout_id))
 }
 
-fn current_pool_generation() -> u64 {
-    connection_pool()
+fn abandon_checkout(checkout_id: u64) {
+    let state = connection_pool();
+    let mut pool = state
+        .pool
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .generation
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    pool.checked_out.remove(&checkout_id);
+    state.returned.notify_all();
 }
 
 /// Pooled variant of [`open_with_init`]: reuse an idle connection for
@@ -355,23 +555,34 @@ fn open_pooled(
     configure_new: fn(&Connection) -> SqliteResult<()>,
 ) -> SqliteResult<PooledConnection> {
     let current = file_identity(db_path);
-    if let Some((conn, generation)) = take_idle_connection(db_path, current) {
+    let (idle_connection, generation, checkout_id) = reserve_checkout(db_path, current)?;
+    if let Some(conn) = idle_connection {
         return Ok(PooledConnection::new(
             conn,
             db_path.to_path_buf(),
             current,
             generation,
+            checkout_id,
         ));
     }
-    let generation = current_pool_generation();
-    let conn = open_with_init(db_path, init_fn)?;
-    configure_new(&conn)?;
+    let conn = match open_with_init(db_path, init_fn) {
+        Ok(conn) => conn,
+        Err(error) => {
+            abandon_checkout(checkout_id);
+            return Err(error);
+        }
+    };
+    if let Err(error) = configure_new(&conn) {
+        abandon_checkout(checkout_id);
+        return Err(error);
+    }
     let identity = file_identity(db_path);
     Ok(PooledConnection::new(
         conn,
         db_path.to_path_buf(),
         identity,
         generation,
+        checkout_id,
     ))
 }
 
@@ -679,6 +890,56 @@ mod tests {
         assert!(!has_temp_table(&conn, "held_marker"));
         assert!(!has_temp_table(&conn, "idle_marker"));
         drop(conn);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn shutdown_fences_new_checkouts_and_waits_for_return() {
+        let _pool_guard = pool_test_guard();
+        resume_connection_pool_for_test();
+        let path = temp_db_path("pool-shutdown-drain");
+        let held = open_pooled(&path, None, configure_nothing).expect("held checkout");
+
+        let shutdown =
+            std::thread::spawn(|| begin_connection_pool_shutdown(Duration::from_millis(500)));
+        while connection_pool_metrics().accepting_new_connections {
+            std::thread::yield_now();
+        }
+        let rejected = match open_pooled(&path, None, configure_nothing) {
+            Ok(_) => panic!("new checkout must be fenced during shutdown"),
+            Err(error) => error,
+        };
+        assert!(rejected.to_string().contains("draining for app shutdown"));
+        drop(held);
+
+        let report = shutdown.join().expect("shutdown waiter");
+        assert!(report.drained, "returned checkout must unblock drain");
+        assert_eq!(report.remaining_checked_out, 0);
+        resume_connection_pool_for_test();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn shutdown_timeout_reports_oldest_borrowed_connection() {
+        let _pool_guard = pool_test_guard();
+        resume_connection_pool_for_test();
+        let path = temp_db_path("pool-shutdown-timeout");
+        let held = open_pooled(&path, None, configure_nothing).expect("held checkout");
+
+        let report = begin_connection_pool_shutdown(Duration::from_millis(10));
+        assert!(!report.drained);
+        assert_eq!(report.remaining_checked_out, 1);
+        let path_metrics = report
+            .metrics
+            .paths
+            .iter()
+            .find(|metrics| metrics.path == path)
+            .expect("borrowed path metrics");
+        assert_eq!(path_metrics.checked_out, 1);
+        assert!(path_metrics.oldest_checkout_ms.is_some());
+
+        drop(held);
+        resume_connection_pool_for_test();
         let _ = std::fs::remove_file(&path);
     }
 }

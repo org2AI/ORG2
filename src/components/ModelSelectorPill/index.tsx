@@ -20,7 +20,7 @@ import ModelPillTooltipContent from "@src/components/ModelPillTooltipContent";
 import ModelPropertiesDropdown from "@src/components/ModelPropertiesDropdown";
 import PillGroup, { type PillGroupSegment } from "@src/components/PillGroup";
 import SelectorPill from "@src/components/SelectorPill";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import Tooltip from "@src/components/Tooltip";
 import {
   resolveModelDisplaySelection,
   useModelAccountLookup,
@@ -64,6 +64,10 @@ interface ModelSelectorPillProps {
   settingsMenuDefaultAdvanced?: boolean;
   /** Mobile uses the combined settings menu whenever variant rows exist. */
   preferCombinedSettingsMenu?: boolean;
+  /** Prevent opening a picker while its execution inventory is unresolved. */
+  disabled?: boolean;
+  /** Explanation shown on hover or focus while the picker is disabled. */
+  disabledTooltip?: string;
 }
 
 const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
@@ -85,6 +89,8 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
       effortSegmentOverride,
       settingsMenuDefaultAdvanced = false,
       preferCombinedSettingsMenu = false,
+      disabled = false,
+      disabledTooltip,
     },
     ref
   ) => {
@@ -95,6 +101,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
     );
 
     const [effortOpen, setEffortOpen] = useState(false);
+    const [disabledTooltipOpen, setDisabledTooltipOpen] = useState(false);
 
     const { accounts } = useModelAccountLookup();
     const displaySelection = useMemo(
@@ -166,7 +173,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
         ),
         label: resolvedModelLabel,
         title: modelTitle,
-        tooltip: (
+        tooltip: disabled ? undefined : (
           <ModelPillTooltipContent
             accountName={accountName}
             modelLabel={displayParts.rawValue ?? displayParts.label}
@@ -176,14 +183,15 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
               displayParts.rawValue ? undefined : displayParts.variantInfo
             }
             thinking={displayParts.rawValue ? false : displayParts.thinking}
-            shortcut={getShortcutKeys("open_model_selector")}
+            shortcutId={"open_model_selector"}
           />
         ),
         tooltipFramed: true,
         tooltipFramedWide: true,
         ariaLabel: ariaLabel ?? defaultLabel,
         active,
-        danger: !hasModelSelection,
+        danger: !disabled && !hasModelSelection,
+        disabled,
         onClick,
         dataTestId: dataTestId,
         buttonRef: modelSegmentRef,
@@ -191,7 +199,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
         leadingFlush: triggerLeadingFlush,
       };
 
-      if (!effortEditable || !effortModelId) {
+      if (disabled || !effortEditable || !effortModelId) {
         return [modelSegment];
       }
 
@@ -249,6 +257,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
       ariaLabel,
       dataTestId,
       defaultLabel,
+      disabled,
       displayParts.label,
       displayParts.rawValue,
       displayParts.thinking,
@@ -280,14 +289,18 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
       variantOptions.fastAvailableAnywhere ||
       variantOptions.thinkingToggleable;
     const useCombinedSettingsMenu =
-      preferCombinedSettingsMenu && effortModelId && canEditVariants;
+      !disabled &&
+      preferCombinedSettingsMenu &&
+      Boolean(effortModelId) &&
+      canEditVariants;
     const useSliderSettingsMenu =
+      !disabled &&
       !preferCombinedSettingsMenu &&
       effortEditable &&
-      effortModelId &&
-      variant &&
+      Boolean(effortModelId) &&
+      Boolean(variant) &&
       variantOptions.availableLevels.length > 1;
-    if (useCombinedSettingsMenu || useSliderSettingsMenu) {
+    if ((useCombinedSettingsMenu || useSliderSettingsMenu) && effortModelId) {
       return (
         <ModelSettingsMenu
           anchorRef={modelSegmentRef}
@@ -359,13 +372,37 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
       );
     }
 
-    return (
+    const pill = (
       <PillGroup
         segments={segments}
         className={`shrink-0 text-[13px] ${className ?? ""}`}
-        segmentClassName={`h-[28px] ${triggerClassName ?? ""}`.trim()}
+        segmentClassName={`h-[28px] ${disabled ? "cursor-not-allowed [&>span]:opacity-50" : ""} ${triggerClassName ?? ""}`.trim()}
       />
     );
+
+    if (disabled && disabledTooltip) {
+      return (
+        <Tooltip
+          content={disabledTooltip}
+          position="top"
+          open={disabledTooltipOpen}
+          onOpenChange={setDisabledTooltipOpen}
+        >
+          <span
+            tabIndex={0}
+            onFocus={() => setDisabledTooltipOpen(true)}
+            onBlur={() => setDisabledTooltipOpen(false)}
+            aria-label={`${ariaLabel ?? defaultLabel}: ${disabledTooltip}`}
+            aria-disabled="true"
+            className="inline-flex min-w-0 cursor-not-allowed"
+          >
+            {pill}
+          </span>
+        </Tooltip>
+      );
+    }
+
+    return pill;
   }
 );
 

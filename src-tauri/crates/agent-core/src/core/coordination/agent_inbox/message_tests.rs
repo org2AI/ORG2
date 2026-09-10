@@ -10,6 +10,8 @@ use rusqlite::params;
 fn sandbox_with_inbox_schema() -> test_helpers::test_env::SandboxGuard {
     let sandbox = test_helpers::test_env::sandbox();
     let conn = get_connection().expect("open sandbox database");
+    crate::coordination::agent_org_runs::init_schema(&conn)
+        .expect("initialize Agent Org run schema");
     init_schema(&conn).expect("initialize agent inbox schema");
     sandbox
 }
@@ -17,32 +19,32 @@ fn sandbox_with_inbox_schema() -> test_helpers::test_env::SandboxGuard {
 fn seed_minimal_running_run_for_delivery_resolution(run_id: &str) {
     let conn = get_connection().expect("open sandbox database");
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runs (
-                 id TEXT PRIMARY KEY,
-                 status TEXT NOT NULL,
-                 org_snapshot_json TEXT,
-                 root_session_id TEXT
-             );
-             CREATE TABLE IF NOT EXISTS agent_sessions (
-                 session_id TEXT PRIMARY KEY,
-                 status TEXT NOT NULL,
-                 updated_at TEXT NOT NULL,
-                 parent_session_id TEXT,
-                 agent_definition_id TEXT,
-                 org_member_id TEXT
-             );
-             CREATE TABLE IF NOT EXISTS code_sessions (
-                 session_id TEXT PRIMARY KEY,
-                 cli_agent_type TEXT NOT NULL,
-                 status TEXT NOT NULL,
-                 parent_session_id TEXT,
-                 org_member_id TEXT,
-                 updated_at TEXT NOT NULL
-             );
-             CREATE TABLE IF NOT EXISTS agent_org_tasks (
-                 id TEXT PRIMARY KEY,
-                 org_run_id TEXT NOT NULL
-             );",
+        "CREATE TABLE IF NOT EXISTS agent_org_runtime_runs (
+             id TEXT PRIMARY KEY,
+             status TEXT NOT NULL,
+             org_snapshot_json TEXT,
+             root_session_id TEXT
+         );
+         CREATE TABLE IF NOT EXISTS agent_sessions (
+             session_id TEXT PRIMARY KEY,
+             status TEXT NOT NULL,
+             updated_at TEXT NOT NULL,
+             parent_session_id TEXT,
+             agent_definition_id TEXT,
+             org_member_id TEXT
+         );
+         CREATE TABLE IF NOT EXISTS code_sessions (
+             session_id TEXT PRIMARY KEY,
+             cli_agent_type TEXT NOT NULL,
+             status TEXT NOT NULL,
+             parent_session_id TEXT,
+             org_member_id TEXT,
+             updated_at TEXT NOT NULL
+         );
+         CREATE TABLE IF NOT EXISTS agent_org_runtime_tasks (
+             id TEXT PRIMARY KEY,
+             org_run_id TEXT NOT NULL
+         );",
     )
     .expect("initialize minimal delivery-repair dependencies");
     crate::coordination::agent_member_interventions::init_schema(&conn)
@@ -55,9 +57,12 @@ fn seed_minimal_running_run_for_delivery_resolution(run_id: &str) {
     )
     .expect("seed coordinator session");
     conn.execute(
-        "INSERT INTO agent_org_runs (id, status, org_snapshot_json, root_session_id)
-             VALUES (?1, 'running', NULL, ?2)",
-        params![run_id, &root_session_id],
+        "INSERT INTO agent_org_runtime_runs (
+            id,org_id,coordinator_agent_id,status,org_snapshot_json,
+            root_session_id,entry_mode,created_at,updated_at
+         ) VALUES (?1,'delivery-repair-org','coordinator','running',NULL,?2,
+                   'standalone_session',?3,?3)",
+        params![run_id, &root_session_id, chrono::Utc::now().to_rfc3339()],
     )
     .expect("seed running run");
 }
@@ -70,12 +75,12 @@ fn seed_legacy_orphan_inbox_row(run_id: &str, summary: &str, text: &str) -> Agen
     let payload_json = serde_json::to_string(&message).expect("serialize legacy payload");
     let conn = get_connection().expect("open sandbox database");
     conn.execute(
-        "INSERT INTO agent_inbox (
-                 recipient_agent_id, recipient_member_id,
-                 sender_agent_id, sender_member_id, org_run_id,
-                 payload_kind, payload_json, request_id,
-                 created_at, read_at, causation_inbox_id
-             ) VALUES (?1, NULL, ?2, ?3, ?4, 'plain', ?5, NULL, ?6, NULL, NULL)",
+        "INSERT INTO agent_org_runtime_inbox (
+             recipient_agent_id, recipient_member_id,
+             sender_agent_id, sender_member_id, org_run_id,
+             payload_kind, payload_json, request_id,
+             created_at, read_at, causation_inbox_id
+         ) VALUES (?1, NULL, ?2, ?3, ?4, 'plain', ?5, NULL, ?6, NULL, NULL)",
         params![
             "missing-agent",
             "coordinator-agent",
@@ -192,6 +197,7 @@ fn messages_for_each_task_identifier_position(task_id: &str) -> Vec<(&'static st
                 subject: "Completed task".into(),
                 completed_by_member_id: "worker".into(),
                 output_summary: Some("Done".into()),
+                plan_revision_id: None,
                 remaining_open_task_count: 0,
             },
         ),
@@ -202,6 +208,7 @@ fn messages_for_each_task_identifier_position(task_id: &str) -> Vec<(&'static st
                 subject: "Completed task".into(),
                 completed_by_member_id: task_id.into(),
                 output_summary: Some("Done".into()),
+                plan_revision_id: None,
                 remaining_open_task_count: 0,
             },
         ),
@@ -435,6 +442,7 @@ fn kind_tag_matches_serde_tag() {
             subject: "subject".into(),
             completed_by_member_id: "alice".into(),
             output_summary: Some("done".into()),
+            plan_revision_id: None,
             remaining_open_task_count: 0,
         },
         AgentMessage::ExecModeSetRequest {
@@ -712,10 +720,10 @@ fn delivery_resolution_invalidates_stale_materialization_guard() {
         seed_legacy_orphan_inbox_row(run_id, "Stale receipt", "Do not acknowledge after repair");
     let conn = get_connection().expect("open sandbox database");
     conn.execute(
-        "INSERT INTO agent_inbox_materializations (
-                 inbox_id, session_id, transcript_message_id,
-                 transcript_intent_id, materialized_at
-             ) VALUES (?1, 'old-session', 'message-1', 'intent-1', ?2)",
+        "INSERT INTO agent_org_runtime_inbox_materializations (
+             inbox_id, session_id, transcript_message_id,
+             transcript_intent_id, materialized_at
+         ) VALUES (?1, 'old-session', 'message-1', 'intent-1', ?2)",
         params![row.id, chrono::Utc::now().to_rfc3339()],
     )
     .expect("seed stale receipt");
@@ -768,9 +776,12 @@ fn delivery_resolution_rejects_a_healthy_canonical_recipient() {
         replacement_task_id: None,
     })
     .expect_err("healthy recipient cannot be discarded by the model");
-    assert!(error
-        .to_string()
-        .contains("recoverable canonical recipient"));
+    assert!(
+        error
+            .to_string()
+            .contains("not repairable: recoverable_canonical_delivery"),
+        "{error}"
+    );
     assert!(
         AgentInboxStore::has_unread_for_member("coordinator", run_id)
             .expect("healthy delivery remains pending")
@@ -785,7 +796,7 @@ fn superseded_delivery_requires_an_existing_same_run_replacement() {
     let source = seed_legacy_orphan_inbox_row(run_id, "Original", "Original work");
     let conn = get_connection().expect("open sandbox database");
     conn.execute(
-        "INSERT INTO agent_org_tasks (id, org_run_id) VALUES ('replacement-task', ?1)",
+        "INSERT INTO agent_org_runtime_tasks (id, org_run_id) VALUES ('replacement-task', ?1)",
         params![run_id],
     )
     .expect("seed replacement task");
@@ -820,7 +831,7 @@ fn superseded_delivery_requires_an_existing_same_run_replacement() {
 
 #[test]
 fn superseded_delivery_can_follow_a_real_replacement_chain_but_not_cycle() {
-    use crate::definitions::orgs::{HierarchyMode, OrgDefinition, OrgMember, PlanApprovalPolicy};
+    use crate::definitions::orgs::{FlatOrgMember, OrgDefinition, PlanApprovalPolicy};
 
     let _sandbox = sandbox_with_inbox_schema();
     let run_id = "run-delivery-chain";
@@ -831,39 +842,43 @@ fn superseded_delivery_can_follow_a_real_replacement_chain_but_not_cycle() {
         role: "Coordinator".into(),
         agent_id: "coordinator-agent".into(),
         description: None,
-        hierarchy_mode: HierarchyMode::Soft,
         plan_approval_policy: PlanApprovalPolicy::Coordinator,
-        children: vec![
-            OrgMember {
-                id: "member-a".into(),
+        members: vec![
+            FlatOrgMember {
+                member_id: "member-a".into(),
                 name: "Member A".into(),
                 role: "worker".into(),
                 agent_id: "agent-a".into(),
                 runtime_config: None,
-                children: Vec::new(),
             },
-            OrgMember {
-                id: "member-b".into(),
+            FlatOrgMember {
+                member_id: "member-b".into(),
                 name: "Member B".into(),
                 role: "worker".into(),
                 agent_id: "agent-b".into(),
                 runtime_config: None,
-                children: Vec::new(),
             },
-            OrgMember {
-                id: "member-c".into(),
+            FlatOrgMember {
+                member_id: "member-c".into(),
                 name: "Member C".into(),
                 role: "worker".into(),
                 agent_id: "agent-c".into(),
                 runtime_config: None,
-                children: Vec::new(),
             },
         ],
+        additional_task_graph_writer_member_ids: Vec::new(),
+        member_communication_links: Vec::new(),
     };
     let conn = get_connection().expect("open sandbox database");
     conn.execute(
-        "UPDATE agent_org_runs SET org_snapshot_json=?1 WHERE id=?2",
-        params![serde_json::to_string(&org).unwrap(), run_id],
+        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?1 WHERE id=?2",
+        params![
+            serde_json::to_string(&crate::definitions::orgs::AgentOrgLaunchSnapshot::from(
+                &org
+            ))
+            .unwrap(),
+            run_id
+        ],
     )
     .expect("seed roster snapshot");
     let now = chrono::Utc::now().to_rfc3339();
@@ -891,8 +906,8 @@ fn superseded_delivery_can_follow_a_real_replacement_chain_but_not_cycle() {
     let row_a = AgentInboxStore::insert(InsertInboxParams {
         recipient_agent_id: "agent-a".into(),
         recipient_member_id: Some("member-a".into()),
-        sender_agent_id: "coordinator-agent".into(),
-        sender_member_id: Some(COORDINATOR_MEMBER_ID.into()),
+        sender_agent_id: "peer-agent".into(),
+        sender_member_id: Some("peer-member".into()),
         org_run_id: Some(run_id.into()),
         message: AgentMessage::Plain {
             summary: "A".into(),
@@ -903,8 +918,8 @@ fn superseded_delivery_can_follow_a_real_replacement_chain_but_not_cycle() {
     let row_b = AgentInboxStore::insert(InsertInboxParams {
         recipient_agent_id: "agent-b".into(),
         recipient_member_id: Some("member-b".into()),
-        sender_agent_id: "coordinator-agent".into(),
-        sender_member_id: Some(COORDINATOR_MEMBER_ID.into()),
+        sender_agent_id: "peer-agent".into(),
+        sender_member_id: Some("peer-member".into()),
         org_run_id: Some(run_id.into()),
         message: AgentMessage::Plain {
             summary: "B".into(),
@@ -915,8 +930,8 @@ fn superseded_delivery_can_follow_a_real_replacement_chain_but_not_cycle() {
     let row_c = AgentInboxStore::insert(InsertInboxParams {
         recipient_agent_id: "agent-c".into(),
         recipient_member_id: Some("member-c".into()),
-        sender_agent_id: "coordinator-agent".into(),
-        sender_member_id: Some(COORDINATOR_MEMBER_ID.into()),
+        sender_agent_id: "peer-agent".into(),
+        sender_member_id: Some("peer-member".into()),
         org_run_id: Some(run_id.into()),
         message: AgentMessage::Plain {
             summary: "C".into(),
@@ -1001,6 +1016,7 @@ fn task_completed_round_trips_and_validates() {
         subject: "Review draft".into(),
         completed_by_member_id: "reviewer".into(),
         output_summary: Some("Approved with two corrections".into()),
+        plan_revision_id: None,
         remaining_open_task_count: 0,
     };
     assert!(msg.validate().is_ok());

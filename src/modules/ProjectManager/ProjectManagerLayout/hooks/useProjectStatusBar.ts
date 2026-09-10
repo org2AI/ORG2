@@ -8,7 +8,7 @@
 import { useSetAtom } from "jotai";
 import { useEffect } from "react";
 
-import { projectStatusBarStateAtom } from "@src/store/ui/workStationAtom";
+import { projectStatusBarStateAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 
 interface UseProjectStatusBarOptions {
   activeTabType: string | undefined;

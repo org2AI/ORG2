@@ -1,4 +1,5 @@
 import {
+  isCliSession,
   isCodexAppSession,
   isCursorIdeSession,
   isExternalHistorySession,
@@ -13,10 +14,12 @@ import {
   markTurnBodyLoaded,
   trackPendingTurnLoad,
 } from "./loadedTurnRegistry";
+import { nativeCliTurnLoader } from "./nativeCliTurnLoader";
 import { ownDbTurnLoader } from "./ownDbTurnLoader";
 import type { LoadTurnBodyIntoStoreArgs, SessionTurnLoader } from "./types";
 
 export function getSessionTurnLoader(sessionId: string): SessionTurnLoader {
+  if (isCliSession(sessionId)) return nativeCliTurnLoader;
   if (isCursorIdeSession(sessionId)) {
     return cursorIdeTurnLoader;
   }

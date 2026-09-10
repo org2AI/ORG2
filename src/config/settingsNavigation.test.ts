@@ -19,16 +19,15 @@ describe("settingsNavigation", () => {
     ).toEqual([
       {
         id: "app",
-        items: ["general", "appearance", "editor", "mobile-remote", "monitor"],
+        items: ["general", "appearance", "myRoles", "editor", "mobile-remote"],
       },
       {
         id: "core",
         items: [
-          "agent-orgs",
           "models",
-          "myRoles",
+          "agent-orgs",
+          "harness-connections",
           "rulesMemoryEvolution",
-          "security",
           "routines",
         ],
       },
@@ -53,11 +52,18 @@ describe("settingsNavigation", () => {
     const items = groups.flatMap((group) => group.items);
 
     expect(items.some((item) => item.id === "tools")).toBe(false);
+    expect(items.map((item) => item.id)).not.toContain("monitor");
     expect(items.find((item) => item.id === "general")).toMatchObject({
       label: "settings:sections.general",
       path: "/orgii/app/settings/app/general",
       groupId: "app",
       dataTestId: "settings-core-item-general",
+    });
+    expect(items.find((item) => item.id === "myRoles")).toMatchObject({
+      label: "settings:general.profile",
+      path: "/orgii/app/settings/integrations/my-roles",
+      groupId: "app",
+      dataTestId: "settings-core-item-myRoles",
     });
     expect(items.find((item) => item.id === "agent-orgs")).toMatchObject({
       label: "navigation:labels.agentOrgs",
@@ -70,7 +76,22 @@ describe("settingsNavigation", () => {
       label: "settings:coreSidebar.items.rulesMemoryEvolution",
       path: "/orgii/app/settings/integrations/rules-memory-and-evolution",
     });
+    expect(
+      items.find((item) => item.id === "harness-connections")
+    ).toMatchObject({
+      label: "settings:sections.harnessConnections",
+      path: "/orgii/app/settings/app/harness-connections",
+      groupId: "core",
+    });
     expect(items.every((item) => item.icon)).toBe(true);
+  });
+
+  it("selects General for legacy Storage links", () => {
+    expect(
+      getActiveSettingsNavigationItemId(
+        "/orgii/app/settings/app/monitor/storage"
+      )
+    ).toBe("general");
   });
 
   it("resolves the active navigation item from every settings route family", () => {

@@ -11,10 +11,6 @@
  *
  * Elements panel state/effects live in hooks/useWebDevToolsElementsPanel.ts.
  */
-import {
-  HEADER_BUTTON,
-  HEADER_ICON_SIZE,
-} from "@/src/modules/WorkStation/shared/tokens";
 import React, { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -22,7 +18,11 @@ import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import TabPill from "@src/components/TabPill";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
-import { useRatioResize } from "@src/hooks/ui";
+import {
+  HEADER_BUTTON,
+  HEADER_ICON_SIZE,
+} from "@src/config/workstation/tokens";
+import { useRatioResize } from "@src/hooks/ui/useRatioResize";
 import {
   Cancel01Icon,
   CopyPlusIcon,
@@ -52,13 +52,7 @@ import { useWebDevToolsElementsPanel } from "./hooks/useWebDevToolsElementsPanel
 import type { ComponentsSubTab, DevToolsTab, WebDevToolsProps } from "./types";
 
 // Re-export types for external use
-export type {
-  ConsoleEntry,
-  FilterLevel,
-  LogLevel,
-  NetworkEntry,
-  WebDevToolsProps,
-} from "./types";
+export type { ConsoleEntry, NetworkEntry } from "./types";
 
 // ============================================
 // Main Component
@@ -243,6 +237,7 @@ const WebDevTools: React.FC<WebDevToolsProps> = memo(
                       activeTab="dom-tree"
                       tabs={[{ key: "dom-tree", label: t("tooltips.domTree") }]}
                       variant="simple"
+                      showActiveIndicator={false}
                       fillWidth={false}
                       size="small"
                     />
@@ -322,6 +317,7 @@ const WebDevTools: React.FC<WebDevToolsProps> = memo(
                         setComponentsSubTab(key as ComponentsSubTab)
                       }
                       variant="simple"
+                      showActiveIndicator={false}
                       fillWidth={false}
                       size="small"
                       tabs={[

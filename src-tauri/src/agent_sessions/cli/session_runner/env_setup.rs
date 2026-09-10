@@ -6,9 +6,10 @@
 //! the OpenCode SSE sanitizer. Extracted from `session::run_session` so the
 //! runner reads as an orchestration of named phases.
 
-use key_vault::key_store::{ModelKey, ModelType};
 use std::collections::HashMap;
 use std::path::Path;
+
+use key_vault::key_store::{ModelKey, ModelType};
 
 use super::super::persistence::CodeSession;
 use super::super::types::{proxy_env, KeySource};
@@ -18,7 +19,7 @@ const OPENCODE_ZENMUX_PROVIDER_ID: &str = "zenmux";
 const OPENCODE_ZENMUX_BASE_URL: &str = "https://zenmux.ai/api/v1";
 const OPENCODE_DEFAULT_ZENMUX_MODEL: &str = "deepseek/deepseek-chat";
 const ATLASCLOUD_PROVIDER_ID: &str = "atlascloud";
-const CODEX_COMPATIBLE_PROVIDER_ID: &str = "orgii_compatible";
+pub(crate) const CODEX_COMPATIBLE_PROVIDER_ID: &str = "orgii_compatible";
 const ATLASCLOUD_BASE_URL: &str = "https://api.atlascloud.ai/v1";
 const ATLASCLOUD_DEFAULT_MODEL: &str = "zai-org/glm-5.1";
 const OPENCODE_ZENMUX_MODEL_IDS: &[&str] = &[
@@ -247,7 +248,7 @@ fn codex_compatible_base_url(selected_key: &ModelKey) -> Result<String, String> 
 /// auth, WebSocket support and Codex's own retry defaults. Routing them through
 /// the synthetic compatible-provider table downgrades all four for no benefit.
 /// A custom endpoint override is the one case that still needs the table.
-pub(super) fn codex_needs_compatible_profile(selected_key: &ModelKey) -> bool {
+pub(crate) fn codex_needs_compatible_profile(selected_key: &ModelKey) -> bool {
     if selected_key.model_type != ModelType::OpenaiApi {
         return true;
     }
@@ -423,6 +424,22 @@ pub(super) fn setup_codex_hosted_profile(
     Ok(())
 }
 
+/// Resolve the exact config root Codex will read for this launch. Keep this
+/// shared with both profile setup and per-run MCP materialization so auth,
+/// hooks, and the selected profile cannot silently target different homes.
+pub(super) fn codex_home_for_session(
+    session: &CodeSession,
+    account_id: Option<&str>,
+    session_id: &str,
+) -> Result<std::path::PathBuf, String> {
+    match session.key_source {
+        KeySource::HostedKey => Ok(app_paths::codex_hosted_cli_profile_dir(session_id)),
+        KeySource::OwnKey => account_id
+            .map(app_paths::codex_cli_profile_dir)
+            .ok_or_else(|| "Codex CLI own-key session requires account_id".to_string()),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn configure_agent_profile(
     agent: &ModelType,
@@ -482,10 +499,9 @@ pub(super) fn configure_agent_profile(
     }
 
     if matches!(agent, ModelType::Codex) && session.key_source == KeySource::OwnKey {
-        let Some(account_id) = account_id else {
-            return Err("Codex CLI own-key session requires account_id".to_string());
-        };
-        let codex_home = app_paths::codex_cli_profile_dir(account_id);
+        let account_id = account_id
+            .ok_or_else(|| "Codex CLI own-key session requires account_id".to_string())?;
+        let codex_home = codex_home_for_session(session, Some(account_id), session_id)?;
         env_vars.insert(
             "CODEX_HOME".to_string(),
             codex_home.to_string_lossy().to_string(),
@@ -671,6 +687,13 @@ pub(super) fn inject_orgtrack_environment(
         format!("org2:{session_id}"),
     );
     env_vars.insert("ORGII_ACTOR".to_string(), format!("agent:{agent}"));
+    env_vars.insert(
+        "ORGII_ORIGINATOR".to_string(),
+        agent_core::session::originator::originator_identity(
+            session.org_member_id.as_deref(),
+            session.parent_session_id.as_deref(),
+        ),
+    );
     env_vars.insert("ORGII_MODE".to_string(), product_mode.to_string());
     if let Some(slug) = session.project_slug.as_deref() {
         env_vars.insert("ORGII_SCOPE".to_string(), slug.to_string());
@@ -695,6 +718,27 @@ pub(super) fn inject_orgtrack_environment(
                 env_vars.insert(
                     "PATH".to_string(),
                     joined_path.to_string_lossy().to_string(),
+                );
+            }
+        }
+    }
+
+    if let Some(worktree_root) =
+        git::worktree::session_worktree_root_for_path(Path::new(working_dir))
+    {
+        let tmp_dir = git::worktree::session_worktree_tmp_dir(&worktree_root);
+        match std::fs::create_dir_all(&tmp_dir) {
+            Ok(()) => {
+                let tmp_dir_str = tmp_dir.to_string_lossy().to_string();
+                env_vars.insert("TMPDIR".to_string(), tmp_dir_str.clone());
+                env_vars.insert("TMP".to_string(), tmp_dir_str.clone());
+                env_vars.insert("TEMP".to_string(), tmp_dir_str);
+            }
+            Err(err) => {
+                tracing::warn!(
+                    "[CodeSession] Failed to create worktree tmpdir {}: {}",
+                    tmp_dir.display(),
+                    err
                 );
             }
         }

@@ -28,15 +28,17 @@ import { useFilteredItems } from "@src/hooks/search";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
 import type { LanguagePreference } from "@src/i18n";
 import type { IconSvgElement } from "@src/icons";
-import { checkForUpdatesManually } from "@src/scaffold/AppUpdater";
+import { checkForUpdatesManually } from "@src/scaffold/AppUpdater/actions";
 import {
   openAgentControlSpotlight,
   openCollabOrgSpotlight,
   openSessionCreatorSpotlight,
+  openSessionImportSpotlight,
 } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import { AppViewService } from "@src/services/app";
 import { PanelService } from "@src/services/panel";
 import { WorkStationViewService } from "@src/services/workStation/WorkStationViewService";
+import { openChatPanelCreateTargetAtom } from "@src/store/chatPanel/openChatPanelCreateTargetAtom";
 import { selectedRepoAtom } from "@src/store/repo";
 import { REPO_KIND } from "@src/store/repo/types";
 import type { Session } from "@src/store/session";
@@ -87,10 +89,10 @@ export function useSpotlight(
   props: GlobalSpotlightProps & {
     isOpen: boolean;
     closeModal?: () => void;
-    onOpenWorkspacePicker?: (
+    onOpenWorkingDirectoryPicker?: (
       mode: "switch" | "open" | "add" | "create"
     ) => void;
-    onOpenBranchPicker?: () => void;
+    onOpenBranchPicker?: (repoId?: string) => void;
     onOpenEditorPalette?: (prefix: string, mode?: EditorPaletteMode) => void;
     onOpenAgentSessionSearch?: () => void;
     onOpenAllSessionsSearch?: () => void;
@@ -102,7 +104,7 @@ export function useSpotlight(
   const {
     isOpen,
     closeModal,
-    onOpenWorkspacePicker,
+    onOpenWorkingDirectoryPicker,
     onOpenBranchPicker,
     onOpenEditorPalette,
     onOpenAgentSessionSearch,
@@ -126,7 +128,7 @@ export function useSpotlight(
 
   // Shared repo list is only needed for action flows that ask the user to
   // choose a repo. The default Spotlight view no longer renders the repo list;
-  // workspace switching is delegated to WorkspacePalette.
+  // workspace switching is delegated to WorkingDirectoryPalette.
   const shouldFetchRepos = isOpen && state.missingParam === "repo";
 
   const activeRepoId = currentRepoId ?? currentRepo?.id;
@@ -177,57 +179,42 @@ export function useSpotlight(
   );
 
   const runStaticActionFallback = useCallback(
-    (fallback: SpotlightStaticActionFallback) => {
+    (
+      fallback: SpotlightStaticActionFallback,
+      payload: Record<string, unknown>
+    ) => {
       const fallbackHandlers: Record<
         SpotlightStaticActionFallback,
         () => void
       > = {
         "open-session-creator": openSessionCreatorSpotlight,
+        "import-session": openSessionImportSpotlight,
         "create-project": () => {
-          void WorkStationViewService.openStationMode("my-station").then(
-            async () => {
-              const { openCreateTargetInChatPanelStartPageAtom } =
-                await import("@src/store/chatPanel/chatPanelTabsAtom");
-              const { CHAT_PANEL_CREATE_TARGET } =
-                await import("@src/store/ui/chatPanelAtom");
-              getInstrumentedStore().set(
-                openCreateTargetInChatPanelStartPageAtom,
-                {
-                  target: CHAT_PANEL_CREATE_TARGET.PROJECT,
-                }
-              );
-            }
-          );
+          getInstrumentedStore().set(openChatPanelCreateTargetAtom, {
+            target: "project",
+          });
         },
         "create-work-item": () => {
-          void WorkStationViewService.openStationMode("my-station").then(
-            async () => {
-              const { openCreateTargetInChatPanelStartPageAtom } =
-                await import("@src/store/chatPanel/chatPanelTabsAtom");
-              const { CHAT_PANEL_CREATE_TARGET } =
-                await import("@src/store/ui/chatPanelAtom");
-              getInstrumentedStore().set(
-                openCreateTargetInChatPanelStartPageAtom,
-                {
-                  target: CHAT_PANEL_CREATE_TARGET.WORK_ITEM,
-                }
-              );
-            }
-          );
+          getInstrumentedStore().set(openChatPanelCreateTargetAtom, {
+            target: "workItem",
+          });
         },
         "search-agent-sessions": () => onOpenAgentSessionSearch?.(),
         "search-all-sessions": () => onOpenAllSessionsSearch?.(),
         "agent-control": openAgentControlSpotlight,
-        "workspace-switch": () => onOpenWorkspacePicker?.("switch"),
-        "workspace-add": () => onOpenWorkspacePicker?.("add"),
-        "workspace-create": () => onOpenWorkspacePicker?.("create"),
+        "workspace-switch": () => onOpenWorkingDirectoryPicker?.("switch"),
+        "workspace-add": () => onOpenWorkingDirectoryPicker?.("add"),
+        "workspace-create": () => onOpenWorkingDirectoryPicker?.("create"),
         "organization-create": () => {
           openCollabOrgSpotlight({ mode: "create" });
         },
         "organization-join": () => {
           openCollabOrgSpotlight({ source: "cloud", mode: "join" });
         },
-        "branch-picker": () => onOpenBranchPicker?.(),
+        "branch-picker": () =>
+          onOpenBranchPicker?.(
+            typeof payload.repoId === "string" ? payload.repoId : undefined
+          ),
         "toggle-sidebar": () => {
           void AppViewService.toggleSidebar();
         },
@@ -293,7 +280,7 @@ export function useSpotlight(
       onOpenAgentSessionSearch,
       onOpenAllSessionsSearch,
       onOpenBranchPicker,
-      onOpenWorkspacePicker,
+      onOpenWorkingDirectoryPicker,
     ]
   );
 
@@ -305,7 +292,7 @@ export function useSpotlight(
         action.payload,
         fallback
           ? () => {
-              runStaticActionFallback(fallback);
+              runStaticActionFallback(fallback, action.payload);
             }
           : undefined
       );
@@ -485,6 +472,7 @@ export function useSpotlight(
     onSelectSession: handleSelectSession,
     onSelectCloudSessionReference: handleSelectCloudSessionReference,
     onSelectPath: handleSelectPath,
+    currentRepoId: activeRepoId,
     isEditorRoute,
     isWorkStationRoute,
   });

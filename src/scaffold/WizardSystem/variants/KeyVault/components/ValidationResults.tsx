@@ -10,7 +10,7 @@
 import React, { useState } from "react";
 
 import type { QuotaSnapshot } from "@src/api/types/keyVault";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 
 import type { AgentCategory } from "../hooks/useApiSetup";
 import QuotaDisplay from "./QuotaDisplay";
@@ -43,12 +43,12 @@ const ValidationResults: React.FC<ValidationResultsProps> = ({
         )}
 
       {validationError && !errorDismissed && (
-        <InlineAlert
+        <PageNotice
           type="danger"
           onClose={() => setDismissedError(validationError)}
         >
           {validationError}
-        </InlineAlert>
+        </PageNotice>
       )}
     </div>
   );

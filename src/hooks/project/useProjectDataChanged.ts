@@ -14,17 +14,37 @@
  * The Tauri event channel name "orgii-data-changed" is the wire format emitted
  * by the Rust backend and is not renamed here.
  */
-import { listen } from "@tauri-apps/api/event";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 
-import { invalidateProjectCache } from "@src/api/http/project";
+import {
+  PROJECT_ROSTER_CHANGED_EVENT,
+  PROJECT_STATUS_DEFINITIONS_CHANGED_EVENT,
+  type ProjectStatusDefinitionsChangedPayload,
+  invalidateProjectCache,
+} from "@src/api/http/project";
+import { createLogger } from "@src/hooks/logger";
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 
 export interface ProjectDataChange {
   projectSlug?: string;
   workItemId?: string;
   repoPath?: string;
   source?: string;
+}
+
+const log = createLogger("ProjectDataChanged");
+
+function reportDataListenerError(error: unknown): void {
+  log.error("Project data listener registration failed", error);
+}
+
+function reportRosterListenerError(error: unknown): void {
+  log.error("Project roster listener registration failed", error);
+}
+
+function reportStatusListenerError(error: unknown): void {
+  log.error("Project status listener registration failed", error);
 }
 
 type ProjectDataChangedWirePayload =
@@ -81,6 +101,21 @@ export const projectDataChangedChangeAtom = atom<ProjectDataChange | null>(
 projectDataChangedChangeAtom.debugLabel = "projectDataChangedChangeAtom";
 
 /**
+ * Changes only when the local project/member roster can differ. Keeping this
+ * separate from `projectDataChangedSignalAtom` prevents comment and Work Item
+ * traffic from fanning out into every project's member file.
+ */
+export const projectRosterChangedSignalAtom = atom(0);
+projectRosterChangedSignalAtom.debugLabel = "projectRosterChangedSignalAtom";
+
+/** Client-only invalidation version for the org-scoped status catalog. */
+export const projectStatusDefinitionsVersionAtom = atom<
+  Readonly<Record<string, number>>
+>({});
+projectStatusDefinitionsVersionAtom.debugLabel =
+  "projectStatusDefinitionsVersionAtom";
+
+/**
  * Sets up the single Tauri listener for "orgii-data-changed".
  * Call once at the ProjectManager layout level (or app level).
  */
@@ -88,25 +123,45 @@ export function useProjectDataChangedListener(): void {
   const bumpSignal = useSetAtom(projectDataChangedSignalAtom);
   const setRepoPath = useSetAtom(projectDataChangedRepoPathAtom);
   const setChange = useSetAtom(projectDataChangedChangeAtom);
+  const bumpRosterSignal = useSetAtom(projectRosterChangedSignalAtom);
+  const bumpStatusDefinitionsVersion = useSetAtom(
+    projectStatusDefinitionsVersionAtom
+  );
 
-  useEffect(() => {
-    const unlistenPromise = listen<ProjectDataChangedWirePayload>(
-      "orgii-data-changed",
-      (event) => {
-        const payload = event.payload;
-        const change = parseProjectDataChange(payload);
+  useTauriListen<ProjectDataChangedWirePayload>(
+    "orgii-data-changed",
+    (payload) => {
+      const change = parseProjectDataChange(payload);
 
-        invalidateProjectDataChangeCaches(change);
-        setRepoPath(change?.repoPath ?? null);
-        setChange(change);
-        bumpSignal((prev) => prev + 1);
-      }
-    );
+      invalidateProjectDataChangeCaches(change);
+      setRepoPath(change?.repoPath ?? null);
+      setChange(change);
+      bumpSignal((prev) => prev + 1);
+    },
+    { onError: reportDataListenerError }
+  );
 
-    return () => {
-      unlistenPromise.then((unlisten) => unlisten());
-    };
-  }, [bumpSignal, setChange, setRepoPath]);
+  useTauriListen(
+    PROJECT_ROSTER_CHANGED_EVENT,
+    () => {
+      bumpRosterSignal((previous) => previous + 1);
+    },
+    { onError: reportRosterListenerError }
+  );
+
+  useTauriListen<ProjectStatusDefinitionsChangedPayload>(
+    PROJECT_STATUS_DEFINITIONS_CHANGED_EVENT,
+    (payload) => {
+      const orgId = payload.org_id;
+      if (!orgId) return;
+      invalidateProjectCache(orgId);
+      bumpStatusDefinitionsVersion((previous) => ({
+        ...previous,
+        [orgId]: (previous[orgId] ?? 0) + 1,
+      }));
+    },
+    { onError: reportStatusListenerError }
+  );
 }
 
 /**

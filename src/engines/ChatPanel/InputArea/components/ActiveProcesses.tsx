@@ -30,6 +30,7 @@ import {
   SquareTerminalIcon,
 } from "@src/icons";
 import { killAgentShellProcess } from "@src/services/terminal";
+import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import { activeSessionIdAtom } from "@src/store/session";
 import {
   type ShellProcessState,
@@ -216,8 +217,12 @@ const ActiveProcesses: React.FC<ActiveProcessesProps> = memo(
     const hasSubagents = activeSubagents.length > 0;
     useEffect(() => {
       if (!hasSubagents) return;
-      const interval = setInterval(() => setNow(Date.now()), 1000);
-      return () => clearInterval(interval);
+      const interval = startVisibilityAwareInterval(
+        document,
+        () => setNow(Date.now()),
+        1000
+      );
+      return () => interval();
     }, [hasSubagents]);
 
     const handleStop = useCallback(

@@ -1,6 +1,5 @@
 use rusqlite::{params, OptionalExtension};
 
-use crate::definitions::orgs::AgentOrgsStore;
 use database::db::get_connection;
 
 use super::super::helpers::{
@@ -27,24 +26,20 @@ impl AgentOrgRunStore {
     ///
     /// Bounded to `MAX_PARENT_WALK_DEPTH` hops so a corrupt or cyclic
     /// parent chain can't cause an unbounded scan during session init.
-    pub fn context_for_run(
-        run_id: &str,
-        org_store: &AgentOrgsStore,
-    ) -> Result<Option<AgentOrgRunContext>, String> {
+    pub fn context_for_run(run_id: &str) -> Result<Option<AgentOrgRunContext>, String> {
         let Some(run) = load_by_id(run_id).map_err(|err| err.to_string())? else {
             return Ok(None);
         };
-        Ok(Some(context_for_run_record(&run, org_store)?))
+        Ok(Some(context_for_run_record(&run)?))
     }
 
     pub fn context_for_session_with_parent_walk(
         session_id: &str,
-        org_store: &AgentOrgsStore,
     ) -> Result<Option<AgentOrgRunContext>, String> {
         let Some(run) = Self::run_for_session_with_parent_walk(session_id)? else {
             return Ok(None);
         };
-        Ok(Some(context_for_run_record(&run, org_store)?))
+        Ok(Some(context_for_run_record(&run)?))
     }
 
     pub fn root_session_id_for_session_with_parent_walk(
@@ -61,7 +56,7 @@ impl AgentOrgRunStore {
         let conn = get_connection().map_err(|err| err.to_string())?;
         let root_session_id: Option<String> = conn
             .query_row(
-                "SELECT root_session_id FROM agent_org_runs WHERE id = ?1",
+                "SELECT root_session_id FROM agent_org_runtime_runs WHERE id = ?1",
                 params![org_run_id],
                 |row| row.get::<_, Option<String>>(0),
             )
@@ -83,7 +78,7 @@ impl AgentOrgRunStore {
                 tracing::warn!(
                     session_id = %session_id,
                     cycle_at = %current_id,
-                    "[agent_org_runs] parent_session_id chain has a cycle; aborting walk"
+                    "[agent_org_runtime_runs] parent_session_id chain has a cycle; aborting walk"
                 );
                 return Ok(None);
             }
@@ -94,7 +89,7 @@ impl AgentOrgRunStore {
                 tracing::warn!(
                     session_id = %session_id,
                     last_visited = %current_id,
-                    "[agent_org_runs] parent_session_id walk exceeded max depth ({}); giving up",
+                    "[agent_org_runtime_runs] parent_session_id walk exceeded max depth ({}); giving up",
                     MAX_PARENT_WALK_DEPTH
                 );
                 return Ok(None);

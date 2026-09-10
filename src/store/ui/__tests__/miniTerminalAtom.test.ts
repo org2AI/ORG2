@@ -1,7 +1,10 @@
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 
-import { terminalSessionsAtom } from "@src/store/workstation/codeEditor/terminal";
+import {
+  activeTerminalIdAtom,
+  terminalSessionsAtom,
+} from "@src/store/workstation/codeEditor/terminal";
 
 import {
   MINI_TERMINAL_SESSION_LIMIT,
@@ -167,11 +170,23 @@ describe("mini terminal claims", () => {
 
   it("releases every claim when the panel closes", () => {
     const store = seedStore(["a", "b"]);
+    store.set(activeTerminalIdAtom, "a");
     store.set(openMiniTerminalAtom, "a");
     store.set(openMiniTerminalAtom, "b");
     store.set(closeMiniTerminalAtom);
 
     expect(store.get(miniTerminalVisibleAtom)).toBe(false);
     expect(store.get(miniTerminalSuppressedIdsAtom).size).toBe(0);
+    expect(store.get(activeTerminalIdAtom)).toBe("b");
+    expect(
+      store.get(terminalSessionsAtom).map((session) => session.isActive)
+    ).toEqual([false, true]);
+    const saved = JSON.parse(
+      localStorage.getItem("work_station_terminal_state")!
+    );
+    expect(saved.activeSessionId).toBe("b");
+    expect(
+      saved.sessions.map((session: { isActive: boolean }) => session.isActive)
+    ).toEqual([false, true]);
   });
 });

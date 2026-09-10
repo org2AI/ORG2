@@ -6,8 +6,8 @@ use agent_core::core::tools::names as tool_names;
 use super::helpers::{
     normalized_result_object, obj_bool, obj_f64, obj_i64, obj_str, obj_string_array,
 };
-use crate::agent_sessions::event_pipeline::extractors::types::*;
 use crate::agent_sessions::event_pipeline::types::{EventDisplayStatus, SessionEvent};
+use core_types::extracted::*;
 
 pub(super) fn extract_thinking(
     args: Option<&serde_json::Map<String, serde_json::Value>>,
@@ -353,10 +353,13 @@ fn legacy_task_rejection_guidance(
 ) -> Option<String> {
     let message = recoverable_task_validation_message(result_object)?;
     let guidance = if message.contains("missing field `summary`")
+        || message.contains("Task output requires a non-empty summary")
         || message.contains("output.summary must not be empty")
     {
-        "Task output needs a non-empty summary. Retry with status=completed and output={summary, content?, artifact_ids?}."
-    } else if message.contains("status=in_progress can only be set by the owning member") {
+        "Task output needs a non-empty summary. Retry with operation=complete and output={summary, content?, artifact_ids?}."
+    } else if message.contains("status=in_progress can only be set by the owning member")
+        || message.contains("operation requires an Owner TaskExecution")
+    {
         "Only the task owner may mark its work in progress. Assignment already wakes the owner; wait for that member to record its own start."
     } else if message.contains("status=completed can only be set by the owning member")
         || message.contains("output can only be written by the owning member")
@@ -435,6 +438,16 @@ pub(super) fn extract_org_task(
         _ => "update",
     }
     .to_string();
+    let task_list_observation = if tool == tool_names::TASK_LIST {
+        match obj_str(&result_object, "code").as_deref() {
+            Some("coordinator_no_new_work_facts") => OrgTaskListObservation::NoNewWorkFacts,
+            Some("coordinator_new_trigger_pending") => OrgTaskListObservation::NewTriggerPending,
+            Some(_) => OrgTaskListObservation::Unknown,
+            None => OrgTaskListObservation::Results,
+        }
+    } else {
+        OrgTaskListObservation::Results
+    };
 
     let task = result_object
         .get("task")
@@ -474,6 +487,7 @@ pub(super) fn extract_org_task(
     ExtractedOrgTaskData {
         action,
         outcome,
+        task_list_observation,
         task,
         tasks,
         total,
@@ -481,6 +495,7 @@ pub(super) fn extract_org_task(
         owner_changed: obj_bool(&result_object, "owner_changed"),
         status_changed: obj_bool(&result_object, "status_changed"),
         task_assigned_dispatched: obj_bool(&result_object, "task_assigned_dispatched"),
+        completion_deferred: obj_bool(&result_object, "completion_deferred"),
         guidance: obj_str(&result_object, "guidance")
             .or_else(|| legacy_task_rejection_guidance(&result_object)),
         error_message: org_task_error_message(&result_object),

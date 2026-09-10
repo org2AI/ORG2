@@ -10,8 +10,8 @@
 
 | #   | Steps                                                 | Expected Result                                                                                       |
 | --- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| 1   | Expand a Codex OAuth account whose status is invalid. | A “Reconnect Codex” button is visible in the account footer.                                          |
-| 2   | Activate “Reconnect Codex”.                           | The existing-account repair wizard opens and the embedded Codex login starts automatically.           |
+| 1   | Expand a Codex OAuth account whose status is invalid. | A “Reconnect” button is visible in the account footer.                                                |
+| 2   | Activate “Reconnect”.                                 | The existing-account repair wizard opens and the embedded Codex login starts automatically.           |
 | 3   | Complete ChatGPT login and save.                      | The existing account is updated, returns to Models & Keys, and becomes available to the model picker. |
 
 ## Edge Cases
@@ -36,13 +36,13 @@
 ## Accessibility
 
 - [ ] Reconnect is keyboard-navigable with Tab and Enter/Space.
-- [ ] The button exposes the localized “Reconnect Codex” accessible name.
+- [ ] The button exposes the localized “Reconnect” accessible name.
 - [ ] Focus moves into the existing repair wizard when navigation completes.
 - [ ] Embedded login retains its existing focus and Escape/close behavior.
 
 ## Acceptance Criteria
 
-- [ ] Only failed local Codex OAuth accounts show “Reconnect Codex”.
+- [ ] Only failed local Codex OAuth accounts show “Reconnect”.
 - [ ] Activating reconnect passes the existing account ID to the repair route.
 - [ ] Successful login updates the existing credential instead of creating a duplicate.
 - [ ] Healthy, API-key, non-Codex, and non-local accounts do not show the action.

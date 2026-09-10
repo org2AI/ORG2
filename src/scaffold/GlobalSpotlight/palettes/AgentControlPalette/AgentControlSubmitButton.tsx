@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip from "@src/components/Tooltip";
 import { INPUT_AREA_BUTTONS } from "@src/config/inputAreaTokens";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import { ArrowUp02Icon, HugeiconsIcon } from "@src/icons";
 import { chatAppearanceAtom } from "@src/store/config/configAtom";
 
@@ -19,6 +19,9 @@ export const AgentControlSubmitButton: React.FC<
 > = ({ disabled, onSubmit }) => {
   const { t } = useTranslation("common");
   const { sendOnEnter } = useAtomValue(chatAppearanceAtom);
+  const sendShortcut = useShortcutKeys("chat_send", {
+    chatSendOnEnter: sendOnEnter,
+  });
 
   const button = (
     <button
@@ -48,10 +51,9 @@ export const AgentControlSubmitButton: React.FC<
     <Tooltip
       content={
         <KeyboardShortcutTooltipContent
+          rendering="original"
           label={t("adeManager.submit")}
-          shortcut={getShortcutKeys("chat_send", {
-            chatSendOnEnter: sendOnEnter,
-          })}
+          shortcut={sendShortcut}
         />
       }
       position="top-end"

@@ -1,25 +1,22 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
 import { Camera01Icon, HugeiconsIcon, SmartPhone01Icon } from "@src/icons";
+
+import { MobileActionButton } from "../components/MobileActionButton";
 
 export interface WelcomeScreenProps {
   onOpenPairing?: () => void;
-  onScanDemo?: () => void;
 }
 
 /** M-01 Welcome / Unpaired */
-export function WelcomeScreen({
-  onOpenPairing,
-  onScanDemo,
-}: WelcomeScreenProps) {
+export function WelcomeScreen({ onOpenPairing }: WelcomeScreenProps) {
   const { t } = useTranslation("mobileRemote");
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 pb-16 text-center">
       <div
-        className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-fill-2 text-primary-6"
+        className="mobile-welcome-icon mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
         aria-hidden="true"
       >
         <HugeiconsIcon icon={SmartPhone01Icon} size={32} />
@@ -29,7 +26,7 @@ export function WelcomeScreen({
       </h1>
       <p className="mb-10 text-sm text-text-3">{t("welcome.subtitle")}</p>
       <div className="flex w-full max-w-xs flex-col gap-3">
-        <Button
+        <MobileActionButton
           variant="primary"
           className="w-full"
           icon={
@@ -38,12 +35,7 @@ export function WelcomeScreen({
           onClick={onOpenPairing}
         >
           {t("welcome.scanQr")}
-        </Button>
-        {onScanDemo ? (
-          <Button variant="tertiary" className="w-full" onClick={onScanDemo}>
-            {t("welcome.tryDemo")}
-          </Button>
-        ) : null}
+        </MobileActionButton>
       </div>
     </div>
   );

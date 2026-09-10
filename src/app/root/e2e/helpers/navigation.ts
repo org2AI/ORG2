@@ -10,17 +10,17 @@ import { openWorkItemInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTa
 import { reposAtom, selectedRepoIdAtom } from "@src/store/repo/atoms";
 import {
   CHAT_PANEL_CONTENT_MODE,
-  activeStationChatVisibleAtom,
   chatPanelContentModeAtom,
-  chatPanelMaximizedAtom,
   chatPanelSelectedWorkItemAtom,
-  chatWidthAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
+import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import {
   simulatorSelectedAppAtom,
   stationModeAtom,
 } from "@src/store/ui/simulatorAtom";
-import "@src/store/ui/workStationAtom";
+import "@src/store/ui/workStationLayout";
 import { activeHostAtom } from "@src/store/workstation";
 import type { AgentConfigTabVariant } from "@src/store/workstation/tabs";
 import {

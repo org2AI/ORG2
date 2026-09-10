@@ -7,7 +7,6 @@ import { IMPORTED_HISTORY_SOURCE_DESCRIPTORS } from "@src/api/tauri/externalHist
 import { rpc } from "@src/api/tauri/rpc";
 import type {
   ExternalHistorySidebarBatchResponse,
-  ExternalHistorySidebarDateBucket,
   ExternalHistorySidebarListRequest,
   ExternalHistorySidebarResponse,
   ExternalHistorySidebarSourceRequest,
@@ -41,7 +40,6 @@ export type { LlmUsageSpanRecord, ToolUsageAttributionRecord } from "./usage";
 // Re-export session aggregate types from RPC schemas (single source of truth).
 export type {
   ExternalHistorySidebarBatchResponse,
-  ExternalHistorySidebarDateBucket,
   ExternalHistorySidebarListRequest,
   ExternalHistorySidebarResponse,
   ExternalHistorySidebarSourceRequest,
@@ -149,6 +147,8 @@ export function toFrontendSession(record: SessionAggregateRecord): Session {
     repoRootPath: record.repoRootPath,
     repoRemoteUrls: record.repoRemoteUrls,
     storagePath: record.storagePath,
+    clientOrigin: record.clientOrigin,
+    clientOriginRaw: record.clientOriginRaw,
     worktreePath: record.worktreePath,
     worktreeBranch: record.worktreeBranch,
     baseBranch: record.baseBranch,

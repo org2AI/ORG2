@@ -180,5 +180,30 @@
       "activityStatus": "agent"
     },
     "expectedChat": false
+  },
+  {
+    "name": "native command catalog is metadata even with a tool display hint",
+    "event": {
+      "id": "native-catalog",
+      "chunk_id": "native-catalog",
+      "sessionId": "parity-session",
+      "createdAt": "2026-01-01T00:00:01.000Z",
+      "functionName": "native_command_catalog",
+      "uiCanonical": "native_command_catalog",
+      "actionType": "native_command_catalog",
+      "args": {
+        "slash_commands": ["context"]
+      },
+      "result": {
+        "success": true
+      },
+      "source": "assistant",
+      "displayText": "catalog",
+      "displayStatus": "completed",
+      "displayVariant": "tool_call",
+      "activityStatus": "agent",
+      "isDelta": false
+    },
+    "expectedChat": false
   }
 ]

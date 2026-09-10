@@ -1,43 +1,40 @@
 import { SIDEBAR_MEMORY_KIND, useSidebarMemoryEntry } from "@src/hooks/perf";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 
-import type { WorkstationSidebarKey } from "./types";
+import type { SessionSidebarView } from "./types";
 
-const WORKSTATION_SIDEBAR_MEMORY_LABEL: Record<WorkstationSidebarKey, string> =
-  {
-    projects: "Projects sidebar",
-    workstation: "Session sidebar",
-  };
+const SESSION_SIDEBAR_MEMORY_LABEL: Record<SessionSidebarView, string> = {
+  "work-items": "Work items sidebar",
+  sessions: "Session sidebar",
+  channels: "Channels sidebar",
+};
 
 interface UseWorkstationSidebarMemoryParams {
   activeSessionId: string;
-  activeSidebarKey: WorkstationSidebarKey;
+  activeViewKey: SessionSidebarView;
   allSectionIds: readonly string[];
   collapsedSectionIds: ReadonlySet<string>;
   groupByMode: string;
   pinnedMenuItems: readonly NavigationMenuItem[];
   selectedMenuItemId: string;
   sidebarMenuItems: readonly NavigationMenuItem[];
-  tabCount: number;
 }
 
 export function useWorkstationSidebarMemory({
   activeSessionId,
-  activeSidebarKey,
+  activeViewKey,
   allSectionIds,
   collapsedSectionIds,
   groupByMode,
   pinnedMenuItems,
   selectedMenuItemId,
   sidebarMenuItems,
-  tabCount,
 }: UseWorkstationSidebarMemoryParams): void {
   useSidebarMemoryEntry({
     kind: SIDEBAR_MEMORY_KIND.SESSION,
-    label: WORKSTATION_SIDEBAR_MEMORY_LABEL[activeSidebarKey],
+    label: SESSION_SIDEBAR_MEMORY_LABEL[activeViewKey],
     items: pinnedMenuItems.length + sidebarMenuItems.length,
     sections: allSectionIds.length,
-    tabs: tabCount,
     source: {
       activeSessionId,
       collapsedSectionIds: Array.from(collapsedSectionIds),

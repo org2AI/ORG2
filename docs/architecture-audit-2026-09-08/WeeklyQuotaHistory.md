@@ -1,0 +1,61 @@
+# Runtime weekly quota history
+
+Runtime → personal Usage now charts local weekly quota observations for connected Claude Code / Codex OAuth accounts and OpenCode Go accounts with quota-capable credentials. The main window's deferred service samples on startup and about once per hour while visible and online. Opening a chart only reads local history. There is no historical backfill or token-to-quota estimate.
+
+## Sources and API research
+
+- Codex: reuse `providers/codex/validator.rs` (`chatgpt.com/backend-api/wham/usage`) and the existing app-server fallback. The official [Codex app-server documentation](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md) exposes `account/rateLimits/read`; it is a snapshot API, which is why this feature stores observations locally.
+- Claude Code: reuse `providers/claude_code.rs`, which uses the authenticated OAuth usage endpoint and profile metadata. This endpoint is an existing internal integration, not a newly promised public API. [Claude's usage documentation](https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work) explains that usage is shared across Claude surfaces; the chart is account-level, not session-level.
+- OpenCode: reuse `providers/opencode_go.rs` and its authenticated workspace subscription reader. [OpenCode Go documents weekly limits](https://opencode.ai/docs/go/#usage-limits). Go's web subscription reader is an internal interface and can change; generic OpenCode/Zen or third-party API keys do not imply a Go weekly allowance.
+
+No new dependency, credential extraction, network endpoint or background process was introduced. Live authenticated endpoints were not called during verification.
+
+## Boundaries and invariants
+
+| Layer                | Review                                                                                                                                         |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 Compilation        | Key Vault library tests and TypeScript pass; whole-app check and build passed after clearing stale compiled dependency artifacts               |
+| 2 Ownership / reuse  | Existing process-wide quota refresh coordinator and fetchers own network work; one main-window scheduler; concurrent history readers share IPC |
+| 3 Naming             | `remainingPercent` is 100 → 0; timestamps are Unix seconds; scheduler interval is explicitly milliseconds                                      |
+| 4 Semantics          | Weekly quota is separate from token usage, monetary balance and five-hour limits                                                               |
+| 5 Defaults           | Missing/invalid/disabled weekly items produce no sample; failed attempts retain prior observations and show unavailable status                 |
+| 6 Boundaries         | Provider eligibility and identity stay in Rust; UI sees sanitized history DTOs                                                                 |
+| 7 Discoverability    | Dedicated history store, command façade, scheduler, hook and chart projection                                                                  |
+| 8 Wire               | Zod-validated DTO; key ID, provider, display name, status and observations only; no credentials or raw provider errors                         |
+| 9 Initialization     | Deferred service only in the main window; instance-specific KeyService storage directory; SQLite atomic claim protects shared data homes       |
+| 10 Resolver symmetry | Skipped: no session/model resolver or fallback chain changed                                                                                   |
+
+Persistence: `quota-history.sqlite` beside the instance's credential store. SQLite atomically claims an account before provider I/O and retains the one-hour attempt cooldown across failures/restarts. Sampling is sequential, with no catch-up replay. Existing fetcher timeouts, authentication refreshes and bounded transient retries remain in effect; “hourly” means one automatic refresh operation per scope, not exactly one HTTP request.
+
+The store retains 28 days and reads at most 672 observations per account; display and each sampling pass are capped at 128 eligible accounts. Scheduler discovery prunes removed vault keys using the full inventory; older scopes for existing keys remain until the retention period expires. Scope hashes include provider, endpoint, key creation identity and provider account identity (credential identity is the fallback when unavailable); hashes and credentials are not returned to the UI. Stable identified accounts retain history across token renewal. Without a stable provider identity, token changes start a new history scope. A scope change during a request discards that sample.
+
+History is local, not cloud-synced. Existing data schemas are unchanged. Rollback: remove the sampler/panel and new commands; the independent history database can be removed when its observations are no longer wanted. No historical credentials or usage data was modified by this task.
+
+## Audit findings and implemented fixes
+
+| Owning boundary                                                      | Finding                                                                                                                                           | Implemented invariant / regression                                                                                                                                                                                           |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commands/quota_history_identity.rs` + `providers/codex/id_token.rs` | Codex ID-token account identity was ignored; token renewal changed the history key. The shared extractor also missed the namespaced account claim | Reuse one extractor for flat and namespaced claims; token renewal preserves the account scope; account/endpoint/organization changes remain separate                                                                         |
+| `commands/validate/quota_refresh.rs:245`                             | Claude profile enrichment could change the scope during either hourly or manual refresh and strand the first observation                          | Shared persistence path promotes only provably unchanged credentials' scope in one SQLite transaction, retaining observations and cooldown. Idempotent regression exercises the same helper used by the producing write path |
+| `quota_history.rs:111`                                               | Display truncation was used as an authoritative deletion list, deleting histories beyond account 128; read-only chart mounts performed pruning    | Prune on scheduler discovery using the complete vault-key inventory, independent of UI cap. Existing keys' older scopes remain for the retention period; removed vault keys and expired data are deleted                     |
+| `commands/quota_history.rs:34`                                       | Disabled/recent accounts were dispatched, and the sampler serialized every historical point on wake                                               | Lightweight due-ID command, shared enabled gate at discovery and sample entry, persisted cooldown check and oldest/unseen-first bounded batches                                                                              |
+| `hooks/keyVault/weeklyQuotaAccounts.ts`                              | Every health/quota publication cleared all charts and reread SQLite                                                                               | Sorted identity/display signature excludes quota/health timestamps, includes credential/endpoint notifications and tolerates map/key serialization order; 100 quota publications cause zero invalidations                    |
+| `hooks/keyVault/useWeeklyQuotaHistory.ts`                            | A newly mounted consumer could join a prior identity's pending request after all old consumers unmounted                                          | Shared read promises are identity-keyed; stale completion cannot replace a newer flight; mounted and remounted account-switch regressions pass                                                                               |
+| `hooks/keyVault/weeklyQuotaScheduler.ts`                             | Newly connected accounts could wait an hour; changes during a sampling pass were lost                                                             | Subscribe to account changes and coalesce one non-overlapping follow-up; ignore health publications; retain visibility/offline pause and disposal                                                                            |
+| `quota_history.rs:51` / `weeklyQuotaChartPoints.ts`                  | Malformed weekly values were labeled unsupported; exactly one missed hourly sample was connected by a line                                        | Reject invalid weekly values at recording and mark unavailable. Projection breaks after 90 minutes, preserving ordinary scheduling drift and actual 0/100 observations                                                       |
+
+Architecture layers 1–10 reviewed for this follow-up. Layer 10 now applies to Codex claim/metadata/credential identity resolution; no session/model resolver was changed. No repository-wide UI/config sweep or unrelated refactor was performed.
+
+Current behavior: at most 128 account histories are displayed (the cap is visible), and at most 128 due accounts are sampled per pass, prioritizing unseen/oldest accounts so the batch limit does not permanently starve later keys. Disabled accounts retain readable history but receive no new sampler request. Sampling exchanges only due IDs; chart data is loaded on demand by mounted views. One selected chart is mounted. The chart clock updates when local history is read, with no added ticking timer.
+
+Authoritative sources remain provider quota responses and the instance-local SQLite history. Credentials lacking stable account identity still use a conservative credential scope. Unproven credential/account changes are not merged. Removed vault-key histories are pruned on discovery; signed-out/changed scopes still associated with an existing key remain locally until the 28-day retention expires and are not returned under a different identity. No live history database was inspected or cleaned during this audit. Previously deleted observations cannot be reconstructed; no destructive historical repair was attempted. Scope promotion is data-preserving and transactional. SQLite schema and dependencies are unchanged; the new due-ID RPC and sampling-enabled response field ship with the frontend/backend together.
+
+Verification:
+
+- `cargo test --manifest-path src-tauri/Cargo.toml -p key_vault --lib`: **399 passed**
+- `pnpm test -- src/hooks/keyVault/weeklyQuotaAccounts.test.ts src/hooks/keyVault/weeklyQuotaScheduler.test.ts src/hooks/keyVault/useWeeklyQuotaHistory.test.ts src/modules/shared/dataSource/weeklyQuotaChartPoints.test.ts src/modules/shared/dataSource/WeeklyQuotaHistoryPanel.test.ts src/modules/shared/dataSource/SessionUsagePanel.test.ts`: **22 passed** (existing SessionUsagePanel act warnings remain)
+- `pnpm run typecheck:fast`: passed
+- `pnpm exec eslint` over all 12 changed/new TypeScript files: passed
+- `cargo check --manifest-path src-tauri/Cargo.toml -p org2 --lib` and `cargo build --manifest-path src-tauri/Cargo.toml -p org2`: passed in the original checkout after rebuilding stale dependency artifacts; isolated PR verification is recorded in the PR description
+- Scoped `git diff --check`: passed
+- Real authenticated requests, actual WebView interaction/CPU/RSS, and isolated secondary-instance execution: not run

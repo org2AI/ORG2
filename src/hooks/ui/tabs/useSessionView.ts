@@ -18,10 +18,10 @@ import {
   workstationActiveSessionIdAtom,
 } from "@src/store/session";
 import {
-  CHAT_PANEL_SURFACE_KIND,
   chatPanelMaximizedAtom,
   chatPanelNavigateAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/surfaceAtoms";
+import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 
 // ============================================
 // Types

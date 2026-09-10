@@ -11,9 +11,7 @@ use tauri::Emitter;
 
 use crate::bus::{broadcast_event, event_pipeline_bridge};
 use crate::coordination::agent_inbox::MemberIdleReason;
-use crate::coordination::agent_org_runs::{
-    AgentOrgRunContext, AgentOrgRunStatus, AgentOrgRunStore,
-};
+use crate::coordination::agent_org_runs::{AgentOrgRunContext, AgentOrgRunStore};
 use crate::coordination::agent_org_tasks::{
     self, AgentOrgTaskStore, Task, TASK_METADATA_REQUIRED_ROLE,
 };
@@ -89,7 +87,7 @@ pub struct TerminalTurnSignal {
     pub completed_at: String,
 }
 
-fn emit_session_status_changed(
+pub(crate) fn emit_session_status_changed(
     app_handle: Option<&tauri::AppHandle>,
     session_id: &str,
     status: AgentSessionStatus,
@@ -245,19 +243,34 @@ pub fn build_session_error_event(session_id: &str, message: &str) -> SessionEven
     event
 }
 
-pub fn persist_session_error_event(
+pub async fn persist_session_error_event(
     app_handle: Option<&tauri::AppHandle>,
     session_id: &str,
     message: &str,
-) {
-    let Some(handle) = app_handle else {
-        return;
-    };
-    event_pipeline_bridge::push_events(
-        handle,
-        session_id,
-        vec![build_session_error_event(session_id, message)],
-    );
+) -> Result<(), String> {
+    let event = build_session_error_event(session_id, message);
+
+    // Lifecycle errors are terminal user-visible facts, not high-frequency
+    // streaming updates. Persist synchronously before notifying any UI so a
+    // missed `agent:error`/`es:changed` can always be recovered on reopen. The
+    // retry loop sleeps on SQLite contention, so await it on the blocking pool.
+    let durable_session_id = session_id.to_string();
+    let durable_event = event.clone();
+    tokio::task::spawn_blocking(move || {
+        event_pipeline_bridge::persist_events(
+            "session-error-terminal",
+            &durable_session_id,
+            std::slice::from_ref(&durable_event),
+            8,
+        )
+    })
+    .await
+    .map_err(|err| format!("persist terminal session error worker failed: {err}"))??;
+
+    if let Some(handle) = app_handle {
+        event_pipeline_bridge::push_events(handle, session_id, vec![event]);
+    }
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -309,7 +322,7 @@ fn member_failure_recovery_guidance(failure_reason: &str, requeued_tasks: &[Task
     lines.extend([
         String::new(),
         "Recommended recovery:".to_string(),
-        "1. Inspect the failure and choose a replacement owner explicitly with task_update owner_member_id.".to_string(),
+        "1. Inspect the failure and choose a replacement owner explicitly with task_update operation=patch_pending owner_member_id=...".to_string(),
         "2. If retrying the same member is appropriate, explicitly assign the task back to it; the system will not do so automatically.".to_string(),
         "3. Never assign outside eligible_member_ids; repair eligibility first when the intended replacement is missing.".to_string(),
         "4. If no eligible member is available, pause and report to the user.".to_string(),
@@ -324,6 +337,7 @@ fn parse_agent_exec_mode(value: Option<&str>) -> Option<crate::session::AgentExe
 
 fn requeue_agent_org_member_in_progress_work(
     session_id: &str,
+    failed_turn_intent_id: Option<&str>,
     requeue_work: bool,
 ) -> Result<Option<AgentOrgMemberLifecycleSnapshot>, String> {
     let Some(record) =
@@ -334,16 +348,18 @@ fn requeue_agent_org_member_in_progress_work(
     let Some(member_id) = record.org_member_id else {
         return Ok(None);
     };
-    let store = crate::definitions::orgs::orgs_store();
-    let Some(context) = AgentOrgRunStore::context_for_session_with_parent_walk(session_id, &store)?
-    else {
+    let Some(context) = AgentOrgRunStore::context_for_session_with_parent_walk(session_id)? else {
         return Ok(None);
     };
     let member_agent_id = context
         .require_participant_agent_id(&member_id)?
         .to_string();
     let requeued = if requeue_work {
-        AgentOrgTaskStore::requeue_in_progress_for_owner(&context.run_id, &member_id)?
+        let failed_turn_intent_id = failed_turn_intent_id
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| "task_failure_recovery_requires_exact_turn_context".to_string())?;
+        AgentOrgTaskStore::recover_task_execution_failure(session_id, failed_turn_intent_id)?
     } else {
         Vec::new()
     };
@@ -359,20 +375,62 @@ fn requeue_agent_org_member_in_progress_work(
 pub fn finalize_agent_org_member_turn(
     app_handle: Option<&tauri::AppHandle>,
     session_id: &str,
+    turn_intent_id: Option<&str>,
     response: &Result<String, String>,
 ) {
-    let outcome =
+    let typed_failure = response.as_ref().err().and_then(|error| {
+        crate::coordination::agent_org_finality::AgentOrgTurnFailure::decode(error)
+    });
+    let requeue_work = response.is_err()
+        && typed_failure
+            .as_ref()
+            .is_none_or(|failure| failure.kind.permits_task_recovery());
+    let outcome: Result<(Option<AgentOrgMemberLifecycleSnapshot>, Vec<String>), String> =
         crate::tools::impls::orchestration::member_idle::run_agent_org_blocking_section(|| {
-            requeue_agent_org_member_in_progress_work(session_id, response.is_err())
+            // Recovery still validates the exact running TaskExecution. Let
+            // that transaction settle the Task before terminalizing the same
+            // Turn; deterministic authority failures skip recovery entirely.
+            let snapshot = requeue_agent_org_member_in_progress_work(
+                session_id,
+                turn_intent_id,
+                requeue_work,
+            )?;
+            let completion_receipts = if let Some(turn_intent_id) = turn_intent_id {
+                crate::coordination::agent_org_finality::finalize_turn(
+                    session_id,
+                    turn_intent_id,
+                    response.is_ok(),
+                    typed_failure
+                        .as_ref()
+                        .map(|failure| failure.reason_code.as_str())
+                        .unwrap_or(if response.is_ok() {
+                            "turn_completed"
+                        } else {
+                            "provider_failed"
+                        }),
+                )?
+            } else {
+                Vec::new()
+            };
+            Ok((snapshot, completion_receipts))
         });
     let reconcile_run_id = outcome
         .as_ref()
         .ok()
-        .and_then(|snapshot| snapshot.as_ref())
+        .and_then(|(snapshot, _)| snapshot.as_ref())
         .map(|snapshot| snapshot.context.run_id.clone());
 
     match outcome {
-        Ok(Some(snapshot)) => {
+        Ok((Some(snapshot), completion_receipts)) => {
+            if !completion_receipts.is_empty() {
+                if let Some(handle) = app_handle {
+                    AppHandleInboxWakeHook::new(handle.clone()).wake_member_for_formal_receipts(
+                        crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID,
+                        &snapshot.context.run_id,
+                        &completion_receipts,
+                    );
+                }
+            }
             if !snapshot.requeued_tasks.is_empty() {
                 tracing::info!(
                     session_id = %session_id,
@@ -462,7 +520,7 @@ pub fn finalize_agent_org_member_turn(
                 );
             }
         }
-        Ok(None) => {}
+        Ok((None, _)) => {}
         Err(err) => {
             tracing::warn!(
                 session_id = %session_id,
@@ -476,13 +534,27 @@ pub fn finalize_agent_org_member_turn(
     // after every member/coordinator boundary so an all-completed, fully
     // quiescent run closes without requiring the user to pause/resume it.
     // The store re-checks tasks, inbox, interventions and queued turn
-    // intents in one IMMEDIATE transaction before committing finality.
+    // intents in one IMMEDIATE transaction before committing quiescence.
     if let Some(run_id) = reconcile_run_id {
-        match AgentOrgRunStore::reconcile_run_finality(&run_id) {
-            Ok(Some(AgentOrgRunStatus::Completed)) => {
-                tracing::info!(run_id = %run_id, "[lifecycle] completed quiescent Agent Org run");
+        let transition = AgentOrgRunStore::assess_run_quiescence(&run_id).and_then(|assessment| {
+            let Some(generation) = assessment.facts.activation_generation else {
+                return Ok(false);
+            };
+            let Some(work_revision) = assessment
+                .facts
+                .progress
+                .as_ref()
+                .map(|progress| progress.work_revision)
+            else {
+                return Ok(false);
+            };
+            AgentOrgRunStore::try_transition_working_to_idle(&run_id, generation, work_revision)
+        });
+        match transition {
+            Ok(true) => {
+                tracing::info!(run_id = %run_id, "[lifecycle] idled quiescent Agent Org run");
             }
-            Ok(_) => {}
+            Ok(false) => {}
             Err(err) => {
                 tracing::warn!(run_id = %run_id, error = %err, "[lifecycle] failed to reconcile Agent Org run after turn finalization");
             }
@@ -513,6 +585,28 @@ fn should_rewake_agent_org_member_after_turn(
     .is_some()
     {
         return Ok(false);
+    }
+    if member_id == crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID {
+        let conn = database::db::get_connection().map_err(|error| error.to_string())?;
+        return conn
+            .query_row(
+                "SELECT EXISTS(
+                     SELECT 1
+                     FROM agent_org_runtime_formal_trigger_receipts receipt
+                     WHERE receipt.org_run_id=?1
+                       AND receipt.status='pending'
+                       AND receipt.doorbell_status IN ('missing','delivered')
+                       AND NOT EXISTS (
+                           SELECT 1
+                           FROM agent_org_runtime_formal_trigger_attempts attempt
+                           WHERE attempt.receipt_id=receipt.receipt_id
+                             AND attempt.status IN ('queued','running')
+                       )
+                 )",
+                [run_id],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string());
     }
     crate::coordination::agent_inbox::AgentInboxStore::has_unread_for_member(member_id, run_id)
 }
@@ -548,8 +642,72 @@ pub async fn finalize_session(
         .await
         .unwrap_or((false, None))
     };
+    let (
+        user_directed_turn,
+        intervention_suspended_formal_turn,
+        final_summary_turn,
+        authority_error,
+    ) = if is_agent_org_member_session {
+        let sid = session_id.to_string();
+        let turn_intent_id = terminal_turn
+            .as_ref()
+            .and_then(|signal| signal.turn_intent_id.clone());
+        match tokio::task::spawn_blocking(move || -> Result<(bool, bool, bool), String> {
+                let Some(turn_intent_id) = turn_intent_id else {
+                    return Ok((false, false, false));
+                };
+                let connection = database::db::get_connection().map_err(|error| error.to_string())?;
+                let context =
+                    crate::coordination::agent_org_turn_contexts::require_context_with_connection(
+                        &connection,
+                        &sid,
+                        &turn_intent_id,
+                    )?;
+                let user_directed = context.is_user_directed_work();
+                let suspended_formal = !user_directed
+                    && crate::coordination::agent_member_interventions::AgentMemberInterventionStore::open_receipt_for_original_turn(
+                        &sid,
+                        &turn_intent_id,
+                    )?
+                    .is_some();
+                let final_summary =
+                    crate::coordination::agent_org_final_summary::has_summary_receipt_for_turn_with_connection(
+                        &connection,
+                        &sid,
+                        &turn_intent_id,
+                    )?;
+                Ok((user_directed, suspended_formal, final_summary))
+            })
+            .await
+            {
+                Ok(Ok((user_directed, suspended_formal, final_summary))) => {
+                    (user_directed, suspended_formal, final_summary, None)
+                }
+                Ok(Err(error)) => (false, false, false, Some(error)),
+                Err(error) => (false, false, false, Some(error.to_string())),
+            }
+    } else {
+        // Ordinary SDE finalization never reads Agent Org Turn context or
+        // intervention state.
+        (false, false, false, None)
+    };
 
-    let final_status = if response.is_ok() {
+    if let Some(error) = authority_error.as_deref() {
+        tracing::error!(
+            session_id,
+            error,
+            "Agent Org finalizer could not prove the persisted Turn authority; formal lifecycle hooks are suppressed"
+        );
+    }
+
+    let final_status = if authority_error.is_some() {
+        AgentSessionStatus::Failed
+    } else if user_directed_turn || intervention_suspended_formal_turn || final_summary_turn {
+        // UDW failure belongs to that direct Turn/receipt, not to the durable
+        // Member or Team lifecycle. The structured agent:error still renders
+        // the failure while the canonical Session returns to Idle.
+        AgentSessionStatus::Idle
+    } else if response.is_ok() {
         if is_agent_org_member_session {
             AgentSessionStatus::Idle
         } else {
@@ -558,6 +716,19 @@ pub async fn finalize_session(
     } else {
         AgentSessionStatus::Failed
     };
+
+    // A terminal error is durable before any status notification leaves this
+    // function. Status broadcasts can be missed; the EventStore row is the
+    // authoritative replay path after a window reload or app restart.
+    if let Err(message) = response {
+        if let Err(err) = persist_session_error_event(app_handle, session_id, message).await {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %err,
+                "[lifecycle] failed to persist terminal session error event"
+            );
+        }
+    }
 
     if let Some(ref terminal_turn) = terminal_turn {
         persist_and_emit_terminal_turn(session_id, terminal_turn, final_status, app_handle);
@@ -577,18 +748,31 @@ pub async fn finalize_session(
         emit_session_status_changed(app_handle, session_id, final_status);
     }
 
-    if is_agent_org_member_session {
+    if is_agent_org_member_session
+        && !user_directed_turn
+        && !intervention_suspended_formal_turn
+        && !final_summary_turn
+        && authority_error.is_none()
+    {
         // Member finalization performs several synchronous SQLite operations
         // under the shared writer lock (task requeue, recovery-budget cleanup,
-        // MemberIdle persistence, and run finality reconciliation). Keep the
+        // MemberIdle persistence, and Team quiescence reconciliation). Keep the
         // complete blocking phase off the Tokio worker that is finalizing the
         // provider turn; moving only the first query still leaves the later
         // writes able to stall unrelated async sessions.
         let sid = session_id.to_string();
         let response = response.clone();
+        let turn_intent_id = terminal_turn
+            .as_ref()
+            .and_then(|signal| signal.turn_intent_id.clone());
         let app_handle = app_handle.cloned();
         if let Err(err) = tokio::task::spawn_blocking(move || {
-            finalize_agent_org_member_turn(app_handle.as_ref(), &sid, &response);
+            finalize_agent_org_member_turn(
+                app_handle.as_ref(),
+                &sid,
+                turn_intent_id.as_deref(),
+                &response,
+            );
         })
         .await
         {
@@ -623,10 +807,6 @@ pub async fn finalize_session(
             app_handle_clone.as_ref(),
         )
         .await;
-    }
-
-    if let Err(message) = response {
-        persist_session_error_event(app_handle, session_id, message);
     }
 
     // Turn-end wake re-check (one of the two triggers feeding the single

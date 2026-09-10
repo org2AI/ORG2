@@ -1,1 +1,0 @@
-export { useBackgroundSettings } from "./useBackgroundSettings";

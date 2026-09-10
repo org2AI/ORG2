@@ -57,12 +57,14 @@ pub use connection::get_connection;
 pub use schema::init_session_tables;
 
 pub use crud::{
-    clear_old_sessions, count_events, delete_session, finalize_deferred_event_import,
-    find_awaiting_user_events_by_function, get_all_sessions, get_cache_stats, get_event,
-    get_session_metadata, load_events, load_session, save_events, save_events_deferred,
-    save_session, search_all_sessions, search_events, update_session_specs,
+    any_event_matching, clear_old_sessions, count_events, delete_session,
+    finalize_deferred_event_import, find_awaiting_user_events_by_function, get_all_sessions,
+    get_cache_stats, get_event, get_session_metadata, load_events, load_session, save_events,
+    save_events_deferred, save_session, search_all_sessions, search_events, update_session_specs,
 };
-pub use editing::{clear_session_history, delete_event, truncate_after_event, update_event};
+pub use editing::{
+    clear_session_history, delete_event, delete_events_by_ids, truncate_after_event, update_event,
+};
 
 // Tauri commands — registered in `app::commands::handler_list.inc` as
 // `session_persistence::cache_*` (formerly `session::cache::cache_*`).

@@ -1,7 +1,7 @@
 import React, { Suspense, useCallback, useState } from "react";
 
 import { SESSION_CREATOR_LAUNCH_MODE } from "@src/features/SessionCreator/types";
-import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanelAtom";
+import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanel/selectionAtoms";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
 
 import type { ChatPanelProps, ChatPanelRegionNotice } from "./types";

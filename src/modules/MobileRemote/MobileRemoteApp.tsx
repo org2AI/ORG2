@@ -1,23 +1,10 @@
-import React, {
-  useCallback,
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import React from "react";
 
-import { MobileRemoteProviders, useMobileRemote } from "./app";
+import { MobileRemoteProviders } from "./app";
 import { MobileShell } from "./components/MobileShell";
 import { MobileTabBar } from "./components/MobileTabBar";
 import { StopConfirmModal } from "./components/modals/StopConfirmModal";
-import { parseMobileRemoteWsUrl } from "./connection/parseMobileRemoteWsUrl";
-import type { MobileConnectionConfig } from "./connection/types";
-import { DEMO_SAS_PHRASE } from "./demo/demoFixtures";
-import { resolveMobileSessionTitle } from "./lib/sessionPresentation";
-import {
-  createInitialMobileRemoteNavState,
-  reduceMobileRemoteNav,
-} from "./navigation/mobileRemoteNavigation";
+import { useMobileRemoteCoordinator } from "./navigation/useMobileRemoteCoordinator";
 import { ConnectingLiveBridge } from "./screens/ConnectingLiveBridge";
 import { ConnectionErrorScreen } from "./screens/ConnectionErrorScreen";
 import { QRScanScreen } from "./screens/QRScanScreen";
@@ -43,85 +30,20 @@ interface MobileRemoteRoutesProps {
 function MobileRemoteRoutes({
   recoveredPairingIntent,
 }: MobileRemoteRoutesProps) {
-  const { connection, sessions, stopSession, disconnect } = useMobileRemote();
-  const [nav, dispatch] = useReducer(
-    reduceMobileRemoteNav,
-    undefined,
-    createInitialMobileRemoteNavState
-  );
-  const [stopConfirming, setStopConfirming] = useState(false);
-  const consumedPairingLinkRef = useRef<string | null>(null);
-
-  const showTabBar =
-    nav.screen === "sessions" &&
-    connection.status === "connected" &&
-    !nav.selectedSessionId;
-  const selectedSessionName = nav.selectedSessionId
-    ? resolveMobileSessionTitle(sessions, nav.selectedSessionId)
-    : "";
-  const selectedSessionSendCapability = nav.selectedSessionId
-    ? sessions.find((session) => session.id === nav.selectedSessionId)
-        ?.sendCapability
-    : undefined;
-
-  useEffect(() => {
-    if (
-      connection.status === "connected" &&
-      !connection.demoMode &&
-      nav.screen === "welcome"
-    ) {
-      dispatch({ type: "connecting_complete" });
-    }
-  }, [connection.demoMode, connection.status, nav.screen]);
-
-  useEffect(() => {
-    if (
-      !recoveredPairingIntent ||
-      consumedPairingLinkRef.current === recoveredPairingIntent
-    ) {
-      return;
-    }
-    consumedPairingLinkRef.current = recoveredPairingIntent;
-    const parsed = parseMobileRemoteWsUrl(recoveredPairingIntent);
-    if (parsed.ok) {
-      dispatch({ type: "accept_pairing", ...parsed });
-    }
-  }, [recoveredPairingIntent]);
-
-  const handleScanDemo = useCallback(() => {
-    dispatch({ type: "scan_qr_demo", sasPhrase: DEMO_SAS_PHRASE });
-  }, []);
-
-  const handleConnectingComplete = useCallback(() => {
-    dispatch({ type: "connecting_complete" });
-  }, []);
-
-  const handleAcceptPairing = useCallback(
-    (args: {
-      config: MobileConnectionConfig;
-      requiresSas: boolean;
-      sasPhrase?: string;
-    }) => {
-      dispatch({ type: "accept_pairing", ...args });
-    },
-    []
-  );
-
-  const handleConfirmStop = useCallback(async () => {
-    if (!nav.selectedSessionId) return;
-    setStopConfirming(true);
-    try {
-      await stopSession(nav.selectedSessionId);
-    } finally {
-      setStopConfirming(false);
-      dispatch({ type: "close_stop_modal" });
-    }
-  }, [nav.selectedSessionId, stopSession]);
-
-  const handleConnectionRetry = useCallback(() => {
-    void disconnect();
-    dispatch({ type: "back_to_welcome" });
-  }, [disconnect]);
+  const {
+    connection,
+    nav,
+    dispatch,
+    stopConfirming,
+    stopFailed,
+    showTabBar,
+    selectedSessionName,
+    selectedSessionSendCapability,
+    handleConnectingComplete,
+    handleAcceptPairing,
+    handleConfirmStop,
+    handleConnectionRetry,
+  } = useMobileRemoteCoordinator(recoveredPairingIntent);
 
   if (connection.status === "error") {
     return (
@@ -140,7 +62,6 @@ function MobileRemoteRoutes({
       body = (
         <WelcomeScreen
           onOpenPairing={() => dispatch({ type: "open_qr_scan" })}
-          onScanDemo={handleScanDemo}
         />
       );
       break;
@@ -185,8 +106,9 @@ function MobileRemoteRoutes({
             <StopConfirmModal
               visible={nav.stopModalOpen}
               confirming={stopConfirming}
+              failed={stopFailed}
               onCancel={() => dispatch({ type: "close_stop_modal" })}
-              onConfirm={() => void handleConfirmStop()}
+              onConfirm={() => void handleConfirmStop().catch(() => undefined)}
             />
           </>
         );
@@ -234,7 +156,7 @@ export function MobileRemoteApp({
     <MobileRemoteProviders
       authUserId={authUserId}
       relayUrl={relayUrl}
-      demoByDefault={!relayUrl}
+      demoByDefault={false}
       suppressInitialBootstrap={recoveredPairingIntent !== null}
     >
       <MobileRemoteRoutes recoveredPairingIntent={recoveredPairingIntent} />

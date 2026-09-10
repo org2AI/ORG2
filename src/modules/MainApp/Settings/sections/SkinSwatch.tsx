@@ -67,5 +67,3 @@ export const AccentSwatch: React.FC<AccentSwatchProps> = ({
     }}
   />
 );
-
-export default SkinSwatch;

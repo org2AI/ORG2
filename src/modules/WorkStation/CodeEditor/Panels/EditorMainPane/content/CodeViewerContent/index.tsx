@@ -13,7 +13,7 @@ import React, { memo } from "react";
 import { Placeholder } from "@src/components/Placeholder";
 import { getPreviewType } from "@src/util/file/previewTypes";
 
-import { useCodeViewerHandlers } from "./hooks";
+import { useCodeViewerHandlers } from "./hooks/useCodeViewerHandlers";
 import type { CodeViewerContentProps } from "./types";
 import { arePropsEqual, getRelativePath } from "./utils";
 import { BinaryView, ContentView, ErrorView, LoadingView } from "./views";

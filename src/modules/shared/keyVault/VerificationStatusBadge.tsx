@@ -16,7 +16,7 @@ import type {
   VerificationData,
   VerificationState,
 } from "@src/api/types/keyVault";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import Tag from "@src/components/Tag";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import {
@@ -168,7 +168,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   switch (effectiveState) {
     case "pending":
       return (
-        <InlineAlert
+        <PageNotice
           type="warning"
           icon={
             <HugeiconsIcon
@@ -186,12 +186,12 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           <p className="mt-1 text-xs opacity-70">
             {t("keyVault.verification.pendingTime")}
           </p>
-        </InlineAlert>
+        </PageNotice>
       );
 
     case "in_progress":
       return (
-        <InlineAlert
+        <PageNotice
           type="info"
           icon={
             <HugeiconsIcon
@@ -213,13 +213,13 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
               })}
             </p>
           )}
-        </InlineAlert>
+        </PageNotice>
       );
 
     case "passed":
     case "approved":
       return (
-        <InlineAlert
+        <PageNotice
           type="success"
           icon={
             <HugeiconsIcon
@@ -231,12 +231,12 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           }
         >
           {t("keyVault.verification.keysVerified")}
-        </InlineAlert>
+        </PageNotice>
       );
 
     case "failed":
       return (
-        <InlineAlert
+        <PageNotice
           type="danger"
           icon={
             <HugeiconsIcon
@@ -261,12 +261,12 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           <p className="mt-1 text-xs opacity-70">
             {t("keyVault.verification.failedHint")}
           </p>
-        </InlineAlert>
+        </PageNotice>
       );
 
     case "rejected_other":
       return (
-        <InlineAlert
+        <PageNotice
           type="danger"
           icon={
             <HugeiconsIcon
@@ -285,7 +285,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
               {t("keyVault.verification.rejectedByAdmin")}
             </p>
           )}
-        </InlineAlert>
+        </PageNotice>
       );
 
     default:

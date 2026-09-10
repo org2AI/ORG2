@@ -27,21 +27,15 @@ vi.mock("@src/router/lazy/pages", () => {
     AuthCallback: Placeholder,
     ConsumerWallet: Placeholder,
     DelegationHistoryPage: Placeholder,
-    FlowAwarenessTestPage: Placeholder,
     LoginPage: Placeholder,
     MobileRemotePage: Placeholder,
     Profile: Placeholder,
     ProviderBoost: Placeholder,
     ProviderEarnings: Placeholder,
     PublicProfilePage: Placeholder,
-    SelectRepoPage: Placeholder,
     SessionWindowPage: Placeholder,
   };
 });
-
-vi.mock("@src/modules/shared/layouts/MainAppShell", () => ({
-  default: () => null,
-}));
 
 vi.mock("@src/modules/shared/layouts/blocks", () => ({
   Placeholder: () => null,

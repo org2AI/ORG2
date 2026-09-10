@@ -2,7 +2,7 @@ import { enrichedWorkItemToUI, projectDataToUI } from "@src/api/http/project";
 import type {
   ChatPanelSelectedProject,
   ChatPanelSelectedWorkItem,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 
 import type { SidebarProject, SidebarWorkItem } from "./types";
 

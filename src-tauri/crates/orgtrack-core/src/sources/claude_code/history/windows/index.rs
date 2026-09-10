@@ -7,8 +7,13 @@ use core_types::activity::ActivityChunk;
 use crate::projectors::turn_metadata::ProjectedTurnMetadata;
 use crate::sources::imported_history;
 
-use super::super::replay::{claude_content_text, claude_tool_result_text};
-use super::super::types::{is_harness_injected_user_line, ClaudeJsonlLine};
+use super::super::replay::{
+    claude_content_text, claude_local_command_input, claude_local_command_output,
+    claude_tool_result_text,
+};
+use super::super::types::{
+    is_claude_compact_summary, is_harness_injected_user_line, ClaudeJsonlLine,
+};
 use super::super::CLAUDE_CODE_PROVIDER_SLUG;
 
 pub(in crate::sources::claude_code::history) const CLAUDE_WINDOW_TURN_ID_PREFIX: &str =
@@ -118,6 +123,7 @@ pub(in crate::sources::claude_code::history) fn index_claude_user_turns(
     let mut line = Vec::new();
     let mut start_offset = 0u64;
     let mut turns = Vec::new();
+    let mut awaiting_local_command_output = false;
 
     loop {
         line.clear();
@@ -141,6 +147,13 @@ pub(in crate::sources::claude_code::history) fn index_claude_user_turns(
                 }
             }
         };
+        if awaiting_local_command_output
+            && (line_might_contain_json_string_field(&line, b"type", b"assistant")
+                || (line_might_contain_json_string_field(&line, b"type", b"system")
+                    && line_might_contain_json_string_field(&line, b"subtype", b"local_command")))
+        {
+            awaiting_local_command_output = false;
+        }
         if !line_might_be_claude_user(&line) || line_is_obvious_tool_result(&line) {
             count_toward_previous_turn(&mut turns);
             continue;
@@ -149,7 +162,10 @@ pub(in crate::sources::claude_code::history) fn index_claude_user_turns(
             count_toward_previous_turn(&mut turns);
             continue;
         };
-        if parsed.r#type != "user" || is_harness_injected_user_line(&parsed) {
+        if parsed.r#type != "user"
+            || is_claude_compact_summary(&parsed)
+            || is_harness_injected_user_line(&parsed)
+        {
             count_toward_previous_turn(&mut turns);
             continue;
         }
@@ -171,6 +187,14 @@ pub(in crate::sources::claude_code::history) fn index_claude_user_turns(
             continue;
         };
         let text = imported_history::strip_orgii_exec_mode_bridge(&text);
+        if awaiting_local_command_output && claude_local_command_output(text).is_some() {
+            awaiting_local_command_output = false;
+            count_toward_previous_turn(&mut turns);
+            continue;
+        }
+        let command = claude_local_command_input(text);
+        awaiting_local_command_output = command.is_some();
+        let text = command.as_deref().unwrap_or(text);
         if text.trim().is_empty() {
             count_toward_previous_turn(&mut turns);
             continue;

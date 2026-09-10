@@ -1,27 +1,8 @@
 {
-  "selectRepo": {
-    "title": "Orgii",
-    "subtitle": "Select a repo to start",
-    "recentRepos": "Recent Repos",
-    "loadingProjects": "Loading repos...",
-    "noRepositories": "No repos yet",
-    "getStartedHint": "Create or clone a repo to get started",
-    "noPath": "No path",
-    "searchPlaceholder": "Search repos...",
-    "loadMore": "Load more",
-    "actions": {
-      "importLocal": "Import Local Repo",
-      "cloneUrl": "Clone from GitHub URL",
-      "cloneGithub": "Clone from my GitHub",
-      "createNew": "Create New Repo"
-    }
-  },
   "market": {
     "auth": {
       "noAuthCode": "No authorization code received",
-      "authSessionExpired": "Authentication session expired. Please try again.",
-      "tokenExchangeFailed": "Token exchange failed",
-      "defaultUser": "User"
+      "tokenExchangeFailed": "Token exchange failed"
     }
   }
 }

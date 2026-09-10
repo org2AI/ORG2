@@ -33,9 +33,24 @@ describe("General settings tabs", () => {
       "general",
       "notifications",
       "shortcuts",
+      "storage",
       "self-hosted",
     ]);
     expect(getDefaultSettingsSectionTab("general")).toBe("general");
+  });
+
+  it("moves retired device tabs to General", () => {
+    expect(
+      parseSettingsSectionTab("/orgii/app/settings/app/general/storage")
+    ).toEqual({ section: "general", tab: "storage" });
+    expect(
+      parseSettingsSectionTab("/orgii/app/settings/app/monitor/storage")
+    ).toEqual({ section: "general", tab: "storage" });
+    for (const tab of ["resources", "network"]) {
+      expect(
+        parseSettingsSectionTab(`/orgii/app/settings/app/monitor/${tab}`)
+      ).toEqual({ section: "general", tab: "general" });
+    }
   });
 
   it("keeps Collaboration bookmarks pointed at their new General tabs", () => {

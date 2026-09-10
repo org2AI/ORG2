@@ -2,6 +2,11 @@
 import { act, createElement, createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  CURRENT_SHORTCUT_PLATFORM,
+  resetShortcutBindings,
+  setShortcutBinding,
+} from "@src/config/keyboard/shortcutBindings";
 import { type SmokeRoot, createSmokeRoot } from "@src/test/reactSmokeHarness";
 
 import ComposerInput, { type ComposerInputRef } from "../index";
@@ -30,6 +35,7 @@ describe("ComposerInput line breaks in new and edited text", () => {
   });
 
   afterEach(async () => {
+    resetShortcutBindings();
     await root.unmount();
     window.getSelection()?.removeAllRanges();
   });
@@ -200,5 +206,32 @@ describe("ComposerInput line breaks in new and edited text", () => {
     pressEnter();
     expect(onSubmit).toHaveBeenCalledTimes(2);
     expect(ref.current?.getText()).toBe("submit this");
+  });
+  it("uses a customized send chord while Enter inserts a line break, then restores the input preference", async () => {
+    await mount("message", false);
+    setShortcutBinding("chat_send", CURRENT_SHORTCUT_PLATFORM, {
+      key: "F6",
+      ctrl: true,
+      meta: false,
+      alt: false,
+      shift: false,
+    });
+    pressEnter();
+    expect(onSubmit).not.toHaveBeenCalled();
+    act(() =>
+      host.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "F6",
+          code: "F6",
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    );
+    expect(onSubmit).toHaveBeenCalledOnce();
+    resetShortcutBindings();
+    pressEnter();
+    expect(onSubmit).toHaveBeenCalledTimes(2);
   });
 });

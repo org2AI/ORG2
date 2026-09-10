@@ -25,13 +25,19 @@ import { z } from "zod/v4";
 
 import { createLogger } from "@src/hooks/logger";
 
-import { ORG2_CLOUD_POSTGREST_SCHEMA, getCloudEndpoint } from "./config";
+import {
+  type CloudEndpoint,
+  ORG2_CLOUD_POSTGREST_SCHEMA,
+  getCloudEndpoint,
+} from "./config";
 import { fetchWithTransportRetry } from "./org2CloudFetchRetry";
 
 const log = createLogger("Org2CloudCommentsClient");
 
 /** RPC-enforced body bound (0014 SIZE note) — mirrored in composers. */
 export const CLOUD_COMMENT_MAX_BODY_LENGTH = 4000;
+/** RPC-enforced explicit-recipient bound (0028) — mirrored in Team Chat. */
+export const CLOUD_COMMENT_MAX_MENTIONED_USER_IDS = 50;
 
 // ---------------------------------------------------------------------------
 // Error model
@@ -46,6 +52,7 @@ export const ORG2_COMMENT_ERROR_CODES = [
   "ORG2_FORBIDDEN",
   "ORG2_REPLAY_NOT_AVAILABLE",
   "ORG2_QUOTA_EXCEEDED",
+  "ORG2_IDEMPOTENCY_CONFLICT",
   "ORG2_AUTH_REQUIRED",
   "ORG2_MEMBER_REQUIRED",
 ] as const;
@@ -85,9 +92,9 @@ export function isOrg2CommentErrorCode(
 async function callCommentRpc(
   functionName: string,
   accessToken: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  endpoint: Pick<CloudEndpoint, "supabaseUrl" | "anonKey"> = getCloudEndpoint()
 ): Promise<unknown> {
-  const endpoint = getCloudEndpoint();
   const response = await fetchWithTransportRetry(
     `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`,
     {
@@ -193,7 +200,19 @@ const CloudSessionCommentWireSchema = z.object({
 
 export type CloudSessionComment = z.output<
   typeof CloudSessionCommentWireSchema
->;
+> & {
+  /** Client-only delivery state for an optimistic Team Chat row. */
+  clientDeliveryStatus?: "pending" | "sent" | "failed";
+  /** Client-only error detail retained with a failed outgoing row. */
+  clientDeliveryError?: string;
+  /**
+   * Original server-side values for an edited retry's CAS. They deliberately
+   * survive later failed edits; using the latest optimistic body here would
+   * make every subsequent retry conflict forever.
+   */
+  clientRetryExpectedBody?: string;
+  clientRetryExpectedMentionedUserIds?: string[];
+};
 
 const AddCommentResultSchema = z.object({
   comment: CloudSessionCommentWireSchema,
@@ -287,6 +306,61 @@ export interface AddSessionCommentInput {
    * null keeps the comment counted on the source plane.
    */
   originSessionId?: string | null;
+  /**
+   * Stable client-generated key reused by delivery retries. A matching retry
+   * returns the original durable row; reusing the key for different content
+   * fails closed server-side.
+   */
+  clientMessageKey?: string;
+  /** Explicit edited-retry intent; never inferred from a payload mismatch. */
+  replaceExisting?: boolean;
+  /** Original failed-row body used as the edited retry compare-and-swap base. */
+  expectedBody?: string;
+  /** Original failed-row mentions used as the edited retry compare-and-swap base. */
+  expectedMentionedUserIds?: string[];
+}
+
+function isMissingCommentRpc(error: unknown): boolean {
+  return (
+    error instanceof Org2CloudCommentError &&
+    error.status === 404 &&
+    /could not find the function/i.test(error.message)
+  );
+}
+
+async function callLegacyAddSessionComment(
+  accessToken: string,
+  body: Record<string, unknown>,
+  hasMentions: boolean
+): Promise<unknown> {
+  try {
+    return await callCommentRpc(
+      hasMentions
+        ? "cloud_add_session_comment_with_mentions"
+        : "cloud_add_session_comment",
+      accessToken,
+      body
+    );
+  } catch (error) {
+    // Graceful degradation to a pre-origin backend: PostgREST answers 404
+    // when no function matches the argument set, so drop the additive origin
+    // arg and retry once. The comment still posts (counted on the source
+    // plane); per-fork attribution just waits for the migration.
+    if (
+      "p_origin_session_id" in body &&
+      !hasMentions &&
+      isMissingCommentRpc(error)
+    ) {
+      const compatibleBody = { ...body };
+      delete compatibleBody.p_origin_session_id;
+      return callCommentRpc(
+        "cloud_add_session_comment",
+        accessToken,
+        compatibleBody
+      );
+    }
+    throw error;
+  }
 }
 
 /**
@@ -315,41 +389,36 @@ export async function addSessionComment(
   const mentionedUserIds = [
     ...new Set(input.mentionedUserIds?.filter(Boolean) ?? []),
   ];
-  if (mentionedUserIds.length > 50) {
+  if (mentionedUserIds.length > CLOUD_COMMENT_MAX_MENTIONED_USER_IDS) {
     throw new Org2CloudCommentError("ORG2_VALIDATION");
   }
   if (mentionedUserIds.length > 0) {
     body.p_mentioned_user_ids = mentionedUserIds;
   }
   let payload: unknown;
-  try {
+  if (input.clientMessageKey) {
+    // Fail closed if the server has not deployed 0028 yet. Falling back to
+    // an unkeyed write would turn a lost response into a duplicate message.
+    // Deployment therefore remains server-first; the visible optimistic row
+    // stays failed/retryable until the idempotent RPC is available.
     payload = await callCommentRpc(
-      mentionedUserIds.length > 0
-        ? "cloud_add_session_comment_with_mentions"
-        : "cloud_add_session_comment",
+      "cloud_add_session_comment_idempotent",
       accessToken,
-      body
+      {
+        ...body,
+        p_client_message_key: input.clientMessageKey,
+        p_replace_existing: input.replaceExisting ?? false,
+        p_expected_body: input.expectedBody ?? null,
+        p_expected_mentioned_user_ids: input.expectedMentionedUserIds ?? null,
+        p_mentioned_user_ids: mentionedUserIds,
+      }
     );
-  } catch (error) {
-    // Graceful degradation to a pre-origin backend: PostgREST answers 404
-    // when no function matches the argument set, so drop the additive origin
-    // arg and retry once. The comment still posts (counted on the source
-    // plane); per-fork attribution just waits for the migration.
-    if (
-      "p_origin_session_id" in body &&
-      mentionedUserIds.length === 0 &&
-      error instanceof Org2CloudCommentError &&
-      error.status === 404
-    ) {
-      delete body.p_origin_session_id;
-      payload = await callCommentRpc(
-        "cloud_add_session_comment",
-        accessToken,
-        body
-      );
-    } else {
-      throw error;
-    }
+  } else {
+    payload = await callLegacyAddSessionComment(
+      accessToken,
+      body,
+      mentionedUserIds.length > 0
+    );
   }
   return AddCommentResultSchema.parse(payload).comment;
 }
@@ -457,9 +526,13 @@ export async function listSessionComments(
   accessToken: string,
   orgId: string,
   sessionId: string,
-  options?: { since?: string }
+  options?: {
+    since?: string;
+    endpoint?: Pick<CloudEndpoint, "supabaseUrl" | "anonKey">;
+  }
 ): Promise<SessionCommentsListing> {
-  const endpointUrl = getCloudEndpoint().supabaseUrl;
+  const endpoint = options?.endpoint ?? getCloudEndpoint();
+  const endpointUrl = endpoint.supabaseUrl;
   const since =
     options?.since !== undefined &&
     !commentsDeltaUnsupportedEndpoints.has(endpointUrl)
@@ -474,7 +547,8 @@ export async function listSessionComments(
           p_org_id: orgId,
           p_session_id: sessionId,
           p_since: since,
-        }
+        },
+        endpoint
       );
       const result = ListCommentsResultSchema.parse(payload);
       return {
@@ -493,7 +567,8 @@ export async function listSessionComments(
     {
       p_org_id: orgId,
       p_session_id: sessionId,
-    }
+    },
+    endpoint
   );
   const result = ListCommentsResultSchema.parse(payload);
   return {

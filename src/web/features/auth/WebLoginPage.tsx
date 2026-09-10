@@ -6,7 +6,7 @@ import { Navigate } from "react-router-dom";
 import Button from "@src/components/Button";
 import { buildOrg2CloudLoginUrl } from "@src/features/Org2Cloud/config";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
-import { OnboardingLayout } from "@src/modules/shared/layouts/OnboardingLayout";
+import LoginCard from "@src/modules/AppLogin/LoginCard";
 import { ONBOARDING_LOGIN_TOKENS } from "@src/modules/shared/layouts/onboardingTokens";
 
 import { createWebAuthCallbackUrl } from "./webAuthFlowState";
@@ -29,9 +29,8 @@ export function WebLoginPage() {
 
   return (
     <main className="h-full bg-bg-2">
-      <OnboardingLayout
-        variant="contained"
-        leftContent={
+      <LoginCard
+        content={
           <section
             className={`${ONBOARDING_LOGIN_TOKENS.contentStack} ${ONBOARDING_LOGIN_TOKENS.responsiveColumnWidth}`}
             aria-labelledby="web-login-title"

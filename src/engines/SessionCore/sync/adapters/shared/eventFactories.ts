@@ -277,8 +277,16 @@ export function createSyntheticUserEvent(
   sessionId: string,
   content: string,
   options?: {
+    /** Reuse one optimistic row while retrying the same logical turn. */
+    id?: string;
     createdAt?: string;
     imageDataUrls?: string[];
+    /**
+     * Marks the synthetic Member-page prompt as the durable DirectMember
+     * source. The EventStore command persists only this synthetic shape so
+     * Rust can admit UserDirectedWork from the exact visible user event.
+     */
+    agentOrgDirectSource?: boolean;
     /**
      * Canonical user-intent id. Threaded all the way through the queue,
      * the wire layer, and the persisted user_message event so the turn
@@ -288,14 +296,24 @@ export function createSyntheticUserEvent(
      * Send Now).
      */
     turnIntentId?: string;
+    /** Frontend delivery state for an optimistic user turn. */
+    deliveryStatus?: "pending" | "sent" | "failed";
+    deliveryError?: string;
+    queueMessageId?: string;
+    /** Terminal delivery transferred retry ownership to this durable row. */
+    deliveryOwnerRetired?: boolean;
   }
 ): SessionEvent {
   // Synthetic user placeholders are distinguished by their frontend-only
   // event shape, not by ID prefix. CLI backend user events can also use
   // user-input-* IDs, so consumers must use isSyntheticUserInputEvent().
-  const id = `${ID_PREFIX.USER_INPUT}${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const id =
+    options?.id ??
+    `${ID_PREFIX.USER_INPUT}${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   const images = options?.imageDataUrls;
   const turnIntentId = options?.turnIntentId;
+  const deliveryStatus = options?.deliveryStatus;
+  const agentOrgDirectSource = options?.agentOrgDirectSource === true;
   return {
     id,
     chunk_id: null,
@@ -310,11 +328,27 @@ export function createSyntheticUserEvent(
       type: "user",
       message: { content, role: "user" },
       syntheticUserInput: true,
+      ...(agentOrgDirectSource ? { agentOrgDirectSource: true } : {}),
       ...(images && images.length > 0 ? { images } : {}),
       ...(turnIntentId ? { turnIntentId } : {}),
+      ...(deliveryStatus ? { deliveryStatus } : {}),
+      ...(options?.deliveryError
+        ? { deliveryError: options.deliveryError }
+        : {}),
+      ...(options?.queueMessageId
+        ? { queueMessageId: options.queueMessageId }
+        : {}),
+      ...(options?.deliveryOwnerRetired === true
+        ? { deliveryOwnerRetired: true }
+        : {}),
     },
     displayText: content,
-    displayStatus: "completed",
+    displayStatus:
+      deliveryStatus === "pending"
+        ? "pending"
+        : deliveryStatus === "failed"
+          ? "failed"
+          : "completed",
     displayVariant: "message",
     activityStatus: "agent",
     isDelta: false,

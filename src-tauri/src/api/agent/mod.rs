@@ -22,7 +22,6 @@ pub mod test {
         pub async fn debug_work_item_scheduler_run_once() -> Result<serde_json::Value, String> {
             Err("debug_work_item_scheduler_run_once is only available in debug builds".to_string())
         }
-
     }
 }
 
@@ -664,6 +663,14 @@ pub fn create_routes() -> Router {
             post(test::agent_org::test_agent_org_seed),
         )
         .route(
+            "/test/agent-org/formal-convergence/fail-next-final-summary-event-store",
+            post(test::agent_org_formal_convergence::arm_final_summary_event_store_failure),
+        )
+        .route(
+            "/test/agent-org/formal-convergence/clear-final-summary-event-store",
+            post(test::agent_org_formal_convergence::clear_final_summary_event_store_failure),
+        )
+        .route(
             "/test/agent-org/launch-coordinator",
             post(test::agent_org::test_agent_org_launch_coordinator),
         )
@@ -690,10 +697,6 @@ pub fn create_routes() -> Router {
         .route(
             "/test/agent-org/drain-inbox",
             post(test::agent_org::test_agent_org_drain_inbox),
-        )
-        .route(
-            "/test/agent-org/session-return-to-work",
-            post(test::agent_org::test_agent_org_session_return_to_work),
         )
         .route(
             "/test/agent-org/post-member-idle",
@@ -728,6 +731,14 @@ pub fn create_routes() -> Router {
             post(test::agent_org::test_agent_org_seed_cli_member_run),
         )
         .route(
+            "/test/agent-org/startup-recovery/seed-crashed-task",
+            post(test::agent_org::test_agent_org_seed_crashed_task_execution),
+        )
+        .route(
+            "/test/agent-org/startup-recovery/wake-seeded-task",
+            post(test::agent_org::test_agent_org_wake_seeded_task),
+        )
+        .route(
             "/test/agent-org/find-worker-session",
             post(test::agent_org::test_agent_org_find_worker_session),
         )
@@ -748,8 +759,24 @@ pub fn create_routes() -> Router {
             post(test::agent_org::test_agent_org_resume_run),
         )
         .route(
+            "/test/agent-org/pause/evidence",
+            post(test::agent_org::test_agent_org_pause_evidence),
+        )
+        .route(
+            "/test/agent-org/runtime-evidence",
+            post(test::agent_org::test_agent_org_runtime_evidence),
+        )
+        .route(
             "/test/agent-org/simulate-app-restart",
             post(test::agent_org::test_agent_org_simulate_app_restart),
+        )
+        .route(
+            "/test/agent-org/user-directed/fault",
+            post(test::agent_org_user_directed::test_agent_org_user_directed_fault),
+        )
+        .route(
+            "/test/agent-org/user-directed/evidence",
+            post(test::agent_org_user_directed::test_agent_org_user_directed_evidence),
         )
         .route(
             "/test/agent-org/check-member-spawn-gate",

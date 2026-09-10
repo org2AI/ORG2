@@ -13,7 +13,11 @@ import {
 } from "vitest";
 
 import TeamInboxRow from "../components/TeamInboxRow";
-import type { AssignedWorkItem, CommentMentionItem } from "../domain";
+import type {
+  AssignedWorkItem,
+  CommentMentionItem,
+  WorkItemUpdateItem,
+} from "../domain";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -89,6 +93,30 @@ const mentionItem: CommentMentionItem = {
   },
 };
 
+const failedRunItem: WorkItemUpdateItem = {
+  id: "event-1",
+  kind: "work_item_run_failed",
+  source: "local",
+  occurredAt: new Date().toISOString(),
+  readAt: null,
+  actor: { id: "system", displayName: "" },
+  target: {
+    kind: "work_item",
+    projectId: "orgii-issues-project",
+    workItemId: "AAA-0001",
+    repository: "https://github.com/org2AI/ORG2.git",
+  },
+  payload: {
+    title: "Durable dispatch",
+    eventKind: "run_failed",
+    status: "in_progress",
+    priority: "high",
+    recipientMemberId: "member-1",
+    summary: "The latest Run failed after the provider disconnected.",
+    updatedAt: "2026-08-08T10:00:00.000Z",
+  },
+};
+
 describe("TeamInboxRow", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -140,8 +168,9 @@ describe("TeamInboxRow", () => {
         element.className.includes("text-text-2")
     );
     expect(secondaryText).toHaveLength(1);
+    // Inbox timestamps use the same bare compact ages as pull requests.
     const time = Array.from(container.querySelectorAll("span")).find(
-      (element) => element.textContent === "Now"
+      (element) => element.textContent === "now"
     );
     expect(time?.className).toContain("text-text-3");
     expect(time?.className).not.toContain("text-text-2");
@@ -279,5 +308,30 @@ describe("TeamInboxRow", () => {
     );
     expect(container.textContent).not.toContain("Please verify the sync path.");
     expect(container.querySelector("[title]")).toBeNull();
+  });
+
+  it("renders a Run failure as an update instead of an assignment", () => {
+    act(() => {
+      root.render(
+        createElement(TeamInboxRow, {
+          item: failedRunItem,
+          itemKey: "work_item_run_failed:event-1",
+          selected: false,
+          onSelect: vi.fn(),
+        })
+      );
+    });
+
+    expect(container.textContent).toContain("Run failed · ORG2 issue");
+    expect(container.textContent).toContain(
+      "The latest Run failed after the provider disconnected."
+    );
+    expect(container.textContent).not.toContain("Assigned to me");
+    expect(
+      container.querySelector('[data-icon="circle-alert"]')
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-item-kind="work_item_run_failed"]')
+    ).not.toBeNull();
   });
 });

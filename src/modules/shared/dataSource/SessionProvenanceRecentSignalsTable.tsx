@@ -7,7 +7,6 @@ import {
 } from "@src/api/tauri/lineage";
 import { rpc } from "@src/api/tauri/rpc";
 import type { SessionProvenanceRecentSignal } from "@src/api/tauri/rpc/schemas/agentOrgs";
-import Button from "@src/components/Button";
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import type { IconProvider } from "@src/components/ModelIcon";
 import SettingsTable, {
@@ -18,8 +17,8 @@ import SettingsTable, {
 import Tag, { type TagProps } from "@src/components/Tag";
 import { parseUnifiedDiffToOldNew } from "@src/engines/SessionCore/rendering/props/extractorShared";
 import { CodeMirrorDiff } from "@src/features/CodeMirror/Diff";
+import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
-import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import {
   SECTION_GAP_CLASSES,
   SECTION_SUBHEADING_CLASSES,
@@ -30,6 +29,7 @@ import {
 } from "@src/modules/shared/layouts/blocks";
 import { formatRelativeElapsedShort } from "@src/util/data/formatters/date";
 
+import { RuntimeRefreshButton } from "./RuntimeSectionHeader";
 import SessionProvenanceSourceIcon from "./SessionProvenanceSourceIcon";
 import { tildePath } from "./sourcePath";
 
@@ -213,6 +213,7 @@ const SessionProvenanceRecentSignalsTable: React.FC = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const mountedRef = useRef(true);
+  useMountedCleanup(mountedRef);
   const requestGenerationRef = useRef(0);
   const inFlightRef = useRef<
     Promise<SessionProvenanceRecentSignal[]> | undefined
@@ -268,11 +269,9 @@ const SessionProvenanceRecentSignalsTable: React.FC = () => {
   }, [load, open, signals]);
 
   useEffect(() => {
-    mountedRef.current = true;
     return () => {
       // Tauri invokes are not abortable. Invalidate late completions so an
       // unmounted Hooks view cannot retain or publish stale signal rows.
-      mountedRef.current = false;
       requestGenerationRef.current += 1;
     };
   }, []);
@@ -504,23 +503,14 @@ const SessionProvenanceRecentSignalsTable: React.FC = () => {
             onSearchClear: () => setSearchQuery(""),
             searchInputSize: "default",
             rightContent: (
-              <Button
-                variant="secondary"
-                size="default"
-                loading={refreshing}
-                icon={
-                  <HugeiconsIcon
-                    icon={Refresh04Icon}
-                    data-icon="refresh-cw"
-                    size={14}
-                  />
-                }
-                onClick={() => void load()}
-              >
-                {t("agentOrgs.sessionProvenance.signals.refresh", {
+              <RuntimeRefreshButton
+                label={t("agentOrgs.sessionProvenance.signals.refresh", {
                   defaultValue: "Refresh",
                 })}
-              </Button>
+                onRefresh={() => void load()}
+                refreshing={refreshing}
+                dataTestId="session-provenance-recent-signals-refresh"
+              />
             ),
           }}
         />

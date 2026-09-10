@@ -7,6 +7,8 @@
 import { type Extension, StateEffect, StateField } from "@codemirror/state";
 import { EditorView, showPanel } from "@codemirror/view";
 
+import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
+
 import { createGoToLinePanel } from "./GoToLinePanel";
 
 const showGoToLinePanelEffect = StateEffect.define<null>();
@@ -59,7 +61,7 @@ export function goToLineExtension(): Extension {
     goToLinePanelState,
     EditorView.domEventHandlers({
       keydown(event, view) {
-        if (event.ctrlKey && !event.metaKey && event.key === "g") {
+        if (matchesShortcut(event, "go_to_line")) {
           event.preventDefault();
           toggleGoToLinePanel(view);
           return true;

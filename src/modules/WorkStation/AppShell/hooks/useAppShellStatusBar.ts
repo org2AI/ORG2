@@ -4,10 +4,10 @@ import { useEffect } from "react";
 import { useWorkStationPanels } from "@src/hooks/tabHost/useWorkStationPanels";
 import {
   openBranchSpotlight,
-  openWorkspaceSpotlight,
+  openWorkingDirectorySpotlight,
   openWorktreeSpotlight,
 } from "@src/scaffold/GlobalSpotlight/openSpotlight";
-import { perAppStatusBarCallbacksAtom } from "@src/store/ui/workStationAtom";
+import { perAppStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 
 /**
  * Workspace / branch / worktree buttons in the code status bar. They are pure
@@ -19,8 +19,8 @@ import { perAppStatusBarCallbacksAtom } from "@src/store/ui/workStationAtom";
  * Module-level so the identity is stable across renders.
  */
 const SPOTLIGHT_CALLBACKS = {
-  onRepoClick: () => openWorkspaceSpotlight("switch"),
-  onBranchClick: openBranchSpotlight,
+  onRepoClick: () => openWorkingDirectorySpotlight("switch"),
+  onBranchClick: () => openBranchSpotlight(),
   onWorktreeClick: openWorktreeSpotlight,
 } as const;
 
@@ -41,11 +41,8 @@ export function useAppShellStatusBar({
 
   useEffect(() => {
     // Panel callbacks tied to the shared `workStationPrimarySidebarCollapsedAtom`.
-    // Browser has its own sidebar atom (`workStationBrowserSidebarCollapsedAtom`)
-    // and registers its own panel callbacks from useBrowserLayoutState — do NOT
-    // overwrite the browser slot here, otherwise toggling Code Editor's sidebar
-    // would clobber Browser's primaryPanelCollapsed and make the Browser tab bar
-    // app-switcher flicker based on an unrelated app's state.
+    // Browser registers its own status-bar callbacks from useBrowserLayoutState;
+    // leave its independently owned slot untouched.
     const sharedPanelCallbacks = {
       onTogglePrimaryPanel: workStationPanels.togglePrimarySidebar,
       primaryPanelCollapsed,
@@ -62,10 +59,6 @@ export function useAppShellStatusBar({
       project: {
         ...prev.project,
         onOpenSettings: showSettingsButton ? handleOpenSettings : undefined,
-        ...sharedPanelCallbacks,
-      },
-      data: {
-        ...prev.data,
         ...sharedPanelCallbacks,
       },
     }));

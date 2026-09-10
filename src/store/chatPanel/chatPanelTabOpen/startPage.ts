@@ -9,7 +9,7 @@ import {
   chatPanelCreateProjectContextAtom,
   chatPanelCreateTargetAtom,
   chatPanelStartPageOpenAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 
 import { createExploreTab, createLaunchpadTab } from "../chatPanelTabFactories";
 import {

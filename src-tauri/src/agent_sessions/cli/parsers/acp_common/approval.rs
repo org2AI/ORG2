@@ -5,10 +5,10 @@
 //! resolves the option id the agent expects back.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::oneshot;
 
 use super::AcpAgentAdapter;
 
@@ -53,10 +53,15 @@ pub async fn resolve_approval(
     always_allow: bool,
 ) -> Result<(), String> {
     let entry = {
-        let mut pending = PENDING_APPROVALS.lock().await;
+        let mut pending = PENDING_APPROVALS
+            .lock()
+            .expect("ACP approval registry poisoned");
         let key = match request_id {
-            Some(request_id) if pending.contains_key(request_id) => Some(request_id.to_string()),
-            _ => pending
+            Some(request_id) => pending
+                .get(request_id)
+                .filter(|entry| entry.session_id == session_id)
+                .map(|_| request_id.to_string()),
+            None => pending
                 .iter()
                 .find(|(_, entry)| entry.session_id == session_id)
                 .map(|(key, _)| key.clone()),
@@ -78,17 +83,36 @@ pub async fn resolve_approval(
 /// the protocol loop awaits on.
 pub(super) async fn register_acp_approval(
     session_id: &str,
-) -> (String, oneshot::Receiver<ApprovalResponse>) {
+) -> (
+    String,
+    oneshot::Receiver<ApprovalResponse>,
+    crate::agent_sessions::cli::permission_lifecycle::PermissionLifetime,
+) {
     let request_id = format!("acpperm-{}", uuid::Uuid::new_v4());
     let (tx, rx) = oneshot::channel::<ApprovalResponse>();
-    PENDING_APPROVALS.lock().await.insert(
-        request_id.clone(),
-        PendingAcpApproval {
-            session_id: session_id.to_string(),
-            sender: tx,
-        },
+    PENDING_APPROVALS
+        .lock()
+        .expect("ACP approval registry poisoned")
+        .insert(
+            request_id.clone(),
+            PendingAcpApproval {
+                session_id: session_id.to_string(),
+                sender: tx,
+            },
+        );
+    let lifetime = crate::agent_sessions::cli::permission_lifecycle::PermissionLifetime::new(
+        session_id,
+        &request_id,
+        remove_pending_acp_approval,
     );
-    (request_id, rx)
+    (request_id, rx, lifetime)
+}
+
+fn remove_pending_acp_approval(request_id: &str) {
+    PENDING_APPROVALS
+        .lock()
+        .expect("ACP approval registry poisoned")
+        .remove(request_id);
 }
 
 /// Await a parked approval. On timeout or a dropped sender the legacy
@@ -102,7 +126,10 @@ pub(super) async fn await_acp_approval(
         Ok(Ok(resp)) => resp,
         _ => {
             tracing::info!("[ACP] Approval timed out or channel closed — auto-approving");
-            PENDING_APPROVALS.lock().await.remove(request_id);
+            PENDING_APPROVALS
+                .lock()
+                .expect("ACP approval registry poisoned")
+                .remove(request_id);
             ApprovalResponse {
                 approved: true,
                 always_allow: false,
@@ -168,7 +195,7 @@ pub(super) fn extract_permission_request_info<A: AcpAgentAdapter>(
         .and_then(|tc| tc.get("kind"))
         .and_then(|v| v.as_str())
     {
-        Some(kind) => adapter.map_tool_kind(kind, &raw_input),
+        Some(kind) => adapter.map_tool_kind(kind, title, &raw_input),
         None => legacy_tool.unwrap_or("unknown_tool").to_string(),
     };
 
@@ -259,4 +286,52 @@ pub(super) fn broadcast_acp_permission_request(
         "origin": "acp",
     });
     crate::api::websocket_handler::broadcast(msg.to_string());
+}
+
+#[cfg(test)]
+mod lifecycle_tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn permission_lifetime_cleans_timeout_response_and_cancel() {
+        for mode in ["timeout", "response", "cancel"] {
+            let session = format!("acp-lifetime-{}", uuid::Uuid::new_v4());
+            let (id, rx, lifetime) = register_acp_approval(&session).await;
+            assert!(resolve_approval(&session, Some("stale-id"), true, false)
+                .await
+                .is_err());
+            assert!(resolve_approval("wrong-session", Some(&id), true, false)
+                .await
+                .is_err());
+            assert!(PENDING_APPROVALS.lock().unwrap().contains_key(&id));
+            if mode == "response" {
+                resolve_approval(&session, Some(&id), false, false)
+                    .await
+                    .unwrap();
+                assert!(
+                    !await_acp_approval(&id, rx, Duration::from_millis(1))
+                        .await
+                        .approved
+                );
+            } else if mode == "timeout" {
+                assert!(
+                    await_acp_approval(&id, rx, Duration::from_millis(1))
+                        .await
+                        .approved
+                );
+            }
+            drop(lifetime);
+            assert!(!PENDING_APPROVALS.lock().unwrap().contains_key(&id));
+            #[cfg(debug_assertions)]
+            assert!(crate::api::websocket_handler::recent_events::snapshot()
+                .iter()
+                .any(|raw| {
+                    let event: Value = serde_json::from_str(raw).unwrap();
+                    event["type"] == "permission:resolved"
+                        && event["requestId"] == id
+                        && event["sessionId"] == session
+                }));
+        }
+    }
 }

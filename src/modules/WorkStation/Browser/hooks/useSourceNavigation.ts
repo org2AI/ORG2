@@ -30,17 +30,12 @@ export type {
   UseSourceNavigationReturn,
 } from "./sourceNavigation/types";
 
-export {
-  formatSourceLocation,
-  getFilenameFromPath,
-} from "./sourceNavigation/pathUtils";
-
 const log = createLogger("useSourceNavigation");
 
 export function useSourceNavigation(
   options: UseSourceNavigationOptions
 ): UseSourceNavigationReturn {
-  const { repoPath, onSearchFiles } = options;
+  const { repoPath } = options;
 
   const canSearchForComponent = useCallback(
     (sourceLocation: SourceLocation | null): boolean =>
@@ -159,11 +154,10 @@ export function useSourceNavigation(
         return results.slice(0, 10).map(({ path, line }) => ({ path, line }));
       } catch (error) {
         log.error("[useSourceNavigation] Error searching:", error);
-        onSearchFiles?.(searchTerm);
         return [];
       }
     },
-    [repoPath, onSearchFiles]
+    [repoPath]
   );
 
   const openFileAtLine = useCallback(

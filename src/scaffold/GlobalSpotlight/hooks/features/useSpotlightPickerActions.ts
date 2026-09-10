@@ -18,7 +18,7 @@ import type { ActiveWorktreeSelection } from "@src/store/workspace";
 import { showGitActionDialogSafely } from "@src/util/dialogs/gitActionDialog";
 
 import {
-  type WorkspacePickerMode,
+  type WorkingDirectoryPickerMode,
   getWorktreeBaseRef,
   getWorktreeCreateName,
 } from "../../globalSpotlight.helpers";
@@ -46,7 +46,9 @@ interface UseSpotlightPickerActionsOptions {
   t: TFunction;
   setActiveWorktree: (selection: ActiveWorktreeSelection | null) => void;
   setCurrentBranch: (branch: string) => void;
-  setWorkspacePickerMode: Dispatch<SetStateAction<WorkspacePickerMode | null>>;
+  setWorkingDirectoryPickerMode: Dispatch<
+    SetStateAction<WorkingDirectoryPickerMode | null>
+  >;
   setBranchPickerOpen: Dispatch<SetStateAction<boolean>>;
   setWorktreePickerOpen: Dispatch<SetStateAction<boolean>>;
 }
@@ -89,7 +91,7 @@ export function useSpotlightPickerActions(
     t,
     setActiveWorktree,
     setCurrentBranch,
-    setWorkspacePickerMode,
+    setWorkingDirectoryPickerMode,
     setBranchPickerOpen,
     setWorktreePickerOpen,
   } = deps;
@@ -97,10 +99,10 @@ export function useSpotlightPickerActions(
   const handleWorkspaceSelect = useCallback(
     (repoId: string, _repo: RepoItem) => {
       selectRepo(repoId);
-      setWorkspacePickerMode(null);
+      setWorkingDirectoryPickerMode(null);
       closeModal();
     },
-    [closeModal, selectRepo, setWorkspacePickerMode]
+    [closeModal, selectRepo, setWorkingDirectoryPickerMode]
   );
 
   const handleWorktreePickerSelect = useCallback(

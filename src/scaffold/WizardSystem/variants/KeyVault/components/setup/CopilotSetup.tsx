@@ -9,8 +9,8 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import { CopilotSessionSetup } from "@src/features/SessionSetup";
 import {
   SECTION_CONTROL_STYLE,
@@ -76,22 +76,22 @@ const CopilotSetup: React.FC<CopilotSetupProps> = ({
         </SectionContainer>
 
         {validationError && !errorDismissed && (
-          <InlineAlert
+          <PageNotice
             type="danger"
             onClose={() => setDismissedError(validationError)}
           >
             {validationError}
-          </InlineAlert>
+          </PageNotice>
         )}
 
         {keyValidated && !validationError && !successDismissed && (
-          <InlineAlert type="success" onClose={() => setSuccessDismissed(true)}>
+          <PageNotice type="success" onClose={() => setSuccessDismissed(true)}>
             {data.available_models.length > 0
               ? t("keyVault.validationSuccessModels", {
                   count: data.available_models.length,
                 })
               : t("keyVault.validationSuccessNoModels")}
-          </InlineAlert>
+          </PageNotice>
         )}
       </>
     );

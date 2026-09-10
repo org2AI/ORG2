@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 
 import { SearchInput } from "@src/components/SearchInput";
+import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
 import {
   HEADER_BUTTON,
   HEADER_ICON_SIZE,
@@ -44,7 +45,7 @@ const GoToLinePanel: React.FC<GoToLinePanelProps> = ({ view, onClose }) => {
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      if (event.ctrlKey && !event.metaKey && event.key.toLowerCase() === "g") {
+      if (matchesShortcut(event.nativeEvent, "go_to_line")) {
         event.preventDefault();
         event.stopPropagation();
         onClose();

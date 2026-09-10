@@ -14,7 +14,7 @@
  * - Keyboard navigation support
  * - Support for okButtonProps and cancelButtonProps for button styling
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import Button from "@src/components/Button";
@@ -72,6 +72,12 @@ interface ModalProps {
   onOk?: () => void | Promise<void>;
   /** Modal title */
   title?: React.ReactNode;
+  /** Accessible name for dialogs without a visible title; overrides title. */
+  "aria-label"?: string;
+  /** Optional artwork above the header. Use an empty alt for decorative images. */
+  image?: { src: string; alt: string };
+  /** Custom media above the header; takes precedence over image when provided. */
+  headerMedia?: React.ReactNode;
   /** Modal content */
   children?: React.ReactNode;
   /** Footer content (buttons, etc) */
@@ -98,6 +104,12 @@ interface ModalProps {
   };
   /** Custom close icon */
   closeIcon?: React.ReactNode;
+  /** Optional back action rendered at the left edge of the header, before the title. */
+  onBack?: () => void;
+  /** Accessible label and tooltip for the optional back action. */
+  backLabel?: string;
+  /** Additional icon-only actions displayed before the close button. */
+  headerActions?: React.ReactNode;
   /** Additional className for the modal container */
   className?: string;
   /** Additional className for the modal body */
@@ -130,6 +142,9 @@ const Modal: React.FC<ModalProps> = ({
   onCancel,
   onOk,
   title,
+  image,
+  headerMedia,
+  "aria-label": ariaLabel,
   children,
   footer,
   footerTopBorder = true,
@@ -140,6 +155,9 @@ const Modal: React.FC<ModalProps> = ({
   okButtonProps,
   cancelButtonProps,
   closeIcon,
+  onBack,
+  backLabel,
+  headerActions,
   className = "",
   bodyClassName = "p-3",
   closable = true,
@@ -153,6 +171,7 @@ const Modal: React.FC<ModalProps> = ({
   topDragZoneHeight = 0,
   style,
 }) => {
+  const titleId = useId();
   const handleClose = onClose || onCancel;
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -220,7 +239,9 @@ const Modal: React.FC<ModalProps> = ({
       const isLoading = okButtonProps?.loading ?? okLoading;
       const isDisabled = okButtonProps?.disabled;
       const primaryVariant =
-        okButtonProps?.status === "danger" ? "danger" : "primary";
+        !okButtonProps?.status || okButtonProps.status === "default"
+          ? "primary"
+          : okButtonProps.status;
 
       return (
         <PanelFooter
@@ -375,7 +396,10 @@ const Modal: React.FC<ModalProps> = ({
       onClick={handleMaskClick}
       role="dialog"
       aria-modal="true"
-      aria-label={typeof title === "string" ? title : undefined}
+      aria-label={ariaLabel ?? (typeof title === "string" ? title : undefined)}
+      aria-labelledby={
+        !ariaLabel && title && typeof title !== "string" ? titleId : undefined
+      }
     >
       {/* Backdrop/Mask */}
       <div
@@ -401,32 +425,50 @@ const Modal: React.FC<ModalProps> = ({
           style={{ ...mergedStyle, borderRadius: radius }}
           onClick={(e) => e.stopPropagation()}
         >
+          {headerMedia ??
+            (image && (
+              <img
+                className="liquid-modal-image"
+                src={image.src}
+                alt={image.alt}
+                draggable={false}
+              />
+            ))}
           {/* Header */}
           {title && (
             <PanelHeader
               title={typeof title === "string" ? title : undefined}
+              onBack={onBack}
+              backLabel={backLabel}
               actions={
-                closable ? (
-                  <Button
-                    {...PANEL_HEADER_TOKENS.actionButton}
-                    icon={
-                      closeIcon || (
-                        <HugeiconsIcon
-                          icon={Cancel01Icon}
-                          data-icon="x"
-                          size={PANEL_HEADER_TOKENS.buttonIconSize}
-                          strokeWidth={PANEL_HEADER_TOKENS.iconStrokeWidth}
-                        />
-                      )
-                    }
-                    onClick={handleClose}
-                    title="Close"
-                    htmlType="button"
-                  />
+                headerActions || closable ? (
+                  <div className="flex items-center gap-1">
+                    {headerActions}
+                    {closable ? (
+                      <Button
+                        {...PANEL_HEADER_TOKENS.actionButton}
+                        icon={
+                          closeIcon || (
+                            <HugeiconsIcon
+                              icon={Cancel01Icon}
+                              data-icon="x"
+                              size={PANEL_HEADER_TOKENS.buttonIconSize}
+                              strokeWidth={PANEL_HEADER_TOKENS.iconStrokeWidth}
+                            />
+                          )
+                        }
+                        onClick={handleClose}
+                        title="Close"
+                        htmlType="button"
+                      />
+                    ) : null}
+                  </div>
                 ) : undefined
               }
             >
-              {typeof title === "string" ? undefined : title}
+              {typeof title === "string" ? undefined : (
+                <div id={titleId}>{title}</div>
+              )}
             </PanelHeader>
           )}
 

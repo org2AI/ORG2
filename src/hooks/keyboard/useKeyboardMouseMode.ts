@@ -118,6 +118,7 @@ export function useKeyboardMouseMode(
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (opts.triggerKeys.includes(event.key)) {
+        mousePosRef.current = null;
         setIsKeyboardMode(true);
       }
     };
@@ -139,8 +140,7 @@ export function useKeyboardMouseMode(
       const dx = Math.abs(event.clientX - mousePosRef.current.x);
       const dy = Math.abs(event.clientY - mousePosRef.current.y);
 
-      mousePosRef.current = { x: event.clientX, y: event.clientY };
-
+      // Keep the anchor fixed: slow movement must accumulate across events.
       if (dx > opts.threshold || dy > opts.threshold) {
         setIsKeyboardMode(false);
       }

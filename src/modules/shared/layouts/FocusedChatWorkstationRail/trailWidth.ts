@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { WORKSTATION_TRAIL_WIDTH } from "../blocks/WorkstationTrailSurface";
+import { WORKSTATION_TRAIL_WIDTH } from "../blocks/workstationTrailTokens";
 
 export const WORKSTATION_TRAIL_WIDTH_VARIABLE = "--workstation-trail-width";
 export const WORKSTATION_TRAIL_TRACK_WIDTH_VARIABLE =

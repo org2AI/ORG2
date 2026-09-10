@@ -20,6 +20,7 @@ import { useLocation } from "react-router-dom";
 
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
+import PageNotice from "@src/components/PageNotice";
 import { ROUTES } from "@src/config/routes";
 
 import { refreshOrg2CloudAuthForAction } from "./org2CloudAuthAction";
@@ -130,12 +131,13 @@ const JoinCloudOrgDialog: React.FC = () => {
         ) : null}
 
         {error ? (
-          <div
-            className="rounded-lg bg-danger-1 px-3 py-2 text-[12px] text-danger-6"
-            data-testid="cloud-join-org-error"
+          <PageNotice
+            type="danger"
+            role="alert"
+            dataTestId="cloud-join-org-error"
           >
             {error}
-          </div>
+          </PageNotice>
         ) : null}
 
         <div className="flex items-center justify-end gap-2">

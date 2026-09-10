@@ -43,6 +43,14 @@ impl UnifiedMessageProcessor {
         projected_inbox_ids: Vec<i64>,
     ) -> Result<(TurnResult, UnifiedEventHandler), String> {
         let effective_policy = self.effective_tool_policy();
+        let is_final_summary_turn = if self.runtime.agent_org_context.is_some() {
+            crate::coordination::agent_org_final_summary::is_summary_turn(
+                session_id,
+                turn_intent_id,
+            )?
+        } else {
+            false
+        };
 
         self.runtime
             .provider
@@ -70,9 +78,24 @@ impl UnifiedMessageProcessor {
             None => self.runtime.model.clone(),
         };
 
+        let mut turn_process_control = self.session.turn_process_control();
+        if self.runtime.agent_org_context.is_some() {
+            let control = turn_process_control.as_mut().ok_or_else(|| {
+                "Agent Org Turn execution requires an exact process owner".to_string()
+            })?;
+            if control.owner.session_id != session_id
+                || control.owner.turn_intent_id != turn_intent_id
+            {
+                return Err(
+                    "Agent Org Turn process owner does not match the dispatched Turn".to_string(),
+                );
+            }
+            control.require_owned_job_finality = true;
+        }
         let turn_config = TurnConfig {
             turn_intent_id: turn_intent_id.to_string(),
             projected_inbox_ids,
+            turn_process_control,
             model: turn_model,
             account_id: self.runtime.account_id.clone(),
             context_window_override: self
@@ -80,27 +103,48 @@ impl UnifiedMessageProcessor {
                 .resolved
                 .context_window_configured
                 .then_some(self.runtime.resolved.context_window),
-            max_iterations: self.effective_max_iterations(),
+            max_iterations: if is_final_summary_turn {
+                Some(1)
+            } else {
+                self.effective_max_iterations()
+            },
             max_tokens: self.runtime.resolved.max_tokens as u32,
             temperature: self.runtime.resolved.temperature as f32,
             max_tool_use_concurrency: self.runtime.resolved.max_tool_use_concurrency as usize,
-            screenshot_store: Some(Arc::clone(&self.screenshot_store)),
-            iteration_hook: self
-                .turn_prefetch_hook
-                .lock()
-                .await
-                .as_ref()
-                .map(|hook| Arc::clone(hook) as Arc<dyn TurnIterationHook>),
+            screenshot_store: (!is_final_summary_turn).then(|| Arc::clone(&self.screenshot_store)),
+            iteration_hook: if is_final_summary_turn {
+                None
+            } else {
+                self.turn_prefetch_hook
+                    .lock()
+                    .await
+                    .as_ref()
+                    .map(|hook| Arc::clone(hook) as Arc<dyn TurnIterationHook>)
+            },
             persist_cancel_marker: self
                 .session
                 .persist_next_cancel_marker
                 .load(std::sync::atomic::Ordering::SeqCst),
-            steering_queue: Some(Arc::clone(&self.session.steering_queue)),
-            auto_continue: self.runtime.resolved.auto_continue,
+            steering_queue: (!is_final_summary_turn)
+                .then(|| Arc::clone(&self.session.steering_queue)),
+            auto_continue: !is_final_summary_turn && self.runtime.resolved.auto_continue,
         };
 
         let mut event_handler_config = self.event_handler_config.clone();
         event_handler_config.turn_id = Some(turn_id.to_string());
+        event_handler_config.require_durable_assistant_event =
+            self.runtime.agent_org_context.is_some();
+        event_handler_config.agent_org_turn_intent_id = self
+            .runtime
+            .agent_org_context
+            .as_ref()
+            .map(|_| turn_intent_id.to_string());
+        event_handler_config.group_projection_only = self.runtime.agent_org_context.is_some()
+            && crate::coordination::agent_org_turn_contexts::group_root_source_event_for_turn(
+                session_id,
+                turn_intent_id,
+            )?
+            .is_some();
         event_handler_config.agent_org_task_lifecycle = self
             .runtime
             .agent_org_context
@@ -133,18 +177,22 @@ impl UnifiedMessageProcessor {
 
         // Set tool contexts for OS sessions (channel, chat_id; sender_id is only available
         // in Gateway sessions where it is propagated by GatewayInboundHandler).
-        if let (Some(ref channel), Some(ref chat_id)) = (&self.channel, &self.chat_id) {
-            self.runtime
-                .tool_registry
-                .set_all_contexts(channel, chat_id, "")
-                .await;
+        if !is_final_summary_turn {
+            if let (Some(ref channel), Some(ref chat_id)) = (&self.channel, &self.chat_id) {
+                self.runtime
+                    .tool_registry
+                    .set_all_contexts(channel, chat_id, "")
+                    .await;
+            }
         }
 
         // Set active repo from IDE context (repo_path is set by OS sessions)
-        if let Some(ref ide_ctx) = self.ide_context {
-            if let Some(ref repo_path) = ide_ctx.repo_path {
-                self.runtime.tool_registry.set_active_repo(repo_path).await;
-                info!("[unified_processor] Active IDE repo set: {}", repo_path);
+        if !is_final_summary_turn {
+            if let Some(ref ide_ctx) = self.ide_context {
+                if let Some(ref repo_path) = ide_ctx.repo_path {
+                    self.runtime.tool_registry.set_active_repo(repo_path).await;
+                    info!("[unified_processor] Active IDE repo set: {}", repo_path);
+                }
             }
         }
 
@@ -180,7 +228,9 @@ impl UnifiedMessageProcessor {
         {
             Ok(turn_result) => turn_result,
             Err(err)
-                if err.contains("ContextTooLong") && self.runtime.resolved.compaction.enabled =>
+                if !is_final_summary_turn
+                    && err.contains("ContextTooLong")
+                    && self.runtime.resolved.compaction.enabled =>
             {
                 self.execute_with_reactive_compact(
                     session_id,

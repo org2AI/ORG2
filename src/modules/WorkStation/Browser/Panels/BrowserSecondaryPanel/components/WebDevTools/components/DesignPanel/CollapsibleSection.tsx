@@ -135,5 +135,3 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
 );
 
 CollapsibleSection.displayName = "CollapsibleSection";
-
-export default CollapsibleSection;

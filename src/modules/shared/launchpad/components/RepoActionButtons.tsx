@@ -18,6 +18,7 @@ import {
   FolderSearchIcon,
   HugeiconsIcon,
 } from "@src/icons";
+import { navigateApp as dispatchNavigate } from "@src/router/navigateApp";
 import { selectedRepoIdAtom } from "@src/store/repo";
 import type { Repo } from "@src/store/repo/types";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
@@ -36,14 +37,6 @@ interface RepoActionButtonsProps {
   showRemove?: boolean;
   showClose?: boolean;
   iconOnlySecondary?: boolean;
-}
-
-function dispatchNavigate(path: string) {
-  window.dispatchEvent(
-    new CustomEvent("action-system-navigate", {
-      detail: { path },
-    })
-  );
 }
 
 function stripFileUri(path: string): string {

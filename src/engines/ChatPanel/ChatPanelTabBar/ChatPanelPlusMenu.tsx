@@ -11,8 +11,13 @@ import {
   DROPDOWN_CLASSES,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import { RecentlyClosedTabsMenuSection } from "@src/components/RecentlyClosedTabsMenuSection";
+import {
+  KEYBOARD_SHORTCUT_VARIANT,
+  KeyboardShortcut,
+} from "@src/components/KeyboardShortcut";
+import { RecentTabsMenuSection } from "@src/components/RecentTabsMenuSection";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
+import { CHROME_TOOLTIP_HOVER_DELAY } from "@src/config/tooltip";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import {
   Add01Icon,
@@ -24,27 +29,30 @@ import {
   MessageAdd02Icon,
   PictureInPicture01Icon,
 } from "@src/icons";
+import { shouldShowInRecentTabsMenu } from "@src/shared/tabs/recentTabsMenu";
 import {
-  type ChatPanelTab,
-  recentlyClosedChatPanelTabsAtom,
-  restoreRecentlyClosedChatPanelTabAtom,
+  openRecentChatPanelTabAtom,
+  recentChatPanelTabsAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
-import { isMacOS } from "@src/util/platform/tauri";
+import { type ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
 import { SessionIdentityIconById } from "../components/SessionIdentityIcon";
 import { CHAT_PANEL_HEADER_NO_DRAG_STYLE } from "../header";
 
 // ─── Plus-menu dropdown ───────────────────────────────────────────────────────
 
-interface PlusMenuContentProps {
+export interface ChatPanelPlusMenuProps {
   onOpenLaunchpad: () => void;
   onOpenKanban: () => void;
   onOpenRuntime: () => void;
   onNewProject: () => void;
   onNewWorkItem: () => void;
   onOpenSideChat: () => void;
-  recentlyClosedTabs: readonly ChatPanelTab[];
-  onRestoreTab: (tabId: string) => void;
+}
+
+interface PlusMenuContentProps extends ChatPanelPlusMenuProps {
+  recentTabs: readonly ChatPanelTab[];
+  onOpenRecentTab: (tabId: string) => void;
   onClose: () => void;
 }
 
@@ -55,12 +63,11 @@ export function PlusMenuContent({
   onNewProject,
   onNewWorkItem,
   onOpenSideChat,
-  recentlyClosedTabs,
-  onRestoreTab,
+  recentTabs,
+  onOpenRecentTab,
   onClose,
 }: PlusMenuContentProps) {
   const { t } = useTranslation(["sessions", "navigation"]);
-  const MOD = isMacOS() ? "⌘" : "Ctrl";
 
   // New session opens the singleton start page. It carries the ⌘N hint since
   // that shortcut (handled in ChatPanelTabBar) opens the same surface.
@@ -76,7 +83,7 @@ export function PlusMenuContent({
         />
       ),
       label: t("sessions:chat.startPage.newSession.title"),
-      hint: `${MOD}N`,
+      shortcutId: "new_session",
       onClick: onOpenLaunchpad,
     },
     {
@@ -166,15 +173,18 @@ export function PlusMenuContent({
               {item.icon}
               <span className="truncate">{item.label}</span>
             </span>
-            {"hint" in item && item.hint ? (
-              <span className="ml-4 shrink-0 text-[11px] text-text-3">
-                {item.hint}
-              </span>
+            {"shortcutId" in item && item.shortcutId ? (
+              <KeyboardShortcut
+                shortcutId={item.shortcutId}
+                variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
+                size="sm"
+                className="ml-4"
+              />
             ) : null}
           </button>
         ))}
-        <RecentlyClosedTabsMenuSection
-          tabs={recentlyClosedTabs.map((tab) => ({
+        <RecentTabsMenuSection
+          tabs={recentTabs.filter(shouldShowInRecentTabsMenu).map((tab) => ({
             id: tab.id,
             title: tab.title,
             leadingIcon:
@@ -185,10 +195,10 @@ export function PlusMenuContent({
                 />
               ) : undefined,
           }))}
-          label={t("navigation:workstation.plusMenu.recentlyClosed")}
-          onRestore={(tabId) => {
+          label={t("navigation:workstation.plusMenu.recent")}
+          onOpen={(tabId) => {
             onClose();
-            onRestoreTab(tabId);
+            onOpenRecentTab(tabId);
           }}
         />
       </div>
@@ -198,27 +208,13 @@ export function PlusMenuContent({
 
 // ─── Exported + menu button (placed in header toolbar, left of ...) ───────────
 
-export interface ChatPanelPlusMenuProps {
-  onOpenLaunchpad: () => void;
-  onOpenKanban: () => void;
-  onOpenRuntime: () => void;
-  onNewProject: () => void;
-  onNewWorkItem: () => void;
-  onOpenSideChat: () => void;
-}
-
-export function ChatPanelPlusMenu({
-  onOpenLaunchpad,
-  onOpenKanban,
-  onOpenRuntime,
-  onNewProject,
-  onNewWorkItem,
-  onOpenSideChat,
-}: ChatPanelPlusMenuProps): React.ReactNode {
+export function ChatPanelPlusMenu(
+  actions: ChatPanelPlusMenuProps
+): React.ReactNode {
   const { t } = useTranslation("sessions");
   const [menuOpen, setMenuOpen] = useState(false);
-  const recentlyClosedTabs = useAtomValue(recentlyClosedChatPanelTabsAtom);
-  const restoreTab = useSetAtom(restoreRecentlyClosedChatPanelTabAtom);
+  const recentTabs = useAtomValue(recentChatPanelTabsAtom);
+  const openRecentTab = useSetAtom(openRecentChatPanelTabAtom);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const plusLabel = t("chat.tabs.newTab", "New tab");
 
@@ -226,14 +222,9 @@ export function ChatPanelPlusMenu({
     <Dropdown
       droplist={
         <PlusMenuContent
-          onOpenLaunchpad={onOpenLaunchpad}
-          onOpenKanban={onOpenKanban}
-          onOpenRuntime={onOpenRuntime}
-          onNewProject={onNewProject}
-          onNewWorkItem={onNewWorkItem}
-          onOpenSideChat={onOpenSideChat}
-          recentlyClosedTabs={recentlyClosedTabs}
-          onRestoreTab={restoreTab}
+          {...actions}
+          recentTabs={recentTabs}
+          onOpenRecentTab={openRecentTab}
           onClose={closeMenu}
         />
       }
@@ -251,6 +242,7 @@ export function ChatPanelPlusMenu({
         <TabBarTrailingIconButton
           title={plusLabel}
           active={menuOpen}
+          tooltipMouseEnterDelay={CHROME_TOOLTIP_HOVER_DELAY}
           tooltipDisabled
           nativeTitle={false}
         >

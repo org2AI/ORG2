@@ -1,7 +1,5 @@
 {
   "tutorials": {
-    "modalTitle": "Poradniki",
-    "start": "Rozpocznij",
     "chrome": {
       "stepProgress": "Krok {{current}} z {{total}}",
       "close": "Zamknij",
@@ -16,7 +14,7 @@
     },
     "generalLayout": {
       "title": "Ogólny przewodnik po układzie",
-      "description": "Poznaj pasek boczny sesji, panel czatu, przełącznik trybu stacji, stację roboczą, stację dokującą i obszary aplikacji.",
+      "description": "Poznaj panel czatu, Runtime, przełącznik trybu stacji i dok.",
       "duration": "1 min",
       "steps": {
         "chat-panel": {
@@ -25,7 +23,7 @@
         },
         "runtime": {
           "title": "Środowisko uruchomieniowe",
-          "body": "Tutaj sprawdzisz własne użycie i stan działania. W organizacji możesz też sprawdzić synchronizację członków oraz otworzyć szczegóły użycia Codex, Claude i Cursor."
+          "body": "Tutaj sprawdzisz własne użycie i stan działania. W obszaru roboczego możesz też sprawdzić synchronizację członków oraz otworzyć szczegóły użycia Codex, Claude i Cursor."
         },
         "station-mode-pill": {
           "title": "Stacja przełączania tryby",
@@ -34,41 +32,17 @@
         "dock": {
           "title": "Dok Agent Station",
           "body": "Dok przełącza aplikacje wewnątrz stacji. Wycieczka tymczasowo wyłącza automatyczne ukrywanie, więc te elementy sterujące pozostają widoczne."
-        },
-        "all-tabs": {
-          "title": "Wszystkie karty",
-          "body": "Pierwsza ikona w doku pokazuje wszystkie otwarte karty razem, niezależnie od tego, która aplikacja na stacji roboczej jest ich właścicielem."
-        },
-        "code-editor": {
-          "title": "Edytor kodu",
-          "body": "Używaj edytora kodu do plików, różnic, terminali, kontroli źródła i zmian w kodowaniu wprowadzonych podczas sesji."
-        },
-        "browser": {
-          "title": "Przeglądarka",
-          "body": "Używaj przeglądarki do tworzenia stron internetowych, podglądów, testowania aplikacji i badań w przeglądarce podczas czatu."
-        },
-        "projects": {
-          "title": "Projekty",
-          "body": "Używaj Projektów do śledzenia elementów pracy, planów i stanu projektu połączonych z bieżącym obszarem roboczym."
         }
       }
     },
     "codeEditor": {
       "title": "Przewodnik po Edytorze kodu",
-      "description": "Dowiedz się o kartach, przełączaniu repozytoriów i gałęzi, kontroli źródła, historii Git i panelu projektu.",
+      "description": "Poznaj karty, obszar roboczy edytora, kontrolę źródeł i historię Git.",
       "duration": "2 min",
       "steps": {
         "tabs": {
           "title": "Karty Edytora kodu",
           "body": "Na kartach gromadzone są pliki, różnice, terminale, widoki kontroli źródła i pulpity nawigacyjne, których używasz otwórz podczas pracy w repozytorium."
-        },
-        "repo-selector": {
-          "title": "Utwórz lub przełącz repo",
-          "body": "Użyj selektora repozytorium, aby przełączyć aktywne repozytorium lub dodać kolejne repozytorium lub obszar roboczy."
-        },
-        "branch-selector": {
-          "title": "Zmień gałęzie",
-          "body": "Selektor gałęzi pokazuje bieżącą gałąź Git i otwiera przełącznik gałęzi lub utwórz przepływ dla tego repozytorium."
         },
         "editor-surface": {
           "title": "Obszar roboczy edytora",
@@ -85,12 +59,15 @@
         "git-history": {
           "title": "Historia Git",
           "body": "Historia Git przełącza Kontrolę źródła w tryb historii zatwierdzeń, dzięki czemu możesz sprawdzać poprzednie zatwierdzenia i powiązane zmiany."
-        },
-        "dashboard": {
-          "title": "Panel kontrolny Edytora kodu",
-          "body": "Panel kontrolny to główna karta Edytora kodu dla obszarów roboczych. Użyj go, aby dodać repo, otworzyć szczegóły repozytorium i przejść do pracy nad projektem."
         }
       }
     }
+  },
+  "discovery": {
+    "title": "Pierwsze kroki i nowe funkcje",
+    "getStarted": "Pierwsze kroki",
+    "newFeatures": "Nowe funkcje",
+    "branchesTitle": "Gałęzie repozytorium",
+    "branchesDescription": "Przełączaj gałęzie repozytorium bezpośrednio w Spotlight."
   }
 }

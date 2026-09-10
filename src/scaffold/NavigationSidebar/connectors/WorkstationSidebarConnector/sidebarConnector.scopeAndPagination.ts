@@ -7,13 +7,11 @@
  * Conversations" cloud pagination window, and the cloud sign-in identity
  * used by the org selector.
  */
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 
-import { buildOrg2CloudLoginUrl } from "@src/features/Org2Cloud/config";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
-import { createLogger } from "@src/hooks/logger";
+import { useOrg2CloudSignIn } from "@src/features/Org2Cloud/useOrg2CloudSignIn";
 import { repoMapAtom } from "@src/store/repo";
 import type { Session } from "@src/store/session";
 
@@ -23,15 +21,15 @@ import {
   sidebarIncludeExternalAtom,
 } from "../sidebarGroupByAtom";
 import {
-  buildRepoPathToName,
-  sortSessionsByActivity,
-} from "../workstationSidebarData";
+  sidebarSessionOrderAtom,
+  sidebarSessionSortAtom,
+  sortSidebarSessions,
+} from "../sidebarSessionOrder";
+import { buildRepoPathToName } from "../workstationSidebarData";
 import { resetScopedSectionPagination } from "./sectionPagination";
 import { useChatPanelTuiSidebarSessions } from "./sidebarMenuCollections";
 import { useSidebarSessionRefreshEffects } from "./sidebarSessionRefresh";
 import { useSidebarOrgScope } from "./useSidebarOrgScope";
-
-const logger = createLogger("WorkstationSidebar");
 
 interface UseWorkstationSidebarScopeAndPaginationParams {
   sessions: Session[];
@@ -43,9 +41,16 @@ export function useWorkstationSidebarScopeAndPagination({
   useSidebarSessionRefreshEffects();
 
   const chatPanelTuiSessions = useChatPanelTuiSidebarSessions();
+  const sortMode = useAtomValue(sidebarSessionSortAtom);
+  const manualOrder = useAtomValue(sidebarSessionOrderAtom);
   const sortedSessions = useMemo(
-    () => sortSessionsByActivity([...chatPanelTuiSessions, ...sessions]),
-    [chatPanelTuiSessions, sessions]
+    () =>
+      sortSidebarSessions(
+        [...chatPanelTuiSessions, ...sessions],
+        sortMode,
+        manualOrder
+      ),
+    [chatPanelTuiSessions, sessions, sortMode, manualOrder]
   );
   const {
     activeCloudOrgId,
@@ -102,11 +107,7 @@ export function useWorkstationSidebarScopeAndPagination({
       cloudAuth.userId)
     : null;
   const cloudSignedInAvatarUrl = cloudAuth?.profile?.avatarUrl;
-  const handleCloudSignIn = useCallback(() => {
-    openUrl(buildOrg2CloudLoginUrl()).catch((error: unknown) => {
-      logger.error("failed to open ORG2 Cloud login in system browser", error);
-    });
-  }, []);
+  const handleCloudSignIn = useOrg2CloudSignIn();
 
   return {
     sortedSessions,

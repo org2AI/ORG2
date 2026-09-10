@@ -15,7 +15,10 @@ import type {
   loadSessionAtom as LoadSessionAtomType,
 } from "../actions";
 import type { eventsAtom as EventsAtomType } from "../events";
-import type { transcriptReplaceEpochAtom as TranscriptReplaceEpochAtomType } from "../metadata";
+import type {
+  pendingSyntheticEventAtom as PendingSyntheticEventAtomType,
+  transcriptReplaceEpochAtom as TranscriptReplaceEpochAtomType,
+} from "../metadata";
 
 vi.mock("../../store/EventStoreProxy", () => ({
   eventStoreProxy: {
@@ -48,13 +51,15 @@ let appendEventsAtom: typeof AppendEventsAtomType;
 let clearSessionAtom: typeof ClearSessionAtomType;
 let loadSessionAtom: typeof LoadSessionAtomType;
 let eventsAtom: typeof EventsAtomType;
+let pendingSyntheticEventAtom: typeof PendingSyntheticEventAtomType;
 let transcriptReplaceEpochAtom: typeof TranscriptReplaceEpochAtomType;
 
 beforeAll(async () => {
   ({ appendEventsAtom, clearSessionAtom, loadSessionAtom } =
     await import("../actions"));
   ({ eventsAtom } = await import("../events"));
-  ({ transcriptReplaceEpochAtom } = await import("../metadata"));
+  ({ pendingSyntheticEventAtom, transcriptReplaceEpochAtom } =
+    await import("../metadata"));
 });
 
 beforeEach(() => {
@@ -110,6 +115,28 @@ function makeUserMessageEvent(
 }
 
 describe("loadSessionAtom", () => {
+  it("does not rewrite an already hydrated native history or append its evicted prefix", () => {
+    const store = createStore();
+    const events = Array.from({ length: 8192 }, (_, i) =>
+      makeMessageEvent(`message-${i}`)
+    );
+    store.set(loadSessionAtom, {
+      sessionId: "session-1",
+      events: events.slice(192),
+    });
+    vi.mocked(eventStoreProxy.mergeEvents).mockClear();
+    store.set(loadSessionAtom, {
+      sessionId: "session-1",
+      events,
+      storeHydrated: true,
+    });
+    expect(store.get(eventsAtom).map((e) => e.id)).toEqual(
+      events.map((e) => e.id)
+    );
+    expect(eventStoreProxy.set).not.toHaveBeenCalled();
+    expect(eventStoreProxy.mergeEvents).toHaveBeenCalledWith([], "session-1");
+  });
+
   it("preserves existing same-session rounds when a later load carries only a new tail event", () => {
     const store = createStore();
     const existingEvents = [
@@ -550,6 +577,41 @@ describe("loadSessionAtom", () => {
       "user-input-1",
       "claudecodeapp-asst-0",
     ]);
+  });
+
+  it("replace: restores a parked next-turn user row after the Rust snapshot was already overwritten", () => {
+    const store = createStore();
+    const priorAssistant = makeReplayEvent(
+      "claudecodeapp-asst-0",
+      "previous turn complete",
+      "assistant",
+      "2026-05-16T00:00:02.000Z"
+    );
+    const nextTurn = {
+      ...makeUserMessageEvent("user-input-next", "continue exploring", {
+        synthetic: true,
+      }),
+      createdAt: "2026-05-16T00:00:03.000Z",
+    };
+
+    store.set(loadSessionAtom, {
+      sessionId: "session-1",
+      events: [priorAssistant],
+    });
+    // Models the delayed native reconcile race: the Rust replace notification
+    // has already removed the EventStore copy, leaving only the parked row.
+    store.set(pendingSyntheticEventAtom, nextTurn);
+    store.set(loadSessionAtom, {
+      sessionId: "session-1",
+      events: [priorAssistant],
+      replace: true,
+    });
+
+    expect(store.get(eventsAtom).map((event) => event.id)).toEqual([
+      "claudecodeapp-asst-0",
+      "user-input-next",
+    ]);
+    expect(store.get(pendingSyntheticEventAtom)?.id).toBe("user-input-next");
   });
 
   it("carries optimistic user images onto a live persisted echo", () => {

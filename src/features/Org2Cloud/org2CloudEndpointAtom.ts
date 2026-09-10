@@ -40,6 +40,7 @@ import {
   org2CloudPushCursorsAtom,
   org2CloudPushedMetadataAtom,
   org2CloudRepoScopesAtom,
+  org2CloudRetentionParkedAtom,
   org2CloudSyncEnabledAtom,
 } from "./org2CloudSyncAtoms";
 
@@ -72,6 +73,7 @@ export function resetCloudStateForEndpointSwitch(store: JotaiStore): void {
   store.set(org2CloudRepoScopesAtom, {});
   store.set(org2CloudSyncEnabledAtom, {});
   store.set(org2CloudPushCursorsAtom, {});
+  store.set(org2CloudRetentionParkedAtom, {});
   // The pushed-metadata marker is server history ("a live metadata row
   // exists on THIS backend"); carried across a switch it can trigger an
   // erroneous retract against the new backend. Wipe-set must stay equal to

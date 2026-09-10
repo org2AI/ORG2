@@ -19,7 +19,7 @@ const item = (
 });
 
 describe("buildSkillEntries", () => {
-  it("keeps / skills-only even when action and tool rows are supplied", () => {
+  it("shows executable commands alongside scoped skills", () => {
     const { entries, totalFlat } = buildSkillEntries(
       [
         item("workspace-skill", "skill", "workspace"),
@@ -32,10 +32,12 @@ describe("buildSkillEntries", () => {
 
     const itemEntries = entries.filter((entry) => entry.kind === "item");
     expect(itemEntries.map((entry) => entry.item.name)).toEqual([
+      "action-row",
+      "tool-row",
       "workspace-skill",
       "user-skill",
     ]);
-    expect(totalFlat).toBe(2);
+    expect(totalFlat).toBe(4);
   });
 
   it("projects persisted skill pins first without duplicating their scope rows", () => {

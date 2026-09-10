@@ -16,8 +16,8 @@ pub(super) fn normalize_codex_exec_tool_calls(input: &str) -> Vec<(String, Value
     calls
         .into_iter()
         .flat_map(|(name, expression)| {
-            let args = tool_args(input, &name, &expression);
-            if is_codex_shell_tool_key(&normalize_tool_name_key(&name)) {
+            let args = tool_args(input, name, expression);
+            if is_codex_shell_tool_key(&normalize_tool_name_key(name)) {
                 let statements = args
                     .get("command")
                     .and_then(Value::as_str)
@@ -29,57 +29,89 @@ pub(super) fn normalize_codex_exec_tool_calls(input: &str) -> Vec<(String, Value
                         .flat_map(|command| {
                             let mut statement_args = args.clone();
                             if let Some(object) = statement_args.as_object_mut() {
-                                object.insert("command".to_string(), Value::String(command));
+                                object.insert(
+                                    "command".to_string(),
+                                    Value::String(command.to_string()),
+                                );
                             }
-                            normalize_codex_tool_calls(&name, statement_args)
+                            normalize_codex_tool_calls(name, statement_args)
                         })
                         .collect::<Vec<_>>();
                 }
             }
-            normalize_codex_tool_calls(&name, args)
+            normalize_codex_tool_calls(name, args)
         })
         .collect()
 }
 
-fn split_multiline_shell_script(command: &str) -> Vec<String> {
+fn split_multiline_shell_script(command: &str) -> Vec<&str> {
+    if !command.contains('\n') {
+        let statement = command.trim();
+        return if statement.is_empty() {
+            Vec::new()
+        } else {
+            vec![statement]
+        };
+    }
     let mut statements = Vec::new();
-    let mut current = String::new();
+    let mut start = 0;
     let mut quote = None;
     let mut escaped = false;
-    for ch in command.chars() {
+    let mut chars = command.char_indices().peekable();
+    while let Some((index, ch)) = chars.next() {
         if escaped {
-            current.push(ch);
             escaped = false;
             continue;
         }
-        if ch == '\\' {
-            current.push(ch);
+        // Backslashes are literal inside single quotes.
+        if ch == '\\' && quote != Some('\'') {
             escaped = true;
             continue;
         }
         if let Some(active) = quote {
-            current.push(ch);
             if ch == active {
                 quote = None;
             }
             continue;
         }
+        // A here-document body is input to one shell invocation, not a list
+        // of shell commands. Keep the whole script (including any surrounding
+        // statements) together so its single process result has one owner.
+        // This also safely retains here-strings and tab-stripped heredocs.
+        if ch == '<' && chars.peek().is_some_and(|(_, next)| *next == '<') {
+            return vec![command];
+        }
+        // Compound shell syntax cannot be decomposed using line boundaries.
+        if matches!(ch, '(' | ')' | '{' | '}') {
+            return vec![command];
+        }
         if matches!(ch, '\'' | '"' | '`') {
             quote = Some(ch);
-            current.push(ch);
         } else if ch == '\n' {
-            let statement = current.trim();
-            if !statement.is_empty() {
-                statements.push(statement.to_string());
+            let statement = command[start..index].trim();
+            if statement.ends_with(['|', '&']) {
+                return vec![command];
             }
-            current.clear();
-        } else {
-            current.push(ch);
+            if !statement.is_empty() {
+                statements.push(statement);
+            }
+            start = index + 1;
         }
     }
-    let statement = current.trim();
+    if quote.is_some() || escaped {
+        return vec![command];
+    }
+    let statement = command[start..].trim();
     if !statement.is_empty() {
-        statements.push(statement.to_string());
+        statements.push(statement);
+    }
+    if statements.iter().any(|line| {
+        matches!(
+            line.split_whitespace().next(),
+            Some("if" | "for" | "while" | "until" | "case" | "select" | "function")
+        )
+    }) {
+        return vec![command];
     }
     statements
 }
@@ -115,7 +147,7 @@ fn tool_args(script: &str, name: &str, expression: &str) -> Value {
 }
 
 /// Scan source-order calls while ignoring tool-looking text inside strings.
-fn tool_invocations(script: &str) -> Vec<(String, String)> {
+fn tool_invocations(script: &str) -> Vec<(&str, &str)> {
     let bytes = script.as_bytes();
     let mut calls = Vec::new();
     let mut index = 0usize;
@@ -162,10 +194,7 @@ fn tool_invocations(script: &str) -> Vec<(String, String)> {
         };
         let name = &script[name_start..name_end];
         if !matches!(name, "text" | "image" | "generatedImage" | "notify") {
-            calls.push((
-                name.to_string(),
-                script[(open + 1)..close].trim().to_string(),
-            ));
+            calls.push((name, script[(open + 1)..close].trim()));
         }
         index = close + 1;
     }
@@ -335,4 +364,54 @@ pub(super) fn codex_tool_output_failed(output: &str, exit_code: Option<i64>) -> 
                 "Script failed" | "Script error:" | "Script error"
             )
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_multiline_shell_script;
+
+    #[test]
+    fn splits_only_unquoted_lines_without_copying_the_command() {
+        for (command, expected) in [
+            (
+                "printf '你好'\r\nprintf done\r\n",
+                vec!["printf '你好'", "printf done"],
+            ),
+            (
+                "printf 'a\nb'\nprintf done",
+                vec!["printf 'a\nb'", "printf done"],
+            ),
+            (
+                "printf 'a\\'\nprintf done",
+                vec!["printf 'a\\'", "printf done"],
+            ),
+            (
+                "printf a\\\nb\nprintf done",
+                vec!["printf a\\\nb", "printf done"],
+            ),
+            ("\n  \nprintf done\n", vec!["printf done"]),
+        ] {
+            let actual = split_multiline_shell_script(command);
+            assert_eq!(actual, expected);
+            let source = command.as_bytes().as_ptr_range();
+            assert!(actual.iter().all(|part| source.contains(&part.as_ptr())));
+        }
+    }
+
+    #[test]
+    fn preserves_compound_and_incomplete_shell_scripts() {
+        for command in [
+            "for x in a b; do\nprintf '%s' \"$x\"\ndone",
+            "if true; then\nprintf done\nfi",
+            "(\nprintf done\n)",
+            "value=$(printf a\nprintf b)\nprintf '%s' \"$value\"",
+            "printf done |\nwc -c",
+            "true &&\nprintf done",
+            "echo before\nprintf 'unterminated",
+            "echo before\nprintf trailing\\",
+            "python3 - <<'PY'\nprint('done')\nPY",
+        ] {
+            assert_eq!(split_multiline_shell_script(command), vec![command]);
+        }
+    }
 }

@@ -14,7 +14,7 @@ import {
   vi,
 } from "vitest";
 
-import { chatPanelDraggingAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelDraggingAtom } from "@src/store/ui/chatPanel/widthAtoms";
 
 import {
   resolveWorkbenchEvaluationWidth,

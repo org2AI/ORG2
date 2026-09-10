@@ -15,6 +15,12 @@ import { getRegistryToolLabelText } from "@src/util/ui/rendering/registryToolLab
 import { deriveToolAction } from "@src/util/ui/rendering/toolAction";
 
 import {
+  hasStyledOutput,
+  isBrowserTool,
+  isSearchTool,
+  isShellTool,
+} from "../../../SessionCore/rendering/registry/toolCategories";
+import {
   BlockOutput,
   BlockSection,
   EVENT_BLOCK_TRANSPARENT_EXPANDED_SHELL_CLASSES,
@@ -35,31 +41,29 @@ import {
   TOOL_SNAPSHOT_MAX_CHARS,
   getToolIcon,
 } from "./config";
+import { extractArgsSummary } from "./helpers/argsSummary";
 import {
-  buildWorkspaceInfoRows,
-  extractArgsSummary,
-  extractResultText,
-  extractToolSource,
-  hasNonEmptyResultValues,
-  hasStyledOutput,
-  isBrowserSnapshotResult,
-  isBrowserTool,
-  isErrorResult,
-  isSearchTool,
-  isShellTool,
   parseAgentMessageCard,
-  parseAwaitListingResult,
   parseCommandResult,
   parseFileCardResult,
-  parseManageLspResult,
-  parseManageWorkspaceResult,
   parseOrgtrackEnvelope,
   parseProjectCardResult,
-  parseProjectToolListResult,
-  parseSearchFilesResult,
   parseWebsiteCardResult,
   parseWorkItemCardResult,
-} from "./helpers";
+} from "./helpers/cardParsers";
+import {
+  buildWorkspaceInfoRows,
+  extractResultText,
+  hasNonEmptyResultValues,
+  isBrowserSnapshotResult,
+  isErrorResult,
+  parseAwaitListingResult,
+  parseManageLspResult,
+  parseManageWorkspaceResult,
+  parseProjectToolListResult,
+  parseSearchFilesResult,
+} from "./helpers/resultParsers";
+import { extractToolSource } from "./helpers/toolSource";
 import type { ToolCallBlockProps } from "./types";
 
 export type { ToolCallBlockProps } from "./types";
@@ -333,7 +337,7 @@ const ToolCallBlock: React.FC<ToolCallBlockProps> = React.memo(
         <EventBlockHeader
           isCollapsed={isCollapsed}
           withHover={false}
-          onClick={handleLocate}
+          onToggleCollapse={hasContent ? handleHeaderClick : undefined}
           onNavigate={handleLocate}
           onMouseEnter={handleHeaderMouseEnter}
           onMouseLeave={handleHeaderMouseLeave}
@@ -345,9 +349,7 @@ const ToolCallBlock: React.FC<ToolCallBlockProps> = React.memo(
             icon={icon}
             isCollapsed={isCollapsed}
             isHeaderHovered={isHeaderHovered}
-            onToggle={hasContent ? handleHeaderClick : undefined}
             hasContent={hasContent}
-            revealChevronOnIconHoverOnly={Boolean(eventId)}
             isLoading={isLoading}
           />
           <EventBlockHeaderTitle isLoading={isLoading}>

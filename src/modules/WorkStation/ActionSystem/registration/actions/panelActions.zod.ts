@@ -9,7 +9,7 @@ import { ACTION_ID } from "@src/ActionSystem/actionIds";
 import { defineZodAction } from "@src/ActionSystem/schema/defineZodAction";
 import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import { PanelService } from "@src/services/panel";
-import type { PrimarySidebarTabKey } from "@src/store/ui/workStationAtom";
+import type { PrimarySidebarTabKey } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 
 // Source Control is no longer a regular sidebar tab — it lives in the
 // tab-specific Diff sidebar — so it's not exposed as a panel.show target.
@@ -39,7 +39,9 @@ export const panelTogglePrimary = defineZodAction(
     category: "panel",
     description: "Toggle the Workstation sidebar visibility",
     params: z.object({}),
-    shortcut: getShortcutKeys("toggle_workstation_sidebar"),
+    get shortcut() {
+      return getShortcutKeys("toggle_workstation_sidebar");
+    },
     examples: [
       "toggle work station sidebar",
       "hide work station sidebar",
@@ -58,7 +60,9 @@ export const panelToggleBottom = defineZodAction(
     category: "panel",
     description: "Toggle the bottom panel visibility",
     params: z.object({}),
-    shortcut: getShortcutKeys("toggle_bottom_panel"),
+    get shortcut() {
+      return getShortcutKeys("toggle_bottom_panel");
+    },
     examples: ["toggle bottom panel", "hide bottom panel"],
   },
   async () => {

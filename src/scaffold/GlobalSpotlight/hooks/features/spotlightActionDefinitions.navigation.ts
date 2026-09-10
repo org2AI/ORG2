@@ -8,7 +8,7 @@
  * hooks. Split out of `spotlightActionDefinitions.ts`.
  *
  * - `AGENT_SESSION_ACTIONS`    — top-level agent/session entry points.
- * - `WORKSPACE_ACTIONS`        — workspace / repo switching and management.
+ * - `WORKING_DIRECTORY_ACTIONS` — working-directory / repo switching and management.
  * - `ORGANIZATION_ACTIONS`     — organization create / join entry points.
  * - `STATION_MODE_ACTIONS`     — my-station / agent-station / kanban switchers.
  * - `APP_ACTIONS`              — app-level actions (update detection, etc).
@@ -27,6 +27,7 @@ import {
   FolderLibraryIcon,
   GitPullRequestIcon,
   type IconSvgElement,
+  ImportIcon,
   KanbanIcon,
   Login01Icon,
   MessageAdd02Icon,
@@ -90,6 +91,22 @@ export const ALL_SESSIONS_SEARCH_ICON: IconSvgElement = [
 
 export const AGENT_SESSION_ACTIONS = [
   {
+    id: "import-session",
+    labelKey: "navigation:cloud.share.importEntry",
+    icon: ImportIcon,
+    keywords: [
+      "import session",
+      "import shared session",
+      "share link",
+      "导入会话",
+    ],
+    actionId: ACTION_ID.SPOTLIGHT_IMPORT_SESSION,
+    payload: {},
+    fallback: "import-session",
+    opensSecondLevel: true,
+    closeOnSuccess: false,
+  },
+  {
     id: "open-agent-control",
     labelKey: "common:adeManager.menuToggle",
     icon: AiGenerativeIcon,
@@ -103,7 +120,9 @@ export const AGENT_SESSION_ACTIONS = [
       "manage agents",
       "manage workspaces",
     ],
-    shortcut: getShortcutKeys("toggle_ade_manager"),
+    get shortcut() {
+      return getShortcutKeys("toggle_ade_manager");
+    },
     actionId: ACTION_ID.SPOTLIGHT_OPEN_AGENT_CONTROL,
     payload: {},
     fallback: "agent-control",
@@ -121,7 +140,9 @@ export const AGENT_SESSION_ACTIONS = [
       "start agent",
       "open session creator",
     ],
-    shortcut: getShortcutKeys("new_session"),
+    get shortcut() {
+      return getShortcutKeys("new_session");
+    },
     actionId: ACTION_ID.SPOTLIGHT_OPEN_SESSION_CREATOR,
     payload: {},
     fallback: "open-session-creator",
@@ -167,7 +188,9 @@ export const AGENT_SESSION_ACTIONS = [
       "find session",
       "session history",
     ],
-    shortcut: getShortcutKeys("agent_session_search"),
+    get shortcut() {
+      return getShortcutKeys("agent_session_search");
+    },
     actionId: ACTION_ID.SPOTLIGHT_OPEN_AGENT_SESSION_SEARCH,
     payload: {},
     fallback: "search-agent-sessions",
@@ -193,12 +216,20 @@ export const AGENT_SESSION_ACTIONS = [
   },
 ] satisfies SpotlightStaticActionDefinition[];
 
-export const WORKSPACE_ACTIONS = [
+export const WORKING_DIRECTORY_ACTIONS = [
   {
     id: "switch-workspace",
     labelKey: "selectors.spotlight.actions.switchWorkspace.label",
     icon: FolderGitTwoIcon,
-    keywords: ["switch workspace", "workspace", "repo", "repository", "folder"],
+    keywords: [
+      "switch working directory",
+      "working directory",
+      "switch workspace",
+      "workspace",
+      "repo",
+      "repository",
+      "folder",
+    ],
     actionId: ACTION_ID.SPOTLIGHT_OPEN_WORKSPACE_PICKER,
     payload: { mode: "switch" },
     fallback: "workspace-switch",
@@ -220,7 +251,14 @@ export const WORKSPACE_ACTIONS = [
     id: "add-workspace",
     labelKey: "selectors.spotlight.actions.addWorkspace.label",
     icon: FolderAddIcon,
-    keywords: ["add workspace", "add repo", "add folder", "import workspace"],
+    keywords: [
+      "add working directory",
+      "working directory",
+      "add workspace",
+      "add repo",
+      "add folder",
+      "import workspace",
+    ],
     actionId: ACTION_ID.SPOTLIGHT_OPEN_WORKSPACE_PICKER,
     payload: { mode: "add" },
     fallback: "workspace-add",
@@ -232,6 +270,8 @@ export const WORKSPACE_ACTIONS = [
     labelKey: "selectors.spotlight.actions.createMultiRepoWorkspace.label",
     icon: FolderLibraryIcon,
     keywords: [
+      "create working directory",
+      "multi repo working directory",
       "create workspace",
       "multi repo workspace",
       "Multi-repo Workspace",
@@ -309,7 +349,9 @@ export const STATION_MODE_ACTIONS = [
     labelKey: "common:spotlightActions.openKanban",
     icon: KanbanIcon,
     keywords: ["kanban", "project", "work items"],
-    shortcut: getShortcutKeys("open_kanban"),
+    get shortcut() {
+      return getShortcutKeys("open_kanban");
+    },
     actionId: ACTION_ID.WORKSTATION_OPEN_KANBAN,
     payload: {},
     fallback: "open-kanban",
@@ -345,21 +387,27 @@ export const EDITOR_ACTIONS = [
     modeKey: "file",
     labelKey: "label",
     prefix: "",
-    shortcut: getShortcutKeys("quick_open"),
+    get shortcut() {
+      return getShortcutKeys("quick_open");
+    },
   },
   {
     id: "run-editor-command",
     modeKey: "command",
     labelKey: "label",
     prefix: ">",
-    shortcut: ">",
+    get shortcut() {
+      return getShortcutKeys("spotlight_command_mode");
+    },
   },
   {
     id: "go-to-editor-symbol",
     modeKey: "symbol",
     labelKey: "label",
     prefix: "@",
-    shortcut: getShortcutKeys("go_to_symbol"),
+    get shortcut() {
+      return getShortcutKeys("go_to_symbol");
+    },
   },
 ] satisfies SpotlightEditorActionDefinition[];
 
@@ -376,7 +424,9 @@ export const QUICK_NAVIGATION_ACTIONS = [
       "code search",
       "code editor",
     ],
-    shortcut: getShortcutKeys("search_files"),
+    get shortcut() {
+      return getShortcutKeys("search_files");
+    },
     actionId: ACTION_ID.WORKSTATION_OPEN_SEARCH_SIDEBAR,
     payload: {},
     fallback: "open-search-sidebar",
@@ -394,7 +444,9 @@ export const QUICK_NAVIGATION_ACTIONS = [
       "changes",
       "code editor",
     ],
-    shortcut: getShortcutKeys("open_source_control_tab"),
+    get shortcut() {
+      return getShortcutKeys("open_source_control_tab");
+    },
     actionId: ACTION_ID.WORKSTATION_OPEN_SOURCE_CONTROL_TAB,
     payload: {},
     fallback: "open-source-control-tab",
@@ -412,7 +464,9 @@ export const QUICK_NAVIGATION_ACTIONS = [
       "command line",
       "code editor",
     ],
-    shortcut: getShortcutKeys("open_terminal_tab"),
+    get shortcut() {
+      return getShortcutKeys("open_terminal_tab");
+    },
     actionId: ACTION_ID.WORKSTATION_OPEN_TERMINAL_TAB,
     payload: {},
     fallback: "open-terminal-tab",

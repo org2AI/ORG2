@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
-
 import {
   type OrgtrackFileTimeline,
   getOrgtrackFileTimeline,
 } from "@src/api/tauri/lineage";
+import { useAsyncData } from "@src/hooks/async/useAsyncData";
 
 export interface UseOrgtrackFileTimelineOptions {
   repoPath: string;
@@ -15,7 +14,7 @@ export interface UseOrgtrackFileTimelineResult {
   timeline: OrgtrackFileTimeline | null;
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: () => void;
 }
 
 export function useOrgtrackFileTimeline({
@@ -23,33 +22,20 @@ export function useOrgtrackFileTimeline({
   filePath,
   autoLoad = true,
 }: UseOrgtrackFileTimelineOptions): UseOrgtrackFileTimelineResult {
-  const [timeline, setTimeline] = useState<OrgtrackFileTimeline | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    if (!filePath || !repoPath) {
-      setTimeline(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      setTimeline(await getOrgtrackFileTimeline({ repoPath, filePath }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setTimeline(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [filePath, repoPath]);
-
-  useEffect(() => {
-    if (autoLoad) {
-      void refresh();
-    }
-  }, [autoLoad, refresh]);
+  const {
+    data: timeline,
+    loading,
+    error,
+    refresh,
+  } = useAsyncData<OrgtrackFileTimeline | null, string>({
+    key: `${repoPath}\u0000${filePath ?? ""}`,
+    enabled: autoLoad && Boolean(repoPath) && Boolean(filePath),
+    initialData: null,
+    query: () =>
+      filePath
+        ? getOrgtrackFileTimeline({ repoPath, filePath })
+        : Promise.resolve(null),
+  });
 
   return { timeline, loading, error, refresh };
 }

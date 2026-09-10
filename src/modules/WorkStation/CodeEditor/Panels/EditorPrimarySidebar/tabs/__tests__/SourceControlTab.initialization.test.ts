@@ -27,7 +27,7 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@src/contexts/git", () => ({
+vi.mock("@src/contexts/git/GitStatusContext/useGitStatus", () => ({
   useGitStatus: () => ({
     currentGitStatus: { exists: true },
     forceRefresh: vi.fn(),

@@ -62,7 +62,7 @@ export function ConversationModePill({
               data-icon="messages-square"
               size={PILL_SM_ICON_SIZE}
               strokeWidth={1.75}
-              className="block"
+              className={mode === "team_chat" ? "block text-purple-6" : "block"}
               aria-hidden
             />
           ),

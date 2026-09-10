@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import StatusDot from "@src/components/StatusDot";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
@@ -224,9 +224,9 @@ const McpServerDetailPanel: React.FC<McpServerDetailPanelProps> = ({
             </div>
             {server.error && (
               <div className="mt-3">
-                <InlineAlert type="danger" title={t("common:status.error")}>
+                <PageNotice type="danger" title={t("common:status.error")}>
                   {server.error}
-                </InlineAlert>
+                </PageNotice>
               </div>
             )}
           </CollapsibleSection>

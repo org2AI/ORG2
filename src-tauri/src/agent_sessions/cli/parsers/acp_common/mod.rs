@@ -41,7 +41,11 @@ pub(crate) use content::{
 pub trait AcpAgentAdapter: Send {
     /// Map ACP tool_call `kind` to Cursor-normalized tool name.
     /// Default handles standard ACP kinds (execute, read, write, etc.).
-    fn map_tool_kind(&self, kind: &str, _raw_input: &Value) -> String {
+    ///
+    /// Agents that emit only the generic `other` kind carry the real tool
+    /// name elsewhere — Kiro and OpenCode put it in `raw_input`, DeepSeek
+    /// Harness puts it in `title` — so both are passed to the adapter.
+    fn map_tool_kind(&self, kind: &str, _title: &str, _raw_input: &Value) -> String {
         match kind {
             "execute" => "Shell",
             "read" => "Read",
@@ -53,6 +57,18 @@ pub trait AcpAgentAdapter: Send {
             _ => kind,
         }
         .to_string()
+    }
+
+    /// Session configuration to apply between session creation and the first
+    /// prompt, as `(configId, value)` pairs sent via
+    /// `session/set_config_option`.
+    ///
+    /// `advertised` is the `configOptions` array the agent returned from
+    /// `session/new` or `session/resume`. An agent rejects an option id or
+    /// value it does not offer, so an adapter must select from `advertised`
+    /// rather than assume a value is valid.
+    fn session_config_updates(&self, _advertised: &Value) -> Vec<(String, Value)> {
+        vec![]
     }
 
     /// Handle agent-specific notifications (non-standard methods like `_kiro.dev/*`).

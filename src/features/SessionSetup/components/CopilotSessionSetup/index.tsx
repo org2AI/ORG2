@@ -16,8 +16,8 @@ import { useTranslation } from "react-i18next";
 import { v4 as uuidv4 } from "uuid";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import SessionSetupStepIndicator from "@src/features/SessionSetup/components/SessionSetupStepIndicator";
 import { useWebviewPositionSync } from "@src/features/SessionSetup/hooks/useWebviewPositionSync";
@@ -418,14 +418,14 @@ const CopilotSessionSetup: React.FC<CopilotSessionSetupProps> = ({
             </SectionRow>
           </SectionContainer>
           {token && !isTokenValid && (
-            <InlineAlert type="danger">
+            <PageNotice type="danger">
               {t("keyVault.copilotInvalidTokenFormat")}
-            </InlineAlert>
+            </PageNotice>
           )}
           {isTokenValid && (
-            <InlineAlert type="success">
+            <PageNotice type="success">
               {t("keyVault.copilotValidTokenFormat")}
-            </InlineAlert>
+            </PageNotice>
           )}
         </>
       )}

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { CanvasErrorBoundary } from "./CanvasErrorBoundary";
 
 describe("CanvasErrorBoundary", () => {
-  it("renders Canvas failures as a shared danger InlineAlert", () => {
+  it("renders Canvas failures as a shared danger PageNotice", () => {
     const boundary = new CanvasErrorBoundary({
       children: createElement("div", null, "Canvas content"),
     });

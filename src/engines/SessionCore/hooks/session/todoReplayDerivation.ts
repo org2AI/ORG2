@@ -62,6 +62,7 @@ function extractTodosFromEvent(event: SessionEvent): TodoItem[] {
     status: "success" as const,
     variant: "chat" as const,
     context: "chat" as const,
+    rustExtracted: event.extracted,
   });
 
   return todoData.todos.map((todo, idx) => {
@@ -83,6 +84,16 @@ function extractTodosFromEvent(event: SessionEvent): TodoItem[] {
   });
 }
 
+export function hasAuthoritativeEmptyTodoSnapshot(
+  event: SessionEvent
+): boolean {
+  return (
+    event.displayStatus === "completed" &&
+    event.extracted?.kind === "todo" &&
+    event.extracted.todos.length === 0
+  );
+}
+
 export function extractTodosFromManageTodoSequence(
   events: readonly SessionEvent[],
   sessionId: string,
@@ -97,7 +108,10 @@ export function extractTodosFromManageTodoSequence(
     if (!eventMatchesSession(event, sessionId)) continue;
 
     const nextTodos = extractTodosFromEvent(event);
-    if (nextTodos.length === 0) continue;
+    if (nextTodos.length === 0) {
+      if (hasAuthoritativeEmptyTodoSnapshot(event)) todos = [];
+      continue;
+    }
     todos = preserveTodoContent(todos, nextTodos);
   }
 

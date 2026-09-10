@@ -23,7 +23,7 @@ import { isSyntheticUserInputEvent } from "@src/engines/SessionCore/sync/utils/a
 import { defineSimulatorAppConfig } from "@src/engines/Simulator/apps/core/configFactory";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
 
-import { isEmailBubbleEvent } from "./EmailMessageBubble";
+import { isEmailBubbleEvent } from "./emailBubbleEvent";
 import type { MessageEntry, SimulatorMessagesState } from "./types";
 import {
   convertToMessageEntry,

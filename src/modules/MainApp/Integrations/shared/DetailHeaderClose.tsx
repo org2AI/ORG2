@@ -2,7 +2,8 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import { useRefreshSpin } from "@src/hooks/ui";
+import { COLLAPSIBLE_SECTION_TOKENS } from "@src/config/detailPanelTokens";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   ArrowDown02Icon,
   ArrowExpand01Icon,
@@ -11,10 +12,7 @@ import {
   HugeiconsIcon,
   Refresh04Icon,
 } from "@src/icons";
-import {
-  COLLAPSIBLE_SECTION_TOKENS,
-  PANEL_HEADER_TOKENS,
-} from "@src/modules/shared/layouts/blocks";
+import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 
 interface DetailHeaderCloseProps {
   onClick: () => void;

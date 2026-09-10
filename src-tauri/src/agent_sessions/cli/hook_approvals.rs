@@ -173,6 +173,11 @@ pub async fn park_hook_approval(
         Err(_) => return HookApprovalDecision::Passthrough,
     }
 
+    let _lifetime = super::permission_lifecycle::PermissionLifetime::new(
+        session_id,
+        &request_id,
+        remove_pending_hook_approval,
+    );
     broadcast_permission_request(session_id, &request_id, tool_name, &tool_args);
     tracing::info!(
         session_id = %session_id,
@@ -187,9 +192,6 @@ pub async fn park_hook_approval(
         // Claude's own permission behavior instead of hanging the hook.
         _ => HookApprovalDecision::Passthrough,
     };
-    if let Ok(mut pending) = PENDING_HOOK_APPROVALS.lock() {
-        pending.remove(&request_id);
-    }
     tracing::info!(
         session_id = %session_id,
         request_id = %request_id,
@@ -197,6 +199,12 @@ pub async fn park_hook_approval(
         "[HookApproval] Resolved"
     );
     decision
+}
+
+fn remove_pending_hook_approval(request_id: &str) {
+    if let Ok(mut pending) = PENDING_HOOK_APPROVALS.lock() {
+        pending.remove(request_id);
+    }
 }
 
 /// Resolve a parked hook approval from the Tauri approval-response command.
@@ -214,10 +222,13 @@ pub fn resolve_hook_approval(
             .lock()
             .map_err(|_| "Hook approval registry lock is poisoned".to_string())?;
         let key = match request_id {
-            Some(request_id) if pending.contains_key(request_id) => Some(request_id.to_string()),
-            // No (or unknown) request id: fall back to the session's only
+            Some(request_id) => pending
+                .get(request_id)
+                .filter(|entry| entry.session_id == session_id)
+                .map(|_| request_id.to_string()),
+            // No request id: fall back to the session's only
             // pending entry — Claude blocks on one permission at a time.
-            _ => pending
+            None => pending
                 .iter()
                 .find(|(_, entry)| entry.session_id == session_id)
                 .map(|(key, _)| key.clone()),
@@ -244,8 +255,10 @@ pub fn has_pending_hook_approval(session_id: &str, request_id: Option<&str>) -> 
     PENDING_HOOK_APPROVALS
         .lock()
         .map(|pending| match request_id {
-            Some(request_id) if pending.contains_key(request_id) => true,
-            _ => pending.values().any(|entry| entry.session_id == session_id),
+            Some(request_id) => pending
+                .get(request_id)
+                .is_some_and(|entry| entry.session_id == session_id),
+            None => pending.values().any(|entry| entry.session_id == session_id),
         })
         .unwrap_or(false)
 }
@@ -317,6 +330,7 @@ mod tests {
 
         let decision = park.await.expect("join");
         assert_eq!(decision, HookApprovalDecision::Allow);
+        assert_resolved(&session);
         assert!(!has_pending_hook_approval(&session, None));
         unregister_session(&session);
     }
@@ -357,6 +371,7 @@ mod tests {
 
         let decision = park.await.expect("join");
         assert_eq!(decision, HookApprovalDecision::Deny);
+        assert_resolved(&session);
         unregister_session(&session);
     }
 
@@ -373,6 +388,7 @@ mod tests {
         .await;
         assert_eq!(decision, HookApprovalDecision::Passthrough);
         assert!(!has_pending_hook_approval(&session, None));
+        assert_resolved(&session);
         unregister_session(&session);
     }
 
@@ -410,5 +426,38 @@ mod tests {
     async fn resolve_without_pending_errors() {
         let session = unique_session("nopending");
         assert!(resolve_hook_approval(&session, None, true).is_err());
+    }
+    fn assert_resolved(session: &str) {
+        #[cfg(not(debug_assertions))]
+        let _ = session;
+        #[cfg(debug_assertions)]
+        assert!(websocket_handler::recent_events::snapshot()
+            .iter()
+            .any(|raw| {
+                let event: serde_json::Value = serde_json::from_str(raw).unwrap();
+                event["type"] == "permission:resolved" && event["sessionId"] == session
+            }));
+    }
+
+    #[tokio::test]
+    async fn cancelling_park_emits_resolution_and_removes_registry_entry() {
+        let session = unique_session("abort");
+        register_session_permission_mode(&session, CliPermissionMode::Manual);
+        let mut future = Box::pin(park_hook_approval(
+            &session,
+            "Bash",
+            serde_json::json!({}),
+            Duration::from_secs(10),
+        ));
+        assert!(tokio::time::timeout(Duration::from_millis(10), &mut future)
+            .await
+            .is_err());
+        assert!(has_pending_hook_approval(&session, None));
+        assert!(resolve_hook_approval(&session, Some("stale-id"), true).is_err());
+        assert!(has_pending_hook_approval(&session, None));
+        drop(future);
+        assert!(!has_pending_hook_approval(&session, None));
+        assert_resolved(&session);
+        unregister_session(&session);
     }
 }

@@ -11,6 +11,7 @@ import {
   externalSessionsEnabledAtom,
 } from "../dataSourceConfigAtom";
 import {
+  dataSourceProbeRetryAtAtom,
   nextDataSourceAutoScanDelay,
   runDataSourceAutoScan,
   startDataSourceAutoScanScheduler,
@@ -84,6 +85,66 @@ describe("runDataSourceAutoScan", () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
+
+  it.each([false, true])(
+    "backs off failed presence probes, including hidden upload demand=%s",
+    async (hidden) => {
+      vi.useFakeTimers();
+      vi.spyOn(Date, "now").mockRestore();
+      vi.setSystemTime(NOW);
+      const store = mocks.store!;
+      const config: DataSourceConfigMap = Object.fromEntries(
+        IMPORTED_HISTORY_SOURCE_DESCRIPTORS.map(({ sourceId }) => [
+          sourceId,
+          {
+            enabled: false,
+            frequency: "default" as const,
+            lastScannedAt: null,
+          },
+        ])
+      );
+      config.cursor_ide = {
+        enabled: true,
+        frequency: "120s",
+        lastScannedAt: NOW - 120_000,
+      };
+      store.set(dataSourceConfigAtom, config);
+      mocks.externalCliSourceProbe.mockRejectedValue(new Error("probe failed"));
+      const source = new VisibilitySourceStub();
+      if (hidden) source.setVisibility("hidden");
+      const scheduler = startDataSourceAutoScanScheduler(
+        source,
+        runDataSourceAutoScan,
+        () =>
+          nextDataSourceAutoScanDelay(
+            Date.now(),
+            true,
+            true,
+            store.get(dataSourceConfigAtom),
+            store.get(dataSourcePresenceAtom),
+            "10m",
+            store.get(dataSourceProbeRetryAtAtom)
+          ),
+        30_000,
+        () => hidden
+      );
+      try {
+        await vi.advanceTimersByTimeAsync(29_999);
+        expect(mocks.externalCliSourceProbe).toHaveBeenCalledTimes(1);
+        expect(mocks.externalHistoryRescanSources).toHaveBeenCalledTimes(1);
+        expect(store.get(dataSourcePresenceAtom).cursor_ide).toBeUndefined();
+        mocks.externalCliSourceProbe.mockResolvedValue({ historyFound: true });
+        await vi.advanceTimersByTimeAsync(1);
+        expect(mocks.externalCliSourceProbe).toHaveBeenCalledTimes(2);
+        expect(store.get(dataSourceProbeRetryAtAtom)).toEqual({});
+        await vi.advanceTimersByTimeAsync(60_000);
+        expect(mocks.externalCliSourceProbe).toHaveBeenCalledTimes(2);
+      } finally {
+        scheduler.stop();
+      }
+      expect(vi.getTimerCount()).toBe(0);
+    }
+  );
 
   it("defaults global provider discovery to a ten-minute cadence", () => {
     expect(mocks.store?.get(dataSourceGlobalFrequencyAtom)).toBe("10m");

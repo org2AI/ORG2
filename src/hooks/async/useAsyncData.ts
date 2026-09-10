@@ -25,6 +25,13 @@ export interface UseAsyncDataOptions<TData, TKey> {
   enabled?: boolean;
   fallbackData?: TData | ((error: unknown) => TData);
   mapError?: AsyncDataErrorMapper;
+  /** Fires once per query that commits successfully (latest generation only). */
+  onSuccess?: (data: TData, key: TKey) => void;
+  /**
+   * Fires once per query failure that commits, with the mapped message.
+   * Skipped when `mapError` returns null (the failure is suppressed).
+   */
+  onError?: (message: string, error: unknown, key: TKey) => void;
 }
 
 export interface UseAsyncDataReturn<TData> {
@@ -56,6 +63,8 @@ export function useAsyncData<TData, TKey>({
   enabled = true,
   fallbackData = initialData,
   mapError = defaultMapError,
+  onSuccess,
+  onError,
 }: UseAsyncDataOptions<TData, TKey>): UseAsyncDataReturn<TData> {
   const [generation, setGeneration] = useState(0);
   const [snapshot, setSnapshot] = useState<AsyncDataSnapshot<
@@ -66,13 +75,17 @@ export function useAsyncData<TData, TKey>({
   const queryRef = useRef(query);
   const fallbackDataRef = useRef(fallbackData);
   const mapErrorRef = useRef(mapError);
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
   const mountedRef = useMounted();
 
   useEffect(() => {
     queryRef.current = query;
     fallbackDataRef.current = fallbackData;
     mapErrorRef.current = mapError;
-  }, [fallbackData, mapError, query]);
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  }, [fallbackData, mapError, onError, onSuccess, query]);
 
   const refresh = useCallback(() => {
     if (mountedRef.current) {
@@ -85,17 +98,18 @@ export function useAsyncData<TData, TKey>({
 
     if (!enabled) return;
 
-    void queryRef
-      .current(key)
-      .then((data) => {
+    // Two-argument `then` keeps a throwing `onSuccess` out of the error branch.
+    void queryRef.current(key).then(
+      (data) => {
         if (
           mountedRef.current &&
           latestGenerationRef.current === requestGeneration
         ) {
           setSnapshot({ key, generation, data, error: null });
+          onSuccessRef.current?.(data, key);
         }
-      })
-      .catch((error: unknown) => {
+      },
+      (error: unknown) => {
         if (
           !mountedRef.current ||
           latestGenerationRef.current !== requestGeneration
@@ -108,13 +122,11 @@ export function useAsyncData<TData, TKey>({
           typeof fallback === "function"
             ? (fallback as (failure: unknown) => TData)(error)
             : fallback;
-        setSnapshot({
-          key,
-          generation,
-          data,
-          error: mapErrorRef.current(error),
-        });
-      });
+        const message = mapErrorRef.current(error);
+        setSnapshot({ key, generation, data, error: message });
+        if (message !== null) onErrorRef.current?.(message, error, key);
+      }
+    );
 
     return () => {
       if (latestGenerationRef.current === requestGeneration) {
@@ -141,91 +153,5 @@ export function useAsyncData<TData, TKey>({
 // ============================================
 // Utility: useAsyncAction (for mutations)
 // ============================================
-
-export interface UseAsyncActionOptions {
-  /** Success callback */
-  onSuccess?: () => void;
-  /** Error callback */
-  onError?: (error: Error) => void;
-  /** Error message prefix */
-  errorPrefix?: string;
-}
-
-export interface UseAsyncActionReturn<TArgs extends unknown[], TResult> {
-  /** Execute the action */
-  execute: (...args: TArgs) => Promise<TResult | null>;
-  /** Loading state */
-  loading: boolean;
-  /** Error message */
-  error: string | null;
-  /** Clear error */
-  clearError: () => void;
-}
-
-/**
- * Hook for async actions/mutations (create, update, delete operations)
- *
- * @example
- * const { execute: createItem, loading } = useAsyncAction(
- *   async (name: string) => {
- *     return await api.createItem({ name });
- *   },
- *   { onSuccess: refresh }
- * );
- */
-export function useAsyncAction<TArgs extends unknown[], TResult>(
-  action: (...args: TArgs) => Promise<TResult>,
-  options: UseAsyncActionOptions = {}
-): UseAsyncActionReturn<TArgs, TResult> {
-  const { onSuccess, onError, errorPrefix = "Action failed" } = options;
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const mountedRef = useMounted();
-
-  const execute = useCallback(
-    async (...args: TArgs): Promise<TResult | null> => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const result = await action(...args);
-
-        if (mountedRef.current) {
-          onSuccess?.();
-        }
-
-        return result;
-      } catch (err) {
-        if (mountedRef.current) {
-          const message =
-            err instanceof Error
-              ? err.message
-              : `${errorPrefix}: ${String(err)}`;
-          setError(message);
-          onError?.(err instanceof Error ? err : new Error(message));
-        }
-        return null;
-      } finally {
-        if (mountedRef.current) {
-          setLoading(false);
-        }
-      }
-    },
-    [action, errorPrefix, onSuccess, onError, mountedRef]
-  );
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  return {
-    execute,
-    loading,
-    error,
-    clearError,
-  };
-}
 
 export default useAsyncData;

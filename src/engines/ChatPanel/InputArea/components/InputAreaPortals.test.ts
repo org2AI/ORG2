@@ -65,8 +65,8 @@ describe("InputAreaPortals", () => {
           },
           {
             category: "action",
-            name: "non-skill",
-            description: "Not a skill",
+            name: "review",
+            description: "Native review",
             source: "builtin",
             acceptsArgs: false,
           },
@@ -105,6 +105,7 @@ describe("InputAreaPortals", () => {
     expect(slashProps[0]?.onImageUpload).toBeUndefined();
     expect(slashProps[0]?.items).toEqual([
       expect.objectContaining({ category: "skill", name: "compact" }),
+      expect.objectContaining({ category: "action", name: "review" }),
     ]);
   });
 });

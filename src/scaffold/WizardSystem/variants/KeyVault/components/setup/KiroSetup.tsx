@@ -12,7 +12,7 @@ import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { KiroSessionSetup } from "@src/features/SessionSetup";
 import { Login01Icon, SearchAreaIcon } from "@src/icons";
 import {
@@ -112,13 +112,13 @@ const KiroSetup: React.FC<KiroSetupProps> = ({
             </SectionRow>
           </SectionContainer>
           {tokenError && (
-            <InlineAlert
+            <PageNotice
               type="danger"
               title={tokenError}
               onClose={onClearTokenError}
             >
               {t("keyVault.kiroDetectErrorHint")}
-            </InlineAlert>
+            </PageNotice>
           )}
         </>
       )}

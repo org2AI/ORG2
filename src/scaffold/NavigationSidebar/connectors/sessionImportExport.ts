@@ -8,12 +8,8 @@ import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { processChunksRust } from "@src/engines/SessionCore/ingestion/rustBridge";
 import { cacheAdapter } from "@src/engines/SessionCore/storage/cacheAdapter";
 import { loadOwnSessionInitialEvents } from "@src/engines/SessionCore/sync/sessionSyncUtils";
-import { createLogger } from "@src/hooks/logger";
 import type { Session } from "@src/store/session";
-import { sessionsAtom, upsertSession } from "@src/store/session";
-import { persistSessions } from "@src/store/session/sessionAtom/persistence";
 import type { ActivityChunk } from "@src/types/session/session";
-import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 import {
   isAgentSession,
   isCliSession,
@@ -21,21 +17,9 @@ import {
 } from "@src/util/session/sessionDispatch";
 import { getSessionListDisplayName } from "@src/util/session/sessionSidebarRow";
 
-const logger = createLogger("SessionImportExport");
-
 const EXPORT_FORMAT = "orgii.session.export";
 const EXPORT_VERSION = 1;
-const IMPORTED_SESSION_PREFIX = "imported-session-";
-const SNAPSHOT_ICON_ID = "archive";
-const SNAPSHOT_MODEL = "Imported JSON Snapshot";
 const FILENAME_UNSAFE_CHARS = /[/\\?%*:|"<>]/g;
-
-const ImportedSessionMetadataSchema = z.object({
-  originalSessionId: z.string(),
-  originalCategory: z.enum(["cli_agent", "rust_agent", "cursor_ide"]),
-  exportedAt: z.string(),
-  eventCount: z.number(),
-});
 
 const SessionExportFileSchema = z.object({
   format: z.literal(EXPORT_FORMAT),
@@ -101,20 +85,6 @@ export interface SessionExportDraft {
   preview: SessionExportPreview;
 }
 
-export interface SessionImportPreview {
-  originalSessionId: string;
-  displayName: string;
-  originalCategory: DispatchCategory;
-  eventCount: number;
-  exportedAt: string;
-  importSessionId: string;
-  importedName: string;
-}
-
-interface SessionImportResult extends SessionImportPreview {
-  importedEventCount: number;
-}
-
 type ExportableCategory = "cli_agent" | "rust_agent" | "cursor_ide";
 
 function inferCategory(
@@ -142,15 +112,6 @@ function buildExportFileName(session: Session, fallback: string): string {
   return `${sanitizeFileName(displayName)}.orgii-session.json`;
 }
 
-function buildImportedSessionId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${IMPORTED_SESSION_PREFIX}${crypto.randomUUID()}`;
-  }
-  return `${IMPORTED_SESSION_PREFIX}${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 10)}`;
-}
-
 function parseEventDate(value: string | undefined): number | null {
   if (!value) return null;
   const timestamp = Date.parse(value);
@@ -168,19 +129,6 @@ function getTimeRange(events: SessionEvent[], session: Session) {
     ? new Date(Math.max(...eventTimes)).toISOString()
     : session.updated_at;
   return { start, end };
-}
-
-function metadataFromSession(
-  session: Session,
-  eventCount: number,
-  exportedAt: string
-) {
-  return {
-    originalSessionId: session.session_id,
-    originalCategory: inferCategory(session.session_id, session.category),
-    exportedAt,
-    eventCount,
-  } satisfies z.output<typeof ImportedSessionMetadataSchema>;
 }
 
 function cloneSessionForExport(session: Session): SessionExportFile["session"] {
@@ -211,22 +159,6 @@ function cloneSessionForExport(session: Session): SessionExportFile["session"] {
     pinned: session.pinned,
     created_time: session.created_time,
     updated_time: session.updated_time,
-  };
-}
-
-function remapEventToImportedSession(
-  event: SessionEvent,
-  importSessionId: string,
-  index: number
-): SessionEvent {
-  const originalId = event.id || `event-${index}`;
-  return {
-    ...event,
-    id: `${importSessionId}:${originalId}`,
-    sessionId: importSessionId,
-    processId: event.processId
-      ? `${importSessionId}:${event.processId}`
-      : undefined,
   };
 }
 
@@ -289,95 +221,6 @@ export async function buildSessionExportDraft(
       exportedAt,
     },
   };
-}
-
-export function parseSessionImportFile(
-  rawJson: string,
-  t: TFunction<"sessions">
-): { parsed: SessionExportFile; preview: SessionImportPreview } {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(rawJson) as unknown;
-  } catch (error) {
-    logger.error("failed to parse session export JSON:", error);
-    throw new Error(t("chat.importExport.errors.invalidJson"));
-  }
-
-  const parsed = SessionExportFileSchema.parse(raw);
-  const importSessionId = buildImportedSessionId();
-  const displayName =
-    parsed.session.name ||
-    parsed.session.user_input ||
-    parsed.session.session_id;
-  const importedName = t("chat.importExport.importedName", {
-    name: displayName,
-  });
-  return {
-    parsed,
-    preview: {
-      originalSessionId: parsed.session.session_id,
-      displayName,
-      originalCategory: parsed.metadata.originalCategory,
-      eventCount: parsed.metadata.eventCount,
-      exportedAt: parsed.exportedAt,
-      importSessionId,
-      importedName,
-    },
-  };
-}
-
-export async function importSessionExportFile(
-  parsed: SessionExportFile,
-  preview: SessionImportPreview
-): Promise<SessionImportResult> {
-  const events = parsed.payload.events as unknown as SessionEvent[];
-  const remappedEvents = events.map((event, index) =>
-    remapEventToImportedSession(event, preview.importSessionId, index)
-  );
-  const now = new Date().toISOString();
-  const timeRange = parsed.payload.timeRange ?? {
-    start: parsed.session.created_at,
-    end: parsed.session.updated_at,
-  };
-  await cacheAdapter.saveFullSession(
-    preview.importSessionId,
-    remappedEvents,
-    [],
-    timeRange
-  );
-
-  const importMetadata = metadataFromSession(
-    parsed.session as Session,
-    remappedEvents.length,
-    parsed.exportedAt
-  );
-  const importedSession: Session = {
-    session_id: preview.importSessionId,
-    status: "completed",
-    created_at: parsed.session.created_at || now,
-    updated_at: now,
-    created_time:
-      parsed.session.created_time || parsed.session.created_at || now,
-    updated_time: now,
-    user_input: parsed.session.user_input,
-    repo_name: parsed.session.repo_name,
-    name: preview.importedName,
-    branch: parsed.session.branch,
-    category: "rust_agent",
-    model: SNAPSHOT_MODEL,
-    repoPath: parsed.session.repoPath,
-    worktreePath: parsed.session.worktreePath,
-    worktreeBranch: parsed.session.worktreeBranch,
-    baseBranch: parsed.session.baseBranch,
-    background: false,
-    agentIconId: SNAPSHOT_ICON_ID,
-    agentDisplayName: SNAPSHOT_MODEL,
-    pinned: false,
-    error_message: JSON.stringify(importMetadata),
-  };
-  upsertSession(importedSession);
-  persistSessions(getInstrumentedStore().get(sessionsAtom));
-  return { ...preview, importedEventCount: remappedEvents.length };
 }
 
 export function formatCategoryLabel(

@@ -28,19 +28,13 @@ const WORK_ITEM_STATUS_TO_LINEAR_TYPE: Partial<
   planned: "unstarted",
   in_progress: "started",
   in_review: "started",
+  blocked: "started",
   completed: "completed",
   cancelled: "canceled",
 };
 
 export function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
-}
-
-export function compactDate(value?: string): string {
-  if (!value) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString();
 }
 
 function linearPriorityToWorkItemPriority(priority?: number): WorkItemPriority {

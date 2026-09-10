@@ -19,7 +19,7 @@ import {
   WORKSPACE_OVERVIEW_TAB,
   type WorkspaceOverviewTab,
   chatPanelWorkspaceOverviewTabAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 
 interface WorkspaceOverviewPanelViewProps {
   selectedWorkspace: ChatPanelSelectedWorkspace;

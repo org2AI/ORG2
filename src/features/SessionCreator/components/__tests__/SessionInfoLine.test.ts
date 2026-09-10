@@ -29,13 +29,16 @@ vi.mock(
   () => ({ BranchDropdown: () => null })
 );
 
-vi.mock("@src/scaffold/GlobalSpotlight/palettes/WorkspacePalette", () => ({
-  WorkspacePalette: () => null,
-}));
+vi.mock(
+  "@src/scaffold/GlobalSpotlight/palettes/WorkingDirectoryPalette",
+  () => ({
+    WorkingDirectoryPalette: () => null,
+  })
+);
 
 vi.mock(
-  "@src/scaffold/GlobalSpotlight/palettes/WorkspacePalette/WorkspaceDropdown",
-  () => ({ WorkspaceDropdown: () => null })
+  "@src/scaffold/GlobalSpotlight/palettes/WorkingDirectoryPalette/WorkingDirectoryDropdown",
+  () => ({ WorkingDirectoryDropdown: () => null })
 );
 
 describe("SessionInfoLine", () => {

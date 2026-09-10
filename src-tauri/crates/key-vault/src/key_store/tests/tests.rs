@@ -718,6 +718,122 @@ fn test_proxy_env_anthropic_api() {
 }
 
 #[test]
+fn codex_oauth_catalog_is_completed_at_storage_boundaries() {
+    use crate::model_catalog::CODEX_OAUTH_MODELS;
+
+    let temp_dir = tempdir().unwrap();
+    let service = KeyService::new(Some(temp_dir.path().to_path_buf()));
+
+    let mut oauth_key = ModelKey::new(ModelType::Codex);
+    oauth_key.auth_method = AuthMethod::Oauth;
+    oauth_key.session_token = Some("oauth-access-token".to_string());
+    oauth_key.available_models = vec!["account-visible-model".to_string()];
+    oauth_key.enabled_models = vec!["custom-enabled-model".to_string()];
+    let key_id = oauth_key.id.clone();
+
+    let saved = service.save_key(oauth_key).unwrap();
+    assert_eq!(
+        saved.available_models.first().unwrap(),
+        "account-visible-model"
+    );
+    assert!(CODEX_OAUTH_MODELS.iter().all(|model| saved
+        .available_models
+        .iter()
+        .any(|available| available == model)));
+    assert!(saved
+        .available_models
+        .iter()
+        .any(|model| model == "custom-enabled-model"));
+
+    let refreshed = service
+        .update_key_health(
+            &key_id,
+            HealthStatus::Valid,
+            None,
+            Some(vec!["fresh-live-model".to_string()]),
+            Some(vec!["custom-enabled-model".to_string()]),
+            None,
+            None,
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        refreshed.available_models.first().unwrap(),
+        "fresh-live-model"
+    );
+    assert!(refreshed
+        .available_models
+        .iter()
+        .any(|model| model == "gpt-6-astra"));
+    assert!(refreshed
+        .available_models
+        .iter()
+        .any(|model| model == "custom-enabled-model"));
+}
+
+#[test]
+fn legacy_codex_oauth_catalog_is_repaired_on_load_and_next_write() {
+    use crate::model_catalog::CODEX_OAUTH_MODELS;
+
+    let temp_dir = tempdir().unwrap();
+    let service = KeyService::new(Some(temp_dir.path().to_path_buf()));
+
+    let mut oauth_key = ModelKey::new(ModelType::Codex);
+    oauth_key.auth_method = AuthMethod::Oauth;
+    oauth_key.session_token = Some("oauth-access-token".to_string());
+    let key_id = oauth_key.id.clone();
+    service.save_key(oauth_key).unwrap();
+
+    let storage_file = temp_dir.path().join("credentials.json");
+    let mut stored: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&storage_file).unwrap()).unwrap();
+    stored["credentials"][&key_id]["available_models"] = serde_json::json!(["gpt-5.6-sol"]);
+    stored["credentials"][&key_id]["enabled_models"] = serde_json::json!(["legacy-enabled-model"]);
+    std::fs::write(&storage_file, serde_json::to_vec_pretty(&stored).unwrap()).unwrap();
+
+    let loaded = service.get_key_by_id_checked(&key_id).unwrap().unwrap();
+    assert!(loaded
+        .available_models
+        .iter()
+        .any(|model| model == "gpt-6-astra"));
+    assert!(loaded
+        .available_models
+        .iter()
+        .any(|model| model == "legacy-enabled-model"));
+
+    service
+        .save_key(ModelKey::new(ModelType::AnthropicApi))
+        .unwrap();
+    let persisted: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&storage_file).unwrap()).unwrap();
+    let persisted_models = persisted["credentials"][&key_id]["available_models"]
+        .as_array()
+        .unwrap();
+    assert!(CODEX_OAUTH_MODELS.iter().all(|model| {
+        persisted_models
+            .iter()
+            .any(|available| available.as_str() == Some(*model))
+    }));
+    assert!(persisted_models
+        .iter()
+        .any(|model| model.as_str() == Some("legacy-enabled-model")));
+}
+
+#[test]
+fn codex_api_key_catalog_is_not_completed_with_oauth_models() {
+    let temp_dir = tempdir().unwrap();
+    let service = KeyService::new(Some(temp_dir.path().to_path_buf()));
+
+    let mut api_key = ModelKey::new(ModelType::Codex);
+    api_key.auth_method = AuthMethod::ApiKey;
+    api_key.api_key = Some("sk-api-key".to_string());
+    api_key.available_models = vec!["api-visible-model".to_string()];
+
+    let saved = service.save_key(api_key).unwrap();
+    assert_eq!(saved.available_models, vec!["api-visible-model"]);
+}
+
+#[test]
 fn test_store_get_with_key_id() {
     let mut store = KeyStore::default();
     let mut first = ModelKey::new(ModelType::CursorCli);
@@ -862,6 +978,21 @@ fn test_claude_code_official_oauth_env_drops_stale_relay_base_url() {
         "ANTHROPIC_BASE_URL".to_string(),
         "https://relay.example.com/v1".to_string(),
     );
+    claude_key.env_vars.insert(
+        "ANTHROPIC_API_KEY".to_string(),
+        "stale-atlas-key".to_string(),
+    );
+    claude_key
+        .env_vars
+        .insert("ANTHROPIC_MODEL".to_string(), "zai-org/glm-5.2".to_string());
+    claude_key.env_vars.insert(
+        "ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(),
+        "zai-org/glm-5.2".to_string(),
+    );
+    claude_key.env_vars.insert(
+        "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS".to_string(),
+        "1".to_string(),
+    );
     let key_id = claude_key.id.clone();
     service.save_key(claude_key).unwrap();
 
@@ -871,6 +1002,10 @@ fn test_claude_code_official_oauth_env_drops_stale_relay_base_url() {
         Some("sk-ant-oat01-abc"),
     );
     assert!(!env.contains_key("ANTHROPIC_BASE_URL"));
+    assert!(!env.contains_key("ANTHROPIC_API_KEY"));
+    assert!(!env.contains_key("ANTHROPIC_MODEL"));
+    assert!(!env.contains_key("ANTHROPIC_DEFAULT_OPUS_MODEL"));
+    assert!(!env.contains_key("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"));
 }
 
 #[test]
@@ -1258,6 +1393,33 @@ fn test_permanent_oauth_refresh_failure_disables_key_immediately() {
 }
 
 #[test]
+fn test_reused_codex_refresh_token_disables_key_immediately() {
+    let temp_dir = tempdir().unwrap();
+    let service = KeyService::new(Some(temp_dir.path().to_path_buf()));
+
+    let mut key = ModelKey::new(ModelType::Codex);
+    key.auth_method = AuthMethod::Oauth;
+    let key_id = key.id.clone();
+    service.save_key(key).unwrap();
+
+    let disabled = service
+        .record_oauth_refresh_failure(
+            &key_id,
+            r#"Codex OAuth refresh failed with HTTP 401 Unauthorized: {"code":"refresh_token_reused","message":"Your refresh token has already been used to generate a new access token."}"#,
+        )
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(disabled.oauth_refresh_failure_count, 1);
+    assert_eq!(disabled.health_status, HealthStatus::Invalid);
+    assert!(!disabled.enabled);
+    assert_eq!(
+        disabled.temporary_unavailable_reason.as_deref(),
+        Some("oauth_refresh_failed")
+    );
+}
+
+#[test]
 fn test_oauth_refresh_reset_clears_failure_state_without_reenabling_key() {
     let temp_dir = tempdir().unwrap();
     let service = KeyService::new(Some(temp_dir.path().to_path_buf()));
@@ -1507,6 +1669,13 @@ fn test_cross_type_exact_match_takes_priority() {
 
     let mut claude_key = ModelKey::new(ModelType::ClaudeCode);
     claude_key.api_key = Some("sk-ant-native".to_string());
+    claude_key.env_vars.insert(
+        "ANTHROPIC_AUTH_TOKEN".to_string(),
+        "stale-oauth".to_string(),
+    );
+    claude_key
+        .env_vars
+        .insert("ANTHROPIC_MODEL".to_string(), "zai-org/glm-5.2".to_string());
     let claude_id = claude_key.id.clone();
     service.save_key(claude_key).unwrap();
 
@@ -1515,6 +1684,8 @@ fn test_cross_type_exact_match_takes_priority() {
         env.get("ANTHROPIC_API_KEY").map(|v| v.as_str()),
         Some("sk-ant-native"),
     );
+    assert!(!env.contains_key("ANTHROPIC_AUTH_TOKEN"));
+    assert!(!env.contains_key("ANTHROPIC_MODEL"));
 }
 
 #[test]

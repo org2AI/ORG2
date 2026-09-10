@@ -17,18 +17,20 @@
 //! - `session_manager` — Multi-session LRU cache with pin/unpin for running sessions
 //! - `derived` — Visibility filters + `compute_derived()` single-pass
 //! - `extractors` — Pre-computed rendering data extraction (file, shell, edit, search, etc.)
-//! - `streaming` — Delta accumulation buffer (message, thinking) for real-time events
 //! - `commands/` — Tauri commands exposed to the frontend (split by domain)
+//!
+//! Delta accumulation for real-time events is owned by `agent_core::foundation::streaming`.
 
 pub mod agent_core_bridge;
 pub mod commands;
 pub mod derived;
 pub mod extractors;
+#[cfg(debug_assertions)]
+pub(crate) mod fault_injection;
 pub mod ingestion;
 pub mod payload_compaction;
 pub mod search;
 pub mod session_manager;
 pub(crate) mod session_providers;
 pub mod store;
-pub mod streaming;
 pub mod types;

@@ -5,6 +5,13 @@ type ReconnectableAccount = Pick<
   "authMethod" | "hasLocalKey" | "healthStatus" | "modelType" | "status"
 >;
 
+export function areAccountRefreshActionsDisabled(
+  refreshingUsage: boolean,
+  refreshingModels: boolean
+): boolean {
+  return refreshingUsage || refreshingModels;
+}
+
 /**
  * Codex browser reauthentication updates an existing local OAuth credential.
  * API-key rows and manually disabled healthy rows use their existing edit flow.

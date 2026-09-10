@@ -49,7 +49,7 @@ import { createLogger } from "@src/hooks/logger";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
 import type { Session } from "@src/store/session/sessionAtom/types";
 import { activeSessionIdAtom } from "@src/store/session/viewAtom";
-import { chatPanelSelectedCloudOrgAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelSelectedCloudOrgAtom } from "@src/store/ui/chatPanel/selectionAtoms";
 import { isMainAppWindow } from "@src/util/platform/tauri/windowIdentity";
 
 import {
@@ -122,6 +122,7 @@ import { decideSubscribedEdgeRecovery } from "./org2CloudRealtimeRecovery";
 import { resolveActiveRealtimeOrgId } from "./org2CloudRealtimeScope";
 import {
   Org2CloudRealtimeSignalCoalescer,
+  REALTIME_SIGNAL_COALESCE_MS,
   STORM_SIGNAL_COALESCE_MS,
 } from "./org2CloudRealtimeSignalCoalescer";
 import {
@@ -132,6 +133,7 @@ import {
 } from "./org2CloudRemoteSessionsAtom";
 import { org2CloudSessionCommentsAtom } from "./org2CloudSessionCommentsAtom";
 import { org2CloudSyncEngine } from "./org2CloudSyncEngine";
+import { useSessionCommentTarget } from "./sessionCommentTarget";
 
 const log = createLogger("Org2CloudRealtime");
 
@@ -201,6 +203,15 @@ function isDocumentHidden(): boolean {
 export function useOrg2CloudRealtime(): void {
   const auth = useAtomValue(org2CloudAuthAtom);
   const store = useStore();
+  const activeSessionId = useAtomValue(activeSessionIdAtom) ?? "";
+  const sessions = useAtomValue(sessionsAtom) as Session[];
+  const activeCommentTarget = useSessionCommentTarget(
+    sessions.find((session) => session.session_id === activeSessionId)
+  );
+  const activeCommentTargetRef = useRef(activeCommentTarget);
+  useEffect(() => {
+    activeCommentTargetRef.current = activeCommentTarget;
+  }, [activeCommentTarget]);
   const setAuth = useSetAtom(org2CloudAuthAtom);
   const cloudOrgs = useAtomValue(org2CloudOrgsAtom);
   const requestedActiveCloudOrgId = useAtomValue(sidebarActiveCloudOrgIdAtom);
@@ -278,16 +289,16 @@ export function useOrg2CloudRealtime(): void {
   );
   const bumpActiveSessionCommentsSignal = useCallback(
     (orgId: string) => {
-      const activeSessionId = store.get(activeSessionIdAtom);
-      if (!activeSessionId) return;
+      const target = activeCommentTargetRef.current;
+      if (!target || target.orgId !== orgId) return;
       setCommentsSignal((current) =>
         bumpCommentsSignalKey(
           current,
-          sessionCommentsKey(orgId, activeSessionId)
+          sessionCommentsKey(orgId, target.sessionId)
         )
       );
     },
-    [setCommentsSignal, store]
+    [setCommentsSignal]
   );
   const bumpRemoteSessionsVersion = useCallback(
     (orgId: string, options: { full?: boolean } = {}) => {
@@ -351,6 +362,7 @@ export function useOrg2CloudRealtime(): void {
   const orgFullRecoveryAtRef = useRef(new Map<string, number>());
   const connectionTeardownAtRef = useRef<number | undefined>(undefined);
   const rosterEdgeRefetchAtRef = useRef<number | undefined>(undefined);
+  const conversationForegroundRecoveryAtRef = useRef(0);
   useEffect(() => {
     refetchRef.current = refetchOrgs;
   }, [refetchOrgs]);
@@ -421,6 +433,55 @@ export function useOrg2CloudRealtime(): void {
   // foreground — a user working in a detached window must not cost main its
   // socket after the blur grace.
   useEffect(() => startCrossWindowFocusPublisher(), []);
+
+  // A short app switch stays inside the Realtime lease's blur grace, so no
+  // reconnect edge exists to recover an at-most-once conversation signal.
+  // Own this once at the Cloud realtime boundary and invalidate the org's
+  // mounted conversation planes; each plane's existing after-seq loader owns
+  // the actual bounded pull. This avoids one browser listener and direct RPC
+  // path per mounted transcript surface.
+  useEffect(() => {
+    if (
+      !activeRealtimeOrgId ||
+      typeof window === "undefined" ||
+      typeof document === "undefined"
+    ) {
+      return undefined;
+    }
+    const recoverConversationPlanes = () => {
+      if (document.visibilityState === "hidden") return;
+      if (typeof document.hasFocus === "function" && !document.hasFocus()) {
+        return;
+      }
+      const now = Date.now();
+      if (
+        now - conversationForegroundRecoveryAtRef.current <
+        REALTIME_SIGNAL_COALESCE_MS
+      ) {
+        return;
+      }
+      conversationForegroundRecoveryAtRef.current = now;
+      bumpConversationPlaneVersion(activeRealtimeOrgId);
+      // Team Chat is owned by the comments loader, not the agent plane.
+      // Force the active thread past its TTL after a missed foreground signal.
+      bumpActiveSessionCommentsSignal(activeRealtimeOrgId);
+    };
+    window.addEventListener("focus", recoverConversationPlanes);
+    window.addEventListener("online", recoverConversationPlanes);
+    document.addEventListener("visibilitychange", recoverConversationPlanes);
+    return () => {
+      window.removeEventListener("focus", recoverConversationPlanes);
+      window.removeEventListener("online", recoverConversationPlanes);
+      document.removeEventListener(
+        "visibilitychange",
+        recoverConversationPlanes
+      );
+    };
+  }, [
+    activeRealtimeOrgId,
+    bumpConversationPlaneVersion,
+    bumpActiveSessionCommentsSignal,
+  ]);
 
   // --- Connection + Slice A (roster). Rebuilds on user / endpoint / active
   // org. A fresh connection on scope switch avoids supabase-js reusing a
@@ -721,6 +782,7 @@ export function useOrg2CloudRealtime(): void {
         bumpOrgCommentsSignal(orgId);
         bumpChannelsVersion(orgId);
         bumpChannelMessagesVersion(orgId);
+        bumpConversationPlaneVersion(orgId);
         return;
       }
       orgFullRecoveryAtRef.current.set(orgId, Date.now());
@@ -746,6 +808,7 @@ export function useOrg2CloudRealtime(): void {
       // Messages posted/edited/deleted during the gap arrive through the
       // channel's own `p_since` delta, which already carries tombstones.
       bumpChannelMessagesVersion(orgId);
+      bumpConversationPlaneVersion(orgId);
     },
     [
       armCoarseSignalSafetyNet,
@@ -754,6 +817,7 @@ export function useOrg2CloudRealtime(): void {
       bumpActiveSessionCommentsSignal,
       bumpChannelsVersion,
       bumpChannelMessagesVersion,
+      bumpConversationPlaneVersion,
       refreshEntitlementForOrg,
     ]
   );
@@ -846,8 +910,6 @@ export function useOrg2CloudRealtime(): void {
   // rendering. Secondary/imported tabs intentionally diverge from the
   // WorkStation's remembered selection, so publishing that remembered id
   // makes two users viewing the same cloud replay advertise different rows.
-  const activeSessionId = useAtomValue(activeSessionIdAtom) ?? "";
-  const sessions = useAtomValue(sessionsAtom) as Session[];
   const sessionOrgTags = useAtomValue(sessionOrgTagsAtom);
   const remoteSessions = useAtomValue(org2CloudRemoteSessionsAtom);
   const displayName = auth?.profile?.displayName ?? "";

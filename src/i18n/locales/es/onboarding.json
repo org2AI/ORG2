@@ -1,7 +1,5 @@
 {
   "tutorials": {
-    "modalTitle": "Tutoriales",
-    "start": "Iniciar",
     "chrome": {
       "stepProgress": "Paso {{current}} de {{total}}",
       "close": "Cerrar",
@@ -16,7 +14,7 @@
     },
     "generalLayout": {
       "title": "Recorrido general por el diseño",
-      "description": "Conozca la barra lateral de sesión, el panel de chat, el conmutador de modo de estación, la estación de trabajo, la base y las áreas de aplicaciones.",
+      "description": "Conoce el panel de chat, Runtime, el selector de modo y el dock.",
       "duration": "1 min",
       "steps": {
         "chat-panel": {
@@ -25,7 +23,7 @@
         },
         "runtime": {
           "title": "Tiempo de ejecución",
-          "body": "Consulta aquí tu uso y el estado de ejecución. En una organización, también puedes revisar la sincronización de los miembros y abrir sus detalles de uso de Codex, Claude y Cursor."
+          "body": "Consulta aquí tu uso y el estado de ejecución. En un espacio de trabajo, también puedes revisar la sincronización de los miembros y abrir sus detalles de uso de Codex, Claude y Cursor."
         },
         "station-mode-pill": {
           "title": "Cambiar de estación modos",
@@ -34,41 +32,17 @@
         "dock": {
           "title": "Base de Agent Station",
           "body": "La base cambia de aplicaciones dentro de la estación. El recorrido desactiva temporalmente la ocultación automática para que estos controles permanezcan visibles."
-        },
-        "all-tabs": {
-          "title": "Todas las pestañas",
-          "body": "El primer ícono del Dock muestra todas las pestañas abiertas juntas, independientemente de qué aplicación de estación de trabajo las posee."
-        },
-        "code-editor": {
-          "title": "Editor de código",
-          "body": "Utilice el Editor de código para archivos, diferencias, terminales, control de fuente y cambios de codificación realizados durante un sesión."
-        },
-        "browser": {
-          "title": "Navegador",
-          "body": "Utilice el navegador para páginas web, vistas previas, pruebas de aplicaciones e investigación basada en navegador junto con el chat."
-        },
-        "projects": {
-          "title": "Proyectos",
-          "body": "Utilice Proyectos para realizar un seguimiento de los elementos de trabajo, los planes y el estado del proyecto conectados al espacio de trabajo actual."
         }
       }
     },
     "codeEditor": {
       "title": "Recorrido por el editor de código",
-      "description": "Aprenda sobre pestañas, cambio de repositorio y rama, control de código fuente, historial de Git y el panel del proyecto.",
+      "description": "Conoce las pestañas, el espacio del editor, el control de código fuente y el historial de Git.",
       "duration": "2 minutos",
       "steps": {
         "tabs": {
           "title": "Pestañas del editor de código",
           "body": "Las pestañas recopilan los archivos, diferencias, terminales, vistas de control de código fuente y paneles que abre mientras trabaja en el repositorio."
-        },
-        "repo-selector": {
-          "title": "Crear o cambiar repositorios",
-          "body": "Utilice el selector de repositorio para cambiar el repositorio activo o agregar otro repositorio o espacio de trabajo."
-        },
-        "branch-selector": {
-          "title": "Cambiar ramas",
-          "body": "El selector de ramas muestra la rama Git actual y abre el cambio de rama o crea flujo para este repositorio."
         },
         "editor-surface": {
           "title": "Espacio de trabajo del editor",
@@ -85,12 +59,15 @@
         "git-history": {
           "title": "Historial de Git",
           "body": "Historial de Git cambia el Control de fuente al modo de historial de confirmaciones para que puedas inspeccionar confirmaciones anteriores y cambios relacionados."
-        },
-        "dashboard": {
-          "title": "Panel del Editor de código",
-          "body": "El panel es la pestaña de inicio del Editor de código para los espacios de trabajo. Úselo para agregar repositorios, abrir detalles del repositorio y comenzar a trabajar en el proyecto."
         }
       }
     }
+  },
+  "discovery": {
+    "title": "Primeros pasos y novedades",
+    "getStarted": "Primeros pasos",
+    "newFeatures": "Novedades",
+    "branchesTitle": "Ramas del repositorio",
+    "branchesDescription": "Cambia de rama del repositorio directamente desde Spotlight."
   }
 }

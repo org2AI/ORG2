@@ -28,7 +28,7 @@ const ProjectOrganizationSelect: FC<ProjectOrganizationSelectProps> = ({
   loading = false,
   placement = "auto",
   dataTestId,
-  ariaLabel = "Project organization",
+  ariaLabel = "Project workspace",
 }) => (
   <Select
     value={value}
@@ -39,13 +39,16 @@ const ProjectOrganizationSelect: FC<ProjectOrganizationSelectProps> = ({
     loading={loading}
     size="small"
     radius="pill"
+    showTriggerIcon
     prefix={
-      <HugeiconsIcon
-        icon={HierarchyCircle01Icon}
-        data-icon="network"
-        size={14}
-        strokeWidth={1.75}
-      />
+      options.find((option) => option.value === value)?.icon ? undefined : (
+        <HugeiconsIcon
+          icon={HierarchyCircle01Icon}
+          data-icon="network"
+          size={14}
+          strokeWidth={1.75}
+        />
+      )
     }
     showSearch
     dropdownWidthMode="min-match"

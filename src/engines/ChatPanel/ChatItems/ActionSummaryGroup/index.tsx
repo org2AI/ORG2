@@ -17,17 +17,14 @@ import {
   ChatLoadingBlock,
   StackedBlock,
 } from "@src/engines/ChatPanel/blocks/primitives";
-import {
-  type SessionEvent,
-  TOOL_USAGE_ARGS_KEY,
-  type ToolUsageMetadata,
-} from "@src/engines/SessionCore/core/types";
+import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { getChatLazyComponent } from "@src/engines/SessionCore/rendering/registry/events";
 import { HugeiconsIcon, WaypointsIcon } from "@src/icons";
 import { getRegistryEventType } from "@src/lib/activityData/activityNormalizers";
 
 import type { ActionSummaryCategory } from "../../ChatHistory/chatItemPipeline/classifiers";
 import type { ActionSummaryEntry } from "../../ChatHistory/chatItemPipeline/types";
+import { readToolUsage, sumToolUsage } from "../toolUsage";
 
 // ============================================
 // Types
@@ -111,52 +108,6 @@ function buildGroupSummary(
 // Render Item — delegates to registry component
 // ============================================
 
-function readToolUsage(event: SessionEvent): ToolUsageMetadata | undefined {
-  if (event.toolUsage) return event.toolUsage;
-  const raw = event.args?.[TOOL_USAGE_ARGS_KEY];
-  if (!raw || typeof raw !== "object") return undefined;
-  return raw as ToolUsageMetadata;
-}
-
-function aggregateToolUsage(
-  items: readonly CategorizedEvent[]
-): ToolUsageMetadata | undefined {
-  const usages = items
-    .map((item) => readToolUsage(item.event))
-    .filter((usage): usage is ToolUsageMetadata => Boolean(usage));
-  if (usages.length === 0) return undefined;
-  return usages.reduce<ToolUsageMetadata>(
-    (total, usage) => ({
-      decisionCompletionTokens:
-        total.decisionCompletionTokens + usage.decisionCompletionTokens,
-      resultContextTokens:
-        total.resultContextTokens + usage.resultContextTokens,
-      followupCompletionTokens:
-        total.followupCompletionTokens + usage.followupCompletionTokens,
-      inputBytes: total.inputBytes + usage.inputBytes,
-      outputBytes: total.outputBytes + usage.outputBytes,
-      relatedCacheReadTokens:
-        total.relatedCacheReadTokens + usage.relatedCacheReadTokens,
-      relatedCacheWriteTokens:
-        total.relatedCacheWriteTokens + usage.relatedCacheWriteTokens,
-      attributionMethod:
-        total.attributionMethod === usage.attributionMethod
-          ? total.attributionMethod
-          : usage.attributionMethod,
-    }),
-    {
-      decisionCompletionTokens: 0,
-      resultContextTokens: 0,
-      followupCompletionTokens: 0,
-      inputBytes: 0,
-      outputBytes: 0,
-      relatedCacheReadTokens: 0,
-      relatedCacheWriteTokens: 0,
-      attributionMethod: usages[0].attributionMethod,
-    }
-  );
-}
-
 function renderEventBlock(
   { event, isLastItem }: CategorizedEvent,
   _index: number
@@ -213,7 +164,9 @@ const ActionSummaryGroup: React.FC<ActionSummaryGroupProps> = ({
     firstEvent?.functionName ||
     firstEvent?.uiCanonical ||
     firstEvent?.actionType;
-  const groupToolUsage = aggregateToolUsage(orderedItems);
+  const groupToolUsage = sumToolUsage(
+    orderedItems.map((item) => readToolUsage(item.event))
+  );
 
   return (
     <div

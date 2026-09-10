@@ -3,9 +3,9 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { projectApi } from "@src/api/http/project";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
 import Message from "@src/components/Message";
+import PageNotice from "@src/components/PageNotice";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { cloudManagementErrorMessage } from "@src/features/Org2Cloud/org2CloudOrgManagement";
 import {
@@ -300,7 +300,7 @@ const CollabOrgForm: React.FC<CollabOrgFormProps> = ({
               ) : null}
 
               {source === CLOUD_SOURCE && !cloudAuth ? (
-                <InlineAlert
+                <PageNotice
                   type="info"
                   action={{
                     label: t("navigation:cloud.signIn"),
@@ -309,7 +309,7 @@ const CollabOrgForm: React.FC<CollabOrgFormProps> = ({
                   dataTestId="create-cloud-org-sign-in-hint"
                 >
                   {t("navigation:cloud.orgManagement.create.signInFirst")}
-                </InlineAlert>
+                </PageNotice>
               ) : null}
 
               {showOrgName ? (
@@ -362,13 +362,13 @@ const CollabOrgForm: React.FC<CollabOrgFormProps> = ({
               ) : null}
 
               {error ? (
-                <InlineAlert
+                <PageNotice
                   type="danger"
                   role="alert"
                   dataTestId="create-collab-org-error"
                 >
                   {error}
-                </InlineAlert>
+                </PageNotice>
               ) : null}
             </div>
           </SpotlightFormBody>

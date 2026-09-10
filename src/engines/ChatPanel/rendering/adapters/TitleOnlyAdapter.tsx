@@ -26,6 +26,7 @@ import {
 } from "@src/engines/SessionCore/rendering/registry";
 import { getToolLabel } from "@src/engines/SessionCore/rendering/registry/initToolRegistry";
 import type { UniversalEventProps } from "@src/engines/SessionCore/rendering/types/universalProps";
+import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 
 import TitleOnlyBlock from "../../blocks/TitleOnlyBlock";
 import {
@@ -136,8 +137,12 @@ function useCountdownString(
 
   useEffect(() => {
     if (!enabled || !deadlineMs) return;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
+    const id = startVisibilityAwareInterval(
+      document,
+      () => setNow(Date.now()),
+      1000
+    );
+    return () => id();
   }, [enabled, deadlineMs]);
 
   if (!enabled || !deadlineMs) return "";

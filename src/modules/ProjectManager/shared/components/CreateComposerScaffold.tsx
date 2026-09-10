@@ -85,6 +85,7 @@ export interface ManualCreateEditorRef {
 }
 
 export interface ManualCreateComposerProps {
+  spotlight?: boolean;
   dataTestId?: string;
   editorContent: ReactNode;
   editorRef: RefObject<ManualCreateEditorRef | null>;
@@ -97,6 +98,7 @@ export interface ManualCreateComposerProps {
 
 /** Shared manual-create shell for Project and Work Item composers. */
 export function ManualCreateComposer({
+  spotlight = false,
   dataTestId,
   editorContent,
   editorRef,
@@ -117,7 +119,9 @@ export function ManualCreateComposer({
         <div className="scrollbar-hide flex w-full min-w-0 items-center overflow-x-auto px-1 py-0.5">
           {pinnedActionsContent}
         </div>
-        <div className="session-creator-chat-panel-fullscreen-composer-group session-creator-chat-panel-fullscreen-composer composer-bottom-glow relative w-full">
+        <div
+          className={`session-creator-chat-panel-fullscreen-composer-group session-creator-chat-panel-fullscreen-composer ${spotlight ? "" : "composer-bottom-glow"} relative w-full`}
+        >
           <ComposerSurface
             className="session-creator-chat-panel-fullscreen-input-shell relative z-2 pt-1.5!"
             onAddContent={() => editorRef.current?.triggerAtMention()}

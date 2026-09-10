@@ -9,6 +9,7 @@
  */
 import { gitApi } from "@src/api/http/git";
 import { ROUTES } from "@src/config/routes";
+import { navigateApp } from "@src/router/navigateApp";
 import { getRepoContext } from "@src/services/git/operations/types";
 import { gitPullStrategyAtom } from "@src/store/ui/editorSettingsAtom";
 import {
@@ -181,25 +182,13 @@ async function stashAndRetryOperation(
   }
 }
 
-function navigateToCodeEditorIfNeeded(): void {
+function navigateToCodeEditor(): void {
   if (typeof window === "undefined") {
     return;
   }
 
-  const codeEditorPath = ROUTES.workStation.code.path;
-  const isCodeEditorRoute =
-    window.location.pathname === codeEditorPath ||
-    window.location.pathname.startsWith(`${codeEditorPath}/`);
-
-  if (isCodeEditorRoute) {
-    return;
-  }
-
-  window.dispatchEvent(
-    new CustomEvent("action-system-navigate", {
-      detail: { path: codeEditorPath },
-    })
-  );
+  // A repeated URL still carries an entry intent: tabs may have switched hosts.
+  navigateApp(ROUTES.workStation.code.path);
 }
 
 /**
@@ -220,7 +209,7 @@ export async function showGitErrorAndHandle(
       break;
 
     case "open-git-log": {
-      navigateToCodeEditorIfNeeded();
+      navigateToCodeEditor();
 
       const errorInfo = buildGitErrorInfo(options);
       const tab = createGitLogTab(

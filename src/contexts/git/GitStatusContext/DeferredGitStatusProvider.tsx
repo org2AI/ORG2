@@ -11,11 +11,12 @@
  */
 import React, { useEffect, useState } from "react";
 
-import { GitStatusContext, GitStatusProvider } from "./GitStatusProvider";
+import { GitStatusProvider } from "./GitStatusProvider";
 import {
   DEFERRED_MOUNT_FALLBACK_MS,
   DEFERRED_MOUNT_TIMEOUT_MS,
 } from "./constants";
+import { GitStatusContext } from "./context";
 import type { GitStatusContextValue } from "./types";
 
 /**

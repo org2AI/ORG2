@@ -29,7 +29,7 @@ import {
   editorShowMinimapAtom,
   editorWordWrapAtom,
 } from "@src/store/ui/editorSettingsAtom";
-import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationAtom";
+import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import { stampStyleNonces } from "@src/util/iframeCspNonce";
 
 import type { ContentViewProps } from "../types";

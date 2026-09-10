@@ -1,6 +1,7 @@
 import React from "react";
 
-import { getCollapsedSidebarChromeOffset } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
+import { useCollapsedSidebarChromeOffset } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
+import { CHROME_INSET_TRANSITION_CLASSES } from "@src/modules/shared/layouts/viewContainerTokens";
 import { CollapsedSidebarButton } from "@src/scaffold/NavigationSidebar/CollapsedSidebarButton";
 import { isWindows } from "@src/util/platform/tauri";
 
@@ -12,8 +13,8 @@ import {
 import { ChatPanelPublishedHeader } from "./ChatPanelPublishedHeader";
 import {
   CHAT_PANEL_COLLAPSED_HEADER_HEIGHT_PX,
-  CHAT_PANEL_GLASS_SURFACE_CLASS,
   CHAT_PANEL_HEADER_STACK_HEIGHT_PX,
+  CHAT_PANEL_HEADER_SURFACE_CLASS,
   CHAT_PANEL_HEADER_TOP_PADDING_PX,
   CHAT_PANEL_TAB_HEADER_HEIGHT_PX,
   shouldStartHeaderDragFromTarget,
@@ -27,6 +28,7 @@ export interface ChatPanelChromeProps {
   overlayPublishedHeader?: boolean;
   shouldOffsetHeaderForCollapsedSidebar?: boolean;
   tabRowCollapsed?: boolean;
+  trailingInsetPx?: number;
 }
 
 /**
@@ -41,8 +43,10 @@ export function ChatPanelChrome({
   overlayPublishedHeader = false,
   shouldOffsetHeaderForCollapsedSidebar = false,
   tabRowCollapsed = false,
+  trailingInsetPx,
 }: ChatPanelChromeProps): React.ReactNode {
   const windowsHost = isWindows();
+  const collapsedSidebarChromeOffset = useCollapsedSidebarChromeOffset();
   const collapsedSidebarChrome = shouldOffsetHeaderForCollapsedSidebar ? (
     <div
       className="z-50"
@@ -87,10 +91,11 @@ export function ChatPanelChrome({
       <ChatPanelPublishedHeader
         slots={publishedHeaderSlots}
         windowsHost={windowsHost}
-        hideBottomBorder={false}
+        hideBottomBorder={!tabRowCollapsed}
+        trailingInsetPx={trailingInsetPx}
         leadingInsetPx={
           shouldOffsetHeaderForCollapsedSidebar
-            ? getCollapsedSidebarChromeOffset()
+            ? collapsedSidebarChromeOffset
             : undefined
         }
       />
@@ -106,8 +111,8 @@ export function ChatPanelChrome({
   return (
     <>
       <div
-        className={`pointer-events-none absolute top-0 right-0 left-0 z-30 ${CHAT_PANEL_GLASS_SURFACE_CLASS}`}
-        data-testid="chat-panel-header-glass"
+        className={`pointer-events-none absolute top-0 right-0 left-0 z-30 ${CHAT_PANEL_HEADER_SURFACE_CLASS}`}
+        data-testid="chat-panel-header-surface"
         aria-hidden
         style={{
           height: tabRowCollapsed
@@ -119,7 +124,7 @@ export function ChatPanelChrome({
       />
       {tabRowCollapsed ? null : (
         <div
-          className={`workspace-header header-tab-group z-40 flex h-11 min-h-11 items-center gap-1.5 pt-2 pl-1 ${CHAT_PANEL_HEADER_RIGHT_PADDING_CLASS} ${
+          className={`workspace-header header-tab-group z-40 flex h-11 min-h-11 items-center gap-1.5 pt-2 pl-1 ${CHAT_PANEL_HEADER_RIGHT_PADDING_CLASS} ${CHROME_INSET_TRANSITION_CLASSES} ${
             overlayPublishedHeader
               ? "absolute top-0 right-0 left-0"
               : "relative shrink-0"
@@ -128,8 +133,9 @@ export function ChatPanelChrome({
           data-tauri-drag-region={windowsHost ? undefined : true}
           style={
             {
+              paddingRight: trailingInsetPx,
               paddingLeft: shouldOffsetHeaderForCollapsedSidebar
-                ? getCollapsedSidebarChromeOffset()
+                ? collapsedSidebarChromeOffset
                 : undefined,
               ...(windowsHost
                 ? CHAT_PANEL_HEADER_NO_DRAG_STYLE

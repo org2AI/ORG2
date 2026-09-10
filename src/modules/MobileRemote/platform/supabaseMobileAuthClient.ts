@@ -8,6 +8,7 @@ import {
 import {
   ORG2_CLOUD_OFFICIAL_ANON_KEY,
   ORG2_CLOUD_OFFICIAL_SUPABASE_URL,
+  ORG2_CLOUD_OFFICIAL_WEB_ORIGIN,
 } from "@src/features/Org2Cloud/config";
 
 import {
@@ -15,6 +16,7 @@ import {
   MobileAuthClientError,
 } from "../auth/mobileAuthClient";
 import type { MobileAuthSession } from "../auth/mobileAuthState";
+import { createBoundedAuthFetch } from "./authFetch";
 
 export const MOBILE_AUTH_SERVER_SESSION_PATH = "/v1/mobile/auth/session";
 const EXPIRY_SKEW_SECONDS = 60;
@@ -83,11 +85,15 @@ function toMobileSession(
   };
 }
 
-function createOfficialClient(storage: SupportedStorage): SupabaseClient {
+function createOfficialClient(
+  storage: SupportedStorage,
+  fetcher: typeof fetch
+): SupabaseClient {
   return createClient(
     ORG2_CLOUD_OFFICIAL_SUPABASE_URL,
     ORG2_CLOUD_OFFICIAL_ANON_KEY,
     {
+      global: { fetch: fetcher },
       auth: {
         autoRefreshToken: false,
         detectSessionInUrl: false,
@@ -105,6 +111,8 @@ export interface SupabaseMobileAuthClientOptions {
   /** Native shells omit this because they do not own browser cookies. */
   serverSessionUrl?: string | null;
   now?: () => number;
+  /** Native clients use the shared Cloud login UI with an app-owned PKCE verifier. */
+  useCloudLogin?: boolean;
 }
 
 /** Shared PKCE implementation. Shells inject storage/navigation boundaries. */
@@ -113,11 +121,18 @@ export function createSupabaseMobileAuthClient({
   fetcher,
   serverSessionUrl = MOBILE_AUTH_SERVER_SESSION_PATH,
   now = Date.now,
+  useCloudLogin = false,
 }: SupabaseMobileAuthClientOptions): MobileAuthClient {
-  const supabase = createOfficialClient(oauthStorage);
+  const authFetch = createBoundedAuthFetch(fetcher);
+  const supabase = createOfficialClient(oauthStorage, authFetch);
 
   return {
     async buildLoginUrl(callbackUrl) {
+      if (useCloudLogin && callbackUrl !== "org2remote://auth/callback") {
+        throw new MobileAuthClientError("Invalid native login callback", false);
+      }
+      // This SDK call only prepares a URL and persists the verifier; it does
+      // not contact GitHub. Cloud owns the actual provider choice.
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
@@ -127,6 +142,27 @@ export function createSupabaseMobileAuthClient({
         },
       });
       if (error || !data.url) throw toMobileAuthClientError(error);
+      if (useCloudLogin) {
+        const authorization = new URL(data.url);
+        const challenge = authorization.searchParams.get("code_challenge");
+        if (
+          !challenge ||
+          !/^[A-Za-z0-9_-]{43}$/.test(challenge) ||
+          authorization.searchParams
+            .get("code_challenge_method")
+            ?.toLowerCase() !== "s256"
+        ) {
+          throw new MobileAuthClientError(
+            "Secure login preparation failed",
+            false
+          );
+        }
+        const login = new URL("/login", ORG2_CLOUD_OFFICIAL_WEB_ORIGIN);
+        login.searchParams.set("return_to", callbackUrl);
+        login.searchParams.set("code_challenge", challenge);
+        login.searchParams.set("code_challenge_method", "s256");
+        return login.toString();
+      }
       return data.url;
     },
 
@@ -185,7 +221,7 @@ export function createSupabaseMobileAuthClient({
       if (serverSessionUrl === null) return;
       let response: Response;
       try {
-        response = await fetcher(serverSessionUrl, {
+        response = await authFetch(serverSessionUrl, {
           method: "POST",
           credentials: "include",
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -203,7 +239,7 @@ export function createSupabaseMobileAuthClient({
 
     async signOut(session) {
       if (serverSessionUrl !== null) {
-        await fetcher(serverSessionUrl, {
+        await authFetch(serverSessionUrl, {
           method: "DELETE",
           credentials: "include",
         }).catch(() => undefined);

@@ -1,8 +1,6 @@
 /** Flat-view columns for the Key Vault ModelTable. */
-import {
-  SETTINGS_TABLE_COL,
-  type SettingsTableColumn,
-} from "@src/components/SettingsTable";
+import type { SettingsTableColumn } from "@src/components/SettingsTable";
+import { SETTINGS_TABLE_COL } from "@src/components/SettingsTable/tokens";
 
 import {
   renderCatalogModelCell,

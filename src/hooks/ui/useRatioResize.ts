@@ -86,58 +86,64 @@ export function useRatioResize(
   } = options;
 
   const [ratio, setRatio] = useState(initialRatio);
-  const isDraggingRef = useRef(false);
+  const cleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => cleanupRef.current?.(), []);
 
   const handleMouseDown = useCallback(
     (event: ReactMouseEvent) => {
+      if (event.button !== 0) return;
+      cleanupRef.current?.();
       event.preventDefault();
-      isDraggingRef.current = true;
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if ((moveEvent.buttons & 1) === 0) {
+          cleanup();
+          return;
+        }
+        const container = containerRef.current;
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        const extent = direction === "vertical" ? rect.height : rect.width;
+        if (extent <= 0) return;
+        const offset =
+          direction === "vertical"
+            ? moveEvent.clientY - rect.top
+            : moveEvent.clientX - rect.left;
+        const clampedRatio = Math.min(
+          maxRatio,
+          Math.max(minRatio, offset / extent)
+        );
+        setRatio(clampedRatio);
+        onRatioChange?.(clampedRatio);
+      };
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === "hidden") cleanup();
+      };
+      const cleanup = () => {
+        document.removeEventListener("mousemove", handleMouseMove, true);
+        window.removeEventListener("mouseup", cleanup, true);
+        window.removeEventListener("pointercancel", cleanup, true);
+        window.removeEventListener("blur", cleanup);
+        document.removeEventListener(
+          "visibilitychange",
+          handleVisibilityChange
+        );
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        cleanupRef.current = null;
+      };
+      cleanupRef.current = cleanup;
       document.body.style.cursor =
         direction === "vertical" ? "row-resize" : "col-resize";
       document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", handleMouseMove, true);
+      window.addEventListener("mouseup", cleanup, true);
+      window.addEventListener("pointercancel", cleanup, true);
+      window.addEventListener("blur", cleanup);
+      document.addEventListener("visibilitychange", handleVisibilityChange);
     },
-    [direction]
+    [containerRef, minRatio, maxRatio, direction, onRatioChange]
   );
-
-  useEffect(() => {
-    const handleMouseMove = (event: globalThis.MouseEvent) => {
-      if (!isDraggingRef.current || !containerRef.current) return;
-
-      const rect = containerRef.current.getBoundingClientRect();
-
-      let newRatio: number;
-      if (direction === "vertical") {
-        newRatio = (event.clientY - rect.top) / rect.height;
-      } else {
-        newRatio = (event.clientX - rect.left) / rect.width;
-      }
-
-      const clampedRatio = Math.min(maxRatio, Math.max(minRatio, newRatio));
-      setRatio(clampedRatio);
-      onRatioChange?.(clampedRatio);
-    };
-
-    const handleMouseUp = () => {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-      }
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-      }
-    };
-  }, [containerRef, minRatio, maxRatio, direction, onRatioChange]);
 
   return { ratio, handleMouseDown };
 }

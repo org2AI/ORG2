@@ -12,7 +12,7 @@
  * marketplace flow is handled by separate surfaces.
  */
 import { useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -23,10 +23,12 @@ import Message from "@src/components/Message";
 import {
   CODEX_REAUTH_RETURN_TO_STATE_KEY,
   WIZARD_IDS,
+  buildCodexReauthPath,
   buildIntegrationsPath,
   parseCodexReauthIntent,
 } from "@src/config/mainAppPaths";
 import { useKeyVault } from "@src/hooks/keyVault";
+import { requiresCodexReauthentication } from "@src/hooks/keyVault/codexReauthentication";
 import { createLogger } from "@src/hooks/logger";
 import { useWizardParam } from "@src/hooks/navigation";
 import { clearStaleAccountIdAtom } from "@src/store/session/creatorDefaultModelAtom";
@@ -40,6 +42,11 @@ import {
 } from "./refreshAccountModels";
 
 const log = createLogger("KeyVaultPage");
+const ACCOUNT_USAGE_TOAST_PREFIX = "key-vault-usage-refresh";
+
+function accountUsageToastId(accountId: string): string {
+  return `${ACCOUNT_USAGE_TOAST_PREFIX}:${accountId}`;
+}
 
 function readCodexReauthReturnTo(state: unknown): string | null {
   if (!state || typeof state !== "object") return null;
@@ -78,11 +85,15 @@ export function useKeyVaultPage() {
     null
   );
   const [formLoading, setFormLoading] = useState(false);
-  const [refreshLoading, setRefreshLoading] = useState(false);
-  const [refreshingAccountId, setRefreshingAccountId] = useState<string | null>(
-    null
-  );
+  const [refreshingUsageAccountIds, setRefreshingUsageAccountIds] = useState<
+    ReadonlySet<string>
+  >(new Set());
+  const [refreshingModelsAccountIds, setRefreshingModelsAccountIds] = useState<
+    ReadonlySet<string>
+  >(new Set());
   const [refreshingAllModels, setRefreshingAllModels] = useState(false);
+  const accountOperationsRef = useRef<Set<string>>(new Set());
+  const allModelsRefreshInFlightRef = useRef(false);
 
   // Wizard open-state derived from URL
   const { wizard, entityId, openWizard } = useWizardParam();
@@ -159,8 +170,16 @@ export function useKeyVaultPage() {
 
   const handleRefreshAccount = useCallback(
     async (accountId: string) => {
-      setRefreshingAccountId(accountId);
-      setRefreshLoading(true);
+      if (
+        allModelsRefreshInFlightRef.current ||
+        accountOperationsRef.current.has(accountId)
+      ) {
+        return;
+      }
+      accountOperationsRef.current.add(accountId);
+      setRefreshingModelsAccountIds((current) =>
+        new Set(current).add(accountId)
+      );
       try {
         const account = getAccount(accountId);
         if (!account) return;
@@ -178,17 +197,27 @@ export function useKeyVaultPage() {
         );
         log.error("[Refresh] Error:", err);
       } finally {
-        setRefreshingAccountId(null);
-        setRefreshLoading(false);
+        accountOperationsRef.current.delete(accountId);
+        setRefreshingModelsAccountIds((current) => {
+          const next = new Set(current);
+          next.delete(accountId);
+          return next;
+        });
       }
     },
     [getAccount, refresh, t]
   );
 
   const handleRefreshAllModels = useCallback(async () => {
-    if (accounts.length === 0) return;
+    if (
+      accounts.length === 0 ||
+      allModelsRefreshInFlightRef.current ||
+      accountOperationsRef.current.size > 0
+    ) {
+      return;
+    }
+    allModelsRefreshInFlightRef.current = true;
     setRefreshingAllModels(true);
-    setRefreshLoading(true);
     try {
       const summary = await refreshAllAccountModels(accounts);
       await refresh();
@@ -204,40 +233,86 @@ export function useKeyVaultPage() {
       );
       log.error("[RefreshAll] Error:", err);
     } finally {
+      allModelsRefreshInFlightRef.current = false;
       setRefreshingAllModels(false);
-      setRefreshLoading(false);
     }
   }, [accounts, refresh, t]);
 
   const handleRefreshAccountUsage = useCallback(
     async (accountId: string) => {
-      setRefreshingAccountId(accountId);
-      setRefreshLoading(true);
-      try {
-        const account = getAccount(accountId);
-        if (!account) return;
-        const name = account.name || "Account";
+      if (
+        allModelsRefreshInFlightRef.current ||
+        accountOperationsRef.current.has(accountId)
+      ) {
+        return;
+      }
 
+      const account = getAccount(accountId);
+      if (!account) return;
+      const name = account.name || "Account";
+      const toastId = accountUsageToastId(accountId);
+      accountOperationsRef.current.add(accountId);
+      setRefreshingUsageAccountIds((current) =>
+        new Set(current).add(accountId)
+      );
+      Message.info({
+        id: toastId,
+        title: t("keyVault.quota.refreshUsage"),
+        content: t("common:status.loading"),
+        duration: 0,
+        closable: false,
+      });
+
+      try {
         const refreshed = await refreshAccount(accountId, true);
         if (!refreshed) {
           throw new Error("Usage refresh failed");
         }
-        await refresh();
-        Message.success(t("keyVault.toasts.refreshed", { name }), 5000);
+        Message.success({
+          id: toastId,
+          content: t("keyVault.toasts.refreshed", { name }),
+          duration: 5000,
+          closable: true,
+        });
       } catch (err) {
-        const name = getAccount(accountId)?.name || "Account";
         const detail = err instanceof Error ? err.message : String(err);
-        Message.error(
-          t("keyVault.toasts.refreshError", { name, error: detail }),
-          5000
-        );
+        if (
+          account.modelType === "codex" &&
+          requiresCodexReauthentication(detail)
+        ) {
+          Message.error({
+            id: toastId,
+            title: t("common:errors.codexLoginExpired"),
+            content: t("common:errors.codexLoginExpiredDescription"),
+            duration: 0,
+            closable: true,
+            action: {
+              label: t("common:errors.reconnectCodex"),
+              onClick: () => navigate(buildCodexReauthPath(accountId)),
+            },
+          });
+        } else {
+          Message.error({
+            id: toastId,
+            content: t("keyVault.toasts.refreshError", {
+              name,
+              error: detail,
+            }),
+            duration: 8000,
+            closable: true,
+          });
+        }
         log.error("[RefreshUsage] Error:", err);
       } finally {
-        setRefreshingAccountId(null);
-        setRefreshLoading(false);
+        accountOperationsRef.current.delete(accountId);
+        setRefreshingUsageAccountIds((current) => {
+          const next = new Set(current);
+          next.delete(accountId);
+          return next;
+        });
       }
     },
-    [getAccount, refresh, refreshAccount, t]
+    [getAccount, navigate, refreshAccount, t]
   );
 
   const handleRefresh = useCallback(async () => {
@@ -349,7 +424,7 @@ export function useKeyVaultPage() {
   return {
     // Data
     accounts,
-    loading: loading || refreshLoading,
+    loading,
     error,
     agentTypes,
     filteredAccounts,
@@ -383,7 +458,8 @@ export function useKeyVaultPage() {
     handleRefreshAccount,
     handleRefreshAccountUsage,
     handleRefreshAllModels,
-    refreshingAccountId,
+    refreshingUsageAccountIds,
+    refreshingModelsAccountIds,
     refreshingAllModels,
     handleDisconnect,
     handleAddAccount: () => {

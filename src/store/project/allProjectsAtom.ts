@@ -29,13 +29,3 @@ export const updateAllProjectsEntryAtom = atom(
   }
 );
 updateAllProjectsEntryAtom.debugLabel = "updateAllProjectsEntryAtom";
-
-export const allProjectsFlatAtom = atom(
-  (get) => get(allProjectsEntryAtom).projects
-);
-allProjectsFlatAtom.debugLabel = "allProjectsFlatAtom";
-
-export const anyProjectsLoadingAtom = atom(
-  (get) => get(allProjectsEntryAtom).loading
-);
-anyProjectsLoadingAtom.debugLabel = "anyProjectsLoadingAtom";

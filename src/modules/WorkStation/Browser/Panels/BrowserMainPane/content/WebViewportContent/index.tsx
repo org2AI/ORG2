@@ -8,11 +8,12 @@ import BrowserCore from "@/src/engines/BrowserCore";
 import type { BrowserState } from "@/src/engines/BrowserCore/types";
 import { TabBar, type WorkStationTab } from "@/src/modules/WorkStation/shared";
 import { useSetAtom } from "jotai";
-import React, { memo, useCallback, useMemo } from "react";
+import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { WorkstationTabHeaderHost } from "@src/hooks/tabHost/useWorkstationTabHeader";
-import { getSiteNameFromUrl } from "@src/store/ui/navigationSidebarTabsAtom";
+import { ImportCookiesModal } from "@src/modules/WorkStation/Browser/ImportCookies";
+import { focusBrowserUrlBar } from "@src/modules/WorkStation/Browser/shared/urlBarFocus";
 import {
   closeBrowserTabAtom,
   extractSessionId,
@@ -22,7 +23,7 @@ import {
 } from "@src/store/workstation/browser/tabs";
 
 import { useWebviewScreenshot } from "../../../../hooks/useWebviewScreenshot";
-import WebUrlBar, { focusBrowserUrlBar } from "../../components/WebUrlBar";
+import WebUrlBar from "../../components/WebUrlBar";
 import BrowserBlankTabPlaceholder from "./BrowserBlankTabPlaceholder";
 
 // ============================================
@@ -40,7 +41,7 @@ interface WebViewportProps {
   devToolsPaneCollapsed?: boolean;
   /** Hide the tab bar (when using shared tab bar) */
   hideTabBar?: boolean;
-  /** Hide webviews (e.g., when designer mode is active) */
+  /** Hide webviews when their host or viewport is inactive */
   hideWebviews?: boolean;
   /** Header host to publish the URL bar into. Defaults to My Station Browser. */
   publishUrlBarToHost?: WorkstationTabHeaderHost;
@@ -62,6 +63,11 @@ interface WebViewportProps {
    * Defaults to true so this viewport owns visible browser webviews.
    */
   manageWebviews?: boolean;
+}
+
+function hasActiveBrowserWebview(url?: string): boolean {
+  const normalizedUrl = url?.trim().toLowerCase();
+  return Boolean(normalizedUrl && !normalizedUrl.startsWith("about:blank"));
 }
 
 // ============================================
@@ -187,6 +193,7 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
       const historyIndex = activeSession.historyIndex ?? 0;
       return historyIndex < history.length - 1;
     }, [activeSession]);
+    const hasActiveWebview = hasActiveBrowserWebview(activeSession?.url);
 
     // Handle URL navigation
     const handleNavigate = useCallback(
@@ -205,14 +212,6 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
             isLoading: true,
             history: newHistory,
             historyIndex: newHistory.length - 1,
-            historyEntries: [
-              ...(activeSession.historyEntries ?? []),
-              {
-                url,
-                title: getSiteNameFromUrl(url),
-                visitedAt: Date.now(),
-              },
-            ],
           });
         }
       },
@@ -276,6 +275,13 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
       webviewLabel: activeWebviewLabel,
     });
 
+    const [importCookiesOpen, setImportCookiesOpen] = useState(false);
+    const handleReloadAfterImport = useCallback(() => {
+      if (effectiveActiveSessionId && activeSession?.url) {
+        updateSession(effectiveActiveSessionId, { isLoading: true });
+      }
+    }, [effectiveActiveSessionId, activeSession?.url, updateSession]);
+
     return (
       <div className="flex h-full w-full flex-col overflow-hidden">
         {/* Tab Bar - uses the same component as Code Editor and Database Explorer */}
@@ -304,6 +310,7 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
             onStop={handleStop}
             canGoBack={canGoBack}
             canGoForward={canGoForward}
+            hasActiveWebview={hasActiveWebview}
             onOpenNativeDevTools={onOpenNativeDevTools}
             onToggleDevToolsPane={onToggleDevToolsPane}
             devToolsPaneCollapsed={devToolsPaneCollapsed}
@@ -329,11 +336,20 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
                 <BrowserBlankTabPlaceholder
                   isIncognito={activeSession?.incognito}
                   onOpen={handleNavigate}
+                  onImportCookies={() => setImportCookiesOpen(true)}
                 />
               ) : undefined
             }
           />
         </div>
+
+        {/* Mounted only while open: the flow resets by unmounting. */}
+        {importCookiesOpen ? (
+          <ImportCookiesModal
+            onClose={() => setImportCookiesOpen(false)}
+            onImported={handleReloadAfterImport}
+          />
+        ) : null}
       </div>
     );
   }

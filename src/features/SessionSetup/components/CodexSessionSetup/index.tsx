@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import SessionSetupStepIndicator from "@src/features/SessionSetup/components/SessionSetupStepIndicator";
 import { useCodexOAuthCapture } from "@src/features/SessionSetup/hooks/useCodexOAuthCapture";
@@ -286,17 +286,17 @@ const CodexSessionSetup: React.FC<CodexSessionSetupProps> = ({
       )}
 
       {hasToken && !showBrowser && (
-        <InlineAlert type="success">{t("keyVault.codexSignedIn")}</InlineAlert>
+        <PageNotice type="success">{t("keyVault.codexSignedIn")}</PageNotice>
       )}
 
       {displayError && !showBrowser && (
-        <InlineAlert
+        <PageNotice
           type="danger"
           title={displayError}
           onClose={error ? reset : onClearTokenError}
         >
           {t("keyVault.codexSignInErrorHint")}
-        </InlineAlert>
+        </PageNotice>
       )}
 
       {debug && (

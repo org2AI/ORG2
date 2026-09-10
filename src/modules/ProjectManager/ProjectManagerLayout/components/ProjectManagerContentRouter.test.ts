@@ -56,7 +56,7 @@ describe("ProjectManagerContentRouter trio keep-alive", () => {
           tabs,
           activeTab: tabs[activeIndex],
           projectQuickActions: [],
-        } as unknown as RouterProps)
+        })
       );
     });
 

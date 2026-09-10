@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { LIST_PANEL_SECTION_HEADER } from "@src/components/ListPanel/tokens";
 
 import { useMobileRemote } from "../app";
@@ -14,12 +16,17 @@ export interface SessionsScreenProps {
 
 /** M-05 Sessions / Online (M-06 offline banner when presence offline). */
 export function SessionsScreen({ onSelectSession }: SessionsScreenProps) {
-  const { connection, sessions } = useMobileRemote();
+  const { t } = useTranslation("mobileRemote");
+  const { connection, sessions, sessionsHasMore, loadMoreSessions } =
+    useMobileRemote();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const offline = connection.presence === "offline";
 
   return (
     <>
       <MobileTopBar
+        title={t("tabs.sessions")}
         leading={
           <DesktopPresenceLabel
             desktopName={connection.desktopName ?? "Desktop"}
@@ -47,6 +54,25 @@ export function SessionsScreen({ onSelectSession }: SessionsScreenProps) {
             />
           ))}
         </div>
+        {sessions.length >= 1000 ? (
+          <p className="text-text-secondary px-2">{t("sessions.limit")}</p>
+        ) : null}
+        {sessionsHasMore ? (
+          <Button
+            disabled={offline || loading}
+            loading={loading}
+            onClick={() => {
+              if (loading) return;
+              setLoading(true);
+              setError(false);
+              void loadMoreSessions()
+                .catch(() => setError(true))
+                .finally(() => setLoading(false));
+            }}
+          >
+            {t(error ? "sessions.retry" : "sessions.loadMore")}
+          </Button>
+        ) : null}
       </div>
     </>
   );

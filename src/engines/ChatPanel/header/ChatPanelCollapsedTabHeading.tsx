@@ -1,18 +1,31 @@
 import { useAtomValue } from "jotai";
 import React, { memo } from "react";
 
-import {
-  type ChatPanelTab,
-  activeChatPanelTabAtom,
-} from "@src/store/chatPanel/chatPanelTabsAtom";
+import { type ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
+import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
 
+import { ChatPanelTabIcon } from "../ChatPanelTabBar/ChatPanelTabIcon";
 import { useChatPanelTabDisplayTitle } from "../hooks/useChatPanelTabDisplayTitle";
 
-const CollapsedTabHeadingLabel: React.FC<{ tab: ChatPanelTab }> = ({ tab }) => (
-  <span className="truncate px-1 text-[13px] font-medium text-text-1">
-    {useChatPanelTabDisplayTitle(tab)}
-  </span>
-);
+const CollapsedTabHeadingLabel: React.FC<{ tab: ChatPanelTab }> = ({ tab }) => {
+  const title = useChatPanelTabDisplayTitle(tab);
+  // Other surfaces publish their own entity header; preserve their existing
+  // collapsed-heading omission instead of adding a second identity icon.
+  const showIcon = [
+    "start-page",
+    "runtime",
+    "team-inbox",
+    "work-management",
+    "organization",
+  ].includes(tab.type);
+
+  return (
+    <span className="flex min-w-0 items-center gap-2 px-1 text-[13px] font-medium text-text-1">
+      {showIcon && <ChatPanelTabIcon tab={tab} isActive />}
+      <span className="truncate">{title}</span>
+    </span>
+  );
+};
 
 /**
  * Names the lone surface in the collapsed 36px header.

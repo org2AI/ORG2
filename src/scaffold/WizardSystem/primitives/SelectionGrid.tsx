@@ -91,7 +91,7 @@ interface SharedGridProps<T extends string = string> {
   cardClassName?: string;
   /** When using showSelect on cards, show the trailing checkmark (default true). */
   showSelectionCheck?: boolean;
-  /** Render inline choice cards as compact 36px segmented controls. */
+  /** Use 36px inline pills; defaults on for grids without descriptions. */
   compactCards?: boolean;
   /** Optional class name for the grid wrapper. */
   className?: string;
@@ -144,7 +144,7 @@ function SelectionGrid<T extends string = string>(
     cardLayout = "inline",
     cardClassName = "",
     showSelectionCheck = true,
-    compactCards = false,
+    compactCards = !options.some((option) => option.description),
     className = "",
   } = props;
 

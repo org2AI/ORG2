@@ -7,11 +7,8 @@ import { I18nextProvider, initReactI18next } from "react-i18next";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import enSessions from "@src/i18n/locales/en/sessions.json";
-import { workStationEditorSecondaryCollapsedAtom } from "@src/store/ui/workStationAtom";
-import {
-  activeStatusBarAppAtom,
-  perAppStatusBarCallbacksAtom,
-} from "@src/store/ui/workStationLayout/statusBarAtoms";
+import { workStationEditorSecondaryCollapsedAtom } from "@src/store/ui/workStationLayout/bottomPanelAtoms";
+import { perAppStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 
 import { TabBarBottomPanelToggle } from "./TabBarTrailingControls";
 
@@ -36,11 +33,9 @@ describe("TabBarBottomPanelToggle", () => {
 
   it("uses the localized bottom-panel label", () => {
     const store = createStore();
-    store.set(activeStatusBarAppAtom, "code");
     store.set(workStationEditorSecondaryCollapsedAtom, true);
     store.set(perAppStatusBarCallbacksAtom, {
       code: { onToggleBottomPanel: vi.fn() },
-      data: {},
       browser: {},
       project: {},
     });

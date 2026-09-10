@@ -11,7 +11,7 @@ import type { WorktreeLaunchSource } from "@src/store/session/worktreeLaunchSour
 
 import type { EditorPaletteMode } from "./palettes/EditorPalette/types";
 
-export type WorkspacePickerMode = "switch" | "open" | "add" | "create";
+export type WorkingDirectoryPickerMode = "switch" | "open" | "add" | "create";
 
 export interface EmbeddedEditorPaletteState {
   mode: EditorPaletteMode;

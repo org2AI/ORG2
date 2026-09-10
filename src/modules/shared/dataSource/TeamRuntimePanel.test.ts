@@ -84,7 +84,7 @@ vi.mock("@src/features/Org2Cloud/org2CloudRemoteSessionsAtom", () => ({
     mocks.useCloudOrgRemoteSessions(orgId),
 }));
 
-vi.mock("@src/hooks/ui", () => ({
+vi.mock("@src/hooks/ui/useRefreshSpin", () => ({
   useRefreshSpin: (onRefresh: () => void) => ({
     spinClass: undefined,
     handleClick: onRefresh,
@@ -125,16 +125,28 @@ vi.mock("@src/components/Select", () => ({
     dataTestId,
     options = [],
     onChange,
+    showSearch,
+    dropdownMinWidth,
+    dropdownWidthMode,
+    className,
   }: {
     value?: unknown;
     dataTestId?: string;
     options?: Array<{ value: unknown; label: string }>;
     onChange?: (value: unknown) => void;
+    showSearch?: boolean;
+    dropdownMinWidth?: number;
+    dropdownWidthMode?: string;
+    className?: string;
   }) =>
     createElement(
       "select",
       {
         "data-testid": dataTestId ?? "select",
+        "data-show-search": showSearch ? "true" : "false",
+        "data-dropdown-min-width": dropdownMinWidth,
+        "data-dropdown-width-mode": dropdownWidthMode,
+        "data-class-name": className,
         value: String(value),
         onChange: (event: { target: { value: string } }) =>
           onChange?.(event.target.value),
@@ -717,6 +729,8 @@ describe("TeamRuntimePanel roster", () => {
     const titleRow = container.querySelector(
       '[data-testid="team-runtime-title-row"]'
     );
+    expect(titleRow?.className).toContain("sticky");
+    expect(titleRow?.className).toContain("top-0");
     expect(titleRow?.firstElementChild?.tagName).toBe("H3");
     expect(titleRow?.textContent).toContain("overview.today");
     expect(titleRow?.textContent).not.toContain("overview.todayUtc");
@@ -734,6 +748,19 @@ describe("TeamRuntimePanel roster", () => {
       container.querySelectorAll('[data-testid^="team-runtime-member-usage-"]')
     ).toHaveLength(2);
     expect(
+      container.querySelector('[data-testid="team-runtime-system-pulse"]')
+    ).toBeNull();
+    expect(
+      container.querySelector(
+        '[data-testid="team-runtime-member-online-user-a"]'
+      )?.textContent
+    ).toContain("common:status.online");
+    expect(
+      container.querySelector(
+        '[data-testid="team-runtime-member-online-user-b"]'
+      )?.textContent
+    ).toContain("common:status.online");
+    expect(
       container.querySelector(
         '[data-testid="team-runtime-member-usage-user-b"]'
       )?.textContent
@@ -742,6 +769,14 @@ describe("TeamRuntimePanel roster", () => {
     const personSelect = container.querySelector<HTMLSelectElement>(
       '[data-testid="team-runtime-person-select"]'
     );
+    expect(personSelect?.dataset.showSearch).toBe("true");
+    expect(personSelect?.dataset.dropdownMinWidth).toBe("240");
+    expect(personSelect?.dataset.dropdownWidthMode).toBe("min-match");
+    expect(personSelect?.dataset.className).toContain("w-48");
+    expect(
+      container.querySelector('[data-testid="team-runtime-member-usage"]')
+        ?.firstElementChild?.textContent
+    ).not.toContain("usage.range.24h");
     await act(async () => {
       if (!personSelect) return;
       personSelect.value = "user-b";
@@ -821,7 +856,7 @@ describe("TeamRuntimePanel roster", () => {
     expect(weekLine?.textContent).toContain("3.5K");
   });
 
-  it("puts the title and refresh on one row and groups members by today's activity", async () => {
+  it("puts refresh on the first activity heading and groups members by today's activity", async () => {
     const yesterday = utcDayFromMs(Date.now() - 86_400_000);
     mocks.listMemberRuntime.mockResolvedValue([
       member({
@@ -847,14 +882,9 @@ describe("TeamRuntimePanel roster", () => {
     await seedAtoms(AUTH, [org()]);
     await mount({ view: "members" });
 
-    const titleRow = container.querySelector(
-      '[data-testid="team-runtime-members-title-row"]'
-    );
-    expect(titleRow?.firstElementChild?.tagName).toBe("H3");
-    expect(titleRow?.textContent).toContain("overview.members");
     expect(
-      titleRow?.querySelector('[data-testid="team-runtime-refresh"]')
-    ).not.toBeNull();
+      container.querySelector('[data-testid="team-runtime-members-title-row"]')
+    ).toBeNull();
     expect(
       container.querySelectorAll('[data-testid="team-runtime-refresh"]')
     ).toHaveLength(1);
@@ -866,6 +896,12 @@ describe("TeamRuntimePanel roster", () => {
       '[data-testid="team-runtime-inactive-today"]'
     );
     expect(active?.textContent).toContain("overview.activeToday");
+    expect(
+      active?.querySelector('[data-testid="team-runtime-refresh"]')
+    ).not.toBeNull();
+    expect(
+      inactive?.querySelector('[data-testid="team-runtime-refresh"]')
+    ).toBeNull();
     expect(
       active?.querySelector('[data-testid="team-member-card-active"]')
     ).not.toBeNull();
@@ -1117,9 +1153,7 @@ describe("TeamRuntimePanel org load stall", () => {
     const error = container.querySelector('[data-testid="placeholder-error"]');
     expect(error).not.toBeNull();
     expect(error?.textContent).toContain("loadError");
-    expect(error?.textContent).toContain(
-      "Couldn't load your cloud organizations"
-    );
+    expect(error?.textContent).toContain("Couldn't load your cloud workspaces");
     expect(container.querySelector('[data-testid="retry"]')).not.toBeNull();
   });
 

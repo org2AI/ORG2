@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 
+import { DeferredSessionHoverCardContent } from "./DeferredSessionHoverCardContent";
 import HoverCardBase, { type HoverCardPosition } from "./HoverCardBase";
-import { SessionHoverCardContent } from "./SessionHoverCardContent";
 
 interface SessionHoverCardProps {
   sessionId?: string | null;
@@ -19,7 +19,7 @@ const SessionHoverCard: React.FC<SessionHoverCardProps> = ({
   mouseLeaveDelay,
 }) => {
   const renderContent = useCallback(
-    (cardId: string) => <SessionHoverCardContent sessionId={cardId} />,
+    (cardId: string) => <DeferredSessionHoverCardContent sessionId={cardId} />,
     []
   );
 

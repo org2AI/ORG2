@@ -7,6 +7,19 @@ import {
 } from "../modelGrouping";
 
 describe("groupModels", () => {
+  it("groups Astra separately from other GPT tiers and keeps it current", () => {
+    const models = [
+      "gpt-6-astra",
+      "gpt-6-astra-high",
+      "gpt-6-astra-ultra-fast",
+    ];
+    const groups = groupModels([...models, "gpt-5.6-sol", "gpt-6"]);
+    const astra = groups.find((group) => group.label === "GPT 6 Astra");
+    expect(astra).toMatchObject({ sortVersion: 600, models });
+    expect(isLegacyGroup(astra!)).toBe(false);
+    expect(groups).toHaveLength(3);
+  });
+
   it("groups Claude models by version (claude-3-5-sonnet-20241022 → Sonnet 3.5)", () => {
     const groups = groupModels(["claude-3-5-sonnet-20241022"]);
     expect(groups).toHaveLength(1);
@@ -35,6 +48,26 @@ describe("groupModels", () => {
       sortVersion: 407,
       models: ["claude-opus-4-7"],
     });
+  });
+
+  it("keeps distinct Codex models out of the effort-variant family (gpt-5.3-codex-spark)", () => {
+    const groups = groupModels([
+      "gpt-5.3-codex",
+      "gpt-5.3-codex-medium",
+      "gpt-5.3-codex-spark",
+      "gpt-5.6-sol-xhigh-fast",
+    ]);
+    expect(groups.map((group) => group.label)).toEqual([
+      "GPT 5.6 Sol",
+      "GPT 5.3 Codex",
+      "GPT 5.3 Codex Spark",
+    ]);
+    expect(
+      groups.find((group) => group.label === "GPT 5.3 Codex")?.models
+    ).toEqual(["gpt-5.3-codex", "gpt-5.3-codex-medium"]);
+    expect(
+      groups.find((group) => group.label === "GPT 5.3 Codex Spark")?.models
+    ).toEqual(["gpt-5.3-codex-spark"]);
   });
 
   it("groups GPT models (gpt-4-turbo → GPT 4)", () => {
@@ -163,13 +196,13 @@ describe("isLegacyGroup", () => {
     expect(isLegacyGroup(group)).toBe(true);
   });
 
-  it("treats Claude 4.6 (406) as current", () => {
+  it("treats Claude 4.6 (406) as older", () => {
     const group: ModelGroup = {
       label: "Sonnet 4.6",
       sortVersion: 406,
       models: [],
     };
-    expect(isLegacyGroup(group)).toBe(false);
+    expect(isLegacyGroup(group)).toBe(true);
   });
 
   it("treats GPT 4 (400) as legacy (< 540)", () => {

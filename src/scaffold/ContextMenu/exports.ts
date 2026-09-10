@@ -10,4 +10,5 @@ export * from "./config";
 export * from "./types";
 
 // Variants
-export * from "./variants";
+export { default as TextSelectionDropdown } from "./variants/TextSelectionDropdown/index";
+export { useTextSelectionDropdown } from "./variants/TextSelectionDropdown/useTextSelectionDropdown";

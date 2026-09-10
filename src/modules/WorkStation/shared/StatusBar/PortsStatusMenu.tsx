@@ -17,7 +17,6 @@ import {
 } from "@src/components/Dropdown/tokens";
 import { ProcessStopButton } from "@src/components/ProcessStopButton";
 import { REFRESH_ICON_TOKENS } from "@src/components/RefreshIcon/tokens";
-import { resolveTimeZoneForIntl } from "@src/config/timezone";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { createLogger } from "@src/hooks/logger";
 import {
@@ -41,13 +40,13 @@ import {
 } from "@src/store/workstation/codeEditor/workspacePortsAtom";
 import { requestNewBrowserSessionAtom } from "@src/store/workstation/workstationTabBarAtoms";
 import { copyText } from "@src/util/data/clipboard";
-import { toIntlLocaleTag } from "@src/util/data/formatters/date";
 import { classNames } from "@src/util/ui/classNames";
 
 import { StatusBarButton, StatusBarLabel } from "./StatusBarBase";
 import { StatusBarTooltip } from "./StatusBarTooltip";
 import { STATUS_BAR_TOKENS } from "./statusBarTokens";
 import { useWorkspacePortScanSync } from "./useWorkspacePortScanSync";
+import { formatClockTime } from "./utils/formatClockTime";
 import {
   refreshWorkspacePortScan,
   stopWorkspacePort,
@@ -181,19 +180,6 @@ function sectionLabelWithCount(label: string, count: number): string {
   return `${label} · ${count}`;
 }
 
-/** Clock time of the last scan, in the user's language and timezone preference. */
-function formatScanClockTime(timestamp: number, language: string): string {
-  try {
-    return new Date(timestamp).toLocaleTimeString(toIntlLocaleTag(language), {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: resolveTimeZoneForIntl(),
-    });
-  } catch {
-    return "";
-  }
-}
-
 export const PortsStatusMenu: React.FC = memo(() => {
   const { t, i18n } = useTranslation();
   const ports = useAtomValue(workspacePortsAtom);
@@ -321,7 +307,7 @@ export const PortsStatusMenu: React.FC = memo(() => {
 
   const lastScanLabel =
     lastScanStartedAt > 0 && !refreshing
-      ? formatScanClockTime(lastScanStartedAt, i18n.language)
+      ? formatClockTime(lastScanStartedAt, i18n.language)
       : "";
 
   return (
@@ -448,7 +434,7 @@ export const PortsStatusMenu: React.FC = memo(() => {
               )}
             </div>
 
-            <div className={STATUS_BAR_TOKENS.menuFooterClass}>
+            <div className={DROPDOWN_CLASSES.footerContainer}>
               <button
                 type="button"
                 className={classNames(
@@ -472,17 +458,20 @@ export const PortsStatusMenu: React.FC = memo(() => {
                     ? t("workstation.ports.rescanning")
                     : t("workstation.ports.rescan")}
                 </span>
+                {lastScanLabel && (
+                  <span
+                    className={classNames(
+                      "ml-auto",
+                      STATUS_BAR_TOKENS.menuTimestampClass
+                    )}
+                    title={t("workstation.ports.lastScannedAt", {
+                      time: lastScanLabel,
+                    })}
+                  >
+                    {lastScanLabel}
+                  </span>
+                )}
               </button>
-              {lastScanLabel && (
-                <span
-                  className={STATUS_BAR_TOKENS.menuTimestampClass}
-                  title={t("workstation.ports.lastScannedAt", {
-                    time: lastScanLabel,
-                  })}
-                >
-                  {lastScanLabel}
-                </span>
-              )}
             </div>
           </div>,
           document.body

@@ -20,7 +20,6 @@ import { useCallback, useEffect, useRef } from "react";
 
 import { getCodeEditorWebSocket } from "@src/api/realtime/codeEditorWebSocket";
 import {
-  getFileResolutions,
   getSession,
   getSessionFiles,
   getSnapshots,
@@ -42,10 +41,8 @@ import {
   pendingSnapshotAnchorsAtom,
   redoSnapshotAnchorAtom,
   registerFileChangesBatchAtom,
-  restoreFileResolutionsAtom,
   undoAllFileChangesAtom,
 } from "@src/store/session/fileReviewAtom";
-import type { FileResolution } from "@src/store/session/fileReviewAtom";
 import {
   isAgentSession,
   isCliSession,
@@ -136,7 +133,6 @@ export function useFileReviewSync(
   const registerBatch = useSetAtom(registerFileChangesBatchAtom);
   const clearReview = useSetAtom(clearFileReviewAtom);
   const setWorkspacePath = useSetAtom(fileReviewWorkspacePathAtom);
-  const restoreResolutions = useSetAtom(restoreFileResolutionsAtom);
 
   const loadedSessionRef = useRef<string | null>(null);
   const lastSnapshotCountRef = useRef(0);
@@ -229,43 +225,12 @@ export function useFileReviewSync(
       }
     };
 
-    const loadFileResolutions = async () => {
-      try {
-        const records = await getFileResolutions(sid);
-        if (cancelled || records.length === 0) return;
-        restoreResolutions(
-          records.map((record) => ({
-            path: record.path,
-            resolution: record.resolution as FileResolution,
-          }))
-        );
-      } catch (error) {
-        if (!cancelled) {
-          log.warn(
-            "[useFileReviewSync] Failed to load file resolutions:",
-            error
-          );
-        }
-      }
-    };
-
-    void Promise.all([
-      loadSnapshots(),
-      loadWorkspacePath(),
-      loadFileResolutions(),
-    ]);
+    void Promise.all([loadSnapshots(), loadWorkspacePath()]);
 
     return () => {
       cancelled = true;
     };
-  }, [
-    sessionId,
-    registerBatch,
-    clearReview,
-    setWorkspacePath,
-    restoreResolutions,
-    enabled,
-  ]);
+  }, [sessionId, registerBatch, clearReview, setWorkspacePath, enabled]);
 
   // ── Phase 1b: Stale-snapshot verification — runs when session finishes ──
   // Once the agent completes/fails, check whether the backend still has

@@ -22,12 +22,12 @@ use super::request::{apply_headers, prepare_request};
 use super::stream_parser::{finalize_blocks, handle_event, EventOutcome, StreamState};
 use super::types::{ContentBlock, MessagesResponse, StreamEvent};
 use super::usage as usage_helpers;
-use crate::providers::safe_truncate::safe_truncate_utf8;
 use crate::providers::traits::{
     finish_reason as finish, AssistantBlock, ChatOptions, LLMProvider, LLMResponse, ProviderError,
     StreamDelta, StreamErrorKind, ToolCallRequest,
 };
 use crate::utils::http_retry::extract_retry_after_secs;
+use crate::utils::safe_truncate_utf8;
 
 #[async_trait]
 impl LLMProvider for AnthropicClient {
@@ -564,9 +564,6 @@ fn build_non_streaming_response(parsed: MessagesResponse) -> LLMResponse {
                 signature,
             } => {
                 if let Some(ref thought) = thinking {
-                    if thought.is_empty() {
-                        continue;
-                    }
                     if let Some(sig) = signature {
                         pending_anthropic_thinking = Some(serde_json::json!({
                             "anthropic": {
@@ -574,6 +571,10 @@ fn build_non_streaming_response(parsed: MessagesResponse) -> LLMResponse {
                                 "signature": sig,
                             }
                         }));
+                    }
+                    // Empty summaries still carry signed history (Fable 5.1).
+                    if thought.is_empty() {
+                        continue;
                     }
                     reasoning.push_str(thought);
                     blocks.push(AssistantBlock::Reasoning {
@@ -622,3 +623,7 @@ fn build_non_streaming_response(parsed: MessagesResponse) -> LLMResponse {
         retry_after_ms: None,
     }
 }
+
+#[cfg(test)]
+#[path = "tests/thinking_history_tests.rs"]
+mod thinking_history_tests;

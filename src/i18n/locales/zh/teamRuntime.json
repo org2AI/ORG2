@@ -6,7 +6,6 @@
     "today": "今天",
     "everyone": "所有人",
     "activeMembers": "活跃成员",
-    "systemsCurrent": "{{total}} 台系统中有 {{current}} 台状态最新",
     "usageByAgent": "按智能体统计用量",
     "recentSessions": "最近共享的会话",
     "recentLoading": "正在加载共享会话…",
@@ -22,17 +21,17 @@
     "action": "登录"
   },
   "noOrgs": {
-    "title": "还没有云端组织",
-    "subtitle": "加入或创建一个组织，队友就会出现在这里。"
+    "title": "还没有云端工作空间",
+    "subtitle": "加入或创建一个工作空间，队友就会出现在这里。"
   },
   "unsupported": {
     "title": "后端需要升级",
-    "subtitle": "该组织的云端后端尚不支持团队运行状态共享。"
+    "subtitle": "该工作空间的云端后端尚不支持团队运行状态共享。"
   },
   "disabled": {
     "title": "团队运行状态共享未开启",
-    "subtitle": "组织管理员可以在组织设置中开启。",
-    "adminSubtitle": "你可以在组织设置中开启。"
+    "subtitle": "工作空间管理员可以在工作空间设置中开启。",
+    "adminSubtitle": "你可以在工作空间设置中开启。"
   },
   "empty": {
     "title": "还没有成员数据",
@@ -72,13 +71,9 @@
     "totalSessions": "会话总数",
     "lastSynced": "最后同步"
   },
-  "selfService": {
-    "hint": "共享开启期间，你自己的运行状态会共享给该组织。",
-    "action": "停止共享并删除我的数据"
-  },
   "orgSettings": {
     "label": "团队运行状态共享",
-    "help": "按此间隔向组织共享成员的机器负载、用量汇总和构建者画像。仅共享聚合数据——不含转录、仓库路径和标题。",
+    "help": "按此间隔向工作空间共享成员的机器负载、用量汇总和构建者画像。仅共享聚合数据——不含转录、仓库路径和标题。",
     "memberNote": "已由管理员开启。上报间隔：{{interval}}。",
     "off": "关闭",
     "interval": {

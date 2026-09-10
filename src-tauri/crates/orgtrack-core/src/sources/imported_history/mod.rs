@@ -1,4 +1,5 @@
 pub mod cache;
+pub mod context_usage;
 pub mod client_origin;
 pub mod managed_mirror;
 pub mod managed_roots;
@@ -648,12 +649,11 @@ pub fn recent_paths_from_paths(
     recent_paths
 }
 
-/// Internal wrapper blocks ORGII prepends to the prompt it hands the CLI:
-/// the GUI exec-mode briefing and the IDE-context injection
-/// (`inject_ide_context_into_prompt`). The CLI's native transcript stores
-/// the full prompt verbatim, so replay readers must strip these to recover
-/// what the user actually typed.
+/// Internal wrapper blocks ORGII prepends to the prompt it hands the CLI.
+/// The CLI's native transcript stores the full prompt verbatim, so replay
+/// readers must strip these to recover what the user actually typed.
 const INTERNAL_CONTEXT_BLOCKS: &[(&str, &str)] = &[
+    ("<orgii_provider_context>", "</orgii_provider_context>"),
     (
         "<orgii_cli_exec_mode_bridge>",
         "</orgii_cli_exec_mode_bridge>",
@@ -693,8 +693,8 @@ pub fn strip_internal_context_blocks(text: &str) -> &str {
     }
 }
 
-/// GUI-launched runs prefix the task with an internal exec-mode briefing;
-/// strip it so titles/replay show only what the user typed.
+/// GUI-launched runs prefix the task with internal provider, exec-mode, and
+/// IDE context; strip them so titles/replay show only what the user typed.
 ///
 /// Back-compat name: now also strips the `<ide_context>` injection via
 /// [`strip_internal_context_blocks`].
@@ -789,6 +789,15 @@ pub fn task_lifecycle_chunk(
     chunk
 }
 
+/// Native CLI controls can finish without a model turn. Keep their stdout as
+/// a command result, never invent an assistant reply or drop the result.
+pub fn native_command_output_chunk(session_id: &str, output: &str, success: bool) -> ActivityChunk {
+    let mut chunk = ActivityChunk::new(session_id, ACTION_TYPE_TOOL_CALL, "native_command");
+    chunk.args = json!({"native_command": true});
+    chunk.result = json!({"success":success,"status":if success { "completed" } else { "failed" },"output":output,"observation":output,"raw_tool_name":"Claude Code command"});
+    chunk
+}
+
 pub fn tool_call_chunk(
     session_id: &str,
     provider_slug: &str,
@@ -807,6 +816,28 @@ pub fn tool_call_chunk(
         "output": output,
         "observation": output,
         "raw_tool_name": call.raw_name,
+    });
+    chunk
+}
+
+/// A provider-native transcript ended with a tool call but no matching result.
+/// Keep it visible as interrupted diagnostics, while making the missing result
+/// machine-readable so cross-provider projection can exclude the invalid tail.
+pub fn unresolved_tool_call_chunk(
+    session_id: &str,
+    provider_slug: &str,
+    sequence: usize,
+    call: &ImportedToolCall,
+) -> ActivityChunk {
+    let mut chunk = tool_call_chunk(session_id, provider_slug, sequence, call, "");
+    chunk.result = json!({
+        "success": false,
+        "status": "pending",
+        "call_id": call.call_id,
+        "output": "",
+        "observation": "",
+        "raw_tool_name": call.raw_name,
+        "interrupted": true,
     });
     chunk
 }

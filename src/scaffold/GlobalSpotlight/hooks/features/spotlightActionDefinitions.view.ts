@@ -51,7 +51,9 @@ export function buildViewActions(
         "sidebar",
         "view",
       ],
-      shortcut: getShortcutKeys("toggle_sidebar"),
+      get shortcut() {
+        return getShortcutKeys("toggle_sidebar");
+      },
       actionId: ACTION_ID.SIDEBAR_TOGGLE,
       payload: {},
       fallback: "toggle-sidebar",
@@ -76,7 +78,9 @@ export function buildViewActions(
         "primary sidebar",
         "view",
       ],
-      shortcut: getShortcutKeys("toggle_workstation_sidebar"),
+      get shortcut() {
+        return getShortcutKeys("toggle_workstation_sidebar");
+      },
       actionId: ACTION_ID.WORKSTATION_TOGGLE_SIDEBAR,
       payload: {},
       fallback: "toggle-workstation-sidebar",
@@ -99,7 +103,9 @@ export function buildViewActions(
         "bottom panel",
         "view",
       ],
-      shortcut: getShortcutKeys("toggle_bottom_panel"),
+      get shortcut() {
+        return getShortcutKeys("toggle_bottom_panel");
+      },
       actionId: ACTION_ID.PANEL_TOGGLE_BOTTOM,
       payload: {},
       fallback: "toggle-bottom-panel",
@@ -123,7 +129,9 @@ export function buildViewActions(
         "work station",
         "view",
       ],
-      shortcut: getShortcutKeys("maximize_work_station"),
+      get shortcut() {
+        return getShortcutKeys("maximize_work_station");
+      },
       actionId: ACTION_ID.WORKSTATION_TOGGLE_CHAT_PANEL_VISIBILITY,
       payload: {},
       fallback: "toggle-chat-panel",
@@ -145,7 +153,9 @@ export function buildViewActions(
         "workstation chat",
         "view",
       ],
-      shortcut: getShortcutKeys("maximize_chat"),
+      get shortcut() {
+        return getShortcutKeys("maximize_chat");
+      },
       actionId: ACTION_ID.WORKSTATION_TOGGLE_CHAT_FOCUS,
       payload: {},
       fallback: "toggle-chat-focus",
@@ -159,7 +169,9 @@ export function buildViewActions(
       labelKey: "selectors.spotlight.actions.zoomIn.label",
       icon: ZoomInAreaIcon,
       keywords: ["zoom in", "increase zoom", "increase UI scale", "view"],
-      shortcut: getShortcutKeys("zoom_in"),
+      get shortcut() {
+        return getShortcutKeys("zoom_in");
+      },
       actionId: ACTION_ID.APP_ZOOM_IN,
       payload: {},
       fallback: "zoom-in",
@@ -170,7 +182,9 @@ export function buildViewActions(
       labelKey: "selectors.spotlight.actions.zoomOut.label",
       icon: ZoomOutAreaIcon,
       keywords: ["zoom out", "decrease zoom", "decrease UI scale", "view"],
-      shortcut: getShortcutKeys("zoom_out"),
+      get shortcut() {
+        return getShortcutKeys("zoom_out");
+      },
       actionId: ACTION_ID.APP_ZOOM_OUT,
       payload: {},
       fallback: "zoom-out",
@@ -181,7 +195,9 @@ export function buildViewActions(
       labelKey: "selectors.spotlight.actions.resetZoom.label",
       icon: RotateLeft01Icon,
       keywords: ["reset zoom", "reset UI scale", "actual size", "view"],
-      shortcut: getShortcutKeys("zoom_reset"),
+      get shortcut() {
+        return getShortcutKeys("zoom_reset");
+      },
       actionId: ACTION_ID.APP_ZOOM_RESET,
       payload: {},
       fallback: "zoom-reset",

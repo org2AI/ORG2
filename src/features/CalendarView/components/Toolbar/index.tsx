@@ -9,7 +9,7 @@ import React from "react";
 import Button from "@src/components/Button";
 import TabPill from "@src/components/TabPill";
 import { ArrowLeft01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
-import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks";
+import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 
 import {
   MONTH_NAMES_SHORT,

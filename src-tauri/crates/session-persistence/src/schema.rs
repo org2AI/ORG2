@@ -67,6 +67,43 @@ pub fn init_session_tables(conn: &Connection) -> SqliteResult<()> {
         "CREATE INDEX IF NOT EXISTS idx_events_session_sequence ON events(session_id, history_sequence)",
         [],
     )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_events_agent_org_group_mention_reply
+         ON events(
+            CAST(json_extract(result_json, '$.agent_org_user_directed_reply.source_inbox_id') AS INTEGER),
+            session_id,
+            history_sequence
+         )
+         WHERE CASE WHEN json_valid(result_json)
+                    THEN json_extract(result_json, '$.agent_org_user_directed_reply.source_kind')='group_mention'
+                    ELSE 0 END",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_events_agent_org_group_root_reply
+         ON events(
+            json_extract(result_json, '$.agent_org_group_root_reply.source_event_id'),
+            session_id,
+            history_sequence
+         )
+         WHERE CASE WHEN json_valid(result_json)
+                    THEN json_type(result_json, '$.agent_org_group_root_reply.source_event_id')='text'
+                    ELSE 0 END",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_events_agent_org_initial_reply
+         ON events(
+            json_extract(result_json, '$.agent_org_initial_reply.message_id'),
+            session_id,
+            history_sequence
+         )
+         WHERE CASE WHEN json_valid(result_json)
+                    THEN json_type(result_json, '$.agent_org_initial_reply.message_id')='text'
+                     AND json_type(result_json, '$.agent_org_initial_reply.turn_intent_id')='text'
+                    ELSE 0 END",
+        [],
+    )?;
 
     // Complete shell transcripts live in append-only artifacts. The leaf
     // database crate owns this cross-layer storage schema so the app startup
@@ -468,8 +505,8 @@ pub fn init_session_tables(conn: &Connection) -> SqliteResult<()> {
 ///
 /// Triggers must go in the same batch: an insert into `events` with a
 /// surviving trigger referencing the dropped vtable would fail. `DROP TABLE`
-/// on an FTS5 vtable removes all of its shadow tables. Marker-gated so the
-/// batch runs once (a failed attempt retries next startup); best-effort —
+/// on an FTS5 vtable removes all of its shadow tables. Skip cleanup only when
+/// the marker and actual schema agree (failed attempts retry); best-effort —
 /// schema init must never fail over cleanup.
 fn drop_events_fts(conn: &Connection) {
     const MARKER: &str = "events_fts_dropped_2026_07";
@@ -483,7 +520,17 @@ fn drop_events_fts(conn: &Connection) {
         .and_then(|mut stmt| stmt.query_row([MARKER], |row| row.get::<_, i64>(0)))
         .unwrap_or(0)
         > 0;
-    if already_dropped {
+    // An older executable can recreate these objects after the marker was
+    // recorded. The schema, not the historical marker, owns this invariant.
+    let legacy_objects_remain = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name IN
+             ('events_fts', 'events_ai', 'events_ad', 'events_au'))",
+            [],
+            |row| row.get::<_, bool>(0),
+        )
+        .unwrap_or(true);
+    if already_dropped && !legacy_objects_remain {
         return;
     }
 
@@ -571,6 +618,92 @@ mod tests {
             &conn,
             "idx_session_turn_intents_org_run_status"
         ));
+        assert!(index_exists(
+            &conn,
+            "idx_events_agent_org_group_mention_reply"
+        ));
+        assert!(index_exists(&conn, "idx_events_agent_org_group_root_reply"));
+        assert!(index_exists(&conn, "idx_events_agent_org_initial_reply"));
+    }
+
+    #[test]
+    fn group_projection_reply_queries_use_canonical_expression_indexes() {
+        let conn = Connection::open_in_memory().expect("open in-memory sqlite");
+        init_session_tables(&conn).expect("init session schema");
+        conn.execute_batch(
+            "INSERT INTO events (
+                 id,session_id,event_type,function_name,args_json,result_json,
+                 content,created_at,history_sequence
+             ) VALUES
+             ('member-reply','member-session','assistant','assistant_message','{}',
+              '{\"agent_org_user_directed_reply\":{\"source_kind\":\"group_mention\",\"source_inbox_id\":41}}',
+              'member answer','2026-01-01T00:00:00Z',2),
+             ('root-reply','root-session','assistant','assistant_message','{}',
+              '{\"agent_org_group_root_reply\":{\"source_event_id\":\"root-source\"}}',
+              'root answer','2026-01-01T00:00:01Z',2),
+             ('initial-reply','root-session','assistant','assistant_message','{}',
+              '{\"agent_org_initial_reply\":{\"message_id\":\"initial-message\",\"turn_intent_id\":\"initial-turn\"}}',
+              'initial answer','2026-01-01T00:00:01Z',1),
+             ('malformed','root-session','assistant','assistant_message','{}','not-json',
+              'ignored','2026-01-01T00:00:02Z',3);",
+        )
+        .expect("seed projection reply rows");
+
+        let mention_plan: String = conn
+            .query_row(
+                "EXPLAIN QUERY PLAN
+                 SELECT id FROM events
+                 WHERE CASE WHEN json_valid(result_json)
+                            THEN json_extract(result_json, '$.agent_org_user_directed_reply.source_kind')='group_mention'
+                            ELSE 0 END
+                   AND CAST(json_extract(result_json, '$.agent_org_user_directed_reply.source_inbox_id') AS INTEGER)=41
+                   AND session_id='member-session'",
+                [],
+                |row| row.get(3),
+            )
+            .expect("explain GroupMention reply query");
+        assert!(
+            mention_plan.contains("idx_events_agent_org_group_mention_reply"),
+            "unexpected query plan: {mention_plan}"
+        );
+
+        let root_plan: String = conn
+            .query_row(
+                "EXPLAIN QUERY PLAN
+                 SELECT id FROM events
+                 WHERE CASE WHEN json_valid(result_json)
+                            THEN json_type(result_json, '$.agent_org_group_root_reply.source_event_id')='text'
+                            ELSE 0 END
+                   AND json_extract(result_json, '$.agent_org_group_root_reply.source_event_id')='root-source'
+                   AND session_id='root-session'",
+                [],
+                |row| row.get(3),
+            )
+            .expect("explain GroupRoot reply query");
+        assert!(
+            root_plan.contains("idx_events_agent_org_group_root_reply"),
+            "unexpected query plan: {root_plan}"
+        );
+
+        let initial_plan: String = conn
+            .query_row(
+                "EXPLAIN QUERY PLAN
+                 SELECT id FROM events
+                 WHERE CASE WHEN json_valid(result_json)
+                            THEN json_type(result_json, '$.agent_org_initial_reply.message_id')='text'
+                             AND json_type(result_json, '$.agent_org_initial_reply.turn_intent_id')='text'
+                            ELSE 0 END
+                   AND json_extract(result_json, '$.agent_org_initial_reply.message_id')='initial-message'
+                   AND json_extract(result_json, '$.agent_org_initial_reply.turn_intent_id')='initial-turn'
+                   AND session_id='root-session'",
+                [],
+                |row| row.get(3),
+            )
+            .expect("explain initial reply query");
+        assert!(
+            initial_plan.contains("idx_events_agent_org_initial_reply"),
+            "unexpected query plan: {initial_plan}"
+        );
     }
 
     #[test]
@@ -695,6 +828,43 @@ mod tests {
             |row| row.get::<_, bool>(0),
         )
         .expect("query trigger existence")
+    }
+
+    #[test]
+    fn drop_events_fts_rechecks_schema_after_recorded_migration() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE events (id TEXT PRIMARY KEY, content TEXT);
+             INSERT INTO events VALUES ('retained', 'keep this conversation');
+             CREATE TABLE _migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL);
+             INSERT INTO _migrations VALUES ('events_fts_dropped_2026_07', 'old');
+             CREATE VIRTUAL TABLE events_fts USING fts5(
+                 content, content='events', content_rowid='rowid'
+             );
+             CREATE TRIGGER events_ad AFTER DELETE ON events BEGIN
+                 INSERT INTO events_fts(events_fts, rowid, content)
+                 VALUES ('delete', OLD.rowid, OLD.content);
+             END;",
+        )
+        .unwrap();
+
+        // Recreated external-content FTS has no entry for the existing row.
+        // Its delete trigger breaks ordinary cache eviction before recovery.
+        assert!(conn.execute("DELETE FROM events", []).is_err());
+        drop_events_fts(&conn);
+
+        assert!(!table_exists(&conn, "events_fts"));
+        assert!(!trigger_exists(&conn, "events_ad"));
+        let content: String = conn
+            .query_row(
+                "SELECT content FROM events WHERE id = 'retained'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(content, "keep this conversation");
+        drop_events_fts(&conn);
+        assert_eq!(conn.execute("DELETE FROM events", []).unwrap(), 1);
     }
 
     #[test]

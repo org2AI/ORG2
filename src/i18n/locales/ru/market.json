@@ -1,27 +1,8 @@
 {
-  "selectRepo": {
-    "title": "Orgii",
-    "subtitle": "Выберите репо для начала",
-    "recentRepos": "Недавние репо",
-    "loadingProjects": "Загрузка Repos...",
-    "noRepositories": "Репо пока нет",
-    "getStartedHint": "Создайте или клонируйте Repo для начала",
-    "noPath": "Нет пути",
-    "searchPlaceholder": "Поиск репо...",
-    "loadMore": "Загрузить ещё",
-    "actions": {
-      "importLocal": "Импортировать локальный репо",
-      "cloneUrl": "Клонировать по URL GitHub",
-      "cloneGithub": "Клонировать из моего GitHub",
-      "createNew": "Создать новый репо"
-    }
-  },
   "market": {
     "auth": {
       "noAuthCode": "Код авторизации не получен",
-      "authSessionExpired": "Session авторизации истекла. Попробуйте снова.",
-      "tokenExchangeFailed": "Ошибка обмена token",
-      "defaultUser": "Пользователь"
+      "tokenExchangeFailed": "Ошибка обмена token"
     }
   }
 }

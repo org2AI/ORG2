@@ -38,7 +38,11 @@ async function mountMobileRemote(): Promise<void> {
   const root = document.getElementById("root");
   if (!root) throw new Error("Missing application root");
 
-  if (process.env.NODE_ENV === "development") {
+  // Explicit UI-demo entry only. Normal development exercises real Cloud auth.
+  if (
+    process.env.NODE_ENV === "development" &&
+    new URL(window.location.href).searchParams.get("remoteDemo") === "1"
+  ) {
     const { MobileRemoteDevelopmentRoot, resolveDevelopmentPairingUserId } =
       await import("./modules/MobileRemote/dev/MobileRemoteDevelopmentRoot");
     const pairingUserId = await resolveDevelopmentPairingUserId(platform);

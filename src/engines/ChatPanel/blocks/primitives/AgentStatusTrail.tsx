@@ -54,6 +54,7 @@ import {
   resolveTrailElapsedMs,
   resolveTrailRestLabel,
 } from "@src/engines/ChatPanel/hooks/agentStatusTrailMath";
+import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import { sessionByIdAtom } from "@src/store/session/sessionAtom";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 
@@ -91,11 +92,15 @@ function useTickingNow(active: boolean, intervalMs: number): number | null {
     }
 
     const openTimer = setTimeout(() => setNow(Date.now()), 0);
-    const interval = setInterval(() => setNow(Date.now()), intervalMs);
+    const interval = startVisibilityAwareInterval(
+      document,
+      () => setNow(Date.now()),
+      intervalMs
+    );
 
     return () => {
       clearTimeout(openTimer);
-      clearInterval(interval);
+      interval();
     };
   }, [active, intervalMs]);
 

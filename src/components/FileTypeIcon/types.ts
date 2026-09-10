@@ -117,6 +117,7 @@ export type FileType =
   | "document"
   | "powerpoint"
   | "pages-doc"
+  | "numbers"
   | "zip"
   | "lock"
   | "log"

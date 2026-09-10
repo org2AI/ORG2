@@ -21,7 +21,7 @@ import { navigateToEventAtom } from "@src/engines/SessionCore/core/atoms/actions
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 import type { UniversalEventProps } from "@src/engines/SessionCore/rendering/types/universalProps";
 import { sessionByIdAtom } from "@src/store/session/sessionAtom";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import {
   focusedSubagentCellAtom,
   stationModeAtom,

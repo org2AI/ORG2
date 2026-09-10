@@ -132,6 +132,38 @@ describe("MobileAuthGate", () => {
     };
   }
 
+  it("cancels pending login preparation without navigating and allows a fresh login", async () => {
+    const pending = deferred<string>();
+    const authClient = client({
+      buildLoginUrl: vi
+        .fn()
+        .mockReturnValueOnce(pending.promise)
+        .mockResolvedValue("https://login.example/fresh"),
+    });
+    const navigate = vi.fn();
+    await act(async () => {
+      root.render(createGate(authClient, () => null, { navigate }));
+    });
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("button")!.click();
+    });
+    expect(container.textContent).toContain("auth.cancel");
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("button")!.click();
+    });
+    expect(container.textContent).toContain("auth.signIn");
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("button")!.click();
+    });
+    expect(authClient.buildLoginUrl).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      pending.resolve("https://login.example/stale");
+    });
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith("https://login.example/fresh");
+    expect(authClient.exchangeCallback).not.toHaveBeenCalled();
+  });
+
   it("does not mount protected children while signed out", async () => {
     const authClient = client();
     let protectedMounts = 0;
@@ -555,6 +587,52 @@ describe("MobileAuthGate", () => {
     expect(authClient.establishServerSession).toHaveBeenCalledTimes(1);
   });
 
+  it("shares connection-triggered refresh and returns only the persisted rotated session", async () => {
+    writeMobileAuthSession(session, localStorage);
+    let auth: ReturnType<typeof useMobileAuth> | undefined;
+    function Protected() {
+      const current = useMobileAuth();
+      React.useEffect(() => {
+        auth = current;
+      }, [current]);
+      return React.createElement("div", null, "protected");
+    }
+    const refresh = deferred<MobileAuthSession>();
+    const restoreSession = vi
+      .fn()
+      .mockResolvedValueOnce(session)
+      .mockImplementationOnce(() => refresh.promise);
+    const authClient = client({ restoreSession });
+    await act(async () => {
+      root.render(createGate(authClient, () => React.createElement(Protected)));
+    });
+    documentHidden = true;
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    documentHidden = false;
+    let first!: Promise<MobileAuthSession>;
+    let second!: Promise<MobileAuthSession>;
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      first = auth!.getConnectionSession!();
+      second = auth!.getConnectionSession!();
+      await Promise.resolve();
+    });
+    expect(restoreSession).toHaveBeenCalledTimes(2);
+    const rotated = {
+      ...session,
+      accessToken: "rotated-access",
+      refreshToken: "rotated-refresh",
+    };
+    await act(async () => {
+      refresh.resolve(rotated);
+      expect(await first).toEqual(rotated);
+      expect(await second).toEqual(rotated);
+      expect(localStorage.getItem("orgii:org2-cloud-v1:auth")).toContain(
+        "rotated-refresh"
+      );
+    });
+  });
+
   it("makes sign-out cleanup win after refresh reaches the server-session side effect", async () => {
     writeMobileAuthSession(session, localStorage);
     const refreshedSession = {
@@ -628,5 +706,64 @@ describe("MobileAuthGate", () => {
     expect(clearSession).toHaveBeenCalledOnce();
     expect(localStorage.getItem("orgii:org2-cloud-v1:auth")).toBeNull();
     expect(authClient.signOut).toHaveBeenCalledWith(session);
+  });
+  it.each(["success", "failure"])(
+    "does not let an unmounted restore %s change a newer stored account",
+    async (outcome) => {
+      let reject!: (error: unknown) => void;
+      let resolve!: (value: MobileAuthSession) => void;
+      const pending = new Promise<MobileAuthSession>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      const platform = createBrowserMobileRemotePlatform();
+      await platform.auth.writeSession(session);
+      const authClient = client({
+        restoreSession: vi.fn().mockReturnValue(pending),
+      });
+      await act(async () =>
+        root.render(createGate(authClient, () => null, {}, platform))
+      );
+      expect(authClient.restoreSession).toHaveBeenCalledTimes(1);
+      await act(async () => root.render(null));
+      await platform.auth.writeSession({ ...session, userId: "new-account" });
+      await act(async () => {
+        if (outcome === "success") resolve(session);
+        else reject(new MobileAuthClientError("expired", false));
+      });
+      expect((await platform.auth.readSession())?.userId).toBe("new-account");
+      expect(authClient.establishServerSession).not.toHaveBeenCalled();
+    }
+  );
+
+  it("waits for an already-issued persistence write before restoring a replacement owner", async () => {
+    const platform = createBrowserMobileRemotePlatform();
+    await platform.auth.writeSession(session);
+    const finishWrite = deferred<void>();
+    const originalWrite = platform.auth.writeSession;
+    const write = vi
+      .spyOn(platform.auth, "writeSession")
+      .mockImplementationOnce(async (value) => {
+        await finishWrite.promise;
+        await originalWrite(value);
+      });
+    const oldClient = client();
+    await act(async () =>
+      root.render(createGate(oldClient, () => null, {}, platform))
+    );
+    expect(write).toHaveBeenCalledTimes(1);
+    await act(async () => root.render(null));
+    const newSession = { ...session, userId: "new-account" };
+    const newClient = client({
+      restoreSession: vi.fn().mockResolvedValue(newSession),
+    });
+    await act(async () =>
+      root.render(createGate(newClient, () => null, {}, platform))
+    );
+    expect(newClient.restoreSession).not.toHaveBeenCalled();
+    await act(async () => finishWrite.resolve());
+    expect(newClient.restoreSession).toHaveBeenCalledTimes(1);
+    expect((await platform.auth.readSession())?.userId).toBe("new-account");
+    expect(oldClient.establishServerSession).not.toHaveBeenCalled();
   });
 });

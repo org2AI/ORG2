@@ -2,7 +2,7 @@
  * Storage Settings Section
  *
  * Displays disk usage breakdown for app data directories.
- * Auto-scans on mount (non-blocking) and allows manual rescan.
+ * Auto-scans on mount (non-blocking).
  * Per-category: open folder + clear (with confirmation).
  */
 import {
@@ -14,29 +14,18 @@ import {
   SectionRow,
 } from "@/src/modules/shared/layouts/SectionLayout";
 import { invoke } from "@tauri-apps/api/core";
-import { useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
-import { REFRESH_ICON_TOKENS } from "@src/components/RefreshIcon/tokens";
 import SettingsTable, {
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
 import { createLogger } from "@src/hooks/logger";
-import {
-  Delete02Icon,
-  FolderOpenIcon,
-  HugeiconsIcon,
-  Refresh04Icon,
-} from "@src/icons";
+import { Delete02Icon, FolderOpenIcon, HugeiconsIcon } from "@src/icons";
 import { flushGitHubListCachePersistence } from "@src/services/git/githubListCache";
-import {
-  monitorScanningAtom,
-  storageRefreshTriggerAtom,
-} from "@src/store/ui/settingsPanelAtoms";
 import {
   type BrowserStorageUsage,
   cleanUpBrowserStorage,
@@ -88,34 +77,6 @@ const StorageSection: React.FC = () => {
     useState<BrowserStorageUsage>(() => inspectBrowserStorage());
   const [isCleaningBrowserStorage, setIsCleaningBrowserStorage] =
     useState(false);
-
-  const setScanning = useSetAtom(monitorScanningAtom);
-  const storageRefreshTrigger = useAtomValue(storageRefreshTriggerAtom);
-
-  const handleDiskScan = useCallback(async () => {
-    setIsScanning(true);
-    setScanning(true);
-    try {
-      const report = await invoke<DiskUsageReport>("get_disk_usage");
-      setDiskUsage(report);
-      setBrowserStorageUsage(inspectBrowserStorage());
-      Message.success(
-        t("common:refreshToast.successName", { name: t("sections.storage") })
-      );
-    } catch (error) {
-      log.error("[Storage] Failed to fetch disk usage:", error);
-      Message.error(t("storage.scanFailed"));
-    } finally {
-      setIsScanning(false);
-      setScanning(false);
-    }
-  }, [setScanning, t]);
-
-  useEffect(() => {
-    if (storageRefreshTrigger > 0) {
-      handleDiskScan();
-    }
-  }, [storageRefreshTrigger, handleDiskScan]);
 
   const handleOpenStorageDir = useCallback(
     async (path?: string) => {
@@ -460,30 +421,14 @@ const StorageSection: React.FC = () => {
         />
 
         <SectionRow label="" indent showHeader={false}>
-          {diskUsage ? (
-            <SettingsTable<StorageCategory>
-              columns={storageColumns}
-              rows={storageRows}
-              getRowKey={(cat) => cat.key}
-              noPx
-            />
-          ) : isScanning ? (
-            <div className="flex items-center gap-2 py-2">
-              <HugeiconsIcon
-                icon={Refresh04Icon}
-                data-icon="refresh-cw"
-                size={12}
-                className={`${REFRESH_ICON_TOKENS.spin} text-text-3`}
-              />
-              <span className="text-xs text-text-3">
-                {t("monitor.diskScanning")}
-              </span>
-            </div>
-          ) : (
-            <div className="py-2 text-xs text-text-3">
-              {t("monitor.diskNotScanned")}
-            </div>
-          )}
+          <SettingsTable<StorageCategory>
+            columns={storageColumns}
+            rows={storageRows}
+            getRowKey={(cat) => cat.key}
+            loading={isScanning}
+            emptyTitle={t("monitor.diskNotScanned")}
+            noPx
+          />
         </SectionRow>
       </SectionContainer>
     </>

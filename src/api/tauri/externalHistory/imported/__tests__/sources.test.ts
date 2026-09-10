@@ -13,6 +13,7 @@ const cursorLoaders = vi.hoisted(() => ({
   full: vi.fn(),
 }));
 const codexLoaders = vi.hoisted(() => ({
+  contextUsage: vi.fn(),
   preview: vi.fn(),
   full: vi.fn(),
 }));
@@ -26,6 +27,7 @@ vi.mock("../../cursorIde", () => ({
 }));
 
 vi.mock("../../sources/codexApp", () => ({
+  codexAppContextUsage: codexLoaders.contextUsage,
   codexAppInitialWindow: codexLoaders.preview,
   codexAppChunks: codexLoaders.full,
 }));

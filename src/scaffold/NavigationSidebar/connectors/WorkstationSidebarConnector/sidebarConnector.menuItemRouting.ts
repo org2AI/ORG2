@@ -244,54 +244,9 @@ export function useWorkstationSidebarMenuItemRouting({
     [navigateSessionMenuItem]
   );
 
-  const navigateProjectsScopeMenuItem = useCallback(
-    (
-      key: string,
-      item: NavigationMenuItem,
-      disposition: SidebarTabDisposition
-    ) => {
-      if (item.id === TEAM_INBOX_MENU_ITEM_ID) {
-        navigateSessionMenuItem(key, item, disposition);
-        return;
-      }
-      handleProjectsMenuItemClick(key, item);
-      if (item.opensChatPanelTab) {
-        completeSidebarTabNavigation(
-          disposition,
-          closeOtherThanActiveChatPanelTabs
-        );
-      }
-    },
-    [
-      closeOtherThanActiveChatPanelTabs,
-      handleProjectsMenuItemClick,
-      navigateSessionMenuItem,
-    ]
-  );
-
-  const handleProjectsScopeMenuItemClick = useCallback(
-    (key: string, item: NavigationMenuItem, event: React.MouseEvent) => {
-      navigateProjectsScopeMenuItem(
-        key,
-        item,
-        resolveSidebarTabDisposition(event)
-      );
-    },
-    [navigateProjectsScopeMenuItem]
-  );
-
-  const handleProjectsScopeMenuItemOpenInNewTab = useCallback(
-    (key: string, item: NavigationMenuItem) => {
-      navigateProjectsScopeMenuItem(key, item, "new-tab");
-    },
-    [navigateProjectsScopeMenuItem]
-  );
-
   return {
     renderWorkstationMenuItemWrapper,
     handleSessionMenuItemClick,
     handleSessionMenuItemOpenInNewTab,
-    handleProjectsScopeMenuItemClick,
-    handleProjectsScopeMenuItemOpenInNewTab,
   };
 }

@@ -4,7 +4,6 @@
  * Handles:
  * - repo:status_updated events from Rust file watcher
  * - file:changed events for file changes
- * - repo:git_operation events for operation notifications
  */
 import { useEffect, useRef } from "react";
 
@@ -30,14 +29,6 @@ interface UseGitEventListenersOptions {
   setGitSuggestedAction: (action: GitSuggestedAction | null) => void;
   setGitStatusAtom: (status: GitRepositoryStatus | null) => void;
   setGitSuggestedActionAtom: (action: GitSuggestedAction | null) => void;
-  setGitOperation: (op: {
-    repoId: string;
-    operation: string;
-    success: boolean;
-    summary: string;
-    details: string;
-    timestamp: number;
-  }) => void;
 }
 
 export function useGitEventListeners({
@@ -47,7 +38,6 @@ export function useGitEventListeners({
   setGitSuggestedAction,
   setGitStatusAtom,
   setGitSuggestedActionAtom,
-  setGitOperation,
 }: UseGitEventListenersOptions): void {
   const { currentRepoIdRef, gitStatusRef } = refs;
 
@@ -59,7 +49,6 @@ export function useGitEventListeners({
   const setGitSuggestedActionRef = useRef(setGitSuggestedAction);
   const setGitStatusAtomRef = useRef(setGitStatusAtom);
   const setGitSuggestedActionAtomRef = useRef(setGitSuggestedActionAtom);
-  const setGitOperationRef = useRef(setGitOperation);
   useEffect(() => {
     setGitStatusRef.current = setGitStatus;
   }, [setGitStatus]);
@@ -72,9 +61,6 @@ export function useGitEventListeners({
   useEffect(() => {
     setGitSuggestedActionAtomRef.current = setGitSuggestedActionAtom;
   }, [setGitSuggestedActionAtom]);
-  useEffect(() => {
-    setGitOperationRef.current = setGitOperation;
-  }, [setGitOperation]);
 
   useEffect(() => {
     if (!selectedRepoId) return;
@@ -214,31 +200,6 @@ export function useGitEventListeners({
           // Status will arrive via repo:status_updated event from debouncer
         });
         cleanupFns.push(unsubscribeChanged);
-
-        // Listen to repo:git_operation for meaningful operation events
-        const unsubscribeOperation = ws.on("repo:git_operation", (data) => {
-          const event = data as {
-            type: string;
-            repo_id: string;
-            operation: string;
-            success: boolean;
-            summary: string;
-            details: string;
-            timestamp: number;
-          };
-
-          if (event.repo_id === currentRepoIdRef.current) {
-            setGitOperationRef.current({
-              repoId: event.repo_id,
-              operation: event.operation,
-              success: event.success,
-              summary: event.summary,
-              details: event.details,
-              timestamp: event.timestamp,
-            });
-          }
-        });
-        cleanupFns.push(unsubscribeOperation);
       } catch {
         // Not in Tauri - that's OK
       }
@@ -253,7 +214,7 @@ export function useGitEventListeners({
     selectedRepoId,
     currentRepoIdRef,
     gitStatusRef,
-    // Setter refs (setGitStatus*, setGitOperation) are intentionally omitted:
+    // Setter refs (setGitStatus*, setGitSuggestedAction*) are intentionally omitted:
     // they are stable Jotai/useState setters mirrored into refs above, so
     // including them would re-subscribe the entire WebSocket listener set on
     // every git-status write — a listener storm on each update.

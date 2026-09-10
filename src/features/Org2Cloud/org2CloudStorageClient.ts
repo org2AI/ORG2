@@ -134,6 +134,27 @@ async function replayObjectExists(
   }
 }
 
+/**
+ * Upload a frozen segment only when its immutable object name is not stored
+ * yet. Object names embed the content hash, so an existing object already
+ * holds these bytes; posting it again is rejected by the bucket's unique
+ * name constraint, and every such rejection is logged as a database error
+ * server-side. One HEAD per segment avoids that on re-pushes.
+ */
+export async function ensureReplayObject(
+  accessToken: string,
+  path: string,
+  bytes: Uint8Array,
+  endpoint: CloudEndpoint = getCloudEndpoint(),
+  signal?: AbortSignal
+): Promise<"existing" | "uploaded"> {
+  if (await replayObjectExists(accessToken, path, endpoint, signal)) {
+    return "existing";
+  }
+  await uploadReplayObject(accessToken, path, bytes, endpoint, signal);
+  return "uploaded";
+}
+
 export async function downloadReplayObject(
   accessToken: string,
   path: string,

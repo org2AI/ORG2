@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -6,8 +6,8 @@ import {
   respondAgentOrgPlanApproval,
 } from "@src/api/tauri/agent";
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Markdown from "@src/components/MarkDown";
+import PageNotice from "@src/components/PageNotice";
 import Textarea from "@src/components/Textarea";
 import { createLogger } from "@src/hooks/logger";
 import { Edit04Icon, HugeiconsIcon } from "@src/icons";
@@ -19,46 +19,44 @@ const logger = createLogger("AgentOrgPlanApprovalCard");
 interface AgentOrgPlanApprovalCardProps {
   approval: AgentOrgPlanApprovalSummary;
   sourceMemberName: string;
-  sessionId: string;
   disabled: boolean;
   onResolved: () => Promise<void>;
 }
 
 const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
-  ({ approval, sourceMemberName, sessionId, disabled, onResolved }) => {
+  ({ approval, sourceMemberName, disabled, onResolved }) => {
     const { t } = useTranslation("sessions");
-    const [mode, setMode] = useState<"preview" | "edit" | "feedback">(
-      "preview"
-    );
+    const canRespond =
+      approval.policy === "user" && approval.status === "pending";
+    const [mode, setMode] = useState<"preview" | "feedback">("preview");
+    const [expanded, setExpanded] = useState(canRespond);
     const {
       detail,
       error: loadError,
       loading,
       retry,
-    } = useAgentOrgPlanApprovalDetail(sessionId, approval);
-    const [content, setContent] = useState("");
+    } = useAgentOrgPlanApprovalDetail(
+      approval.rootSessionId,
+      approval,
+      expanded
+    );
     const [feedback, setFeedback] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-      if (detail) setContent(detail.planContent);
-    }, [detail]);
-
     const submit = useCallback(
-      async (
-        decision: "approve" | "approve_with_edits" | "request_changes"
-      ) => {
+      async (decision: "approve" | "request_changes") => {
         if (submitting || disabled || !detail) return;
         setSubmitting(true);
         setError(null);
         try {
           await respondAgentOrgPlanApproval({
-            sessionId,
+            sessionId: approval.rootSessionId,
             approvalId: approval.approvalId,
             planRevisionId: approval.planRevisionId,
+            sourceTaskId: approval.sourceTaskId,
+            sourceTurnIntentId: approval.sourceTurnIntentId,
             decision,
-            editedContent: decision === "approve_with_edits" ? content : null,
             feedback: decision === "request_changes" ? feedback : null,
           });
           await onResolved();
@@ -81,17 +79,17 @@ const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
       [
         approval.approvalId,
         approval.planRevisionId,
-        content,
+        approval.rootSessionId,
+        approval.sourceTaskId,
+        approval.sourceTurnIntentId,
         detail,
         disabled,
         feedback,
         onResolved,
-        sessionId,
         submitting,
         t,
       ]
     );
-
     return (
       <div
         className="rounded-md border border-solid border-border-2 bg-bg-1 p-3"
@@ -114,10 +112,31 @@ const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
                 member: sourceMemberName,
               })}
             </div>
+            <div
+              className="mt-1 inline-flex rounded-full bg-bg-2 px-1.5 py-0.5 text-[10px] text-text-2"
+              data-testid="agent-org-plan-revision-status"
+              data-plan-status={approval.status}
+            >
+              {t(
+                `planner.agentOrgOverview.planApproval.status.${approval.status}`,
+                { defaultValue: approval.status.replace(/_/g, " ") }
+              )}
+            </div>
           </div>
         </div>
 
-        {loading ? (
+        {!expanded ? (
+          <Button
+            variant="tertiary"
+            size="mini"
+            onClick={() => setExpanded(true)}
+            data-testid="agent-org-plan-revision-open"
+          >
+            {t("planner.agentOrgOverview.planApproval.open", {
+              defaultValue: "Open plan",
+            })}
+          </Button>
+        ) : loading ? (
           <div
             className="rounded-md bg-bg-2 p-2 text-xs text-text-3"
             data-testid="agent-org-plan-approval-loading"
@@ -125,7 +144,7 @@ const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
             {t("common:status.loading", { defaultValue: "Loading plan…" })}
           </div>
         ) : loadError ? (
-          <InlineAlert
+          <PageNotice
             type="danger"
             role="alert"
             compact
@@ -141,17 +160,7 @@ const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
             }
           >
             {loadError}
-          </InlineAlert>
-        ) : mode === "edit" ? (
-          <Textarea
-            value={content}
-            onChange={setContent}
-            rows={8}
-            autoSize={{ minRows: 8, maxRows: 18 }}
-            disabled={submitting || disabled}
-            aria-label={t("planner.agentOrgOverview.planApproval.editLabel")}
-            data-testid="agent-org-plan-approval-edit"
-          />
+          </PageNotice>
         ) : mode === "feedback" ? (
           <Textarea
             value={feedback}
@@ -173,29 +182,48 @@ const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
           </div>
         )}
 
-        {error ? (
-          <InlineAlert type="danger" role="alert" compact className="mt-2">
-            {error}
-          </InlineAlert>
+        {approval.feedback ? (
+          <div
+            className="mt-2 rounded-md bg-bg-2 p-2 text-xs text-text-2"
+            data-testid="agent-org-plan-revision-feedback"
+          >
+            {approval.feedback}
+          </div>
         ) : null}
-        {disabled ? (
+        {approval.taskOutput ? (
+          <div
+            className="mt-2 text-[11px] text-text-3"
+            data-testid="agent-org-plan-revision-task-output"
+          >
+            {t("planner.agentOrgOverview.planApproval.taskOutput", {
+              defaultValue: "Planning Task output saved",
+            })}
+          </div>
+        ) : null}
+
+        {error ? (
+          <PageNotice type="danger" role="alert" compact className="mt-2">
+            {error}
+          </PageNotice>
+        ) : null}
+        {canRespond && disabled ? (
           <div className="mt-2 text-[11px] text-text-3">
             {t("planner.agentOrgOverview.planApproval.paused")}
           </div>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap justify-end gap-1.5">
-          {mode !== "preview" ? (
-            <Button
-              variant="tertiary"
-              size="mini"
-              disabled={submitting}
-              onClick={() => setMode("preview")}
-            >
-              {t("common:actions.cancel")}
-            </Button>
-          ) : (
-            <>
+        {canRespond ? (
+          <div className="mt-3 flex flex-wrap justify-end gap-1.5">
+            {mode !== "preview" ? (
+              <Button
+                variant="tertiary"
+                size="mini"
+                disabled={submitting}
+                onClick={() => setMode("preview")}
+              >
+                {t("common:actions.cancel")}
+              </Button>
+            ) : (
               <Button
                 variant="tertiary"
                 size="mini"
@@ -205,52 +233,37 @@ const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
               >
                 {t("planner.agentOrgOverview.planApproval.requestChanges")}
               </Button>
+            )}
+            {mode === "feedback" ? (
               <Button
-                variant="secondary"
+                variant="primary"
+                size="mini"
+                disabled={
+                  submitting ||
+                  disabled ||
+                  !detail ||
+                  feedback.trim().length === 0
+                }
+                loading={submitting}
+                onClick={() => void submit("request_changes")}
+                data-testid="agent-org-plan-send-feedback-button"
+              >
+                {t("planner.agentOrgOverview.planApproval.sendFeedback")}
+              </Button>
+            ) : mode === "preview" ? (
+              <Button
+                variant="primary"
                 size="mini"
                 disabled={submitting || disabled || !detail}
-                onClick={() => setMode("edit")}
-                data-testid="agent-org-plan-edit-button"
+                loading={submitting}
+                onClick={() => void submit("approve")}
+                data-testid="agent-org-plan-approve-button"
               >
-                {t("common:actions.edit")}
+                {t("planner.agentOrgOverview.planApproval.approve")}
               </Button>
-            </>
-          )}
-          {mode === "feedback" ? (
-            <Button
-              variant="primary"
-              size="mini"
-              disabled={
-                submitting ||
-                disabled ||
-                !detail ||
-                feedback.trim().length === 0
-              }
-              loading={submitting}
-              onClick={() => void submit("request_changes")}
-              data-testid="agent-org-plan-send-feedback-button"
-            >
-              {t("planner.agentOrgOverview.planApproval.sendFeedback")}
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              size="mini"
-              disabled={
-                submitting || disabled || !detail || content.trim().length === 0
-              }
-              loading={submitting}
-              onClick={() =>
-                void submit(mode === "edit" ? "approve_with_edits" : "approve")
-              }
-              data-testid="agent-org-plan-approve-button"
-            >
-              {mode === "edit"
-                ? t("planner.agentOrgOverview.planApproval.approveEdits")
-                : t("planner.agentOrgOverview.planApproval.approve")}
-            </Button>
-          )}
-        </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     );
   }

@@ -17,9 +17,10 @@
  */
 import React from "react";
 
+import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
+
 import { type BasePaletteProps, SpotlightInput } from "../../shared";
 import { SpotlightShell } from "../../shell";
-import { useSelectorKernel } from "../core";
 
 // ============ PROPS ============
 

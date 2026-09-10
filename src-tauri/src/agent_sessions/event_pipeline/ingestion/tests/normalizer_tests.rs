@@ -140,6 +140,47 @@ fn test_normalize_user_message() {
 }
 
 #[test]
+fn image_only_raw_user_message_keeps_user_role_without_fabricated_text() {
+    let chunk = RawActivityChunk {
+        chunk_id: Some("chunk-image-only".to_string()),
+        action_type: Some("raw".to_string()),
+        result: Some(serde_json::json!({
+            "type": "user",
+            "message": {"content": "", "role": "user"},
+            "images": ["data:image/png;base64,aGVsbG8="]
+        })),
+        created_at: Some("2025-01-15T10:30:03.000Z".to_string()),
+        ..Default::default()
+    };
+
+    let event = normalize_chunk(&chunk, "sess-1");
+    assert_eq!(event.source, EventSource::User);
+    assert_eq!(event.display_variant, EventDisplayVariant::Message);
+    assert_eq!(event.display_text, "");
+    assert_eq!(
+        event.result["images"],
+        serde_json::json!(["data:image/png;base64,aGVsbG8="])
+    );
+}
+
+#[test]
+fn raw_assistant_envelope_with_text_does_not_become_a_user_message() {
+    let chunk = RawActivityChunk {
+        chunk_id: Some("chunk-raw-assistant".to_string()),
+        action_type: Some("raw".to_string()),
+        result: Some(serde_json::json!({
+            "type": "assistant",
+            "message": {"content": "provider plumbing", "role": "assistant"}
+        })),
+        created_at: Some("2025-01-15T10:30:03.000Z".to_string()),
+        ..Default::default()
+    };
+
+    let event = normalize_chunk(&chunk, "sess-1");
+    assert_eq!(event.source, EventSource::Assistant);
+}
+
+#[test]
 fn test_raw_tool_use_message_is_not_user_message() {
     let chunk = RawActivityChunk {
         chunk_id: Some("chunk-tool-use-only".to_string()),
@@ -445,6 +486,27 @@ fn test_ui_canonical_precomputed() {
 }
 
 #[test]
+fn native_context_compaction_is_a_system_message() {
+    let chunk = RawActivityChunk {
+        action_type: Some("context_compacted".to_string()),
+        function: Some("context_compacted".to_string()),
+        result: Some(serde_json::json!({
+            "success": true,
+            "native": true,
+            "provider": "codex",
+        })),
+        ..Default::default()
+    };
+
+    let event = normalize_chunk(&chunk, "sess-1");
+    assert_eq!(event.function_name, "context_compacted");
+    assert_eq!(event.ui_canonical, "context_compacted");
+    assert_eq!(event.source, EventSource::System);
+    assert_eq!(event.display_variant, EventDisplayVariant::Message);
+    assert_eq!(event.display_status, EventDisplayStatus::Completed);
+}
+
+#[test]
 fn ingest_backfills_opencode_subagent_prompt_from_child_session() {
     let chunk = RawActivityChunk {
         chunk_id: Some("subagent-chunk".to_string()),
@@ -476,4 +538,14 @@ fn ingest_backfills_opencode_subagent_prompt_from_child_session() {
         args.get("description").and_then(|value| value.as_str()),
         Some("Count all Rust files and return a report")
     );
+}
+
+#[test]
+fn native_command_catalog_is_completed_metadata_not_a_new_run() {
+    let mut chunk = make_chunk("native_command_catalog", "native_command_catalog");
+    chunk.args = Some(serde_json::json!({"slash_commands":["context"]}));
+    let event = normalize_chunk(&chunk, "sess-1");
+    assert_eq!(event.action_type, "native_command_catalog");
+    assert_eq!(event.display_variant, EventDisplayVariant::Session);
+    assert_eq!(event.display_status, EventDisplayStatus::Completed);
 }

@@ -3,9 +3,8 @@
  *
  * Centralized tab system for the Browser surface:
  * - Browser sessions (webview tabs)
- * - Token categories (design tokens)
  *
- * Browser-session and token-category tabs are shared WorkStation resources.
+ * Browser-session tabs are shared WorkStation resources.
  * `workstationLayoutAtom` is the compatibility projection for the currently
  * presented agent workspace; its split writer routes browser-family changes
  * back to the canonical shared partition. Consequently, changing the
@@ -18,12 +17,13 @@ import { atom } from "jotai";
 import { getSiteNameFromUrl } from "@src/store/ui/navigationSidebarTabsAtom";
 import type { PanelState } from "@src/store/workstation/tabs";
 import {
+  presentedWorkstationWorkspaceKeyAtom,
   removeSharedWorkstationTabAtom,
   removeSharedWorkstationTabsAtom,
   workstationLayoutAtom,
   workstationTabsStateAtom,
 } from "@src/store/workstation/tabs/atoms";
-import { recordRecentlyClosedWorkstationTabsAtom } from "@src/store/workstation/tabs/recentlyClosedTabs";
+import { recordRecentWorkstationTabAtom } from "@src/store/workstation/tabs/recentTabs";
 import {
   closeOtherTabs as closeOtherTabsMutation,
   closeSavedTabs as closeSavedTabsMutation,
@@ -329,8 +329,13 @@ export const closeBrowserTabAtom = atom(null, (get, set, tabId: string) => {
   const tab = get(browserTabsAtom).tabs.find(
     (candidate) => candidate.id === tabId
   );
-  if (tab) set(recordRecentlyClosedWorkstationTabsAtom, [tab]);
   set(removeBrowserResourceTabAtom, tabId);
+  if (tab) {
+    set(recordRecentWorkstationTabAtom, {
+      workspace: get(presentedWorkstationWorkspaceKeyAtom),
+      tab,
+    });
+  }
 });
 
 /**
@@ -366,13 +371,17 @@ export const closeOtherBrowserTabsAtom = atom(
     const next = closeOtherTabsMutation(state, tabId);
     const nextIds = new Set(next.tabs.map((tab) => tab.id));
     set(
-      recordRecentlyClosedWorkstationTabsAtom,
-      state.tabs.filter((tab) => !nextIds.has(tab.id))
-    );
-    set(
       removeSharedWorkstationTabsAtom,
       state.tabs.filter((tab) => !nextIds.has(tab.id)).map((tab) => tab.id)
     );
+    for (const tab of state.tabs) {
+      if (!nextIds.has(tab.id)) {
+        set(recordRecentWorkstationTabAtom, {
+          workspace: get(presentedWorkstationWorkspaceKeyAtom),
+          tab,
+        });
+      }
+    }
   }
 );
 
@@ -384,13 +393,17 @@ export const closeSavedBrowserTabsAtom = atom(null, (get, set) => {
   const next = closeSavedTabsMutation(state);
   const nextIds = new Set(next.tabs.map((tab) => tab.id));
   set(
-    recordRecentlyClosedWorkstationTabsAtom,
-    state.tabs.filter((tab) => !nextIds.has(tab.id))
-  );
-  set(
     removeSharedWorkstationTabsAtom,
     state.tabs.filter((tab) => !nextIds.has(tab.id)).map((tab) => tab.id)
   );
+  for (const tab of state.tabs) {
+    if (!nextIds.has(tab.id)) {
+      set(recordRecentWorkstationTabAtom, {
+        workspace: get(presentedWorkstationWorkspaceKeyAtom),
+        tab,
+      });
+    }
+  }
 });
 
 /**

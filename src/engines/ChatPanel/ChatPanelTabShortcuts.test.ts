@@ -13,15 +13,17 @@ import {
   vi,
 } from "vitest";
 
-import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
-import { isMacOS } from "@src/util/platform/tauri";
+import { CURRENT_SHORTCUT_PLATFORM } from "@src/config/keyboard/shortcutBindings";
+import { chatPanelTabHistoriesAtom } from "@src/store/chatPanel/chatPanelTabNavigationAtoms";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import {
+  createInstrumentedStore,
+  resetInstrumentedStore,
+} from "@src/util/core/state/instrumentedStore";
 
 import { resolveChatPanelShortcutOwnership } from "./hooks/chatPanelShortcutOwnership";
-import {
-  isChatPanelPrimaryModifierPressed,
-  useChatPanelTabShortcuts,
-} from "./hooks/useChatPanelTabShortcuts";
+import { useChatPanelTabShortcuts } from "./hooks/useChatPanelTabShortcuts";
 
 interface ShortcutHarnessProps {
   panelRef: RefObject<HTMLElement | null>;
@@ -54,6 +56,9 @@ describe("useChatPanelTabShortcuts", () => {
   });
 
   beforeEach(async () => {
+    // Session navigation marks the destination visited through the global
+    // instrumented store, which the harness's Provider store does not replace.
+    createInstrumentedStore();
     store = createStore();
     container = document.createElement("div");
     container.dataset.workbenchSurface = "";
@@ -106,6 +111,7 @@ describe("useChatPanelTabShortcuts", () => {
     neutralOverlay.remove();
     panelElement.remove();
     outsideButton.remove();
+    resetInstrumentedStore();
     vi.restoreAllMocks();
   });
 
@@ -117,8 +123,8 @@ describe("useChatPanelTabShortcuts", () => {
     const event = new KeyboardEvent("keydown", {
       key: "w",
       code: "KeyW",
-      metaKey: isMacOS(),
-      ctrlKey: !isMacOS(),
+      metaKey: CURRENT_SHORTCUT_PLATFORM === "mac",
+      ctrlKey: CURRENT_SHORTCUT_PLATFORM !== "mac",
       bubbles: true,
       cancelable: true,
     });
@@ -133,6 +139,73 @@ describe("useChatPanelTabShortcuts", () => {
       )
     );
   }
+
+  function pressBracketShortcut(
+    target: HTMLElement,
+    bracket: "[" | "]",
+    shiftKey = false
+  ): KeyboardEvent {
+    const event = new KeyboardEvent("keydown", {
+      key: shiftKey ? (bracket === "[" ? "{" : "}") : bracket,
+      code: bracket === "[" ? "BracketLeft" : "BracketRight",
+      shiftKey,
+      metaKey: CURRENT_SHORTCUT_PLATFORM === "mac",
+      ctrlKey: CURRENT_SHORTCUT_PLATFORM !== "mac",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => target.dispatchEvent(event));
+    return event;
+  }
+
+  async function seedSessionTrail(): Promise<void> {
+    await act(async () => {
+      store.set(chatPanelTabsAtom, {
+        tabs: [
+          { id: "chat", type: "session", title: "B", sessionId: "session-b" },
+          { id: "runtime", type: "runtime", title: "Runtime" },
+        ],
+        activeTabId: "chat",
+      });
+      store.set(chatPanelTabHistoriesAtom, {
+        chat: { entries: ["session-a", "session-b"], index: 1 },
+      });
+    });
+  }
+
+  it("walks the active tab's session history with the bare bracket shortcuts", async () => {
+    await seedSessionTrail();
+    interactWith(panelElement);
+
+    const back = pressBracketShortcut(panelElement, "[");
+    expect(back.defaultPrevented).toBe(true);
+    expect(store.get(chatPanelTabsAtom)).toMatchObject({
+      activeTabId: "chat",
+      tabs: [{ id: "chat", sessionId: "session-a" }, { id: "runtime" }],
+    });
+
+    const forward = pressBracketShortcut(panelElement, "]");
+    expect(forward.defaultPrevented).toBe(true);
+    expect(store.get(chatPanelTabsAtom).tabs[0]).toMatchObject({
+      sessionId: "session-b",
+    });
+  });
+
+  it("switches tabs with the shifted bracket shortcuts", async () => {
+    await seedSessionTrail();
+    interactWith(panelElement);
+
+    const next = pressBracketShortcut(panelElement, "]", true);
+    expect(next.defaultPrevented).toBe(true);
+    expect(store.get(chatPanelTabsAtom).activeTabId).toBe("runtime");
+
+    const prev = pressBracketShortcut(panelElement, "[", true);
+    expect(prev.defaultPrevented).toBe(true);
+    expect(store.get(chatPanelTabsAtom).activeTabId).toBe("chat");
+    expect(store.get(chatPanelTabsAtom).tabs[0]).toMatchObject({
+      sessionId: "session-b",
+    });
+  });
 
   it("closes the active chat tab after interacting with a non-focusable part of the pane", () => {
     const workstationShortcut = vi.fn();
@@ -209,24 +282,6 @@ describe("useChatPanelTabShortcuts", () => {
     ).toBe(true);
     expect(
       resolveChatPanelShortcutOwnership(panelElement, outsideButton, true)
-    ).toBe(false);
-  });
-
-  it("uses Command on macOS and Ctrl on other platforms", () => {
-    expect(
-      isChatPanelPrimaryModifierPressed({ metaKey: true, ctrlKey: false }, true)
-    ).toBe(true);
-    expect(
-      isChatPanelPrimaryModifierPressed(
-        { metaKey: false, ctrlKey: true },
-        false
-      )
-    ).toBe(true);
-    expect(
-      isChatPanelPrimaryModifierPressed(
-        { metaKey: true, ctrlKey: false },
-        false
-      )
     ).toBe(false);
   });
 });

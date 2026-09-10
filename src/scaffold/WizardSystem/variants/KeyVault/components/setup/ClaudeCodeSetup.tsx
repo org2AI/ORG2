@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { ClaudeCodeSessionSetup } from "@src/features/SessionSetup";
 import { Login01Icon, SearchAreaIcon } from "@src/icons";
 import {
@@ -114,20 +114,14 @@ const ClaudeCodeSetup: React.FC<ClaudeCodeSetupProps> = ({
         </SectionContainer>
       )}
 
-      {(tokenDetected || data.validated) && selectedMethod !== "signin" && (
-        <InlineAlert type="success">
-          {t("keyVault.claudeCodeConnected")}
-        </InlineAlert>
-      )}
-
       {tokenError && selectedMethod !== "signin" && (
-        <InlineAlert
+        <PageNotice
           type="danger"
           title={tokenError}
           onClose={onClearTokenError}
         >
           {t("keyVault.claudeCodeDetectErrorHint")}
-        </InlineAlert>
+        </PageNotice>
       )}
     </div>
   );

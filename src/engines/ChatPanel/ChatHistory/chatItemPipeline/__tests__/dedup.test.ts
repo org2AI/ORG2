@@ -7,6 +7,49 @@ import {
 
 import { buildDedupMaps, isAssistantMessageEvent } from "../dedup";
 
+describe("delivery failure presentation ownership", () => {
+  it("keeps one local Retry presentation without hiding remote or provider failures", () => {
+    const user = makeSessionEvent({
+      source: "user",
+      function: "user_message",
+      action_type: "raw",
+      displayStatus: "failed",
+      result: {
+        syntheticUserInput: true,
+        deliveryStatus: "failed",
+        turnIntentId: "turn-1",
+      },
+    });
+    const failure = makeSessionEvent({
+      id: "convturn-error-turn-1",
+      source: "system",
+      action_type: "error",
+      result: { turnIntentId: "turn-1", error: "launch failed" },
+    });
+    const provider = { ...failure, id: "provider-error-1" };
+    const other = {
+      ...failure,
+      id: "convturn-error-turn-2",
+      result: { ...failure.result, turnIntentId: "turn-2" },
+    };
+    expect(
+      buildDedupMaps([user, failure, provider, other])
+        .duplicateDeliveryFailureIds
+    ).toEqual(new Set([failure.id]));
+    expect(buildDedupMaps([failure]).duplicateDeliveryFailureIds.size).toBe(0);
+    expect(
+      buildDedupMaps([
+        {
+          ...user,
+          displayStatus: "completed",
+          result: { ...user.result, deliveryStatus: "sent" },
+        },
+        failure,
+      ]).duplicateDeliveryFailureIds.size
+    ).toBe(0);
+  });
+});
+
 function makeRunningToolCall(
   functionName: string,
   overrides: Record<string, unknown> = {}
@@ -352,6 +395,27 @@ describe("buildDedupMaps — user message dedup", () => {
 
     expect(duplicateUserIds.has(optimistic.id)).toBe(true);
     expect(duplicateUserIds.has(persisted.id)).toBe(false);
+  });
+
+  it("never collapses a failed optimistic row into the provider's copy of its prompt", () => {
+    const failed = makeUserMessage("Reply with the marker", {
+      id: "queued-user:queue-rejected:",
+      result: {
+        syntheticUserInput: true,
+        deliveryStatus: "failed",
+        deliveryError: "model not supported",
+        message: { content: "Reply with the marker" },
+      },
+    });
+    const landedCopy = makeUserMessage("Reply with the marker", {
+      id: "runlanded-user-rejected",
+      result: { message: { content: "Reply with the marker" } },
+    });
+
+    const { duplicateUserIds } = buildDedupMaps([failed, landedCopy]);
+
+    expect(duplicateUserIds.has(failed.id)).toBe(false);
+    expect(duplicateUserIds.has(landedCopy.id)).toBe(false);
   });
 
   it("does not treat user-input-prefixed backend events as optimistic echoes", () => {

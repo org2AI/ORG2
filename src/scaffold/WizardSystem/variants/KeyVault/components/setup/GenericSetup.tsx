@@ -20,8 +20,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import Select from "@src/components/Select";
 import Textarea from "@src/components/Textarea";
 import { ClipboardCopyIcon, KeyboardIcon, SearchAreaIcon } from "@src/icons";
@@ -310,13 +310,13 @@ const GenericSetup: FC<AgentSetupProps> = ({
             </SectionRow>
           </SectionContainer>
           {autoDetectError && (
-            <InlineAlert
+            <PageNotice
               type="danger"
               title={autoDetectError}
               onClose={onClearAutoDetectError}
             >
               {t("keyVault.genericDetectErrorHint")}
-            </InlineAlert>
+            </PageNotice>
           )}
         </>
       )}
@@ -466,7 +466,7 @@ const GenericSetup: FC<AgentSetupProps> = ({
             </SectionRow>
           </SectionContainer>
           {extractError && (
-            <InlineAlert
+            <PageNotice
               type="danger"
               title={extractError}
               onClose={onClearExtractError}

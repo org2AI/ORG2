@@ -15,6 +15,7 @@ import { useOpenCloudSessionReference } from "@src/features/Org2Cloud/useOpenClo
 import { useFilteredItems } from "@src/hooks/search";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
 import { Search01Icon } from "@src/icons";
+import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import {
   loadSidebarSessions,
   sessionLoadingAtom,
@@ -34,7 +35,6 @@ import {
 import type { BasePaletteProps } from "../../shared";
 import { PaletteBody, SpotlightShell } from "../../shell";
 import type { PathSegment, SpotlightItem } from "../../types";
-import { useSelectorKernel } from "../core";
 
 interface AgentSessionSearchPaletteProps extends BasePaletteProps {
   asBody?: boolean;

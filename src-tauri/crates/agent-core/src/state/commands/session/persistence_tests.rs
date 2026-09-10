@@ -14,28 +14,176 @@ fn ensure_test_schemas() {
     database::init_shell_replay_tables(&conn).expect("shell replay schema");
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS events (
-                id TEXT PRIMARY KEY,
-                session_id TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS code_sessions (
-                session_id TEXT PRIMARY KEY,
-                cli_agent_type TEXT NOT NULL,
-                status TEXT NOT NULL,
-                parent_session_id TEXT,
-                org_member_id TEXT,
-                updated_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS session_turn_intents (
-                session_id TEXT NOT NULL,
-                turn_intent_id TEXT NOT NULL,
-                client_message_id TEXT,
-                org_run_id TEXT,
-                source TEXT NOT NULL,
-                status TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                PRIMARY KEY (session_id, turn_intent_id)
-            );",
+            id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS code_sessions (
+            session_id TEXT PRIMARY KEY,
+            cli_agent_type TEXT NOT NULL,
+            status TEXT NOT NULL,
+            parent_session_id TEXT,
+            org_member_id TEXT,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS session_turn_intents (
+            session_id TEXT NOT NULL,
+            turn_intent_id TEXT NOT NULL,
+            client_message_id TEXT,
+            org_run_id TEXT,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (session_id, turn_intent_id)
+        );
+        CREATE TABLE IF NOT EXISTS sessions (
+            session_id TEXT PRIMARY KEY,
+            event_count INTEGER NOT NULL DEFAULT 0,
+            cached_at INTEGER NOT NULL,
+            content_revision INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS session_turns (
+            session_id TEXT NOT NULL,
+            turn_id TEXT NOT NULL,
+            start_sequence INTEGER NOT NULL,
+            started_at TEXT NOT NULL,
+            user_event_ids_json TEXT NOT NULL DEFAULT '[]',
+            status TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (session_id, turn_id)
+        );
+        CREATE TABLE IF NOT EXISTS session_turn_index_state (
+            session_id TEXT PRIMARY KEY,
+            indexed_event_count INTEGER NOT NULL,
+            rebuilt_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_activities (
+            record_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            session_id TEXT,
+            timestamp TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_file_changes (
+            record_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            path_hash TEXT NOT NULL,
+            timestamp INTEGER NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_resources (
+            resource_id TEXT PRIMARY KEY,
+            resource_kind TEXT NOT NULL,
+            canonical_locator TEXT NOT NULL,
+            display_locator TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_resource_interactions (
+            interaction_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            source_session_id TEXT,
+            session_id TEXT NOT NULL,
+            resource_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            outcome TEXT NOT NULL,
+            occurred_at TEXT NOT NULL,
+            capture_method TEXT NOT NULL,
+            attribution_precision TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_session_actors (
+            actor_record_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            source_session_id TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            actor_id TEXT NOT NULL,
+            transcript_session_id TEXT,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_edit_artifacts (
+            record_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            sequence_index INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            path_hash TEXT NOT NULL,
+            quality TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_diff_chunks (
+            record_id TEXT PRIMARY KEY,
+            edit_record_id TEXT NOT NULL,
+            source TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            sequence_index INTEGER NOT NULL,
+            chunk_index INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            quality TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_final_diffs (
+            record_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            quality TEXT NOT NULL,
+            computed_at TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_session_checkpoints (
+            checkpoint_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            sequence_index INTEGER NOT NULL,
+            checkpoint_kind TEXT NOT NULL,
+            quality TEXT NOT NULL,
+            undo_supported INTEGER NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_checkpoint_file_states (
+            record_id TEXT PRIMARY KEY,
+            checkpoint_id TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            quality TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_session_signals (
+            session_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            signals_version INTEGER NOT NULL,
+            signals_json TEXT NOT NULL,
+            computed_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_interaction_import_checkpoints (
+            source TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            source_fingerprint TEXT NOT NULL,
+            parser_version INTEGER NOT NULL,
+            reconciled_at TEXT NOT NULL,
+            PRIMARY KEY (source, session_id)
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_session_usage (
+            session_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            computed_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_sessions (
+            session_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            source_session_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS orgtrack_core_commit_links (
+            record_id TEXT PRIMARY KEY,
+            commit_sha TEXT NOT NULL,
+            linked_at TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        );",
     )
     .expect("session runtime schemas");
 }
@@ -65,19 +213,49 @@ fn seed_session(session_id: &str, parent_session_id: Option<&str>) {
 
 fn seed_run_with_status(run_id: &str, root_session_id: &str, status: &str) {
     let conn = get_connection().expect("sandbox DB");
-    conn.execute(
-        "INSERT INTO agent_org_runs (
+    let now = "2026-07-16T00:00:00Z";
+    if status == "archived" {
+        let receipt_id = format!("archive-receipt-{run_id}");
+        conn.execute(
+            "INSERT INTO agent_org_runtime_runs (
+                 id, org_id, coordinator_agent_id, root_session_id,
+                 entry_mode, status, activation_generation, archived_at,
+                 archive_receipt_id, created_at, updated_at
+             ) VALUES (?1, 'org-delete-test', 'coordinator-agent', ?2,
+                       'standalone_session', 'archived', 2, ?3, ?4, ?3, ?3)",
+            rusqlite::params![run_id, root_session_id, now, &receipt_id],
+        )
+        .expect("seed archived run");
+        conn.execute(
+            "INSERT INTO agent_org_runtime_archive_episodes (
+                 archive_receipt_id,org_run_id,archive_request_id,
+                 archive_generation,teardown_status,teardown_attempt_count,
+                 retained_runtime_count,deadline_at,archived_at,updated_at,quiesced_at
+             ) VALUES (?1,?2,?3,2,'quiesced',1,0,?4,?5,?5,?5)",
+            rusqlite::params![
+                &receipt_id,
+                run_id,
+                format!("archive-request-{run_id}"),
+                "2026-07-16T00:01:00Z",
+                now,
+            ],
+        )
+        .expect("seed quiesced Archive receipt");
+    } else {
+        conn.execute(
+            "INSERT INTO agent_org_runtime_runs (
                  id, org_id, coordinator_agent_id, root_session_id,
                  entry_mode, status, created_at, updated_at
              ) VALUES (?1, 'org-delete-test', 'coordinator-agent', ?2,
                        'standalone_session', ?3, ?4, ?4)",
-        rusqlite::params![run_id, root_session_id, status, "2026-07-16T00:00:00Z"],
-    )
-    .expect("seed run");
+            rusqlite::params![run_id, root_session_id, status, now],
+        )
+        .expect("seed run");
+    }
 }
 
 fn seed_run(run_id: &str, root_session_id: &str) {
-    seed_run_with_status(run_id, root_session_id, "completed");
+    seed_run_with_status(run_id, root_session_id, "archived");
 }
 
 fn seed_session_owned_rows(session_id: &str) {
@@ -104,32 +282,460 @@ fn seed_session_owned_rows(session_id: &str) {
     )
     .expect("seed event");
     conn.execute(
+        "INSERT INTO sessions (
+             session_id, event_count, cached_at, content_revision
+         ) VALUES (?1, 1, 1, 1)",
+        [session_id],
+    )
+    .expect("seed EventStore session metadata");
+    conn.execute(
+        "INSERT INTO session_turns (
+             session_id, turn_id, start_sequence, started_at,
+             user_event_ids_json, status, updated_at
+         ) VALUES (?1, ?2, 0, ?3, '[]', 'completed', ?3)",
+        rusqlite::params![
+            session_id,
+            format!("cached-turn-{session_id}"),
+            "2026-07-16T00:00:00Z"
+        ],
+    )
+    .expect("seed EventStore Turn index");
+    conn.execute(
+        "INSERT INTO session_turn_index_state (
+             session_id, indexed_event_count, rebuilt_at
+         ) VALUES (?1, 1, ?2)",
+        rusqlite::params![session_id, "2026-07-16T00:00:00Z"],
+    )
+    .expect("seed EventStore Turn index state");
+    conn.execute(
+        "INSERT INTO session_turn_intents (
+             session_id, turn_intent_id, source, status, created_at, updated_at
+         ) VALUES (?1, ?2, 'user_submit', 'completed', ?3, ?3)",
+        rusqlite::params![
+            session_id,
+            format!("intent-{session_id}"),
+            "2026-07-16T00:00:00Z"
+        ],
+    )
+    .expect("seed durable Turn intent");
+    conn.execute(
         "INSERT INTO session_token_usage (
                  session_id, session_type, total_tokens, created_at
              ) VALUES (?1, 'agent', 1, ?2)",
         rusqlite::params![session_id, "2026-07-16T00:00:00Z"],
     )
     .expect("seed usage");
+    let orgtrack_source = "orgii_rust_agents";
+    let now = "2026-07-16T00:00:00Z";
+    conn.execute(
+        "INSERT INTO orgtrack_core_activities (
+             record_id, source, session_id, timestamp, kind, payload_json
+         ) VALUES (?1, ?2, ?3, ?4, 'tool', '{}')",
+        rusqlite::params![
+            format!("activity-{session_id}"),
+            orgtrack_source,
+            session_id,
+            now
+        ],
+    )
+    .expect("seed OrgTrack activity");
+    conn.execute(
+        "INSERT INTO orgtrack_core_file_changes (
+             record_id, source, session_id, file_path, path_hash, timestamp, payload_json
+         ) VALUES (?1, ?2, ?3, '/tmp/file', 'path-hash', 1, '{}')",
+        rusqlite::params![
+            format!("file-change-{session_id}"),
+            orgtrack_source,
+            session_id
+        ],
+    )
+    .expect("seed OrgTrack file change");
+    conn.execute(
+        "INSERT INTO orgtrack_core_edit_artifacts (
+             record_id, source, session_id, sequence_index, file_path,
+             path_hash, quality, payload_json
+         ) VALUES (?1, ?2, ?3, 1, '/tmp/file', 'path-hash', 'exact', '{}')",
+        rusqlite::params![format!("edit-{session_id}"), orgtrack_source, session_id],
+    )
+    .expect("seed OrgTrack edit artifact");
+    conn.execute(
+        "INSERT INTO orgtrack_core_diff_chunks (
+             record_id, edit_record_id, source, session_id, sequence_index,
+             chunk_index, file_path, quality, payload_json
+         ) VALUES (?1, ?2, ?3, ?4, 1, 0, '/tmp/file', 'exact', '{}')",
+        rusqlite::params![
+            format!("diff-{session_id}"),
+            format!("edit-{session_id}"),
+            orgtrack_source,
+            session_id,
+        ],
+    )
+    .expect("seed OrgTrack diff chunk");
+    conn.execute(
+        "INSERT INTO orgtrack_core_final_diffs (
+             record_id, source, session_id, file_path, quality, computed_at, payload_json
+         ) VALUES (?1, ?2, ?3, '/tmp/file', 'exact', ?4, '{}')",
+        rusqlite::params![
+            format!("final-diff-{session_id}"),
+            orgtrack_source,
+            session_id,
+            now
+        ],
+    )
+    .expect("seed OrgTrack final diff");
+    conn.execute(
+        "INSERT INTO orgtrack_core_session_checkpoints (
+             checkpoint_id, source, session_id, sequence_index,
+             checkpoint_kind, quality, undo_supported, payload_json
+         ) VALUES (?1, ?2, ?3, 1, 'turn', 'exact', 1, '{}')",
+        rusqlite::params![
+            format!("checkpoint-{session_id}"),
+            orgtrack_source,
+            session_id
+        ],
+    )
+    .expect("seed OrgTrack checkpoint");
+    conn.execute(
+        "INSERT INTO orgtrack_core_checkpoint_file_states (
+             record_id, checkpoint_id, session_id, file_path, quality, payload_json
+         ) VALUES (?1, ?2, ?3, '/tmp/file', 'exact', '{}')",
+        rusqlite::params![
+            format!("checkpoint-file-{session_id}"),
+            format!("checkpoint-{session_id}"),
+            session_id,
+        ],
+    )
+    .expect("seed OrgTrack checkpoint file state");
+    conn.execute(
+        "INSERT INTO orgtrack_core_session_signals (
+             session_id, source, signals_version, signals_json, computed_at
+         ) VALUES (?1, ?2, 1, '{}', ?3)",
+        rusqlite::params![session_id, orgtrack_source, now],
+    )
+    .expect("seed OrgTrack Session signals");
+    conn.execute(
+        "INSERT INTO orgtrack_core_interaction_import_checkpoints (
+             source, session_id, source_fingerprint, parser_version, reconciled_at
+         ) VALUES (?1, ?2, 'fingerprint', 1, ?3)",
+        rusqlite::params![orgtrack_source, session_id, now],
+    )
+    .expect("seed OrgTrack import checkpoint");
+    conn.execute(
+        "INSERT INTO orgtrack_core_session_usage (
+             session_id, source, computed_at
+         ) VALUES (?1, ?2, ?3)",
+        rusqlite::params![session_id, orgtrack_source, now],
+    )
+    .expect("seed OrgTrack Session usage");
+    conn.execute(
+        "INSERT OR IGNORE INTO orgtrack_core_resources (
+             resource_id, resource_kind, canonical_locator, display_locator, payload_json
+         ) VALUES (?1, 'file', ?2, ?2, '{}')",
+        rusqlite::params![
+            format!("resource-{session_id}"),
+            format!("/tmp/{session_id}")
+        ],
+    )
+    .expect("seed shared OrgTrack resource");
+    conn.execute(
+        "INSERT INTO orgtrack_core_resource_interactions (
+             interaction_id, source, source_session_id, session_id, resource_id,
+             action, outcome, occurred_at, capture_method,
+             attribution_precision, payload_json
+         ) VALUES (?1, ?2, ?3, ?3, ?4, 'write', 'success', ?5,
+                   'test', 'exact', '{}')",
+        rusqlite::params![
+            format!("interaction-{session_id}"),
+            orgtrack_source,
+            session_id,
+            format!("resource-{session_id}"),
+            now,
+        ],
+    )
+    .expect("seed OrgTrack resource interaction");
+    conn.execute(
+        "INSERT INTO orgtrack_core_session_actors (
+             actor_record_id, source, source_session_id, session_id,
+             actor_id, transcript_session_id, payload_json
+         ) VALUES (?1, ?2, ?3, ?3, 'member', ?3, '{}')",
+        rusqlite::params![format!("actor-{session_id}"), orgtrack_source, session_id],
+    )
+    .expect("seed OrgTrack Session actor");
+    conn.execute(
+        "INSERT INTO orgtrack_core_sessions (
+             session_id, source, source_session_id, title, payload_json
+         ) VALUES (?1, ?2, ?1, ?1, '{}')",
+        rusqlite::params![session_id, orgtrack_source],
+    )
+    .expect("seed OrgTrack Session mirror");
+    conn.execute(
+        "INSERT INTO orgtrack_core_commit_links (
+             record_id, commit_sha, linked_at, payload_json
+         ) VALUES (?1, 'deadbeef', ?2, ?3)",
+        rusqlite::params![
+            format!("commit-link-{session_id}"),
+            now,
+            serde_json::json!({ "sessionIds": [session_id] }).to_string(),
+        ],
+    )
+    .expect("seed OrgTrack commit link");
 }
 
 fn seed_run_owned_rows(run_id: &str) {
     let conn = get_connection().expect("sandbox DB");
     conn.execute(
-        "INSERT INTO agent_inbox (
-                 recipient_agent_id, recipient_member_id, sender_agent_id,
-                 org_run_id, payload_kind, payload_json, created_at
-             ) VALUES ('worker-agent', 'worker', 'system', ?1,
-                       'plain', '{\"summary\":\"run history\",\"text\":\"body\"}', ?2)",
+        "INSERT INTO agent_org_runtime_inbox (
+             recipient_agent_id, recipient_member_id, sender_agent_id,
+             org_run_id, payload_kind, payload_json, created_at
+         ) VALUES ('worker-agent', 'worker', 'system', ?1,
+                   'plain', '{\"summary\":\"run history\",\"text\":\"body\"}', ?2)",
         rusqlite::params![run_id, "2026-07-16T00:00:00Z"],
     )
     .expect("seed run inbox history");
     conn.execute(
-        "INSERT INTO agent_org_tasks (
-                 id, org_run_id, subject, status, created_at, updated_at
-             ) VALUES (?1, ?2, 'delete me', 'completed', ?3, ?3)",
+        r#"INSERT INTO agent_org_runtime_tasks (
+             id, org_run_id, activation_generation, subject, description, owner, status,
+             execution_mode, blocked_by_json, output_json,
+             created_by_participant_id, source_turn_intent_id,
+             created_at, updated_at
+         ) VALUES (
+             ?1, ?2, 1, 'delete me', '', 'worker', 'completed',
+             'build', '[]',
+             '{"summary":"delete me","content":null,"artifactIds":[],"producedByMemberId":"worker","producedAt":"2026-07-16T00:00:00Z"}',
+             'coordinator', 'delete-test-fixture', ?3, ?3
+         )"#,
         rusqlite::params![format!("task-{run_id}"), run_id, "2026-07-16T00:00:00Z"],
     )
     .expect("seed run task history");
+    conn.execute(
+        "INSERT INTO agent_org_runtime_task_execution_handoffs (
+             id,org_run_id,activation_generation,request_id,request_digest,
+             old_task_id,old_owner_member_id,state,requested_at,updated_at
+         ) VALUES (?1,?2,1,?3,?4,?5,'worker','unknown',?6,?6)",
+        rusqlite::params![
+            format!("handoff-{run_id}"),
+            run_id,
+            format!("handoff-request-{run_id}"),
+            "d".repeat(64),
+            format!("task-{run_id}"),
+            "2026-07-16T00:00:00Z",
+        ],
+    )
+    .expect("seed run handoff history");
+}
+
+fn seed_linked_user_directed_history(
+    run_id: &str,
+    root_session_id: &str,
+    root_member_session_id: &str,
+    linked_member_session_id: &str,
+) {
+    let conn = get_connection().expect("sandbox DB");
+    let now = "2026-07-16T00:00:00Z";
+    let root_turn_intent_id = format!("intent-{root_member_session_id}");
+    let linked_turn_intent_id = format!("intent-{linked_member_session_id}");
+    let coordinator_turn_intent_id = format!("intent-{root_session_id}");
+    for session_id in [
+        root_session_id,
+        root_member_session_id,
+        linked_member_session_id,
+    ] {
+        conn.execute(
+            "UPDATE session_turn_intents SET org_run_id=?1 WHERE session_id=?2",
+            rusqlite::params![run_id, session_id],
+        )
+        .expect("bind test Turn intent to run");
+    }
+
+    let root_inbox_id = conn
+        .query_row(
+            "INSERT INTO agent_org_runtime_inbox (
+                 delivery_class,recipient_agent_id,recipient_member_id,
+                 sender_agent_id,sender_member_id,org_run_id,payload_kind,
+                 payload_json,created_at,display_text
+             ) VALUES (
+                 'user_directed','root-member-agent','root-member',
+                 'coordinator-agent','coordinator',?1,'plain',
+                 '{\"summary\":\"root\",\"text\":\"root\"}',?2,'root'
+             ) RETURNING id",
+            rusqlite::params![run_id, now],
+            |row| row.get::<_, i64>(0),
+        )
+        .expect("seed root UDW Inbox");
+    let linked_inbox_id = conn
+        .query_row(
+            "INSERT INTO agent_org_runtime_inbox (
+                 delivery_class,recipient_agent_id,recipient_member_id,
+                 sender_agent_id,sender_member_id,org_run_id,payload_kind,
+                 payload_json,created_at,causation_inbox_id,display_text
+             ) VALUES (
+                 'user_directed','linked-member-agent','linked-member',
+                 'root-member-agent','root-member',?1,'plain',
+                 '{\"summary\":\"linked\",\"text\":\"linked\"}',?2,?3,'linked'
+             ) RETURNING id",
+            rusqlite::params![run_id, now, root_inbox_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .expect("seed linked UDW Inbox");
+    let coordinator_inbox_id = conn
+        .query_row(
+            "INSERT INTO agent_org_runtime_inbox (
+                 delivery_class,recipient_agent_id,recipient_member_id,
+                 sender_agent_id,sender_member_id,org_run_id,payload_kind,
+                 payload_json,created_at,causation_inbox_id,display_text
+             ) VALUES (
+                 'user_directed','coordinator-agent','coordinator',
+                 'linked-member-agent','linked-member',?1,'plain',
+                 '{\"summary\":\"coordinator\",\"text\":\"coordinator\"}',?2,?3,'coordinator'
+             ) RETURNING id",
+            rusqlite::params![run_id, now, linked_inbox_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .expect("seed Coordinator UDW Inbox");
+
+    conn.execute(
+        "INSERT INTO agent_org_runtime_turn_contexts (
+             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
+             dispatch_member_id,member_dispatch_sequence,source_kind,source_id,
+             root_authority_turn_id,actor_version,created_at
+         ) VALUES (?1,?2,?3,'root-member','user_directed_work',
+                   'root-member',1,'group_mention',?4,?2,1,?5)",
+        rusqlite::params![
+            root_member_session_id,
+            &root_turn_intent_id,
+            run_id,
+            root_inbox_id.to_string(),
+            now,
+        ],
+    )
+    .expect("seed root UDW Turn context");
+    conn.execute(
+        "INSERT INTO agent_org_runtime_turn_contexts (
+             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
+             dispatch_member_id,member_dispatch_sequence,source_kind,source_id,
+             root_authority_turn_id,actor_version,created_at
+         ) VALUES (?1,?2,?3,'linked-member','user_directed_work',
+                   'linked-member',1,'member_inbox',?4,?5,1,?6)",
+        rusqlite::params![
+            linked_member_session_id,
+            &linked_turn_intent_id,
+            run_id,
+            linked_inbox_id.to_string(),
+            &root_turn_intent_id,
+            now,
+        ],
+    )
+    .expect("seed linked UDW Turn context");
+    conn.execute(
+        "INSERT INTO agent_org_runtime_turn_contexts (
+             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
+             source_kind,source_id,root_authority_turn_id,actor_version,created_at
+         ) VALUES (?1,?2,?3,'coordinator','coordinator',
+                   'member_inbox',?4,?5,1,?6)",
+        rusqlite::params![
+            root_session_id,
+            &coordinator_turn_intent_id,
+            run_id,
+            coordinator_inbox_id.to_string(),
+            &root_turn_intent_id,
+            now,
+        ],
+    )
+    .expect("seed Coordinator side-quest Turn context");
+    conn.execute(
+        "INSERT INTO agent_org_runtime_user_directed_roots (
+             org_run_id,root_authority_turn_id,policy_version,max_deliveries,
+             max_cascade_depth,next_delivery_ordinal,created_at
+         ) VALUES (?1,?2,1,8,2,4,?3)",
+        rusqlite::params![run_id, &root_turn_intent_id, now],
+    )
+    .expect("seed UDW root authority");
+    let root_delivery_id = conn
+        .query_row(
+            "INSERT INTO agent_org_runtime_user_directed_deliveries (
+                 org_run_id,session_id,turn_intent_id,root_authority_turn_id,
+                 source_kind,source_inbox_id,dispatch_member_id,
+                 member_dispatch_sequence,depth,delivery_ordinal,request_digest,
+                 dispatch_content,display_content,status,created_at,started_at,terminal_at
+             ) VALUES (
+                 ?1,?2,?3,?3,'group_mention',?4,'root-member',1,0,1,?5,
+                 'root','root','completed',?6,?6,?6
+             ) RETURNING delivery_id",
+            rusqlite::params![
+                run_id,
+                root_member_session_id,
+                &root_turn_intent_id,
+                root_inbox_id,
+                "a".repeat(64),
+                now,
+            ],
+            |row| row.get::<_, i64>(0),
+        )
+        .expect("seed root UDW delivery");
+    let linked_delivery_id = conn
+        .query_row(
+            "INSERT INTO agent_org_runtime_user_directed_deliveries (
+                 org_run_id,session_id,turn_intent_id,root_authority_turn_id,
+                 parent_delivery_id,parent_inbox_id,source_kind,source_inbox_id,
+                 dispatch_member_id,member_dispatch_sequence,depth,delivery_ordinal,
+                 request_digest,dispatch_content,display_content,status,
+                 created_at,started_at,terminal_at
+             ) VALUES (
+                 ?1,?2,?3,?4,?5,?6,'member_inbox',?7,
+                 'linked-member',1,1,2,?8,'linked','linked','completed',?9,?9,?9
+             ) RETURNING delivery_id",
+            rusqlite::params![
+                run_id,
+                linked_member_session_id,
+                &linked_turn_intent_id,
+                &root_turn_intent_id,
+                root_delivery_id,
+                root_inbox_id,
+                linked_inbox_id,
+                "b".repeat(64),
+                now,
+            ],
+            |row| row.get::<_, i64>(0),
+        )
+        .expect("seed linked UDW delivery");
+    conn.execute(
+        "INSERT INTO agent_org_runtime_user_directed_coordinator_bindings (
+             org_run_id,session_id,turn_intent_id,root_authority_turn_id,
+             parent_delivery_id,parent_inbox_id,source_inbox_id,depth,
+             delivery_ordinal,request_digest,dispatch_content,display_content,
+             status,created_at,started_at,terminal_at
+         ) VALUES (
+             ?1,?2,?3,?4,?5,?6,?7,2,3,?8,
+             'coordinator','coordinator','completed',?9,?9,?9
+         )",
+        rusqlite::params![
+            run_id,
+            root_session_id,
+            &coordinator_turn_intent_id,
+            &root_turn_intent_id,
+            linked_delivery_id,
+            linked_inbox_id,
+            coordinator_inbox_id,
+            "c".repeat(64),
+            now,
+        ],
+    )
+    .expect("seed Coordinator UDW binding");
+}
+
+fn seed_active_session_registry(session_id: &str) {
+    crate::session::file_registry::register_session(
+        &crate::session::file_registry::SessionRegistryEntry {
+            session_id: session_id.to_string(),
+            agent_type: "SDE Agent".to_string(),
+            model: "test-model".to_string(),
+            workspace_path: Some("/tmp/agent-org-delete-test".to_string()),
+            status: "running".to_string(),
+            started_at: "2026-07-16T00:00:00Z".to_string(),
+            last_updated_at: "2026-07-16T00:00:00Z".to_string(),
+        },
+    )
+    .expect("seed active-session registry");
 }
 
 fn row_exists(table: &str, column: &str, value: &str) -> bool {
@@ -161,17 +767,18 @@ fn session_hierarchy_delete_removes_all_rust_descendants_and_run_history() {
     seed_run("hierarchy-delete-other-run", unrelated_root);
     for session_id in [root, worker, grandchild, unrelated] {
         seed_session_owned_rows(session_id);
+        seed_active_session_registry(session_id);
     }
     seed_run_owned_rows("hierarchy-delete-run");
     seed_run_owned_rows("hierarchy-delete-other-run");
+    seed_linked_user_directed_history("hierarchy-delete-run", root, worker, grandchild);
 
     let conn = get_connection().expect("sandbox DB");
     let plan = load_agent_org_session_delete_plan(&conn, root)
         .expect("plan hierarchy")
         .expect("root owns Agent Org run");
     drop(conn);
-    let receipt = delete_agent_org_session_hierarchy(&plan, &HashSet::new())
-        .expect("delete completed hierarchy");
+    let receipt = delete_agent_org_session_hierarchy(&plan).expect("delete completed hierarchy");
 
     assert_eq!(
         receipt.deleted_session_ids,
@@ -183,41 +790,100 @@ fn session_hierarchy_delete_removes_all_rust_descendants_and_run_history() {
             "agent_messages",
             "agent_todos",
             "events",
+            "sessions",
+            "session_turns",
+            "session_turn_index_state",
+            "session_turn_intents",
             "session_token_usage",
+            "orgtrack_core_activities",
+            "orgtrack_core_file_changes",
+            "orgtrack_core_edit_artifacts",
+            "orgtrack_core_diff_chunks",
+            "orgtrack_core_final_diffs",
+            "orgtrack_core_session_checkpoints",
+            "orgtrack_core_checkpoint_file_states",
+            "orgtrack_core_session_signals",
+            "orgtrack_core_interaction_import_checkpoints",
+            "orgtrack_core_session_usage",
+            "orgtrack_core_resource_interactions",
+            "orgtrack_core_session_actors",
+            "orgtrack_core_sessions",
         ] {
             assert!(
                 !row_exists(table, "session_id", session_id),
                 "{table} still contains {session_id}"
             );
         }
+        assert!(!row_exists(
+            "orgtrack_core_commit_links",
+            "record_id",
+            &format!("commit-link-{session_id}")
+        ));
     }
-    assert!(!row_exists("agent_org_runs", "id", "hierarchy-delete-run"));
     assert!(!row_exists(
-        "agent_inbox",
+        "agent_org_runtime_runs",
+        "id",
+        "hierarchy-delete-run"
+    ));
+    assert!(!row_exists(
+        "agent_org_runtime_inbox",
         "org_run_id",
         "hierarchy-delete-run"
     ));
     assert!(!row_exists(
-        "agent_org_tasks",
+        "agent_org_runtime_tasks",
         "org_run_id",
         "hierarchy-delete-run"
     ));
+    assert!(!row_exists(
+        "agent_org_runtime_task_execution_handoffs",
+        "org_run_id",
+        "hierarchy-delete-run"
+    ));
+    for table in [
+        "agent_org_runtime_user_directed_coordinator_bindings",
+        "agent_org_runtime_user_directed_deliveries",
+        "agent_org_runtime_user_directed_roots",
+    ] {
+        assert!(!row_exists(table, "org_run_id", "hierarchy-delete-run"));
+    }
     assert!(row_exists("agent_sessions", "session_id", unrelated));
     assert!(row_exists("agent_messages", "session_id", unrelated));
     assert!(row_exists(
-        "agent_org_runs",
+        "orgtrack_core_edit_artifacts",
+        "session_id",
+        unrelated
+    ));
+    assert!(row_exists(
+        "orgtrack_core_commit_links",
+        "record_id",
+        &format!("commit-link-{unrelated}")
+    ));
+    assert!(row_exists(
+        "agent_org_runtime_runs",
         "id",
         "hierarchy-delete-other-run"
     ));
     assert!(row_exists(
-        "agent_inbox",
+        "agent_org_runtime_inbox",
         "org_run_id",
         "hierarchy-delete-other-run"
     ));
+    assert!(row_exists(
+        "agent_org_runtime_task_execution_handoffs",
+        "org_run_id",
+        "hierarchy-delete-other-run"
+    ));
+    let mut registered_session_ids = crate::session::file_registry::list_registered_sessions()
+        .into_iter()
+        .map(|entry| entry.session_id)
+        .collect::<Vec<_>>();
+    registered_session_ids.sort();
+    assert_eq!(registered_session_ids, vec![unrelated.to_string()]);
 }
 
 #[test]
-fn session_hierarchy_delete_worker_keeps_root_and_run() {
+fn team_ownership_resolver_maps_worker_to_root_and_run() {
     let _sandbox = test_helpers::test_env::sandbox();
     ensure_test_schemas();
     let root = "hierarchy-worker-root";
@@ -228,27 +894,29 @@ fn session_hierarchy_delete_worker_keeps_root_and_run() {
     seed_run_owned_rows("hierarchy-worker-run");
 
     let conn = get_connection().expect("sandbox DB");
-    assert!(
-        load_agent_org_session_delete_plan(&conn, worker)
-            .expect("plan worker")
-            .is_none(),
-        "a worker must not be promoted to hierarchy root deletion"
-    );
+    let plan = load_agent_org_session_delete_plan(&conn, worker)
+        .expect("plan worker")
+        .expect("worker must resolve to its Team");
+    assert_eq!(plan.root_session_id, root);
+    assert_eq!(plan.run_id, "hierarchy-worker-run");
     drop(conn);
-    session_persistence::delete_session(worker).expect("canonical single-session deletion");
 
-    assert!(!row_exists("agent_sessions", "session_id", worker));
+    assert!(row_exists("agent_sessions", "session_id", worker));
     assert!(row_exists("agent_sessions", "session_id", root));
-    assert!(row_exists("agent_org_runs", "id", "hierarchy-worker-run"));
     assert!(row_exists(
-        "agent_inbox",
+        "agent_org_runtime_runs",
+        "id",
+        "hierarchy-worker-run"
+    ));
+    assert!(row_exists(
+        "agent_org_runtime_inbox",
         "org_run_id",
         "hierarchy-worker-run"
     ));
 }
 
 #[test]
-fn session_hierarchy_delete_fences_active_run_and_requires_quiesced_sessions() {
+fn session_hierarchy_delete_requires_archived_without_mutating_active_run() {
     let _sandbox = test_helpers::test_env::sandbox();
     ensure_test_schemas();
     let root = "hierarchy-active-root";
@@ -262,34 +930,95 @@ fn session_hierarchy_delete_fences_active_run_and_requires_quiesced_sessions() {
         .expect("load running hierarchy")
         .expect("root owns run");
     drop(conn);
-    let fenced = establish_agent_org_delete_fence(&plan).expect("cancel run for deletion");
-    assert_eq!(
-        fenced.run_status,
-        crate::coordination::agent_org_runs::AgentOrgRunStatus::Cancelled
-    );
+    let error = validate_agent_org_delete_ready(&plan)
+        .expect_err("Delete must fail closed before the Archive transition exists");
+    assert!(error.contains("team_delete_requires_archived"));
     assert_eq!(
         get_connection()
             .expect("sandbox DB")
             .query_row(
-                "SELECT status FROM agent_org_runs WHERE id='hierarchy-active-run'",
+                "SELECT status FROM agent_org_runtime_runs WHERE id='hierarchy-active-run'",
                 [],
                 |row| row.get::<_, String>(0)
             )
-            .expect("load fenced status"),
-        "cancelled"
+            .expect("load unchanged status"),
+        "running"
     );
-
-    let error = validate_agent_org_delete_ready(&fenced, &HashSet::new())
-        .expect_err("unobserved running worker must fail closed");
-    assert!(error.contains(worker));
-    assert!(error.contains("running"));
-
-    let quiesced = HashSet::from([worker.to_string()]);
-    validate_agent_org_delete_ready(&fenced, &quiesced)
-        .expect("a stopped live runtime may retain a stale running row");
     assert!(row_exists("agent_sessions", "session_id", root));
     assert!(row_exists("agent_sessions", "session_id", worker));
-    assert!(row_exists("agent_org_runs", "id", "hierarchy-active-run"));
+    assert!(row_exists(
+        "agent_org_runtime_runs",
+        "id",
+        "hierarchy-active-run"
+    ));
+}
+
+#[test]
+fn session_hierarchy_delete_rejects_retained_runtime_receipt() {
+    let _sandbox = test_helpers::test_env::sandbox();
+    ensure_test_schemas();
+    let root = "hierarchy-retained-root";
+    let run_id = "hierarchy-retained-run";
+    seed_session(root, None);
+    seed_run(run_id, root);
+    let conn = get_connection().expect("sandbox DB");
+    conn.execute(
+        "UPDATE agent_org_runtime_archive_episodes
+         SET teardown_status='retained_runtime',teardown_attempt_count=3,
+             retained_runtime_count=1,quiesced_at=NULL,
+             last_error='archive_runtime_stop_timeout'
+         WHERE org_run_id=?1",
+        [run_id],
+    )
+    .expect("mark retained runtime");
+    let plan = load_agent_org_session_delete_plan(&conn, root)
+        .expect("load Team")
+        .expect("Team plan");
+    let error = validate_agent_org_delete_ready_with_connection(&conn, &plan)
+        .expect_err("retained runtime must block Team Delete");
+    assert!(error.starts_with("team_runtime_not_quiesced:"));
+    assert!(row_exists("agent_sessions", "session_id", root));
+    assert!(row_exists("agent_org_runtime_runs", "id", run_id));
+}
+
+#[test]
+fn orphaned_agent_org_member_marker_never_falls_back_to_generic_delete() {
+    let _sandbox = test_helpers::test_env::sandbox();
+    ensure_test_schemas();
+    let session_id = "hierarchy-orphaned-member";
+    seed_session(session_id, None);
+    let conn = get_connection().expect("sandbox DB");
+    conn.execute(
+        "UPDATE agent_sessions SET org_member_id='worker' WHERE session_id=?1",
+        [session_id],
+    )
+    .expect("seed orphaned Agent Org marker");
+    let error = load_agent_org_session_delete_plan(&conn, session_id)
+        .expect_err("orphaned Agent Org ownership must fail closed");
+    assert!(error.starts_with("agent_org_ownership_ambiguous:"));
+    assert!(row_exists("agent_sessions", "session_id", session_id));
+}
+
+#[test]
+fn orphaned_agent_org_root_with_marked_member_never_falls_back_to_generic_delete() {
+    let _sandbox = test_helpers::test_env::sandbox();
+    ensure_test_schemas();
+    let root = "hierarchy-orphaned-root";
+    let member = "hierarchy-orphaned-root-member";
+    seed_session(root, None);
+    seed_session(member, Some(root));
+    let conn = get_connection().expect("sandbox DB");
+    conn.execute(
+        "UPDATE agent_sessions SET org_member_id='worker' WHERE session_id=?1",
+        [member],
+    )
+    .expect("seed orphaned Agent Org descendant marker");
+
+    let error = load_agent_org_session_delete_plan(&conn, root)
+        .expect_err("orphaned Agent Org root ownership must fail closed");
+    assert!(error.starts_with("agent_org_ownership_ambiguous:"));
+    assert!(row_exists("agent_sessions", "session_id", root));
+    assert!(row_exists("agent_sessions", "session_id", member));
 }
 
 #[test]
@@ -324,13 +1053,17 @@ fn session_hierarchy_delete_blocks_resource_preflight_failures_before_database_c
     )
     .expect("create active replay");
 
-    let error = delete_agent_org_session_hierarchy(&plan, &HashSet::new())
+    let error = delete_agent_org_session_hierarchy(&plan)
         .expect_err("active replay must block hierarchy deletion");
     assert!(error.contains(worker));
     assert!(error.contains("shell replay calls are active"));
     assert!(row_exists("agent_sessions", "session_id", root));
     assert!(row_exists("agent_sessions", "session_id", worker));
-    assert!(row_exists("agent_org_runs", "id", "hierarchy-replay-run"));
+    assert!(row_exists(
+        "agent_org_runtime_runs",
+        "id",
+        "hierarchy-replay-run"
+    ));
 
     writer
         .finalize(core_types::session_event::ShellReplayStatus::Complete, None)
@@ -352,13 +1085,17 @@ fn session_hierarchy_delete_blocks_resource_preflight_failures_before_database_c
             ],
         )
         .expect("seed invalid worktree metadata");
-    let error = delete_agent_org_session_hierarchy(&plan, &HashSet::new())
+    let error = delete_agent_org_session_hierarchy(&plan)
         .expect_err("worktree validation failure must block hierarchy deletion");
     assert!(error.contains(worker));
     assert!(error.contains("repository path no longer exists"));
     assert!(row_exists("agent_sessions", "session_id", root));
     assert!(row_exists("agent_sessions", "session_id", worker));
-    assert!(row_exists("agent_org_runs", "id", "hierarchy-replay-run"));
+    assert!(row_exists(
+        "agent_org_runtime_runs",
+        "id",
+        "hierarchy-replay-run"
+    ));
 
     std::fs::remove_dir_all(replay_root).expect("remove replay fixture");
 }
@@ -385,12 +1122,12 @@ fn session_hierarchy_delete_rejects_nested_agent_org_without_mutation() {
         assert!(row_exists("agent_sessions", "session_id", session_id));
     }
     assert!(row_exists(
-        "agent_org_runs",
+        "agent_org_runtime_runs",
         "id",
         "hierarchy-nested-outer-run"
     ));
     assert!(row_exists(
-        "agent_org_runs",
+        "agent_org_runtime_runs",
         "id",
         "hierarchy-nested-inner-run"
     ));
@@ -419,7 +1156,7 @@ fn session_hierarchy_delete_rejects_cycle_and_size_limit() {
     seed_run("hierarchy-limit-run", limit_root);
     let mut conn = get_connection().expect("sandbox DB");
     let tx = conn.transaction().expect("seed oversized hierarchy");
-    for index in 0..MAX_AGENT_ORG_DELETE_SESSIONS {
+    for index in 0..crate::coordination::agent_org_ownership::MAX_AGENT_ORG_OWNED_SESSIONS {
         let session_id = format!("hierarchy-limit-worker-{index:04}");
         tx.execute(
             "INSERT INTO agent_sessions (
@@ -436,7 +1173,11 @@ fn session_hierarchy_delete_rejects_cycle_and_size_limit() {
         .expect_err("oversized hierarchy must fail closed");
     assert!(error.contains("exceeds"));
     assert!(row_exists("agent_sessions", "session_id", limit_root));
-    assert!(row_exists("agent_org_runs", "id", "hierarchy-limit-run"));
+    assert!(row_exists(
+        "agent_org_runtime_runs",
+        "id",
+        "hierarchy-limit-run"
+    ));
 }
 
 #[test]
@@ -456,13 +1197,17 @@ fn session_hierarchy_delete_rechecks_concurrent_structure_changes() {
     drop(conn);
     seed_session("hierarchy-recheck-late-worker", Some(root));
 
-    let error = delete_agent_org_session_hierarchy(&plan, &HashSet::new())
-        .expect_err("changed hierarchy must fail closed");
+    let error =
+        delete_agent_org_session_hierarchy(&plan).expect_err("changed hierarchy must fail closed");
     assert!(error.contains("changed before deletion"));
     for session_id in [root, worker, "hierarchy-recheck-late-worker"] {
         assert!(row_exists("agent_sessions", "session_id", session_id));
     }
-    assert!(row_exists("agent_org_runs", "id", "hierarchy-recheck-run"));
+    assert!(row_exists(
+        "agent_org_runtime_runs",
+        "id",
+        "hierarchy-recheck-run"
+    ));
 }
 
 #[test]
@@ -493,8 +1238,8 @@ fn session_hierarchy_delete_rolls_back_on_midway_database_failure() {
     .expect("install failure trigger");
     drop(conn);
 
-    let error = delete_agent_org_session_hierarchy(&plan, &HashSet::new())
-        .expect_err("trigger must abort transaction");
+    let error =
+        delete_agent_org_session_hierarchy(&plan).expect_err("trigger must abort transaction");
     assert!(error.contains("injected hierarchy delete failure"));
     for session_id in [root, worker] {
         for table in [
@@ -502,22 +1247,48 @@ fn session_hierarchy_delete_rolls_back_on_midway_database_failure() {
             "agent_messages",
             "agent_todos",
             "events",
+            "sessions",
+            "session_turns",
+            "session_turn_index_state",
+            "session_turn_intents",
             "session_token_usage",
+            "orgtrack_core_activities",
+            "orgtrack_core_file_changes",
+            "orgtrack_core_edit_artifacts",
+            "orgtrack_core_diff_chunks",
+            "orgtrack_core_final_diffs",
+            "orgtrack_core_session_checkpoints",
+            "orgtrack_core_checkpoint_file_states",
+            "orgtrack_core_session_signals",
+            "orgtrack_core_interaction_import_checkpoints",
+            "orgtrack_core_session_usage",
+            "orgtrack_core_resource_interactions",
+            "orgtrack_core_session_actors",
+            "orgtrack_core_sessions",
         ] {
             assert!(
                 row_exists(table, "session_id", session_id),
                 "{table} lost {session_id} despite rollback"
             );
         }
+        assert!(row_exists(
+            "orgtrack_core_commit_links",
+            "record_id",
+            &format!("commit-link-{session_id}")
+        ));
     }
-    assert!(row_exists("agent_org_runs", "id", "hierarchy-rollback-run"));
     assert!(row_exists(
-        "agent_inbox",
+        "agent_org_runtime_runs",
+        "id",
+        "hierarchy-rollback-run"
+    ));
+    assert!(row_exists(
+        "agent_org_runtime_inbox",
         "org_run_id",
         "hierarchy-rollback-run"
     ));
     assert!(row_exists(
-        "agent_org_tasks",
+        "agent_org_runtime_tasks",
         "org_run_id",
         "hierarchy-rollback-run"
     ));
@@ -563,196 +1334,15 @@ fn session_hierarchy_delete_rolls_back_transaction_time_structure_changes() {
     .expect("install mutation trigger");
     drop(conn);
 
-    let error = delete_agent_org_session_hierarchy(&plan, &HashSet::new())
+    let error = delete_agent_org_session_hierarchy(&plan)
         .expect_err("transaction-time hierarchy mutation must abort");
     assert!(error.contains("residual session hierarchy row"));
     assert!(row_exists("agent_sessions", "session_id", root));
     assert!(row_exists("agent_sessions", "session_id", worker));
     assert!(!row_exists("agent_sessions", "session_id", injected));
     assert!(row_exists(
-        "agent_org_runs",
+        "agent_org_runtime_runs",
         "id",
         "hierarchy-trigger-change-run"
     ));
-}
-
-#[tokio::test]
-async fn session_hierarchy_delete_stops_active_runtime_and_discards_pending_work() {
-    let _sandbox = test_helpers::test_env::sandbox();
-    ensure_test_schemas();
-    let root = "hierarchy-runtime-root";
-    let state = AgentAppState::new();
-    let root_runtime = std::sync::Arc::new(crate::state::AgentSession::new(
-        root.to_string(),
-        crate::definitions::AgentDefinition::default(),
-    ));
-    let turn_started = std::sync::Arc::new(tokio::sync::Notify::new());
-    let turn_started_for_job = std::sync::Arc::clone(&turn_started);
-    let runtime_for_job = std::sync::Arc::clone(&root_runtime);
-    root_runtime
-        .scheduler
-        .enqueue(crate::session::ScheduledMessage {
-            kind: crate::session::ScheduledKind::Turn,
-            message_id: "hierarchy-runtime-processing".to_string(),
-            generation: 0,
-            client_message_id: None,
-            turn_intent_id: "hierarchy-runtime-processing-intent".to_string(),
-            org_run_id: Some("hierarchy-runtime-run".to_string()),
-            content: String::new(),
-            execute: Box::new(move || {
-                let runtime = std::sync::Arc::clone(&runtime_for_job);
-                let started = std::sync::Arc::clone(&turn_started_for_job);
-                Box::pin(async move {
-                    runtime.begin_turn("still running".to_string()).await;
-                    started.notify_one();
-                    while !runtime
-                        .cancel_flag
-                        .load(std::sync::atomic::Ordering::SeqCst)
-                    {
-                        tokio::task::yield_now().await;
-                    }
-                    runtime
-                        .end_turn(
-                            crate::session::DialogTurnState::Cancelled,
-                            crate::session::TurnStats::default(),
-                        )
-                        .await;
-                    Err("cancelled for hierarchy deletion".to_string())
-                })
-            }),
-        })
-        .await
-        .expect("enqueue processing work");
-    tokio::time::timeout(std::time::Duration::from_secs(1), turn_started.notified())
-        .await
-        .expect("turn starts processing");
-    let pending_executed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let pending_executed_for_job = std::sync::Arc::clone(&pending_executed);
-    root_runtime
-        .scheduler
-        .enqueue(crate::session::ScheduledMessage {
-            kind: crate::session::ScheduledKind::Turn,
-            message_id: "hierarchy-runtime-pending".to_string(),
-            generation: 0,
-            client_message_id: None,
-            turn_intent_id: "hierarchy-runtime-pending-intent".to_string(),
-            org_run_id: Some("hierarchy-runtime-run".to_string()),
-            content: String::new(),
-            execute: Box::new(move || {
-                let executed = std::sync::Arc::clone(&pending_executed_for_job);
-                Box::pin(async move {
-                    executed.store(true, std::sync::atomic::Ordering::SeqCst);
-                    Ok(String::new())
-                })
-            }),
-        })
-        .await
-        .expect("enqueue pending work");
-    state
-        .sessions
-        .lock()
-        .await
-        .insert(root.to_string(), std::sync::Arc::clone(&root_runtime));
-    let plan = AgentOrgSessionDeletePlan {
-        run_id: "hierarchy-runtime-run".to_string(),
-        root_session_id: root.to_string(),
-        run_status: crate::coordination::agent_org_runs::AgentOrgRunStatus::Cancelled,
-        sessions: vec![AgentOrgSessionDeleteNode {
-            session_id: root.to_string(),
-            parent_session_id: None,
-            status: SessionStatus::Running,
-            depth: 0,
-        }],
-    };
-
-    let quiesced = stop_agent_org_runtime_sessions_with_timeout(
-        &state,
-        &plan,
-        std::time::Duration::from_secs(1),
-    )
-    .await
-    .expect("active Rust runtime stops");
-    assert_eq!(quiesced, HashSet::from([root.to_string()]));
-    assert_eq!(root_runtime.scheduler.pending_count(), 0);
-    assert!(!root_runtime.scheduler.is_processing());
-    assert!(root_runtime.active_turn.lock().await.is_none());
-    assert!(!pending_executed.load(std::sync::atomic::Ordering::SeqCst));
-    validate_agent_org_delete_ready(&plan, &quiesced)
-        .expect("quiesced active status is safe behind cancelled fence");
-}
-
-#[tokio::test]
-async fn session_hierarchy_delete_times_out_without_removing_runtime() {
-    let _sandbox = test_helpers::test_env::sandbox();
-    ensure_test_schemas();
-    let root = "hierarchy-runtime-timeout-root";
-    let state = AgentAppState::new();
-    let runtime = std::sync::Arc::new(crate::state::AgentSession::new(
-        root.to_string(),
-        crate::definitions::AgentDefinition::default(),
-    ));
-    let release = std::sync::Arc::new(tokio::sync::Notify::new());
-    let release_for_job = std::sync::Arc::clone(&release);
-    runtime
-        .scheduler
-        .enqueue(crate::session::ScheduledMessage {
-            kind: crate::session::ScheduledKind::Maintenance,
-            message_id: "hierarchy-runtime-timeout".to_string(),
-            generation: 0,
-            client_message_id: None,
-            turn_intent_id: "hierarchy-runtime-timeout-intent".to_string(),
-            org_run_id: Some("hierarchy-runtime-timeout-run".to_string()),
-            content: String::new(),
-            execute: Box::new(move || {
-                let release = std::sync::Arc::clone(&release_for_job);
-                Box::pin(async move {
-                    release.notified().await;
-                    Ok(String::new())
-                })
-            }),
-        })
-        .await
-        .expect("enqueue non-cooperative maintenance");
-    tokio::time::timeout(std::time::Duration::from_secs(1), async {
-        while !runtime.scheduler.is_processing() {
-            tokio::task::yield_now().await;
-        }
-    })
-    .await
-    .expect("maintenance starts");
-    state
-        .sessions
-        .lock()
-        .await
-        .insert(root.to_string(), std::sync::Arc::clone(&runtime));
-    let plan = AgentOrgSessionDeletePlan {
-        run_id: "hierarchy-runtime-timeout-run".to_string(),
-        root_session_id: root.to_string(),
-        run_status: crate::coordination::agent_org_runs::AgentOrgRunStatus::Cancelled,
-        sessions: vec![AgentOrgSessionDeleteNode {
-            session_id: root.to_string(),
-            parent_session_id: None,
-            status: SessionStatus::Running,
-            depth: 0,
-        }],
-    };
-
-    let error = stop_agent_org_runtime_sessions_with_timeout(
-        &state,
-        &plan,
-        std::time::Duration::from_millis(50),
-    )
-    .await
-    .expect_err("non-cooperative work must time out");
-    assert!(error.contains("Timed out stopping"));
-    assert!(error.contains(root));
-    assert!(state.get_session(root).await.is_some());
-    release.notify_one();
-    tokio::time::timeout(std::time::Duration::from_secs(1), async {
-        while runtime.scheduler.is_processing() {
-            tokio::task::yield_now().await;
-        }
-    })
-    .await
-    .expect("maintenance finishes after the timeout assertion");
 }

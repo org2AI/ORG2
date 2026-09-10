@@ -11,23 +11,18 @@
  * `PrimarySidebarLayoutWithSections`.
  */
 import { useAtomValue } from "jotai";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GitWorktreeEntry } from "@src/api/http/git/types";
 import AnyIcon from "@src/components/AnyIcon";
 import { Placeholder } from "@src/components/Placeholder";
 import type { SectionHeaderAction } from "@src/components/TreePanelSidebar/types";
-import { useGitStatus } from "@src/contexts/git";
+import { useGitStatus } from "@src/contexts/git/GitStatusContext/useGitStatus";
 import { sessionIdAtom } from "@src/engines/SessionCore";
 import { useFileReviewBatchActions } from "@src/hooks/fileReview";
-import { useRefreshSpin } from "@src/hooks/ui";
+import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   ArrowLeft02Icon,
   CircleDotIcon,
@@ -137,11 +132,7 @@ export function useSourceControlSidebarModule({
   const sourceControlRef = useRef<SourceControlTabHandle>(null);
   const historyRefreshRef = useRef<(() => void) | null>(null);
   const mountedRef = useRef(true);
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  useMountedCleanup(mountedRef);
 
   const [showFilter, setShowFilter] = useState(false);
   const [viewMode, setViewMode] = useState<"list-tree" | "list">("list-tree");

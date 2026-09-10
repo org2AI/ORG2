@@ -474,10 +474,6 @@ impl EventStore {
         self.hydration_mode = HydrationMode::RoundWindow;
     }
 
-    pub fn mark_full_hydration(&mut self) {
-        self.hydration_mode = HydrationMode::Full;
-    }
-
     pub(super) fn mark_live_partial_if_windowed(&mut self) {
         if self.hydration_mode == HydrationMode::RoundWindow {
             self.hydration_mode = HydrationMode::LivePartial;

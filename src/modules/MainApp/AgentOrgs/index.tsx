@@ -22,6 +22,7 @@ import {
   parseAgentOrgsPath,
 } from "@src/config/mainAppPaths";
 import { useKeyVault } from "@src/hooks/keyVault";
+import { loadSharedLocalKeys } from "@src/hooks/keyVault/sharedLocalKeyStore";
 import { createLogger } from "@src/hooks/logger";
 import { useWizardParam } from "@src/hooks/navigation";
 import { useCliAgents } from "@src/modules/MainApp/Integrations/KeyVault/CliClients/hooks/useCliAgents";
@@ -42,7 +43,7 @@ import {
   resolveLegacyAgentOrgsRedirect,
 } from "./model";
 import { builtInAgentsAtom } from "./store/builtInAgentsAtom";
-import type { AgentDefinition, OrgMember } from "./types";
+import type { AgentDefinition, OrgDefinition } from "./types";
 
 const logger = createLogger("AgentOrgs");
 
@@ -118,6 +119,14 @@ const AgentOrgsPage: React.FC = () => {
 
   const { accounts } = useKeyVault({ autoLoad: true });
   const cliAgentControls = useCliAgents({ enabled: activeTableTab === "clis" });
+  const fetchCliAgents = cliAgentControls.fetchAgents;
+
+  const handleCredentialImportRefresh = useCallback(async () => {
+    // Imported keys change both the vault (accounts) and the per-CLI
+    // "has keys" projection. Reload the shared key list directly rather
+    // than `useKeyVault().refresh`, which would also re-fetch every quota.
+    await Promise.all([loadSharedLocalKeys(true), fetchCliAgents()]);
+  }, [fetchCliAgents]);
 
   const { wizard, entityId, openWizard, closeWizard } = useWizardParam();
   const teamWizardMode =
@@ -127,7 +136,7 @@ const AgentOrgsPage: React.FC = () => {
 
   const { orgs, setOrgs, orgsLoading, loadOrgs } = useAgentOrgsDirectory();
 
-  const editingOrg = useMemo<OrgMember | undefined>(
+  const editingOrg = useMemo<OrgDefinition | undefined>(
     () => (orgEditId ? orgs.find((org) => org.id === orgEditId) : undefined),
     [orgEditId, orgs]
   );
@@ -137,15 +146,11 @@ const AgentOrgsPage: React.FC = () => {
   }, [openWizard]);
 
   const handleTeamWizardSave = useCallback(
-    async (org: OrgMember) => {
+    async (org: OrgDefinition) => {
       const isUpdate = orgs.some((existing) => existing.id === org.id);
       const orgJson = JSON.stringify(org);
       try {
-        if (isUpdate) {
-          await rpc.agentOrgs.orgs.update({ orgJson });
-        } else {
-          await rpc.agentOrgs.orgs.add({ orgJson });
-        }
+        await rpc.agentOrgs.orgs.saveTrustedSettings({ orgJson });
         const refreshed = await loadOrgs();
         setOrgs(refreshed);
         closeWizard();
@@ -321,6 +326,7 @@ const AgentOrgsPage: React.FC = () => {
             onAddAgent={handleAgentAdd}
             onDeleteAgent={handleAgentDelete}
             onAgentImportRefresh={handleAgentImportRefresh}
+            onCredentialImportRefresh={handleCredentialImportRefresh}
             onAddKey={handleKeyAdd}
           />
         </div>

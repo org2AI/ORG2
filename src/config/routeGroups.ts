@@ -51,13 +51,6 @@ export const WORK_STATION_ROUTES = {
 
 // ============================================================================
 // APP ENTRY ROUTES: /orgii/app/*
-export const APP_SELECT_REPO_ROUTE = route(
-  "/orgii/app/select-repo",
-  "Select Repo",
-  "folder",
-  "Select a repo to continue"
-);
-
 export const APP_AGENT_ORGS_ROUTE = route(
   "/orgii/app/settings/agent-orgs/agents",
   "Agents",
@@ -97,15 +90,3 @@ export const APP_SETTINGS_ROUTE = route(
   "settings",
   "Unified Settings surface \u2014 Core (app settings + integrations), Agent, and Team"
 );
-
-// ============================================================================
-// IDEA ROUTES
-// ============================================================================
-export const APP_IDEA_ROUTES = {
-  area: route(
-    "/orgii/app/ideas",
-    "Idea Area",
-    "lightbulb",
-    "Share and preview trending ideas for apps"
-  ),
-} as const;

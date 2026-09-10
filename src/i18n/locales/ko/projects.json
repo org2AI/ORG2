@@ -1,6 +1,5 @@
 {
   "projects": {
-    "searchPlaceholder": "Project 검색...",
     "loading": "Project 로딩 중...",
     "emptyState": "Project가 없습니다",
     "emptyStateSubtitle": "첫 번째 Project를 만들어 시작하세요",
@@ -8,14 +7,13 @@
     "noResults": "Project를 찾을 수 없습니다",
     "dashboardTitle": "Projects",
     "groupBy": {
-      "org": "Org별",
       "project": "프로젝트별",
       "status": "상태별",
       "priority": "우선순위별",
-      "person": "사람별",
       "assignedTo": "담당자별",
       "createdBy": "작성자별",
-      "targetDate": "목표 날짜별"
+      "targetDate": "목표 날짜별",
+      "property": "속성별"
     },
     "source": {
       "localOnly": "로컬만",
@@ -28,44 +26,17 @@
       "later": "나중에",
       "noTargetDate": "목표 날짜 없음"
     },
-    "allProjects": "모든 프로젝트",
-    "otherRepos": "다른 저장소",
-    "noOtherRepos": "Project가 있는 다른 저장소가 없습니다",
-    "personalWorkspace": "Personal Workspace",
-    "personalEmpty": "아직 개인 Project가 없습니다",
-    "addProject": "Project 추가",
-    "repoFallback": "Repo",
     "loadProjectsFailed": "Project를 불러오지 못했습니다",
-    "deleteProject": "Project 삭제",
     "createProject": "Project 만들기",
     "createMore": "계속 생성",
     "newProject": "새 Project",
     "columns": {
-      "name": "이름",
       "workItems": "작업 항목"
-    },
-    "viewModes": {
-      "list": "목록",
-      "settings": "설정"
-    },
-    "syncMethod": {
-      "title": "동기화 방식",
-      "storage": "저장소",
-      "git": "Git (.orgii 사용)"
-    },
-    "errors": {
-      "initFailed": "Project 저장소 초기화 실패: {{error}}"
     },
     "editor": {
       "titlePlaceholder": "새 Project 이름",
       "summaryPlaceholder": "간단한 요약 추가...",
       "descriptionPlaceholder": "설명, Project 개요 또는 아이디어를 작성..."
-    },
-    "tooltips": {
-      "dashboard": "대시보드",
-      "filter": "필터",
-      "selectPeople": "사람 선택",
-      "searchPeople": "사람 검색..."
     },
     "priorityGroups": {
       "unprioritized": "우선순위 미지정"
@@ -75,9 +46,6 @@
   "githubIssuesImport": {
     "title": "GitHub Issues 가져오기",
     "menuLabel": "GitHub Issues 가져오기",
-    "createTarget": "GitHub Issues Project",
-    "heading": "GitHub Issues에서 Project 만들기",
-    "description": "GitHub 리포지토리를 선택하고 ORGII Project를 만든 뒤 GitHub Issues를 work items로 동기화합니다.",
     "importButton": "GitHub Issues 가져오기",
     "projectDescription": "GitHub Issues · {{owner}}/{{repo}}",
     "fields": {
@@ -96,67 +64,43 @@
     "linkedRepoHint": "이 Project는 현재 Workspace repo에도 연결됩니다: {{repoName}}",
     "errors": {
       "invalidRepo": "owner/repo 또는 GitHub 리포지토리 URL을 사용하세요."
-    },
-    "importStatus": {
-      "title": "가져오기 상태",
-      "state": {
-        "pending": "대기 중",
-        "running": "실행 중",
-        "completed": "완료",
-        "failed": "실패",
-        "cancelled": "취소됨"
-      }
     }
   },
   "orgs": {
-    "yourOrgs": "내 조직",
-    "sectionTitle": "조직",
+    "yourOrgs": "내 워크스페이스",
     "recentProjects": "최근 프로젝트",
-    "personalOrg": "내 개인 조직",
-    "linearOrg": "Linear 조직",
-    "noLinearOrgs": "아직 연결된 조직이 없습니다",
+    "personalOrg": "내 워크스페이스",
+    "linearOrg": "Linear 워크스페이스",
+    "noLinearOrgs": "아직 연결된 워크스페이스가 없습니다",
     "sources": {
       "local": "Local",
-      "cloud": "Cloud",
-      "linear": "Linear"
+      "cloud": "Cloud"
     },
-    "addOrg": "조직 추가",
-    "importOrgs": "조직 가져오기",
-    "importLinearOrgs": "Linear 조직 가져오기",
-    "createOrg": "조직 만들기",
-    "createOrgHint": "Linear와 별도로 프로젝트와 work items를 그룹화할 네이티브 ORGII 조직을 만듭니다.",
-    "createOrgFailed": "조직을 만들지 못했습니다",
-    "orgName": "조직 이름",
-    "orgNamePlaceholder": "플랫폼 팀",
+    "addOrg": "워크스페이스 추가",
+    "importLinearOrgs": "Linear 워크스페이스 가져오기",
     "gitFolderPath": "Git 폴더 경로(선택 사항)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "폴더 동기화를 위해 이 조직을 기존 Git 작업 트리에 연결합니다.",
+    "gitFolderPathHint": "폴더 동기화를 위해 이 워크스페이스를 기존 Git 작업 트리에 연결합니다.",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Git 폴더와 동기화됨",
     "pendingSync": "동기화 대기 중",
     "management": {
-      "breadcrumb": "조직 설정",
       "overview": "개요",
-      "profile": "프로필",
       "syncMethods": "동기화 방식",
-      "orgNameDescription": "이 프로젝트 조직의 표시 이름입니다",
-      "orgKey": "조직 키",
-      "orgKeyDescription": "조직 범위 프로젝트 ID에 사용되는 안정적인 짧은 키입니다",
-      "projectCountDescription": "현재 이 조직에 할당된 네이티브 프로젝트입니다",
       "gitFolderSync": "Git 폴더 동기화",
-      "gitFolderSyncDescription": "Git worktree를 통해 이 조직의 프로젝트와 work items를 미러링합니다",
+      "gitFolderSyncDescription": "Git worktree를 통해 이 워크스페이스의 프로젝트와 work items를 미러링합니다",
       "notConfigured": "구성되지 않음",
       "syncNowDescription": "원격 파일 변경 사항을 가져오고 로컬 데이터베이스 변경 사항을 내보냅니다",
       "syncSummary": "프로젝트 {{projects}}개, work items {{workItems}}개, 충돌 {{conflicts}}개",
-      "syncHowItWorks": "Git 폴더 동기화는 이 조직을 기존 Git 저장소에 연결합니다. ORGII는 조직에서 내보낸 프로젝트와 work items를 해당 저장소 안의 `.orgii/projects/...` 아래에 저장하고, 그 위치에서 파일 변경 사항을 가져오며, 로컬 데이터베이스 변경 사항을 파일로 다시 내보냅니다. 충돌이 있으면 덮어쓰기 전에 검토할 수 있도록 일시 중지합니다",
-      "noProjectsForCatalog": "이 조직에는 아직 프로젝트가 없습니다.",
-      "noProjectsForCatalogHint": "공유 라벨을 관리하기 전에 이 조직에서 프로젝트를 만드세요",
+      "syncHowItWorks": "Git 폴더 동기화는 이 워크스페이스를 기존 Git 저장소에 연결합니다. ORGII는 워크스페이스에서 내보낸 프로젝트와 work items를 해당 저장소 안의 `.orgii/projects/...` 아래에 저장하고, 그 위치에서 파일 변경 사항을 가져오며, 로컬 데이터베이스 변경 사항을 파일로 다시 내보냅니다. 충돌이 있으면 덮어쓰기 전에 검토할 수 있도록 일시 중지합니다",
+      "noProjectsForCatalog": "이 워크스페이스에는 아직 프로젝트가 없습니다.",
+      "noProjectsForCatalogHint": "공유 라벨을 관리하기 전에 이 워크스페이스에서 프로젝트를 만드세요",
       "dangerZone": "위험 구역",
-      "deleteOrg": "이 조직 삭제",
+      "deleteOrg": "이 워크스페이스 삭제",
       "deleteOrgDescription": "{{org}} 및 모든 로컬 프로젝트와 작업 항목을 영구적으로 삭제합니다. 이 작업은 되돌릴 수 없습니다",
-      "personalOrgDeleteDisabled": "기본 개인 조직은 영구적이므로 삭제할 수 없습니다",
+      "personalOrgDeleteDisabled": "기본 개인 워크스페이스는 영구적이므로 삭제할 수 없습니다",
       "deleteTypeToConfirm": "확인하려면 {{org}} 입력",
-      "deleteOrgAction": "조직 삭제",
+      "deleteOrgAction": "워크스페이스 삭제",
       "deletedToast": "{{org}} 삭제됨"
     }
   },
@@ -173,28 +117,20 @@
     "targetDate": "목표일",
     "repos": "저장소",
     "completion": "완료율",
-    "statusBreakdown": "상태 분포",
     "addLead": "리더 추가",
     "noLead": "리더 없음",
     "addMembers": "멤버 추가",
     "addTeams": "팀 추가",
     "addLabels": "라벨 추가",
     "addRepos": "저장소 연결",
-    "searchRepos": "저장소 검색...",
     "noReposHint": "사용 가능한 저장소가 없습니다. 먼저 워크스페이스에 저장소를 추가하세요.",
     "addDate": "날짜 추가",
     "clearDate": "날짜 지우기",
     "noStatus": "상태 없음",
     "noUpdates": "업데이트 없음",
     "noPriority": "우선순위 없음",
-    "searchMembers": "멤버 검색...",
     "searchAssignee": "담당자 검색...",
-    "searchTeams": "팀 검색...",
     "noTeamsHint": "아직 팀이 없습니다. Project에 멤버를 추가하고 팀으로 구성하세요",
-    "searchLabels": "라벨 검색...",
-    "searchStatus": "상태 검색...",
-    "searchHealth": "건강 상태 검색...",
-    "searchPriority": "우선순위 검색...",
     "memberCount_one": "멤버 {{count}}명",
     "memberCount_other": "멤버 {{count}}명",
     "statusOptions": {
@@ -215,8 +151,7 @@
       "onTrack": "정상",
       "atRisk": "위험",
       "offTrack": "지연"
-    },
-    "noProjectSelected": "선택된 Project 없음"
+    }
   },
   "workItems": {
     "label": "Work items",
@@ -232,22 +167,6 @@
     "newWorkItem": "새 Work Item",
     "newWorkItemName": "새 Work Item",
     "createWorkItem": "Work Item 생성",
-    "createModes": {
-      "generateWithAi": "AI로 만들기",
-      "generateWithAgent": "Agent로 생성",
-      "manualCreation": "수동 생성",
-      "sessionCreatorPrompt": {
-        "promptNameQuestion": "먼저 사용자에게 특정 Work Item 이름을 지정할지 물어보세요.",
-        "promptInstruction": "이 프로젝트의 Work Items를 생성하세요.",
-        "promptProject": "프로젝트: {{project}}",
-        "promptDraftTitle": "요청된 Work Item 이름: {{title}}",
-        "promptDraftDetails": "초안 세부 정보:\n{{details}}"
-      }
-    },
-    "linkExisting": {
-      "label": "기존 Work Item 연결",
-      "placeholder": "연결할 Work Item 선택"
-    },
     "titlePlaceholder": "Work Item 제목",
     "descriptionPlaceholder": "Work Item 설명...",
     "deleteWorkItem": "작업 항목 삭제",
@@ -256,8 +175,7 @@
     "showProperties": "속성 표시",
     "addStatusItem": "{{status}} 항목 추가",
     "deleteBin": {
-      "title": "삭제함",
-      "subtitle": "7일 동안 복원 가능"
+      "title": "삭제함"
     },
     "tabs": {
       "overview": "개요",
@@ -265,7 +183,8 @@
       "kanban": "칸반",
       "gantt": "간트",
       "calendar": "캘린더",
-      "settings": "설정"
+      "settings": "설정",
+      "table": "테이블"
     },
     "statusFilters": {
       "all": "전체",
@@ -297,21 +216,9 @@
       "medium": "보통",
       "low": "낮음"
     },
-    "toolLabels": {
-      "edit": "편집",
-      "new": "신규",
-      "patch": "패치"
-    },
     "overview": {
       "projectNamePlaceholder": "Project 이름",
-      "descriptionPlaceholder": "Project 설명 작성...",
-      "stats": "통계",
-      "totalItems": "전체",
-      "completionRate": "완료율",
-      "recentUpdates": "최근 업데이트",
-      "name": "이름",
-      "assignee": "담당자",
-      "lastUpdated": "업데이트"
+      "descriptionPlaceholder": "Project 설명 작성..."
     },
     "properties": {
       "title": "작업 항목 속성",
@@ -320,8 +227,6 @@
       "noAssignee": "담당자 없음",
       "noMembersHint": "멤버가 없습니다. Settings > Members에서 Git으로부터 동기화하세요",
       "noProject": "연결된 Project 없음",
-      "selectProject": "Project 선택",
-      "noProjectsHint": "사용 가능한 Project가 없습니다.",
       "noMilestone": "마일스톤 없음",
       "noDueDate": "마감일 없음",
       "noDueDay": "마감 날짜 없음",
@@ -342,20 +247,31 @@
       "inHours_other": "{{count}}시간 후",
       "inLessThanHour": "1시간 이내",
       "searchProjects": "Project 검색...",
-      "searchMilestones": "마일스톤 검색...",
       "delegations": "위임",
       "delegationsCompleted": "완료",
       "daysAgo": "{{count}}일 전",
       "hoursAgo": "{{count}}시간 전",
       "inDays": "{{count}}일 후",
       "inHours": "{{count}}시간 후",
-      "membersGroup": "멤버"
-    },
-    "history": {
-      "noHistory": "아직 기록이 없습니다"
+      "membersGroup": "멤버",
+      "filter": "속성 필터",
+      "filterValue": "속성 필터 값",
+      "noValue": "값 없음",
+      "archiveNamed": "{{name}} 보관",
+      "add": "속성 추가",
+      "archive": "속성 보관",
+      "datePlaceholder": "YYYY-MM-DD",
+      "empty": "아직 사용자 지정 속성이 없습니다.",
+      "loading": "속성 불러오는 중…",
+      "namePlaceholder": "속성 이름",
+      "no": "아니요",
+      "optionsPlaceholder": "옵션, 쉼표로 구분",
+      "optionsRequired": "선택 속성에는 쉼표로 구분된 옵션이 필요합니다.",
+      "type": "속성 유형",
+      "updateFailed": "속성 업데이트 실패",
+      "yes": "예"
     },
     "activity": {
-      "title": "활동",
       "discussionTitle": "토론",
       "activityHistory": "활동 기록",
       "activityHistoryCount": "이벤트 {{count}}개",
@@ -363,17 +279,12 @@
       "subscribe": "구독",
       "unsubscribe": "구독 취소",
       "commentPlaceholder": "댓글 남기기...",
-      "you": "나",
       "createdWorkItem": "작업 항목을 생성했습니다",
       "deletedWorkItem": "작업 항목을 삭제했습니다",
       "restoredWorkItem": "작업 항목을 복원했습니다",
       "movedFromTo": "{{from}}에서 {{to}}로 이동했습니다",
       "commented": "댓글을 남겼습니다",
       "system": "시스템",
-      "wasAssigned": "배정되었습니다",
-      "wasUnassigned": "배정 해제되었습니다",
-      "addedLabel": "라벨을 추가했습니다",
-      "removedLabel": "라벨을 제거했습니다",
       "madeChange": "변경했습니다",
       "changedField": "{{field}}을(를) {{from}}에서 {{to}}로 변경했습니다",
       "changedFieldShort": "{{field}}을(를) 업데이트했습니다",
@@ -391,10 +302,6 @@
       "todoMarkedPending": "“{{todo}}”을(를) 대기 중으로 표시했습니다",
       "todoRenamed": "“{{from}}”을(를) “{{to}}”(으)로 이름을 변경했습니다",
       "todoUpdated": "“{{todo}}”을(를) 업데이트했습니다",
-      "justNow": "방금",
-      "daysAgo": "{{count}}일 전",
-      "hoursAgo": "{{count}}시간 전",
-      "minutesAgo": "{{count}}분 전",
       "agent": "Agent",
       "fields": {
         "title": "제목",
@@ -415,7 +322,27 @@
         "schedule": "일정",
         "orchestratorConfig": "Orchestrator 설정",
         "handoff": "인계"
-      }
+      },
+      "mentionPeople": "사람 멘션",
+      "mentionAll": "@all — 이 항목의 모든 사람",
+      "mentionAgentOption": "{{name}} (Agent)",
+      "mentionAgentOrgOption": "{{name}} (Agent 팀)",
+      "appendedSession": "세션을 추가했습니다",
+      "edited": "(수정됨)",
+      "commentDeleted": "이 댓글은 삭제되었습니다.",
+      "deleteComment": "댓글 삭제",
+      "deleteCommentConfirm": "이 댓글을 삭제할까요? 답글은 유지되고 댓글 본문만 제거됩니다.",
+      "messageCount_one": "메시지 {{count}}개",
+      "messageCount_other": "메시지 {{count}}개",
+      "cancelReply": "답글 취소",
+      "conclusion": "결론",
+      "reopen": "다시 열기",
+      "reply": "답글",
+      "replyingInThread": "스레드에 답글 작성 중",
+      "resolve": "해결",
+      "resolved": "해결됨",
+      "submitComment": "댓글 작성",
+      "openedWorkItem": "이 작업 항목을 열었습니다"
     },
     "contextMenu": {
       "status": "상태",
@@ -428,8 +355,6 @@
       "milestone": "마일스톤",
       "setDueDate": "마감일 설정",
       "rename": "이름 변경...",
-      "addLink": "링크 추가...",
-      "favorite": "즐겨찾기",
       "moreProperties": "More properties"
     },
     "propertyFields": {
@@ -440,63 +365,10 @@
     },
     "addWorkItem": "작업 항목 추가",
     "agentWorkflow": {
-      "title": "Agent 워크플로",
-      "running": "실행 중...",
-      "completed": "완료",
-      "failed": "실패",
-      "interrupted": "중단됨",
-      "retry": "재시도",
-      "resume": "재개",
-      "openSession": "세션 열기",
-      "viewLiveChat": "실시간 Chat 보기",
-      "viewConversation": "대화 보기",
-      "noWorkflowRun": "아직 Agent 워크플로가 실행되지 않았습니다",
-      "confirmStart": "이 작업 항목에서 SDE Agent를 시작하시겠습니까?",
-      "sdePhase": "SDE 개발",
-      "totalCost": "총 비용",
-      "totalTokens": "총 Token",
-      "proofOfWork": "작업 결과",
-      "branch": "브랜치",
-      "pullRequest": "Pull Request",
-      "filesChanged": "변경된 파일",
-      "linesAdded": "추가된 줄",
-      "linesRemoved": "삭제된 줄",
-      "approved": "승인됨",
-      "changesRequested": "수정 요청",
-      "inconclusive": "미결정",
-      "failedError": "세션 실패",
-      "retryWithContext": "이전 실패 컨텍스트로 재시도",
-      "interruptedMessage": "앱 종료 시 워크플로가 중단되었습니다",
-      "selectAccount": "Code Account 선택",
-      "noAccountsReady": "사용 가능한 로컬 Account가 없습니다",
-      "sessionOutput": "세션 출력",
-      "noOutputYet": "아직 출력 없음",
-      "cycles": "{{count}}개 사이클",
-      "whatNext": "다음에 무엇을 하시겠습니까?",
-      "acceptAsIs": "현재 상태로 수락",
-      "fixAndRerun": "수정 후 재실행",
-      "roleSde": "SDE",
-      "roleReview": "Review",
-      "roleFollowUp": "Follow-up",
-      "roleAssistant": "Assistant",
-      "roleUser": "User",
       "statusRunning": "실행 중",
       "statusCompleted": "완료",
       "statusFailed": "실패",
-      "statusCancelled": "취소됨",
-      "sessionFiles": "파일",
-      "noFilesModified": "수정된 파일 없음",
-      "subAgents": "Sub-Agents",
-      "subAgentSpawn": "{{name}} #{{instance}} 생성 중",
-      "subAgentComplete": "{{name}} #{{instance}} 완료",
-      "subAgentFailed": "{{name}} #{{instance}} 실패",
-      "tokens": "Token",
-      "subAgentDefault": "Sub-Agent",
-      "toolResult": "{{tool}} 결과",
-      "collabLockRunning": "{{name}} is running",
-      "collabLockHeld": "{{name}}'s agent is already working on this item",
-      "collabLockConflict": "Another member just started an agent on this item",
-      "collabLockUnresolved": "Could not verify this work item's collaboration status. Check your connection and try again."
+      "statusCancelled": "취소됨"
     },
     "changedFiles": {
       "title": "변경된 파일",
@@ -509,15 +381,13 @@
       "notAuthenticated": "인증되지 않았습니다. Marketplace에 로그인하세요.",
       "noRepoPath": "저장소 경로를 사용할 수 없습니다",
       "noOriginRemote": "저장소에서 origin 원격을 찾을 수 없습니다",
-      "cannotParseRepoName": "저장소 이름을 구문 분석할 수 없습니다: {{url}}",
-      "defaultPrTitle": "[{{shortId}}] Work item 변경사항"
+      "cannotParseRepoName": "저장소 이름을 구문 분석할 수 없습니다: {{url}}"
     },
     "sessions": {
-      "linkedSessions": "연결된 Sessions",
-      "newSession": "새 세션",
-      "starting": "시작 중...",
       "emptyOverview": "아직 Sessions가 없습니다",
-      "emptyOverviewHint": "Agent Session을 시작하면 여기에서 실행을 추적할 수 있습니다."
+      "originTitle": "생성 세션",
+      "originStatus": "이 항목을 생성함",
+      "runsCount": "실행 {{count}}회"
     },
     "outputTab": {
       "prSection": "Pull Request",
@@ -531,17 +401,120 @@
       "prMerged": "Merged",
       "prClosed": "Closed",
       "prDraft": "Draft",
-      "openPr": "PR 열기",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "파일 변경 없음",
       "fileDiffCleanHint": "파일 변경이 감지되지 않았습니다.",
       "costSummary": "비용 요약",
       "totalCost": "총계",
       "tokens": "Token",
-      "cycles": "사이클"
+      "prBlocked": "완료가 차단되었습니다",
+      "prReady": "완료 준비됨"
     },
     "viewWorkItems": "Work Item 보기",
-    "fromRoutine": "From routine: {{name}}"
+    "fromRoutine": "From routine: {{name}}",
+    "batchField": {
+      "hint": "선택한 {{count}}개 항목에 적용됩니다."
+    },
+    "batchStatus": {
+      "title": "상태 설정"
+    },
+    "batchPriority": {
+      "title": "우선순위 설정"
+    },
+    "batchAssignee": {
+      "title": "담당자 설정"
+    },
+    "discussion": {
+      "previewWillWake": "Agent를 깨워 답변하게 합니다",
+      "previewNoteOnly": "메모만 — Agent는 트리거되지 않습니다",
+      "previewNoSession": "연결된 Agent 세션 없음 — 아무것도 트리거되지 않습니다",
+      "previewMentionResume": "멘션된 Agent를 깨웁니다",
+      "previewMentionStart": "멘션된 Agent를 시작합니다",
+      "previewMentionUnroutable": "멘션된 Agent가 이 항목에 구성되어 있지 않음 — 아무것도 트리거되지 않습니다",
+      "previewThread": "이 스레드에서 Agent를 깨웁니다",
+      "previewAssignee": "담당 Agent를 깨웁니다",
+      "previewAssigneeStart": "담당 Agent를 시작합니다",
+      "previewCoalesce": "대기 중인 깨우기에 합쳐집니다",
+      "previewMemberThread": "멤버 스레드 — Agent를 깨우지 않습니다"
+    },
+    "subItems": {
+      "title": "하위 항목",
+      "parent": "상위",
+      "progress": "{{total}}개 중 {{completed}}개 완료",
+      "add": "하위 항목 추가",
+      "addFirst": "첫 번째 하위 항목 추가",
+      "titlePlaceholder": "하위 항목 제목 입력",
+      "stagePicker": "하위 항목 단계",
+      "noStage": "단계 없음",
+      "stage": "{{stage}}단계",
+      "openStatus": "열림",
+      "completedStatus": "완료됨",
+      "cancelledStatus": "취소됨",
+      "createError": "하위 항목을 만들 수 없습니다. 다시 시도해 주세요."
+    },
+    "savedViews": {
+      "placeholder": "보기",
+      "save": "현재 보기 저장",
+      "saveTitle": "보기 저장",
+      "namePlaceholder": "보기 이름",
+      "saveHint": "현재 필터를 저장합니다. 레이아웃은 처음 열 때의 기본값이 됩니다.",
+      "delete": "보기 삭제"
+    },
+    "table": {
+      "columnsPicker": "열",
+      "groupByProperty": "속성별 그룹화",
+      "columns": {
+        "shortId": "ID",
+        "title": "제목",
+        "status": "상태",
+        "priority": "우선순위",
+        "assignee": "담당자",
+        "targetDate": "기한",
+        "labels": "라벨"
+      }
+    },
+    "batchProperty": {
+      "title": "속성 설정",
+      "hint": "선택한 {{count}}개 항목에 하나의 속성 값을 적용합니다. 값을 비워 두면 지워집니다.",
+      "propertyPlaceholder": "속성",
+      "valuePlaceholder": "값",
+      "applied": "{{count}}개 항목을 업데이트했습니다"
+    },
+    "revisionConflict": {
+      "title": "편집 충돌 해결",
+      "description": "{{field}}이(가) 리비전 {{expected}} 이후에 변경되었습니다. 내 편집을 리비전 {{actual}}과(와) 비교한 뒤 유지할 버전을 선택하세요.",
+      "mine": "내 버전",
+      "latest": "최신 버전",
+      "useLatest": "최신 버전 사용",
+      "keepMine": "내 버전 유지",
+      "titleField": "제목",
+      "descriptionField": "설명",
+      "commentField": "댓글",
+      "reloadNotice": "이 작업 항목이 다른 곳에서 변경되었습니다. 최신 버전을 다시 불러왔습니다.",
+      "retryFailed": "최신 버전이 다시 변경되었습니다. 재시도하기 전에 두 버전을 검토하세요."
+    },
+    "quickActions": {
+      "title": "빠른 작업",
+      "empty": "아직 빠른 작업이 없습니다. Agent용으로 재사용할 프롬프트를 저장하세요.",
+      "emptyManage": "아직 저장된 항목이 없습니다.",
+      "manageTitle": "빠른 작업 관리",
+      "namePlaceholder": "작업 이름 (예: CI 수정)",
+      "targetPlaceholder": "대상 Agent",
+      "promptPlaceholder": "Agent가 무엇을 해야 하나요?",
+      "archive": "작업 보관",
+      "scopeChanged": "빠른 작업이 더 이상 이 작업 항목 범위에 없습니다",
+      "started": "빠른 작업 “{{name}}”을(를) 시작했습니다"
+    },
+    "detailNavigation": "작업 항목 탐색",
+    "linkedSessions": {
+      "title": "세션"
+    },
+    "detail": {
+      "conversation": "대화",
+      "linked": "연결됨"
+    },
+    "detailSummary": "작업 항목 요약",
+    "navigationTrail": "작업 항목 탐색"
   },
   "settings": {
     "sidebarGeneral": "일반",
@@ -560,41 +533,24 @@
     "githubUsernameDesc": "연결 시 멤버 목록에서 사용자 식별에 사용됩니다",
     "profileNotFound": "팀 멤버와 사용자 정보를 일치시킬 수 없습니다",
     "profileNotFoundHint": "git 이메일 ({{email}})이 멤버 목록에 없습니다. 멤버를 동기화하여 업데이트하세요",
-    "teamMembers": "팀 멤버",
-    "memberCount": "{{active}} / {{total}} 활성",
-    "activeBadge": "활성",
-    "inactiveBadge": "비활성",
-    "activateMember": "멤버 활성화",
-    "deactivateMember": "멤버 비활성화",
-    "syncFromGit": "Git에서 동기화",
-    "membersDescription": "팀 멤버를 관리합니다. 비활성 멤버는 담당자 드롭다운에 표시되지 않습니다",
     "activeMembers": "현재 멤버",
     "activeMembersDescription": "담당자 드롭다운 및 보고서에 표시되는 멤버입니다",
     "inactiveMembers": "비활성 멤버",
     "inactiveMembersDescription": "드롭다운에서 숨겨집니다. 다시 활성화하면 포함됩니다",
     "noActiveMembers": "활성 멤버가 없습니다",
-    "repoTab": "Repo",
-    "projectTab": "Project",
     "workItemIdTitle": "작업 항목 ID",
     "workItemIdPrefix": "ID 접두사",
     "workItemIdPrefixDescription": "1~3자리 영문 또는 숫자. 새 ID에 이 접두사가 사용됩니다",
     "customPrefix": "사용자 정의 접두사",
-    "customPrefixDescription": "끄면 Project 이름의 처음 3자에서 자동 생성되며 이름 변경 시 업데이트됩니다",
     "customPrefixCurrentValue": "현재 값: {{value}}",
-    "manageInRepoSettings": "Repo 설정에서 관리",
-    "projectMemberList": "Project 멤버",
     "projectMemberListDescription": "이 Project에 속하는 Repo 멤버를 선택합니다",
     "labelsDescription": "작업 항목을 분류하기 위한 라벨을 관리합니다",
-    "addLabel": "라벨 추가",
     "noLabels": "+ 를 클릭하여 라벨 추가",
-    "deleteLabel": "라벨 삭제",
-    "changeColor": "색상 변경",
     "labelNamePlaceholder": "라벨 이름...",
     "memberRecentlyActive": "활성",
     "claimIdentityCombineStats": "활동 데이터 통합",
     "claimIdentityShowAsAuthor": "작업 항목 기록에서 작성자로 표시",
     "dangerZone": "위험 구역",
-    "dangerZoneDescription": "이 Project에 대한 되돌릴 수 없는 작업입니다",
     "deleteProject": "이 Project 삭제",
     "deleteProjectWarning": ".orgii에서 Project 폴더와 모든 작업 항목이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다",
     "deleteThisProject": "이 Project 삭제...",
@@ -614,7 +570,6 @@
     "claimIdentityLinkEmail": "Link this email to your profile",
     "claimIdentityWarning": "Only claim identities that belong to you",
     "confirmClaim": "Confirm Claim",
-    "alreadyClaimed": "Already linked to another member",
     "sidebarSync": "동기화",
     "sync": {
       "title": "외부 동기화",
@@ -624,47 +579,17 @@
         "notAttached": "연결되지 않음",
         "attach": "연결",
         "detach": "해제",
-        "changeWarning": "새 어댑터를 연결하기 전에 현재 어댑터를 해제하세요."
+        "changeWarning": "새 어댑터를 연결하기 전에 현재 어댑터를 해제하세요.",
+        "detachProjectMenuLabel": "GitHub 연결 해제",
+        "detachProjectTitle": "{{project}}에서 GitHub 연결을 해제할까요?",
+        "detachProjectDescription": "GitHub Issues 동기화가 중지됩니다. 로컬 프로젝트와 가져온 작업 항목은 ORGII에 남습니다.",
+        "detachProjectAction": "{{project}}에서 GitHub 연결 해제",
+        "detachProjectSuccess": "{{project}}에서 GitHub 연결을 해제했습니다"
       },
       "accountPicker": {
         "title": "계정",
         "empty": "이 어댑터에 대한 전역 동기화 계정이 없습니다",
         "previewNote": "이 Project가 동기화에 사용할 전역 계정을 선택하세요."
-      },
-      "token": {
-        "title": "API Token",
-        "placeholder": "개인 액세스 Token 을 붙여넣으세요",
-        "save": "Token 저장",
-        "saved": "Token 이 저장되었습니다",
-        "tabs": {
-          "oauth": "OAuth",
-          "personalToken": "개인 Token"
-        },
-        "bothMethodsNote": "두 방식 모두 사용할 수 있으며, 가장 최근 로그인이 우선합니다.",
-        "oauth": {
-          "connectButton": "{{adapter}} 연결",
-          "instructions": "방금 열린 브라우저 탭에 아래 코드를 입력한 뒤 액세스를 승인하세요.",
-          "userCodeLabel": "코드",
-          "openLinkButton": "인증 페이지 열기",
-          "waitingForConfirmation": "브라우저에서 승인하기를 기다리는 중…",
-          "cancel": "취소",
-          "connected": "OAuth 로 연결됨",
-          "reconnect": "다시 연결",
-          "codeCopied": "코드가 클립보드에 복사되었습니다",
-          "errors": {
-            "startFailed": "OAuth 를 시작할 수 없습니다: {{error}}",
-            "accessDenied": "OAuth 로그인이 거부되었습니다.",
-            "expired": "승인 전에 코드가 만료되었습니다. 다시 시도하세요.",
-            "pollFailed": "로그인 실패: {{detail}}",
-            "unknown": "예기치 않은 로그인 오류: {{error}}"
-          },
-          "browserOpened": "브라우저에서 {{adapter}} 을(를) 여는 중…",
-          "redirect": {
-            "openButton": "{{adapter}} 인증 페이지 열기",
-            "instructions": "{{adapter}} 연결을 완료하려면 브라우저에서 요청을 승인하세요.",
-            "expiresAt": "링크는 {{time}} 에 만료됩니다"
-          }
-        }
       },
       "status": {
         "title": "상태",
@@ -741,7 +666,6 @@
       },
       "problems": {
         "title": "실패한 항목",
-        "empty": "실패한 항목이 없습니다.",
         "op": {
           "create": "create",
           "update": "update",
@@ -771,10 +695,6 @@
       },
       "conflicts": {
         "title": "동기화 충돌",
-        "loading": "충돌 불러오는 중…",
-        "empty": "충돌 없음.",
-        "openCount_one": "미해결 충돌 {{count}}건",
-        "openCount_other": "미해결 충돌 {{count}}건",
         "detectedAt": "{{time}}에 감지됨",
         "resolvedAt": "{{time}}에 해결됨",
         "fields_one": "{{count}}개 필드",
@@ -809,13 +729,21 @@
         },
         "errors": {
           "listFailed": "충돌을 불러오지 못했습니다: {{error}}",
-          "countFailed": "충돌 개수를 불러오지 못했습니다: {{error}}",
           "useLocalFailed": "로컬 값을 유지하지 못했습니다: {{error}}",
           "useRemoteFailed": "원격 값을 채택하지 못했습니다: {{error}}",
           "dismissFailed": "충돌을 무시하지 못했습니다: {{error}}"
         }
       }
-    }
+    },
+    "sidebarStatuses": "상태",
+    "statusesBuiltin": "기본 제공 상태",
+    "statusesBuiltinDescription": "표준 워크플로 버킷입니다. 항상 사용할 수 있습니다.",
+    "statusesCustom": "사용자 지정 상태",
+    "statusesCustomDescription": "기본 제공 버킷 위에 붙인 이름 별칭입니다. 필터, 개수, 보드는 이를 해당 버킷으로 취급합니다.",
+    "statusNamePlaceholder": "상태 이름",
+    "noCustomStatuses": "아직 사용자 지정 상태가 없습니다.",
+    "statusArchive": "상태 보관",
+    "statusRestore": "상태 복원"
   },
   "statusBar": {
     "workItemCount": "{{count}}개",
@@ -856,29 +784,13 @@
     "views": "Views",
     "more": "More"
   },
-  "teams": {
-    "title": "내 팀",
-    "localTeams": "로컬 팀",
-    "linearTeams": "Linear 팀",
-    "personalOrg": "Personal Org",
-    "agentOrgs": "Agent 팀",
-    "emptyLinearTeams": "Linear 팀을 찾을 수 없습니다",
-    "empty": "팀을 찾을 수 없습니다"
-  },
   "linearProjects": {
-    "title": "Linear Projects",
-    "open": "Open Linear Projects",
-    "subtitle": "Browse and edit Linear Projects in real time without importing them into ORGII.",
-    "refresh": "Refresh",
     "createProject": "Create Project",
-    "archive": "Archive",
-    "searchPlaceholder": "Search Linear Projects...",
     "loadingProjects": "Loading Linear Projects...",
     "loadingIssues": "Loading Linear Issues...",
     "emptyProjects": "No Linear Projects found",
     "emptyIssues": "No Linear Issues in this Project",
     "unknownState": "Unknown state",
-    "updated": "Updated {{date}}",
     "emptyConnections": {
       "title": "No Linear connections",
       "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
@@ -887,14 +799,9 @@
       "title": "Select a Linear Project",
       "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
     },
-    "issues": {
-      "title": "Linear Issues",
-      "subtitle": "Issues are read and mutated directly through the Linear API."
-    },
     "forms": {
       "createProjectTitle": "Create Linear Project",
       "projectName": "Project name",
-      "issueTitle": "Issue title",
       "description": "Description"
     },
     "statusPanel": {
@@ -945,6 +852,6 @@
     "noResultTitle": "No Git sync result",
     "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This org has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
   }
 }

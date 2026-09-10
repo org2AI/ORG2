@@ -18,7 +18,7 @@ import {
 import { getToolDisplayBehavior } from "@src/engines/SessionCore/rendering/registry/initToolRegistry";
 import { useHousekeeperConfig } from "@src/hooks/housekeeper";
 import { BotIcon, HugeiconsIcon, KeyboardIcon } from "@src/icons";
-import { chatVisibleAtom } from "@src/store/ui/chatPanelAtom";
+import { chatVisibleAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import {
   type SimulatorPlaybackSpeed,
   simulatorInlineChatInputCollapsedAtom,

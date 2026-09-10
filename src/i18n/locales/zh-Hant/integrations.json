@@ -20,12 +20,15 @@
     "confirmRemoveMessage": "這將移除本地賬戶配置，此操作無法撤銷。",
     "toasts": {
       "refreshed": "{{name}} 刷新成功",
+      "refreshPartial": "模型已重新整理：新增 {{added}} 個，移除 {{removed}} 個，但 {{total}} 個帳戶中有 {{failed}} 個失敗",
+      "refreshedNoChange": "模型已重新整理：無變更",
+      "refreshedDelta": "模型已重新整理：新增 {{added}} 個，移除 {{removed}} 個",
       "refreshError": "{{name}} 重新整理失敗：{{error}}",
       "localRemoved": "{{name}} 已移除",
       "deleteError": "{{name}} 刪除失敗"
     },
-    "configure": "配置 {{provider}}",
     "providerGroups": {
+      "mostUsed": "最常用",
       "cloud": "Cloud",
       "local": "Local"
     },
@@ -38,7 +41,6 @@
       "verifying": "驗證中",
       "verifyingKeys": "正在驗證密鑰...",
       "verificationFailedMismatch": "驗證失敗 - 密鑰不匹配",
-      "failed": "失敗",
       "suspendedApiKey": "已暫停 - API Key 驗證失敗",
       "suspended": "已暫停",
       "validationFailed": "驗證失敗：{{error}}",
@@ -47,18 +49,14 @@
       "validating": "驗證中"
     },
     "info": {
-      "title": "賬戶信息",
-      "enable": "啓用",
-      "authMethod": "認證方式",
       "oauthLogin": "OAuth",
       "apiKey": "API Key",
       "configured": "✓ 已配置",
       "cursorSessionAccess": "Cursor 工作階段",
       "cursorSessionReady": "已連接，可刷新 Cursor 模型和配額",
       "cursorApiKeyAccess": "Cursor API Key",
-      "cursorApiKeyReady": "已提供，可用於 Cursor CLI/API 呼叫",
-      "cursorApiKeyNotProvided": "未提供 — Cursor CLI/API 呼叫不可用",
-      "sessionToken": "Session Token",
+      "cursorApiKeyReady": "已提供，可用於 Cursor API 呼叫",
+      "cursorApiKeyNotProvided": "未提供 — Cursor API 呼叫不可用",
       "baseUrl": "Base URL",
       "connectedAt": "連接時間",
       "availableModels": "可用模型",
@@ -67,24 +65,15 @@
       "supportOrgiiAgents": "支援 ORGII Agents",
       "supportCliAgents": "支援 CLI Agents",
       "noCliAgentSupport": "此服務商不支持 CLI Agent",
-      "accountEmail": "帳戶電子郵件",
-      "organization": "組織"
-    },
-    "manualModels": {
-      "notice": "無法從此代理自動檢測可用模型。您可以在下方手動添加模型，或再次點擊 Validate 重試。"
+      "accountEmail": "帳戶電子郵件"
     },
     "customModels": {
-      "notice": "模型名稱 = 調用 LLM 時使用的 id；顯示名稱 = 在選擇器中展示的標籤。",
       "modelNamePlaceholder": "輸入模型 id...",
-      "displayName": "顯示名稱",
       "displayNamePlaceholder": "可選標籤",
-      "optional": "可選",
       "emptyHint": "尚未添加自定義模型。",
-      "addModel": "添加模型",
-      "icon": "圖標"
+      "addModel": "添加模型"
     },
     "quickActions": {
-      "title": "快捷操作",
       "multipleKeysFound": "發現多個密鑰",
       "useSelected": "使用所選",
       "valid": "有效",
@@ -100,8 +89,9 @@
       "saved": "已保存更改"
     },
     "quota": {
-      "title": "配額信息",
       "plan": "套餐",
+      "balance": "餘額",
+      "payAsYouGo": "隨用隨付",
       "includedRequests": "已含請求",
       "cursorIncludedRequests": "Auto/Composer 配額",
       "quotaUsage": "配額使用",
@@ -110,10 +100,13 @@
       "sessionUsage": "5h 用量",
       "weeklyUsage": "每週用量",
       "monthlyUsage": "每月用量",
+      "resetsAvailable": "{{count}}個可用重設",
+      "resetsAvailable_one": "{{count}}個可用重設",
+      "resetsAvailable_few": "{{count}}個可用重設",
+      "resetsAvailable_many": "{{count}}個可用重設",
+      "resetsAvailable_other": "{{count}}個可用重設",
       "percentLeft": "剩餘 {{percent}}%",
       "refreshUsage": "刷新用量",
-      "used": "已使用",
-      "limit": "限額",
       "resets": "{{date}} 重置",
       "availableNow": "現在可用",
       "nextUsePlusFiveHours": "下次使用 +5h"
@@ -121,18 +114,18 @@
     "health": {
       "cloudListingInvalid": "雲端列表無效",
       "cloudListingDegraded": "雲端列表降級",
-      "cloudInvalidMessage": "您的本地密鑰正常，但市場列表存在問題。",
-      "cloudDegradedMessage": "您的本地密鑰正常，但云端列表部分模型不可用。",
-      "invalidListingMessage": "此列表的密鑰無效，需要更新。",
-      "invalidKeyMessage": "此 API Key 已失效。請更新您的密鑰。",
+      "cloudInvalidMessage": "您的本地密鑰正常，但市場列表存在問題",
+      "cloudDegradedMessage": "您的本地密鑰正常，但云端列表部分模型不可用",
+      "invalidListingMessage": "此列表的密鑰無效，需要更新",
+      "invalidKeyMessage": "此 API Key 已失效。請更新您的密鑰",
       "failuresDetected_one": "檢測到 {{count}} 次失敗",
       "failuresDetected_other": "檢測到 {{count}} 次失敗",
       "errorWithMessage": "錯誤：{{message}}",
       "degradedListing": "列表降級",
       "degradedKey": "密鑰降級",
-      "modelsUnavailable": "{{disabled}} 個模型不可用。僅 {{available}} 個模型正常工作。",
-      "someModelsFailures": "部分模型出現故障。",
-      "someModelsUnavailable": "部分模型不可用。"
+      "modelsUnavailable": "{{disabled}} 個模型不可用。僅 {{available}} 個模型正常工作",
+      "someModelsFailures": "部分模型出現故障",
+      "someModelsUnavailable": "部分模型不可用"
     },
     "verification": {
       "pendingVerification": "等待驗證",
@@ -258,7 +251,6 @@
     "sessionTokenLabel": "Session Token",
     "sessionTokenAutoHint": "點擊右側按鈕檢測，或 Agent 在會話中自動檢測",
     "sessionTokenManualHint": "粘貼你的 Cursor Session Token，格式爲 user_id::jwt_token",
-    "baseUrl": "Base URL",
     "pasteConfiguration": "粘貼配置",
     "extractParseHint": "點擊 Extract 解析 key 和設置",
     "switchMethod": "切換方法",
@@ -266,7 +258,6 @@
     "quotaUsageLabel": "配額使用",
     "quotaUsageDesc": "當前計劃用量和剩餘額度",
     "providerRequired": "{{label}}（需要提供商）",
-    "creating": "完成中...",
     "keysFoundForAgent": "我們爲此 Agent 找到了 {{count}} 個密鑰。請選擇要使用的密鑰：",
     "fromCodexAuthLogin": "來自 Codex 認證登錄",
     "openBrowser": "打開內置瀏覽器",
@@ -303,21 +294,16 @@
     "filterAllProviders": "所有提供商",
     "filterAllKeyTypes": "所有密鑰類型",
     "filterAllEnabled": "所有啓用狀態",
-    "regionWarning": {
-      "title": "區域可用性提示",
-      "message": "{{provider}} 可能在您檢測到的區域不可用。某些模型可能不會顯示；請切換區域以使用來自 OpenAI、Anthropic 或 Google 的模型。您仍可繼續設置。"
-    },
-    "auth": "Auth",
     "cursorSessionTokenCapturedTitle": "Cursor 已連接",
     "cursorSessionTokenCapturedDesc": "已登入為 {{user}}…",
     "cursorLoginBrowserTitle": "Cursor 登錄",
     "modelCount": "{{count}} 個模型",
     "cursorLoginReadyTitle": "Cursor 帳號已連接",
-    "cursorLoginReadyDesc": "請在下方產生並貼上 Cursor API Key。沒有這個 API Key，Cursor CLI agent 無法使用。",
+    "cursorLoginReadyDesc": "請在下方產生並貼上 Cursor API Key。沒有這個 API Key，Cursor agent 無法使用。",
     "cursorApiKeyBrowserHint": "登入後，ORGII 會開啟 Cursor dashboard。請在那裡產生 User API Key，然後貼到下方",
     "cursorApiKeyRecommendedTitle": "建議提供 Cursor API Key",
     "cursorApiKeyRecommendedDesc": "如果你只想把 Cursor 用於 ORGII 的 Rust agents，可以不提供 Cursor API Key；只需透過內建瀏覽器登入，或提供 session token",
-    "cursorApiKeyRecommendedAction": "如果你還想在 ORGII 中使用 Cursor CLI，請提供 Cursor API Key",
+    "cursorApiKeyRecommendedAction": "如果你還想在 ORGII 中使用 Cursor，請提供 Cursor API Key",
     "openCursorApiKeys": "開啟 Cursor API Keys",
     "codexSetupMethodDesc": "透過 ChatGPT 登入、本機偵測或 OpenAI API key 連接 Codex",
     "codexSignInTitle": "Codex 登入",
@@ -333,66 +319,37 @@
     "codexCredentialLabel": "Codex 憑證",
     "codexCredentialDesc": "貼上 Codex OAuth access token 或 OpenAI API key",
     "codexCredentialPlaceholder": "eyJ... 或 sk-...",
-    "codexConnected": "Codex 已連接",
     "codexDetectErrorHint": "請使用內嵌瀏覽器登入，或手動貼上 OpenAI API key",
     "codexValidationErrorHint": "檢查 token 或 API key 是否有效，然後重試",
     "claudeCodeAutodetectTitle": "偵測 Claude Code 工作階段",
     "claudeCodeAutodetectDesc": "從 macOS Keychain 或 ~/.claude/.credentials.json 讀取本機 Claude Code 登入",
-    "claudeCodeConnected": "Claude Code 已連接",
     "claudeCodeDetectErrorHint": "請使用內嵌瀏覽器登入，或執行 claude auth login 後重新偵測",
     "refreshModels": {
       "button": "重新整理模型",
       "failed": "重新整理模型失敗：{{error}}"
     },
-    "revalidate": "重新驗證"
+    "revalidate": "重新驗證",
+    "confirmRemoveActiveSessions_one": "仍有 {{count}} 個使用中的工作階段在使用此帳號，移除後它的下一輪將會失敗：",
+    "confirmRemoveActiveSessions_other": "仍有 {{count}} 個使用中的工作階段在使用此帳號，移除後它們的下一輪將會失敗："
   },
   "integrations": {
-    "title": "集成",
-    "description": "通道、消息集成和節點控制",
     "searchPlaceholder": "搜索連接...",
     "noConnections": "暫無連接",
-    "noConnectionsDesc": "添加集成以開始使用",
-    "active": "已啓用",
-    "available": "可用",
-    "enabled": "已啓用",
     "disabled": "未啓用",
-    "enableChannel": "啓用",
-    "enableChannelDesc": "開啓或關閉此通道",
     "testConnection": "測試連接",
     "testConnectionDesc": "創建前驗證密鑰",
     "addAccount": "添加連接",
-    "removeAccount": "移除賬戶",
     "removeAccountTitle": "移除 \"{{name}}\"？",
     "removeAccountConfirm": "這將移除該連接及其配置，此操作無法撤銷。",
-    "descriptionDesc": "關於此連接用途的可選備註",
-    "descriptionPlaceholder": "客戶支持、團隊通知等",
-    "selectChannelType": "Channel 類型",
-    "selectChannelTypeDesc": "要連接的聊天平臺",
-    "selectServiceType": "服務",
-    "selectServiceTypeDesc": "要集成的第三方服務",
-    "selectCategory": "連接類型",
-    "selectGitProvider": "Git Provider",
-    "selectGitProviderDesc": "倉庫託管位置",
-    "selectProjectAdapter": "專案同步配接器",
-    "selectProjectAdapterDesc": "用於專案同步的外部追蹤器",
-    "configured": "已配置",
     "connected": "已連接",
     "connecting": "連接中",
     "reconnecting": "重新連接中",
     "connectionError": "連接錯誤",
     "reconnect": "重新連接",
-    "gitProviderRequired": "請選擇一個 Git 提供商",
-    "defaultAccount": "default",
-    "readyToCreate": "準備創建",
     "accountNameDuplicate": "已存在同名賬戶",
-    "channelTypeRequired": "請選擇 Channel 類型",
     "probeSuccess": "連接成功",
     "probeFailed": "連接失敗",
-    "verified": "已驗證",
-    "sanctionWarning": {
-      "title": "服務可用性警告",
-      "message": "由於貿易限制，{{services}} 在您所在地區可能不可用"
-    }
+    "verified": "已驗證"
   },
   "channels": {
     "github": "GitHub",
@@ -622,25 +579,18 @@
       "modelPlaceholder": "選擇模型",
       "groupPerUser": "按用戶隔離羣聊會話",
       "groupPerUserDesc": "羣聊中每位參與者都有獨立的會話上下文。"
-    }
-  },
-  "tabs": {
-    "current": "當前",
-    "add": "添加",
-    "discover": "發現"
+    },
+    "emailProtocol": "通訊協定"
   },
   "modelsTabs": {
     "myAccounts": "我的 Keys",
     "models": "模型",
-    "available": "可用",
-    "preferred": "首選",
     "comingSoon": "即將推出",
     "installedClis": "CLI 客戶端",
     "myRoles": "我的角色"
   },
   "wizard": {
     "pickProvider": "提供商",
-    "pickProviderDesc": "選擇提供商",
     "selectVariant": "連接方式",
     "variantSubscription": "訂閱",
     "variantApiKey": "API Key",
@@ -654,7 +604,6 @@
     "groupView": "分組視圖",
     "showMoreOlder": "顯示更多",
     "showLessOlder": "收起",
-    "includeOlder": "包含舊版模型",
     "scopeSelectCurrentModels": "僅最新",
     "scopeSelectIncludeOlder": "全部模型",
     "filterAllProvider": "所有提供商",
@@ -687,10 +636,7 @@
     "sortAlphabetical": "排序：A–Z"
   },
   "modelPreview": {
-    "title": "模型詳情",
-    "noSources": "暫無包含此模型的賬戶",
-    "specs": "規格",
-    "capabilities": "能力"
+    "noSources": "暫無包含此模型的賬戶"
   },
   "cliPreview": {
     "clientSection": "客戶端",
@@ -724,20 +670,7 @@
     "filterReady": "已就緒",
     "filterNoSubscriptions": "無訂閱"
   },
-  "lspPreview": {
-    "enable": "啓用",
-    "status": "狀態",
-    "language": "語言",
-    "command": "命令",
-    "documentation": "文檔",
-    "install": "安裝",
-    "uninstall": "卸載"
-  },
-  "lintPreview": {
-    "version": "版本"
-  },
   "mcpPreview": {
-    "title": "服務器信息",
     "status": "狀態",
     "transport": "傳輸方式",
     "tools": "工具",
@@ -748,20 +681,15 @@
     "toolsList": "工具 ({{count}})"
   },
   "skillPreview": {
-    "title": "Skill 信息",
     "source": "來源",
-    "path": "路徑",
     "status": "狀態",
     "issues": "問題",
-    "ready": "就緒",
     "version": "版本",
-    "dependencies": "依賴項",
     "binaries": "二進制文件",
     "envVars": "環境變量",
     "location": "位置"
   },
   "gitPreview": {
-    "title": "Provider 信息",
     "provider": "Provider",
     "connections": "連接"
   },
@@ -771,41 +699,27 @@
     "discover": "發現",
     "comingSoon": "敬請期待"
   },
-  "mcpTabs": {
-    "installed": "已安裝",
-    "discover": "發現"
-  },
-  "skillsTabs": {
-    "installed": "已安裝",
-    "discover": "發現"
-  },
   "externalSkillsets": {
     "tabs": {
       "skills": "Skills",
       "mcp": "MCP",
-      "cursorPlugins": "Plugins",
-      "discoverMcp": "發現 MCP",
-      "discoverSkills": "發現 Skills"
+      "cursorPlugins": "Plugins"
     }
   },
   "rulesImport": {
-    "title": "可載入規則",
-    "description": "從 Cursor、Claude Code、Copilot、Kiro、Codex 和 Gemini 來源匯入偵測到的規則",
-    "scanning": "正在掃描外部規則來源…",
-    "empty": "未找到可載入規則。",
+    "title": "從其他應用程式匯入規則",
+    "empty": "找不到可匯入的規則。",
     "allImported": "所有偵測到的規則均已匯入"
   },
   "skillsImport": {
     "title": "從其他應用導入 Skills",
     "itemColumn": "Skill",
-    "scanning": "正在掃描外部 Skill 來源…",
     "empty": "未找到可導入的 Skills。",
     "allImported": "所有偵測到的 Skills 均已匯入"
   },
   "mcpImport": {
     "title": "從其他應用導入 MCP servers",
     "itemColumn": "MCP server",
-    "scanning": "正在掃描外部 MCP 設定…",
     "empty": "未找到可導入的 MCP servers。",
     "allImported": "所有偵測到的 MCP servers 均已匯入"
   },
@@ -818,7 +732,7 @@
     "servicesDesc": "外部服務 API Keys",
     "projects": "專案",
     "projectsDesc": "Issue 追蹤器與專案同步",
-    "models": "模型 & Keys",
+    "models": "模型 & 密鑰",
     "myRoles": "我的角色",
     "clis": "CLI",
     "connections": "連接",
@@ -834,7 +748,6 @@
   },
   "projectConnections": {
     "linear": "Linear",
-    "authMethod": "驗證",
     "personalAccessToken": "Personal Access Token",
     "personalAccessTokenDesc": "本機儲存到此專案同步連線",
     "personalAccessTokenPlaceholder": "貼上 token...",
@@ -847,10 +760,24 @@
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "自動偵測",
-    "methodOAuth": "使用 GitHub 登入"
+    "methodOAuth": "使用 GitHub 登入",
+    "methodPickerDesc": "選擇向 GitHub 進行驗證的方式。",
+    "oauthDeviceDesc": "開啟驗證 URL 並輸入此代碼以授權 GitHub。",
+    "scanCredHelper": "Git 憑證助手（{{name}}）",
+    "scanEmpty": "未偵測到任何憑證",
+    "scanEmptyDesc": "找不到 gh CLI token、憑證助手或 SSH 金鑰。請在上方選擇其他方式。",
+    "scanGhCli": "GitHub CLI（gh）",
+    "scanResults": "偵測到的憑證",
+    "scanResultsDesc": "選擇一項匯入。儲存前我們會向 GitHub 驗證 token。",
+    "scanSshKey": "SSH 金鑰 — {{name}}",
+    "scanning": "正在掃描…",
+    "scanningDesc": "正在本機尋找 gh CLI token、憑證助手和 SSH 金鑰。",
+    "sshKeyPath": "SSH 金鑰路徑",
+    "sshKeyPathDesc": "私鑰的絕對路徑（例如 ~/.ssh/id_ed25519）。對應的公鑰必須已在 GitHub 上註冊。",
+    "scanSelectRequired": "請選擇一個偵測到的憑證進行匯入。",
+    "sshKeyPathRequired": "SSH 金鑰路徑為必填。"
   },
   "builtInTools": {
-    "title": "內置工具",
     "tabTools": "內置工具",
     "tabDesktopControl": "Computer Use",
     "computerUsePermissionsSectionTitle": "權限",
@@ -891,66 +818,18 @@
     "sidecarLastError": "最近錯誤"
   },
   "toolsArea": {
-    "builtin": "內置工具",
     "mcp": "MCP",
     "devtools": "試玩區"
   },
-  "toolsAddMenu": {
-    "title": "添加"
-  },
   "toolbarPlusMenu": {
-    "addProviderKey": "添加提供商密鑰",
-    "addMcpServer": "添加 MCP 服務器",
-    "createSkill": "創建 Skills",
-    "addDatabaseConnection": "添加數據庫連接",
-    "addChannelOrService": "添加頻道或服務",
-    "addGitConnection": "添加 Git 連接",
-    "addRoutine": "添加 Routine",
-    "createRule": "建立規則",
-    "importSkill": "從其他 Apps 導入 Skills",
     "addAgent": "添加 Agent"
   },
   "toolbarEllipsis": {},
-  "webharness": {
-    "title": "Web Apps",
-    "searchPlaceholder": "搜索命令…",
-    "installed": "已安裝",
-    "notInstalled": "未安裝",
-    "install": "安裝",
-    "pipeline": "輸出列",
-    "optional": "可選",
-    "defaultValue": "默認值: {{value}}",
-    "domain": "域名",
-    "source": "來源",
-    "strategy": "策略",
-    "desktopStatus": {
-      "not_installed": "未安裝",
-      "installed": "已安裝",
-      "running": "運行中",
-      "connected": "已連接"
-    },
-    "desktopActions": {
-      "launch": "啓動",
-      "connect": "連接"
-    }
-  },
-  "webharnessWizard": {
-    "title": "創建 Web App 命令",
-    "description": "描述",
-    "domain": "域名",
-    "strategy": "策略",
-    "columns": "列",
-    "limit": "限制數量"
-  },
   "tableHeaders": {
-    "agentType": "Agent 類型",
-    "cli": "CLI",
     "type": "類型",
     "transport": "Transport",
     "tools": "工具",
-    "category": "類別",
-    "added": "添加時間",
-    "enabledModels": "已啟用模型"
+    "added": "添加時間"
   },
   "status": {
     "ready": "就緒",
@@ -976,14 +855,6 @@
   "routines": {
     "searchPlaceholder": "搜索 Routines...",
     "noRoutines": "未定義 Routines"
-  },
-  "services": {
-    "smithery": "Smithery",
-    "apiKeySection": "API Key",
-    "currentKey": "Current key",
-    "smitheryApiKey": "Smithery API Key",
-    "smitheryApiKeyPlaceholder": "smi_...",
-    "smitheryApiKeyDesc": "用於在 Smithery 上瀏覽 MCP 服務器的 API key。在 smithery.ai/account/api-keys 獲取 key"
   },
   "git": {
     "searchPlaceholder": "搜索 Git 提供商...",
@@ -1064,26 +935,8 @@
     "oauthFailed": "授權失敗"
   },
   "skillsHub": {
-    "title": "Skills Hub",
-    "tab": "Skills",
     "searchPlaceholder": "搜索 Skill...",
-    "install": "安裝",
-    "installing": "安裝中...",
-    "downloads": "下載量",
-    "stars": "收藏",
-    "version": "版本",
     "noInstalled": "未安裝任何 Skill",
-    "marketplace": "Marketplace",
-    "author": "作者",
-    "createdAt": "創建時間",
-    "updatedAt": "更新時間",
-    "source": "來源",
-    "path": "路徑",
-    "available": "可用",
-    "notInstalled": "未安裝",
-    "sources": {
-      "github": "GitHub"
-    },
     "createSkill": "創建 Skill",
     "editSkill": "編輯 Skill",
     "nameLabel": "名稱",
@@ -1098,7 +951,6 @@
     "previewEmpty": "暫無預覽內容",
     "tokenEstimate": "~{{count}} 個 Token",
     "saveSkill": "保存",
-    "nameTaken": "已存在同名 Skill",
     "descriptionQualityGood": "描述：良好",
     "descriptionQualityShort": "描述過短",
     "descriptionQualityMissing": "無描述 — Agent 無法發現此 Skill",
@@ -1123,8 +975,6 @@
     "compatibilityDesc": "環境要求（如 需要 Python 3.14+ 和 uv）",
     "compatibilityPlaceholder": "如 需要 Python 3.14+ 和 uv",
     "tokenWarning": "超出建議的 5 000",
-    "license": "許可證",
-    "compatibility": "兼容性",
     "bundledFilesLabel": "附帶文件",
     "bundledFilesDesc": "添加腳本、參考資料或資源。腳本會被執行但不會加載到上下文窗口中",
     "addFileButton": "添加文件",
@@ -1139,7 +989,6 @@
   "mcp": {
     "tab": "MCP",
     "searchPlaceholder": "搜索 MCP 服務器...",
-    "serversLabel": "服務器",
     "noServers": "未配置 MCP 服務器",
     "noServersDesc": "添加 MCP 服務器以使用外部工具擴展 Agent 功能。",
     "addServer": "添加 MCP 服務器",
@@ -1164,7 +1013,6 @@
     "enabled": "啓用",
     "enabledDesc": "啓用或禁用此 MCP 服務器",
     "reconnect": "重新連接",
-    "connecting": "連接中...",
     "connectingTitle": "正在啓動 {{count}} 個 MCP server…(初次啓動可能需要數秒)",
     "connectingSlow": "仍在連接…",
     "connectingSlowBody": "首次啓動可能需要稍等。如果某個 server 似乎卡住了,可以打開它的詳情面板手動重連",
@@ -1176,52 +1024,17 @@
     "toolsLabel": "工具",
     "noTools": "沒有可用的工具",
     "infoSection": "Server 信息",
-    "saved": "服務器已保存",
-    "savedDesc": "已添加到 MCP 配置中。",
-    "testHint": "保存前測試連接以驗證服務器是否可達。",
-    "discoverServers": "發現 MCP 服務器",
-    "hubSearchPlaceholder": "搜索 MCP 服務器...",
-    "hubNoResults": "未找到 MCP 服務器",
-    "hubNoResultsDesc": "嘗試其他搜索詞",
-    "addToConfig": "添加到配置",
-    "addingToConfig": "添加中...",
-    "addedToConfig": "服務器已添加",
-    "addedToConfigDesc": "已添加到你的 MCP 配置中。",
-    "alreadyConfigured": "已配置",
-    "publishedAt": "發佈時間",
-    "website": "網站",
-    "source": "源碼",
-    "viewOnGlama": "在 Glama 上查看",
-    "remotes": "遠程端點",
-    "packages": "包",
-    "sourceOfficial": "MCP Registry",
-    "sourceSmithery": "Smithery",
-    "sourceMcpBar": "MCP.Bar",
-    "sourceGlama": "Glama",
-    "selectRegistry": "Registry",
-    "selectRegistryDesc": "選擇要瀏覽的 MCP 服務器 Registry",
-    "connections": "連接",
-    "securityPassed": "安全掃描通過",
-    "securityFailed": "安全掃描失敗",
-    "serverCommand": "服務器命令",
-    "requiredInputs": "必需輸入",
-    "smitheryApiKeyRequired": "需要 Smithery API key。在 Integrations → Connections → 添加 → 服務 中添加。",
-    "smitheryGetKey": "在 smithery.ai/account/api-keys 獲取 Key",
     "envVars": "環境變量",
     "envVarsHint": "如 GITHUB_PERSONAL_ACCESS_TOKEN",
     "envKey": "KEY",
     "envValue": "值",
     "addEnvVar": "添加變量",
-    "envVarCount": "個環境變量",
     "headers": "Headers",
     "headersHint": "如 Authorization",
     "headerKey": "Header",
     "headerValue": "值",
     "addHeader": "添加 Header",
-    "headerCount": "個自定義 Header",
     "restart": "重啓",
-    "enable": "啓用",
-    "disable": "禁用",
     "uptime": "運行時長",
     "bulkSelected": "已選 {{count}} 個",
     "bulkRestart": "重啓",
@@ -1247,76 +1060,26 @@
     "scopeWorkspace": "Repo-specific",
     "userScopeLabel": "User",
     "workspaceScopeLabel": "Repo-specific",
-    "userServersLabel": "使用者 MCP 伺服器",
-    "workspaceServersLabel": "Repo-specific MCP 服務器",
     "noUserServers": "未設定使用者層級 MCP 伺服器",
     "noWorkspaceServers": "未配置 Repo-specific MCP 服務器",
     "deleteConfirmTitle": "移除 MCP 伺服器「{{name}}」？",
     "deleteConfirmMessage": "這將從設定檔中删除該伺服器，正在執行的會話將斷開連線。"
   },
   "agentOrgs": {
-    "title": "Agent團隊",
-    "running": "運行中",
-    "fires": "次觸發",
-    "addRoutine": "添加 Routine",
-    "trigger": "觸發器",
-    "triggerDesc": "觸發此政策的事件",
-    "scopeDesc": "此政策適用的倉庫",
-    "advancedDesc": "冷卻時間和每個政策最大觸發次數",
-    "action": "動作",
-    "interval": "間隔",
-    "cooldown": "冷卻時間",
-    "cooldownDesc": "連續觸發之間的最小秒數",
-    "maxFires": "最大觸發次數",
-    "maxFiresDesc": "此規則可觸發的最大次數（0 = 無限制）",
-    "advanced": "高級",
-    "advancedSettings": "高級設置",
-    "applicableAgent": "分配的 Agent",
-    "applicableAgentDesc": "執行此例程的 Agent（留空則允許任意 Agent）",
-    "selectAgent": "選擇 Agent…",
     "scope": "適用倉庫",
     "allRepos": "所有倉庫",
-    "allReposDesc": "應用於所有倉庫",
-    "specificRepos": "指定倉庫",
-    "specificReposDesc": "僅應用於選定的倉庫",
-    "selectRepos": "選擇倉庫...",
-    "includeRepos": "包含",
-    "includeReposDesc": "此政策適用的倉庫",
-    "excludeRepos": "排除",
-    "excludeReposDesc": "從此政策中排除的倉庫",
-    "includeReposPlaceholder": "選擇倉庫…",
-    "excludeReposPlaceholder": "選擇要排除的倉庫…",
-    "step1": "步驟 1 — 設置",
-    "step2": "步驟 2 — 操作",
-    "promptPlaceholder": "輸入要發送給 Agent 的提示...",
-    "sessionPrompt": "Session 提示",
-    "repoPath": "倉庫路徑（可選）",
-    "sessionId": "Session ID",
-    "channel": "頻道名稱",
-    "messageContent": "消息內容",
     "enabled": "已啓用",
     "enabledDesc": "啓用或禁用此政策",
-    "disabled": "已禁用",
-    "noTemplates": "暫無模板",
     "addOrg": "新增Agent團隊",
     "addAgent": "添加 Agent",
-    "agentSections": {
-      "builtInAgents": "內置 Agents",
-      "customAgents": "自訂 Agents",
-      "cli": "CLI Agent",
-      "orgs": "團隊"
-    },
     "memorySections": {
       "personalMemory": "個人",
-      "workspaceMemory": "工作區",
-      "title": "記憶"
+      "workspaceMemory": "工作區"
     },
-    "importAgent": "Import",
     "agentDetail": {
       "type": "類型",
       "builtIn": "內置",
-      "custom": "自定義",
-      "noModel": "(未設置)"
+      "custom": "自定義"
     },
     "cliAgentDetail": {
       "installed": "已安裝",
@@ -1325,19 +1088,12 @@
       "keyStatus": "密鑰狀態",
       "keysConfigured": "已配置",
       "noKeys": "未配置",
-      "authMethod": "認證方式",
-      "baseUrl": "Base URL",
-      "availableModels": "可用模型",
-      "noModels": "暫無可用模型",
-      "editKeys": "編輯密鑰",
       "detectKeys": "檢測密鑰",
       "detectSuccess": "密鑰檢測成功",
       "keys": "密鑰",
       "docs": "文檔",
       "tabCore": "核心",
-      "tabConfig": "配置",
       "addKey": "添加密鑰",
-      "compatibility": "兼容性",
       "bringYourOwnKeys": "使用自有密鑰",
       "supported": "支持",
       "notSupported": "不支持",
@@ -1347,15 +1103,13 @@
       "keyType": "類型",
       "typePlan": "Plan",
       "typeApiKey": "API Key",
-      "keyPreview": "密鑰",
       "addedTime": "添加時間",
       "secretBearingConfig": "可能包含 API key 或 Token",
       "revealConfigFile": "在檔案管理器中顯示",
       "launchConfiguration": "啟動配置",
       "configFiles": "配置檔案",
       "configFile": "配置檔案",
-      "tokenCount": "~{{count}} Token",
-      "emptyConfigPreview": "沒有配置內容"
+      "tokenCount": "~{{count}} Token"
     },
     "sessionProvenance": {
       "masterToggle": "溯源 Hooks",
@@ -1365,10 +1119,8 @@
       "title": "Session 來源追蹤",
       "capture": "擷取檔案互動",
       "description": "以中繼資料記錄檔案讀取與寫入。不會儲存提示詞、工具輸出或檔案內容。",
-      "configPath": "以中繼資料記錄檔案讀取與寫入。不會儲存提示詞、工具輸出或檔案內容。設定：{{path}}",
       "installDrift": "已儲存的偏好設定與已安裝的 hook 不一致。切換擷取功能即可修復受管理的 hook。設定：{{path}}",
       "copyPath": "複製",
-      "reveal": "顯示",
       "col": {
         "source": "工具",
         "config": "設定",
@@ -1429,7 +1181,6 @@
       "proxyDefault": "預設設定模式",
       "proxyReady": "代理已就緒",
       "proxyNotReady": "代理未就緒",
-      "proxyDesc": "CLI 請求會透過 ORGII KeyVault 本機代理轉送。",
       "proxyLifecycleDesc": "使用此模式時請保持 ORGII 運行。關閉視窗後代理會留在系統列；完全退出時會安全還原預設設定，外部修改不會被覆蓋。",
       "keyLabel": "金鑰",
       "keyDesc": "僅顯示與目前 CLI 和託管代理相容的 API Key。",
@@ -1446,227 +1197,8 @@
       "applySuccess": "已套用 ORGII 託管設定",
       "restoreSuccess": "已還原 CLI 預設設定"
     },
-    "codexConfig": {
-      "sectionTitle": "配置",
-      "model": "模型",
-      "modelDesc": "Codex CLI 會話使用的默認模型",
-      "approvalPolicyLabel": "審批策略",
-      "approvalPolicyDesc": "Codex 在運行命令前暫停請求確認的時機",
-      "approvalPolicy": {
-        "untrusted": "不信任",
-        "on-request": "按需確認",
-        "never": "從不"
-      },
-      "sandboxModeLabel": "沙箱模式",
-      "sandboxModeDesc": "執行命令時的文件系統和網絡訪問權限",
-      "sandboxMode": {
-        "read-only": "只讀",
-        "workspace-write": "工作區寫入",
-        "danger-full-access": "完全訪問 (危險)"
-      },
-      "webSearchLabel": "網頁搜索",
-      "webSearchDesc": "Codex 處理網頁搜索請求的方式",
-      "webSearch": {
-        "disabled": "禁用",
-        "cached": "緩存",
-        "live": "實時"
-      },
-      "reasoningTitle": "推理與風格",
-      "reasoningEffortLabel": "推理強度",
-      "reasoningEffortDesc": "模型應用推理的程度",
-      "reasoningEffort": {
-        "none": "無",
-        "minimal": "最小",
-        "low": "低",
-        "medium": "中",
-        "high": "高",
-        "xhigh": "極高"
-      },
-      "personalityLabel": "個性風格",
-      "personalityDesc": "響應的溝通風格",
-      "personality": {
-        "friendly": "友好",
-        "pragmatic": "務實",
-        "none": "無"
-      },
-      "unset": "(未設置)",
-      "featuresTitle": "功能開關",
-      "features": {
-        "shell_snapshot": "Shell 快照",
-        "shell_snapshotDesc": "快照 Shell 環境以加速重複命令",
-        "multi_agent": "多 Agent",
-        "multi_agentDesc": "啓用多 Agent 協作工具",
-        "collaboration_modes": "協作模式",
-        "collaboration_modesDesc": "啓用協作模式（如計劃模式）",
-        "undo": "撤銷",
-        "undoDesc": "通過 git 快照啓用按輪撤銷",
-        "shell_tool": "Shell 工具",
-        "shell_toolDesc": "啓用默認 Shell 工具",
-        "personality": "個性控制",
-        "personalityDesc": "在 CLI 中啓用個性選擇"
-      }
-    },
-    "cursorConfig": {
-      "sectionTitle": "配置",
-      "vimMode": "Vim 模式",
-      "vimModeDesc": "在 CLI 編輯器中啓用 Vim 快捷鍵",
-      "http1Fallback": "HTTP/1.1 回退",
-      "http1FallbackDesc": "使用 HTTP/1.1 代替 HTTP/2 連接 Agent（適用於企業代理）",
-      "attributionTitle": "署名",
-      "attributeCommits": "Commit 署名",
-      "attributeCommitsDesc": "在 Agent 的 Commit 中添加 'Made with Cursor' 標記",
-      "attributePRs": "PR 署名",
-      "attributePRsDesc": "在 Agent 的 Pull Request 中添加 'Made with Cursor' 標記",
-      "permissionsTitle": "權限",
-      "permissionsAllow": "允許",
-      "permissionsDeny": "拒絕",
-      "noPermissions": "未配置權限規則",
-      "sandboxTitle": "沙箱",
-      "sandboxTypeLabel": "沙箱模式",
-      "sandboxTypeDesc": "控制沙箱命令的文件系統訪問權限",
-      "sandboxType": {
-        "workspace_readwrite": "工作區讀寫",
-        "workspace_readonly": "工作區只讀",
-        "insecure_none": "禁用（不安全）"
-      },
-      "disableTmpWrite": "禁止寫入 /tmp",
-      "disableTmpWriteDesc": "移除對臨時目錄的默認寫入權限",
-      "sharedBuildCache": "共享構建緩存",
-      "sharedBuildCacheDesc": "在沙箱和非沙箱命令間共享構建緩存（npm、cargo、pip）",
-      "networkPolicyTitle": "網絡策略",
-      "networkDefaultPolicy": "默認策略",
-      "networkDefaultPolicyDesc": "當沒有允許/拒絕規則匹配時的操作",
-      "networkDefault": {
-        "allow": "允許",
-        "deny": "拒絕"
-      },
-      "networkAllow": "允許的域名",
-      "networkDeny": "拒絕的域名"
-    },
-    "claudeCodeConfig": {
-      "sectionTitle": "配置",
-      "noItems": "暫無配置項",
-      "model": "默認模型",
-      "modelDesc": "覆蓋 Claude Code 會話的默認模型",
-      "thinkingMode": "Extended Thinking",
-      "thinkingModeDesc": "默認爲所有會話啓用 Extended Thinking（思考模式）",
-      "gitInstructions": "Git 指令",
-      "gitInstructionsDesc": "在系統提示中包含內置的 commit 和 PR 工作流指令",
-      "cleanupPeriod": "清理週期",
-      "cleanupPeriodDesc": "超過此時間未活動的會話將在啓動時刪除",
-      "days": "天",
-      "language": "回覆語言",
-      "languageDesc": "配置 Claude 的首選回覆語言（例如 japanese、spanish）",
-      "attributionTitle": "歸屬信息",
-      "commitAttribution": "Commit 信息",
-      "commitAttributionDesc": "添加到 Claude Code 所做 git commit 中的自定義信息",
-      "prAttribution": "PR 信息",
-      "prAttributionDesc": "添加到 Claude Code 創建的 PR 中的自定義信息",
-      "coAuthoredBy": "Co-authored-by",
-      "coAuthoredByDesc": "在 git commit 和 PR 中包含 'co-authored-by Claude'",
-      "permissionsTitle": "權限",
-      "defaultMode": "默認權限模式",
-      "defaultModeDesc": "打開 Claude Code 時的默認權限模式",
-      "permissionMode": {
-        "default": "默認",
-        "plan": "計劃",
-        "acceptEdits": "接受編輯",
-        "bypassPermissions": "跳過權限"
-      },
-      "permAllow": "允許",
-      "permAsk": "詢問",
-      "permDeny": "拒絕",
-      "sandboxTitle": "Sandbox",
-      "sandboxEnabled": "啓用 Sandbox",
-      "sandboxEnabledDesc": "將 Bash 命令與文件系統和網絡隔離",
-      "autoAllowBash": "自動批准 Bash",
-      "autoAllowBashDesc": "啓用 Sandbox 時自動批准 Bash 命令",
-      "allowLocalBinding": "允許 Localhost 綁定",
-      "allowLocalBindingDesc": "允許在 Sandbox 內綁定 localhost 端口（僅 macOS）",
-      "excludedCommands": "排除的命令",
-      "allowedDomains": "允許的域名",
-      "fsAllowWrite": "文件系統允許寫入",
-      "fsDenyWrite": "文件系統拒絕寫入",
-      "fsDenyRead": "文件系統拒絕讀取"
-    },
-    "noMemory": "暫無 Memory 條目",
-    "memoryDescription": "Memory 存儲成員可跨會話引用的知識和上下文。",
-    "tabs": {
-      "org": "團隊",
-      "agents": "成員",
-      "integrations": "集成",
-      "rules": "規則",
-      "orgs": "團隊"
-    },
-    "searchPlaceholder": "搜索規則…",
-    "searchOrgsPlaceholder": "搜尋團隊...",
-    "searchAgentsPlaceholder": "搜索成員...",
-    "searchMemoryPlaceholder": "搜索 Memory...",
-    "searchIntegrationsPlaceholder": "搜索 Integrations...",
-    "integrationsSections": {
-      "core": "核心",
-      "tools": "Agent 工具",
-      "connections": "連接",
-      "customization": "自定義"
-    },
-    "triggerNotConfigurable": "此觸發器無需額外配置",
     "sections": {
-      "quickActions": "快捷操作",
-      "trigger": "觸發器配置",
-      "actions": "Action 鏈"
-    },
-    "quickActions": {
-      "editDesc": "修改觸發器、動作和設置",
-      "delete": "刪除政策",
-      "deleteDesc": "永久刪除此政策"
-    },
-    "overview": {
-      "triggerConfig": "觸發器配置",
-      "fireCount": "觸發次數",
-      "lastFired": "上次觸發",
-      "maxFires": "最大觸發次數",
-      "actions": "Actions"
-    },
-    "cronExpression": "Cron 表達式（例如 0 9 * * *）",
-    "cronHint": "標準 5 字段 Cron：分鐘 小時 日 月 星期",
-    "patternRegex": "正則表達式（可選）",
-    "filePathPlaceholder": "要監聽的文件或目錄路徑",
-    "debounce": "防抖",
-    "webhookRoute": "Webhook 路由（例如 /automation/webhook/deploy）",
-    "webhookHint": "向此路由發送 POST 請求將觸發該觸發器",
-    "scheduleTimezone": "時區",
-    "scheduleTimezoneDesc": "默認使用你當前的時區。偏移量以 UTC 格式顯示。",
-    "triggerConfig": {
-      "timer": {
-        "label": "時間間隔",
-        "desc": "政策觸發的頻率（秒）"
-      },
-      "scheduledTime": {
-        "label": "定時計劃",
-        "desc": "包含頻率、時間和時區的日曆式計劃"
-      },
-      "cron": {
-        "label": "定時計劃",
-        "desc": "定義政策觸發時間的 Cron 表達式"
-      },
-      "gitActivity": {
-        "label": "Git 事件",
-        "desc": "哪些 Git 操作觸發此政策"
-      },
-      "channelMessage": {
-        "label": "頻道",
-        "desc": "要監聽消息的頻道名稱",
-        "patternDesc": "可選的正則表達式過濾消息"
-      },
-      "fileWatch": {
-        "label": "監聽路徑",
-        "desc": "要監控變更的文件和目錄",
-        "debounceDesc": "最後一次變更後等待的時間"
-      },
-      "webhook": {
-        "label": "Webhook 端點",
-        "desc": "接受傳入 POST 請求的 HTTP 路由"
-      }
+      "quickActions": "快捷操作"
     },
     "orgWizard": {
       "title": "添加組織",
@@ -1676,60 +1208,51 @@
       "orgDescription": "描述",
       "orgDescriptionDesc": "對該組織職能的可選簡介",
       "orgDescriptionPlaceholder": "這個組織做什麼？",
-      "members": "成員",
       "addMember": "添加成員",
-      "editMember": "編輯成員",
       "noMembers": "添加成員來構建組織層級",
-      "previewEmpty": "添加 Agent 以查看組織架構預覽",
-      "hierarchyMode": {
-        "label": "層級模式",
-        "description": "運行時如何解釋成員之間的 Reports-to 關係",
-        "flat": {
-          "label": "扁平",
-          "description": "無彙報層級。每個成員都可以直接給其他任何成員發消息。Reports-to 列將被隱藏"
-        },
-        "soft": {
-          "label": "柔性（推薦）",
-          "description": "Reports-to 作爲組織提示傳給 LLM。運行時路由不受限——LLM 可在合適時直接聯繫平級"
-        },
-        "strict": {
-          "label": "嚴格",
-          "description": "運行時強制 Reports-to。成員只能給其直屬上級、直接下屬或協調員發送消息，平級 → 平級會被拒絕"
-        }
-      },
-      "strictBanner": "嚴格模式：成員只能給其直屬上級、直接下屬或協調員發送消息。平級之間互發將在運行時被拒絕。",
-      "missingParentWarn": "在嚴格模式下，頂層成員直接向協調員匯報，且只能聯繫協調員。",
-      "reachability": {
-        "label": "嚴格模式可達性",
-        "description": "在當前層級下，預覽哪些成員之間能直接通信、哪些會被攔截。可以在上線前發現被孤立的成員",
-        "fromHeader": "發件人 \\ 收件人",
-        "empty": "至少添加一名成員，才能預覽嚴格模式下的路由情況。",
-        "isolatedWarn": "以下成員在嚴格模式下只能聯繫協調員，無法與其他平級協作：{{names}}",
-        "allowedTitle": "{{from}} 可以直接給 {{to}} 發送消息",
-        "blockedTitle": "在嚴格模式下，{{from}} 不能直接給 {{to}} 發送消息，請先升級給協調員轉發"
-      },
       "membersLabel": "團隊成員",
-      "membersDesc": "每一行都是一個路由別名。協調員通過 name 尋址成員，name 必須唯一。Role 作爲專長提示傳給 LLM",
+      "membersDesc": "每一行都是一位成員；Writer 權限與通訊設定彼此獨立。名稱必須唯一，角色只用於描述專長。",
       "memberName": "名稱",
       "memberNamePlaceholder": "唯一的路由名（如 SDE-1）",
       "memberNameDuplicate": "已有其他成員使用此 name。組織內 name 必須唯一。",
       "role": "角色",
       "rolePlaceholder": "專長（如 後端開發）",
       "agent": "Agent",
-      "reportsTo": "匯報給",
-      "reportsToCoordinator": "協調員（頂層）",
-      "status": "狀態",
       "coordinator": "協調者",
       "coordinatorDesc": "負責本次組織運行的 coordinator 會話的主導 Agent",
       "coordinatorPlaceholder": "選擇 coordinator Agent",
-      "tabs": {
-        "edit": "編輯",
-        "previewDiagram": "預覽圖"
-      },
       "dangerZone": "危險區域",
       "deleteOrg": "刪除此 Org",
       "deleteOrgDesc": "永久刪除此 Agent 團隊。成員 Agent 不會受影響。此操作無法撤銷",
-      "deleteThisOrg": "刪除此 Org"
+      "deleteThisOrg": "刪除此 Org",
+      "planApprovalPolicy": {
+        "label": "計畫核准",
+        "description": "Planner 提交計畫後，由誰決定計畫可以解鎖相依任務",
+        "coordinator": {
+          "label": "協調者（建議）",
+          "description": "協調者在本次執行中審閱計畫，然後核准或要求 Planner 修改"
+        },
+        "user": {
+          "label": "使用者",
+          "description": "Group chat 會安靜等待，並顯示計畫與核准、編輯、要求修改等操作"
+        },
+        "automatic": {
+          "label": "自動",
+          "description": "Planner 提交有效計畫後立即接受，並解鎖依賴它的任務"
+        }
+      },
+      "writer": "Writer",
+      "connected": "已連接",
+      "connectedCount": "已連接 {{count}} 人",
+      "manageCommunication": "管理通訊",
+      "futureTeamsOnly": "範本修改只影響未來建立的 Team，不會修改正在執行的 Team Session。",
+      "communicationPanel": {
+        "title": "{{name}} 的通訊",
+        "coordinatorAlwaysReachable": "Coordinator 永遠與所有 Member 雙向可達，因此不會列在此處。",
+        "search": "依名稱或角色搜尋 Member",
+        "noPeers": "沒有符合的 Member",
+        "saveWithTeam": "修改會保留在 Team 草稿中，並由主要 Team 設定頁統一儲存。"
+      }
     },
     "agentWizard": {
       "title": "配置 Agent",
@@ -1739,11 +1262,7 @@
       "namePlaceholder": "例如 代碼審查 Bot",
       "descriptionLabel": "描述",
       "descriptionPlaceholder": "這個 Agent 的職責是什麼？（可選）",
-      "defaultModelLabel": "默認模型",
-      "defaultModelDesc": "此 Agent 使用的 AI 模型",
-      "defaultModelPlaceholder": "選擇模型...",
       "subAgentsTab": "Subagents",
-      "subAgentConcurrencyTitle": "併發控制",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
       "maxToolUseConcurrencyDesc": "每條 assistant message 的併發 Tool 調用數上限。默認：10。",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
@@ -1751,27 +1270,13 @@
       "addSubAgent": "添加 Sub-Agent...",
       "noSubAgents": "未配置 Sub-Agent。"
     },
-    "ruleActions": {
-      "create": "新建",
-      "import": "導入"
-    },
-    "ruleActionsDesc": {
-      "create": "編寫新的 Markdown 規則",
-      "import": "從此工作區導入 .cursor/rules"
-    },
-    "ruleActionLabel": "方式",
-    "ruleActionDesc": "從頭編寫或從已有來源導入",
     "markdownContent": "政策內容",
     "markdownContentDesc": "注入 Agent 系統提示詞的 Markdown 指令",
-    "markdownContentPlaceholder": "在此編寫 Markdown 政策...",
     "noMarkdownContent": "暫無內容",
-    "importSelected": "導入 ({{count}})",
+    "importSelected": "匯入{{count}}個",
     "importRuleColumn": "規則",
     "allImported": "所有{{item}}均已導入",
-    "importedItemRules": "規則",
     "externalImport": {
-      "noResults": "未找到可導入的規則。已掃描 .cursor/rules、CLAUDE.md、.github/copilot-instructions.md、.kiro/steering 以及主目錄。",
-      "globalScope": "（全局）",
       "applyFailed": "導入失敗：{{message}}",
       "partialFailure": "以下條目未能導入：",
       "sources": {
@@ -1781,38 +1286,15 @@
         "kiro": "Kiro",
         "codex": "Codex"
       },
-      "noSkillsResults": "未找到可導入的 Skills。已掃描 ~/.claude/skills 和 ~/.claude/commands。",
       "noAgentResults": "暫無可導入的 Agent",
-      "addManually": "手動添加 Agent",
       "readonlyDowngradedBadge": "只讀 — 已禁用寫入類工具",
-      "readonlyDowngradedTooltip": "源聲明 readonly:true。已禁用：{{tools}}。",
-      "workspaceScope": "（工作區）"
+      "readonlyDowngradedTooltip": "源聲明 readonly:true。已禁用：{{tools}}。"
     },
-    "previewEmpty": "暫無內容可預覽",
-    "editorTabs": {
-      "edit": "編輯",
-      "preview": "預覽"
-    },
-    "activeRules": "活躍",
     "addRule": "新增規則",
-    "editRoutine": "編輯政策",
     "ruleName": "政策名稱",
     "ruleNameDesc": "用於識別此政策的唯一名稱",
-    "routineNamePlaceholder": "例如：提交時自動部署",
-    "ruleNameRequired": "政策名稱爲必填項",
-    "routineName": "政策名稱",
-    "routineNameDesc": "用於識別此政策的唯一名稱",
-    "routineNameRequired": "政策名稱爲必填項",
-    "noRulesOrRoutines": "暫無政策",
-    "ruleKindLabel": "政策類型",
-    "ruleKindDesc": "此政策的定義方式",
     "ruleKinds": {
-      "rule": "Rules",
-      "routine": "Routines"
-    },
-    "ruleKindsDesc": {
-      "rule": "注入 Agent 提示詞的 Markdown 指令",
-      "routine": "自動觸發 + 動作鏈"
+      "rule": "Rules"
     },
     "markdownRuleNamePlaceholder": "例如 代碼風格指南",
     "editRule": "編輯政策",
@@ -1828,22 +1310,11 @@
     "ruleRepo": "倉庫",
     "ruleRepoDesc": "此指南適用的唯一倉庫",
     "selectRepo": "選擇倉庫…",
-    "ruleSourceGlobal": "User",
-    "ruleSourceGlobalDesc": "存儲在 ~/.orgii/rules/。適用於所有倉庫。",
     "ruleSourcePersonal": "個人",
     "ruleSourcePersonalDesc": "存儲在 ~/.orgii/personal/rules/。僅 OS Agent / channel session 加載。",
-    "importSkillTitle": "從其他 Agent 導入 Skill",
-    "importSkillColumn": "Skill",
-    "importedItemSkills": "skills",
     "findSkills": {
       "title": "搜尋 Skills",
-      "description": "Search skills.sh and press Enter to show matching ORGII skills. Click a result to preview its SKILL.md in WorkStation.",
-      "openDirectory": "開啟 skills.sh",
-      "hint": "Paste a skills.sh URL or id like vercel-labs/skills/find-skills. ORGII downloads the skill snapshot directly from skills.sh.",
       "placeholder": "搜尋 Skills...",
-      "install": "Install skill",
-      "installing": "Installing...",
-      "installSuccess": "Installed {{name}}",
       "installs": "Installs",
       "emptyTitle": "搜尋 Skills",
       "emptySubtitle": "輸入至少 2 個字元，然後按 Enter 尋找 Skills。",
@@ -1853,193 +1324,6 @@
     "importAgentTitle": "從其他應用導入 Agents",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agents",
-    "importAgentButton": "從其他平臺導入",
-    "workflowActions": {
-      "categories": {
-        "all": "全部",
-        "controls": "控制",
-        "sessionWorkflow": "會話工作流",
-        "actions": "動作"
-      },
-      "inline": {
-        "runWith": "執行",
-        "using": "使用",
-        "retryMax": "最大重試",
-        "times": "次",
-        "timeout": "逾時",
-        "transitionTo": "切換到",
-        "stage": "階段",
-        "configureAutoApprove": "設定工作流程：自動核准",
-        "onFailure": "失敗時",
-        "open": "開啟",
-        "inExternalEditor": "在外部編輯器中",
-        "waitFor": "等待",
-        "ifOutput": "如果輸出",
-        "agentPlaceholder": "Agent",
-        "modelPlaceholder": "模型",
-        "stagePlaceholder": "階段",
-        "stagesPlaceholder": "階段",
-        "actionPlaceholder": "操作",
-        "repoPlaceholder": "儲存庫",
-        "conditionPlaceholder": "條件",
-        "valuePlaceholder": "值",
-        "autoApproveNone": "無（手動）",
-        "autoApproveIntake": "僅 Intake",
-        "autoApproveIntakeSpec": "Intake + Spec",
-        "autoApproveExceptReview": "除 Review 外全部",
-        "autoApproveAll": "全部（自動）",
-        "failurePause": "暫停",
-        "failureRetry": "重試",
-        "failureRollback": "回復",
-        "failureSkip": "略過",
-        "condEquals": "等於",
-        "condNotEquals": "不等於",
-        "condContains": "包含",
-        "condIsEmpty": "為空",
-        "condIsNotEmpty": "不為空",
-        "emptyTitle": "尚無操作",
-        "emptySubtitle": "從面板中選擇一個操作以開始。"
-      },
-      "fields": {
-        "session": "會話",
-        "model": "模型",
-        "agent": "智能體",
-        "timeout": "超時",
-        "maxRetries": "最大重試次數",
-        "customPrompt": "自定義提示詞",
-        "prompt": "提示詞",
-        "sessionConfig": "會話配置",
-        "channel": "頻道",
-        "content": "內容",
-        "message": "消息",
-        "targetStage": "目標階段",
-        "transitionType": "轉換類型",
-        "stageTimeout": "階段超時"
-      },
-      "placeholders": {
-        "selectSession": "選擇會話",
-        "selectModel": "選擇 AI 模型",
-        "selectAgent": "選擇智能體",
-        "stageTimeout": "階段超時時間",
-        "maxRetries": "最大重試次數",
-        "customPrompt": "可選:覆蓋默認提示詞...",
-        "compareValue": "比較值",
-        "iterations": "重複次數",
-        "injectPrompt": "輸入要注入的提示詞...",
-        "selectSessionOptional": "選擇目標會話(可選)",
-        "selectSessionToStop": "選擇要停止的會話",
-        "channelName": "頻道名稱",
-        "messageContent": "消息內容...",
-        "selectTargetSession": "選擇目標會話",
-        "injectMessage": "要注入的消息...",
-        "selectTargetStage": "選擇目標階段"
-      },
-      "units": {
-        "second": "秒"
-      },
-      "stages": {
-        "intake": {
-          "title": "接收階段",
-          "description": "收集初始需求和澄清"
-        },
-        "spec": {
-          "title": "規格階段",
-          "description": "定義詳細規格和需求"
-        },
-        "planning": {
-          "title": "規劃階段",
-          "description": "將工作拆解爲任務和里程碑"
-        },
-        "execution": {
-          "title": "執行階段",
-          "description": "用 AI 智能體執行計劃任務"
-        },
-        "review": {
-          "title": "評審階段",
-          "description": "評審改動並驗證結果"
-        },
-        "merge": {
-          "title": "合併階段",
-          "description": "將批准的改動合併到目標分支"
-        }
-      },
-      "wait": {
-        "title": "等待",
-        "description": "暫停執行指定時間"
-      },
-      "if": {
-        "title": "條件",
-        "description": "基於輸出的條件邏輯",
-        "condition": "條件"
-      },
-      "loop": {
-        "title": "循環",
-        "description": "重複執行動作多次",
-        "loopType": "循環類型",
-        "iterations": "迭代次數",
-        "types": {
-          "count": "固定次數",
-          "foreach": "遍歷每項",
-          "while": "When 條件"
-        }
-      },
-      "operators": {
-        "equals": "等於",
-        "notEquals": "不等於",
-        "contains": "包含",
-        "greaterThan": "大於",
-        "lessThan": "小於",
-        "isEmpty": "爲空",
-        "isNotEmpty": "不爲空"
-      },
-      "injectPrompt": {
-        "title": "注入提示詞",
-        "description": "向智能體發送提示詞"
-      },
-      "startSession": {
-        "title": "啓動會話",
-        "description": "啓動新的編碼智能體會話"
-      },
-      "killSession": {
-        "title": "終止會話",
-        "description": "停止現有會話"
-      },
-      "sendMessage": {
-        "title": "發送消息",
-        "description": "向頻道發送消息"
-      },
-      "injectToSession": {
-        "title": "注入到會話",
-        "description": "向指定會話注入消息"
-      },
-      "stageTransition": {
-        "title": "階段轉換",
-        "description": "配置有條件或無條件的階段轉換"
-      },
-      "workflowConfig": {
-        "title": "會話工作流配置",
-        "description": "配置完整的會話工作流流水線",
-        "autoApprove": "自動批准的階段",
-        "onFailure": "失敗時"
-      },
-      "transitionTypes": {
-        "unconditional": "無條件(總是)",
-        "conditional": "有條件(基於輸出)"
-      },
-      "autoApproveOptions": {
-        "none": "無(手動批准)",
-        "intake": "僅接收",
-        "intakeSpec": "接收 + 規格",
-        "allExceptReview": "除評審外全部",
-        "all": "全部(完全自動化)"
-      },
-      "onFailureOptions": {
-        "pause": "暫停並通知",
-        "retry": "重試(最多 3 次)",
-        "rollback": "回滾到上一階段",
-        "skip": "跳過並繼續"
-      }
-    },
     "emptySelectionTitle": "選擇成員或 Agent 團隊",
     "emptySelectionSubtitle": "從側邊欄選擇一個 Agent 或 Agent 團隊以查看和配置。",
     "applicableWorkspace": "適用 Workspace",
@@ -2066,7 +1350,11 @@
     "orgSaveFailed": "儲存團隊失敗",
     "orgDeleteFailed": "刪除團隊失敗",
     "deleteOrgTitle": "刪除團隊？",
-    "deleteOrgMessage": "\"{{name}}\" 將被永久移除。此操作無法復原。"
+    "deleteOrgMessage": "\"{{name}}\" 將被永久移除。此操作無法復原。",
+    "cliUpdateAlerts": {
+      "label": "提醒 CLI 更新",
+      "description": "檢查 CLI 版本並在有更新時提醒。關閉後不再檢查"
+    }
   },
   "databases": {
     "title": "數據庫",
@@ -2078,34 +1366,20 @@
       "turso": "Turso 分佈式 SQLite (libSQL)",
       "neon": "Neon 無服務器 PostgreSQL",
       "postgres": "PostgreSQL",
-      "postgresDesc": "直連 PostgreSQL 數據庫",
-      "mysql": "MySQL",
-      "mysqlDesc": "MySQL / MariaDB 數據庫",
-      "sqliteDesc": "Local SQLite database file",
-      "supabaseDesc": "Supabase PostgreSQL cloud database",
-      "tursoDesc": "Turso distributed SQLite (libSQL)",
-      "neonDesc": "Neon serverless PostgreSQL"
+      "mysql": "MySQL"
     },
     "detail": {
       "type": "類型",
       "url": "URL",
       "status": "狀態",
-      "enabled": "已啓用",
-      "disabled": "已禁用",
-      "connectionInfo": "連接信息",
-      "actions": "操作",
       "testConnection": "測試連接",
       "probeSuccess": "連接成功",
-      "probeFailed": "連接失敗",
-      "disableAgent": "禁用 Agent 訪問",
-      "enableAgent": "啓用 Agent 訪問"
+      "probeFailed": "連接失敗"
     },
     "wizard": {
       "title": "添加數據庫連接",
       "providerType": "數據庫類型",
       "providerTypeDesc": "選擇此連接的數據庫引擎",
-      "connectionDetails": "連接詳情",
-      "connectionNameDesc": "在側邊欄和 Agent 工具中顯示的連接名稱",
       "databaseFileDesc": "本地 .sqlite、.sqlite3 或 .db 文件的路徑",
       "projectUrlDesc": "儀表盤中的 Supabase 項目 URL",
       "accessTokenDesc": "用於 API 訪問的 Service Role 或 Anon Key",
@@ -2117,7 +1391,6 @@
       "mysqlHostDesc": "MySQL 服務器的主機名或 IP 地址",
       "testConnectionDesc": "保存前驗證連接",
       "addConnection": "添加",
-      "testPassed": "連接測試通過",
       "saved": "連接已添加",
       "savedDesc": "數據庫連接已保存。你可以關閉此嚮導",
       "connectionNameOptional": "連線名稱（選填）",
@@ -2126,7 +1399,6 @@
     }
   },
   "devTools": {
-    "mode": "模式",
     "modeUi": "UI 預覽",
     "modeTool": "工具",
     "modeInput": "輸入",
@@ -2138,12 +1410,9 @@
     "toolTypeFilterPlaceholder": "搜索工具…",
     "commands": "命令",
     "status": "狀態",
-    "statusRunning": "運行中",
-    "variant": "變體",
     "variantChat": "Chat Panel",
     "variantSimulator": "Simulator",
     "reset": "重置",
-    "activityData": "ActivityData (JSON)",
     "activityDataPlaceholder": "輸入 ActivityData JSON...",
     "preview": "預覽",
     "jsonParseError": "JSON 解析錯誤",
@@ -2152,10 +1421,7 @@
     "queuedMessages": "消息隊列",
     "fileReview": "文件審查",
     "terminalProcesses": "終端進程",
-    "chatPreview": "聊天預覽",
-    "scenario": "場景",
-    "selectScenario": "選擇場景",
-    "sessionSimulation": "工作階段模擬"
+    "modeSessionLink": "工作階段連結"
   },
   "rulesTabs": {
     "rules": "規則",
@@ -2168,33 +1434,15 @@
     "noRules": "暫無規則"
   },
   "agentTools": {
-    "enabled": "已啓用",
-    "systemPinned": "系統固定",
-    "searchPlaceholder": "搜索工具...",
-    "toolColumn": "工具",
-    "typeColumn": "類型"
+    "enabled": "已啓用"
   },
   "dependencies": {
-    "installed": "已安裝",
-    "notFound": "未找到",
-    "noDbClientsFound": "未找到數據庫客戶端",
-    "tableClient": "客戶端",
-    "tableName": "名稱",
-    "tableStatus": "狀態",
-    "tableVersion": "版本",
-    "tableBinary": "二進制文件",
-    "tableCategory": "類別",
     "categoryDatabase": "數據庫",
     "categoryPackageManager": "包管理器",
     "categoryRuntime": "運行時",
     "categoryShellUtility": "Shell 工具",
     "categoryToolchain": "工具鏈",
-    "categoryVersionControl": "版本控制",
-    "installHintNote": "安裝缺失的依賴以啓用此功能",
-    "installSection": "安裝"
-  },
-  "creator": {
-    "assign": "分配"
+    "categoryVersionControl": "版本控制"
   },
   "routineFields": {
     "addRoutine": "添加 Routine",
@@ -2242,7 +1490,21 @@
     "fireHistory": "运行历史",
     "noFires": "暂无运行记录",
     "openSession": "打开会话",
-    "openWorkItem": "打开工作项"
+    "openWorkItem": "打开工作项",
+    "fireError": "無法啟動例程：{{detail}}",
+    "provider": "提供方",
+    "eventKind": "事件",
+    "extraActivations": "額外觸發",
+    "activationSchedule": "排程",
+    "activationOneTime": "一次性",
+    "activationProviderEvent": "Provider 事件",
+    "activationManual": "手動",
+    "providerPlaceholder": "github",
+    "eventKindPlaceholder": "pull_request",
+    "fireAccepted": "執行{{status}}",
+    "openSessionError": "無法開啟該工作階段",
+    "openWorkItemError": "無法開啟該工作項目",
+    "fireStarted": "Routine 已開始執行"
   },
   "cursorPlugins": {
     "noPlugins": "未安裝任何 Cursor 插件",
@@ -2256,25 +1518,7 @@
     "searchPlaceholder": "搜尋插件...",
     "mcpConfigured": "已配置 MCP"
   },
-  "localModels": {
-    "title": "On prem",
-    "description": "偵測這台裝置，並用輕量硬體匹配評分為 Ollama / llama.cpp 友好的本機模型排序。",
-    "searchPlaceholder": "搜尋本機模型...",
-    "hardware": {
-      "system": "系統",
-      "cpu": "CPU",
-      "memory": "記憶體",
-      "gpu": "GPU / 後端"
-    },
-    "fit": {
-      "good": "良好"
-    },
-    "runMode": {
-      "gpu": "GPU"
-    }
-  },
   "housekeeper": {
-    "eyebrow": "MiniCPM 常駐管家",
     "title": "常駐管家",
     "description": "本機 MiniCPM 只處理輸入潤飾、短步驟解釋和輕量 UI 控制；編碼任務和複雜 ADE 配置仍然交給主 Agent 模型。",
     "addModel": "添加模型",
@@ -2349,7 +1593,6 @@
   },
   "cliLaunchProfiles": {
     "title": "啟動設定",
-    "plain": "基礎",
     "plan": "計劃",
     "fullPermission": "完整權限",
     "autoEdit": "自動編輯",
@@ -2361,5 +1604,67 @@
     "unavailable": "啟動設定無法使用",
     "saved": "啟動設定已儲存",
     "resetDone": "啟動設定已重設"
+  },
+  "gitProfiles": {
+    "tab": "Git 設定檔",
+    "title": "Git 設定檔",
+    "add": "新增設定檔",
+    "refresh": "重新整理設定檔",
+    "refreshed": "已重新整理全域 Git 設定檔",
+    "loading": "正在載入全域 Git 設定檔…",
+    "defaultProfile": "預設設定檔",
+    "newProfile": "新設定檔",
+    "copyName": "{{name}} 副本",
+    "profileName": "設定檔名稱",
+    "authorName": "作者名稱",
+    "email": "電子郵件",
+    "selectEmail": "選擇電子郵件",
+    "signingKey": "簽署金鑰",
+    "signingKeyPlaceholder": "GPG 或 SSH 簽署金鑰 ID",
+    "signCommits": "簽署 commit",
+    "active": "使用中",
+    "activate": "啟用設定檔",
+    "activated": "{{name}} 已設為全域 Git 設定檔",
+    "editRaw": "編輯原始設定",
+    "hideRaw": "隱藏原始設定",
+    "rawTitle": "原始 Git 設定檔",
+    "rawConfig": "Git 設定",
+    "updateFromRaw": "從設定更新設定檔",
+    "rawUpdated": "已從原始 Git 設定更新設定檔",
+    "rawInvalid": "原始 Git 設定檔無效",
+    "nameEmailRequired": "作者名稱和電子郵件為必填",
+    "deleteTitle": "刪除 Git 設定檔",
+    "deleteMessage": "刪除設定檔「{{name}}」？這不會變更你目前的全域 Git 設定。",
+    "loadFailed": "載入全域 Git 設定檔失敗",
+    "applyFailed": "啟用 Git 設定檔失敗"
+  },
+  "credentialImport": {
+    "title": "從其他應用程式匯入憑證",
+    "itemColumn": "憑證",
+    "sourceColumn": "來源",
+    "empty": "找不到可匯入的憑證。已檢查環境變數、shell 設定檔、Claude Code 設定、cc-switch 設定檔，以及 Claude Code、Codex、Cursor、GitHub CLI、Kiro 和 OpenCode 的登入儲存。",
+    "allImported": "所有偵測到的憑證均已匯入",
+    "authMethod": {
+      "api_key": "API 金鑰",
+      "oauth": "登入權杖"
+    },
+    "sourceKind": {
+      "env": "環境變數",
+      "shell_profile": "Shell 設定檔",
+      "config_file": "設定檔案",
+      "oauth_store": "登入儲存",
+      "keychain": "鑰匙圈",
+      "state_db": "應用程式狀態",
+      "cc_switch": "cc-switch"
+    },
+    "applyFailed": "匯入失敗：{{message}}",
+    "partialFailure": "部分憑證無法匯入："
+  },
+  "skills": {
+    "shareToOrg": "共享至組織",
+    "share": "共享",
+    "sharedToOrg": "技能已共享至組織",
+    "shareToOrgHint": "組織成員會收到此技能目前的快照；編輯後再次共享即可發布更新。",
+    "shareOrgPlaceholder": "組織"
   }
 }

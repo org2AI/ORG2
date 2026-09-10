@@ -1,5 +1,5 @@
 import Modal from "@/src/scaffold/ModalSystem";
-import { atom, useAtom } from "jotai";
+import { useAtom } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -17,7 +17,11 @@ import useSharedRepoList from "@src/scaffold/GlobalSpotlight/hooks/data/useShare
 import type { RepoItem } from "@src/scaffold/GlobalSpotlight/types";
 
 import { normalizeRepoScopeKey } from "../../collabSyncUtils";
-import type { ForkExecutionSelection } from "../../engine/collabSyncEngineHelpers";
+import {
+  type ForkSessionSetupRequest,
+  type ForkSessionSetupSelection,
+  forkSessionSetupRequestAtom,
+} from "../../forkDialogState";
 import {
   getShareableScopeKeyVersion,
   peekMatchingOrgRepoScope,
@@ -26,25 +30,6 @@ import {
   subscribeShareableScopeKeys,
 } from "../../repoScopeResolver";
 import { resolveForkModelPreselection } from "./modelPreselection";
-
-export interface ForkSessionSetupSelection {
-  workspaceRepoPath: string | null;
-  execution: ForkExecutionSelection;
-}
-
-interface ForkSessionSetupRequest {
-  sourceTitle: string;
-  sourceScopeKey?: string;
-  sourceModel?: string;
-  sourceAgentDisplayName?: string;
-  sourceAgentDefinitionId?: string;
-  resolve: (selection: ForkSessionSetupSelection | null) => void;
-}
-
-export const forkSessionSetupRequestAtom = atom<ForkSessionSetupRequest | null>(
-  null
-);
-forkSessionSetupRequestAtom.debugLabel = "forkSessionSetupRequestAtom";
 
 function repoScopeKeys(repo: RepoItem): string[] | null | undefined {
   if (repo.fs_uri) return peekShareableScopeKeys(repo.fs_uri);

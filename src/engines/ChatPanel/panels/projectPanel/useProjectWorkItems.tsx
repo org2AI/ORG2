@@ -44,7 +44,7 @@ import {
 } from "@src/modules/ProjectManager/WorkItems/workItemsViewModel";
 import { ContentSearchPalette } from "@src/scaffold/GlobalSpotlight/palettes";
 import { openWorkItemInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
-import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanelAtom";
+import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanel/selectionAtoms";
 import type { WorkItem } from "@src/types/core/workItem";
 
 import { resolveChatPanelShortcutOwnership } from "../../hooks/chatPanelShortcutOwnership";
@@ -290,6 +290,7 @@ export function useProjectWorkItems(
   const listContent = workItemsUnavailableContent ?? (
     <div className="h-full min-h-0 flex-1 overflow-hidden">
       <WorkItemsListContent
+        statusOrgId={selectedProject.orgId}
         groupedWorkItems={groupedWorkItems}
         filteredWorkItems={filteredWorkItems}
         workItems={workItems}

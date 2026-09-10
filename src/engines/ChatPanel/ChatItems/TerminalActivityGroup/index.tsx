@@ -13,19 +13,17 @@ import { getToolIcon } from "@src/config/toolIcons";
 import { isMcpToolEvent } from "@src/engines/ChatPanel/ChatHistory/chatItemPipeline/classifiers";
 import ToolUsageBadge from "@src/engines/ChatPanel/blocks/ToolCallBlock/ToolUsageBadge";
 import OrgtrackEnvelopeCard from "@src/engines/ChatPanel/blocks/ToolCallBlock/cards/OrgtrackEnvelopeCard";
-import { parseOrgtrackEnvelope } from "@src/engines/ChatPanel/blocks/ToolCallBlock/helpers";
+import { parseOrgtrackEnvelope } from "@src/engines/ChatPanel/blocks/ToolCallBlock/helpers/cardParsers";
 import {
   ChatLoadingBlock,
   StackedBlock,
 } from "@src/engines/ChatPanel/blocks/primitives";
-import {
-  type SessionEvent,
-  TOOL_USAGE_ARGS_KEY,
-  type ToolUsageMetadata,
-} from "@src/engines/SessionCore/core/types";
+import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { getChatLazyComponent } from "@src/engines/SessionCore/rendering/registry/events";
 import { getRegistryEventType } from "@src/lib/activityData/activityNormalizers";
 import { sessionByIdAtom } from "@src/store/session/sessionAtom";
+
+import { readToolUsage, sumToolUsage } from "../toolUsage";
 
 interface TerminalActivityGroupProps {
   events: SessionEvent[];
@@ -121,53 +119,6 @@ function suppressLoadingForNonLastRunningEvent(
   };
 }
 
-function readToolUsage(event: SessionEvent): ToolUsageMetadata | undefined {
-  if (event.toolUsage) return event.toolUsage;
-  const raw = event.args?.[TOOL_USAGE_ARGS_KEY];
-  if (!raw || typeof raw !== "object") return undefined;
-  return raw as ToolUsageMetadata;
-}
-
-function aggregateToolUsage(
-  items: readonly TerminalEventItem[]
-): ToolUsageMetadata | undefined {
-  const usages = items
-    .map((item) => readToolUsage(item.event))
-    .filter((usage): usage is ToolUsageMetadata => Boolean(usage));
-  if (usages.length === 0) return undefined;
-
-  return usages.reduce<ToolUsageMetadata>(
-    (total, usage) => ({
-      decisionCompletionTokens:
-        total.decisionCompletionTokens + usage.decisionCompletionTokens,
-      resultContextTokens:
-        total.resultContextTokens + usage.resultContextTokens,
-      followupCompletionTokens:
-        total.followupCompletionTokens + usage.followupCompletionTokens,
-      inputBytes: total.inputBytes + usage.inputBytes,
-      outputBytes: total.outputBytes + usage.outputBytes,
-      relatedCacheReadTokens:
-        total.relatedCacheReadTokens + usage.relatedCacheReadTokens,
-      relatedCacheWriteTokens:
-        total.relatedCacheWriteTokens + usage.relatedCacheWriteTokens,
-      attributionMethod:
-        total.attributionMethod === usage.attributionMethod
-          ? total.attributionMethod
-          : usage.attributionMethod,
-    }),
-    {
-      decisionCompletionTokens: 0,
-      resultContextTokens: 0,
-      followupCompletionTokens: 0,
-      inputBytes: 0,
-      outputBytes: 0,
-      relatedCacheReadTokens: 0,
-      relatedCacheWriteTokens: 0,
-      attributionMethod: usages[0].attributionMethod,
-    }
-  );
-}
-
 function renderTerminalEvent(
   { event, isLastItem }: TerminalEventItem,
   _index: number
@@ -220,7 +171,9 @@ const TerminalActivityGroup: React.FC<TerminalActivityGroupProps> = ({
   if (items.length === 0) return null;
 
   const firstEvent = items[0].event;
-  const groupToolUsage = aggregateToolUsage(items);
+  const groupToolUsage = sumToolUsage(
+    items.map((item) => readToolUsage(item.event))
+  );
   const groupSummary = buildGroupSummary(events, t);
 
   return (

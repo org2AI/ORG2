@@ -27,11 +27,17 @@ import React, {
   useState,
 } from "react";
 
+import type { ComposerSnapshot } from "@src/components/ComposerInput";
 import { COLLAB_SESSION_ACCESS_MODE } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session/sessionAtom/types";
 
 import { stripCopyEventNamespace } from "../../TeamCollaboration/copyEventId";
 import { getSessionForkedFrom } from "../../TeamCollaboration/forkSession";
+import {
+  isTeamChatBodyWithinLimit,
+  isTeamChatMentionAudienceWithinLimit,
+  resolveTeamChatMentionedUserIds,
+} from "../SessionConversation/teamChatMentions";
 import { collectAddressableThreads } from "../addressComments";
 import { addressRunActiveAtom } from "../addressCommentsRun";
 import {
@@ -41,9 +47,12 @@ import {
 } from "../org2CloudAuthAtom";
 import { getCloudCapabilities } from "../org2CloudCapabilities";
 import type { CloudOrgMember } from "../org2CloudClient";
-import type {
-  CloudCommentResolution,
-  CloudSessionComment,
+import {
+  CLOUD_COMMENT_MAX_BODY_LENGTH,
+  CLOUD_COMMENT_MAX_MENTIONED_USER_IDS,
+  type CloudCommentResolution,
+  type CloudSessionComment,
+  isOrg2CommentErrorCode,
 } from "../org2CloudCommentsClient";
 import { loadCloudOrgMembers } from "../org2CloudMembersCoordinator";
 import {
@@ -58,9 +67,12 @@ import {
   type AddCommentInput,
   type CloudSessionCommentsFetchState,
   type GroupedCommentThreads,
+  OPTIMISTIC_SESSION_COMMENT_ID_PREFIX,
+  SessionCommentDeliveryError,
   groupCommentThreads,
   useSessionComments,
 } from "../org2CloudSessionCommentsAtom";
+import { org2CloudSyncEngine } from "../org2CloudSyncEngine";
 import {
   type SessionCommentTarget,
   useSessionCommentTarget,
@@ -71,8 +83,155 @@ import type { CommentAnchorEventIdentity } from "./commentAnchorIdentities";
 const CLOUD_ADMIN_ROLES = new Set(["owner", "admin"]);
 const RUST_NATIVE_TRANSIENT_USER_EVENT_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const activeCloudCommentRetryAttempts = new Map<string, symbol>();
+
+export function cloudCommentRetryAttemptKey(input: {
+  authIdentityKey: string;
+  orgId: string;
+  sessionId: string;
+  commentId: string;
+}): string {
+  return [
+    input.authIdentityKey,
+    input.orgId,
+    input.sessionId,
+    input.commentId,
+  ].join("\u001f");
+}
+
+interface CloudCommentRetryCasStep {
+  body: string;
+  mentionedUserIds: string[];
+  replaceExisting: boolean;
+  expectedBody?: string;
+  expectedMentionedUserIds?: string[];
+}
+
+function sameMentionedUserIds(
+  left: readonly string[],
+  right: readonly string[]
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
+/**
+ * Plan an idempotent retry without guessing which side of a lost response
+ * Cloud committed. If an earlier edited retry changed A -> B but its response
+ * was lost, a later edit to C must first replay/confirm A -> B and only then
+ * CAS B -> C. Sending C with expected A directly would conflict forever when
+ * Cloud already contains B.
+ */
+export function buildCloudCommentRetryCasSteps(input: {
+  failed: Pick<
+    CloudSessionComment,
+    | "body"
+    | "mentionedUserIds"
+    | "clientRetryExpectedBody"
+    | "clientRetryExpectedMentionedUserIds"
+  >;
+  nextBody: string;
+  nextMentionedUserIds: readonly string[];
+  edited: boolean;
+}): CloudCommentRetryCasStep[] {
+  const currentMentionedUserIds = [...(input.failed.mentionedUserIds ?? [])];
+  const nextMentionedUserIds = [...input.nextMentionedUserIds];
+  const originalExpectedBody = input.failed.clientRetryExpectedBody;
+  const originalExpectedMentionedUserIds = [
+    ...(input.failed.clientRetryExpectedMentionedUserIds ??
+      currentMentionedUserIds),
+  ];
+  const changedAgain =
+    input.edited &&
+    (input.nextBody !== input.failed.body ||
+      !sameMentionedUserIds(nextMentionedUserIds, currentMentionedUserIds));
+
+  if (originalExpectedBody !== undefined && changedAgain) {
+    return [
+      {
+        body: input.failed.body,
+        mentionedUserIds: currentMentionedUserIds,
+        replaceExisting: true,
+        expectedBody: originalExpectedBody,
+        expectedMentionedUserIds: originalExpectedMentionedUserIds,
+      },
+      {
+        body: input.nextBody,
+        mentionedUserIds: nextMentionedUserIds,
+        replaceExisting: true,
+        expectedBody: input.failed.body,
+        expectedMentionedUserIds: currentMentionedUserIds,
+      },
+    ];
+  }
+
+  const replaceExisting = input.edited || originalExpectedBody !== undefined;
+  return [
+    {
+      body: input.nextBody,
+      mentionedUserIds: nextMentionedUserIds,
+      replaceExisting,
+      ...(replaceExisting
+        ? {
+            expectedBody: originalExpectedBody ?? input.failed.body,
+            expectedMentionedUserIds:
+              originalExpectedBody !== undefined
+                ? originalExpectedMentionedUserIds
+                : currentMentionedUserIds,
+          }
+        : {}),
+    },
+  ];
+}
+
+function claimCloudCommentRetryAttempt(key: string): symbol | null {
+  if (activeCloudCommentRetryAttempts.has(key)) return null;
+  const attempt = Symbol(key);
+  activeCloudCommentRetryAttempts.set(key, attempt);
+  return attempt;
+}
+
+function releaseCloudCommentRetryAttempt(key: string, attempt: symbol): void {
+  if (activeCloudCommentRetryAttempts.get(key) === attempt) {
+    activeCloudCommentRetryAttempts.delete(key);
+  }
+}
 
 export type { CommentAnchorEventIdentity };
+
+/**
+ * A repo-scope/tag can make Team Chat available a few milliseconds before
+ * the owner push creates the Cloud session row. Repair that one admission
+ * race through the existing sync engine, then retry the exact comment once.
+ * Imported teammate sessions deliberately pass no repair callback.
+ */
+export async function addCommentWithSessionAdmissionRecovery(
+  add: () => Promise<CloudSessionComment>,
+  repair: (() => Promise<void>) | null
+): Promise<CloudSessionComment> {
+  try {
+    return await add();
+  } catch (error) {
+    const cause =
+      error instanceof SessionCommentDeliveryError ? error.cause : error;
+    if (!repair || !isOrg2CommentErrorCode(cause, "ORG2_SESSION_NOT_FOUND")) {
+      throw error;
+    }
+    try {
+      await repair();
+    } catch (repairError) {
+      if (error instanceof SessionCommentDeliveryError) {
+        throw new SessionCommentDeliveryError(error.commentId, repairError);
+      }
+      throw repairError;
+    }
+    // `add` carries the same optimisticId, so the replay re-sends the very
+    // row the first attempt retained instead of creating a second one.
+    return add();
+  }
+}
 
 /**
  * Build the local-render id -> durable cloud-anchor id projection once per
@@ -120,6 +279,8 @@ sessionCommentPresentEventIdsAtom.debugLabel =
 export interface SessionCommentsContextValue {
   target: SessionCommentTarget;
   state: CloudSessionCommentsFetchState;
+  /** Raw rows used by the shared canonical timeline assembler. */
+  comments: readonly CloudSessionComment[];
   grouped: GroupedCommentThreads;
   /**
    * Map a local (possibly fork/import-namespaced) event id to the source-plane
@@ -144,6 +305,12 @@ export interface SessionCommentsContextValue {
   mentionableMembers: readonly CloudOrgMember[];
   refresh: () => void;
   addComment: (input: AddCommentInput) => Promise<CloudSessionComment>;
+  /** Retry a visible failed Team Chat row, optionally with edited text. */
+  retryComment: (
+    commentId: string,
+    editedBody?: string,
+    composerSnapshot?: ComposerSnapshot
+  ) => Promise<void>;
   /**
    * Batch follow-up (design 2026-07-11): address every unresolved thread as
    * one owner-only agent round, then post one parsed reply per thread. A
@@ -281,6 +448,8 @@ export function useSessionCommentViewer(target: SessionCommentTarget | null): {
 
 export interface SessionCommentsProviderProps {
   session: Session | null | undefined;
+  /** Canonical Cloud conversation coordinates carried by a native episode. */
+  targetOverride?: SessionCommentTarget | null;
   /**
    * Events currently present in the replay stream (anchor presence for
    * orphan bucketing). `null` = presence UNKNOWN (snapshot not hydrated
@@ -296,13 +465,23 @@ export interface SessionCommentsProviderProps {
    * dialog stays available.
    */
   turnAnchorsVisible?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const SessionCommentsProvider: React.FC<
   SessionCommentsProviderProps
-> = ({ session, events, turnAnchorsVisible = true, children }) => {
-  const target = useSessionCommentTarget(session);
+> = ({
+  session,
+  targetOverride,
+  events,
+  turnAnchorsVisible = true,
+  children,
+}) => {
+  const target = useSessionCommentTarget(session, targetOverride);
+  const retryAuth = useAtomValue(org2CloudAuthAtom);
+  const retryAuthIdentityKey = retryAuth
+    ? org2CloudAuthIdentityKey(retryAuth)
+    : null;
   // Comments live on the SOURCE session's plane, anchored by the raw source
   // event id shared across all users. A fork/import copy carries namespaced
   // local ids, so anchor matching must happen in source-id space.
@@ -349,8 +528,116 @@ export const SessionCommentsProvider: React.FC<
     target?.sessionId ?? null,
     originSessionId
   );
-  const viewer = useSessionCommentViewer(target);
+  const addCommentWithRecovery = useCallback(
+    (input: AddCommentInput): Promise<CloudSessionComment> => {
+      const stableInput: AddCommentInput = {
+        ...input,
+        optimisticId:
+          input.optimisticId ??
+          `${OPTIMISTIC_SESSION_COMMENT_ID_PREFIX}${crypto.randomUUID()}`,
+      };
+      const locallyOwnedTarget = Boolean(
+        session &&
+        target &&
+        session.session_id === target.sessionId &&
+        !session.importedFrom &&
+        !getSessionForkedFrom(session)
+      );
+      return addCommentWithSessionAdmissionRecovery(
+        () => addComment(stableInput),
+        locallyOwnedTarget && target
+          ? async () => {
+              org2CloudSyncEngine.invalidatePushedMetadataHash(
+                target.orgId,
+                target.sessionId
+              );
+              await org2CloudSyncEngine.runSyncPassAndWaitForDrain();
+            }
+          : null
+      );
+    },
+    [addComment, session, target]
+  );
   const mentionableMembers = useSessionCommentMentionableMembers(target);
+  const retryComment = useCallback(
+    async (
+      commentId: string,
+      editedBody?: string,
+      composerSnapshot?: ComposerSnapshot
+    ): Promise<void> => {
+      const failed = comments.find((comment) => comment.id === commentId);
+      if (
+        !target ||
+        !retryAuth ||
+        !retryAuthIdentityKey ||
+        !failed ||
+        failed.clientDeliveryStatus !== "failed"
+      ) {
+        return;
+      }
+      const body = editedBody ?? failed.body;
+      if (!isTeamChatBodyWithinLimit(body)) {
+        throw new Error(
+          `Team Chat messages must be ${CLOUD_COMMENT_MAX_BODY_LENGTH} characters or fewer`
+        );
+      }
+      // The atom update that flips failed -> pending is visible on the next
+      // render. Claim synchronously across every provider/pane as well so two
+      // retry clicks in that window cannot issue duplicate Cloud writes. The
+      // attempt token makes cleanup compare-and-swap safe across remounts.
+      // Endpoint/account identity is part of the key: an old request must not
+      // block or release the same logical row after an auth switch.
+      const retryKey = cloudCommentRetryAttemptKey({
+        authIdentityKey: retryAuthIdentityKey,
+        orgId: target.orgId,
+        sessionId: target.sessionId,
+        commentId,
+      });
+      const attempt = claimCloudCommentRetryAttempt(retryKey);
+      if (!attempt) return;
+      try {
+        const mentionedUserIds =
+          editedBody === undefined
+            ? (failed.mentionedUserIds ?? [])
+            : resolveTeamChatMentionedUserIds(
+                body,
+                mentionableMembers,
+                composerSnapshot,
+                retryAuth.userId
+              );
+        if (!isTeamChatMentionAudienceWithinLimit(mentionedUserIds)) {
+          throw new Error(
+            `@all is unavailable when it would notify more than ${CLOUD_COMMENT_MAX_MENTIONED_USER_IDS} people`
+          );
+        }
+        const steps = buildCloudCommentRetryCasSteps({
+          failed,
+          nextBody: body,
+          nextMentionedUserIds: mentionedUserIds,
+          edited: editedBody !== undefined,
+        });
+        for (const step of steps) {
+          await addCommentWithRecovery({
+            ...step,
+            eventId: failed.eventId,
+            parentId: failed.parentId,
+            optimisticId: failed.id,
+          });
+        }
+      } finally {
+        releaseCloudCommentRetryAttempt(retryKey, attempt);
+      }
+    },
+    [
+      addCommentWithRecovery,
+      comments,
+      mentionableMembers,
+      retryAuth,
+      retryAuthIdentityKey,
+      target,
+    ]
+  );
+  const viewer = useSessionCommentViewer(target);
   const setPresentRegistry = useSetAtom(sessionCommentPresentEventIdsAtom);
 
   // Publish the replay stream's event ids for the header notes dialog —
@@ -437,6 +724,7 @@ export const SessionCommentsProvider: React.FC<
     return {
       target,
       state,
+      comments,
       grouped,
       toSourceEventId,
       turnAnchorsVisible,
@@ -445,7 +733,8 @@ export const SessionCommentsProvider: React.FC<
       viewerIsAdmin: viewer.viewerIsAdmin,
       mentionableMembers,
       refresh,
-      addComment,
+      addComment: addCommentWithRecovery,
+      retryComment,
       editComment,
       deleteComment,
       resolveComment,
@@ -459,13 +748,15 @@ export const SessionCommentsProvider: React.FC<
   }, [
     target,
     state,
+    comments,
     grouped,
     toSourceEventId,
     turnAnchorsVisible,
     viewer,
     mentionableMembers,
     refresh,
-    addComment,
+    addCommentWithRecovery,
+    retryComment,
     editComment,
     deleteComment,
     resolveComment,

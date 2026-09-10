@@ -13,14 +13,3 @@ export const TAB_BAR_HEIGHT = 36;
  */
 export const TAB_STRIP_SECTION_RULE_CLASS =
   "pointer-events-none mx-1.5 shrink-0 self-center h-5 w-px bg-border-2";
-
-/** Maximum number of tabs to display before showing overflow */
-export const MAX_VISIBLE_TABS = 10;
-
-/** Status badge labels */
-export const STATUS_LABELS: Record<string, string> = {
-  modified: "M",
-  deleted: "D",
-  added: "A",
-  renamed: "R",
-};

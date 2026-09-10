@@ -1,8 +1,8 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import {
   CHAT_WIDTH_CSS_VAR,
   clampChatWidth,
@@ -13,15 +13,14 @@ import SessionViewersIndicator from "@src/features/Org2Cloud/SessionViewersIndic
 import SessionForkHeaderExtras from "@src/features/TeamCollaboration/components/SessionForkHeaderExtras";
 import { useShouldOffsetChatPanelHeader } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
 import { getPrimaryPaneBackgroundStyle } from "@src/modules/shared/layouts/viewContainerTokens";
+import { effectiveChatPanelMaximizedAtom } from "@src/store/chatPanel/chatPanelLayoutAtoms";
 import {
-  chatPanelTabCountAtom,
-  isChatPanelTabStationAvailable,
   openRuntimeInChatPanelTabAtom,
-  patchChatPanelWorkItemTabAtom,
-  resolveChatPanelMaximizedForLayout,
   syncActiveChatPanelTabStateAtom,
   toggleActiveChatPanelMaximizedAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { isChatPanelTabStationAvailable } from "@src/store/chatPanel/chatPanelTabsModel";
+import { chatPanelTabCountAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import {
   type SessionContinuation,
   retargetChatPanelSessionTabAtom,
@@ -30,16 +29,11 @@ import { tuiModeAtom } from "@src/store/session/tuiModeAtom";
 import { resolvedBackgroundConfigAtom } from "@src/store/ui/backgroundConfigAtom";
 import {
   chatPanelContentModeAtom,
-  chatPanelExploreOpenAtom,
-  chatPanelMaximizedAtom,
   chatPanelSelectedCloudOrgAtom,
-  chatPanelSelectedProjectAtom,
-  chatPanelSelectedProjectOrgAtom,
-  chatPanelSelectedWorkItemAtom,
-  chatPanelSelectedWorkspaceAtom,
   chatPanelStartPageOpenAtom,
-  chatWidthAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
+import { activeChatPanelSurfaceAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { openSideChatAtom } from "@src/store/ui/sideChatAtom";
 import { isHumanSession } from "@src/util/session/sessionDispatch";
 
@@ -53,34 +47,32 @@ import {
   useChatPanelTabShortcuts,
 } from "./ChatPanelTabBar";
 import { NewChatHeaderActionsMenu } from "./components/NewChatHeaderActionsMenu";
+import { SessionSwipeIndicator } from "./components/SessionSwipeIndicator";
 // Parked with its header button below.
-// import SessionContinueCliHeaderExtras from "./SessionContinueCliHeaderExtras";
 import {
   SessionAlternateSurface,
   SessionHeaderViewControls,
   SessionRawToolbarActions,
 } from "./components/SessionViewSwitcher";
 import SessionWorkstationRail from "./components/SessionWorkstationRail";
-import {
-  resolveFocusedChatWorkstationRailTrackClass,
-  shouldMountFocusedChatWorkstationControls,
-  shouldReserveFocusedChatWorkstationPlaceholder,
-} from "./focusedChatWorkstationLayout";
+import { shouldMountFocusedChatWorkstationControls } from "./focusedChatWorkstationLayout";
 import { FocusedChatWorkstationMinimapPortalContext } from "./focusedChatWorkstationMinimapPortal";
 import {
   resolveChatPanelChromeTopInsetPx,
   shouldCollapseChatPanelTabRow,
   shouldOverlayChatSessionHeaders,
 } from "./header/chatPanelHeaderLayout";
+import { resolveChatPanelContentState } from "./hooks/chatPanelContentState";
 import { useChatPanelAccessReconciliation } from "./hooks/useChatPanelAccessReconciliation";
-import { useChatPanelContentState } from "./hooks/useChatPanelContentState";
 import { useChatPanelCreationContent } from "./hooks/useChatPanelCreationContent";
 import { useChatPanelHeaderActions } from "./hooks/useChatPanelHeaderActions";
 import { useChatPanelNavigationActions } from "./hooks/useChatPanelNavigationActions";
 import { useChatPanelResize } from "./hooks/useChatPanelResize";
 import { useChatPanelSessionModals } from "./hooks/useChatPanelSessionModals";
 import { useChatPanelTabsController } from "./hooks/useChatPanelTabsController";
+import { useConversationTargetBinding } from "./hooks/useConversationTargetBinding";
 import { usePanelTitle } from "./hooks/usePanelTitle";
+import { useSessionSwipeNavigation } from "./hooks/useSessionSwipeNavigation";
 import { useSessionViewMode } from "./hooks/useSessionViewMode";
 import type { ChatPanelProps, ChatPanelRegionNotice } from "./types";
 
@@ -94,6 +86,7 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
     resizeIndicatorHost,
     sessionCreatorSlot: SessionCreatorSlot,
   }) => {
+    const maximizeShortcut = useShortcutKeys("maximize_chat");
     const { t } = useTranslation([
       "sessions",
       "common",
@@ -104,6 +97,9 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
     const shouldOffsetHeaderForCollapsedSidebar =
       useShouldOffsetChatPanelHeader({ position, useExternalWidth });
     const { currentSessionId, currentSession, panelTitle } = usePanelTitle();
+    const conversationTargetBinding = useConversationTargetBinding(
+      currentSessionId ?? null
+    );
     const activeSession = currentSession ?? undefined;
     const humanSessionActive =
       currentSession?.category === "human_session" ||
@@ -116,23 +112,8 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
 
     const contentMode = useAtomValue(chatPanelContentModeAtom);
     const startPageOpen = useAtomValue(chatPanelStartPageOpenAtom);
-    const selectedWorkItem = useAtomValue(chatPanelSelectedWorkItemAtom);
-    const selectedProject = useAtomValue(chatPanelSelectedProjectAtom);
-    const selectedProjectOrg = useAtomValue(chatPanelSelectedProjectOrgAtom);
-    const selectedWorkspace = useAtomValue(chatPanelSelectedWorkspaceAtom);
     const selectedCloudOrg = useAtomValue(chatPanelSelectedCloudOrgAtom);
-    const exploreOpen = useAtomValue(chatPanelExploreOpenAtom);
-    const patchWorkItemTab = useSetAtom(patchChatPanelWorkItemTabAtom);
-
-    // Work-item edits flow through `chatPanelSelectedWorkItemAtom`; mirror them
-    // back onto the owning work-item tab so re-activating the tab does not
-    // replay a stale payload. No-ops when the payload reference is unchanged
-    // (e.g. the seed written on tab activation).
-    useEffect(() => {
-      if (selectedWorkItem) patchWorkItemTab(selectedWorkItem);
-    }, [selectedWorkItem, patchWorkItemTab]);
-
-    const userChatPanelMaximized = useAtomValue(chatPanelMaximizedAtom);
+    const surface = useAtomValue(activeChatPanelSurfaceAtom);
     const syncActiveTabState = useSetAtom(syncActiveChatPanelTabStateAtom);
     const toggleChatFocus = useSetAtom(toggleActiveChatPanelMaximizedAtom);
     const rawChatWidth = useAtomValue(chatWidthAtom);
@@ -194,10 +175,7 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
     const isStandaloneToolTabActive =
       activeTab?.type === "work-management" || activeTab?.type === "runtime";
     const stationAvailable = isChatPanelTabStationAvailable(activeTab);
-    const isChatFocus = resolveChatPanelMaximizedForLayout(
-      userChatPanelMaximized,
-      activeTab
-    );
+    const isChatFocus = useAtomValue(effectiveChatPanelMaximizedAtom);
     const [focusedWorkstationMenuHost, setFocusedWorkstationMenuHost] =
       useState<HTMLSpanElement | null>(null);
     const focusedWorkstationMenuHostRef = useCallback(
@@ -236,6 +214,7 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
       onNewTerminal: handleNewTerminalTab,
       containerRef: panelRef,
     });
+    const swipeIndicator = useSessionSwipeNavigation(panelRef);
 
     React.useLayoutEffect(() => {
       syncActiveTabState();
@@ -274,28 +253,17 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
       openSideChat(null);
     }, [openSideChat]);
 
-    const contentState = useChatPanelContentState({
+    const contentState = resolveChatPanelContentState({
       active,
       contentMode,
       currentSessionId: currentSessionId ?? null,
-      exploreOpen,
-      selectedCloudOrg,
-      selectedProject,
-      selectedProjectOrg,
-      selectedWorkItem,
-      selectedWorkspace,
+      surface,
     });
     const showFocusedWorkstationControls =
       shouldMountFocusedChatWorkstationControls({
         activeTabType: activeTab?.type ?? null,
         isChatFocus,
         showSessionContent: contentState.showSessionContent,
-      });
-    const reserveFocusedWorkstationPlaceholder =
-      shouldReserveFocusedChatWorkstationPlaceholder({
-        activeTabType: activeTab?.type ?? null,
-        isChatFocus,
-        startPageOpen,
       });
 
     const {
@@ -333,7 +301,6 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
       startPageOpen,
       sessionCreatorSlot: SessionCreatorSlot,
       creatorVariant,
-      handleShowRuntime,
       handleOpenLaunchpadTab,
       handleOpenCliTerminal,
       handleRegionNoticeChange,
@@ -363,6 +330,7 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
     });
     const tabRowCollapsed = shouldCollapseChatPanelTabRow({
       tabCount,
+      splitPaneWidth: !isChatFocus && !useExternalWidth ? chatWidth : undefined,
     });
     const chromeTopInsetPx = resolveChatPanelChromeTopInsetPx(
       overlayChatHeaders,
@@ -375,6 +343,7 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
         chatPanelPosition={position}
         copyEventJsonLabel={copyEventJsonLabel}
         currentSessionId={currentSessionId ?? null}
+        appOpenSessionId={conversationTargetBinding?.appOpenSessionId ?? null}
         displayMode={displayMode}
         eventsLength={eventCount}
         handleChatFocusToggle={handleChatFocusToggle}
@@ -425,15 +394,6 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
             <ConversationParticipantsChip
               sessionId={currentSessionId ?? null}
             />
-            {/* "Continue in <agent>" is parked: it hands the session to a
-                CLI in a Workstation terminal tab, which leaves the focused
-                chat — the same reason the trail's Workstation-navigating
-                rows were parked. */}
-            {/* <SessionContinueCliHeaderExtras
-              session={currentSession ?? null}
-              sessionId={currentSessionId ?? null}
-              onOpenCliTerminal={handleOpenCliTerminal}
-            /> */}
             <SessionForkHeaderExtras session={currentSession ?? null} />
             <SessionRawToolbarActions
               view={sessionView}
@@ -465,9 +425,9 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
     const chatColumn = (
       <ChatPanelContent
         currentSessionId={currentSessionId ?? null}
+        conversationTargetBinding={conversationTargetBinding}
         displayMode={displayMode}
         emptyChatContent={emptyChatContent}
-        onSessionContinuation={handleSessionContinuation}
         paginationEnabled={paginationEnabled}
         position={position}
         showPanelContent={contentState.showPanelContent}
@@ -507,13 +467,6 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
                 sessionId={currentSessionId}
                 topInset={chromeTopInsetPx}
               />
-            ) : reserveFocusedWorkstationPlaceholder ? (
-              <div
-                aria-hidden
-                data-testid="launchpad-workstation-rail-placeholder"
-                data-workstation-trail-track
-                className={`h-full shrink-0 ${resolveFocusedChatWorkstationRailTrackClass(true)}`}
-              />
             ) : null
           }
           hasTabBar={!tabRowCollapsed}
@@ -523,9 +476,10 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
           isTerminalTabActive={isTerminalTabActive}
           onResizeMouseDown={handleMouseDown}
           panelRef={panelRef}
+          panelOverlay={<SessionSwipeIndicator {...swipeIndicator} />}
           resizeIndicatorHost={resizeIndicatorHost}
           resizeTooltipLabel={t("chat.hideWorkstation")}
-          resizeTooltipShortcut={getShortcutKeys("maximize_chat")}
+          resizeTooltipShortcut={maximizeShortcut}
           sessionModals={sessionModals}
           showResizeHandle={showResizeHandle}
           terminalTabs={terminalTabs}

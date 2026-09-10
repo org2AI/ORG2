@@ -41,13 +41,11 @@ import {
   activeSessionIdAtom,
   workstationActiveSessionIdAtom,
 } from "@src/store/session/viewAtom";
-import {
-  CHAT_PANEL_SURFACE_KIND,
-  chatPanelNavigateAtom,
-  restoreChatWidthAtom,
-} from "@src/store/ui/chatPanelAtom";
+import { chatPanelNavigateAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { restoreChatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { adeManagerEnabledAtom } from "@src/store/ui/uiAtom";
 import { activeWorkspaceRootAtom } from "@src/store/workspace";
+import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 import { recordPushEvent } from "@src/util/monitoring/apiTracker";
 

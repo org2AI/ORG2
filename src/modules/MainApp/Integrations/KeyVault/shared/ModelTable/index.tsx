@@ -23,8 +23,8 @@ import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import { getIconProviderFromModelName } from "@src/components/ModelIcon/config";
+import PageNotice from "@src/components/PageNotice";
 import SettingsTable from "@src/components/SettingsTable";
 import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
 import {
@@ -55,8 +55,6 @@ import {
 } from "./useModelTableData";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-export type { ModelTableModelAlias, ModelTableVariantInfo, ModelTableViewMode };
 
 interface ModelTableProps {
   models: string[];
@@ -418,9 +416,9 @@ const ModelTable: React.FC<ModelTableProps> = ({
   const unifiedFooter = unifiedMode ? (
     <div className="flex flex-col gap-2 px-4 py-2">
       {testError && (
-        <InlineAlert type="danger" onClose={() => setTestError(null)}>
+        <PageNotice type="danger" onClose={() => setTestError(null)}>
           {testError}
-        </InlineAlert>
+        </PageNotice>
       )}
       <div className="flex items-center">
         <Button

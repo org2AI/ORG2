@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   Add01Icon,
   FolderGitTwoIcon,
+  ImportIcon,
   Login01Icon,
   MessageAdd02Icon,
   Search01Icon,
@@ -12,7 +13,7 @@ import {
   AGENT_SESSION_ACTIONS,
   ALL_SESSIONS_SEARCH_ICON,
   ORGANIZATION_ACTIONS,
-  WORKSPACE_ACTIONS,
+  WORKING_DIRECTORY_ACTIONS,
 } from "../spotlightActionDefinitions.navigation";
 
 describe("Spotlight action icons", () => {
@@ -24,12 +25,12 @@ describe("Spotlight action icons", () => {
     expect(newSession?.icon).toBe(MessageAdd02Icon);
   });
 
-  it("uses the repository glyph when switching workspaces", () => {
-    const switchWorkspace = WORKSPACE_ACTIONS.find(
+  it("uses the repository glyph when switching working directories", () => {
+    const switchWorkingDirectory = WORKING_DIRECTORY_ACTIONS.find(
       (action) => action.id === "switch-workspace"
     );
 
-    expect(switchWorkspace?.icon).toBe(FolderGitTwoIcon);
+    expect(switchWorkingDirectory?.icon).toBe(FolderGitTwoIcon);
   });
 
   it("distinguishes metadata search from full-text session search", () => {
@@ -76,5 +77,17 @@ describe("Spotlight action icons", () => {
         closeOnSuccess: false,
       }),
     ]);
+  });
+});
+
+it("offers session import using the same label and icon as the start-page card", () => {
+  expect(
+    AGENT_SESSION_ACTIONS.find((action) => action.id === "import-session")
+  ).toMatchObject({
+    labelKey: "navigation:cloud.share.importEntry",
+    icon: ImportIcon,
+    actionId: "spotlight.importSession",
+    opensSecondLevel: true,
+    closeOnSuccess: false,
   });
 });

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React, { act, createElement } from "react";
+import { act, createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import {
   afterAll,
@@ -23,11 +23,6 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
-}));
-
-vi.mock("@src/scaffold/ModalSystem", () => ({
-  default: ({ children }: { children?: React.ReactNode }) =>
-    createElement("div", { "data-testid": "modal" }, children),
 }));
 
 vi.mock("@src/components/Input", () => ({
@@ -104,6 +99,7 @@ const DRAFT: TeamInboxSessionHandoffDraft = {
   destinations: [
     {
       kind: "project",
+      orgId: "org-1",
       key: "project:project-alpha",
       projectId: "project-1",
       projectSlug: "project-alpha",
@@ -176,7 +172,7 @@ describe("SessionHandoffComposer", () => {
       targetDate: "2026-07-30T00:00:00.000Z",
     });
 
-    const properties = container.querySelector(
+    const properties = document.body.querySelector(
       "[data-testid='shared-work-item-properties']"
     );
     expect(properties?.getAttribute("data-visible-fields")).toBe(
@@ -201,7 +197,7 @@ describe("SessionHandoffComposer", () => {
     const onChange = renderComposer(form);
 
     act(() => {
-      container
+      document.body
         .querySelector<HTMLButtonElement>(
           "[data-testid='update-shared-properties']"
         )
@@ -220,13 +216,13 @@ describe("SessionHandoffComposer", () => {
     const form = createSessionHandoffForm(DRAFT);
     const onChange = renderComposer(form, undefined, true);
 
-    const fieldset = container.querySelector(
+    const fieldset = document.body.querySelector(
       "[data-testid='team-inbox-handoff-properties']"
     );
     expect(fieldset?.hasAttribute("disabled")).toBe(true);
 
     act(() => {
-      container
+      document.body
         .querySelector<HTMLButtonElement>(
           "[data-testid='update-shared-properties']"
         )
@@ -241,8 +237,45 @@ describe("SessionHandoffComposer", () => {
       assigneeMemberId: "removed-member",
     });
 
-    expect(container.querySelector("[role='alert']")?.textContent).toBe(
+    expect(document.body.querySelector("[role='alert']")?.textContent).toBe(
       "teamInbox.handoff.validation.recipient_unavailable"
     );
+  });
+  it("blocks every close control while submitting and restores the header after failure", () => {
+    const onCancel = vi.fn();
+    const render = (submitting: boolean) =>
+      act(() =>
+        root.render(
+          createElement(SessionHandoffComposer, {
+            draft: DRAFT,
+            form: createSessionHandoffForm(DRAFT),
+            submitting,
+            onCancel,
+            onChange: vi.fn(),
+            onSubmit: vi.fn(),
+          })
+        )
+      );
+    render(true);
+    expect(document.querySelector('button[title="Close"]')).toBeNull();
+    const cancel = [
+      ...document.querySelectorAll<HTMLButtonElement>("button"),
+    ].find((b) => b.textContent === "common:actions.cancel")!;
+    expect(cancel.disabled).toBe(true);
+    act(() => {
+      cancel.click();
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+      );
+      document.querySelector<HTMLElement>(".liquid-modal-mask")!.click();
+    });
+    expect(onCancel).not.toHaveBeenCalled();
+    render(false);
+    act(() =>
+      document
+        .querySelector<HTMLButtonElement>('button[title="Close"]')!
+        .click()
+    );
+    expect(onCancel).toHaveBeenCalledOnce();
   });
 });

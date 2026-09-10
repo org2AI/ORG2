@@ -1,16 +1,10 @@
 /**
- * useConflictMarkers Hook
+ * Conflict marker parsing utilities
  *
  * Parses conflict markers from file content and provides
  * utilities for conflict resolution.
  */
-import { useCallback, useMemo } from "react";
-
-import type {
-  ConflictBlock,
-  ConflictResolutionChoice,
-  UseConflictMarkersResult,
-} from "./types";
+import type { ConflictBlock, ConflictResolutionChoice } from "./types";
 
 // Conflict marker patterns (with multiline flag for proper detection)
 const MARKER_PATTERNS = {
@@ -167,63 +161,6 @@ function hasConflictMarkers(content: string): boolean {
     MARKER_PATTERNS.separator.test(content) &&
     MARKER_PATTERNS.incomingEnd.test(content)
   );
-}
-
-/**
- * Hook for parsing and managing conflict markers in file content
- */
-export function useConflictMarkers(content: string): UseConflictMarkersResult {
-  // Parse conflicts from content
-  const conflicts = useMemo(() => parseConflictBlocks(content), [content]);
-
-  // Derived values
-  const hasConflicts = useMemo(
-    () => conflicts.length > 0 && hasConflictMarkers(content),
-    [conflicts, content]
-  );
-
-  const conflictCount = conflicts.length;
-  const resolvedCount = conflicts.filter(
-    (conflict) => conflict.resolved
-  ).length;
-
-  // Apply resolution to a specific conflict
-  const resolveConflict = useCallback(
-    (conflictId: string, choice: ConflictResolutionChoice): string => {
-      const conflict = conflicts.find(
-        (conflictItem) => conflictItem.id === conflictId
-      );
-      if (!conflict) return content;
-      return applyResolution(content, conflict, choice);
-    },
-    [conflicts, content]
-  );
-
-  // Get content with a specific conflict resolved (utility function)
-  const getResolvedContent = useCallback(
-    (
-      sourceContent: string,
-      conflictId: string,
-      choice: ConflictResolutionChoice
-    ): string => {
-      const parsedConflicts = parseConflictBlocks(sourceContent);
-      const conflict = parsedConflicts.find(
-        (conflictItem) => conflictItem.id === conflictId
-      );
-      if (!conflict) return sourceContent;
-      return applyResolution(sourceContent, conflict, choice);
-    },
-    []
-  );
-
-  return {
-    conflicts,
-    hasConflicts,
-    conflictCount,
-    resolvedCount,
-    resolveConflict,
-    getResolvedContent,
-  };
 }
 
 // Export utilities for external use

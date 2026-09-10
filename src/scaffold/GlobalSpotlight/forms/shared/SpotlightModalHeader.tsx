@@ -45,7 +45,7 @@ const SpotlightModalHeader: React.FC<SpotlightModalHeaderProps> = ({
   if (hideHeader) return null;
 
   return (
-    <div className="flex items-center justify-between px-4 py-3">
+    <div className="flex items-center justify-between px-3 py-3">
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-2 bg-bg-2">
           <AnyIcon icon={icon} size={18} className="text-text-1" />
@@ -88,7 +88,7 @@ const SpotlightModalHeader: React.FC<SpotlightModalHeaderProps> = ({
         <button
           onClick={onClose}
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-text-2 hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-500"
-          title={t("close")}
+          title={t("actions.close")}
         >
           <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={18} />
         </button>

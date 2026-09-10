@@ -32,7 +32,7 @@ export const PRIVACY_SETTINGS_REGISTRY = {
     schema: z.boolean(),
     default: true,
     description:
-      "Share coarse runtime, usage, and builder-profile aggregates with cloud organizations that have team runtime telemetry enabled (never session contents, titles, or repo paths)",
+      "Share coarse runtime, usage, and builder-profile aggregates with cloud workspaces that have team runtime telemetry enabled (never session contents, titles, or repo paths)",
     category: "privacy",
   },
 } as const satisfies Record<string, SettingDefinition>;

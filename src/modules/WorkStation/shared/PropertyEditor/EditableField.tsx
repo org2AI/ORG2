@@ -4,7 +4,7 @@
  * A small input field with label and optional unit suffix.
  * Used in property panels for editing numeric/string CSS values.
  *
- * Used by: WebDevTools DesignPanel, DesignerInspector
+ * Used by: WebDevTools DesignPanel
  */
 import React, { memo, useCallback, useRef, useState } from "react";
 
@@ -147,5 +147,3 @@ export const EditableField: React.FC<EditableFieldProps> = memo(
 );
 
 EditableField.displayName = "EditableField";
-
-export default EditableField;

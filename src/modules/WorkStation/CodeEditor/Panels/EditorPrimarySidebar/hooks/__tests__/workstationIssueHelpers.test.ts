@@ -242,12 +242,12 @@ describe("formatTimeAgo", () => {
     return d.toISOString();
   }
 
-  it('returns "today" for the current date', () => {
-    expect(formatTimeAgo(new Date().toISOString())).toBe("today");
+  it('returns "Today" for the current date', () => {
+    expect(formatTimeAgo(new Date().toISOString())).toBe("Today");
   });
 
-  it('returns "yesterday" for 1 day ago', () => {
-    expect(formatTimeAgo(daysAgo(1))).toBe("yesterday");
+  it('returns "Yesterday" for 1 day ago', () => {
+    expect(formatTimeAgo(daysAgo(1))).toBe("Yesterday");
   });
 
   it("returns N days ago for 2-29 days", () => {

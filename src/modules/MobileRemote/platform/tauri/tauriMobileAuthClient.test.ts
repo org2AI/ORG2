@@ -13,7 +13,13 @@ import type { TauriMobileRemoteBridge } from "./types";
 // runtime without a global WebSocket (CI runs Node 20). The adapter under test
 // only owns storage/error/server-session policy, so stub the SDK the same way
 // `auth/mobileAuthClient.test.ts` does.
-const mocks = vi.hoisted(() => ({ createClient: vi.fn(() => ({ auth: {} })) }));
+const mocks = vi.hoisted(() => {
+  const signInWithOAuth = vi.fn();
+  return {
+    signInWithOAuth,
+    createClient: vi.fn(() => ({ auth: { signInWithOAuth } })),
+  };
+});
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: mocks.createClient,
@@ -31,6 +37,30 @@ function createBridge(): TauriMobileRemoteBridge {
 }
 
 describe("Tauri mobile auth adapter", () => {
+  it("routes native login through the same Cloud login page as Desktop", async () => {
+    const challenge = "a".repeat(43);
+    mocks.signInWithOAuth.mockResolvedValue({
+      data: {
+        url: `https://project.supabase.co/auth/v1/authorize?code_challenge=${challenge}&code_challenge_method=s256`,
+      },
+      error: null,
+    });
+    const client = createTauriMobileAuthClient({
+      bridge: createBridge(),
+      fetcher: vi.fn<typeof fetch>(),
+    });
+    const url = new URL(
+      await client.buildLoginUrl("org2remote://auth/callback")
+    );
+    expect(url.origin + url.pathname).toBe(
+      "https://org2-cloud-infra.vercel.app/login"
+    );
+    expect(url.searchParams.get("return_to")).toBe(
+      "org2remote://auth/callback"
+    );
+    expect(url.searchParams.get("code_challenge")).toBe(challenge);
+    expect(url.searchParams.has("provider")).toBe(false);
+  });
   it("persists Supabase PKCE verifier state through the Keychain bridge", async () => {
     const bridge = createBridge();
     vi.mocked(bridge.secureRead).mockResolvedValue("pkce-value");

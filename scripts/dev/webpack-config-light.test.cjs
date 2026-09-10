@@ -27,6 +27,13 @@ function withEnv(overrides, fn) {
   }
 }
 
+function getDefinedValue(config, key) {
+  const definePlugin = config.plugins.find(
+    (plugin) => plugin.constructor?.name === "DefinePlugin"
+  );
+  return definePlugin?.definitions?.[key];
+}
+
 test("light dev disables webpack dev-server browser client", () => {
   const config = withEnv(
     {
@@ -75,4 +82,87 @@ test("production keeps default HTML script injection", () => {
   );
   assert.equal(htmlPlugin?.userOptions?.inject, "body");
   assert.equal(htmlPlugin?.userOptions?.retryMainScriptLoad, false);
+});
+
+// `pnpm build:stats` dumps stats with `--json`, and webpack-cli serializes
+// that dump with `compiler.options.stats`. The console block sets
+// `all: false`, which overrides `preset` and once reduced the dump to
+// `{time, errors, warnings}` — leaving scripts/quality/check-bundle-budget.mjs
+// with no entrypoint to measure.
+test("--json builds emit the stats fields the bundle budget reads", () => {
+  const config = createWebpackConfig(
+    {},
+    { mode: "production", json: "build/stats.json" }
+  );
+
+  for (const field of [
+    "assets",
+    "entrypoints",
+    "chunks",
+    "chunkModules",
+    "chunkOrigins",
+    "nestedModules",
+    "dependentModules",
+    "cachedModules",
+  ]) {
+    assert.equal(config.stats[field], true, `stats.${field} must be enabled`);
+  }
+});
+
+test("builds without --json keep the terse console stats", () => {
+  const config = createWebpackConfig({}, { mode: "production" });
+
+  assert.equal(config.stats.preset, "normal");
+  assert.equal(config.stats.entrypoints, undefined);
+});
+
+test("WebDriver production bundles force-enable the Agent Org gate", () => {
+  const config = withEnv(
+    {
+      ORGII_E2E: null,
+      ORGII_AGENT_ORG_REDESIGN: null,
+      WEBDRIVER: "1",
+    },
+    () => createWebpackConfig({}, { mode: "production" })
+  );
+
+  assert.equal(getDefinedValue(config, "process.env.ORGII_E2E"), '"1"');
+  assert.equal(
+    getDefinedValue(config, "process.env.ORGII_AGENT_ORG_REDESIGN"),
+    '"1"'
+  );
+});
+
+test("ordinary production bundles enable the Agent Org rollout by default", () => {
+  const config = withEnv(
+    {
+      ORGII_E2E: null,
+      ORGII_AGENT_ORG_REDESIGN: null,
+      WEBDRIVER: null,
+    },
+    () => createWebpackConfig({}, { mode: "production" })
+  );
+
+  assert.equal(getDefinedValue(config, "process.env.ORGII_E2E"), '"0"');
+  assert.equal(
+    getDefinedValue(config, "process.env.ORGII_AGENT_ORG_REDESIGN"),
+    '"1"'
+  );
+});
+
+test("ordinary production bundles preserve an explicit Agent Org opt-out", () => {
+  const config = withEnv(
+    {
+      ORGII_E2E: null,
+      ORGII_AGENT_ORG_REDESIGN: "0",
+      WEBDRIVER: null,
+    },
+    () => createWebpackConfig({}, { mode: "production" })
+  );
+
+  assert.equal(getDefinedValue(config, "process.env.ORGII_E2E"), '"0"');
+  assert.equal(
+    getDefinedValue(config, "process.env.ORGII_AGENT_ORG_REDESIGN"),
+    '"0"'
+  );
 });

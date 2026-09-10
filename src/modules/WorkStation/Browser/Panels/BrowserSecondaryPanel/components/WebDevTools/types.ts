@@ -4,7 +4,7 @@
  * Shared types for the WebDevTools components.
  */
 import type { ElementInfo } from "@src/modules/WorkStation/Browser/hooks/useWebviewInspector";
-import type { SecondaryPanelPosition } from "@src/store/ui/workStationAtom";
+import type { SecondaryPanelPosition } from "@src/store/ui/workStationLayout/secondaryPanelPositionAtoms";
 
 // ============================================
 // Console Types

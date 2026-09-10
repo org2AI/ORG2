@@ -17,7 +17,6 @@ import Dropdown from "@src/components/Dropdown";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { resolveAgentIcon } from "@src/config/agentIcons";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import { ROUTES } from "@src/config/routes";
 import { BUTTON_SIZE } from "@src/config/workstation/tokens";
 import {
@@ -48,7 +47,7 @@ import {
 import { openBranchSpotlight } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import { WorkStationViewService } from "@src/services/workStation/WorkStationViewService";
 import { workspaceGitStatusMapAtom } from "@src/store/git";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import {
   closeMiniTerminalAtom,
   miniTerminalClaimedIdsAtom,
@@ -466,7 +465,7 @@ export function FocusedChatWorkstationRail({
         key: "changes",
         label: t("common:actions.review"),
         icon: FileDiffIcon,
-        shortcut: getShortcutKeys("open_source_control_tab"),
+        shortcutId: "open_source_control_tab",
         ...(repoId && activeRepoPath
           ? { workingTreeRepo: { repoId, repoPath: activeRepoPath } }
           : {}),
@@ -524,14 +523,14 @@ export function FocusedChatWorkstationRail({
         key: "terminal",
         label: t("common:tabs.terminal"),
         icon: SquareTerminalIcon,
-        shortcut: getShortcutKeys("open_terminal_tab"),
+        shortcutId: "open_terminal_tab",
         onClick: () => void WorkStationViewService.openTerminalTab(),
       },
       {
         key: "files",
         label: t("common:labels.files"),
         icon: FolderClosedIcon,
-        shortcut: getShortcutKeys("open_file_folder_tab"),
+        shortcutId: "open_file_folder_tab",
         onClick: () => void WorkStationViewService.openFileFolderTab(),
       },
       {
@@ -1026,6 +1025,7 @@ export function FocusedChatWorkstationRail({
                       key={item.key}
                       label={item.status?.title ?? item.label}
                       shortcut={item.shortcut}
+                      shortcutId={item.shortcutId}
                       position="left"
                     >
                       <button

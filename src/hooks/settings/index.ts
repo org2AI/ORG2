@@ -4,29 +4,23 @@
  * Hooks for managing application settings, preferences, and cross-window sync.
  */
 
-export {
-  useCrossWindowSettingsSync,
-  SETTINGS_CHANGED_EVENT,
-} from "./useCrossWindowSettingsSync";
+export { useCrossWindowSettingsSync } from "./useCrossWindowSettingsSync";
 
 export {
   useEditorAppearanceSettings,
   useEditorAppearanceStyles,
 } from "./useEditorAppearance";
 
-export { useSetting, useSettingValue, useAllSettings } from "./useSettings";
+export { useSettingValue } from "./useSettings";
 
 export { useDevModeGuard } from "./useDevModeGuard";
 
 export {
-  applyPointerCursorPreference,
-  POINTER_CURSORS_ATTRIBUTE,
-  usePointerCursorPreference,
-} from "./usePointerCursorPreference";
+  type DockIconVariant,
+  useDockIconPreference,
+} from "./useDockIconPreference";
+export { usePointerCursorPreference } from "./usePointerCursorPreference";
 
 export { useSleepInhibitor } from "./useSleepInhibitor";
 
-export {
-  useLearningsBrowser,
-  type LearningsBrowserFilters,
-} from "./useLearningsBrowser";
+export { useLearningsBrowser } from "./useLearningsBrowser";

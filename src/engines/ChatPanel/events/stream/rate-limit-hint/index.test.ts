@@ -16,7 +16,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 describe("RateLimitHintEvent", () => {
-  it("renders the rate-limit message as a shared warning InlineAlert", () => {
+  it("renders the rate-limit message as a shared warning PageNotice", () => {
     const markup = renderToStaticMarkup(
       createElement(RateLimitHintEvent, { event_id: "rate-limit-hint" })
     );

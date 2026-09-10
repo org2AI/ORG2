@@ -23,23 +23,17 @@ import type { SessionGroupVisibleCount } from "../types";
 import { getAllSectionIds } from "../workstationSidebarData";
 import { useSidebarBottomRightActions } from "./bottomActions";
 import { useWorkstationSidebarMemory } from "./sidebarMemory";
-import type { WorkstationSidebarKey } from "./types";
+import type { SessionSidebarView } from "./types";
 
 export function resolveSidebarSelectedMenuItemId({
-  activeSidebarKey,
+  activeViewKey,
   selectedCloudMenuItemId,
   selectedMenuItemId,
-  workItemsContentVisible,
 }: Pick<
   UseWorkstationSidebarBottomActionsParams,
-  | "activeSidebarKey"
-  | "selectedCloudMenuItemId"
-  | "selectedMenuItemId"
-  | "workItemsContentVisible"
+  "activeViewKey" | "selectedCloudMenuItemId" | "selectedMenuItemId"
 >): string {
-  return activeSidebarKey === "workstation" &&
-    !workItemsContentVisible &&
-    selectedCloudMenuItemId
+  return activeViewKey !== "work-items" && selectedCloudMenuItemId
     ? selectedCloudMenuItemId
     : selectedMenuItemId;
 }
@@ -60,9 +54,7 @@ interface UseWorkstationSidebarBottomActionsParams {
     nextCollapsedSectionIds: Set<string>
   ) => void;
   sessions: Session[];
-  workItemsContentVisible: boolean;
-  channelSidebarVisible: boolean;
-  activeSidebarKey: WorkstationSidebarKey;
+  activeViewKey: SessionSidebarView;
   projectsWorkItemsLoading: boolean;
   projectsSidebarMenuItems: NavigationMenuItem[];
   sessionsLoading: boolean;
@@ -89,9 +81,7 @@ export function useWorkstationSidebarBottomActions({
   sidebarMenuItems,
   resolvedOnCollapsedSectionIdsChange,
   sessions,
-  workItemsContentVisible,
-  channelSidebarVisible,
-  activeSidebarKey,
+  activeViewKey,
   projectsWorkItemsLoading,
   projectsSidebarMenuItems,
   sessionsLoading,
@@ -136,14 +126,15 @@ export function useWorkstationSidebarBottomActions({
     setRuntimeNavigationIntent(createRuntimeScanningNavigationIntent());
     openRuntimeTab(runtimeLabel);
   }, [openRuntimeTab, runtimeLabel, setRuntimeNavigationIntent]);
-  const isLoading = channelSidebarVisible
-    ? false
-    : workItemsContentVisible || activeSidebarKey === "projects"
-      ? projectsWorkItemsLoading &&
-        !hasSidebarMenuRows(projectsSidebarMenuItems)
-      : sessionsLoading && sessions.length === 0;
-  const sessionBottomRightActions = useSidebarBottomRightActions({
-    activeSidebarKey: workItemsContentVisible ? "projects" : activeSidebarKey,
+  const isLoading =
+    activeViewKey === "channels"
+      ? false
+      : activeViewKey === "work-items"
+        ? projectsWorkItemsLoading &&
+          !hasSidebarMenuRows(projectsSidebarMenuItems)
+        : sessionsLoading && sessions.length === 0;
+  const sidebarBottomRightActions = useSidebarBottomRightActions({
+    activeViewKey,
     groupByMode,
     groupVisibleCount,
     includeExternal,
@@ -156,27 +147,22 @@ export function useWorkstationSidebarBottomActions({
     setIncludeExternal,
     resetGroupVisibleCounts,
   });
-  const sidebarBottomRightActions = channelSidebarVisible
-    ? null
-    : sessionBottomRightActions;
 
   const resolvedSelectedMenuItemId = resolveSidebarSelectedMenuItemId({
-    activeSidebarKey,
+    activeViewKey,
     selectedCloudMenuItemId,
     selectedMenuItemId,
-    workItemsContentVisible,
   });
 
   useWorkstationSidebarMemory({
     activeSessionId,
-    activeSidebarKey,
+    activeViewKey,
     allSectionIds,
     collapsedSectionIds,
     groupByMode,
     pinnedMenuItems,
     selectedMenuItemId: resolvedSelectedMenuItemId,
     sidebarMenuItems,
-    tabCount: 0,
   });
 
   return {

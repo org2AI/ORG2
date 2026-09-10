@@ -9,38 +9,21 @@
  * new session so it boots inside the persistent work graph.
  */
 import { atomWithStorage } from "jotai/utils";
+import { z } from "zod/v4";
 
 import { PRODUCT_MODE_PROJECT } from "@src/config/sessionCreatorConfig";
+import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
 const STORAGE_KEY = "orgii:creatorProductMode";
 
 export type CreatorDefaultProductMode = typeof PRODUCT_MODE_PROJECT | null;
 
-const storage = {
-  getItem(
-    key: string,
-    initialValue: CreatorDefaultProductMode
-  ): CreatorDefaultProductMode {
-    if (typeof window === "undefined") return initialValue;
-    try {
-      const stored = window.localStorage.getItem(key);
-      if (stored == null) return initialValue;
-      return JSON.parse(stored) === PRODUCT_MODE_PROJECT
-        ? PRODUCT_MODE_PROJECT
-        : null;
-    } catch {
-      return initialValue;
-    }
-  },
-  setItem(key: string, value: CreatorDefaultProductMode) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(value));
-  },
-  removeItem(key: string) {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
-  },
-};
+const StoredProductModeSchema = z.literal(PRODUCT_MODE_PROJECT).nullable();
 
 export const creatorDefaultProductModeAtom =
-  atomWithStorage<CreatorDefaultProductMode>(STORAGE_KEY, null, storage);
+  atomWithStorage<CreatorDefaultProductMode>(
+    STORAGE_KEY,
+    null,
+    createZodJsonStorage(StoredProductModeSchema),
+    { getOnInit: true }
+  );

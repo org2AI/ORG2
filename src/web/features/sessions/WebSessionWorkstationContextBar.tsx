@@ -5,7 +5,7 @@ import { resolveSessionWorkstationContext } from "@src/engines/ChatPanel/compone
 import { resolveCloudSessionEnvironmentIdentity } from "@src/features/Org2Cloud/cloudSessionReplayLifecycle";
 import {
   FolderClosedIcon,
-  GitBranchIcon,
+  GitBranchPlusIcon,
   GitForkIcon,
   HugeiconsIcon,
 } from "@src/icons";
@@ -101,7 +101,7 @@ const WebSessionWorkstationContextBar: React.FC<WebSessionWorkstationContextBarP
         {branchLabel ? (
           <span className="inline-flex min-w-0 items-center gap-1">
             <HugeiconsIcon
-              icon={GitBranchIcon}
+              icon={GitBranchPlusIcon}
               data-icon="git-branch"
               size={12}
               strokeWidth={2}

@@ -1,6 +1,5 @@
 {
   "labels": {
-    "devRecord": "Hồ sơ phát triển",
     "workItems": "Mục công việc",
     "codeSearch": "Tìm kiếm mã",
     "dbManager": "Quản lý CSDL",
@@ -45,10 +44,9 @@
     "projectManager": "Project Manager",
     "diff": "Diff",
     "colleagues": "Đồng nghiệp",
-    "terminals": "Terminal"
-  },
-  "trajectoryPanel": {
-    "title": "Quỹ đạo"
+    "terminals": "Terminal",
+    "openSourceRepo": "Mở kho mã nguồn",
+    "teamInbox": "Team Inbox"
   },
   "routes": {
     "session": "Trò chuyện",
@@ -65,10 +63,16 @@
     "models": "Mô hình",
     "signingIn": "Đang đăng nhập...",
     "launchpad": "Trung tâm khởi động",
-    "ideaArea": "Khu vực ý tưởng",
     "changelog": "Changelog"
   },
   "sidebar": {
+    "sort": {
+      "dropToUnpin": "Thả vào đây để bỏ ghim",
+      "title": "Sắp xếp cuộc trò chuyện",
+      "priority": "Ưu tiên",
+      "updated": "Cập nhật gần nhất",
+      "manual": "Thứ tự thủ công"
+    },
     "tabs": {
       "workstation": "Workstation",
       "manage": "Quản lý",
@@ -78,6 +82,7 @@
       "agentOrgs": "Agent và nhóm"
     },
     "groupBy": {
+      "none": "Không nhóm",
       "title": "Nhóm theo",
       "byTime": "Theo thời gian",
       "byAgent": "Theo Agent",
@@ -122,7 +127,11 @@
     },
     "folderCounts": {
       "repo": "{{count}} Repo",
-      "multiRepoWorkspace": "{{count}} Workspace đa Repo"
+      "multiRepoWorkspace": "{{count}} Workspace đa Repo",
+      "repo_other": "{{count}} repos",
+      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces",
+      "repo_plural": "{{count}} repos",
+      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces"
     },
     "bottomBar": {
       "settings": "Cài đặt",
@@ -157,50 +166,16 @@
       "duration30m": "30 phút",
       "duration1h": "1 giờ",
       "duration2h": "2 giờ",
-      "durationTomorrow": "Ngày mai"
+      "durationTomorrow": "Ngày mai",
+      "unknownRole": "Vai trò không xác định"
     },
     "guide": {
-      "trigger": "Mở hướng dẫn",
-      "title": "Bắt đầu với ORGII",
       "startSession": "Bắt đầu phiên",
-      "close": "Đóng hướng dẫn",
-      "localWorkspace": "Không gian làm việc cục bộ",
-      "connectOrganization": "Kết nối hoặc tạo tổ chức",
-      "createOrganizationHint": "Nhập tên tổ chức rồi chọn Tạo. Hướng dẫn sẽ chuyển sang bước tiếp theo sau khi tổ chức đám mây được tạo.",
-      "inviteTeammate": "Mời một thành viên nhóm",
-      "inviteTeammateHint": "Tạo liên kết mời tại đây rồi gửi cho thành viên nhóm của bạn.",
-      "invitePermissionHint": "Bạn có thể xem danh sách thành viên tại đây. Quản trị viên hoặc chủ sở hữu tổ chức phải tạo lời mời.",
-      "viewTeamActivity": "Xem mức sử dụng của nhóm",
-      "viewTeamActivityHint": "Runtime đã mở ở mục Thành viên. Chọn một thành viên để xem mức sử dụng Codex, Claude và Cursor; nếu chưa có dữ liệu, hãy bật đồng bộ Runtime của nhóm trước.",
-      "exploreProduct": "Khám phá các trang chính",
-      "nextStep": "Bước tiếp theo",
-      "dismiss": "Ẩn hướng dẫn"
-    }
-  },
-  "myRole": {
-    "tabs": {
-      "status": "Trạng thái của tôi"
+      "connectOrganization": "Kết nối hoặc tạo không gian làm việc"
     }
   },
   "launchpad": {
-    "sections": {
-      "other": "Khác"
-    },
-    "searchPlaceholder": "Tìm kiếm workspace...",
-    "emptyTitle": "Chưa có workspace",
-    "emptyDescription": "Thêm một repo để bắt đầu",
-    "emptyWorkspaces": "Không có workspace nào khớp",
-    "myRepos": "Repo của tôi",
-    "myMultiRepoWorkspaces": "Workspaces đa-repo của tôi",
-    "dashboard": "Bảng điều khiển",
     "myWorkspaces": "Workspaces của tôi",
-    "workspaces": "Workspaces",
-    "dashboardTitle": "Workspaces",
-    "dashboardSubtitle": "Chọn một workspace để khởi chạy hoặc xem chi tiết",
-    "addRepo": "Thêm workspace",
-    "activeBadge": "Đang hoạt động",
-    "exploreTitle": "Khám phá",
-    "exploreDescription": "Khám phá mẫu và repo công khai (sắp ra mắt)",
     "preview": {
       "repoType": "Loại project",
       "tools": "Công cụ",
@@ -209,11 +184,7 @@
       "statusNotAnalyzed": "Chưa phân tích",
       "statusReady": "Sẵn sàng",
       "statusParamsMissing": "Thiếu tham số",
-      "statusNoEnvConfig": "Không cần cấu hình env",
-      "setupWithAI": "Biến thành ứng dụng",
-      "trustRepo": "Tin tưởng kho lưu trữ này",
-      "launchpadPlaceholder": "Hướng dẫn bổ sung cho lần chạy này...",
-      "launchpadLaunch": "Khởi chạy"
+      "statusNoEnvConfig": "Không cần cấu hình env"
     },
     "containers": {
       "title": "Containers",
@@ -222,8 +193,6 @@
       "emptySubtitle": "Khởi động Docker Desktop, Colima hoặc Rancher Desktop rồi làm mới để xem container cục bộ.",
       "repoEmptyTitle": "Không có container cho repo này",
       "repoEmptySubtitle": "Container được khớp bằng label thư mục làm việc Docker Compose hoặc bind mount bên trong repo này.",
-      "repoNoDockerTitle": "Không phát hiện thiết lập Docker",
-      "repoNoDockerSubtitle": "Thêm Dockerfile hoặc file docker-compose để liên kết container với repo này.",
       "dockerUnavailable": "Docker không khả dụng",
       "name": "Tên",
       "image": "Image",
@@ -259,15 +228,9 @@
       "categoryBuild": "Build",
       "categoryTest": "Kiểm thử",
       "categoryLint": "Lint & Định dạng",
-      "categoryOther": "Khác",
-      "noScripts": "Không tìm thấy script",
-      "noScriptsHint": "Thêm package.json, Makefile hoặc cấu hình tương tự",
-      "run": "Chạy",
-      "launched": "Đang chạy {{name}}",
-      "launchFailed": "Không thể chạy script"
+      "categoryOther": "Khác"
     },
     "detail": {
-      "title": "Chi tiết Repo",
       "path": "Đường dẫn",
       "envVarsTitle": "Biến Môi trường",
       "envKey": "Khóa",
@@ -284,16 +247,10 @@
       "scriptName": "Tên",
       "scriptCommand": "Lệnh",
       "scriptCategory": "Danh mục",
-      "scriptSource": "Nguồn",
       "scriptNamePlaceholder": "Tên script",
       "searchScripts": "Tìm kiếm script…",
       "noScripts": "Không tìm thấy script",
       "addScript": "Thêm Script",
-      "sourceCustom": "Tùy chỉnh",
-      "sourceDiscovered": "Đã phát hiện",
-      "analysisTitle": "Phân tích",
-      "clearAnalysis": "Xóa Phân tích",
-      "clearAnalysisHint": "Đặt lại bộ nhớ cache phân tích và quét lại vào lần truy cập tiếp theo",
       "analysisCleared": "Đã xóa phân tích"
     },
     "containerEngines": {
@@ -318,15 +275,11 @@
       "switchToRepo": "Mở",
       "startSession": "Bắt đầu phiên",
       "openDetails": "Hiển thị chi tiết",
-      "locateInFinder": "Hiện trong Finder",
       "remove": "Remove from ORGII",
       "removeSuccess": "Linkage to ORGII removed",
       "removeFailed": "Failed to remove linkage to ORGII"
     },
     "addWorkspace": "Thêm Workspace"
-  },
-  "explore": {
-    "title": "Khám phá"
   },
   "workstation": {
     "agentComputer": {
@@ -344,28 +297,25 @@
       "title": "Thẻ mới",
       "searchFile": "Tìm tệp",
       "searchSessions": "Bảng Kanban",
-      "newBrowserTab": "Thẻ trình duyệt mới",
       "newPrivateBrowserTab": "Thẻ trình duyệt ẩn danh mới",
       "workItems": "Mục công việc",
       "projects": "Dự án",
-      "recentlyClosed": "Gần đây"
+      "recent": "Gần đây"
     }
   },
   "collaboration": {
-    "switchOrg": "Chuyển ORG",
-    "addOrg": "Thêm ORG",
+    "switchOrg": "Chuyển không gian làm việc",
+    "addOrg": "Thêm không gian làm việc",
     "createOrg": "Tạo",
     "joinOrg": "Tham gia",
-    "orgSource": "Nguồn Org",
+    "orgSource": "Nguồn không gian làm việc",
     "localOrg": "Cục bộ",
-    "orgName": "Tên ORG",
+    "orgName": "Tên không gian làm việc",
     "orgNamePlaceholder": "Team Alpha",
     "inviteCode": "Liên kết hoặc mã mời",
     "inviteCodePlaceholder": "Dán liên kết orgii:// hoặc mã mời",
-    "copyInvite": "Sao chép lời mời",
-    "copiedInvite": "Đã sao chép",
     "setupMode": "Chế độ thiết lập",
-    "manageOrg": "Quản lý ORG",
+    "manageOrg": "Quản lý không gian làm việc",
     "session": {
       "forkFailed": "Failed to fork the session",
       "forkedFromLabel": "⑂ from {{name}}",
@@ -382,11 +332,11 @@
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
       "forkSetupModel": "Model",
-      "forkSetupContinue": "Fork & continue",
       "forkSnapshotIncomplete": "The cloud snapshot is incomplete. Ask the owner to finish syncing, then retry.",
       "forkAgentUnavailable": "Choose a local agent before forking.",
       "forkBackendRegistrationFailed": "The session history was copied, but the runnable fork could not be registered. Retry.",
-      "forkReplayUnavailable": "Full replay is not available for this session. Ask the owner to share the replay, then retry."
+      "forkReplayUnavailable": "Full replay is not available for this session. Ask the owner to share the replay, then retry.",
+      "forkSetupReused": "Tiếp tục với thiết lập gần nhất của bạn · {{model}}"
     },
     "repoPicker": {
       "loading": "Loading repos…",
@@ -397,31 +347,16 @@
     "forkImported": {
       "headerButton": "Fork",
       "headerTooltip": "Fork phiên đã nhập này thành phiên có thể chỉnh sửa của riêng bạn",
-      "confirmTitle": "Fork và tiếp tục?",
-      "confirmBody": "Đây là phiên của {{name}} — bản sao của bạn là bản nhập chỉ đọc. Tiếp tục sẽ fork nó thành phiên của riêng bạn và tin nhắn sẽ được gửi vào đó.",
-      "confirm": "Fork và tiếp tục",
-      "cancel": "Hủy",
       "retentionError": "Phiên này nằm ngoài thời hạn phát lại của gói — hãy nâng cấp để fork",
       "goneError": "Phiên chia sẻ này không còn khả dụng (đã bị xóa hoặc hết hạn)",
       "error": "Fork phiên thất bại",
-      "sendFailed": "Đã fork nhưng gửi tin nhắn thất bại — nội dung đã được khôi phục vào ô nhập",
       "forkedChipTooltip": "Fork từ {{name}}",
-      "continuePlaceholder": "Message to fork and continue in ORGII…",
       "snapshotError": "The cloud snapshot is incomplete. Ask the owner to finish syncing, then retry.",
       "agentError": "Choose a local agent before forking.",
       "backendError": "The session history was copied, but the runnable fork could not be registered. Retry.",
       "parentOpenUnavailable": "The source session could not be opened from this fork.",
       "replayError": "Full replay is not available for this session. Ask the owner to share the replay, then retry.",
       "openParentButton": "Mở phiên gốc từ {{name}}"
-    },
-    "continueCli": {
-      "headerButton": "Tiếp tục trong {{agent}}",
-      "headerTooltip": "Mở lại phiên này bằng {{agent}} trong một thẻ terminal ({{command}})",
-      "notInstalled": "{{agent}} chưa được cài đặt trên máy này",
-      "missingWorkspace": "Thư mục gốc của phiên không còn tồn tại — {{agent}} chỉ có thể tiếp tục phiên từ thư mục đó",
-      "sourceMissing": "Dữ liệu gốc của phiên không còn trên ổ đĩa",
-      "launchFailed": "Không thể mở terminal {{agent}}",
-      "composerPlaceholder": "Nhập tin nhắn để tiếp tục trong phiên mới…"
     },
     "openInApp": {
       "headerButton": "Mở trong {{app}}",
@@ -431,13 +366,18 @@
     }
   },
   "cloud": {
-    "title": "ORG2 Cloud",
+    "featureSharingBody": "Chia sẻ phiên làm việc với đồng đội",
+    "featureMobileRemoteBody": "Tiếp tục công việc của tác nhân ngay từ điện thoại",
+    "featureMarketBody": "Khám phá công cụ và tài nguyên trong ORG2 Market",
+    "signInModalTitle": "Chào mừng bạn trở lại",
+    "signInModalBody": "Tiếp tục trong trình duyệt để đăng nhập vào tài khoản của bạn",
     "signIn": "Đăng nhập",
     "signOut": "Đăng xuất",
+    "signOutConfirmTitle": "Đăng xuất?",
+    "signOutConfirmBody": "Bạn sẽ cần đăng nhập lại để truy cập tài khoản của mình",
     "signedInAs": "Đã đăng nhập: {{name}}",
     "signedInToast": "Đã đăng nhập ORG2 Cloud",
     "sessionExpired": "Phiên ORG2 Cloud đã hết hạn. Hãy đăng nhập lại để tiếp tục.",
-    "recommendedDesc": "Chia sẻ phiên được quản lý, lưu trữ phát lại, phân quyền nhóm và liên kết chia sẻ an toàn. Không cần cài đặt Supabase. ORG2 quản lý giúp bạn Auth, di trú cơ sở dữ liệu, chính sách RLS, thanh toán, thời gian lưu trữ, hạn mức và nâng cấp backend",
     "customEndpoint": {
       "title": "Backend ORG2 Cloud tùy chỉnh",
       "toggleDesc": "Dùng bản triển khai ORG2 Cloud của riêng bạn",
@@ -458,9 +398,9 @@
       "membersTitle": "Thành viên",
       "membersEmpty": "Chưa có thành viên",
       "loading": "Đang tải…",
-      "loadError": "Không tải được thông tin tổ chức đám mây",
+      "loadError": "Không tải được thông tin không gian làm việc đám mây",
       "repoScopesTitle": "Phạm vi repo",
-      "repoScopesHelp": "Phiên từ các repo trong những phạm vi này sẽ đồng bộ vào tổ chức đám mây này. Phạm vi được khớp theo git remote, nên đồng đội trên máy nào cũng dùng chung một khóa",
+      "repoScopesHelp": "Phiên từ các repo trong những phạm vi này sẽ đồng bộ vào không gian làm việc đám mây này. Phạm vi được khớp theo git remote, nên đồng đội trên máy nào cũng dùng chung một khóa",
       "repoScopesEmpty": "Chưa có phạm vi repo",
       "removeRepoScope": "Xóa",
       "saveRepoScopes": "Lưu phạm vi repo",
@@ -518,14 +458,14 @@
         "coverageTitle": "Mức bao phủ phiên",
         "coverageSummary": "Đã đồng bộ {{synced}}/{{syncable}} ({{percent}}%)",
         "coveragePercentLabel": "Mức bao phủ",
-        "coverageEmpty": "Chưa có phiên nào trong phạm vi kho lưu trữ của tổ chức này",
+        "coverageEmpty": "Chưa có phiên nào trong phạm vi kho lưu trữ của không gian làm việc này",
         "logsTitle": "Nhật ký đồng bộ",
         "logsHelp": "Các sự kiện đồng bộ gần đây được ghi trên thiết bị này. Bị xóa khi khởi động lại và không bao giờ được tải lên",
         "logsEmpty": "Chưa ghi nhận sự kiện đồng bộ nào",
         "logsClear": "Xóa",
         "logsCopy": "Sao chép",
         "logsCopied": "Đã sao chép",
-        "logsOrg": "tổ chức {{orgId}}",
+        "logsOrg": "không gian làm việc {{orgId}}",
         "levelInfo": "Thông tin",
         "levelWarn": "Cảnh báo",
         "levelError": "Lỗi"
@@ -534,7 +474,6 @@
     "sidebar": {
       "teamSessions": "Phiên của nhóm",
       "mySessions": "Phiên của tôi",
-      "memberFilter": "Lọc theo thành viên",
       "sessionFilter": "Lọc phiên",
       "copyUrl": "Sao chép URL",
       "directlySharedWithMe": "Được chia sẻ trực tiếp với tôi",
@@ -554,28 +493,28 @@
     },
     "sessionRef": {
       "chipLabel": "Phiên của nhóm",
-      "notMember": "Bạn không phải là thành viên của tổ chức sở hữu phiên này.",
+      "notMember": "Bạn không phải là thành viên của không gian làm việc sở hữu phiên này.",
       "signInRequired": "Đăng nhập ORG2 Cloud để mở phiên này.",
-      "sessionNotFound": "Phiên đó không thuộc tổ chức này.",
-      "notPublished": "Chia sẻ phiên này với một tổ chức trước khi sao chép tham chiếu.",
-      "chooseOrg": "Phiên này thuộc nhiều tổ chức. Chuyển sang tổ chức bạn muốn tham chiếu, rồi sao chép lại.",
+      "sessionNotFound": "Phiên đó không thuộc không gian làm việc này.",
+      "notPublished": "Chia sẻ phiên này với một không gian làm việc trước khi sao chép tham chiếu.",
+      "chooseOrg": "Phiên này thuộc nhiều không gian làm việc. Chuyển sang không gian làm việc bạn muốn tham chiếu, rồi sao chép lại.",
       "opening": "Đang mở phiên nhóm…"
     },
     "sync": {
-      "quotaExceededToast": "Đồng bộ ORG2 Cloud tạm dừng: tổ chức này đã vượt hạn mức của gói",
-      "syncDisabledToast": "Đồng bộ ORG2 Cloud tạm dừng: gói của tổ chức này không bật đồng bộ phiên",
+      "quotaExceededToast": "Đồng bộ ORG2 Cloud tạm dừng: không gian làm việc này đã vượt hạn mức của gói",
+      "syncDisabledToast": "Đồng bộ ORG2 Cloud tạm dừng: gói của không gian làm việc này không bật đồng bộ phiên",
       "schemaMismatchToast": "Đã tạm dừng đồng bộ ORG2 Cloud: phiên bản schema của backend là {{backend}}, ứng dụng yêu cầu {{expected}}"
     },
     "moveToOrg": {
-      "menuItem": "Thẻ tổ chức…",
-      "title": "Thẻ tổ chức của phiên",
-      "hint": "Chọn một hoặc nhiều tổ chức để chia sẻ phiên này — nó có thể ở trong Personal và nhiều tổ chức cùng lúc. Nó vẫn là phiên cục bộ bình thường; điều này chỉ làm cho nó hiển thị ở đó. Chỉ có thể chọn các tổ chức có phạm vi repo bao gồm kho của phiên này.",
-      "noOrgs": "Chưa có tổ chức đám mây nào — đăng nhập ORG2 Cloud để tạo hoặc tham gia.",
+      "menuItem": "Thẻ không gian làm việc…",
+      "title": "Nhãn",
+      "hint": "Chọn một hoặc nhiều không gian làm việc để chia sẻ phiên này — nó có thể ở trong Personal và nhiều không gian làm việc cùng lúc. Nó vẫn là phiên cục bộ bình thường; điều này chỉ làm cho nó hiển thị ở đó. Chỉ có thể chọn các không gian làm việc có phạm vi repo bao gồm kho của phiên này.",
+      "noOrgs": "Chưa có không gian làm việc đám mây nào — đăng nhập ORG2 Cloud để tạo hoặc tham gia.",
       "cloudBadge": "Đám mây",
       "added": "Đã thêm vào {{org}}",
       "removed": "Đã xóa khỏi {{org}}",
       "error": "Không cập nhật được — vui lòng thử lại.",
-      "noRemote": "This session's repository has no git remote, so it can't match any org's repo scope.",
+      "noRemote": "This session's repository has no git remote, so it can't match any workspace's repo scope.",
       "noScopes": "No repo scopes",
       "outOfScope": "Out of scope",
       "scopeResolving": "Checking…",
@@ -583,7 +522,7 @@
       "personalBadge": "Cục bộ",
       "personalOnlyHome": "Nơi duy nhất",
       "personalUnavailable": "Không thuộc Personal",
-      "autoInScope": "Trong tổ chức theo phạm vi repo"
+      "autoInScope": "Trong không gian làm việc theo phạm vi repo"
     },
     "orgManagement": {
       "invites": {
@@ -619,25 +558,25 @@
         "roleChangeAction": "Đổi",
         "remove": "Xóa",
         "removeTitle": "Xóa thành viên",
-        "removeConfirm": "Xóa {{member}} khỏi tổ chức này?",
+        "removeConfirm": "Xóa {{member}} khỏi không gian làm việc này?",
         "youTag": "Bạn",
         "ownerTag": "Chủ sở hữu",
         "floorOff": "Không có mức tối thiểu",
-        "floorTooltip": "Mức chia sẻ tối thiểu cho thành viên này. Áp dụng mức nghiêm ngặt hơn giữa mức này và mức sàn của toàn tổ chức.",
-        "floorOrgMinimum": "Mức tối thiểu của tổ chức ({{mode}})"
+        "floorTooltip": "Mức chia sẻ tối thiểu cho thành viên này. Áp dụng mức nghiêm ngặt hơn giữa mức này và mức sàn của toàn không gian làm việc.",
+        "floorOrgMinimum": "Mức tối thiểu của không gian làm việc ({{mode}})"
       },
       "leave": {
-        "action": "Rời tổ chức",
-        "confirmTitle": "Rời tổ chức này?",
-        "warning": "Bạn sẽ mất quyền truy cập các phiên được chia sẻ của tổ chức này cho đến khi được mời lại",
+        "action": "Rời không gian làm việc",
+        "confirmTitle": "Rời không gian làm việc này?",
+        "warning": "Bạn sẽ mất quyền truy cập các phiên được chia sẻ của không gian làm việc này cho đến khi được mời lại",
         "confirm": "Rời",
         "cancel": "Hủy",
         "leftToast": "Bạn đã rời {{org}}"
       },
       "settings": {
-        "title": "Cài đặt tổ chức",
+        "title": "Cài đặt không gian làm việc",
         "dangerZone": "Vùng nguy hiểm",
-        "renameLabel": "Tên tổ chức",
+        "renameLabel": "Tên không gian làm việc",
         "renameSave": "Đổi tên",
         "renamed": "Đã đổi tên",
         "transferTitle": "Chuyển quyền sở hữu",
@@ -646,64 +585,61 @@
         "transferAction": "Chuyển",
         "transferConfirm": "Chuyển quyền sở hữu {{org}} cho {{member}}? Bạn sẽ trở thành quản trị viên.",
         "transferredToast": "Đã chuyển quyền sở hữu",
-        "deleteTitle": "Xóa tổ chức",
+        "deleteTitle": "Xóa không gian làm việc",
         "deleteHint": "Xóa {{org}} đối với mọi thành viên và dừng chia sẻ phiên. Không thể hoàn tác từ ứng dụng",
         "deleteTypeToConfirm": "Nhập {{org}} để xác nhận",
-        "deleteAction": "Xóa tổ chức",
-        "deletedToast": "Đã xóa tổ chức",
-        "ownerLeaveHint": "Là chủ sở hữu, bạn không thể rời tổ chức — hãy chuyển quyền sở hữu hoặc xóa tổ chức"
+        "deleteAction": "Xóa không gian làm việc",
+        "deletedToast": "Đã xóa không gian làm việc",
+        "ownerLeaveHint": "Là chủ sở hữu, bạn không thể rời không gian làm việc — hãy chuyển quyền sở hữu hoặc xóa không gian làm việc"
       },
       "join": {
-        "dialogTitle": "Tham gia tổ chức đám mây",
-        "prompt": "Bạn vừa mở một lời mời ORG2 Cloud. Tham gia tổ chức này?",
+        "dialogTitle": "Tham gia không gian làm việc đám mây",
+        "prompt": "Bạn vừa mở một lời mời ORG2 Cloud. Tham gia không gian làm việc này?",
         "codeSuffix": "Mã mời kết thúc bằng {{suffix}}",
         "confirm": "Tham gia",
         "cancel": "Để sau",
         "signInFirst": "Đăng nhập ORG2 Cloud để chấp nhận lời mời — lời mời sẽ được giữ ở trạng thái chờ.",
-        "openSettings": "Mở cài đặt đăng nhập",
-        "joinedToast": "Đã tham gia {{org}}",
-        "joinedFallbackToast": "Đã tham gia tổ chức đám mây"
+        "joinedToast": "Đã tham gia {{org}}"
       },
       "create": {
         "sourceCloud": "Đám mây",
-        "signInFirst": "Đăng nhập ORG2 Cloud để tạo hoặc tham gia tổ chức được quản lý.",
-        "openSettings": "Mở cài đặt đăng nhập",
-        "createdToast": "Đã tạo tổ chức đám mây"
+        "signInFirst": "Đăng nhập ORG2 Cloud để tạo hoặc tham gia không gian làm việc được quản lý.",
+        "createdToast": "Đã tạo không gian làm việc đám mây"
       },
       "errors": {
-        "lastAdmin": "Đây là quản trị viên cuối cùng của tổ chức — hãy thăng cấp một thành viên khác trước.",
-        "ownerMustTransfer": "Chủ sở hữu không thể rời — hãy chuyển quyền sở hữu hoặc xóa tổ chức trước.",
-        "ownerRequired": "Chỉ chủ sở hữu tổ chức mới làm được điều này.",
-        "adminRequired": "Chỉ quản trị viên tổ chức mới làm được điều này.",
-        "quotaExceeded": "Đã đạt giới hạn gói của tổ chức này.",
+        "lastAdmin": "Đây là quản trị viên cuối cùng của không gian làm việc — hãy thăng cấp một thành viên khác trước.",
+        "ownerMustTransfer": "Chủ sở hữu không thể rời — hãy chuyển quyền sở hữu hoặc xóa không gian làm việc trước.",
+        "ownerRequired": "Chỉ chủ sở hữu không gian làm việc mới làm được điều này.",
+        "adminRequired": "Chỉ quản trị viên không gian làm việc mới làm được điều này.",
+        "quotaExceeded": "Đã đạt giới hạn gói của không gian làm việc này.",
         "forbidden": "Bạn không có quyền thực hiện thao tác này.",
-        "memberNotFound": "Thành viên này không còn hoạt động trong tổ chức.",
+        "memberNotFound": "Thành viên này không còn hoạt động trong không gian làm việc.",
         "validation": "Giá trị không hợp lệ — kiểm tra và thử lại.",
         "inviteInvalid": "Mã mời không hợp lệ.",
         "inviteRevoked": "Lời mời đã bị thu hồi.",
         "inviteExpired": "Lời mời đã hết hạn.",
         "inviteExhausted": "Lời mời đã hết số lần dùng.",
-        "alreadyMember": "Bạn đã là thành viên của tổ chức này.",
+        "alreadyMember": "Bạn đã là thành viên của không gian làm việc này.",
         "network": "Không thể kết nối dịch vụ đám mây. Hãy kiểm tra mạng và thử lại."
       }
     },
     "syncLevel": {
       "menuItem": "Mức đồng bộ đám mây…",
       "title": "Mức đồng bộ đám mây",
-      "hint": "Chọn phiên này chia sẻ gì với từng tổ chức đám mây — không chia sẻ, chỉ siêu dữ liệu hay phát lại đầy đủ — và ai được xem.",
+      "hint": "Chọn phiên này chia sẻ gì với từng không gian làm việc đám mây — không chia sẻ, chỉ siêu dữ liệu hay phát lại đầy đủ — và ai được xem.",
       "modeOff": "Tắt",
       "modeMetadata": "Chỉ siêu dữ liệu",
       "modeFullReplay": "Phát lại đầy đủ",
-      "visibilityOrg": "Mọi người trong tổ chức",
+      "visibilityOrg": "Mọi người trong không gian làm việc",
       "visibilityRestricted": "Chỉ mình tôi",
-      "taggedNote": "Phiên này đã được chuyển vào tổ chức, nên khi còn gắn thẻ nó luôn chia sẻ ít nhất siêu dữ liệu.",
-      "floorNote": "Quản trị viên tổ chức yêu cầu chia sẻ ít nhất {{mode}}.",
-      "orgMinimumOption": "Mức tối thiểu của tổ chức ({{mode}})"
+      "taggedNote": "Phiên này đã được chuyển vào không gian làm việc, nên khi còn gắn thẻ nó luôn chia sẻ ít nhất siêu dữ liệu.",
+      "floorNote": "Quản trị viên không gian làm việc yêu cầu chia sẻ ít nhất {{mode}}.",
+      "orgMinimumOption": "Mức tối thiểu của không gian làm việc ({{mode}})"
     },
     "share": {
       "menuItem": "Chia sẻ đám mây…",
       "dialogTitle": "Chia sẻ phiên trên đám mây",
-      "noOrgs": "Phiên này không thuộc tổ chức đám mây nào.",
+      "noOrgs": "Phiên này không thuộc không gian làm việc đám mây nào.",
       "directedTitle": "Chia sẻ với thành viên",
       "directedEmpty": "Không có thành viên nào khác để chia sẻ.",
       "createDirected": "Chia sẻ",
@@ -724,9 +660,7 @@
       "incomingError": "Liên kết chia sẻ này không hợp lệ, đã hết hạn hoặc đã bị thu hồi.",
       "incomingRetryHint": "Nhập chưa hoàn tất. Phiên được chia sẻ có thể vẫn đang tải lên — hãy thử lại.",
       "importEntry": "Nhập phiên",
-      "importDialogTitle": "Nhập phiên được chia sẻ",
       "importInputPlaceholder": "orgii://cloud/session?share=…",
-      "importPasteClipboard": "Dán từ bộ nhớ tạm",
       "importSubmit": "Nhập",
       "importInvalidInput": "Đây có vẻ không phải là liên kết chia sẻ hoặc mã token hợp lệ.",
       "selectAll": "Tất cả ({{count}})",
@@ -739,59 +673,44 @@
       "incomingRetry": "Thử lại"
     },
     "comments": {
-      "task": {
-        "assignFailed": "Đã đăng bình luận, nhưng giao cho agent thất bại — thử lại từ luồng",
-        "assignUnavailableHere": "Đã đăng bình luận — không thể giao cho agent trong chế độ xem này",
-        "addressingChip": "Đang xử lý bình luận: “{{excerpt}}”",
-        "addressingChipGeneric": "Đang xử lý một bình luận",
-        "addressingChipTooltip": "Được fork để xử lý một luồng bình luận trên phiên gốc",
-        "mentionSuggestion": "Giao bình luận này cho agent"
-      },
-      "toggleLabel": "Bình luận",
-      "notesButton": "Ghi chú phiên",
-      "notesTitle": "Ghi chú phiên",
-      "empty": "Chưa có bình luận nào",
-      "loadError": "Không thể tải bình luận",
-      "addPlaceholder": "Thêm bình luận…",
-      "replyPlaceholder": "Trả lời…",
-      "send": "Đăng",
-      "reply": "Trả lời",
-      "edit": "Sửa",
-      "save": "Lưu",
-      "cancel": "Hủy",
-      "delete": "Xóa",
-      "resolve": "Đánh dấu đã giải quyết",
-      "unresolve": "Mở lại",
-      "resolved": "Đã giải quyết",
-      "statusActive": "Đang mở",
-      "wontFix": "Sẽ không sửa",
-      "agentAddressing": "Agent đang xử lý…",
-      "resolvedToggle": "Đã giải quyết ({{count}})",
-      "deletedComment": "Bình luận đã bị xóa",
-      "editedMarker": "đã chỉnh sửa",
-      "earlierVersion": "Từ phiên bản trước của phiên này",
-      "replayRequired": "Bình luận theo lượt cần quyền phát lại đầy đủ",
-      "addError": "Không thể đăng — bản nháp đã được giữ lại",
       "actionError": "Thao tác thất bại — vui lòng thử lại",
       "unresolvedBadge_one": "{{count}} bình luận chưa giải quyết",
       "unresolvedBadge": "{{count}} bình luận chưa giải quyết",
-      "addressButton": "Xử lý bình luận",
-      "addressPill_one": "xử lý {{count}} bình luận",
-      "addressPill_other": "xử lý {{count}} bình luận",
-      "addressSelectAll": "Chọn tất cả",
-      "addressConfirm_one": "Xử lý {{count}} bình luận",
-      "addressConfirm_other": "Xử lý {{count}} bình luận",
+      "unreadBadge_one": "{{count}} tin nhắn chưa đọc",
+      "unreadBadge": "{{count}} tin nhắn chưa đọc",
+      "addError": "Không thể đăng — bản nháp đã được giữ lại",
+      "addPlaceholder": "Thêm bình luận…",
+      "agentAddressing": "Agent đang xử lý…",
       "agentAuthor": "Agent @{{name}}",
-      "addressSessionScope": "Session notes",
-      "addressRoundScope": "Round comments",
+      "cancel": "Hủy",
+      "delete": "Xóa",
+      "deletedComment": "Bình luận đã bị xóa",
+      "earlierVersion": "Từ phiên bản trước của phiên này",
+      "edit": "Sửa",
+      "editedMarker": "đã chỉnh sửa",
+      "empty": "Chưa có bình luận nào",
+      "loadError": "Không thể tải bình luận",
       "mentionMembers": "Nhắc đến",
-      "searchMembers": "Tìm thành viên"
+      "notesButton": "Ghi chú phiên",
+      "notesTitle": "Ghi chú phiên",
+      "reply": "Trả lời",
+      "replyPlaceholder": "Trả lời…",
+      "resolved": "Đã giải quyết",
+      "resolvedToggle": "Đã giải quyết ({{count}})",
+      "save": "Lưu",
+      "searchMembers": "Tìm thành viên",
+      "send": "Đăng",
+      "task": {
+        "assignFailed": "Đã đăng bình luận, nhưng giao cho agent thất bại — thử lại từ luồng",
+        "mentionSuggestion": "Giao bình luận này cho agent"
+      },
+      "wontFix": "Sẽ không sửa"
     },
     "sharingFloor": {
       "label": "Mức chia sẻ tối thiểu",
-      "help": "Đặt mức tối thiểu mà thành viên có thể chia sẻ cho các phiên trong kho lưu trữ của tổ chức này. Thành viên không thể đặt thấp hơn. \"Không giới hạn\" giữ nguyên hành vi hiện tại",
+      "help": "Đặt mức tối thiểu mà thành viên có thể chia sẻ cho các phiên trong kho lưu trữ của không gian làm việc này. Thành viên không thể đặt thấp hơn. \"Không giới hạn\" giữ nguyên hành vi hiện tại",
       "optionNone": "Không giới hạn",
-      "memberNote": "Quản trị viên tổ chức yêu cầu chia sẻ ít nhất {{mode}}, nên bạn không thể đặt phiên thấp hơn mức đó"
+      "memberNote": "Quản trị viên không gian làm việc yêu cầu chia sẻ ít nhất {{mode}}, nên bạn không thể đặt phiên thấp hơn mức đó"
     },
     "billing": {
       "openFailed": "Couldn't open billing. Please try again."
@@ -841,23 +760,22 @@
         "nameLabel": "Tên",
         "namePlaceholder": "vd: ra-soat-ma-nguon",
         "topicLabel": "Chủ đề",
-        "topicOptional": "(không bắt buộc)",
         "topicPlaceholder": "Kênh này nói về điều gì?",
         "visibilityLabel": "Chế độ hiển thị",
         "publicTitle": "Công khai",
-        "publicDesc": "Mọi người trong tổ chức đều có thể xem và tham gia cuộc trò chuyện",
+        "publicDesc": "Mọi người trong không gian làm việc đều có thể xem và tham gia cuộc trò chuyện",
         "privateTitle": "Riêng tư",
         "privateDesc": "Chỉ những người được mời mới xem được kênh này",
         "membersLabel": "Thêm thành viên",
         "membersHint": "Bạn sẽ tự động trở thành người quản lý kênh",
         "membersLoading": "Đang tải thành viên…",
-        "membersEmpty": "Tổ chức chưa có thành viên nào khác",
+        "membersEmpty": "Không gian làm việc chưa có thành viên nào khác",
         "postPolicyLabel": "Ai có thể đăng bài",
         "postPolicyEveryone": "Mọi người",
         "postPolicyManagers": "Chỉ người quản lý kênh",
         "submit": "Tạo",
         "nameTaken": "Tên này đã được sử dụng",
-        "quotaExceeded": "Tổ chức đã đạt giới hạn số kênh",
+        "quotaExceeded": "Không gian làm việc đã đạt giới hạn số kênh",
         "error": "Không thể tạo kênh. Vui lòng thử lại."
       },
       "archive": {
@@ -872,7 +790,7 @@
         "warning": "Thao tác này sẽ xóa vĩnh viễn kênh đối với tất cả mọi người và không thể hoàn tác",
         "acknowledge": "Có, xóa vĩnh viễn kênh này",
         "confirm": "Xóa",
-        "adminRequired": "Chỉ quản trị viên tổ chức mới có thể xóa kênh",
+        "adminRequired": "Chỉ quản trị viên không gian làm việc mới có thể xóa kênh",
         "error": "Không thể xóa kênh. Vui lòng thử lại."
       },
       "members": {
@@ -883,7 +801,7 @@
         "managerBadge": "Quản lý",
         "you": "Bạn",
         "addLabel": "Thêm thành viên",
-        "addEmpty": "Tất cả mọi người trong tổ chức đã ở trong kênh này",
+        "addEmpty": "Tất cả mọi người trong không gian làm việc đã ở trong kênh này",
         "addSubmit": "Thêm",
         "actions": "Thao tác với thành viên",
         "remove": "Xóa khỏi kênh",
@@ -903,7 +821,6 @@
         "today": "Hôm nay",
         "yesterday": "Hôm qua",
         "you": "Bạn",
-        "memberCount": "{{memberCount}} thành viên",
         "emptyTitle": "Đây là khởi đầu của #{{name}}",
         "emptySubtitle": "Gửi tin nhắn đầu tiên để bắt đầu cuộc trò chuyện",
         "missingTitle": "Kênh không còn khả dụng",
@@ -916,15 +833,7 @@
         "errorQuota": "Kênh này đã đạt giới hạn tin nhắn trên thiết bị này",
         "errorGeneric": "Không gửi được tin nhắn. Vui lòng thử lại.",
         "dropSessionHint": "Thả để thêm phiên này làm tham chiếu",
-        "messageBodyLabel": "Tin nhắn kênh",
-        "sessionCardMissing": "Không khả dụng trên thiết bị này",
         "sessionCardOpen": "Mở phiên {{name}}",
-        "workItemCardMissing": "Không khả dụng trên thiết bị này",
-        "workItemCardLoading": "Đang tải…",
-        "workItemCardOpen": "Mở mục công việc {{name}}",
-        "githubCardOpen": "Mở {{name}} trên GitHub",
-        "githubIssue": "Issue",
-        "githubPullRequest": "Pull request",
         "archivedComposerDisabled": "Kênh này đã được lưu trữ. Bỏ lưu trữ để đăng bài.",
         "errorPostForbidden": "Chỉ người quản lý kênh mới có thể đăng vào kênh này",
         "errorArchived": "Kênh này đã lưu trữ nên không thể đăng tin nhắn",
@@ -939,11 +848,130 @@
     },
     "backgroundUpload": {
       "label": "Tải lên trong nền",
-      "help": "Tải lên các phiên thành viên đủ điều kiện trong nền theo mức chia sẻ tối thiểu của tổ chức và cài đặt từng phiên, ngay cả khi tổ chức này không hoạt động.",
+      "help": "Tải lên các phiên thành viên đủ điều kiện trong nền theo mức chia sẻ tối thiểu của không gian làm việc và cài đặt từng phiên, ngay cả khi không gian làm việc này không hoạt động.",
       "on": "Bật",
       "off": "Tắt",
-      "memberNote": "Do quản trị viên bật — các phiên đủ điều kiện được tải lên trong nền mà không cần mở tổ chức này."
+      "memberNote": "Do quản trị viên bật — các phiên đủ điều kiện được tải lên trong nền mà không cần mở không gian làm việc này."
     },
-    "userName": "Tên người dùng"
+    "userName": "Tên người dùng",
+    "title": "ORG2 Cloud"
+  },
+  "myRole": {
+    "deleteRoleMessage": "\"{{name}}\" sẽ bị xóa. Thao tác này không thể hoàn tác.",
+    "activeBadge": "Đang hoạt động",
+    "addRole": "Thêm vai trò tùy chỉnh",
+    "builtInTitle": "Vai trò tích hợp",
+    "customEmpty": "Chưa có vai trò tùy chỉnh. Hãy thêm một vai trò để ghi lại tư thế làm việc mà ba vai trò tích hợp chưa bao quát — vd. \"Làm việc sâu\", \"Làm cặp\" hoặc \"Trực ban\".",
+    "customTitle": "Vai trò tùy chỉnh",
+    "deleteRoleCancel": "Hủy",
+    "deleteRoleOk": "Xóa",
+    "deleteRoleTitle": "Xóa vai trò?",
+    "followUpSuggestionsDesc": "Gợi ý các bước tiếp theo có thể sau khi một lượt Work Item hoàn tất. Việc này dùng thêm một yêu cầu mô hình.",
+    "followUpSuggestionsLabel": "Gợi ý tiếp theo của Agent",
+    "goalMaxTurnsDesc": "Tiếp tục làm việc theo yêu cầu gần nhất của tôi thêm tối đa N lượt sau khi agent thường sẽ dừng (0 = tắt).",
+    "goalMaxTurnsLabel": "Ngân sách tiếp tục mục tiêu",
+    "guidanceLabel": "Hướng dẫn cho Agent",
+    "guidancePlaceholder": "Agent nên điều chỉnh hành vi thế nào khi vai trò này đang hoạt động?",
+    "modeSwitchAutoPlanDesc": "Tự động chuyển các đề xuất chế độ Plan đang chờ khi hết thời gian xác nhận.",
+    "modeSwitchAutoPlanLabel": "Tự động chuyển chế độ Plan",
+    "newRoleDefaultLabel": "Vai trò tùy chỉnh",
+    "pageDescription": "Xác định vai trò bạn đang đảm nhận lúc này. Agent đọc hướng dẫn của vai trò đang hoạt động và điều chỉnh hành vi cho phù hợp — ví dụ, hỏi ít câu làm rõ hơn khi bạn đang tập trung, hoặc gộp các bản tóm tắt khi bạn đi vắng.",
+    "pageTitle": "Vai trò của tôi",
+    "planAutoApproveDesc": "Tự động phê duyệt kế hoạch đang chờ sau N giây (0 = chờ tôi).",
+    "planAutoApproveLabel": "Tự động phê duyệt kế hoạch",
+    "questionAutoSkipDesc": "Tự động bỏ qua câu hỏi đang chờ của agent sau N giây (0 = chờ tôi).",
+    "questionAutoSkipLabel": "Tự động bỏ qua câu hỏi",
+    "roleNameLabel": "Tên",
+    "roleNamePlaceholder": "Tên vai trò",
+    "stanceAutonomous": "Tự chủ — không bao giờ chờ tôi",
+    "stanceDeferAndBatch": "Hoãn & gộp — làm trước, hỏi sau",
+    "stanceDesc": "Cách agent xử lý các quyết định chặn khi vai trò này đang hoạt động.",
+    "stanceInteractive": "Tương tác — cứ thoải mái hỏi tôi",
+    "stanceLabel": "Tư thế hành vi"
+  },
+  "explore": {
+    "search": "Tìm kiếm",
+    "searching": "Đang tìm kiếm...",
+    "searchPlaceholder": "Tìm kho lưu trữ GitHub (vd. language:rust tauri)",
+    "clone": "Clone",
+    "cloning": "Đang clone...",
+    "openOnGithub": "GitHub",
+    "cloneSuccess": "Đã clone {{name}}",
+    "cloneFailed": "Clone thất bại",
+    "cloneNoTarget": "Chưa cấu hình thư mục Workspace mặc định. Hãy đặt trong Cài đặt.",
+    "errorTitle": "Tìm kiếm thất bại",
+    "noResultsTitle": "Không có kho lưu trữ phù hợp",
+    "noResultsSubtitle": "Hãy thử truy vấn hoặc cách sắp xếp khác.",
+    "resultsCount": "{{shown}} trên {{total}} kho lưu trữ",
+    "partial": "(một phần — tìm kiếm đã hết thời gian chờ)",
+    "sort": {
+      "bestMatch": "Phù hợp nhất",
+      "stars": "Sao",
+      "updated": "Cập nhật gần đây",
+      "forks": "Fork"
+    }
+  },
+  "web": {
+    "title": "ORG2 Web",
+    "sessionsNav": "Sessions",
+    "loadingSession": "Loading session…",
+    "readOnly": {
+      "headerTrailing": "Cloud · Read only",
+      "barLabel": "Read only",
+      "barPlaceholder": "Cloud session is read-only"
+    },
+    "sessionsPage": {
+      "loadError": "Sessions could not be loaded",
+      "loading": "Loading sessions…",
+      "empty": "No synced sessions",
+      "select": "Select a session",
+      "emptyHint": "Open ORG2 Desktop and enable Cloud sync for a session.",
+      "selectHint": "Choose a Cloud session from the sidebar.",
+      "retry": "Retry",
+      "organizationLoadErrorHint": "Your organizations could not be loaded. Check your connection and try again.",
+      "organizationRetryingHint": "The cloud service could not be reached. Retrying automatically…",
+      "organizationRefreshErrorHint": "Organizations could not be refreshed. Showing the last successful session list.",
+      "sessionRefreshErrorHint": "Some organization sessions could not be refreshed.",
+      "organizationSetupTitle": "Connect an organization",
+      "organizationSetupHint": "Create an organization for your team, or join one with an invite link or code.",
+      "organizationModeLabel": "Organization setup method",
+      "createOrganization": "Create organization",
+      "joinOrganization": "Join organization",
+      "organizationNamePlaceholder": "Team or organization name",
+      "invitePlaceholder": "Paste an invite link or code"
+    },
+    "sessionPage": {
+      "notFound": "Session not found",
+      "notFoundHint": "It may no longer be shared with this account.",
+      "loading": "Loading session…",
+      "workstationLoading": "Loading session workspace…",
+      "workstationEmptyTitle": "No session files were uploaded",
+      "workstationEmptySubtitle": "This session has no readable file or edit payloads yet.",
+      "workstationLoadErrorFallback": "Session files could not be loaded",
+      "workstationLoadErrorSubtitle": "Agent Station replay remains available.",
+      "workstationRefreshFailedBanner": "Refresh failed. Showing files already available from session events.",
+      "chatTab": "Chat",
+      "workstationTab": "WorkStation",
+      "forkContext": "Fork of {{owner}}'s session",
+      "notesButton": "Session notes",
+      "notesTitle": "Session notes",
+      "notesEmpty": "No session notes yet."
+    },
+    "login": {
+      "title": "Sign in to ORG2 Web",
+      "subtitle": "Review shared sessions, chat history, and replay from any browser.",
+      "continue": "Continue with ORG2 Cloud",
+      "hint": "Use the same ORG2 Cloud account as the desktop app."
+    },
+    "authCallback": {
+      "failed": "Sign-in failed",
+      "tryAgain": "Try again",
+      "completing": "Completing sign-in",
+      "missingCredentials": "The sign-in callback is missing valid credentials.",
+      "missingIdentity": "The sign-in token does not contain a user identity."
+    },
+    "sidebar": {
+      "signOut": "Sign out {{name}}"
+    }
   }
 }

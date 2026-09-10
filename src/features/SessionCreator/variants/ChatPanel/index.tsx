@@ -10,6 +10,12 @@ import React, {
 import { useTranslation } from "react-i18next";
 
 import { useBrowserAddToConversationAction } from "@src/engines/ChatPanel/hooks/useBrowserAddToConversationAction";
+import {
+  COMPOSER_COMMAND_ACTIONS,
+  buildNativeSlashItems,
+  composerActionFor,
+  parseNativeSlashCommand,
+} from "@src/engines/ChatPanel/hooks/useInputArea/nativeSlashCommands";
 import { useSessionCreator } from "@src/engines/SessionCore/hooks/session/useSessionCreator";
 import type {
   SessionLaunchSuccessInfo,
@@ -41,12 +47,12 @@ import {
 import { creatorComposerPositionAtom } from "@src/store/session/creatorComposerPositionAtom";
 import { openCategoryPickerSignalAtom } from "@src/store/session/openCategoryPickerAtom";
 import { tuiModeAtom } from "@src/store/session/tuiModeAtom";
+import { modelPickerStyleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import {
   chatPanelSelectedProjectAtom,
   chatPanelSelectedProjectOrgAtom,
   chatPanelSelectedWorkItemAtom,
-  modelPickerStyleAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 import { getRustAgentType } from "@src/util/session/sessionDispatch";
 
 import { CliLaunchModeSwitch } from "../../components";
@@ -195,6 +201,28 @@ const SessionCreatorChatPanelContent: React.FC<
     ]
   );
 
+  const nativeControlItems = useMemo(
+    () =>
+      isHumanMode || multiRunnerLauncher
+        ? []
+        : buildNativeSlashItems(
+            [
+              ...Object.keys(COMPOSER_COMMAND_ACTIONS),
+              "model",
+              "effort",
+              "fast",
+              "plan",
+            ],
+            (name) =>
+              t("input.nativeCommandDescription", {
+                command: `/${name}`,
+                provider: "ORG2",
+              }),
+            "builtin"
+          ),
+    [isHumanMode, multiRunnerLauncher, t]
+  );
+
   const {
     fileInputRef,
     composerInputRef,
@@ -235,6 +263,7 @@ const SessionCreatorChatPanelContent: React.FC<
     filteredSlashItems,
     slashLoading,
   } = useSessionCreator({
+    extraSlashItems: nativeControlItems,
     initialContent,
     launchMode,
     persistDraft: !initialContent,
@@ -341,6 +370,7 @@ const SessionCreatorChatPanelContent: React.FC<
   const { handleLaunch, humanTitle, setHumanTitle, humanCreating } =
     useChatPanelLaunch({
       isHumanMode,
+      hasAttachedImages: attachedImages.length > 0,
       isCliTuiMode,
       composerInputRef,
       effectiveSource,
@@ -436,9 +466,20 @@ const SessionCreatorChatPanelContent: React.FC<
   // its own. Row readiness is `multiRunner.canLaunch`; what remains here is the
   // prompt.
   const hasPromptContent = editorContent.trim().length > 0;
-  const composerCanLaunch = multiRunner.isActive
-    ? hasPromptContent && multiRunner.canLaunch
-    : canLaunch;
+  const localCommand = parseNativeSlashCommand(editorContent);
+  const canRunLocalCommand =
+    !isHumanMode &&
+    !isCliTuiMode &&
+    !multiRunner.isActive &&
+    attachedImages.length === 0 &&
+    !!localCommand &&
+    (Boolean(composerActionFor(localCommand.name)) ||
+      ["model", "effort", "fast", "plan"].includes(localCommand.name));
+  const composerCanLaunch =
+    canRunLocalCommand ||
+    (multiRunner.isActive
+      ? hasPromptContent && multiRunner.canLaunch
+      : canLaunch);
 
   const handleComposerLaunch = useCallback(() => {
     if (multiRunner.isActive) {

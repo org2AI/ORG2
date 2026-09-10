@@ -6,7 +6,6 @@
     "today": "Hoje",
     "everyone": "Todos",
     "activeMembers": "Membros ativos",
-    "systemsCurrent": "{{current}} de {{total}} sistemas atualizados",
     "usageByAgent": "Uso por agente",
     "recentSessions": "Sessões compartilhadas recentes",
     "recentLoading": "Carregando sessões compartilhadas…",
@@ -22,17 +21,17 @@
     "action": "Entrar"
   },
   "noOrgs": {
-    "title": "Nenhuma organização na nuvem ainda",
-    "subtitle": "Entre em uma organização ou crie uma e seus colegas aparecerão aqui."
+    "title": "Nenhum espaço de trabalho na nuvem ainda",
+    "subtitle": "Entre em um espaço de trabalho ou crie uma e seus colegas aparecerão aqui."
   },
   "unsupported": {
     "title": "O backend precisa ser atualizado",
-    "subtitle": "O backend na nuvem desta organização ainda não oferece suporte ao compartilhamento do runtime da equipe."
+    "subtitle": "O backend na nuvem deste espaço de trabalho ainda não oferece suporte ao compartilhamento do runtime da equipe."
   },
   "disabled": {
     "title": "O compartilhamento do runtime da equipe está desativado",
-    "subtitle": "Um administrador da organização pode ativá-lo nas configurações da organização.",
-    "adminSubtitle": "Você pode ativá-lo nas configurações da organização."
+    "subtitle": "Um administrador do espaço de trabalho pode ativá-lo nas configurações do espaço de trabalho.",
+    "adminSubtitle": "Você pode ativá-lo nas configurações do espaço de trabalho."
   },
   "empty": {
     "title": "Nenhum dado de membro ainda",
@@ -72,13 +71,9 @@
     "totalSessions": "Total de sessões",
     "lastSynced": "Última sincronização"
   },
-  "selfService": {
-    "hint": "Seu próprio runtime é compartilhado com esta organização enquanto o compartilhamento estiver ativado.",
-    "action": "Parar de compartilhar e remover meus dados"
-  },
   "orgSettings": {
     "label": "Compartilhamento do runtime da equipe",
-    "help": "A carga da máquina, os totais de uso e o perfil de criador dos membros são compartilhados com a organização neste intervalo. Apenas agregados — nunca transcrições, repositórios ou títulos.",
+    "help": "A carga da máquina, os totais de uso e o perfil de criador dos membros são compartilhados com o espaço de trabalho neste intervalo. Apenas agregados — nunca transcrições, repositórios ou títulos.",
     "memberNote": "Ativado por um administrador. Intervalo: {{interval}}.",
     "off": "Desativado",
     "interval": {

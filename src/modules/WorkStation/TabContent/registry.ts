@@ -6,9 +6,8 @@
  * view component's prop shape. The dispatcher
  * (`UnifiedTabContent.tsx`) is the only consumer of this map.
  *
- * Phase 1b: this registry is exhaustive over `WorkStationTabType` but
- * is not yet wired into AppShell. The exhaustiveness check at the
- * bottom guarantees every union member gets an entry.
+ * This registry is exhaustive over `WorkStationTabType`; every supported
+ * tab type has a renderer entry.
  */
 import { lazy } from "react";
 
@@ -22,106 +21,70 @@ import type { RendererEntry, TabContentRegistry } from "./types";
 
 const FileEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/file")),
-  requiresRepo: true,
-  debugLabel: "file",
 };
 
 const ExplorerEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/explorer")),
-  debugLabel: "explorer",
 };
 
 const DirectoryEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/directory")),
-  requiresRepo: true,
-  debugLabel: "directory",
 };
 
 const GitDiffEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/gitDiff")),
-  requiresRepo: true,
-  debugLabel: "git-diff",
 };
 
 const SourceControlEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/sourceControl")),
-  requiresRepo: true,
-  debugLabel: "source-control",
-};
-
-const TimelineDiffEntry: RendererEntry = {
-  Component: lazy(() => import("./renderers/timelineDiff")),
-  requiresRepo: true,
-  debugLabel: "timeline-diff",
 };
 
 const GitLogEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/gitLog")),
-  requiresRepo: true,
-  debugLabel: "git-log",
 };
 
 const GitCommitDetailEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/gitCommitDetail")),
-  requiresRepo: true,
-  debugLabel: "git-commit-detail",
 };
 
 const GitStashDetailEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/gitStashDetail")),
-  requiresRepo: true,
-  debugLabel: "git-stash-detail",
 };
 
 const TerminalContentEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/terminalContent")),
-  debugLabel: "terminal-content",
 };
 
 const DomComponentPreviewEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/domComponentPreview")),
-  debugLabel: "dom-component-preview",
 };
 
 const TerminalEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/terminal")),
-  debugLabel: "terminal",
 };
 
 const SearchEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/search")),
-  requiresRepo: true,
-  debugLabel: "search",
-};
-
-const AIImpactEntry: RendererEntry = {
-  Component: lazy(() => import("./renderers/aiImpact")),
-  debugLabel: "ai-impact",
 };
 
 const SearchSessionsEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/searchSessions")),
-  debugLabel: "search-sessions",
 };
 
 const UrlPreviewEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/urlPreview")),
-  debugLabel: "url-preview",
 };
 
 const SubagentDetailEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/subagentDetail")),
-  debugLabel: "subagent-detail",
 };
 
 const AgentConfigEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/agentConfig")),
-  debugLabel: "agent-config",
 };
 
 const ChatSessionEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/chatSession")),
-  debugLabel: "chat-session",
 };
 
 // ============================================
@@ -130,12 +93,10 @@ const ChatSessionEntry: RendererEntry = {
 
 const BrowserSessionEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/browserSession")),
-  debugLabel: "browser-session",
 };
 
 const DevtoolsEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/devtools")),
-  debugLabel: "devtools",
 };
 
 // ============================================
@@ -144,52 +105,42 @@ const DevtoolsEntry: RendererEntry = {
 
 const ProjectDashboardEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectDashboard")),
-  debugLabel: "project-dashboard",
 };
 
 const ProjectWorkItemsEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectWorkItems")),
-  debugLabel: "project-work-items",
 };
 
 const ProjectWorkitemsEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectWorkitemsCompat")),
-  debugLabel: "project-workitems",
 };
 
 const ProjectLinearProjectsEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectLinearProjects")),
-  debugLabel: "project-linear-projects",
 };
 
 const ProjectLinearWorkItemsEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectLinearWorkItems")),
-  debugLabel: "project-linear-work-items",
 };
 
 const ProjectSettingsEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectSettings")),
-  debugLabel: "project-settings",
 };
 
 const ProjectOrgEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectOrg")),
-  debugLabel: "project-org",
 };
 
 const ProjectOrgSettingsEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectOrgSettings")),
-  debugLabel: "project-org-settings",
 };
 
 const ProjectGitSyncReviewEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectGitSyncReview")),
-  debugLabel: "project-git-sync-review",
 };
 
 const WorkItemDetailEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/workItemDetail")),
-  debugLabel: "workItem-detail",
 };
 
 // ============================================
@@ -198,7 +149,6 @@ const WorkItemDetailEntry: RendererEntry = {
 
 const CanvasPreviewEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/canvasPreview")),
-  debugLabel: "canvas-preview",
 };
 
 // ============================================
@@ -207,17 +157,14 @@ const CanvasPreviewEntry: RendererEntry = {
 
 const GitHubIssueDetailEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/githubIssueDetail")),
-  debugLabel: "github-issue-detail",
 };
 
 const GitHubPrDetailEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/githubPrDetail")),
-  debugLabel: "github-pr-detail",
 };
 
 const StartEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/start")),
-  debugLabel: "start",
 };
 
 // ============================================
@@ -231,7 +178,6 @@ export const REGISTRY: TabContentRegistry = {
   explorer: ExplorerEntry,
   "git-diff": GitDiffEntry,
   "source-control": SourceControlEntry,
-  "timeline-diff": TimelineDiffEntry,
   "git-log": GitLogEntry,
   "git-commit-detail": GitCommitDetailEntry,
   "git-stash-detail": GitStashDetailEntry,
@@ -239,7 +185,6 @@ export const REGISTRY: TabContentRegistry = {
   "dom-component-preview": DomComponentPreviewEntry,
   terminal: TerminalEntry,
   search: SearchEntry,
-  "ai-impact": AIImpactEntry,
   "search-sessions": SearchSessionsEntry,
   "url-preview": UrlPreviewEntry,
 

@@ -121,25 +121,6 @@ export const workstationSelectedPrAtomFamily = atomFamily(
   }
 );
 
-/** Active PR-detail sub-tab (Conversation / Commits / Checks / Changes). */
-export const workstationPrDetailTabAtomFamily = atomFamily(
-  (scopeKey: string) => {
-    const selectedPrAtom = workstationSelectedPrAtomFamily(scopeKey);
-    const scopedAtom = atom(
-      (get) => get(selectedPrAtom).viewState.activeTab,
-      (get, set, activeTab: PrDetailTab) => {
-        const current = get(selectedPrAtom);
-        set(selectedPrAtom, {
-          ...current,
-          viewState: { ...current.viewState, activeTab },
-        });
-      }
-    );
-    scopedAtom.debugLabel = `workstationPrDetailTabAtom(${scopeKey})`;
-    return scopedAtom;
-  }
-);
-
 export interface WorkstationPrDetailCallbacks {
   addComment: ((body: string) => Promise<void>) | null;
   submitReview: ((event: PrReviewEvent, body: string) => Promise<void>) | null;
@@ -221,7 +202,6 @@ const retainedPrDetailScopes = new BoundedMap<string, true>({
   name: "workstationPrDetailScopes",
   onEvict: (scopeKey) => {
     workstationSelectedPrAtomFamily.remove(scopeKey);
-    workstationPrDetailTabAtomFamily.remove(scopeKey);
     workstationPrDetailCallbackAtomFamily.remove(scopeKey);
   },
 });

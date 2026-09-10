@@ -13,6 +13,7 @@ use super::crud::normalize_session_sequences;
 
 const USER_MESSAGE_FUNCTION: &str = "user_message";
 const IMPORTED_USER_MESSAGE_FUNCTION: &str = "user";
+const CANONICAL_USER_INPUT_FUNCTION: &str = "user_input";
 const TURN_STATUS_PENDING: &str = "pending";
 const TURN_STATUS_COMPLETED: &str = "completed";
 const TURN_STATUS_FAILED: &str = "failed";
@@ -30,7 +31,10 @@ const TURN_STATUS_FAILED: &str = "failed";
 /// v11: treat the normalized imported-history `user` function as the same
 /// turn boundary as the native `user_message` function.
 /// v12: materialize the canonical `turn_intent_id` carried by the user row.
-const TURN_INDEX_VERSION: i64 = 12;
+/// v13: treat provider-native canonical `user_input` events as the same turn
+/// boundary. These are emitted by the shared role/tool transcript adapter and
+/// can arrive through Team Session, personal Cloud sync, or runtime migration.
+const TURN_INDEX_VERSION: i64 = 13;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -141,6 +145,21 @@ fn is_synthetic_user_input(row: &IndexEventRow) -> bool {
         .unwrap_or(false)
 }
 
+fn is_authoritative_agent_org_direct_input(row: &IndexEventRow) -> bool {
+    serde_json::from_str::<serde_json::Value>(&row.result_json)
+        .ok()
+        .is_some_and(|result| {
+            result
+                .get("syntheticUserInput")
+                .and_then(|value| value.as_bool())
+                == Some(true)
+                && result
+                    .get("agentOrgDirectSource")
+                    .and_then(|value| value.as_bool())
+                    == Some(true)
+        })
+}
+
 /// Extract the canonical user-intent id from a user_message row's
 /// `result_json`. Returns `None` for legacy rows (no id was minted) and
 /// for malformed JSON.
@@ -159,8 +178,10 @@ fn turn_intent_id_for_row(row: &IndexEventRow) -> Option<String> {
 fn is_user_message(row: &IndexEventRow) -> bool {
     matches!(
         row.function_name.as_deref(),
-        Some(USER_MESSAGE_FUNCTION | IMPORTED_USER_MESSAGE_FUNCTION)
-    ) && !is_synthetic_user_input(row)
+        Some(
+            USER_MESSAGE_FUNCTION | IMPORTED_USER_MESSAGE_FUNCTION | CANONICAL_USER_INPUT_FUNCTION
+        )
+    ) && (!is_synthetic_user_input(row) || is_authoritative_agent_org_direct_input(row))
 }
 
 /// Lookup of intent ids that the indexer must treat as not yielding a
@@ -253,7 +274,7 @@ fn load_existing_user_event_keys(
     let mut stmt = conn.prepare_cached(
         "SELECT id, content, result_json
          FROM events
-         WHERE session_id = ?1 AND function_name IN ('user_message', 'user')
+         WHERE session_id = ?1 AND function_name IN ('user_message', 'user', 'user_input')
          ORDER BY COALESCE(history_sequence, rowid) ASC, created_at ASC, id ASC",
     )?;
     let mut ids = std::collections::HashSet::new();
@@ -276,13 +297,16 @@ fn load_existing_user_event_keys(
             created_at: String::new(),
             order_sequence: 0,
         };
-        if is_synthetic_user_input(&event_row) {
+        if is_synthetic_user_input(&event_row)
+            && !is_authoritative_agent_org_direct_input(&event_row)
+        {
             continue;
         }
         ids.insert(id);
         let preview = content
             .strip_prefix("user_message ")
             .or_else(|| content.strip_prefix("user "))
+            .or_else(|| content.strip_prefix("user_input "))
             .unwrap_or(&content)
             .to_string();
         *content_counts
@@ -303,7 +327,11 @@ fn backfill_missing_user_events(conn: &Connection, session_id: &str) -> SqliteRe
     let mut inserted = 0;
     for message in messages {
         let event_id = user_event_id_for_message(&message.id);
-        if existing_ids.contains(&event_id) {
+        // DirectMember persists its canonical EventStore source before the
+        // matching provider-history row. That source id is also the stable
+        // `agent_messages.id`; treat it as the authoritative visible event
+        // instead of manufacturing `user-message-{source_event_id}`.
+        if existing_ids.contains(&event_id) || existing_ids.contains(&message.id) {
             continue;
         }
         if let Some(count) =
@@ -972,6 +1000,48 @@ mod tests {
     }
 
     #[test]
+    fn authoritative_direct_source_prevents_backend_user_event_backfill() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_backfill_test_tables(&conn);
+        conn.execute(
+            "INSERT INTO agent_messages (id, session_id, role, content, sequence, created_at, images)
+             VALUES (?1, ?2, 'user', ?3, ?4, ?5, NULL)",
+            params![
+                "direct-source-1",
+                "session-1",
+                "direct work",
+                1_i64,
+                "2026-05-27T00:00:00Z",
+            ],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO events
+             (id, session_id, event_type, function_name, thread_id, args_json, result_json,
+              content, created_at, meta_json, history_sequence)
+             VALUES (?1, ?2, 'raw', 'user_message', NULL, '{}', ?3, ?4, ?5, '{}', 1)",
+            params![
+                "direct-source-1",
+                "session-1",
+                r#"{"syntheticUserInput":true,"agentOrgDirectSource":true,"turnIntentId":"direct-turn-1"}"#,
+                "user_message direct work",
+                "2026-05-27T00:00:00Z",
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(backfill_missing_user_events(&conn, "session-1").unwrap(), 0);
+        let duplicate_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM events WHERE id = 'user-message-direct-source-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(duplicate_count, 0);
+    }
+
+    #[test]
     fn synthetic_user_input_does_not_start_turn() {
         let rows = vec![
             row(
@@ -997,6 +1067,26 @@ mod tests {
     }
 
     #[test]
+    fn authoritative_direct_source_starts_its_own_turn() {
+        let rows = vec![
+            row(
+                "direct-source-1",
+                Some(USER_MESSAGE_FUNCTION),
+                r#"{"syntheticUserInput":true,"agentOrgDirectSource":true,"turnIntentId":"direct-turn-1"}"#,
+                1,
+            ),
+            row("assistant-event", Some("assistant_message"), "{}", 2),
+        ];
+
+        let drafts = build_turn_drafts(&rows, &StaleIntentIds::new());
+
+        assert_eq!(drafts.len(), 1);
+        assert_eq!(drafts[0].turn_id, "direct-source-1");
+        assert_eq!(drafts[0].turn_intent_id.as_deref(), Some("direct-turn-1"));
+        assert_eq!(drafts[0].body_event_count, 1);
+    }
+
+    #[test]
     fn imported_user_alias_starts_turn() {
         let rows = vec![
             row(
@@ -1012,6 +1102,25 @@ mod tests {
 
         assert_eq!(drafts.len(), 1);
         assert_eq!(drafts[0].turn_id, "imported-user");
+        assert_eq!(drafts[0].body_event_count, 1);
+    }
+
+    #[test]
+    fn provider_native_user_input_starts_turn() {
+        let rows = vec![
+            row(
+                "canonical-user-input",
+                Some(CANONICAL_USER_INPUT_FUNCTION),
+                "{}",
+                1,
+            ),
+            row("assistant-event", Some("assistant_message"), "{}", 2),
+        ];
+
+        let drafts = build_turn_drafts(&rows, &StaleIntentIds::new());
+
+        assert_eq!(drafts.len(), 1);
+        assert_eq!(drafts[0].turn_id, "canonical-user-input");
         assert_eq!(drafts[0].body_event_count, 1);
     }
 

@@ -16,10 +16,8 @@ import { useTranslation } from "react-i18next";
 import DiffStatsBadge from "@src/components/DiffStatsBadge";
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import { getToolIcon } from "@src/config/toolIcons";
-import {
-  extractEditData,
-  parseUnifiedDiffToOldNew,
-} from "@src/engines/SessionCore/rendering/props/propsDataExtractors";
+import { extractEditData } from "@src/engines/SessionCore/rendering/props/editExtractors";
+import { parseUnifiedDiffToOldNew } from "@src/engines/SessionCore/rendering/props/extractorShared";
 import { useToolLabelText } from "@src/engines/SessionCore/rendering/registry";
 import type {
   EventStatus,
@@ -264,7 +262,6 @@ const CompactSegmentView: React.FC<CompactSegmentViewProps> = ({
       <EventBlockHeader
         isCollapsed
         withHover={false}
-        onClick={handleLocate}
         onNavigate={handleLocate}
         onMouseEnter={handleHeaderMouseEnter}
         onMouseLeave={handleHeaderMouseLeave}
@@ -277,7 +274,6 @@ const CompactSegmentView: React.FC<CompactSegmentViewProps> = ({
           isCollapsed
           isHeaderHovered={isHeaderHovered}
           hasContent={false}
-          revealChevronOnIconHoverOnly={Boolean(eventId)}
           isLoading={isLoading}
         />
         <EventBlockHeaderTitle isLoading={isLoading}>
@@ -454,7 +450,6 @@ const EditView: React.FC<EditViewProps> = (props) => {
         <EventBlockHeader
           isCollapsed
           withHover={false}
-          onClick={handleLocate}
           onNavigate={handleLocate}
           onMouseEnter={handleHeaderMouseEnter}
           onMouseLeave={handleHeaderMouseLeave}
@@ -470,7 +465,6 @@ const EditView: React.FC<EditViewProps> = (props) => {
             isHeaderHovered={isHeaderHovered}
             isFailed
             hasContent={false}
-            revealChevronOnIconHoverOnly={Boolean(eventId)}
           />
           <EventBlockHeaderTitle className="text-text-3">
             {title}

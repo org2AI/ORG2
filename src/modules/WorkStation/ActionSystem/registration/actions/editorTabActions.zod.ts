@@ -25,7 +25,9 @@ export const editorTabClose = defineZodAction(
         .optional()
         .describe("Tab ID to close (uses current tab if not specified)"),
     }),
-    shortcut: getShortcutKeys("close_file"),
+    get shortcut() {
+      return getShortcutKeys("close_file");
+    },
     examples: ["close tab", "close current file", "close this tab"],
   },
   async ({ tabId }) => {
@@ -114,7 +116,9 @@ export const editorTabNext = defineZodAction(
     category: "editor",
     description: "Switch to the next file tab",
     params: z.object({}),
-    shortcut: getShortcutKeys("next_tab"),
+    get shortcut() {
+      return getShortcutKeys("next_tab");
+    },
     examples: ["next tab", "go to next file"],
   },
   async () => {
@@ -131,7 +135,9 @@ export const editorTabPrevious = defineZodAction(
     category: "editor",
     description: "Switch to the previous file tab",
     params: z.object({}),
-    shortcut: getShortcutKeys("previous_tab"),
+    get shortcut() {
+      return getShortcutKeys("previous_tab");
+    },
     examples: ["previous tab", "go to previous file"],
   },
   async () => {

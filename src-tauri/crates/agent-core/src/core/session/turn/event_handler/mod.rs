@@ -23,8 +23,12 @@
 //! - [`helpers`] — `tool_status_preview_from_args`, `parse_hook_decision`
 
 mod event_factory;
+#[cfg(test)]
+mod final_summary_event_tests;
 mod helpers;
 mod hooks_dispatch;
+#[cfg(test)]
+mod initial_reply_event_tests;
 mod snapshots;
 mod wingman_tee;
 
@@ -109,6 +113,11 @@ pub struct EventHandlerConfig {
     /// Stable logical turn id for live stream broadcasts.
     pub turn_id: Option<String>,
 
+    /// This Turn is a typed Coordinator GroupRoot Turn. Its events remain
+    /// durable for Provider continuity and the bounded Group projection, but
+    /// are never published through the ordinary Coordinator Session stream.
+    pub group_projection_only: bool,
+
     /// Shared cancellation signal for the active turn. Live event emission must
     /// stop at the Rust boundary once this flag is set; frontend filtering is too late.
     pub cancel_flag: Option<Arc<AtomicBool>>,
@@ -123,6 +132,14 @@ pub struct EventHandlerConfig {
     /// Agent Org worker identity used by the bounded task-lifecycle stop gate.
     /// Coordinators and non-org sessions leave this unset.
     pub agent_org_task_lifecycle: Option<AgentOrgTaskLifecycleContext>,
+
+    /// Agent Org work-capable turns may not become terminal until their
+    /// assistant EventStore rows are durably committed.
+    pub require_durable_assistant_event: bool,
+
+    /// Exact durable Agent Org Turn bound to assistant transcript writes.
+    /// Ordinary Sessions leave this unset and pay no lifecycle query.
+    pub agent_org_turn_intent_id: Option<String>,
 }
 
 /// Durable identity needed to verify that an Agent Org worker did not end a
@@ -170,6 +187,7 @@ pub struct UnifiedEventHandler {
     /// A second miss is reported durably to the coordinator by `MemberIdle`
     /// rather than looping the provider.
     agent_org_lifecycle_correction_emitted: AtomicBool,
+    assistant_persistence_error: Mutex<Option<String>>,
 }
 
 /// Accumulated state for one streaming `create_plan` call.
@@ -229,6 +247,18 @@ impl UnifiedEventHandler {
             .unwrap_or_default()
     }
 
+    fn retract_streamed_segments(&self, session_id: &str) {
+        let retracted = self.take_retractable_segments(session_id);
+        if !retracted.is_empty() {
+            if let Some(ref handle) = self.config.app_handle {
+                event_pipeline_bridge::remove_events_by_ids(handle, session_id, retracted);
+            }
+        }
+        if let Ok(mut sessions) = self.flushed_message_sessions.lock() {
+            sessions.remove(session_id);
+        }
+    }
+
     /// Creates a new unified event handler.
     pub fn new(config: EventHandlerConfig) -> Self {
         Self {
@@ -242,6 +272,16 @@ impl UnifiedEventHandler {
             plan_draft_streams: Mutex::new(std::collections::HashMap::new()),
             last_context_tokens: std::sync::atomic::AtomicI64::new(0),
             agent_org_lifecycle_correction_emitted: AtomicBool::new(false),
+            assistant_persistence_error: Mutex::new(None),
+        }
+    }
+
+    /// Broadcasts that drive the ordinary Session surface must never carry a
+    /// GroupRoot Turn. The Group feed observes the run-scoped projection push
+    /// instead, so suppressing these events does not remove product updates.
+    fn broadcast_session_surface(&self, event: &'static str, payload: serde_json::Value) {
+        if !self.config.group_projection_only {
+            broadcast_event(event, payload);
         }
     }
 
@@ -263,7 +303,7 @@ impl UnifiedEventHandler {
             attach_turn_id(&mut event, self.config.turn_id.as_deref());
             self.track_retractable_segment(session_id, &event.id);
             self.push_to_store(session_id, event.clone());
-            broadcast_event(
+            self.broadcast_session_surface(
                 "agent:streaming_complete",
                 serde_json::json!({
                     "sessionId": session_id,
@@ -275,12 +315,18 @@ impl UnifiedEventHandler {
         }
         if let Some(mut event) = self.streaming_buffer.complete_message(session_id) {
             attach_turn_id(&mut event, self.config.turn_id.as_deref());
+            if !self.attach_final_summary_event_identity(session_id, &mut event) {
+                return;
+            }
+            if !self.attach_agent_org_assistant_authority(session_id, &mut event) {
+                return;
+            }
             if let Ok(mut sessions) = self.flushed_message_sessions.lock() {
                 sessions.insert(session_id.to_string());
             }
             self.track_retractable_segment(session_id, &event.id);
-            self.push_to_store(session_id, event.clone());
-            broadcast_event(
+            self.push_to_store_durable_assistant(session_id, event.clone());
+            self.broadcast_session_surface(
                 "agent:streaming_complete",
                 serde_json::json!({
                     "sessionId": session_id,
@@ -310,11 +356,420 @@ impl UnifiedEventHandler {
         self.agent_called.load(Ordering::Relaxed)
     }
 
+    pub fn take_assistant_persistence_error(&self) -> Option<String> {
+        self.assistant_persistence_error
+            .lock()
+            .ok()
+            .and_then(|mut error| error.take())
+    }
+
+    fn record_assistant_persistence_error(&self, error: String) {
+        if let Ok(mut slot) = self.assistant_persistence_error.lock() {
+            if slot.is_none() {
+                *slot = Some(error);
+            }
+        }
+    }
+
+    fn push_to_store_durable_assistant(&self, session_id: &str, event: SessionEvent) {
+        if self.is_cancelled() || !self.is_current_turn_generation() {
+            return;
+        }
+        if self.config.require_durable_assistant_event {
+            let summary_turn = if let Some(turn_intent_id) =
+                self.config.agent_org_turn_intent_id.as_deref()
+            {
+                match crate::coordination::agent_org_final_summary::status_for_turn(
+                    session_id,
+                    turn_intent_id,
+                ) {
+                    Ok(Some(
+                        crate::coordination::agent_org_final_summary::FinalSummaryStatus::Running
+                        | crate::coordination::agent_org_final_summary::FinalSummaryStatus::Persisting,
+                    )) => Some(turn_intent_id),
+                    Ok(Some(_)) => {
+                        self.record_assistant_persistence_error(
+                            "final summary assistant event arrived outside its active receipt"
+                                .to_string(),
+                        );
+                        return;
+                    }
+                    Ok(None) => None,
+                    Err(error) => {
+                        self.record_assistant_persistence_error(format!(
+                            "final summary authority lookup failed: {error}"
+                        ));
+                        return;
+                    }
+                }
+            } else {
+                None
+            };
+            if let Some(turn_intent_id) = summary_turn {
+                match crate::coordination::agent_org_final_summary::mark_persisting_for_turn(
+                    session_id,
+                    turn_intent_id,
+                ) {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        self.record_assistant_persistence_error(
+                            "final summary persisting transition was stale".to_string(),
+                        );
+                        return;
+                    }
+                    Err(error) => {
+                        self.record_assistant_persistence_error(format!(
+                            "final summary persisting transition failed: {error}"
+                        ));
+                        return;
+                    }
+                }
+            }
+            if let Err(error) = event_pipeline_bridge::persist_events(
+                "agent-org-assistant-final",
+                session_id,
+                std::slice::from_ref(&event),
+                5,
+            ) {
+                if let Some(turn_intent_id) = summary_turn {
+                    let _ = crate::coordination::agent_org_final_summary::mark_failed_for_turn(
+                        session_id,
+                        turn_intent_id,
+                        "event_store_error",
+                    );
+                }
+                self.record_assistant_persistence_error(error);
+                return;
+            } else if let Some(turn_intent_id) = summary_turn {
+                match crate::coordination::agent_org_final_summary::mark_persisted_for_turn(
+                    session_id,
+                    turn_intent_id,
+                    &event.id,
+                ) {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        let _ = crate::coordination::agent_org_final_summary::mark_failed_for_turn(
+                            session_id,
+                            turn_intent_id,
+                            "event_store_binding_stale",
+                        );
+                        self.record_assistant_persistence_error(
+                            "final summary EventStore binding was stale".to_string(),
+                        );
+                        return;
+                    }
+                    Err(error) => {
+                        let _ = crate::coordination::agent_org_final_summary::mark_failed_for_turn(
+                            session_id,
+                            turn_intent_id,
+                            "event_store_binding_error",
+                        );
+                        self.record_assistant_persistence_error(format!(
+                            "final summary EventStore binding failed: {error}"
+                        ));
+                        return;
+                    }
+                }
+            }
+        }
+        self.push_to_store(session_id, event);
+    }
+
+    pub fn verify_agent_org_completion_publication(&self, session_id: &str) {
+        let Some(turn_intent_id) = self.config.agent_org_turn_intent_id.as_deref() else {
+            return;
+        };
+        match crate::coordination::agent_org_final_summary::status_for_turn(
+            session_id,
+            turn_intent_id,
+        ) {
+            Ok(None) => {}
+            Ok(Some(
+                crate::coordination::agent_org_final_summary::FinalSummaryStatus::Persisted,
+            )) => {}
+            Ok(Some(crate::coordination::agent_org_final_summary::FinalSummaryStatus::Failed)) => {}
+            Ok(Some(_)) => self.record_assistant_persistence_error(
+                "active FinalSummaryReceipt has no persisted EventStore row".to_string(),
+            ),
+            Err(error) => self.record_assistant_persistence_error(format!(
+                "FinalSummaryReceipt verification failed: {error}"
+            )),
+        }
+    }
+
+    /// Attach the exact DirectMember user fact to every durable assistant
+    /// event, including streamed messages. Failure is closed: a UDW reply
+    /// whose source cannot be proven is not persisted as an unowned branch.
+    fn attach_agent_org_direct_reply(&self, session_id: &str, event: &mut SessionEvent) -> bool {
+        let Some(turn_intent_id) = self.config.agent_org_turn_intent_id.as_deref() else {
+            return true;
+        };
+        match crate::coordination::agent_org_turn_contexts::direct_source_event_for_turn(
+            session_id,
+            turn_intent_id,
+        ) {
+            Ok(Some(source_event_id)) => {
+                if let Some(result) = event.result.as_object_mut() {
+                    result.insert(
+                        "reply_to_event_id".to_string(),
+                        serde_json::Value::String(source_event_id),
+                    );
+                }
+                true
+            }
+            Ok(None) => true,
+            Err(error) => {
+                self.record_assistant_persistence_error(format!(
+                    "assistant direct-source lookup failed: {error}"
+                ));
+                false
+            }
+        }
+    }
+
+    /// Bind a Coordinator answer to the exact Group-origin Root user event.
+    /// Ordinary Root answers have no marker and therefore never enter the
+    /// Group projection.
+    fn attach_agent_org_group_root_reply(
+        &self,
+        session_id: &str,
+        event: &mut SessionEvent,
+    ) -> bool {
+        let Some(turn_intent_id) = self.config.agent_org_turn_intent_id.as_deref() else {
+            return true;
+        };
+        match crate::coordination::agent_org_turn_contexts::group_root_source_event_for_turn(
+            session_id,
+            turn_intent_id,
+        ) {
+            Ok(Some(source_event_id)) => {
+                let Some(result) = event.result.as_object_mut() else {
+                    self.record_assistant_persistence_error(
+                        "assistant GroupRoot causal reply target is not an object".to_string(),
+                    );
+                    return false;
+                };
+                result.insert(
+                    "agent_org_group_root_reply".to_string(),
+                    serde_json::json!({ "source_event_id": source_event_id }),
+                );
+                true
+            }
+            Ok(None) => true,
+            Err(error) => {
+                self.record_assistant_persistence_error(format!(
+                    "assistant GroupRoot causal reply lookup failed: {error}"
+                ));
+                false
+            }
+        }
+    }
+
+    /// Mark only the canonical launch input's Root Turn as public. Ordinary
+    /// Coordinator Root turns intentionally have no marker and stay out of
+    /// the Group timeline.
+    fn attach_agent_org_initial_reply(&self, session_id: &str, event: &mut SessionEvent) -> bool {
+        let Some(turn_intent_id) = self.config.agent_org_turn_intent_id.as_deref() else {
+            return true;
+        };
+        match crate::coordination::agent_org_runs::AgentOrgRunStore::initial_public_input_for_turn(
+            session_id,
+            turn_intent_id,
+        ) {
+            Ok(Some(initial)) => {
+                let Some(result) = event.result.as_object_mut() else {
+                    self.record_assistant_persistence_error(
+                        "assistant initial-public causal reply target is not an object".to_string(),
+                    );
+                    return false;
+                };
+                result.insert(
+                    "agent_org_initial_reply".to_string(),
+                    serde_json::json!({
+                        "message_id": initial.message_id,
+                        "turn_intent_id": initial.turn_intent_id,
+                    }),
+                );
+                true
+            }
+            Ok(None) => true,
+            Err(error) => {
+                self.record_assistant_persistence_error(format!(
+                    "assistant initial-public causal reply lookup failed: {error}"
+                ));
+                false
+            }
+        }
+    }
+
+    /// Bind every Direct/Group/Linked assistant event to the exact durable
+    /// UDW receipt. The bounded Group projection can use this causal authority
+    /// without guessing from timestamps, display names, or adjacent transcript rows.
+    fn attach_agent_org_user_directed_reply(
+        &self,
+        session_id: &str,
+        event: &mut SessionEvent,
+    ) -> bool {
+        let Some(turn_intent_id) = self.config.agent_org_turn_intent_id.as_deref() else {
+            return true;
+        };
+        match crate::coordination::agent_org_user_directed_work::causal_reply_for_turn(
+            session_id,
+            turn_intent_id,
+        ) {
+            Ok(Some(authority)) => {
+                let Some(result) = event.result.as_object_mut() else {
+                    self.record_assistant_persistence_error(
+                        "assistant UDW causal reply target is not an object".to_string(),
+                    );
+                    return false;
+                };
+                match serde_json::to_value(authority) {
+                    Ok(authority) => {
+                        result.insert("agent_org_user_directed_reply".to_string(), authority);
+                        true
+                    }
+                    Err(error) => {
+                        self.record_assistant_persistence_error(format!(
+                            "assistant UDW causal reply serialization failed: {error}"
+                        ));
+                        false
+                    }
+                }
+            }
+            Ok(None) => true,
+            Err(error) => {
+                self.record_assistant_persistence_error(format!(
+                    "assistant UDW causal reply lookup failed: {error}"
+                ));
+                false
+            }
+        }
+    }
+
+    /// Bind a backend-issued completion certificate to the exact final
+    /// assistant event.  The model's prose is deliberately not authoritative:
+    /// consumers can project Delivered only from this typed metadata.
+    fn attach_agent_org_completion_certificate(
+        &self,
+        session_id: &str,
+        event: &mut SessionEvent,
+    ) -> bool {
+        let Some(turn_intent_id) = self.config.agent_org_turn_intent_id.as_deref() else {
+            return true;
+        };
+        match crate::coordination::agent_org_final_summary::certificate_for_turn(
+            session_id,
+            turn_intent_id,
+        ) {
+            Ok(Some(certificate)) => {
+                let Some(result) = event.result.as_object_mut() else {
+                    self.record_assistant_persistence_error(
+                        "assistant completion certificate target is not an object".to_string(),
+                    );
+                    return false;
+                };
+                result.insert(
+                    "agent_org_completion_certificate".to_string(),
+                    serde_json::json!({
+                        "id": certificate.id,
+                        "orgRunId": certificate.org_run_id,
+                        "activationGeneration": certificate.activation_generation,
+                        "workRevision": certificate.work_revision,
+                        "outcome": certificate.outcome,
+                    }),
+                );
+                true
+            }
+            Ok(None) => true,
+            Err(error) => {
+                self.record_assistant_persistence_error(format!(
+                    "assistant completion certificate lookup failed: {error}"
+                ));
+                false
+            }
+        }
+    }
+
+    /// Apply every persisted Agent Org authority marker to an assistant
+    /// EventStore row. Both streamed and non-streamed final messages must use
+    /// this one path; otherwise a streamed Delivered message could be bound to
+    /// a certificate in the completion table while its own event payload still
+    /// looked like untrusted model prose.
+    fn attach_agent_org_assistant_authority(
+        &self,
+        session_id: &str,
+        event: &mut SessionEvent,
+    ) -> bool {
+        self.attach_agent_org_initial_reply(session_id, event)
+            && self.attach_agent_org_group_root_reply(session_id, event)
+            && self.attach_agent_org_direct_reply(session_id, event)
+            && self.attach_agent_org_user_directed_reply(session_id, event)
+            && self.attach_agent_org_completion_certificate(session_id, event)
+    }
+
+    fn attach_final_summary_event_identity(
+        &self,
+        session_id: &str,
+        event: &mut SessionEvent,
+    ) -> bool {
+        let Some(turn_intent_id) = self.config.agent_org_turn_intent_id.as_deref() else {
+            return true;
+        };
+        match crate::coordination::agent_org_final_summary::stable_event_id_for_turn(
+            session_id,
+            turn_intent_id,
+        ) {
+            Ok(Some(event_id)) => {
+                event.id = event_id.clone();
+                event.chunk_id = Some(event_id);
+                true
+            }
+            Ok(None) => {
+                let conn = match database::db::get_connection() {
+                    Ok(conn) => conn,
+                    Err(error) => {
+                        self.record_assistant_persistence_error(format!(
+                            "final summary receipt lookup failed: {error}"
+                        ));
+                        return false;
+                    }
+                };
+                match crate::coordination::agent_org_final_summary::has_summary_receipt_for_turn_with_connection(
+                    &conn,
+                    session_id,
+                    turn_intent_id,
+                ) {
+                    Ok(false) => true,
+                    Ok(true) => {
+                        self.record_assistant_persistence_error(
+                            "final summary event identity is unavailable for a known receipt"
+                                .to_string(),
+                        );
+                        false
+                    }
+                    Err(error) => {
+                        self.record_assistant_persistence_error(format!(
+                            "final summary receipt lookup failed: {error}"
+                        ));
+                        false
+                    }
+                }
+            }
+            Err(error) => {
+                self.record_assistant_persistence_error(format!(
+                    "final summary event identity lookup failed: {error}"
+                ));
+                false
+            }
+        }
+    }
+
     /// Push a SessionEvent into the session's EventStore so frontend
     /// subscribers receive it via `es:changed`. Silently no-op when the
     /// handler was constructed without an app handle (tests / non-Tauri
     /// callers).
-    fn push_to_store(&self, session_id: &str, event: SessionEvent) {
+    fn push_to_store(&self, session_id: &str, mut event: SessionEvent) {
         if self.is_cancelled() || !self.is_current_turn_generation() {
             return;
         }
@@ -322,6 +777,20 @@ impl UnifiedEventHandler {
         let Some(ref handle) = self.config.app_handle else {
             return;
         };
+        attach_turn_id(&mut event, self.config.turn_id.as_deref());
+        if self.config.group_projection_only {
+            // The final assistant event already crosses the synchronous
+            // durability barrier above. Other GroupRoot events use the same
+            // EventStore write-through without entering the ordinary live
+            // Session store or waking its subscribers.
+            event_pipeline_bridge::persist_events_async(
+                "agent-org-group-projection-event",
+                session_id.to_string(),
+                vec![event],
+                5,
+            );
+            return;
+        }
         event_pipeline_bridge::push_events(handle, session_id, vec![event]);
     }
 
@@ -333,7 +802,7 @@ impl UnifiedEventHandler {
         tool_name: Option<&str>,
         arguments_delta: Option<&str>,
     ) {
-        broadcast_event(
+        self.broadcast_session_surface(
             "agent:tool_call_delta",
             serde_json::json!({
                 "sessionId": session_id,
@@ -355,6 +824,9 @@ impl UnifiedEventHandler {
         if self.is_cancelled() || !self.is_current_turn_generation() {
             return;
         }
+        if self.config.group_projection_only {
+            return;
+        }
 
         let Some(ref handle) = self.config.app_handle else {
             return;
@@ -370,14 +842,16 @@ impl TurnEventHandler for UnifiedEventHandler {
             return;
         }
 
-        broadcast_event(
-            "agent:message_delta",
-            serde_json::json!({
-                "sessionId": session_id,
-                "turnId": self.config.turn_id.as_deref(),
-                "content": content,
-            }),
-        );
+        if !self.config.group_projection_only {
+            self.broadcast_session_surface(
+                "agent:message_delta",
+                serde_json::json!({
+                    "sessionId": session_id,
+                    "turnId": self.config.turn_id.as_deref(),
+                    "content": content,
+                }),
+            );
+        }
         self.streaming_buffer
             .append_message_delta(session_id, content);
     }
@@ -387,14 +861,16 @@ impl TurnEventHandler for UnifiedEventHandler {
             return;
         }
 
-        broadcast_event(
-            "agent:thinking_delta",
-            serde_json::json!({
-                "sessionId": session_id,
-                "turnId": self.config.turn_id.as_deref(),
-                "content": thinking,
-            }),
-        );
+        if !self.config.group_projection_only {
+            self.broadcast_session_surface(
+                "agent:thinking_delta",
+                serde_json::json!({
+                    "sessionId": session_id,
+                    "turnId": self.config.turn_id.as_deref(),
+                    "content": thinking,
+                }),
+            );
+        }
         self.streaming_buffer
             .append_thinking_delta(session_id, thinking);
     }
@@ -513,7 +989,7 @@ impl TurnEventHandler for UnifiedEventHandler {
             return;
         }
 
-        broadcast_event(
+        self.broadcast_session_surface(
             "agent:context_usage",
             serde_json::json!({
                 "sessionId": session_id,
@@ -592,7 +1068,7 @@ impl TurnEventHandler for UnifiedEventHandler {
         );
         self.push_to_store(session_id, event);
 
-        broadcast_event(
+        self.broadcast_session_surface(
             "agent:tool_call",
             serde_json::json!({
                 "sessionId": session_id,
@@ -617,7 +1093,7 @@ impl TurnEventHandler for UnifiedEventHandler {
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default();
 
-        broadcast_event(
+        self.broadcast_session_surface(
             "agent:file_change",
             serde_json::json!({
                 "sessionId": session_id,
@@ -693,7 +1169,7 @@ impl TurnEventHandler for UnifiedEventHandler {
         self.push_to_store(session_id, event);
 
         let preview: String = crate::utils::safe_truncate_chars_to_string(&result, 4000);
-        broadcast_event(
+        self.broadcast_session_surface(
             "agent:tool_result",
             serde_json::json!({
                 "sessionId": session_id,
@@ -717,11 +1193,6 @@ impl TurnEventHandler for UnifiedEventHandler {
             return;
         }
 
-        // This response finished streaming successfully — any segments
-        // flushed while it was arriving are final. Must happen before the
-        // empty-content early return: tool-call-only iterations also commit.
-        self.commit_retractable_segments(session_id);
-
         // Persist one `assistant` row per LLM iteration that produced text.
         //
         // Iterations with only tool_calls (no text) are skipped here: the
@@ -733,17 +1204,45 @@ impl TurnEventHandler for UnifiedEventHandler {
         // This matches the pre-existing `processor.rs` guard shape
         // (`!response_text.is_empty()`), just moved one layer down so every
         // iteration gets a chance — previously only the final iteration did.
-        let Some(text) = content else { return };
+        let Some(text) = content else {
+            self.commit_retractable_segments(session_id);
+            return;
+        };
         if text.is_empty() {
+            self.commit_retractable_segments(session_id);
             return;
         }
 
-        if let Err(err) = unified_persistence::save_assistant_msg(session_id, text, model) {
+        let persistence_result =
+            if let Some(turn_intent_id) = self.config.agent_org_turn_intent_id.as_deref() {
+                unified_persistence::save_agent_org_assistant_msg_for_turn(
+                    session_id,
+                    turn_intent_id,
+                    text,
+                    model,
+                )
+            } else {
+                unified_persistence::save_assistant_msg(session_id, text, model)
+                    .map_err(|error| error.to_string())
+            };
+        if let Err(err) = persistence_result {
             warn!(
                 "[unified_handler] Failed to persist assistant iteration: {}",
                 err
             );
+            if self.config.require_durable_assistant_event {
+                self.record_assistant_persistence_error(err);
+                self.retract_streamed_segments(session_id);
+            }
+            if self.config.agent_org_turn_intent_id.is_some() {
+                return;
+            }
         }
+
+        // Only committed assistant transcript authority makes previously
+        // flushed Agent Org segments final. On persistence failure the branch
+        // above retracts them, so the UI cannot display an unowned success.
+        self.commit_retractable_segments(session_id);
 
         let has_active_message_stream = self
             .streaming_buffer
@@ -760,8 +1259,14 @@ impl TurnEventHandler for UnifiedEventHandler {
             consumed_streamed_message,
         ) {
             let mut event = event_factory::build_assistant_message_event(session_id, text);
+            if !self.attach_final_summary_event_identity(session_id, &mut event) {
+                return;
+            }
             attach_turn_id(&mut event, self.config.turn_id.as_deref());
-            self.push_to_store(session_id, event);
+            if !self.attach_agent_org_assistant_authority(session_id, &mut event) {
+                return;
+            }
+            self.push_to_store_durable_assistant(session_id, event);
         }
     }
 
@@ -877,7 +1382,7 @@ impl TurnEventHandler for UnifiedEventHandler {
                 // steering queue and is about to be presented to the model.
                 // Never leave its durable intent queued merely because the
                 // transcript write failed: that would block Agent Org
-                // finality forever. Failed is terminal and truthfully records
+                // Quiescence forever. Failed is terminal and truthfully records
                 // that durable persistence did not complete.
                 crate::foundation::session_bridge::update_turn_intent_status(
                     session_id,
@@ -966,22 +1471,14 @@ impl TurnEventHandler for UnifiedEventHandler {
         // 3. Un-mark the session's flushed-message flag: the flushed segment
         //    is gone, so the retry's final text must not be suppressed by
         //    `consumed_streamed_message` in `on_assistant_iteration_complete`.
-        let retracted = self.take_retractable_segments(session_id);
-        if !retracted.is_empty() {
-            if let Some(ref handle) = self.config.app_handle {
-                event_pipeline_bridge::remove_events_by_ids(handle, session_id, retracted);
-            }
-        }
+        self.retract_streamed_segments(session_id);
         self.streaming_buffer.discard_streams(session_id);
-        if let Ok(mut sessions) = self.flushed_message_sessions.lock() {
-            sessions.remove(session_id);
-        }
 
         // Low-key observability. The frontend uses this to render a footer
         // indicator ("Reconnecting… attempt N/M"). NEVER broadcast this as
         // `agent:message_delta` — that would poison the chat bubble with
         // retry internals.
-        broadcast_event(
+        self.broadcast_session_surface(
             "agent:stream_retry",
             serde_json::json!({
                 "sessionId": session_id,
@@ -1006,7 +1503,7 @@ impl TurnEventHandler for UnifiedEventHandler {
         // turn_executor handles the in-chat assistant message; this event
         // is only for the footer, so the two responsibilities never
         // overlap.
-        broadcast_event(
+        self.broadcast_session_surface(
             "agent:stream_error_exhausted",
             serde_json::json!({
                 "sessionId": session_id,
@@ -1041,23 +1538,24 @@ mod tests {
                 org_id: "org-stop-gate".to_string(),
                 coordinator_agent_id: "coordinator".to_string(),
                 root_session_id: None,
-                org_snapshot: crate::definitions::orgs::OrgDefinition {
+                org_snapshot: (&crate::definitions::orgs::OrgDefinition {
                     id: "org-stop-gate".to_string(),
                     name: "Stop Gate Test Org".to_string(),
                     role: "coordinator".to_string(),
                     agent_id: "coordinator".to_string(),
                     description: None,
-                    hierarchy_mode: Default::default(),
                     plan_approval_policy: crate::definitions::orgs::PlanApprovalPolicy::Coordinator,
-                    children: vec![crate::definitions::orgs::OrgMember {
-                        id: "member-worker".to_string(),
+                    members: vec![crate::definitions::orgs::FlatOrgMember {
+                        member_id: "member-worker".to_string(),
                         name: "Worker".to_string(),
                         role: "builder".to_string(),
                         agent_id: "worker-agent".to_string(),
                         runtime_config: None,
-                        children: Vec::new(),
                     }],
-                },
+                    additional_task_graph_writer_member_ids: Vec::new(),
+                    member_communication_links: Vec::new(),
+                })
+                    .into(),
                 entry_mode:
                     crate::coordination::agent_org_runs::AgentOrgRunEntryMode::StandaloneSession,
                 status: crate::coordination::agent_org_runs::AgentOrgRunStatus::Running,
@@ -1138,6 +1636,41 @@ mod tests {
     #[test]
     fn assistant_event_pushes_terminal_text_after_prior_streamed_segment() {
         assert!(should_push_assistant_event(false, false, true));
+    }
+
+    #[test]
+    fn agent_org_assistant_persistence_failure_is_retained_for_turn_owner() {
+        let handler = UnifiedEventHandler::new(EventHandlerConfig {
+            require_durable_assistant_event: true,
+            ..Default::default()
+        });
+        let event = super::event_factory::build_assistant_message_event(
+            "agent-org-session",
+            "durable final answer",
+        );
+
+        handler.push_to_store_durable_assistant("agent-org-session", event);
+
+        let error = handler
+            .take_assistant_persistence_error()
+            .expect("unregistered durable EventStore bridge must fail closed");
+        assert!(error.contains(
+            "persist_events (agent-org-assistant-final) called before register for agent-org-session"
+        ));
+        assert!(handler.take_assistant_persistence_error().is_none());
+    }
+
+    #[test]
+    fn generic_assistant_event_does_not_require_synchronous_eventstore_commit() {
+        let handler = UnifiedEventHandler::new(EventHandlerConfig::default());
+        let event = super::event_factory::build_assistant_message_event(
+            "generic-session",
+            "ordinary answer",
+        );
+
+        handler.push_to_store_durable_assistant("generic-session", event);
+
+        assert!(handler.take_assistant_persistence_error().is_none());
     }
 
     #[test]

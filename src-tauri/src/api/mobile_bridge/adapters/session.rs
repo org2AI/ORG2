@@ -12,7 +12,9 @@ use crate::agent_sessions::event_pipeline::types::{
     EventDisplayVariant, EventSource, SessionEvent,
 };
 use crate::agent_sessions::session_directory::aggregation::list_all_sessions;
-use crate::agent_sessions::session_directory::types::{SessionCategory, SessionFilter};
+use crate::agent_sessions::session_directory::types::{
+    SessionAggregateRecord, SessionCategory, SessionFilter,
+};
 use crate::api::mobile_bridge::commands::{
     current_mobile_sidebar_sessions, MobileSidebarSessionSnapshotRow,
 };
@@ -168,15 +170,38 @@ fn is_mobile_list_category(category: SessionCategory) -> bool {
     )
 }
 
+/// Keep directory metadata on the wire; do not reconstruct it from a title.
+fn mobile_directory_session_row(record: &SessionAggregateRecord, send_capability: &str) -> Value {
+    let updated_at_ms = chrono::DateTime::parse_from_rfc3339(&record.updated_at)
+        .ok()
+        .map(|date| date.timestamp_millis());
+    json!({
+        "id": record.session_id,
+        "name": mobile_session_name(&record.name, record.display_label.as_deref()),
+        "status": map_session_status_to_mobile(&record.status),
+        "repoPath": record.repo_path,
+        "repoName": record.repo_name,
+        "updatedAtMs": updated_at_ms,
+        "sendCapability": send_capability,
+    })
+}
+
 fn session_list_from_sidebar_snapshot(
     snapshot: Vec<MobileSidebarSessionSnapshotRow>,
     status_filter: &str,
+    offset: usize,
     limit: usize,
     writable_codex_session_ids: &HashSet<String>,
 ) -> Value {
-    let sessions = snapshot
+    // Offsets address the filtered roster, not the raw sidebar snapshot.
+    let filtered = snapshot
         .into_iter()
         .filter(|session| status_filter != "running" || session.status == "running")
+        .collect::<Vec<_>>();
+    let total = filtered.len();
+    let sessions = filtered
+        .into_iter()
+        .skip(offset)
         .take(limit)
         .map(|session| {
             let send_capability =
@@ -186,12 +211,21 @@ fn session_list_from_sidebar_snapshot(
                 "name": session.name,
                 "status": session.status,
                 "category": "live",
+                "repoPath": session.repo_path,
+                "repoName": session.repo_name,
+                "updatedAtMs": session.updated_at_ms,
                 "sendCapability": send_capability,
             })
         })
         .collect::<Vec<_>>();
 
-    json!({ "sessions": sessions, "source": "desktop_sidebar" })
+    let next_offset = offset.saturating_add(sessions.len());
+    json!({
+        "sessions": sessions,
+        "source": "desktop_sidebar",
+        "nextOffset": next_offset,
+        "hasMore": next_offset < total,
+    })
 }
 
 /// Validate `session/send` params without touching desktop state.
@@ -247,9 +281,9 @@ fn parse_mobile_send_attachments(params: &Value) -> Result<Vec<String>, RpcError
     let Some(attachments) = params.get("attachments") else {
         return Ok(Vec::new());
     };
-    let items = attachments.as_array().ok_or_else(|| {
-        RpcError::invalid_params("attachments must be an array")
-    })?;
+    let items = attachments
+        .as_array()
+        .ok_or_else(|| RpcError::invalid_params("attachments must be an array"))?;
     if items.len() > MAX_MOBILE_ATTACHMENTS {
         return Err(RpcError::invalid_params("too many attachments"));
     }
@@ -275,7 +309,7 @@ fn parse_mobile_send_attachments(params: &Value) -> Result<Vec<String>, RpcError
         }
         let decoded = base64::engine::general_purpose::STANDARD
             .decode(payload)
-        .map_err(|_| RpcError::invalid_params("attachment dataUrl is invalid"))?;
+            .map_err(|_| RpcError::invalid_params("attachment dataUrl is invalid"))?;
         if decoded.len() > MAX_MOBILE_ATTACHMENT_DECODED_BYTES {
             return Err(RpcError::invalid_params("attachment is too large"));
         }
@@ -325,6 +359,22 @@ pub fn parse_session_round_params(params: &Value) -> Result<SessionRoundParams, 
 
 /// List sessions from the cross-backend directory, mapped to the mobile wire shape.
 pub async fn session_list(params: &Value) -> Result<Value, RpcError> {
+    let query = parse_session_search_query(params)?;
+    let offset = if query.is_some() {
+        // Leave room for one page while keeping the response cursor exactly
+        // representable by JavaScript clients.
+        match params.get("offset") {
+            None => 0,
+            Some(value) => value
+                .as_u64()
+                .filter(|offset| *offset <= 9_007_199_254_740_991 - 200)
+                .ok_or_else(|| {
+                    RpcError::invalid_params("offset must be a non-negative safe page cursor")
+                })? as usize,
+        }
+    } else {
+        params.get("offset").and_then(Value::as_u64).unwrap_or(0) as usize
+    };
     let limit = params
         .get("limit")
         .and_then(|value| value.as_u64())
@@ -342,12 +392,35 @@ pub async fn session_list(params: &Value) -> Result<Value, RpcError> {
         ));
     }
 
-    if let Some(snapshot) = current_mobile_sidebar_sessions()
-        .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err))?
-    {
+    let search_page = if let Some(query) = query {
+        Some(
+            tokio::task::spawn_blocking(move || {
+                crate::agent_sessions::session_directory::aggregation::search_session_names(
+                    &query, limit, offset,
+                )
+            })
+            .await
+            .map_err(|err| {
+                RpcError::new(RpcErrorCode::InvalidRequest, format!("task join: {err}"))
+            })?
+            .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err))?,
+        )
+    } else {
+        None
+    };
+
+    // The sidebar only contains loaded rows. Search must use the indexed
+    // directory even when a sidebar snapshot is available.
+    if let Some(snapshot) = if search_page.is_none() {
+        current_mobile_sidebar_sessions()
+            .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err))?
+    } else {
+        None
+    } {
         let candidate_ids = snapshot
             .iter()
             .filter(|session| status_filter != "running" || session.status == "running")
+            .skip(offset)
             .take(limit)
             .filter(|session| {
                 session
@@ -365,6 +438,7 @@ pub async fn session_list(params: &Value) -> Result<Value, RpcError> {
         return Ok(session_list_from_sidebar_snapshot(
             snapshot,
             status_filter,
+            offset,
             limit,
             &writable_codex_session_ids,
         ));
@@ -372,25 +446,28 @@ pub async fn session_list(params: &Value) -> Result<Value, RpcError> {
 
     let filter = SessionFilter {
         limit: Some(limit),
+        offset: Some(offset),
         ..Default::default()
     };
 
-    let response = tokio::task::spawn_blocking(move || list_all_sessions(Some(&filter)))
-        .await
-        .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, format!("task join: {err}")))?
-        .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err))?;
+    let (source_sessions, cursor) = if let Some(page) = search_page {
+        (page.sessions, Some((page.next_offset, page.has_more)))
+    } else {
+        let response = tokio::task::spawn_blocking(move || list_all_sessions(Some(&filter)))
+            .await
+            .map_err(|err| {
+                RpcError::new(RpcErrorCode::InvalidRequest, format!("task join: {err}"))
+            })?
+            .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err))?;
+        (response.sessions, None)
+    };
 
-    let session_rows = response
-        .sessions
+    let consumed = source_sessions.len();
+    let session_rows = source_sessions
         .into_iter()
         .filter(|record| is_mobile_list_category(record.category))
-        .filter_map(|record| {
-            let mobile_status = map_session_status_to_mobile(&record.status);
-            if status_filter == "running" && mobile_status != "running" {
-                return None;
-            }
-            let mobile_name = mobile_session_name(&record.name, record.display_label.as_deref());
-            Some((record.session_id, mobile_name, mobile_status))
+        .filter(|record| {
+            status_filter != "running" || map_session_status_to_mobile(&record.status) == "running"
         })
         .take(limit)
         .collect::<Vec<_>>();
@@ -399,27 +476,52 @@ pub async fn session_list(params: &Value) -> Result<Value, RpcError> {
         crate::orgtrack::history_commands::external_history_mobile_writable_codex_session_ids(
             session_rows
                 .iter()
-                .filter(|(id, _, _)| id.starts_with(orgtrack_core::sources::codex::SESSION_PREFIX))
-                .map(|(id, _, _)| id.clone())
+                .filter(|record| {
+                    record
+                        .session_id
+                        .starts_with(orgtrack_core::sources::codex::SESSION_PREFIX)
+                })
+                .map(|record| record.session_id.clone())
                 .collect(),
         )
         .await
         .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err))?;
     let sessions = session_rows
         .into_iter()
-        .map(|(session_id, mobile_name, mobile_status)| {
-            let send_capability =
-                external_send::mobile_send_capability(&session_id, &writable_codex_session_ids);
-            json!({
-                "id": session_id,
-                "name": mobile_name,
-                "status": mobile_status,
-                "sendCapability": send_capability,
-            })
+        .map(|record| {
+            let send_capability = external_send::mobile_send_capability(
+                &record.session_id,
+                &writable_codex_session_ids,
+            );
+            mobile_directory_session_row(&record, send_capability)
         })
         .collect::<Vec<_>>();
 
-    Ok(json!({ "sessions": sessions }))
+    let mut result = json!({ "sessions": sessions });
+    if let Some((next_offset, has_more)) = cursor {
+        result["nextOffset"] = json!(next_offset);
+        result["hasMore"] = json!(has_more);
+    } else {
+        result["nextOffset"] = json!(offset.saturating_add(consumed));
+        result["hasMore"] = json!(consumed == limit);
+    }
+    Ok(result)
+}
+
+fn parse_session_search_query(params: &Value) -> Result<Option<String>, RpcError> {
+    let Some(query) = params.get("query") else {
+        return Ok(None);
+    };
+    let query = query
+        .as_str()
+        .ok_or_else(|| RpcError::invalid_params("query must be a string"))?
+        .trim();
+    if query.is_empty() || query.chars().count() > 200 {
+        return Err(RpcError::invalid_params(
+            "query must contain 1 to 200 characters",
+        ));
+    }
+    Ok(Some(query.to_owned()))
 }
 
 /// Submit a user message from mobile — enqueues a turn and returns immediately.
@@ -2062,17 +2164,47 @@ mod tests {
     }
 
     #[test]
+    fn directory_mobile_payload_retains_authoritative_workspace_and_timestamp() {
+        let mut record: SessionAggregateRecord = serde_json::from_value(json!({
+            "sessionId": "session-a", "name": "Raw name", "displayLabel": "Display name",
+            "status": "completed", "category": "cli", "keySource": "own_key",
+            "createdAt": "2026-09-09T00:00:00Z", "updatedAt": "2026-09-09T00:00:00Z",
+            "isActive": false, "repoPath": "/workspace/project", "repoName": "project"
+        }))
+        .unwrap();
+        let row = mobile_directory_session_row(&record, "read_only");
+        assert_eq!(row["repoPath"], "/workspace/project");
+        assert_eq!(row["repoName"], "project");
+        assert_eq!(row["updatedAtMs"], 1_788_912_000_000_i64);
+        assert_eq!(row["name"], "Display name");
+        assert_eq!(row["status"], "idle");
+        assert_eq!(row["sendCapability"], "read_only");
+
+        record.repo_name = None;
+        record.repo_path = None;
+        record.updated_at = "invalid".into();
+        let missing = mobile_directory_session_row(&record, "read_only");
+        assert!(missing["repoName"].is_null());
+        assert!(missing["repoPath"].is_null());
+        assert!(missing["updatedAtMs"].is_null());
+    }
+
+    #[test]
     fn sidebar_snapshot_list_preserves_desktop_order_and_running_filter() {
         let snapshot = vec![
             MobileSidebarSessionSnapshotRow {
                 id: "second-by-time".to_string(),
                 name: "Desktop first".to_string(),
                 status: "idle".to_string(),
+                repo_path: Some("/projects/repo".to_string()),
+                repo_name: Some("repo".to_string()),
+                updated_at_ms: Some(123),
             },
             MobileSidebarSessionSnapshotRow {
                 id: "first-by-time".to_string(),
                 name: "Desktop second".to_string(),
                 status: "running".to_string(),
+                ..Default::default()
             },
         ];
 
@@ -2080,6 +2212,7 @@ mod tests {
         let all = session_list_from_sidebar_snapshot(
             snapshot.clone(),
             "all",
+            0,
             10,
             &writable_codex_session_ids,
         );
@@ -2096,9 +2229,17 @@ mod tests {
             Some("desktop_sidebar")
         );
 
+        assert_eq!(
+            all.pointer("/sessions/0/repoPath"),
+            Some(&json!("/projects/repo"))
+        );
+        assert_eq!(all.pointer("/sessions/0/repoName"), Some(&json!("repo")));
+        assert_eq!(all.pointer("/sessions/0/updatedAtMs"), Some(&json!(123)));
+        assert!(all["sessions"][1]["repoName"].is_null());
         let running = session_list_from_sidebar_snapshot(
             snapshot,
             "running",
+            0,
             10,
             &writable_codex_session_ids,
         );
@@ -2113,6 +2254,66 @@ mod tests {
                 .map(Vec::len),
             Some(1)
         );
+    }
+
+    #[test]
+    fn sidebar_snapshot_list_paginates_filtered_rows_without_duplicates() {
+        let snapshot = [
+            ("idle-a", "idle"),
+            ("a", "running"),
+            ("idle-b", "idle"),
+            ("b", "running"),
+            ("c", "running"),
+        ]
+        .into_iter()
+        .map(|(id, status)| MobileSidebarSessionSnapshotRow {
+            id: id.to_string(),
+            name: id.to_string(),
+            status: status.to_string(),
+            ..Default::default()
+        })
+        .collect::<Vec<_>>();
+        let writable = HashSet::new();
+        let first =
+            session_list_from_sidebar_snapshot(snapshot.clone(), "running", 0, 2, &writable);
+        assert_eq!(first["nextOffset"], json!(2));
+        assert_eq!(first["hasMore"], json!(true));
+        assert_eq!(
+            first["sessions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|row| row["id"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            vec!["a", "b"]
+        );
+        let second = session_list_from_sidebar_snapshot(
+            snapshot.clone(),
+            "running",
+            first["nextOffset"].as_u64().unwrap() as usize,
+            2,
+            &writable,
+        );
+        assert_eq!(second["nextOffset"], json!(3));
+        assert_eq!(second["hasMore"], json!(false));
+        assert_eq!(
+            second["sessions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|row| row["id"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            vec!["c"]
+        );
+        let empty =
+            session_list_from_sidebar_snapshot(snapshot.clone(), "running", 3, 2, &writable);
+        assert_eq!(empty["sessions"], json!([]));
+        assert_eq!(empty["nextOffset"], json!(3));
+        assert_eq!(empty["hasMore"], json!(false));
+        let all = session_list_from_sidebar_snapshot(snapshot, "all", 2, 2, &writable);
+        assert_eq!(all["sessions"][0]["id"], json!("idle-b"));
+        assert_eq!(all["nextOffset"], json!(4));
+        assert_eq!(all["hasMore"], json!(true));
     }
 
     #[test]

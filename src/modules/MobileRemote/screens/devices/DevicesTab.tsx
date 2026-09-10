@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import StatusDot from "@src/components/StatusDot";
 import { HugeiconsIcon, LaptopIcon, SmartPhone01Icon } from "@src/icons";
@@ -190,14 +190,14 @@ export function DevicesTab() {
                 ))}
                 {switchError ? (
                   <SectionRow showHeader={false} compact>
-                    <InlineAlert
+                    <PageNotice
                       type="danger"
                       role="alert"
                       compact
                       className="w-full"
                     >
                       {switchError}
-                    </InlineAlert>
+                    </PageNotice>
                   </SectionRow>
                 ) : null}
               </>

@@ -12,10 +12,6 @@ import { spotlightOpenAtom } from "./uiAtom";
 // These atoms track when overlays (dropdowns, modals, spotlight) are open.
 // Used primarily by useWebviewVisibility to hide native webviews behind overlays.
 
-// Track when ellipsis menu dropdown is open (to hide native webviews)
-export const ellipsisMenuOpenAtom = atom<boolean>(false);
-ellipsisMenuOpenAtom.debugLabel = "ellipsisMenuOpenAtom";
-
 // Track when there's a global error (to hide native webviews so error overlay is visible)
 export const hasGlobalErrorAtom = atom<boolean>(false);
 hasGlobalErrorAtom.debugLabel = "hasGlobalErrorAtom";
@@ -32,22 +28,18 @@ quitConfirmationModalOpenAtom.debugLabel = "quitConfirmationModalOpenAtom";
 export const componentIssueModalOpenAtom = atom<boolean>(false);
 componentIssueModalOpenAtom.debugLabel = "componentIssueModalOpenAtom";
 
-// Track when any toolbar dropdown is open (repo selector, branch selector, spotlight, etc.)
-// This is a generic atom for all toolbar dropdowns to use
-export const toolbarDropdownOpenAtom = atom<boolean>(false);
-toolbarDropdownOpenAtom.debugLabel = "toolbarDropdownOpenAtom";
-
-// Track initial add workspace mode - allows SelectRepoPage to open selector with a specific add form.
-// Value: null (default), or one of the add workspace stages
-export type AddWorkspaceInitialStage =
+// Track the initial add-working-directory mode so callers can open a
+// specific form. String values remain stable because they are route-stage IDs.
+export type WorkingDirectoryInitialStage =
   | "add-workspace-new"
   | "add-workspace-clone-url"
   | "add-workspace-clone-github"
   | "add-workspace-existing"
   | null;
-export const addWorkspaceInitialStageAtom =
-  atom<AddWorkspaceInitialStage>(null);
-addWorkspaceInitialStageAtom.debugLabel = "addWorkspaceInitialStageAtom";
+export const workingDirectoryInitialStageAtom =
+  atom<WorkingDirectoryInitialStage>(null);
+workingDirectoryInitialStageAtom.debugLabel =
+  "workingDirectoryInitialStageAtom";
 
 // Track when the repo selector is open so modules like useRouteToolbarConfig can trigger it.
 export const repoSelectorOpenAtom = atom<boolean>(false);
@@ -80,7 +72,6 @@ export const webviewOverlayBlockedAtom = atom((get) => {
   const hasGlobalError = get(hasGlobalErrorAtom);
   const isComponentIssueModalOpen = get(componentIssueModalOpenAtom);
   const isQuitConfirmationModalOpen = get(quitConfirmationModalOpenAtom);
-  const isToolbarDropdownOpen = get(toolbarDropdownOpenAtom);
   const isSpotlightOpen = get(spotlightOpenAtom);
 
   return (
@@ -88,7 +79,6 @@ export const webviewOverlayBlockedAtom = atom((get) => {
     hasGlobalError ||
     isComponentIssueModalOpen ||
     isQuitConfirmationModalOpen ||
-    isToolbarDropdownOpen ||
     isSpotlightOpen
   );
 });

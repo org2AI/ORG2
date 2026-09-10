@@ -20,6 +20,23 @@ export const cli = {
     .input(schemas.cli.CliSessionIdInputSchema)
     .output(schemas.cli.CliChunksSchema)
     .build(),
+  history: defineProcedure("cli_agent_history")
+    .input(
+      z.object({
+        sessionId: z.string(),
+        read: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("full") }),
+          z.object({ kind: z.literal("preview") }),
+          z.object({ kind: z.literal("turn"), turnId: z.string().min(1) }),
+        ]),
+      })
+    )
+    .output(schemas.sessionCore.SessionEventArraySchema)
+    .build(),
+  transcriptRevision: defineProcedure("cli_agent_transcript_revision")
+    .input(schemas.cli.CliSessionIdInputSchema)
+    .output(schemas.cli.CliTranscriptRevisionSchema)
+    .build(),
   cancel: defineProcedure("cli_agent_cancel")
     .input(schemas.cli.CliCancelInputSchema)
     .output(z.boolean())

@@ -31,11 +31,11 @@ import {
 } from "@src/config/appearance/skins/accent";
 import {
   DEFAULT_SKIN_ID,
-  getSkinSeed,
   resolveSkinId,
   supportsBothVariants,
 } from "@src/config/appearance/skins/registry";
-import type { SkinSeed, SkinVariant } from "@src/config/appearance/skins/types";
+import type { SkinVariant } from "@src/config/appearance/skins/types";
+import { createLogger } from "@src/hooks/logger";
 import {
   settingsAtom,
   updateSettingAtom,
@@ -170,11 +170,6 @@ export const activeSkinIdAtom = atom<string>((get) =>
 );
 activeSkinIdAtom.debugLabel = "activeSkinIdAtom";
 
-export const activeSkinSeedAtom = atom<SkinSeed>((get) =>
-  getSkinSeed(get(activeSkinIdAtom), get(skinVariantAtom))
-);
-activeSkinSeedAtom.debugLabel = "activeSkinSeedAtom";
-
 // ============================================
 // Accent
 // ============================================
@@ -241,6 +236,20 @@ export const iconStyleAtom = atom(
   }
 );
 iconStyleAtom.debugLabel = "iconStyleAtom";
+
+const dockIconLog = createLogger("DockIcon");
+
+export const dockIconAtom = atom(
+  (get) => get(settingsAtom)["general.dockIcon"],
+  (_get, set, value: "dark" | "light" | "rainbow") => {
+    set(updateSettingAtom, { key: "general.dockIcon", value }).catch(
+      (error: unknown) => {
+        dockIconLog.warn("Failed to persist general.dockIcon:", error);
+      }
+    );
+  }
+);
+dockIconAtom.debugLabel = "dockIconAtom";
 
 // ============================================
 // UI Scale
@@ -335,17 +344,9 @@ userDisplayNameAtom.debugLabel = "userDisplayNameAtom";
 // Modal & Dialog State
 // ============================================
 
-/** Login modal visibility */
-export const loginModalVisibleAtom = atom<boolean>(false);
-loginModalVisibleAtom.debugLabel = "loginModalVisibleAtom";
-
 /** Route debug trigger — set to true by Cmd+0; resets to false after toast fires */
 export const routeDebugModalOpenAtom = atom<boolean>(false);
 routeDebugModalOpenAtom.debugLabel = "routeDebugModalOpenAtom";
-
-/** Login modal fixed position */
-export const loginModalFixAtom = atom<boolean>(false);
-loginModalFixAtom.debugLabel = "loginModalFixAtom";
 
 /**
  * Session expired state
@@ -425,13 +426,14 @@ export type SpotlightInitialLayer =
       kind: "githubIssuesImport";
       context?: SpotlightGitHubIssuesImportContext;
     }
-  | { kind: "branch" }
+  | { kind: "branch"; repoId?: string }
   | { kind: "worktree" }
   | { kind: "editor"; mode?: SpotlightInitialEditorMode }
   | { kind: "agentSessionSearch" }
   | { kind: "allSessionsSearch" }
   | { kind: "agentControl" }
-  | { kind: "sessionCreator" };
+  | { kind: "sessionCreator" }
+  | { kind: "sessionImport" };
 
 export interface SpotlightInitialQuery {
   query: string;
@@ -454,17 +456,6 @@ inspectModeEnabledAtom.debugLabel = "inspectModeEnabledAtom";
 /** ADE Manager active state. When enabled, agent-originated GUI actions may dispatch through the Zod ActionSystem. */
 export const adeManagerEnabledAtom = atom<boolean>(false);
 adeManagerEnabledAtom.debugLabel = "adeManagerEnabledAtom";
-
-// ============================================
-// Loading & Status
-// ============================================
-
-/** Online status. Guarded against environments where `navigator` is not
- *  defined (e.g. Vitest `node` runs that import this atom transitively). */
-export const isOnlineAtom = atom<boolean>(
-  typeof navigator === "undefined" ? true : navigator.onLine
-);
-isOnlineAtom.debugLabel = "isOnlineAtom";
 
 export type SpotlightPlacement = "top" | "center";
 

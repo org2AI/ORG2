@@ -13,7 +13,7 @@ import {
 } from "@src/api/services/notification";
 import Message from "@src/components/Message";
 import { createLogger } from "@src/hooks/logger";
-import { openTeamInboxInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpenAtoms";
+import { openTeamInboxInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpen/integrations";
 import { notificationSettingsAtom } from "@src/store/ui/notificationAtom";
 
 import { getTeamInboxItemKey } from "./domain";
@@ -215,6 +215,15 @@ export function notificationCopy(
         name: item.actor.displayName,
       }),
       body: compactNotificationBody(item.payload.commentBody),
+    };
+  }
+
+  if (item.kind !== "assigned_work_item") {
+    return {
+      title: t(`teamInbox.events.${item.payload.eventKind}`, {
+        defaultValue: item.payload.eventKind,
+      }),
+      body: compactNotificationBody(item.payload.summary || item.payload.title),
     };
   }
 

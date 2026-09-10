@@ -32,7 +32,7 @@ describe("NavigationMenuRow", () => {
     Reflect.deleteProperty(reactActEnvironment, "IS_REACT_ACT_ENVIRONMENT");
   });
 
-  it("uses one fixed 32px height for parent and leaf rows", () => {
+  it("uses one fixed 28px height for parent and leaf rows", () => {
     const parentMarkup = renderToStaticMarkup(
       createElement(NavigationMenuParentRow, {
         item: {
@@ -65,8 +65,9 @@ describe("NavigationMenuRow", () => {
       })
     );
 
+    expect(parentMarkup).toContain("flex h-7 items-center");
+    expect(leafMarkup).toContain('style="height:28px"');
     for (const markup of [parentMarkup, leafMarkup]) {
-      expect(markup).toContain("flex h-8 items-center");
       expect(markup).not.toContain("min-h-[36px]");
     }
   });

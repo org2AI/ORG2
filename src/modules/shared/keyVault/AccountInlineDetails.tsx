@@ -18,7 +18,7 @@ import {
   resolveAccountUsageItems,
   resolveQuotaPlanLabel,
 } from "@src/hooks/keyVault/accountQuotaDisplay";
-import { useCopyCheck } from "@src/hooks/ui";
+import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import { Copy01Icon, HugeiconsIcon, Tick01Icon } from "@src/icons";
 import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
 import InlineExpandedSplitCard from "@src/modules/shared/layouts/blocks/InlineExpandedSplitCard";
@@ -50,10 +50,6 @@ function hasTotalPercentUsed(
     typeof (quotaInfo as { total_percent_used?: unknown })
       .total_percent_used === "number"
   );
-}
-
-function resolvePlanLabel(account: KeyVaultAccount): string | null {
-  return resolveQuotaPlanLabel(account);
 }
 
 export const AccountInlineDetails: React.FC<AccountInlineDetailsProps> = ({
@@ -113,7 +109,7 @@ export const AccountInlineDetails: React.FC<AccountInlineDetailsProps> = ({
     if (!showQuota || !account.quotaInfo) return null;
 
     const quotaInfo = account.quotaInfo;
-    const planLabel = resolvePlanLabel(account);
+    const planLabel = resolveQuotaPlanLabel(account, t);
     const remainingPercent = hasTotalPercentUsed(quotaInfo)
       ? 100 - quotaInfo.total_percent_used
       : (quotaInfo.remaining_percentage ?? 0);
@@ -125,7 +121,7 @@ export const AccountInlineDetails: React.FC<AccountInlineDetailsProps> = ({
       textColorClass: getQuotaTextColorClass(remainingPercent),
       isUnlimited: quotaInfo.is_unlimited === true,
     };
-  }, [account, showQuota]);
+  }, [account, showQuota, t]);
 
   const quotaUsageItems = useMemo(() => {
     if (!showQuota || !account.quotaInfo) {

@@ -28,7 +28,8 @@ const DependenciesPage: React.FC<DependenciesPageProps> = ({
   onSelectDep,
   refreshRef,
 }) => {
-  const { isLoading, refresh, byCategory } = useSystemDependencies();
+  const { isLoading, isRefreshing, refresh, byCategory } =
+    useSystemDependencies();
   const deps = byCategory(NON_DB_CATEGORIES);
 
   useEffect(() => {
@@ -44,6 +45,8 @@ const DependenciesPage: React.FC<DependenciesPageProps> = ({
     <DependenciesTable
       dependencies={deps}
       loading={isLoading}
+      refreshing={isRefreshing}
+      onRefresh={refresh}
       selectedDepId={selectedDep?.binary ?? null}
       onSelectDep={onSelectDep}
     />

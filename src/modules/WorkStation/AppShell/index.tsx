@@ -10,10 +10,9 @@ import { resolvedBackgroundConfigAtom } from "@src/store/ui/backgroundConfigAtom
 import { simulatorCaptionBarEnabledAtom } from "@src/store/ui/simulatorAtom";
 import {
   workStationFollowAgentHighlightEnabledAtom,
-  workStationPrimarySidebarCollapsedAtom,
   workStationStatusBarHiddenAtom,
-  workStationTitleBarHiddenAtom,
-} from "@src/store/ui/workStationAtom";
+} from "@src/store/ui/workStationLayout/chromeAtoms";
+import { workStationPrimarySidebarCollapsedAtom } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import { activeWorkStationTabAtom } from "@src/store/workstation/tabs";
 
 import { StatusBarRenderer } from "../shared/StatusBar/StatusBarRenderer";
@@ -28,13 +27,14 @@ import { useAppShellActions } from "./hooks/useAppShellActions";
 import { useAppShellDerivedState } from "./hooks/useAppShellDerivedState";
 import { useAppShellDock } from "./hooks/useAppShellDock";
 import { useAppShellRepo } from "./hooks/useAppShellRepo";
-import { useAppShellRouteSync } from "./hooks/useAppShellRouteSync";
 import { useAppShellSimulatorPanelSync } from "./hooks/useAppShellSimulatorPanelSync";
 import { useAppShellStationMode } from "./hooks/useAppShellStationMode";
 import { useAppShellStatusBar } from "./hooks/useAppShellStatusBar";
 import { useLaunchpadTab } from "./hooks/useLaunchpadTab";
 import { useTerminalTabTeardown } from "./hooks/useTerminalTabTeardown";
+import { useWorkstationRouteEntry } from "./hooks/useWorkstationRouteEntry";
 import { shouldShowWorkStationStatusBar } from "./statusBarVisibility";
+import { shouldEnableWorkspacePortScan } from "./workspacePortScanVisibility";
 
 interface AppShellProps {
   /** Whether the routed WorkStation surface is currently visible */
@@ -45,7 +45,6 @@ interface AppShellProps {
 
 const AppShell = React.memo(
   ({ isActive = true, chatPanelFocused = false }: AppShellProps) => {
-    const _titleBarHidden = useAtomValue(workStationTitleBarHiddenAtom);
     const statusBarHidden = useAtomValue(workStationStatusBarHiddenAtom);
     const followAgentHighlightEnabled = useAtomValue(
       workStationFollowAgentHighlightEnabledAtom
@@ -64,7 +63,7 @@ const AppShell = React.memo(
     const { visitedModes } = useAppShellDock();
     // Called for its side effects on the workstation base path (station mode /
     // chat visibility / chat width); the content host follows the active tab.
-    useAppShellRouteSync();
+    useWorkstationRouteEntry();
 
     const { isAgentStation, illuminateAgentStationChrome } =
       useAppShellStationMode({ followAgentHighlightEnabled });
@@ -88,22 +87,14 @@ const AppShell = React.memo(
 
     const { handleSelectRepo, handleOpenSettings } = useAppShellActions();
 
-    const {
-      activeHost,
-      isCodeMode,
-      isBrowserMode,
-      isProjectMode,
-      codeContentVisible,
-      browserContentVisible,
-      projectContentVisible,
-    } = useAppShellDerivedState();
+    const { activeHost, isCodeMode, isBrowserMode, isProjectMode } =
+      useAppShellDerivedState();
 
     const hasVisitedCode = visitedModes.has("code");
     const hasVisitedBrowser = visitedModes.has("browser");
     const hasVisitedProject = visitedModes.has("project");
 
-    const showSettingsButton =
-      (codeContentVisible || projectContentVisible) && !isAgentStation;
+    const showSettingsButton = (isCodeMode || isProjectMode) && !isAgentStation;
 
     useAppShellStatusBar({
       primaryPanelCollapsed,
@@ -112,17 +103,22 @@ const AppShell = React.memo(
       workStationPanels,
     });
 
-    // The WorkStation host stays mounted behind the Launchpad / maximized chat
-    // surface. Port discovery is useful only while an actual code-host tab is
-    // visible; keeping it alive behind those overlays causes an idle 60s scan.
-    const portsEnabled =
-      isCodeMode &&
-      isActive &&
-      !chatPanelFocused &&
-      activeWorkStationTab != null &&
-      activeWorkStationTab.type !== "start" &&
-      !isAgentStation;
-    useWorkspacePortAdvertisedUrls(portsEnabled);
+    // The Browser and Terminal status bars expose running servers. Keep the
+    // shared scanner off behind the Launchpad / chat takeover so its 60s
+    // safety scan is never active on an invisible surface.
+    const portsEnabled = shouldEnableWorkspacePortScan({
+      isCodeMode,
+      isBrowserMode,
+      isActive,
+      chatPanelFocused,
+      hasActiveTab: activeWorkStationTab != null,
+      isLaunchpad: activeWorkStationTab?.type === "start",
+      isAgentStation,
+    });
+    // PTY-output URL ingestion stays owned by the Code/Terminal host. Browser
+    // consumes the resulting shared scan state but does not add a second PTY
+    // subscription lifecycle.
+    useWorkspacePortAdvertisedUrls(isCodeMode && portsEnabled);
 
     const showStatusBar = shouldShowWorkStationStatusBar({
       statusBarHidden,
@@ -171,9 +167,6 @@ const AppShell = React.memo(
                 isCodeMode={isCodeMode}
                 isBrowserMode={isBrowserMode}
                 isProjectMode={isProjectMode}
-                codeContentVisible={codeContentVisible}
-                browserContentVisible={browserContentVisible}
-                projectContentVisible={projectContentVisible}
                 handleSelectRepo={handleSelectRepo}
               />
             </div>

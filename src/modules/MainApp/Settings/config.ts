@@ -7,11 +7,7 @@ import { createElement } from "react";
 
 import { type RenderableIcon } from "@src/components/AnyIcon";
 import { getSettingsSectionsByTab } from "@src/config/settingsUiManifest";
-import {
-  ArrowRight01Icon,
-  HugeiconsIcon,
-  SquareArrowUpRight02Icon,
-} from "@src/icons";
+import { HugeiconsIcon, SquareArrowUpRight02Icon } from "@src/icons";
 
 export interface SettingsSectionConfig {
   id: string;
@@ -30,8 +26,6 @@ export const SECTION_IDS = {
   EDITOR: "editor",
   SECURITY: "security",
   MOBILE_REMOTE: "mobile-remote",
-
-  MONITOR: "monitor",
 } as const;
 
 // App sections (left sidebar items)
@@ -66,6 +60,7 @@ export const SECTION_TAB_META: Partial<
     { key: "general", labelKey: "general.tabGeneral" },
     { key: "notifications", labelKey: "sections.notifications" },
     { key: "shortcuts", labelKey: "shortcuts.title" },
+    { key: "storage", labelKey: "sections.storage" },
     { key: "self-hosted", labelKey: "general.tabSelfHosted" },
   ],
   [SECTION_IDS.APPEARANCE]: [
@@ -74,19 +69,6 @@ export const SECTION_TAB_META: Partial<
     { key: "chat-panel", labelKey: "appearance.tabChatPanel" },
   ],
   [SECTION_IDS.EDITOR]: [{ key: "editor", labelKey: "editor.tabEditor" }],
-  [SECTION_IDS.MONITOR]: [
-    { key: "resources", labelKey: "monitor.resourceUsage" },
-    { key: "network", labelKey: "common:tabs.network" },
-    { key: "storage", labelKey: "sections.storage" },
-  ],
-};
-
-/** Shared props for buttons that navigate to a settings subpage */
-export const SUBPAGE_BUTTON_PROPS = {
-  variant: "secondary" as const,
-  size: "default" as const,
-  icon: createElement(HugeiconsIcon, { icon: ArrowRight01Icon, size: 14 }),
-  iconPosition: "right" as const,
 };
 
 /** Shared props for buttons that navigate to another page (outside settings) */

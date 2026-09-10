@@ -15,7 +15,7 @@ import {
 
 import { derivedSnapshotAtom } from "@src/engines/SessionCore/core/atoms/events";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { chatFindInChatOpenAtomFamily } from "@src/store/ui/chatPanelAtom";
+import { chatFindInChatOpenAtomFamily } from "@src/store/ui/chatPanel/miscAtoms";
 
 import { useSessionHeaderActions } from "./useSessionHeaderActions";
 

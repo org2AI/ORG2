@@ -8,13 +8,13 @@
  *   import { PanelService } from "@src/services/panel";
  *   PanelService.showPrimarySidebar("testing");
  */
+import { workStationEditorSecondaryCollapsedPersistAtom } from "@src/store/ui/workStationLayout/bottomPanelAtoms";
 import {
   type PrimarySidebarTabKey,
-  workStationEditorSecondaryCollapsedPersistAtom,
   workStationPrimarySidebarCollapsedAtom,
   workStationPrimarySidebarCollapsedPersistAtom,
   workStationPrimarySidebarTabAtom,
-} from "@src/store/ui/workStationAtom";
+} from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 const getStore = () => getInstrumentedStore();

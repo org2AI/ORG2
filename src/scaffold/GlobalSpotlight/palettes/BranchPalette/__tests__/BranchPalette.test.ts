@@ -41,8 +41,8 @@ vi.mock("../useBranchFetch", () => ({
 }));
 vi.mock("../useWorktreeMap", () => ({ useWorktreeMap: () => new Map() }));
 vi.mock("../useBranchPalette", async () => {
-  const { useSelectorKernel } =
-    await import("@src/scaffold/GlobalSpotlight/palettes/core");
+  const { useSelector: useSelectorKernel } =
+    await import("@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector");
   return {
     useBranchPalette: (options: { isOpen: boolean; onClose: () => void }) => {
       const items = [

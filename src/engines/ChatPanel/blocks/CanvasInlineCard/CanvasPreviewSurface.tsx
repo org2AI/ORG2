@@ -12,6 +12,7 @@ import React, {
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import PageNotice from "@src/components/PageNotice";
 import {
   HugeiconsIcon,
   Layout01Icon,
@@ -212,14 +213,18 @@ const CanvasPreviewSurface = forwardRef<
       <div className={className}>
         {content}
         {reactArtifactError?.key === errorKey && (
-          <div className="absolute inset-x-3 bottom-3 rounded-md border border-red-500/40 bg-red-500/15 p-2 text-xs text-red-100 shadow-lg backdrop-blur">
-            <div className="font-medium">{reactArtifactError.message}</div>
+          <PageNotice
+            type="danger"
+            role="alert"
+            className="absolute inset-x-3 bottom-3 bg-bg-1"
+            title={reactArtifactError.message}
+          >
             {reactArtifactError.stack && (
-              <pre className="mt-1 max-h-24 overflow-auto font-mono text-[10px] leading-4 whitespace-pre-wrap text-red-100/80">
+              <pre className="max-h-24 overflow-auto font-mono whitespace-pre-wrap">
                 {reactArtifactError.stack}
               </pre>
             )}
-          </div>
+          </PageNotice>
         )}
       </div>
     );

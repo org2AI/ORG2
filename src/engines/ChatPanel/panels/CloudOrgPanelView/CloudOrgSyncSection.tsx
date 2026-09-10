@@ -26,7 +26,8 @@ import type {
   SyncJournalMember,
 } from "@src/features/Org2Cloud/org2CloudSyncJournal";
 import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
-import { HugeiconsIcon, UsersRoundIcon } from "@src/icons";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
+import { HugeiconsIcon, Refresh04Icon, UsersRoundIcon } from "@src/icons";
 import {
   SECTION_ACTION_GAP_CLASSES,
   SectionContainer,
@@ -267,6 +268,8 @@ export function CloudOrgSyncSection({ t, status }: CloudOrgSyncSectionProps) {
     await copyText(formatSyncJournalForCopy(visibleEntries));
   }, [visibleEntries]);
   const { copied, handleCopy } = useCopyCheck(copyLog);
+  const { spinClass: syncSpinClass, handleClick: handleSyncClick } =
+    useRefreshSpin(status.runSync, status.running);
 
   const schemaLabel =
     status.schemaStatus === "checking"
@@ -337,7 +340,6 @@ export function CloudOrgSyncSection({ t, status }: CloudOrgSyncSectionProps) {
         <SectionRow
           dataTestId="cloud-org-sync-manual"
           label={t("cloud.orgPanel.sync.manualLabel")}
-          align="start"
         >
           {/* Outcome note LEADS the button: the row is right-aligned, so the
           button stays pinned to the edge and the note grows leftward instead
@@ -366,8 +368,17 @@ export function CloudOrgSyncSection({ t, status }: CloudOrgSyncSectionProps) {
               variant="primary"
               disabled={status.running}
               loading={status.running}
+              loadingSpinIcon
+              icon={
+                <HugeiconsIcon
+                  icon={Refresh04Icon}
+                  data-icon="refresh-cw"
+                  size={14}
+                  className={syncSpinClass}
+                />
+              }
               data-testid="cloud-org-sync-run"
-              onClick={status.runSync}
+              onClick={handleSyncClick}
             >
               {status.running
                 ? t("cloud.orgPanel.sync.manualRunning")

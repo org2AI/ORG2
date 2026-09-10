@@ -25,6 +25,7 @@ mod merge;
 mod native_page;
 mod native_sidebar;
 mod pagination;
+mod search;
 mod sorting;
 #[cfg(test)]
 mod test_support;
@@ -32,3 +33,4 @@ mod test_support;
 pub use external_history::resync_external_history_source;
 pub use merge::list_all_sessions;
 pub use native_sidebar::{list_native_sidebar_sessions, NATIVE_SIDEBAR_PAGE_MAX_LIMIT};
+pub use search::search_session_names;

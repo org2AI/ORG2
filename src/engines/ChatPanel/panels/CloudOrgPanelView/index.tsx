@@ -27,7 +27,7 @@ import {
 } from "@src/modules/shared/layouts/blocks";
 import { GUIDE_TARGETS } from "@src/scaffold/Tutorials/guideTargets";
 import { openWorkManagementChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
-import type { ChatPanelSelectedCloudOrg } from "@src/store/ui/chatPanelAtom";
+import type { ChatPanelSelectedCloudOrg } from "@src/store/ui/chatPanel/selectionAtoms";
 import { WORK_MANAGEMENT_SECTION } from "@src/store/workstation";
 
 import CloudOrgPanelHeader from "./CloudOrgPanelHeader";

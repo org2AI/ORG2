@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from "react";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
+import PageNotice from "@src/components/PageNotice";
 import Tooltip from "@src/components/Tooltip";
 import { HugeiconsIcon, InternetIcon } from "@src/icons";
 
@@ -71,7 +71,7 @@ const RegionNoticeButton: React.FC<RegionNoticeButtonProps> = ({
         <span
           className={`absolute top-full right-0 z-30 mt-1 block w-[min(360px,calc(100vw-24px))] ${panelClassName}`.trim()}
         >
-          <InlineAlert
+          <PageNotice
             type="warning"
             title={title}
             hideIcon
@@ -79,7 +79,7 @@ const RegionNoticeButton: React.FC<RegionNoticeButtonProps> = ({
             className={alertClassName}
           >
             {body}
-          </InlineAlert>
+          </PageNotice>
         </span>
       )}
     </span>

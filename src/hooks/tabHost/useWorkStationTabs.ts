@@ -13,15 +13,11 @@ import {
   type WorkStationLayoutState,
   type WorkStationTab,
   claimLegacyWorkstationSeedAtom,
-  closeOtherTabs as closeOtherTabsMutation,
-  closeSavedTabs as closeSavedTabsMutation,
-  closeTab as closeTabMutation,
+  closeWorkstationTabAtom,
   mainPaneActiveTabIdAtom,
   mainPaneTabsAtom,
   openTab as openTabMutation,
   presentedWorkstationWorkspaceKeyAtom,
-  reorderTabs as reorderTabsMutation,
-  switchTab as switchTabMutation,
   updateTabData as updateTabDataMutation,
   workstationLayoutAtom,
 } from "@src/store/workstation/tabs";
@@ -36,13 +32,8 @@ export interface UseWorkStationTabsReturn {
   activeTab: WorkStationTab | null;
 
   openTab: (tab: WorkStationTab) => void;
-  closeTab: (tabId: string) => void;
-  switchTab: (tabId: string) => void;
-  reorderTabs: (startIndex: number, endIndex: number) => void;
-
-  closeOtherTabs: (keepTabId: string) => void;
-  closeSavedTabs: () => void;
-  closeAllTabs: () => void;
+  /** Programmatic removal: release resources without offering deleted data in recents. */
+  removeTab: (tabId: string) => void;
 
   updateTabData: (
     tabId: string,
@@ -53,16 +44,6 @@ export interface UseWorkStationTabsReturn {
     meta: Partial<Pick<WorkStationTab, "title" | "icon">>
   ) => void;
   setTabUnsaved: (tabId: string, hasUnsavedChanges: boolean) => void;
-
-  tabBarProps: {
-    tabs: WorkStationTab[];
-    activeTabId: string | null;
-    onTabClick: (tabId: string) => void;
-    onTabClose: (tabId: string) => void;
-    onTabReorder: (startIndex: number, endIndex: number) => void;
-    onCloseOtherTabs: (tabId: string) => void;
-    onCloseSavedTabs: () => void;
-  };
 }
 
 const EMPTY_PANE_STATE: PanelState = { tabs: [], activeTabId: null };
@@ -76,6 +57,7 @@ export function useWorkStationTabs(): UseWorkStationTabsReturn {
   const activeTabId = useAtomValue(mainPaneActiveTabIdAtom);
   const workspaceKey = useAtomValue(presentedWorkstationWorkspaceKeyAtom);
   const setLayout = useSetAtom(workstationLayoutAtom);
+  const removeWorkstationTab = useSetAtom(closeWorkstationTabAtom);
   const claimLegacySeed = useSetAtom(claimLegacyWorkstationSeedAtom);
 
   // A legacy v2 task workspace is claimed only after a user has explicitly
@@ -109,40 +91,9 @@ export function useWorkStationTabs(): UseWorkStationTabsReturn {
     [updatePane]
   );
 
-  const closeTab = useCallback(
-    (tabId: string) => updatePane((state) => closeTabMutation(state, tabId)),
-    [updatePane]
-  );
-
-  const switchTab = useCallback(
-    (tabId: string) => updatePane((state) => switchTabMutation(state, tabId)),
-    [updatePane]
-  );
-
-  const reorderTabs = useCallback(
-    (startIndex: number, endIndex: number) =>
-      updatePane((state) => reorderTabsMutation(state, startIndex, endIndex)),
-    [updatePane]
-  );
-
-  const closeOtherTabs = useCallback(
-    (keepTabId: string) =>
-      updatePane((state) => closeOtherTabsMutation(state, keepTabId)),
-    [updatePane]
-  );
-
-  const closeSavedTabs = useCallback(
-    () => updatePane((state) => closeSavedTabsMutation(state)),
-    [updatePane]
-  );
-
-  const closeAllTabs = useCallback(
-    () =>
-      updatePane((state) => {
-        if (state.tabs.length === 0 && state.activeTabId === null) return state;
-        return { tabs: [], activeTabId: null };
-      }),
-    [updatePane]
+  const removeTab = useCallback(
+    (tabId: string) => removeWorkstationTab({ workspace: workspaceKey, tabId }),
+    [removeWorkstationTab, workspaceKey]
   );
 
   const updateTabData = useCallback(
@@ -193,41 +144,14 @@ export function useWorkStationTabs(): UseWorkStationTabsReturn {
     [updatePane]
   );
 
-  const tabBarProps = useMemo(
-    () => ({
-      tabs,
-      activeTabId,
-      onTabClick: switchTab,
-      onTabClose: closeTab,
-      onTabReorder: reorderTabs,
-      onCloseOtherTabs: closeOtherTabs,
-      onCloseSavedTabs: closeSavedTabs,
-    }),
-    [
-      tabs,
-      activeTabId,
-      switchTab,
-      closeTab,
-      reorderTabs,
-      closeOtherTabs,
-      closeSavedTabs,
-    ]
-  );
-
   return {
     tabs,
     activeTabId,
     activeTab,
     openTab,
-    closeTab,
-    switchTab,
-    reorderTabs,
-    closeOtherTabs,
-    closeSavedTabs,
-    closeAllTabs,
+    removeTab,
     updateTabData,
     updateTabMeta,
     setTabUnsaved,
-    tabBarProps,
   };
 }

@@ -13,7 +13,7 @@ import {
   vi,
 } from "vitest";
 
-import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { settingsAtom } from "@src/store/settings/settingsAtom";
 import { WORK_MANAGEMENT_SECTION } from "@src/store/workstation";
 

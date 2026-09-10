@@ -58,8 +58,8 @@ interface ProjectsPageHeaderProps {
   surfaceHeaderLeading?: React.ReactNode;
   /** Target workstation host slot for the published header. */
   workstationHeaderHost?: WorkstationTabHeaderHost;
-  /** Disable the shell sidebar toggle when this page has no sidebar. */
-  sidebarToggleDisabled?: boolean;
+  /** Hide shell chrome and keep every published control in one left-aligned group. */
+  selfContainedWorkstationHeader?: boolean;
   /** Optional custom className */
   className?: string;
 }
@@ -82,7 +82,7 @@ const ProjectsPageHeader: React.FC<ProjectsPageHeaderProps> = ({
   surfaceOwnedHeader = false,
   surfaceHeaderLeading,
   workstationHeaderHost = "project",
-  sidebarToggleDisabled = false,
+  selfContainedWorkstationHeader = false,
   className = "",
 }) => {
   const { t } = useTranslation("projects");
@@ -111,21 +111,22 @@ const ProjectsPageHeader: React.FC<ProjectsPageHeaderProps> = ({
         <div className="contents">{leadingControls}</div>
       ) : null
     ) : (
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+      <div
+        className={`flex min-w-0 items-center gap-1.5 ${
+          selfContainedWorkstationHeader ? "shrink-0" : "flex-1"
+        }`}
+      >
         <ProjectManagerBreadcrumb
           segments={resolvedBreadcrumbSegments}
           trailingNode={leadingControls}
+          compact={selfContainedWorkstationHeader}
         />
       </div>
     );
 
-  const headerTrailing = (
-    <div className="flex shrink-0 items-center gap-px">
+  const headerSearchControls = (
+    <>
       {trailingControls}
-      {trailingControls &&
-        (onSearch || onCollapseAll || onRefresh || onAddProject) && (
-          <HeaderSectionSeparator className="mx-1" />
-        )}
       {onSearch && (
         <Button
           htmlType="button"
@@ -144,54 +145,63 @@ const ProjectsPageHeader: React.FC<ProjectsPageHeaderProps> = ({
           }
         />
       )}
-      {(onCollapseAll || onRefresh || onAddProject) && (
-        <div className="flex shrink-0 items-center gap-px">
-          {onCollapseAll && (
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              onClick={onCollapseAll}
-              title={t("common:actions.collapseAll")}
-              icon={
-                <HugeiconsIcon
-                  icon={ListChevronsDownUpIcon}
-                  data-icon="list-chevrons-down-up"
-                  size={HEADER_ICON_SIZE.md}
-                  strokeWidth={2}
-                />
-              }
-            />
-          )}
-          {onRefresh && (
-            <WorkManagementRefreshButton
-              label={t("common:actions.refresh")}
-              loading={refreshLoading}
-              onRefresh={onRefresh}
-            />
-          )}
-          {onAddProject && (
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              onClick={onAddProject}
-              title={t("projects.createProject")}
-              data-testid="projects-create-project"
-              icon={
-                <HugeiconsIcon
-                  icon={PencilEdit02Icon}
-                  data-icon="square-pen"
-                  size={HEADER_ICON_SIZE.md}
-                  strokeWidth={2}
-                />
-              }
-            />
-          )}
-        </div>
-      )}
+    </>
+  );
+
+  const headerActions =
+    onCollapseAll || onRefresh || onAddProject ? (
+      <>
+        {onCollapseAll && (
+          <Button
+            htmlType="button"
+            variant="tertiary"
+            size="small"
+            iconOnly
+            onClick={onCollapseAll}
+            title={t("common:actions.collapseAll")}
+            icon={
+              <HugeiconsIcon
+                icon={ListChevronsDownUpIcon}
+                data-icon="list-chevrons-down-up"
+                size={HEADER_ICON_SIZE.md}
+                strokeWidth={2}
+              />
+            }
+          />
+        )}
+        {onRefresh && (
+          <WorkManagementRefreshButton
+            label={t("common:actions.refresh")}
+            loading={refreshLoading}
+            onRefresh={onRefresh}
+          />
+        )}
+        {onAddProject && (
+          <Button
+            htmlType="button"
+            variant="tertiary"
+            size="small"
+            iconOnly
+            onClick={onAddProject}
+            title={t("projects.createProject")}
+            data-testid="projects-create-project"
+            icon={
+              <HugeiconsIcon
+                icon={PencilEdit02Icon}
+                data-icon="square-pen"
+                size={HEADER_ICON_SIZE.md}
+                strokeWidth={2}
+              />
+            }
+          />
+        )}
+      </>
+    ) : null;
+
+  const headerTrailing = (
+    <div className="flex shrink-0 items-center gap-px">
+      {headerSearchControls}
+      {headerActions}
     </div>
   );
 
@@ -202,7 +212,7 @@ const ProjectsPageHeader: React.FC<ProjectsPageHeaderProps> = ({
       : {
           content: headerContent,
           trailing: headerTrailing,
-          sidebarToggleDisabled,
+          shellLeadingChromeHidden: selfContainedWorkstationHeader,
         },
     enabled: publishToWorkstationHeader,
   });

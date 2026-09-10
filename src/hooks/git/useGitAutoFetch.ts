@@ -13,7 +13,7 @@ import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
 
 import { gitApi } from "@src/api/http/git";
-import { useGitStatus } from "@src/contexts/git";
+import { useGitStatus } from "@src/contexts/git/GitStatusContext/useGitStatus";
 import { createLogger } from "@src/hooks/logger";
 import { selectedRepoAtom, selectedRepoIdAtom } from "@src/store/repo";
 import {

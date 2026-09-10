@@ -2,7 +2,7 @@
  * Concrete Chat Panel tab factories.
  *
  * One `create<Type>Tab` per `ChatPanelTabType`, built on
- * `defineChatPanelTabFactory`. Open atoms (`chatPanelTabOpenAtoms.ts`) and the
+ * `defineChatPanelTabFactory`. Open atoms (`chatPanelTabOpen/`) and the
  * lifecycle/default builders route every tab construction through these so the
  * id scheme, stored title, and typed payload for each type live in exactly one
  * place. Dedup (focus-or-create) stays in the open atoms, which need store
@@ -13,7 +13,7 @@ import type {
   ChatPanelSelectedProject,
   ChatPanelSelectedWorkItem,
   ChatPanelSelectedWorkspace,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionTypes";
 import type { WorkManagementSection } from "@src/store/workstation/workstationTabBarAtoms";
 import type {
   GitHubIssueDetailTabData,

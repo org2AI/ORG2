@@ -5,7 +5,7 @@ import { type Root, createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanelAtom";
+import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanel/selectionAtoms";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
 
 import type { ChatPanelEmptyContent } from "../ChatPanelEmptyContent";
@@ -28,7 +28,7 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("react-router-dom", () => ({ useNavigate: () => mocks.navigate }));
 vi.mock("@src/api/http/project", () => ({ workItemDataToUI: vi.fn() }));
-vi.mock("@src/scaffold/AppUpdater", () => ({
+vi.mock("@src/scaffold/AppUpdater/actions", () => ({
   installAvailableAppUpdate: mocks.installUpdate,
 }));
 vi.mock("@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom", async () => {
@@ -43,7 +43,7 @@ vi.mock("@src/store/project/projectAtom", async () => {
   const { atom } = await import("jotai");
   return { projectListRefreshAtom: atom(0) };
 });
-vi.mock("@src/store/ui/chatPanelAtom", async () => {
+vi.mock("@src/store/ui/chatPanel/selectionAtoms", async () => {
   const { atom } = await import("jotai");
   return {
     CHAT_PANEL_CREATE_TARGET: {
@@ -109,7 +109,6 @@ function Harness({ visible }: { visible: boolean }) {
     startPageOpen: false,
     sessionCreatorSlot: slot,
     creatorVariant: "fullScreen",
-    handleShowRuntime: vi.fn(),
     handleOpenLaunchpadTab: mocks.launchpad,
     handleOpenCliTerminal: vi.fn(),
     handleRegionNoticeChange: vi.fn(),

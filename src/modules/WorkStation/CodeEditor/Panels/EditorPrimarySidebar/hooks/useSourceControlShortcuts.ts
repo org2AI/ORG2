@@ -12,6 +12,7 @@
  */
 import { useEffect } from "react";
 
+import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
 import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 
 export interface UseSourceControlShortcutsOptions {
@@ -61,7 +62,6 @@ export function useSourceControlShortcuts(
       // Ignore keyboard events during IME composition
       if (e.isComposing) return;
 
-      const isMod = e.metaKey || e.ctrlKey;
       const target = e.target;
 
       // Check if target is an editable element (input, textarea, or contenteditable)
@@ -78,28 +78,28 @@ export function useSourceControlShortcuts(
           target.closest(".xterm") !== null);
 
       // Cmd/Ctrl + Enter - Commit
-      if (isMod && e.key === "Enter" && canCommit) {
+      if (matchesShortcut(e, "git_commit") && canCommit) {
         e.preventDefault();
         onCommit();
         return;
       }
 
       // Cmd/Ctrl + K - Stage All
-      if (isMod && !e.shiftKey && e.key === "k") {
+      if (matchesShortcut(e, "git_stage_all")) {
         e.preventDefault();
         if (onStageAll) onStageAll();
         return;
       }
 
       // Cmd/Ctrl + Shift + K - Unstage All
-      if (isMod && e.shiftKey && e.key === "K") {
+      if (matchesShortcut(e, "git_unstage_all")) {
         e.preventDefault();
         if (onUnstageAll) onUnstageAll();
         return;
       }
 
       // Cmd/Ctrl + R - Refresh
-      if (isMod && e.key === "r") {
+      if (matchesShortcut(e, "git_refresh")) {
         e.preventDefault();
         if (onRefresh) onRefresh();
         return;
@@ -112,21 +112,21 @@ export function useSourceControlShortcuts(
       if (isEditableElement) return;
 
       // Space - Stage/unstage selected file
-      if (e.key === " " && !isMod) {
+      if (matchesShortcut(e, "git_toggle_stage")) {
         e.preventDefault();
         if (onToggleStageSelected) onToggleStageSelected();
         return;
       }
 
       // Enter - Open diff for selected file
-      if (e.key === "Enter" && !isMod) {
+      if (matchesShortcut(e, "git_open_diff")) {
         e.preventDefault();
         if (onOpenSelected) onOpenSelected();
         return;
       }
 
       // Delete/Backspace - Discard selected file
-      if ((e.key === "Delete" || e.key === "Backspace") && !isMod) {
+      if (matchesShortcut(e, "git_discard")) {
         e.preventDefault();
         if (onDiscardSelected) onDiscardSelected();
         return;
@@ -154,11 +154,25 @@ export function useSourceControlShortcuts(
  * Values are looked up from the centralized shortcut catalog.
  */
 export const SHORTCUTS = {
-  commit: getShortcutKeys("git_commit"),
-  stageAll: getShortcutKeys("git_stage_all"),
-  unstageAll: getShortcutKeys("git_unstage_all"),
-  refresh: getShortcutKeys("git_refresh"),
-  toggleStage: getShortcutKeys("git_toggle_stage"),
-  openDiff: getShortcutKeys("git_open_diff"),
-  discard: getShortcutKeys("git_discard"),
+  get commit() {
+    return getShortcutKeys("git_commit");
+  },
+  get stageAll() {
+    return getShortcutKeys("git_stage_all");
+  },
+  get unstageAll() {
+    return getShortcutKeys("git_unstage_all");
+  },
+  get refresh() {
+    return getShortcutKeys("git_refresh");
+  },
+  get toggleStage() {
+    return getShortcutKeys("git_toggle_stage");
+  },
+  get openDiff() {
+    return getShortcutKeys("git_open_diff");
+  },
+  get discard() {
+    return getShortcutKeys("git_discard");
+  },
 } as const;

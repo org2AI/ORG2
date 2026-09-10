@@ -2,14 +2,14 @@ import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
+import { classNames } from "@src/util/ui/classNames";
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
 import { SidebarTabButton } from "./SidebarTabButton";
-import { cn } from "./cn";
 import { renderTabContent } from "./tabContent";
 import type { TabPillItem, TabPillProps } from "./types";
 
-export type { TabPillItem, TabPillProps } from "./types";
+export type { TabPillItem } from "./types";
 
 const SIDEBAR_PILL_BACKGROUND_STYLE: React.CSSProperties = {
   backgroundColor:
@@ -25,6 +25,9 @@ const TabPill: React.FC<TabPillProps> = ({
   color = "default",
   className = "",
   iconOnly = false,
+  inactiveIconOnly = false,
+  activeTone = "primary",
+  showActiveIndicator = true,
   fillWidth = true,
   wrap = false,
   size = "default",
@@ -158,7 +161,7 @@ const TabPill: React.FC<TabPillProps> = ({
 
   if (variant === "sidebar") {
     return (
-      <div className={cn("flex w-full items-center", className)}>
+      <div className={classNames("flex w-full items-center", className)}>
         <div
           className="flex flex-1 items-center gap-0.5 rounded-full p-1"
           style={SIDEBAR_PILL_BACKGROUND_STYLE}
@@ -182,6 +185,10 @@ const TabPill: React.FC<TabPillProps> = ({
   const isSimple = variant === "simple";
   const isPill = variant === "pill";
   const isFill = color === "fill";
+  const defaultActiveTextClass =
+    size === "large" ? "text-text-1" : "text-primary-6";
+  const selectedActiveTextClass =
+    activeTone === "neutral" ? "text-text-1" : defaultActiveTextClass;
   /** Pill + wrap + fillWidth: use CSS grid so wrapped rows stay left-aligned (no orphan flex-1 stretching). */
   const usePillWrapGrid = wrap && isPill && fillWidth;
 
@@ -189,6 +196,12 @@ const TabPill: React.FC<TabPillProps> = ({
     const hasDropdown = !!tab.dropdown;
     const isDropdownOpen = hasDropdown && dropdownOpen;
     const isActive = tab.key === activeTab;
+    const shouldShowIconOnly =
+      iconOnly ||
+      (inactiveIconOnly &&
+        !tab.alwaysShowLabel &&
+        !isActive &&
+        !isDropdownOpen);
 
     if (isSimple) {
       return (
@@ -198,14 +211,14 @@ const TabPill: React.FC<TabPillProps> = ({
           data-active={isActive ? "true" : "false"}
           data-tab-key={tab.key}
           data-testid={tab.dataTestId}
-          aria-label={iconOnly ? tab.label : undefined}
-          title={iconOnly ? tab.label : undefined}
+          aria-label={shouldShowIconOnly ? tab.label : undefined}
+          title={shouldShowIconOnly ? tab.label : undefined}
           onClick={() => handleImmediateTabClick(tab, isActive)}
           onMouseEnter={() => setHoveredTabKey(tab.key)}
           onMouseLeave={handleImmediateTabMouseLeave}
           disabled={tab.disabled}
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-          className={cn(
+          className={classNames(
             "group relative z-10 flex flex-col items-center justify-center select-none",
             cursorResetTabKey === tab.key || isActive
               ? "cursor-default"
@@ -230,17 +243,19 @@ const TabPill: React.FC<TabPillProps> = ({
         >
           {renderTabContent(
             tab,
-            iconOnly,
+            shouldShowIconOnly,
             true,
             isActive,
             hoveredTabKey === tab.key
           )}
-          <span
-            className={cn(
-              "mt-1 h-1 w-1 rounded-full",
-              isActive ? "bg-primary-6" : "invisible"
-            )}
-          />
+          {showActiveIndicator && (
+            <span
+              className={classNames(
+                "mt-1 h-1 w-1 rounded-full",
+                isActive ? "bg-primary-6" : "invisible"
+              )}
+            />
+          )}
         </button>
       );
     }
@@ -252,14 +267,14 @@ const TabPill: React.FC<TabPillProps> = ({
         data-active={isActive ? "true" : "false"}
         data-tab-key={tab.key}
         data-testid={tab.dataTestId}
-        aria-label={iconOnly ? tab.label : undefined}
-        title={iconOnly ? tab.label : undefined}
+        aria-label={shouldShowIconOnly ? tab.label : undefined}
+        title={shouldShowIconOnly ? tab.label : undefined}
         onClick={() => handleImmediateTabClick(tab, isActive)}
         onMouseEnter={() => setHoveredTabKey(tab.key)}
         onMouseLeave={handleImmediateTabMouseLeave}
         disabled={tab.disabled}
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-        className={cn(
+        className={classNames(
           "relative z-2 flex items-center justify-center select-none",
           cursorResetTabKey === tab.key || isActive
             ? "cursor-default"
@@ -276,7 +291,7 @@ const TabPill: React.FC<TabPillProps> = ({
                 : size === "chatPanel"
                   ? "text-[13px]"
                   : "text-xs",
-          iconOnly
+          shouldShowIconOnly
             ? size === "mini"
               ? "h-6 px-1 py-[2px]"
               : size === "small"
@@ -285,7 +300,9 @@ const TabPill: React.FC<TabPillProps> = ({
                   ? "h-9 px-2 py-1"
                   : size === "chatPanel"
                     ? "h-7 px-1.5 py-[3px]"
-                    : "h-[28px] px-1.5 py-[3px]"
+                    : inactiveIconOnly && !iconOnly
+                      ? "h-7 w-7 p-0 [&_svg]:h-[14px] [&_svg]:w-[14px]"
+                      : "h-[28px] px-1.5 py-[3px]"
             : size === "mini"
               ? "h-6 px-2 py-[2px]"
               : size === "small"
@@ -299,40 +316,44 @@ const TabPill: React.FC<TabPillProps> = ({
           "border-0 outline-none",
           buttonStyle
             ? isActive || isDropdownOpen
-              ? "bg-fill-2 font-medium text-primary-6 hover:bg-fill-3 hover:text-primary-5"
+              ? `bg-fill-2 font-medium ${
+                  isActive ? selectedActiveTextClass : defaultActiveTextClass
+                } hover:bg-fill-3 ${
+                  isActive && activeTone === "neutral"
+                    ? "hover:text-text-1"
+                    : "hover:text-primary-5"
+                }`
               : "bg-bg-2 font-medium text-text-1 hover:bg-fill-1"
             : isFill
               ? isActive
-                ? size === "large"
-                  ? "bg-fill-1 font-semibold text-text-1"
-                  : "bg-fill-1 font-semibold text-primary-6"
+                ? `bg-fill-1 font-semibold ${selectedActiveTextClass}`
                 : isDropdownOpen
                   ? "bg-fill-1 text-text-1"
                   : "bg-transparent text-text-1 hover:bg-surface-hover"
               : appearance === "layout"
                 ? isActive
-                  ? size === "large"
-                    ? "bg-fill-2 font-semibold text-text-1"
-                    : "bg-fill-2 font-semibold text-primary-6"
+                  ? `bg-fill-2 font-semibold ${selectedActiveTextClass}`
                   : isDropdownOpen
                     ? "bg-fill-1 text-text-1"
                     : "bg-transparent text-text-1 hover:bg-fill-1"
                 : appearance === "muted"
                   ? isActive || isDropdownOpen
-                    ? size === "large"
-                      ? "bg-fill-2 font-semibold text-text-1"
-                      : "bg-fill-2 font-semibold text-primary-6"
+                    ? `bg-fill-2 font-semibold ${
+                        isActive
+                          ? selectedActiveTextClass
+                          : defaultActiveTextClass
+                      }`
                     : "bg-fill-1 text-text-1"
                   : appearance === "ghost"
                     ? isActive || isDropdownOpen
-                      ? size === "large"
-                        ? "bg-surface-hover font-semibold text-text-1"
-                        : "bg-surface-hover font-semibold text-primary-6"
+                      ? `bg-surface-hover font-semibold ${
+                          isActive
+                            ? selectedActiveTextClass
+                            : defaultActiveTextClass
+                        }`
                       : "bg-transparent text-text-1 hover:bg-surface-hover"
                     : isActive
-                      ? size === "large"
-                        ? "bg-primary-1 font-semibold text-text-1"
-                        : "bg-primary-1 font-semibold text-primary-6"
+                      ? `bg-primary-1 font-semibold ${selectedActiveTextClass}`
                       : isDropdownOpen
                         ? "bg-fill-2 text-text-1"
                         : "bg-transparent text-text-1 hover:bg-surface-hover",
@@ -347,7 +368,7 @@ const TabPill: React.FC<TabPillProps> = ({
       >
         {renderTabContent(
           tab,
-          iconOnly,
+          shouldShowIconOnly,
           isPill,
           isActive || isDropdownOpen,
           hoveredTabKey === tab.key
@@ -359,7 +380,7 @@ const TabPill: React.FC<TabPillProps> = ({
   return (
     <div
       style={height === undefined ? undefined : { height }}
-      className={cn(
+      className={classNames(
         "relative z-10 items-stretch",
         usePillWrapGrid
           ? "grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(5rem,1fr))] gap-1"

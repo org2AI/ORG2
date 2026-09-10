@@ -16,6 +16,7 @@ pub use hooks::MemberShutdownHookGuard;
 pub use hooks::{install_member_shutdown_hook, MemberShutdownHook, NoopMemberShutdownHook};
 
 pub use drain::drain_and_render_deferred;
+pub(crate) use drain::drain_and_render_deferred_for_turn;
 pub use guard::DrainGuard;
 
 #[cfg(test)]
@@ -36,5 +37,7 @@ use crate::coordination::agent_inbox::{
 #[cfg(test)]
 use crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID;
 
+#[cfg(test)]
+mod plan_response_tests;
 #[cfg(test)]
 mod tests;

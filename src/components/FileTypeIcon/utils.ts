@@ -406,14 +406,32 @@ function getFileTypeFromExtension(ext: string): FileType {
       return "pdf";
     case "doc":
     case "docx":
+    case "docm":
+    case "dot":
+    case "dotx":
+    case "dotm":
       return "word";
     case "xls":
     case "xlsx":
+    case "xlsm":
+    case "xlsb":
+    case "xlt":
+    case "xltx":
+    case "xltm":
       return "excel";
+    case "numbers":
+      return "numbers";
     case "csv":
       return "document";
     case "ppt":
     case "pptx":
+    case "pptm":
+    case "pps":
+    case "ppsx":
+    case "ppsm":
+    case "pot":
+    case "potx":
+    case "potm":
       return "powerpoint";
     case "pages":
       return "pages-doc";

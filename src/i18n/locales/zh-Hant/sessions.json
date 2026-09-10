@@ -1,37 +1,33 @@
 {
+  "tray": {
+    "markAllRead": "全部標為已讀",
+    "showKanban": "顯示看板",
+    "showRuntime": "顯示執行階段",
+    "pinned": "已釘選",
+    "unread": "未讀",
+    "running": "執行中",
+    "recent": "最近",
+    "empty": "尚無工作階段 — 開啟應用程式",
+    "quit": "結束 ORG2"
+  },
   "toolUsage": {
-    "estimatedContext": "{{tokenCount}} Token 上下文",
-    "followup": "{{tokenCount}} Token follow-up",
-    "decision": "{{tokenCount}} Token 決策",
     "tooltip": "估算的工具歸因。方法：{{method}}。輸入：{{inputBytes}} bytes。輸出：{{outputBytes}} bytes。決策：{{decisionTokens}} Token。上下文：{{contextTokens}} Token。Follow-up：{{followupTokens}} Token。相關 LLM cache read：{{cacheReadTokens}} Token。相關 LLM cache write：{{cacheWriteTokens}} Token。"
   },
   "humanSession": {
     "titlePlaceholder": "標題（選填）",
     "createPlaceholder": "新增第一則記錄… 輸入 / 使用技能，或輸入 @ 提及會話。",
     "createAction": "建立工作記錄",
-    "appendLabel": "新記錄",
     "entryLabel": "工作記錄項目",
     "appendPlaceholder": "追加記錄… 輸入 / 使用技能，輸入 @ 提及會話，或將會話拖到此處。",
-    "appendAction": "追加記錄",
     "loading": "正在載入工作記錄",
-    "updated": "更新於 {{date}}",
     "createFailed": "無法建立工作記錄",
     "loadFailed": "無法載入工作記錄",
     "appendFailed": "無法追加記錄"
   },
   "history": {
     "untitledSession": "未命名 Session",
-    "prStatus": {
-      "merged": "已合併",
-      "open": "已開啓",
-      "draft": "草稿"
-    },
     "detail": {
-      "sessionInfo": "Session 信息",
-      "repository": "倉庫",
-      "branch": "分支",
       "created": "創建時間",
-      "updated": "更新時間",
       "lastUpdated": "最後更新",
       "external": "外部",
       "internal": "內部",
@@ -39,70 +35,17 @@
       "roundCount_one": "{{count}} 輪",
       "roundCount_other": "{{count}} 輪",
       "agentWorked": "Agent 工作",
-      "reasoningModel": "Reasoning Model",
-      "codingModel": "Coding Model",
-      "sessionMode": "Session 模式",
-      "fileChanges": "文件更改",
-      "filesChanged": "更改的文件",
-      "files": "個文件",
-      "summary": "摘要",
-      "workflow": "工作流",
-      "agent": "Agent:",
-      "pilotSession": "Pilot Session",
-      "openSession": "打開 Session",
-      "viewPR": "查看 PR",
-      "rawData": "原始數據",
-      "analytics": {
-        "title": "Event 分析",
-        "toolUsage": "工具使用",
-        "filesTouched": "涉及文件",
-        "conversation": "對話",
-        "tokenUsage": "Token 使用",
-        "errors": "錯誤",
-        "duration": "持續時間",
-        "events": "事件數",
-        "toolCalls": "工具調用",
-        "files": "文件",
-        "tool": "工具",
-        "calls": "調用數",
-        "done": "完成",
-        "userMessages": "用戶消息",
-        "assistantMessages": "Agent 消息",
-        "userChars": "用戶字符數",
-        "assistantChars": "Agent 字符數",
-        "avgResponseTime": "平均響應時間",
-        "thinkingEvents": "思考事件",
-        "inputTokens": "輸入 Token",
-        "outputTokens": "輸出 Token",
-        "totalTokens": "總 Token",
-        "model": "模型",
-        "input": "輸入",
-        "output": "輸出",
-        "totalErrors": "錯誤",
-        "totalFailures": "失敗",
-        "errorRate": "錯誤率"
-      },
-      "impact": {
-        "title": "Impact Graph",
-        "files": "文件",
-        "functions": "函數",
-        "commits": "Commit",
-        "lines": "行數",
-        "filesTouched": "涉及文件",
-        "functionsCreated": "創建的函數",
-        "commitsInfluenced": "影響的 Commit"
-      }
+      "cliNativeStore": "CLI 原生儲存",
+      "sessionId": "工作階段 ID"
     }
   },
   "kanban": {
     "card": {
       "openAsFloatingPane": "以浮動面板打開"
     },
-    "sessions": "Session",
     "view": {
       "list": "列表",
       "diary": "日誌",
-      "kanban": "Kanban",
       "dataSource": "資料來源"
     },
     "dataSource": {
@@ -168,7 +111,16 @@
           "24h": "24 小時",
           "7d": "7 天",
           "30d": "30 天",
-          "all": "所有時間"
+          "all": "所有時間",
+          "custom": "自訂範圍…"
+        },
+        "customRange": {
+          "start": "開始",
+          "end": "結束",
+          "hint": "本地時間 · {{zone}} · 精確到秒，包含結束秒",
+          "invalid": "結束時間不能早於開始時間",
+          "apply": "套用範圍",
+          "cancel": "取消"
         },
         "bucket": {
           "claude": "Claude",
@@ -265,15 +217,16 @@
         "installed": "已安裝",
         "notInstalled": "未偵測到",
         "disabled": "已停用"
-      }
+      },
+      "rescanUpdate": "更新",
+      "rescanClear": "清除並重新掃描",
+      "externalSessionsToggle": "外部工作階段",
+      "externalSessionsToggleDesc": "關閉後將不再掃描任何外部來源，也不會載入其工作階段",
+      "sessions_one": "{{count}} 個工作階段"
     },
     "list": {
-      "updated": "已更新",
-      "timeRange": "時間範圍",
       "started": "開始時間",
       "lastUpdated": "最後更新",
-      "agentModel": "Agent · 模型",
-      "searchPlaceholder": "Search sessions...",
       "emptyTitle": "沒有符合這些篩選條件的會話",
       "emptyDescription": "嘗試切換狀態、Agent 類型或時間範圍。"
     },
@@ -289,7 +242,6 @@
     },
     "autoArchive": {
       "label": "自動歸檔",
-      "shortLabel": "歸檔",
       "never": "從不",
       "12h": "12h",
       "24h": "24h",
@@ -301,9 +253,7 @@
       "inProgress": "進行中",
       "blocking": "阻塞中",
       "turnFinished": "回合完成",
-      "archived": "已封存",
-      "yourTurn": "該你了",
-      "finished": "已結束"
+      "archived": "已封存"
     },
     "boardColumns": {
       "todo": "待辦",
@@ -315,43 +265,20 @@
       "cancelled": "失敗"
     },
     "sidebar": {
-      "agentTypes": "Agent 類型",
-      "manageItems": "管理項目",
-      "sessionsView": "Sessions View",
-      "workitemView": "Workitem View",
-      "views": "檢視",
-      "cliAgent": "CLI Agent",
-      "rustAgent": "Rust Agent",
       "removeDraft": "刪除草稿",
       "showSubagents": "顯示subagent",
-      "hideSubagents": "隱藏subagent"
-    },
-    "resultStatus": {
-      "completed": "已完成",
-      "failed": "失敗",
-      "archived": "已歸檔"
+      "hideSubagents": "隱藏subagent",
+      "githubIssues": "GitHub Issues",
+      "githubPrs": "GitHub PRs",
+      "runs": "執行記錄"
     },
     "detail": {
       "title": "標題",
-      "description": "描述",
-      "tags": "標籤",
-      "status": "狀態"
+      "tags": "標籤"
     },
-    "addContent": "添加內容",
     "merge": {
       "conflictsIn": "衝突文件：{{files}}",
       "failed": "合併失敗",
-      "failedToLoadDiff": "加載差異失敗",
-      "noChanges": "無更改",
-      "worktree": "Worktree",
-      "branch": "分支：",
-      "base": "基礎：",
-      "mergeLabel": "合併：",
-      "statusPending": "等待中",
-      "statusMerged": "已合併",
-      "statusConflict": "衝突",
-      "statusSkipped": "已跳過",
-      "statusFailed": "失敗",
       "retryMerge": "重試合併",
       "dirtyRepo": "無法合併：倉庫中存在未提交的更改，請先提交或暫存。",
       "strategyLabel": "合併策略",
@@ -359,15 +286,7 @@
       "strategyFf": "快進合併",
       "strategyLeave": "保留爲分支",
       "discardConfirmTitle": "丟棄 Worktree？",
-      "discardConfirmMessage": "將永久刪除該分支及所有改動，此操作不可撤銷。",
-      "merge": "合併",
-      "merging": "合併中…",
-      "merged": "已合併"
-    },
-    "discard": {
-      "discard": "丟棄",
-      "discarding": "丟棄中…",
-      "confirmMessage": "丟棄此 Worktree 的所有更改？此操作不可撤銷。"
+      "discardConfirmMessage": "將永久刪除該分支及所有改動，此操作不可撤銷。"
     },
     "detailView": {
       "trajectory": "軌跡",
@@ -375,124 +294,36 @@
       "noTouchedFiles": "尚無變更檔案"
     },
     "diary": {
-      "title": "日記",
       "previousDay": "前一天",
       "nextDay": "後一天",
-      "subtitle": "每日 Agent 活動",
-      "engineeringHours": "工程工時",
-      "engineeringHoursHint": "累計 Agent 時長",
-      "onlineHours": "線上時長",
-      "onlineHoursHint": "並行去重時長",
-      "activeSessions": "活躍 Session",
-      "completedSessions": "已完成",
-      "timeline": "事件時間線",
       "commits": "Commits",
       "emptyTitle": "暫無日記事件",
       "emptySubtitle": "此日期的 Agent 活動會顯示在這裡。",
-      "event": {
-        "started": "開始會話",
-        "completed": "完成 Session",
-        "stillWorking": "仍在工作"
-      },
       "commitsTo": "提交至 {{repo}}",
       "commitsToMultiple": "提交至 {{repos}}"
     },
-    "orgtrack": {
-      "filesChanged_one": "{{count}} 個檔案",
-      "filesChanged_other": "{{count}} 個檔案",
-      "commits_one": "{{count}} 個 Commit",
-      "commits_other": "{{count}} 個 Commit",
-      "committedRateShort": "{{percent}}% 已提交"
-    }
-  },
-  "changes": {
-    "scope": {
-      "thisSession": "當前 Session",
-      "allUncommitted": "所有未提交"
-    },
-    "empty": {
-      "workingTreeClean": "工作區無更改",
-      "noChangesYet": "暫無更改",
-      "noUncommittedChanges": "倉庫中沒有未提交的更改",
-      "changesWillAppear": "AI 做出的更改將顯示在此處"
-    },
-    "noChangesToReview": "沒有可審查的更改"
-  },
-  "sync": {
-    "preparing": "正在準備文件...",
-    "uploading": "正在同步文件...",
-    "processing": "正在市場處理...",
-    "complete": "文件同步成功！",
-    "error": "同步失敗",
-    "default": "正在同步...",
-    "files": "{{count}} 個文件"
+    "openRoutineWorkItemError": "無法開啟該工作項",
+    "runsEmpty": "尚無 Routine 執行記錄"
   },
   "simulator": {
     "captionBarToggleTooltip": "顯示 Agent 訊息浮窗",
-    "parentSession": "主 Agent",
-    "backgroundTasks": "Background Tasks",
-    "backgroundTasksEmpty": "暫無 Background Tasks",
     "noActiveSession": "無活動 Agent 會話",
     "tabs": {
-      "desktop": "桌面",
-      "tasks": "任務",
-      "kanban": "看板",
-      "changes": "更改",
-      "conflicts": "衝突",
-      "plan": "Plan"
-    },
-    "settings": {
-      "title": "Simulator 視圖",
-      "showDock": "顯示 Dock",
-      "playback": "回放",
-      "speed": "速度",
-      "autoScroll": "自動滾動"
-    },
-    "tasks": {
-      "noTasksFound": "未找到任務",
-      "tasksWillAppear": "任務開始執行後將顯示在此處",
-      "selectTask": "選擇任務以查看其活動"
-    },
-    "kanban": {
-      "noTasksYet": "暫無任務",
-      "tasksWillAppear": "本會話開始處理任務後將顯示在此處"
+      "kanban": "看板"
     },
     "replay": {
-      "following": "跟隨中",
-      "followingApp": "跟隨: {{appName}}",
       "followingAgent": "正在跟隨 Agent",
       "trajectoryAgent": "跟隨 Agent 軌跡",
       "trajectoryThisApp": "跟隨當前 App",
-      "followAgent": "跟隨 Agent",
-      "followThisApp": "跟隨當前應用",
-      "followApp": "跟隨 {{appName}}",
-      "freeBrowsing": "自由瀏覽",
-      "replaying": "回放中",
       "freeBrowse": "自由瀏覽",
       "follow": "跟隨",
       "dockShowChatInput": "顯示聊天輸入",
-      "dockHideChatInput": "隱藏聊天輸入",
-      "bottomPanel": {
-        "tabTrajectory": "軌跡",
-        "tabTodo": "待辦",
-        "expandPanel": "顯示軌跡與待辦面板",
-        "placeholderTrajectoryTitle": "暫無事件",
-        "placeholderTrajectorySubtitle": "Agent 運行後，會話活動將顯示在這裏",
-        "placeholderTodoTitle": "暫無待辦列表",
-        "placeholderTodoSubtitle": "Agent 寫入任務後，待辦更新將顯示在這裏"
-      },
       "previousEvent": "上一個事件",
       "nextEvent": "下一個事件",
       "play": "播放",
       "pause": "暫停",
-      "playbackSpeed": "播放速度",
-      "noEvents": "無事件",
-      "agentHasNotUsedTool": "Agent 尚未使用此工具",
       "browser": {
         "tabs": {
-          "browser": "瀏覽器",
-          "search": "搜索",
-          "fetch": "抓取",
           "agentBrowser": "Agent 瀏覽器",
           "searchFetch": "搜索與抓取"
         },
@@ -506,8 +337,7 @@
           "noBrowserActivity": "暫無瀏覽器活動",
           "noBrowserInteractions": "暫無瀏覽器互動",
           "noWebSearches": "暫無網頁搜索",
-          "noPagesFetched": "暫無已抓取頁面",
-          "noBrowserActivityYet": "暫無瀏覽器活動"
+          "noPagesFetched": "暫無已抓取頁面"
         },
         "header": {
           "categoryBrowser": "瀏覽器",
@@ -525,13 +355,10 @@
           "exitCode": "[退出碼: {{code}}]"
         },
         "codePanel": {
-          "hiddenLines": "{{count}} 行已隱藏",
           "editHeader": "編輯 {{index}}",
           "startingAtLine": "（起始於第 {{line}} 行）",
           "fileEditedSuccess": "✓ 文件成功編輯",
           "truncatedSuffix": "\n... （已截斷）",
-          "headerDirectory": "目錄",
-          "headerSearchPrefix": "搜索: {{query}}",
           "searchResultLinePrefix": "L{{line}}",
           "resultCount_one": "{{count}} 個結果",
           "resultCount_other": "{{count}} 個結果",
@@ -551,23 +378,12 @@
           "emptyNoFilesEdited": "暫無編輯文件",
           "emptyNoExploreOperations": "暫無探索操作",
           "emptyNoCommands": "暫無命令",
-          "emptyNoToolCalls": "暫無工具調用",
-          "searchDisplayListDir": "list_dir",
-          "searchDisplaySearch": "搜索",
-          "searchSecondaryResults": "{{count}} 條結果"
-        },
-        "terminal": {
-          "tabTerminal": "終端",
-          "viewStructured": "結構化",
-          "viewRaw": "原始",
-          "emptySelectCommand": "選擇一條命令以查看"
+          "emptyNoToolCalls": "暫無工具調用"
         }
       },
       "diffApp": {
-        "allTabLabel": "全部",
         "tabLabel": "Diff",
         "emptyForFilter": "暫無 Diff",
-        "emptyDetail": "選擇一項變更以查看 Diff。",
         "submissions": {
           "tabLabel": "提交",
           "commits": "Commits",
@@ -575,57 +391,25 @@
           "empty": "暫無提交",
           "selectSubmission": "選擇一項提交以查看詳情",
           "noCommits": "暫無 Commits",
-          "noPullRequests": "暫無 Pull Requests"
+          "noPullRequests": "暫無 Pull Requests",
+          "labels": {
+            "created": {
+              "commit": "已建立 commit",
+              "pullRequest": "已建立 PR"
+            },
+            "mentioned": {
+              "commit": "提及的 commit",
+              "pullRequest": "提及的 PR"
+            }
+          }
         }
       },
       "channelsSidebar": {
-        "chatHistoryTab": "聊天記錄",
         "messages": "消息",
         "interactions": "交互",
-        "todoList": "待辦清單",
-        "kanban": "看板",
-        "todoUpdate": "待辦更新",
-        "noMessages": "暫無消息",
-        "noInteractions": "暫無交互",
-        "noTodos": "暫無待辦事件",
-        "interactionAskQuestion": "提問",
-        "interactionAskPermission": "權限請求",
-        "interactionModeSwitch": "模式切換",
-        "interactionPlanDoc": "Plan 文檔",
-        "interactionGeneric": "交互"
+        "kanban": "看板"
       },
       "messages": {
-        "viewer": {
-          "think": {
-            "title": "內部對話",
-            "subtitle_one": "顯示 {{count}} 條思考",
-            "subtitle_other": "顯示 {{count}} 條思考"
-          },
-          "todo": {
-            "title": "待辦列表",
-            "subtitle": "最新任務列表"
-          },
-          "chat": {
-            "title": "與用戶對話",
-            "subtitle_one": "{{count}} 條消息",
-            "subtitle_other": "{{count}} 條消息"
-          },
-          "interaction": {
-            "title": "交互",
-            "subtitle_one": "{{count}} 項交互",
-            "subtitle_other": "{{count}} 項交互"
-          }
-        },
-        "empty": {
-          "think": {
-            "title": "暫無思考",
-            "subtitle": "Agent 的思考將顯示在此處"
-          },
-          "todo": {
-            "title": "暫無待辦列表",
-            "subtitle": "任務列表將顯示在此處"
-          }
-        },
         "bubble": {
           "smartDateYesterday": "昨天",
           "senderTitle": {
@@ -640,7 +424,15 @@
             "requestedInput": "{{subject}} 請求了輸入",
             "sentTo": "{{subject}} 向 {{recipient}} 發送了訊息",
             "sentBroadcast": "{{subject}} 向多個 Agent 發送了訊息",
-            "sentMessage": "{{subject}} 發送了訊息"
+            "sentMessage": "{{subject}} 發送了訊息",
+            "taskCreateRunning": "{{subject}} 正在建立任務",
+            "taskCreateRejected": "{{subject}} 的任務建立需要修正",
+            "taskCreateFailed": "{{subject}} 無法建立任務",
+            "taskOperationRunning": "{{subject}} 正在執行任務操作",
+            "taskOperationRejected": "{{subject}} 的任務操作需要修正",
+            "taskOperationFailed": "{{subject}} 的任務操作失敗",
+            "turnLoading": "{{subject}} 的訊息正在載入…",
+            "taskOperationDeferred": "{{subject}} 已暫緩完成任務，等待清理結束"
           }
         },
         "divider": {
@@ -660,21 +452,12 @@
             "沒有可展示輸出。有時就是…安靜。[無思考預覽]",
             "沒有消息。就算有預覽也沒傳出來。[無思考預覽]"
           ],
-          "labelLatest": "最新思考",
           "labelThought": "思考"
+        },
+        "unloadedTurn": {
+          "loadingBody": "正在載入訊息…",
+          "retryBody": "訊息未能載入 — 點一下重試"
         }
-      },
-      "database": {
-        "operation": {
-          "explore": "瀏覽",
-          "runSql": "運行 SQL"
-        },
-        "row": {
-          "tablePrefix": "表：{{name}}",
-          "resultErrorPrefix": "錯誤：",
-          "resultArrowPrefix": "→ "
-        },
-        "headerTitle": "數據庫操作"
       },
       "project": {
         "operation": {
@@ -699,12 +482,6 @@
           "list_contributors": "列出貢獻者",
           "add_delegation": "添加委派"
         },
-        "row": {
-          "projectPrefix": "專案：{{name}}",
-          "workItemPrefix": "工作項：{{title}}",
-          "resultErrorPrefix": "錯誤：",
-          "resultArrowPrefix": "→ "
-        },
         "headerTitle": "專案操作"
       },
       "canvas": {
@@ -715,27 +492,19 @@
         "tooltipCloseCanvas": "關閉畫布",
         "iframeTitle": "Agent Canvas"
       },
-      "trajectory": {
-        "closeSidebar": "關閉側欄",
-        "toggleSidebar": "切換 Trajectory 側欄",
-        "fallbackUnknownStep": "未知步驟",
-        "stepHeader": {
-          "actionsCount": "{{count}} 個操作"
-        },
-        "event": {
-          "unknownFile": "未知文件",
-          "noCommand": "無命令",
-          "todoMoreSuffix": "{{first}}（另 {{count}} 項）",
-          "todosCount": "{{count}} 個待辦",
-          "todosUpdated": "更新 {{count}} 個待辦",
-          "noQuery": "無查詢",
-          "activityFallback": "活動",
-          "processing": "處理中...",
-          "messageEllipsis": "消息...",
-          "readUserMessage": "讀取用戶消息",
-          "sessionFallback": "Session"
-        }
-      }
+      "filters": {
+        "tooltip": "篩選事件",
+        "allEvents": "所有事件",
+        "keyInteractions": "關鍵互動",
+        "fileChanges": "檔案變更",
+        "terminalEvents": "終端機事件",
+        "explore": "探索",
+        "other": "其他",
+        "selectedCount": "{{count}} 個篩選"
+      },
+      "next": "下一個事件",
+      "previous": "上一個事件",
+      "scrub": "回放進度列"
     },
     "codeEditor": {
       "switchToListView": "切換到列表視圖",
@@ -749,42 +518,17 @@
       "title": "系統啓動中",
       "subtitle": "正在初始化工作區環境..."
     },
-    "awaitingActivity": "等待活動...",
-    "askUser": {
-      "agentQuestion": "Agent 提問",
-      "submitResponse": "提交回復",
-      "responseReceived": "收到回覆",
-      "optional": "可選",
-      "defaultQuestion": "Agent 有問題要問你",
-      "enterField": "輸入{{field}}..."
-    },
-    "askUserPending": {
-      "incomingRequest": "收到新請求",
-      "respondInChat": "請在聊天中回覆 Agent 的請求"
-    },
     "titleBar": {
-      "switchToRight": "切換到右側模式",
-      "switchToLeft": "切換到左側模式",
       "showSidebar": "顯示側邊欄",
       "hideSidebar": "隱藏側邊欄",
-      "showBottomPanel": "顯示底部面板",
-      "hideBottomPanel": "隱藏底部面板"
+      "showBottomPanel": "顯示底部面板"
     },
     "multiTask": {
       "monitoringProgress": "正在監控 {{count}} 個 Subagent 的進度",
-      "expandView": "展開視圖",
-      "compactView": "緊湊視圖",
       "closePanel": "關閉 Subagent 面板",
-      "minimizePanel": "最小化為畫中畫",
-      "expandPanel": "展開面板",
-      "moreTasks": "另有 {{count}} 個"
+      "minimizePanel": "最小化為畫中畫"
     },
     "gridCell": {
-      "copyEventsJson": "複製事件 JSON",
-      "detachedTooltip": "已脫離主光標 — 點擊重新同步",
-      "syncedTooltip": "已同步到主光標",
-      "detached": "已脫離",
-      "live": "實時",
       "expand": "展開",
       "collapse": "收起"
     },
@@ -792,7 +536,9 @@
       "waitingForActivity": "等待活動…",
       "viewTaskPrompt": "查看任務提示",
       "taskPromptTitle": "任務提示",
-      "newEventDivider": "新事件"
+      "newEventDivider": "新事件",
+      "loadingHistory": "正在載入歷史…",
+      "retryHistory": "無法載入歷史 — 重試"
     },
     "dock": {
       "switchTo": "切換到",
@@ -831,7 +577,7 @@
   "input": {
     "editPlaceholder": "編輯消息...",
     "defaultPlaceholder": "與 Agent 對話",
-    "finishNextStep": "完成，下一步！",
+    "commentPlaceholder": "留下評論…",
     "editingQueuedMessage": "編輯排隊消息",
     "editingSentMessage": "編輯已發送消息",
     "voiceErrorPermission": "麥克風權限被拒絕。請在系統設定中啟用。",
@@ -839,8 +585,7 @@
     "voiceErrorAudio": "未偵測到麥克風。",
     "voiceErrorGeneric": "語音輸入失敗，請再試一次。",
     "pr": {
-      "open": "開啟 PR",
-      "creating": "建立 PR 中…"
+      "open": "開啟 PR"
     },
     "pinnedActions": {
       "manage": "管理固定操作",
@@ -851,14 +596,16 @@
       "insert": "插入"
     },
     "compactArgHint": "<可選：本次總結的重點>",
+    "nativeCommandDescription": "在 {{provider}} 中執行 {{command}}",
     "compactCommandDescription": "總結較早的上下文以釋放空間。可選：/compact <本次總結的重點>",
     "canvasCommandDescription": "建立一個新的互動式 Canvas。可選：/canvas <要建立的內容>",
     "canvasArgHint": "要建立的內容",
-    "newCanvasAction": "新增 Canvas"
-  },
-  "listPanel": {
-    "showingOf": "顯示 {{filtered}} / {{total}}",
-    "selectedOf": "已選 {{selected}} / {{total}}"
+    "newCanvasAction": "新增 Canvas",
+    "followUpSuggestions": {
+      "label": "建議的下一步"
+    },
+    "voicePermissionSheetRetry": "再試一次",
+    "voicePermissionSheetTitle": "需要麥克風存取權限"
   },
   "chat": {
     "planApprovedLabel": "執行已核准的計畫",
@@ -909,8 +656,8 @@
       "addApiKey": {
         "title": "新增 API 金鑰"
       },
-      "showRuntime": {
-        "title": "顯示執行階段"
+      "showQuota": {
+        "title": "查看配額"
       },
       "installLatestUpdate": {
         "title": "安裝最新更新"
@@ -1014,7 +761,9 @@
     "tabs": {
       "newTerminal": "新終端",
       "newTab": "新分頁",
-      "terminals": "終端機"
+      "terminals": "終端機",
+      "goBack": "上一頁",
+      "goForward": "下一頁"
     },
     "sideChat": {
       "title": "側邊聊天",
@@ -1171,7 +920,8 @@
         "cli": "CLI Agent",
         "rust": "Rust Agent",
         "cursorIde": "Cursor IDE",
-        "externalHistory": "外部歷史"
+        "externalHistory": "外部歷史",
+        "human": "工作日誌"
       },
       "fields": {
         "session": "Session",
@@ -1245,7 +995,17 @@
         "assignedToMe": "指派給我的",
         "createdByMe": "由我建立",
         "filters": "Filters",
-        "openInGitHub": "Open in GitHub"
+        "openInGitHub": "Open in GitHub",
+        "pullRequests": {
+          "reviewRequested": "待我審查",
+          "authoredByMe": "由我建立",
+          "otherTodos": "其他待辦"
+        },
+        "assigneeUpdateNotApplied": "GitHub 未套用指派人變更",
+        "assigneeUpdateSuccess": "已在 GitHub 上更新指派人",
+        "updateIssueFailed": "更新 GitHub issue 失敗",
+        "refreshIssues": "重新整理議題",
+        "refreshPullRequests": "重新整理拉取請求"
       }
     },
     "sessionViews": {
@@ -1260,34 +1020,26 @@
       "fileCount_one": "{{count}} 個檔案",
       "fileCount_other": "{{count}} 個檔案",
       "turnCount_one": "{{count}} 輪",
-      "turnCount_other": "{{count}} 輪"
+      "turnCount_other": "{{count}} 輪",
+      "inferredTiming": "結束時間由下一輪推斷"
     },
-    "parentAgentSender": "上層 Agent"
-  },
-  "chatStatus": {
-    "approved": "已批准",
-    "skipped": "已跳過",
-    "responded": "已回覆",
-    "ignored": "已忽略",
-    "pending": "等待中",
-    "denied": "已拒絕"
-  },
-  "conflicts": {
-    "title": "衝突",
-    "noConflicts": "無衝突",
-    "noMergeConflicts": "無合併衝突",
-    "cleanState": "您的倉庫處於乾淨狀態，沒有需要解決的衝突。",
-    "detecting": "正在檢測衝突...",
-    "allResolved": "此文件中的所有衝突已解決",
-    "saveAndMark": "保存並標記爲已解決以繼續",
-    "keepCurrent": "保留當前",
-    "keepIncoming": "保留傳入",
-    "keepBoth": "保留兩者",
-    "aiResolve": "AI 解決",
-    "previousConflict": "上一個衝突 (⌘↑)",
-    "nextConflict": "下一個衝突 (⌘↓)",
-    "abort": "中止",
-    "complete": "完成"
+    "parentAgentSender": "上層 Agent",
+    "restoreCheckpoint": "還原至此檢查點",
+    "trackAsProject": {
+      "menuItem": "追蹤為專案",
+      "success": "工作階段已作為專案追蹤"
+    },
+    "permissionDismiss": "在此裝置上忽略",
+    "remoteExecutionNotice": "此操作將在 {{desktopName}} 上執行。",
+    "conversationNavigator": "對話導覽",
+    "goToConversationTurn": "前往第 {{current}} 輪，共 {{total}} 輪：{{preview}}",
+    "send": "傳送",
+    "sendFailed": "訊息無法傳送",
+    "sending": "正在傳送…",
+    "typeMessage": "輸入訊息…",
+    "session": "工作階段",
+    "history": "工作階段",
+    "agentFallback": "Agent"
   },
   "tools": {
     "noResultsFound": "未找到結果",
@@ -1326,7 +1078,11 @@
       "toolCalls": "{{count}} 次工具調用",
       "filesChanged": "{{count}} 個文件變更",
       "toolCalls_one": "{{count}} 次工具調用",
-      "filesChanged_one": "{{count}} 個文件變更"
+      "filesChanged_one": "{{count}} 個文件變更",
+      "segmentAria": "回放第 {{number}} 輪",
+      "turnBreakpointsAria": "回放輪次中斷點",
+      "segmentTooltip": "第 {{number}} 輪 · {{duration}} · {{start}}–{{end}}",
+      "segmentTooltipNoRange": "第 {{number}} 輪 · {{duration}}"
     },
     "turnCollapse": {
       "agentWorkedFor": "Agent 工作了 {{value}}",
@@ -1506,9 +1262,6 @@
     "askUserSkipped": "跳過",
     "askUserQuestionsAnswered": "回答問題",
     "askUserQuestionsSkipped": "跳過問題",
-    "skillLoading": "Reading skill",
-    "skillLoaded": "Skill loaded",
-    "skillFailed": "Skill not found",
     "killProcessRunning": "正在終止進程",
     "killProcessDone": "終止進程",
     "killProcessFailed": "終止進程失敗",
@@ -2104,14 +1857,9 @@
     "nFiles_one": "{{count}} 個文件",
     "nFiles_other": "{{count}} 個文件"
   },
-  "hoverCard": {
-    "commits": "提交",
-    "filesChanged_one": "{{count}} 個檔案已更改",
-    "filesChanged_other": "{{count}} 個檔案已更改",
-    "branchesTouched": "分支"
-  },
   "modelPill": {
-    "immutableInSession": "密鑰來源、Agent 類型和價格檔位在會話啓動時已固定。如需更改請新建會話。"
+    "immutableInSession": "密鑰來源、Agent 類型和價格檔位在會話啓動時已固定。如需更改請新建會話。",
+    "appliesNextTurn": "帳號已切換。目前的回覆仍由原帳號完成，新帳號將從下一輪開始生效。"
   },
   "creator": {
     "repoChromeMenu": {
@@ -2121,26 +1869,20 @@
       "hidePinnedActions": "隱藏已釘選的動作"
     },
     "createTarget": {
-      "agentSession": "Agent 會話",
       "project": "建立專案",
       "parallelRun": "平行執行",
       "workItem": "建立 Work Item"
     },
     "worktreeSource": {
       "title": "建立工作樹",
-      "confirm": "使用工作樹",
       "resolving": "正在解析 PR…",
       "selectRepository": "請先選擇儲存庫，再選擇工作樹來源。",
       "sourceTabs": "工作樹來源",
       "tabs": {
-        "smart": "智慧",
         "github": "GitHub",
         "branch": "分支",
-        "name": "名稱"
+        "pr": "PR"
       },
-      "smartPlaceholder": "名稱、#1234、分支或 GitHub/GitLab URL",
-      "smartAria": "輸入名稱、PR 編號、分支或 GitHub/GitLab URL",
-      "smartHint": "輸入名稱、PR 編號、分支，或貼上 PR/MR URL。",
       "refreshGithub": "重新整理 GitHub 清單",
       "githubSearch": "搜尋 GitHub PR 與議題",
       "githubSearchAria": "搜尋 GitHub 拉取要求與議題",
@@ -2155,13 +1897,11 @@
       "branchNoMatches": "沒有相符的分支。",
       "branchUseAsRef": "使用「{{value}}」作為引用",
       "branchCustomRefHint": "標籤、提交或任意 Git 引用",
-      "worktreeLabel": "工作樹標籤",
-      "namePlaceholder": "功能名稱",
-      "nameBase": "基礎：{{branch}}",
-      "nameBaseHead": "基礎：HEAD"
+      "sourceTypeAria": "選擇分支或拉取請求",
+      "prSearch": "搜尋拉取請求",
+      "prSearchAria": "搜尋拉取請求",
+      "prNoMatches": "沒有符合的拉取請求。"
     },
-    "searchModels": "搜索模型...",
-    "newItem": "新建專案",
     "solveWorkItem": "處理工作項",
     "launchpadQuestion": "你想使用",
     "launchpadQuestionSuffix": "建構什麼？",
@@ -2170,38 +1910,22 @@
     "planLaunchpadQuestionSuffix": "規劃什麼？",
     "manualPlanLaunchpadQuestion": "你想規劃什麼？",
     "start": "開始",
-    "assign": "分配",
-    "send": "發送",
     "missingGit": {
       "title": "缺少 Git",
       "body": "未安裝 Git 或找不到 Git。請讓 ADE Manager 或 SDE Agent 為這台機器安裝 Git，然後重新啟動 ORGII。"
     },
-    "noProvidersAvailable": "沒有可用的提供者",
-    "enterPublicRepoUrl": "輸入公共倉庫 URL",
-    "repoUrlPlaceholder": "https://github.com/owner/repo",
-    "noModelsMatchSearch": "沒有匹配的模型",
-    "noModelsAvailable": "沒有可用的模型",
-    "noTiersAvailable": "沒有可用的層級",
     "model": "模型",
-    "source": "帳號",
-    "addContext": "添加上下文",
     "contextMenu": {
       "filesAndFolders": "檔案與資料夾",
-      "agentSession": "Agent 工作階段",
       "session": "會話",
       "workItems": "工作項目",
       "back": "返回",
       "recent": "最近使用",
       "showMore": "再顯示 {{remaining}} 項"
     },
-    "slashSearchPlaceholder": "搜尋指令…",
     "slashMenu": {
-      "image": "圖片",
-      "uploadImage": "上傳圖片",
       "commands": "指令",
       "mode": "模式",
-      "models": "模型",
-      "skills": "技能",
       "workspaceSkills": "工作區技能",
       "userSkills": "使用者技能"
     },
@@ -2216,13 +1940,6 @@
     },
     "osAgent": "OS Agent",
     "agent": "SDE Agent",
-    "cliAgent": "CLI Agent",
-    "cliAgentDesc": "連接 CLI 編碼 Agent",
-    "agentDesc": "啓動編碼 Agent 會話",
-    "osAgentDesc": "計算機自動化 Agent",
-    "categoryLabel": "會話類別",
-    "categoryTemplate": "選擇 {category}",
-    "categoryPlaceholder": "Agent",
     "builtIns": "內置功能",
     "humanSession": {
       "name": "工作記錄"
@@ -2232,120 +1949,43 @@
     "agentOrgs": "Agent 團隊",
     "orgMembers": {
       "configButton": "管理成員",
-      "count": "{{count}} 名成員",
-      "defaultColumn": "模型",
       "empty": "此團隊還沒有成員",
       "selectAgent": "選擇 Agent",
       "applyForFutureLabel": "套用於後續使用",
       "selectBaseAgentForRole": "為 {{role}} 選擇基座 Agent"
     },
     "externalIdes": "外部 Agent",
-    "cursorIde": {
-      "label": "Cursor IDE"
-    },
-    "addModel": "添加模型",
-    "myAgents": "我的 Agent",
-    "session": "Session",
-    "cloneFromGitHub": "從 GitHub 克隆",
-    "repoUrl": "倉庫 URL",
-    "pleaseEnterGitHubUrl": "請輸入 GitHub URL",
-    "pleaseEnterValidGitHubUrl": "請輸入有效的 GitHub 倉庫 URL",
-    "cloning": "克隆中...",
-    "cloneRepo": "克隆倉庫",
-    "repoCloneHelperText": "倉庫將被克隆到臨時工作區以供您的 Session 使用。",
-    "yourPrice": "您的價格",
-    "inputPerM": "輸入 /M",
-    "outputPerM": "輸出 /M",
-    "continueWithTier": "繼續使用 {{tier}}",
-    "quota": "配額：{{value}}",
-    "officialApiPrice": "官方 API 價格",
-    "input": "輸入",
-    "output": "輸出",
-    "marketPrice": "市場價格",
-    "yourPriceType": "您的價格（{{type}}）",
-    "cacheRead": "Cache Read",
-    "cacheWrite": "Cache Write",
-    "saveDiscount": "節省 {{discount}}",
-    "standard": "Standard",
-    "global": "Global",
-    "goldUnlocksGlobal": "Gold+ 解鎖 Global 價格",
-    "limitReached": "已達上限",
-    "remainingLimit": "剩餘 {{remaining}}/{{limit}}",
-    "busy": "繁忙",
-    "ofOfficialPrice": "官方價格的",
     "shortInputTitle": "輸入內容較短",
     "shortInputMessage": "您的輸入似乎非常簡短。確定要使用此內容啓動會話嗎？",
     "selectModel": "選擇模型",
+    "selectAgentFirst": "請先選擇 Agent",
     "switchModel": "切換模型",
-    "switchSource": "切換帳號",
-    "switchRunner": "切換 Runner",
-    "runnerLockedToWorktree": "已鎖定到 Worktree —— 啓動後無法切換 Runner",
-    "contextBar": {
-      "thisMac": "此 Mac",
-      "worktree": "Worktree",
-      "lockedHint": "Worktree 在此會話中已鎖定"
-    },
     "switchMode": "切換模式",
     "switchAgent": "切換 Agent",
-    "manageKeys": "管理 Keys",
-    "manageModels": "管理模型",
-    "changeSource": "更換帳號",
-    "clearSelection": "清除選擇",
     "toolbar": {
       "bold": "粗體 (⌘B)",
       "italic": "斜體 (⌘I)",
       "strikethrough": "刪除線",
-      "underline": "下劃線 (⌘U)",
       "link": "鏈接",
-      "enterUrl": "輸入 URL...",
       "quote": "引用",
-      "clearFormatting": "清除格式",
       "inlineCode": "行內代碼",
-      "highlight": "高亮",
-      "insertImage": "插入圖片",
-      "lists": "列表",
-      "normalText": "正文",
-      "heading1": "標題 1",
       "heading2": "標題 2",
-      "heading3": "標題 3",
       "bulletList": "無序列表",
       "numberedList": "有序列表",
       "taskList": "任務列表",
-      "divider": "分隔線"
+      "formatting": "文字格式"
     },
     "regionNoticeTitle": "可能存在地區限制",
     "regionNoticeBodyProvider": "您所在位置：{{location}}。某些模型在您所在地區可能不可用。",
     "regionNoticeBodySanctions": "您所在位置：{{location}}。GitHub、npm、Docker Hub 等服務可能不可用。",
     "regionNoticeBodyBoth": "您所在位置：{{location}}。因地區政策與貿易規則，某些模型以及 GitHub、npm、Docker Hub 等服務可能不可用。",
-    "selectAgent": "選擇一個 Agent",
+    "selectAgent": "選擇 Agent",
     "placeholderDefault": "輸入訊息，使用 @ 加入檔案，使用 / 呼叫 skills",
-    "agentHeaderPromptVariants": [
-      {
-        "before": "我們要和",
-        "after": "一起處理什麼？"
-      },
-      {
-        "before": "今天想讓",
-        "after": "幫你做什麼？"
-      },
-      {
-        "before": "",
-        "after": "應該先處理什麼？"
-      }
-    ],
     "wingmanPlaceholder": "描述你的任務 — Wingman 應該關注什麼？",
     "screenPicker": {
       "title": "選擇屏幕",
-      "screen": "屏幕 {{index}}",
-      "primary": "（主屏幕）",
-      "cancel": "取消"
+      "primary": "（主屏幕）"
     },
-    "viewDiff": "查看 Diff",
-    "skillsAndTools": "Skills 與工具",
-    "agentSpotlightViewMode": "Agent 檢視模式",
-    "agentSpotlightListView": "列表檢視",
-    "agentSpotlightCardView": "卡片檢視",
-    "agentSpotlightCardHint": "使用 ←/→ 或 ↑/↓ 切換 Agent。按 Enter 選擇。",
     "multiRunner": {
       "exit": "返回單一代理",
       "addRunner": "新增執行器",
@@ -2368,136 +2008,212 @@
         "noRepo": "請選擇儲存庫——每個執行器都需要獨立的工作樹",
         "notEnoughRunners": "請至少設定兩個可執行的執行器"
       }
-    }
+    },
+    "cliVersionOutdated": {
+      "title": "{{cli}} 需要升級（{{installed}} > {{latest}}）",
+      "muteUntilNextVersion": "下一版本前不再提醒",
+      "refresh": "重新檢查 {{cli}} CLI 版本",
+      "unknownVersion": "未知"
+    },
+    "mode": "編輯器模式"
   },
   "planner": {
-    "tabs": {
-      "plan": "計劃",
-      "timeline": "時間線"
-    },
     "modes": {
       "build": "Build",
       "ask": "Ask",
       "plan": "Plan",
-      "debug": "Debug",
-      "review": "Review",
-      "wingman": "僚機"
+      "project": "Project"
     },
     "runningLocation": {
       "local": "本機",
-      "worktree": "新建 Worktree",
-      "cloud": "Cloud"
+      "worktree": "新建 Worktree"
     },
     "plan": {
-      "stepsCompleted": "已完成 {{completed}} / {{total}} 個步驟",
-      "noStepsYet": "暫無計劃步驟",
       "executePlan": "執行計劃",
-      "noActiveSession": "沒有活躍的 Agent Session",
-      "replan": "重新規劃",
-      "viewPlan": "查看計劃",
-      "saveToWorkspace": "保存到工作區",
-      "savedToWorkspace": "計劃保存到工作區",
-      "noRepoOpen": "沒有打開的倉庫",
-      "collapse": "收起",
-      "expand": "展開"
+      "noActiveSession": "沒有活躍的 Agent Session"
     },
     "todoList": {
       "title": "待辦",
       "completedCount": "{{completed}}/{{total}}個待辦",
       "countOnly": "{{total}}個待辦",
-      "doneOf": "{{done}}/{{total}} 已完成",
-      "createdAt": "創建於 {{time}}",
-      "updatedAt": "更新於 {{time}}",
       "justNow": "剛剛",
       "minutesAgo": "{{count}} 分鐘前",
       "yesterday": "昨天",
       "columnOpen": "待完成",
       "status": {
-        "pending": "待處理",
-        "in_progress": "進行中",
         "completed": "已完成",
         "cancelled": "已取消"
       }
     },
     "agentOrgTasks": {
-      "title": "團隊任務",
-      "doneOf": "{{done}}/{{total}} 已完成",
       "owner": "Owner: {{owner}}",
       "ownerNoSession": "{{owner}} has no visible member session yet",
-      "loadFailed": "任務加載失敗",
       "statusPending": "待處理",
       "statusInProgress": "進行中",
       "statusCompleted": "已完成",
-      "statusBlocked": "被阻塞"
+      "statusBlocked": "被阻塞",
+      "statusFailed": "失敗",
+      "statusCancelled": "已取消",
+      "currentWork": "目前工作",
+      "currentEmpty": "暫無目前工作",
+      "history": "歷史",
+      "historyFilter": "篩選任務歷史",
+      "historyEmpty": "此篩選下暫無任務",
+      "loadingHistory": "正在載入歷史…",
+      "historyLoadFailed": "歷史載入失敗",
+      "previousPage": "上一頁",
+      "nextPage": "下一頁",
+      "details": "詳情",
+      "loadingDetails": "正在載入詳情…",
+      "detailLoadFailed": "任務詳情載入失敗",
+      "output": "結果",
+      "annotations": "進度與稽核記錄",
+      "loadMoreAnnotations": "載入更多",
+      "reassign": "改派",
+      "cancelTask": "取消任務",
+      "reassignTitle": "改派這個任務？",
+      "cancelTitle": "取消這個任務？",
+      "reassignWarning": "目前執行必須先停止，替代任務才能開始。",
+      "cancelWarning": "這會把該任務移出本輪交付範圍。正在執行的工作會停止；依賴它的任務需要另行明確處理。",
+      "replacementOwner": "新的負責人",
+      "handoffFailed": "無法安全更新任務",
+      "handoffNeedsDecision": "任務交接需要你的決定",
+      "handoffStopping": "正在停止先前的執行",
+      "handoffApplyingDecision": "正在套用：{{decision}}",
+      "handoffDecisionFailed": "決定已接受，但背景清理需要重試",
+      "retryHandoffDecision": "重試此決定",
+      "handoffEvidence": "先前負責人：{{owner}} · {{state}} · 本機寫入者：{{count}}",
+      "continueReplacement": "繼續替代任務",
+      "keepStopped": "保持停止",
+      "abandonEpisode": "放棄本輪任務",
+      "resolveHandoffTitle": "處理任務交接？",
+      "continueWarning": "僅在本機執行與程序停止後繼續；此決定表示接受未知的外部結果。",
+      "keepStoppedWarning": "替代任務會被取消，舊任務不會恢復，其他任務繼續。",
+      "abandonWarning": "本輪所有開放任務都會停止，團隊結果會標記為已取消。",
+      "handoffResolutionFailed": "無法處理任務交接",
+      "statusAwaitingApproval": "等待審批"
     },
     "agentOrgOverview": {
+      "needsAttention": "需要處理",
+      "coordinatorWorkState": {
+        "active": "協調器正在處理",
+        "waiting_for_org_event": "協調器正在等待新事件",
+        "inactive": "協調器未執行"
+      },
+      "outcome": {
+        "delivered": "已驗證交付",
+        "cancelled": "已取消",
+        "failed": "失敗"
+      },
       "title": "Agent 團隊概覽",
-      "summary": "{{active}} active · {{unread}} unread",
+      "summary": "{{active}} 個活躍 · {{pending}} 則待處理",
       "loadFailed": "團隊概覽載入失敗",
       "tasks": "任務",
       "doneOf": "{{done}} / {{total}} 已完成",
       "members": "成員",
+      "directActivity": "成員的直接工作",
       "activeOf": "{{active}} / {{total}} active",
       "inbox": "Inbox",
-      "unreadCount": "{{count}} unread",
-      "coordinator": "協調員",
-      "currentSession": "目前",
-      "inProgressTasks": "{{count}} 個 in progress 任務",
-      "pendingTasks": "{{count}} 個 pending 任務",
-      "unreadMessages": "{{count}} 條 unread 訊息",
-      "taskBoard": "任務看板",
-      "memberSessions": "成員會話",
       "pauseRun": "暫停執行",
       "resumeRun": "恢復執行",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "archiveRun": "封存團隊",
+      "archiveTitle": "封存這個團隊？",
+      "archiveWorkingWarning": "封存無法復原。正在執行的任務會被取消，團隊之後將變為唯讀。",
+      "archiveWarning": "封存無法復原。團隊將變為唯讀，且無法恢復執行。",
+      "archivedReadOnly": "已封存——歷史記錄為唯讀",
+      "archiveFailed": "團隊封存失敗",
+      "archiveTeardownPending": "已封存，背景仍在關閉執行環境。",
+      "archiveTeardownRetained": "已封存，但有 {{count}} 個執行環境未能釋放，仍無法刪除。",
+      "archiveTeardownQuiesced": "已封存並完全停止，現在可以永久刪除。",
+      "dangerZone": "危險區域",
+      "deleteDescription": "永久刪除這個團隊及其所有工作階段與歷史記錄。",
+      "deleteTeam": "刪除團隊",
+      "deleteTitle": "永久刪除這個團隊？",
+      "deleteWarning": "這會永久刪除團隊的所有工作階段與歷史記錄，且無法復原。",
+      "deleteAcknowledge": "我明白此次刪除是永久的。",
+      "deleteFailed": "團隊刪除失敗",
+      "viewCoordinatorHistory": "查看 Coordinator 對話記錄",
+      "taskWindowTruncated": "目前顯示前 {{visible}} 個，共 {{total}} 個任務。完整結果請開啟任務詳情。",
       "planApproval": {
-        "title": "計畫等待核准"
-      }
-    },
-    "agentOrgInbox": {
-      "title": "Agent 訊息",
-      "unreadCount": "{{count}} 則未讀",
-      "from": "來自 {{sender}}",
-      "kindFallback": "{{kind}} 訊息",
-      "loadFailed": "訊息加載失敗",
-      "overviewOnly": "{{count}} 條未讀隊友訊息。詳細歷史可在執行回放中查看。"
+        "from": "由 {{member}} 提交",
+        "approve": "批准計畫",
+        "requestChanges": "要求修改",
+        "sendFeedback": "傳送修改意見",
+        "feedbackLabel": "計畫修改意見",
+        "feedbackPlaceholder": "清楚告訴 Planner 哪些地方需要修改……",
+        "paused": "請先恢復本次執行，再處理這個計畫。",
+        "staleError": "這份計畫已經處理或被新版本取代。請重新整理後查看最新版本。",
+        "submitFailed": "計畫審批結果未能儲存。",
+        "historyTitle": "計畫版本記錄",
+        "open": "開啟計畫",
+        "taskOutput": "規劃任務結果已儲存",
+        "status": {
+          "pending": "等待審批",
+          "approved": "已批准",
+          "changes_requested": "已要求修改",
+          "superseded": "已被新版本取代",
+          "cancelled": "已取消"
+        }
+      },
+      "phase": {
+        "coordinating": "正在協調",
+        "dispatching": "正在分派",
+        "members_working": "成員工作中",
+        "waiting": "等待下一步",
+        "awaiting_plan_approval": "等待計畫審批",
+        "finalizing": "正在收尾",
+        "paused": "已暫停",
+        "failed": "失敗",
+        "starting": "正在啟動",
+        "idle": "待命",
+        "archived": "已封存",
+        "draining": "已暫停 · 正在收尾"
+      },
+      "finalSummary": {
+        "failedTitle": "最終報告未能儲存",
+        "evidencePreserved": "完成憑證、任務結果和產物均已保留。",
+        "retry": "重試最終報告",
+        "retryFailed": "無法啟動最終報告重試。"
+      },
+      "idleWithLatestOutcome": "{{phase}} · 上一個工作輪次：{{outcome}}",
+      "pendingInboxCount": "{{count}} 則待處理",
+      "activeMembers": "活躍成員",
+      "inFlightTurns": "進行中的回合",
+      "openTasks": "未完成任務",
+      "blockingInbox": "阻塞中的收件匣",
+      "blockersTitle": "仍在阻礙完成的項目",
+      "unknownBlocker": "未知系統阻塞項"
     },
     "agentOrgIntervention": {
-      "title": "正在與 {{member}} 對話",
-      "description": "Inbox 訊息和新工作已暫停，直到恢復工作",
+      "directTitle": "直接交給 {{member}} 工作",
+      "writerBadge": "可改任務圖",
+      "directNotice": "直接工作預設不會進入任務看板；只有獲准的任務圖工具會改動看板",
+      "directPaused": "可以處理直接支線工作；團隊的正式工作仍保持暫停",
+      "directUnknown": "直接工作意外結束；返回前請先檢查可能已發生的副作用",
+      "unavailableStarting": "團隊啟動完成後才能直接交付工作",
+      "unavailableFailed": "團隊處於失敗狀態，暫時不能直接交付工作",
       "returnToWork": "恢復工作",
       "returning": "正在恢復…",
-      "loadFailed": "干預狀態載入失敗",
+      "endDirectWork": "結束直接工作",
+      "endingDirectWork": "正在結束…",
+      "directReady": "直接工作已完成；你可以繼續追問，或結束這次直接工作",
+      "stopping": "正在停止…",
+      "actionFailed": "直接工作操作失敗，請重試。",
       "busyShort": "使用者聊天",
-      "teammateBusy": "此 teammate 正在直接使用者聊天"
-    },
-    "timeline": {
-      "askUser": "詢問用戶",
-      "noQuestionProvided": "未提供問題。",
-      "action": "操作",
-      "thought": "思考：",
-      "arguments": "參數：",
-      "content": "內容：",
-      "resultLabel": "結果：",
-      "createFile": "創建文件",
-      "fileDiff": "文件差異",
-      "planHint": "計劃提示",
-      "readFile": "讀取文件",
-      "runCommandLine": "運行命令行",
-      "searchInFile": "文件內搜索",
-      "searchCodebase": "搜索代碼庫",
-      "searchDirectory": "搜索目錄",
-      "searchLabel": "搜索：",
-      "inDirectory": "在 {{directory}}",
-      "foundResults": "在 {{files}} 個文件中找到 {{count}} 個結果",
-      "lineRange": "第 {{start}}-{{end}} 行",
-      "clickToViewContent": "點擊查看內容",
-      "noResult": "無結果",
-      "event": "事件",
-      "functionLabel": "函數：",
-      "noTimelineEvents": "暫無時間線事件",
-      "file": "文件",
-      "atlas": "Atlas"
+      "teammateBusy": "此 teammate 正在直接使用者聊天",
+      "activity": {
+        "yielding": "正在安全讓出正式工作…",
+        "user_intervention": "等待你恢復正式工作",
+        "side_quest": "{{count}} 個直接回合正在執行或排隊",
+        "yield_timeout": "仍在等待安全交接"
+      },
+      "outcome": {
+        "restoredTask": "原任務已恢復",
+        "clearedPaused": "直接工作已結束；團隊正式工作仍暫停",
+        "clearedIdle": "直接工作已結束；團隊保持閒置",
+        "directEnded": "直接工作已結束",
+        "noLongerNeeded": "直接工作已結束；原工作已結束或改派"
+      }
     },
     "agentOrgMemberStatus": {
       "idle": "閒置",
@@ -2508,10 +2224,10 @@
       "cancelled": "已取消",
       "userIntervention": "使用者聊天",
       "noTasks": "無任務"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
-    "plan": "計劃",
     "untitled": "未命名計劃",
     "drafting": "正在起草計劃…",
     "readyForReview": "可供審閱",
@@ -2526,9 +2242,6 @@
     "emptyPlan": "（計劃爲空）",
     "edit": "編輯",
     "cancelEdit": "取消",
-    "editAndBuild": "編輯並構建",
-    "openInSimulator": "在 Simulator 中查看",
-    "close": "關閉",
     "collapse": "摺疊"
   },
   "workspace": {
@@ -2539,12 +2252,10 @@
     "errorOccurred": "發生錯誤",
     "failedToSendMessage": "發送消息失敗",
     "noSessionIdFound": "未找到 Session ID",
-    "failedToContinue": "繼續 Session 失敗",
     "failedToResume": "恢復 Session 失敗",
-    "failedToInterrupt": "中斷 Session 失敗",
-    "failedToStop": "停止 Agent 失敗",
     "failedToCheckChanges": "無法檢查文件變更，將自動還原。",
-    "insufficientBalance": "ORGII 托管服務餘額不足，請前往 orgii.ai/wallet 儲值。"
+    "insufficientBalance": "ORGII 托管服務餘額不足，請前往 orgii.ai/wallet 儲值。",
+    "runQueuedBehindCheckout": "已排隊：另一個執行正在使用此檢出目錄，待其結束後將自動開始。"
   },
   "planning": {
     "agentTyping": "Agent 正在輸入...",
@@ -2554,12 +2265,6 @@
       "正在處理...",
       "正在琢磨下一步..."
     ],
-    "nextStepSlowVariants": [
-      "正在規劃下一步，比平時更久...",
-      "仍在思考，比平時更久...",
-      "正在處理，比平時更久...",
-      "正在琢磨下一步，比平時更久..."
-    ],
     "compacting": "正在壓縮上下文…",
     "statusTrail": {
       "agentWorking": "Agent 工作中",
@@ -2567,7 +2272,7 @@
       "runningTask_one": "{{count}} 個執行中的任務",
       "runningTask_other": "{{count}} 個執行中的任務",
       "idle": "Agent 閒置中",
-      "lastRefreshed": "上次重新整理於 {{value}}",
+      "lastRefreshed": "上次重新整理 {{value}}",
       "asking": "等待你的回覆"
     }
   },
@@ -2578,41 +2283,14 @@
     "keepChanges": "保留變更"
   },
   "controlTower": {
-    "welcomeMessages": [
-      "今天你想構建什麼？",
-      "今天你要發佈什麼？",
-      "今天我們要解決什麼問題？",
-      "下一步要構建什麼？",
-      "下一步計劃是什麼？"
-    ],
-    "quickActions": "快捷操作",
-    "recentSessions": "最近的 Session",
-    "viewAllSessions": "查看所有 Session",
-    "noSessionsYet": "暫無 Session",
     "myAgents": "我的 {{count}} 個 Agent",
-    "myAgentOrgs": "我的 {{count}} 個 Agent 團隊",
     "noAgentsAvailable": "暫無可用的 Agent",
     "newAgentSession": "新建 {{agent}} Session",
     "addAgent": "添加 Agent",
     "myApiKeys": "我的 {{count}} 個 Key",
     "addApiKey": "添加 API Key",
-    "noRepoSelected": "未選擇倉庫",
     "diff": {
-      "untitledSession": "未命名 Session",
-      "singleFile": "單文件",
-      "unified": "統一視圖",
-      "allChanges": "所有更改",
-      "failedToLoadDiffFor": "無法加載 {{path}} 的 Diff",
-      "failedToLoadFileContent": "無法加載文件內容",
-      "binaryFile": "二進制文件",
-      "selectFileToView": "選擇文件以查看 Diff",
-      "openProjectToViewDiff": "打開專案以查看 Diff",
-      "failedToLoadDiff": "加載 Diff 失敗",
-      "changes": "更改",
-      "refresh": "刷新",
-      "noUncommittedChanges": "沒有未提交的更改",
-      "noSessionChanges": "此 Session 沒有未提交的更改",
-      "fileCount": "{{count}} 個文件"
+      "refresh": "刷新"
     },
     "git": {
       "filterUncommitted": "未提交",
@@ -2620,77 +2298,39 @@
       "filterStaged": "已暫存",
       "filterStashed": "已貯藏",
       "filterCountLabel_one": "{{count}}個{{label}}變動",
-      "filterCountLabel_other": "{{count}}個{{label}}變動",
-      "failedToLoad": "加載 Git 狀態失敗",
-      "noBranchChanges": "沒有未推送的提交",
-      "unknownAuthor": "未知"
-    },
-    "groups": {
-      "home": "首頁",
-      "sessions": "會話",
-      "git": "Git",
-      "terminal": "終端"
+      "filterCountLabel_other": "{{count}}個{{label}}變動"
     },
     "history": {
-      "wingmanAgent": "Wingman Agent",
       "agentFallback": "Agent"
     },
     "sidebar": {
       "stopAgentProcess": "停止 Agent 進程",
-      "closeSession": "關閉 Session",
-      "openInBrowser": "在瀏覽器中打開",
-      "closeTab": "關閉標籤頁",
-      "private": "隱私",
-      "newTab": "新標籤頁",
-      "overview": "概覽",
-      "homeBrowsers": "瀏覽器標籤",
-      "homeTerminals": "終端會話",
-      "openInMyStation": "在 My Station 打開",
-      "openInTerminalTab": "在 Terminal 標籤打開"
-    },
-    "workspaceTools": {
-      "title": "Workspace 工具",
-      "description": "檢查此 workspace 推薦的 LSP servers 和 lint 工具。",
-      "summary": "{{ready}}/{{total}} 就緒",
-      "noRecommendations": "沒有推薦工具",
-      "refresh": "重新整理",
-      "lsp": "LSP servers",
-      "lint": "Lint 工具",
-      "ready": "全部 {{total}} 個推薦工具已就緒",
-      "needsSetup": "{{total}} 個推薦工具中 {{ready}} 個已就緒",
-      "notApplicable": "沒有 workspace 專屬推薦",
-      "missing": "缺少",
-      "disabled": "已停用"
+      "openInMyStation": "在 My Station 打開"
     }
   },
   "groupChat": {
-    "senderTitle": {
-      "message": "{{sender}} 傳送了訊息",
-      "said": "{{sender}} 說"
-    },
     "taskHeader": {
       "createWithOwner": "{{sender}} 分配任務給 {{ownerName}}",
       "create": "{{sender}} 分配了任務",
       "updateStatus": "{{sender}} 更新了任務狀態",
       "updateDetail": "{{sender}} 更新了任務詳情",
       "get": "{{sender}} 檢視了任務詳情",
-      "list": "{{sender}} 檢視了任務列表"
-    },
-    "messageHeader": {
-      "running": "{{sender}} 正在聯繫 {{recipient}}",
-      "done": "{{sender}} 聯繫了 {{recipient}}",
-      "failed": "{{sender}} 未能聯繫 {{recipient}}",
-      "broadcastRunning": "{{sender}} 正在聯繫多個 Agent",
-      "broadcastDone": "{{sender}} 聯繫了多個 Agent",
-      "broadcastFailed": "{{sender}} 未能聯繫多個 Agent"
+      "list": "{{sender}} 檢視了任務列表",
+      "createRunning": "{{sender}} 正在建立任務",
+      "createRejected": "{{sender}} 的任務建立需要修正",
+      "createFailed": "{{sender}} 無法建立任務",
+      "updateRunning": "{{sender}} 正在更新任務",
+      "updateRejected": "{{sender}} 的任務更新需要修正",
+      "updateFailed": "{{sender}} 無法更新任務",
+      "updateDeferred": "{{sender}} 已暫緩完成任務，等待清理結束"
     },
     "inboxTranscript": {
       "readMessages": "Coordinator 讀取了其他 Agent 傳送的訊息"
     },
     "userMessagePending": "{{member}} 正在接收你的訊息",
     "pausedBanner": {
-      "title": "新的工作已暫停",
-      "body": "暫停會停止目前回覆，傳送訊息或點擊恢復即可繼續",
+      "title": "正式工作已暫停",
+      "body": "要交給 Coordinator 的工作請先恢復；仍可用 @Member 傳送支線工作。",
       "resume": "恢復"
     },
     "toolUseSummary": {
@@ -2705,18 +2345,74 @@
       "explorations_other": "{{count}} 次探索",
       "otherTools_one": "{{count}} 次其他工具呼叫",
       "otherTools_other": "{{count}} 次其他工具呼叫"
+    },
+    "triggerLabel": "群聊",
+    "userMessageOutcomeUnknown": "訊息提交結果未知，請使用原請求重試。",
+    "coordinatorLabel": "協調者",
+    "youLabel": "你",
+    "retry": "重試",
+    "memberCount_one": "{{count}} 位成員",
+    "memberCount_other": "{{count}} 位成員",
+    "memberFallback": "成員",
+    "retryPossibleDuplicateConfirm": "這則訊息的提交結果未知。重試可能造成重複操作，仍要建立新的 Turn 嗎？",
+    "mixedTargetError": "請將傳給 Coordinator 和 Member 的訊息分開傳送。",
+    "submitError": "群聊訊息傳送失敗，請重試。",
+    "projection": {
+      "title": "Team 群聊",
+      "queueGuidance": "訊息預設排隊處理。如需立即修正，請開啟對應 Member 的個別頁面。",
+      "archived": "這個 Team 已封存，群聊記錄只能查看。",
+      "loadOlder": "載入更早訊息",
+      "loadError": "無法載入群聊訊息。",
+      "actionError": "無法完成這次群聊操作，請重試。",
+      "loading": "正在載入群聊訊息…",
+      "empty": "尚無群聊訊息。",
+      "unavailable": "這則訊息目前無法使用。",
+      "stop": "停止",
+      "retryDelivery": "重新投遞",
+      "retryNewTurn": "建立新 Turn 重試",
+      "activity": {
+        "taskFallback": "未命名任務",
+        "task_created": "已建立任務：{{task}} · {{member}}",
+        "task_started": "{{member}} 開始處理：{{task}}",
+        "task_completed": "{{member}} 已完成：{{task}}",
+        "task_failed": "{{member}} 未能完成：{{task}}",
+        "task_cancelled": "已取消任務：{{task}}",
+        "task_reassigned": "任務已從 {{previousMember}} 轉交給 {{member}}：{{task}}",
+        "task_replacement_created": "已為 {{replacedTask}} 建立替代任務：{{task}} · {{member}}",
+        "team_paused": "Team 已暫停",
+        "team_resumed": "Team 已恢復",
+        "member_returned": "{{member}} 已返回 Team 工作",
+        "completion_certified": "Team 完成狀態已確認：{{outcome}}",
+        "final_report_failed": "最終報告儲存失敗",
+        "team_archived": "Team 已封存"
+      },
+      "state": {
+        "queued": "排隊中",
+        "running": "執行中",
+        "answered": "已回答",
+        "failed": "失敗",
+        "cancelled": "已取消",
+        "unknown": "結果未知"
+      }
     }
   },
   "orgTask": {
     "create": {
       "title": "分配任務",
-      "titleWithOwner": "分配任務給 {{ownerName}}"
+      "titleWithOwner": "分配任務給 {{ownerName}}",
+      "runningTitle": "正在建立任務",
+      "rejectedTitle": "任務建立需要修正",
+      "failedTitle": "任務建立失敗"
     },
     "update": {
       "titleStatus": "更新任務狀態",
       "titleDetail": "更新任務詳情",
       "markedAs": "標記為 {{status}}",
-      "title": "已更新任務"
+      "title": "已更新任務",
+      "runningTitle": "正在更新任務",
+      "rejectedTitle": "任務更新需要修正",
+      "failedTitle": "任務更新失敗",
+      "deferredTitle": "暫緩完成任務，等待清理"
     },
     "get": {
       "title": "查看任務詳情"
@@ -2724,7 +2420,8 @@
     "list": {
       "title": "查看任務列表",
       "count": "{{taskCount}} 個任務",
-      "empty": "暫無任務"
+      "empty": "暫無任務",
+      "countLabel": "任務"
     },
     "statusLabel": "狀態",
     "assignedBadge": "已指派",
@@ -2734,10 +2431,18 @@
       "pending": "待處理",
       "in_progress": "進行中",
       "completed": "已完成"
-    }
-  },
-  "manageProject": {
-    "inProject": "在 {{project}} 中"
+    },
+    "outcome": {
+      "pending": "進行中",
+      "rejected": "需要修正",
+      "failed": "失敗",
+      "deferred": "暫緩完成 · 等待清理"
+    },
+    "unassignedOwner": "未指派",
+    "currentRecordUnavailable": "目前狀態無法使用",
+    "currentStatusLabel": "目前狀態",
+    "currentOwnerLabel": "目前負責人",
+    "replacementLabel": "替代任務"
   },
   "manageAgentDef": {
     "action": {
@@ -2753,23 +2458,11 @@
       "get_org": "獲取組織"
     }
   },
-  "cursorIde": {
-    "restart": {
-      "title": "爲 ORGII 控制重啓 Cursor？",
-      "message": "ORGII 需要以遠程控制模式重啓 Cursor，確保 follow-up 發送到同一個 Cursor 對話。這會退出 Cursor，並使用 --remote-debugging-port=9230 以隱藏方式重新打開。",
-      "okLabel": "重啓 Cursor",
-      "success": "Cursor 以隱藏方式啓用遠程控制並重啓。正在重試…",
-      "failed": "重啓 Cursor 失敗：{{reason}}"
-    }
-  },
   "cards": {
     "openFile": "在編輯器中開啟",
     "openLink": "開啟連結",
-    "broadcast": "→ 所有 Agent",
     "agentMessage": {
       "fallbackTitle": "訊息",
-      "accepted": "已接受",
-      "rejected": "已拒絕",
       "empty": "(無訊息內容)",
       "status": {
         "sending": "傳送中…",
@@ -2782,7 +2475,8 @@
       "meta": {
         "sender": "寄件者",
         "recipient": "收件者",
-        "subject": "主旨"
+        "subject": "主旨",
+        "status": "狀態"
       },
       "broadcastTitle": {
         "running": "正在向多個 Agent 傳送訊息",
@@ -2791,43 +2485,27 @@
       },
       "emailBubble": {
         "noSubject": "(無主旨)",
-        "expand": "顯示完整訊息",
-        "collapse": "收起訊息",
         "userInbox": "使用者收件匣",
         "currentChannel": "目前頻道",
-        "subagentMessages": "Subagent 訊息",
-        "readMessagesFromSubagents": "{{agent}} 閱讀了 subagent 訊息"
+        "subagentMessages": "Subagent 訊息"
       }
     },
     "actions": {
       "moreOpenOptions": "更多開啟選項",
       "openAsPullRequest": "PR 分頁",
       "openAsWebPage": "網頁",
-      "openInApp": "在應用程式內開啟",
-      "openWithDefaultBrowser": "用預設瀏覽器開啟",
-      "revealInFinder": "在 Finder 中顯示",
-      "revealInExplorer": "在 Explorer 中顯示",
-      "revealInFileManager": "在檔案管理器中顯示"
+      "openWithDefaultBrowser": "用預設瀏覽器開啟"
     },
     "url": {
-      "open": "開啟",
       "copyUrl": "複製 URL",
       "copied": "URL 複製",
       "openExternalFailed": "無法用預設瀏覽器開啟 URL",
       "openPullRequestFailed": "無法開啟 Pull Request 分頁",
-      "groupTitle": "網頁"
+      "changesCount_one": "{{count}} 處變更",
+      "changesCount_other": "{{count}} 處變更"
     },
     "path": {
-      "open": "開啟",
-      "copyPath": "複製路徑",
-      "copied": "路徑複製",
-      "copyFailed": "無法複製路徑",
       "openFailed": "無法開啟路徑",
-      "revealFailed": "無法在檔案管理器中顯示路徑",
-      "name": "名稱",
-      "type": "類型",
-      "directory": "目錄",
-      "file": "檔案",
       "emptyDirectory": "空目錄"
     }
   },
@@ -2848,12 +2526,12 @@
     "titleA2ui": "Agent 預覽",
     "reload": "重新載入",
     "openExternal": "在瀏覽器中開啟",
-    "expand": "展開",
-    "shrink": "收起",
-    "close": "關閉",
-    "summarize": "讓 Agent 總結",
     "waiting": "等待內容中…",
-    "empty": "無內容"
+    "empty": "無內容",
+    "openUrlDescription": "外部 URL 不會內嵌，以避免 iframe 佔用大量記憶體。",
+    "openUrlTitle": "未內嵌預覽",
+    "streaming": "生成中",
+    "titleReact": "React 預覽"
   },
   "canvasApp": {
     "empty": "尚未渲染任何 Canvas",
@@ -2877,7 +2555,6 @@
     "design": "設計",
     "designHint": "選擇要修改的元素",
     "designUnavailable": "設計功能不可用",
-    "reactCspUnavailable": "目前版本無法執行 React 預覽，請開啟原始碼檢視",
     "designPromptLabel": "描述 Canvas 變更",
     "designPromptPlaceholder": "描述要修改的內容…",
     "clearDesignSelection": "清除 Canvas 選擇",
@@ -2908,12 +2585,15 @@
     "shareDialogError": "無法建立 Canvas 連結。",
     "shareDialogRetryShort": "重試短連結",
     "shareDialogRetryingShort": "正在重試…",
-    "retry": "重試"
+    "retry": "重試",
+    "revisionTargetedSummary_one": "{{count}} 處精確修改 · 同一個 Canvas",
+    "reactArtifactFrame": "React Canvas 預覽"
   },
   "domSelection": {
     "previewTitle": "Canvas 選區預覽",
     "elementsCount_other": "{{count}} 個元素",
-    "regionLabel": "區域 · {{label}}"
+    "regionLabel": "區域 · {{label}}",
+    "elementsCount_one": "{{count}} 個元素"
   },
   "runGroup": {
     "open": "開啟",
@@ -2942,5 +2622,51 @@
   "titleBar": {
     "showDevTools": "顯示 DevTools",
     "hideDevTools": "隱藏 DevTools"
+  },
+  "weeklyQuotaHistory": {
+    "previousWeek": "上一週",
+    "nextWeek": "下一週",
+    "emptyWeek": "本週暫無記錄",
+    "title": "每週額度歷史",
+    "error": "暫時無法讀取額度歷史，返回此視窗時將重試",
+    "empty": "在金鑰庫中連接 Claude Code、Codex 或 OpenCode Go 帳戶以開始記錄",
+    "loading": "正在載入額度歷史…",
+    "unsupported": "此帳戶未提供每週額度",
+    "unavailable": "最新取樣無法取得，請檢查金鑰庫中的帳戶連線",
+    "pending": "等待下一次每小時取樣",
+    "remaining": "剩餘 %",
+    "refresh": "刷新",
+    "account": "帳戶",
+    "stale": "最近一次取樣已超過兩小時",
+    "disabled": "此帳戶已停用，取樣已暫停",
+    "limit": "最多顯示 128 個帳戶"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "empty": "尚無 routine — 請先從 CLI apply 一個",
+    "notInstalled": "未安裝",
+    "enabled": "已啟用",
+    "disabled": "已停用",
+    "paused": "連續失敗 {{count}} 次後已暫停",
+    "install": "安裝 webhook",
+    "rotate": "輪換 secret",
+    "enable": "啟用",
+    "disable": "停用",
+    "secretHint": "Secret",
+    "secretShownOnce": "Secret 只會顯示一次 — 請立即儲存到你的提供方。",
+    "noDeliveries": "尚無投遞記錄",
+    "replay": "重送",
+    "replayQueued": "已重送該投遞",
+    "copied": "已複製",
+    "copyFailed": "複製失敗"
+  },
+  "conversation": {
+    "promptMode": "Agent",
+    "teamChatMode": "團隊聊天",
+    "promptTooltip": "傳送給 agent",
+    "teamChatTooltip": "傳訊息給隊友 — 不會觸發 agent",
+    "imagesUnsupported": "團隊聊天訊息不能包含圖片",
+    "participantsTooltip": "對話參與者與討論訊息",
+    "mentionGroup": "隊友"
   }
 }

@@ -9,10 +9,9 @@ describe("resolveSidebarSelectedMenuItemId", () => {
   it("keeps the Work Items destination highlighted over a stale session scope", () => {
     expect(
       resolveSidebarSelectedMenuItemId({
-        activeSidebarKey: "workstation",
+        activeViewKey: "work-items",
         selectedCloudMenuItemId: "cloud-session-1",
         selectedMenuItemId: "work-items",
-        workItemsContentVisible: true,
       })
     ).toBe("work-items");
   });
@@ -20,10 +19,9 @@ describe("resolveSidebarSelectedMenuItemId", () => {
   it("keeps the scoped session highlighted in the sessions view", () => {
     expect(
       resolveSidebarSelectedMenuItemId({
-        activeSidebarKey: "workstation",
+        activeViewKey: "sessions",
         selectedCloudMenuItemId: "cloud-session-1",
         selectedMenuItemId: "session-1",
-        workItemsContentVisible: false,
       })
     ).toBe("cloud-session-1");
   });

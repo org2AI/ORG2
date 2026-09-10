@@ -1,4 +1,3 @@
-import type { UnlistenFn } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -8,7 +7,6 @@ import { useInlineWebviewUrlEffect } from "./useInlineWebviewUrlEffect";
 import { useWebviewCommands } from "./useWebviewCommands";
 import { useWebviewLayout } from "./useWebviewLayout";
 import { useWebviewNewWindowListener } from "./useWebviewNewWindowListener";
-import { useWebviewSafeUnlisten } from "./useWebviewSafeUnlisten";
 import { useWebviewUrlPolling } from "./useWebviewUrlPolling";
 import {
   DEFAULT_POLL_INTERVAL,
@@ -53,7 +51,6 @@ export function useInlineWebview(
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPolledUrlRef = useRef<string>("");
   const lastRequestedUrlRef = useRef<string>("");
-  const newWindowListenerRef = useRef<UnlistenFn | null>(null);
   const isUnmountedRef = useRef(false);
 
   const log = useCallback(
@@ -63,13 +60,10 @@ export function useInlineWebview(
     [debug]
   );
 
-  const { safeUnlisten } = useWebviewSafeUnlisten();
-
   useWebviewNewWindowListener({
     isWebviewAvailable,
     labelRef,
     log,
-    newWindowListenerRef,
     onNewWindow,
   });
 
@@ -105,11 +99,9 @@ export function useInlineWebview(
       incognito,
       isDestroyedRef,
       pollIntervalRef,
-      newWindowListenerRef,
       lastPolledUrlRef,
       getContainerRect,
       log,
-      safeUnlisten,
       onCreated,
       onError,
       onDestroyed,

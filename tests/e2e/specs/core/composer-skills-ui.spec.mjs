@@ -22,11 +22,23 @@ async function execJS(script) {
 }
 
 const js = {
+  // The macOS webdriver plugin acknowledges keys without editing/firing a
+  // usable event. Dispatch through the focused element's real DOM handlers;
+  // text itself still goes through execCommand and its native InputEvent.
+  key: (key) => `
+    const target = document.activeElement || document.body;
+    target.dispatchEvent(new KeyboardEvent("keydown", {key: ${JSON.stringify(key)}, bubbles: true, cancelable: true}));
+    target.dispatchEvent(new KeyboardEvent("keyup", {key: ${JSON.stringify(key)}, bubbles: true}));
+    return true;
+  `,
   type: (selector, text) => `
     const editor = document.querySelector(${JSON.stringify(selector)});
     if (!editor) return "missing";
     editor.focus();
-    const ok = document.execCommand("insertText", false, ${JSON.stringify(text)});
+    const text = ${JSON.stringify(text)};
+    const allowed = text.length !== 1 || editor.dispatchEvent(new KeyboardEvent("keydown", {key: text, bubbles: true, cancelable: true}));
+    const ok = allowed && document.execCommand("insertText", false, text);
+    if (text.length === 1) editor.dispatchEvent(new KeyboardEvent("keyup", {key: text, bubbles: true}));
     return ok ? "typed" : "insert-failed";
   `,
   text: (selector) => `
@@ -134,6 +146,75 @@ describe("Composer skills menu", () => {
     }
   });
 
+  it("offers commands in the slash menu and consumes the query on selection", async () => {
+    await browser.waitUntil(
+      async () =>
+        execJS(
+          `return !!document.querySelector(${JSON.stringify(INPUT_SELECTOR)});`
+        ),
+      { timeout: 60_000 }
+    );
+    expect(await execJS(js.clear(INPUT_SELECTOR))).toBe("");
+    expect(await execJS(js.type(INPUT_SELECTOR, "/model"))).toBe("typed");
+    await browser.waitUntil(
+      async () => (await execJS(js.text(INPUT_SELECTOR))) === "/model",
+      { timeout: 5000 }
+    );
+    const selector =
+      '[data-testid="slash-command-item"][data-slash-category="action"][data-slash-name="model"]';
+    await browser.waitUntil(
+      async () =>
+        execJS(`return !!document.querySelector(${JSON.stringify(selector)});`),
+      { timeout: 10_000 }
+    );
+    expect(
+      await execJS(
+        `const row = document.querySelector(${JSON.stringify(selector)}); if (!row) return "missing"; const target = row.firstElementChild || row; target.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true })); target.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true })); target.click(); return "clicked";`
+      )
+    ).toBe("clicked");
+    await browser.waitUntil(
+      async () => (await execJS(js.text(INPUT_SELECTOR)))?.trim() === "/model",
+      { timeout: 5000 }
+    );
+    await browser.waitUntil(
+      async () =>
+        (await execJS(
+          `return document.querySelectorAll(${JSON.stringify(selector)}).length;`
+        )) === 0,
+      { timeout: 5000, timeoutMsg: "command selection did not close the menu" }
+    );
+    expect(
+      await execJS(
+        `return document.querySelector('[data-testid="chat-send-button"]').disabled;`
+      )
+    ).toBe(false);
+    expect(await execJS(js.click('[data-testid="chat-send-button"]'))).toBe(
+      "clicked"
+    );
+    await browser.waitUntil(
+      async () =>
+        execJS(
+          `return !!document.querySelector('[data-testid="model-spotlight-refresh-button"]');`
+        ),
+      {
+        timeout: 10_000,
+        timeoutMsg: "/model did not open the actual model selector",
+      }
+    );
+    await execJS(js.key("Escape"));
+    await browser.waitUntil(
+      async () =>
+        execJS(
+          `return !document.querySelector('[data-testid="model-spotlight-refresh-button"]');`
+        ),
+      { timeout: 5000 }
+    );
+    await browser.waitUntil(
+      async () => (await execJS(js.text(INPUT_SELECTOR))) === "",
+      { timeout: 5000 }
+    );
+  });
+
   it("gives + and @ the same searchable, keyboard-navigable mode menu", async () => {
     await browser.waitUntil(
       async () =>
@@ -189,7 +270,10 @@ describe("Composer skills menu", () => {
     });
     expect(await execJS(js.text(INPUT_SELECTOR))).toBe(PREFIX);
 
-    await browser.keys("plan");
+    // WebKit's synthetic WebDriver key events do not perform native text
+    // insertion. Exercise the actual editing/InputEvent path and prove text
+    // changed before asserting the query or selecting with Enter.
+    expect(await execJS(js.type(INPUT_SELECTOR, "plan"))).toBe("typed");
     await browser.waitUntil(
       async () =>
         execJS(`
@@ -201,7 +285,7 @@ describe("Composer skills menu", () => {
         timeoutMsg: "composer-owned menu query did not filter to Plan mode",
       }
     );
-    await browser.keys("Enter");
+    await execJS(js.key("Enter"));
     await browser.waitUntil(
       async () =>
         execJS(`return !document.querySelector('[data-context-menu-portal]');`),
@@ -226,7 +310,7 @@ describe("Composer skills menu", () => {
       }
     );
 
-    await browser.keys("Escape");
+    await execJS(js.key("Escape"));
     await browser.waitUntil(
       async () =>
         execJS(`return !document.querySelector('[data-context-menu-portal]');`),
@@ -237,7 +321,7 @@ describe("Composer skills menu", () => {
     );
 
     expect(await execJS(js.focus(INPUT_SELECTOR))).toBe("focused");
-    await browser.keys("@");
+    expect(await execJS(js.type(INPUT_SELECTOR, "@"))).toBe("typed");
     await browser.waitUntil(
       async () =>
         execJS(
@@ -248,12 +332,18 @@ describe("Composer skills menu", () => {
         timeoutMsg: "@ menu did not keep composer focus",
       }
     );
+    await browser.waitUntil(
+      async () =>
+        JSON.stringify(await readMenuContract()) ===
+        JSON.stringify(plusContract),
+      { timeout: 5000, timeoutMsg: "@ did not expose the same actions as +" }
+    );
     expect(await readMenuContract()).toEqual(plusContract);
-    await browser.keys("Escape");
+    await execJS(js.key("Escape"));
 
     expect(await execJS(js.clear(INPUT_SELECTOR))).toBe("");
     expect(await execJS(js.focus(INPUT_SELECTOR))).toBe("focused");
-    await browser.keys("/");
+    expect(await execJS(js.type(INPUT_SELECTOR, "/"))).toBe("typed");
     await browser.waitUntil(
       async () =>
         execJS(
@@ -264,7 +354,7 @@ describe("Composer skills menu", () => {
         timeoutMsg: "slash menu did not open",
       }
     );
-    await browser.keys("@");
+    expect(await execJS(js.type(INPUT_SELECTOR, "@"))).toBe("typed");
     await browser.waitUntil(
       async () =>
         execJS(`
@@ -276,7 +366,7 @@ describe("Composer skills menu", () => {
         timeoutMsg: "opening @ did not close the slash menu",
       }
     );
-    await browser.keys("Escape");
+    await execJS(js.key("Escape"));
   });
 
   it("preserves existing text when selecting a skill from the inline slash menu", async () => {
@@ -286,7 +376,7 @@ describe("Composer skills menu", () => {
     expect(await execJS(js.type(INPUT_SELECTOR, inlineDraft))).toBe("typed");
     expect(await execJS(js.focus(INPUT_SELECTOR))).toBe("focused");
 
-    await browser.keys("/");
+    expect(await execJS(js.type(INPUT_SELECTOR, "/"))).toBe("typed");
 
     await browser.waitUntil(
       async () =>
@@ -300,7 +390,11 @@ describe("Composer skills menu", () => {
       }
     );
 
-    await browser.keys("manage");
+    expect(await execJS(js.type(INPUT_SELECTOR, "manage"))).toBe("typed");
+    await browser.waitUntil(
+      async () => (await execJS(js.text(INPUT_SELECTOR)))?.includes("/manage"),
+      { timeout: 5000 }
+    );
 
     await browser.waitUntil(
       async () =>
@@ -318,12 +412,15 @@ describe("Composer skills menu", () => {
     await browser.waitUntil(
       async () => {
         const text = await execJS(js.text(INPUT_SELECTOR));
+        const hasSkillPill = await execJS(
+          `return !!document.querySelector(${JSON.stringify(INPUT_SELECTOR + ' [data-composer-pill] [title="manage-skills"]')});`
+        );
         return (
           typeof text === "string" &&
+          hasSkillPill &&
           text.includes(INLINE_PREFIX) &&
           text.includes("你能走 e2e 验证你的变动") &&
-          !text.includes("/manage") &&
-          text.includes("manage-skills")
+          !text.includes("/manage")
         );
       },
       {

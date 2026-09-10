@@ -19,7 +19,7 @@ import {
   Settings02Icon,
   UserMultipleIcon,
 } from "@src/icons";
-import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks";
+import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 
 export interface ChannelPanelHeaderProps {
   name: string;

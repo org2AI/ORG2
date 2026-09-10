@@ -1,34 +1,9 @@
 {
-  "connect": "Connecter",
   "name": "Nom",
   "genderOptions": {},
   "role": "Rôle",
   "location": "Localisation",
-  "timezone": "Fuseau horaire",
   "commits": "commits",
   "activity": "Activité",
-  "specialty": {
-    "frontend": "Frontend",
-    "backend": "Backend",
-    "fullstack": "Full Stack",
-    "mobile": "Mobile",
-    "devops": "DevOps",
-    "data": "Data",
-    "systems": "Systems"
-  },
-  "bio": "Biographie",
-  "social": {},
-  "edu": {
-    "edit": "Modifier la Formation",
-    "present": "Présent"
-  },
-  "exp": {
-    "edit": "Modifier l'Expérience"
-  },
-  "sections": {
-    "about": "À propos",
-    "developerActivity": "Activité de Développement",
-    "projectsAndAchievements": "Projects et réalisations",
-    "professionalBackground": "Parcours Professionnel"
-  }
+  "social": {}
 }

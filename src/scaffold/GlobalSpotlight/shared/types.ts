@@ -28,6 +28,8 @@ export type StatusType = "ongoing" | "completed" | "failed";
 
 /** Data object attached to SpotlightItem */
 export interface SpotlightItemData {
+  /** Structured members for multi-folder hover previews. */
+  detailFolders?: { name: string; path: string }[];
   /** Whether this is an open tab */
   isOpenTab?: boolean;
   /** Parent action ID for child items */

@@ -102,7 +102,7 @@ describe("createTauriMobileRemotePlatformWithBridge", () => {
     const { platform } = await createPlatform(bridge);
 
     await expect(
-      platform.auth.navigate("https://cloud.example.test/login")
+      platform.openExternal("https://cloud.example.test/login")
     ).rejects.toThrow("System browser is unavailable");
   });
 

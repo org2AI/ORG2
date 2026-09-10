@@ -186,12 +186,12 @@ const TerminalMainContent: React.FC<TerminalMainContentProps> = ({
           ) : (
             <ProcessStopButton
               label={t("common:tooltips.killTerminal")}
+              size="lg"
               onClick={handleKillTerminal}
             />
           )}
           {!isAgentTerminal && (
             <TerminalInfoButton
-              title={t("common:terminology.myTerminalInfo")}
               name={displayTitle}
               pid={terminalPid}
               shell={terminalShell}

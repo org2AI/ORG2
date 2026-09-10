@@ -10,6 +10,7 @@
  */
 import { atom } from "jotai";
 
+import { INTERNAL_AGENT_IDS } from "../config/agentConstants";
 import type { AgentDefinition } from "../types";
 
 /**
@@ -32,11 +33,17 @@ export const agentDefsLoadErrorAtom = atom<string | null>(null);
 agentDefsLoadErrorAtom.debugLabel = "agentDefsLoadErrorAtom";
 
 /** User-visible built-in agents (internal subagents filtered out). */
-export const builtInAgentsAtom = atom<AgentDefinition[]>([]);
+export const builtInAgentsAtom = atom((get) =>
+  get(allAgentDefsAtom).filter(
+    (agent) => agent.builtIn && !INTERNAL_AGENT_IDS.has(agent.id)
+  )
+);
 builtInAgentsAtom.debugLabel = "builtInAgentsAtom";
 
 /** User-created custom agents (CRUD-able). */
-export const customAgentsAtom = atom<AgentDefinition[]>([]);
+export const customAgentsAtom = atom((get) =>
+  get(allAgentDefsAtom).filter((agent) => !agent.builtIn)
+);
 customAgentsAtom.debugLabel = "customAgentsAtom";
 
 /**

@@ -7,7 +7,6 @@
  */
 import { type RenderableIcon } from "@src/components/AnyIcon";
 import {
-  Activity01Icon as Activity,
   HierarchyCircle01Icon as AgentTeams,
   DeliveryBox01Icon as Box,
   FirstBracketIcon as Braces,
@@ -26,6 +25,7 @@ import {
   HierarchyCircle01Icon as Network,
   PackageIcon as Package,
   PaintBrush01Icon as Paintbrush,
+  Plug01Icon as Plug,
   TwentyFourHoursClockIcon as RoutineClock,
   RulerDimensionLineIcon as RulerDimensionLine,
   Settings02Icon as Settings2,
@@ -150,7 +150,10 @@ export const SEGMENT_REGISTRY: Record<string, SegmentRegistryEntry> = {
     icon: SmartPhone,
   },
   update: { labelKey: "settings:sections.appUpdate", icon: Package },
-  monitor: { labelKey: "settings:sections.monitor", icon: Activity },
+  "harness-connections": {
+    labelKey: "settings:sections.harnessConnections",
+    icon: Plug,
+  },
 
   // work-station roots
   workstation: { labelKey: "navigation:labels.workspace", icon: FolderOpen },
@@ -226,19 +229,6 @@ export function deriveBreadcrumbKeys(pathname: string): string[] {
 }
 
 const BREADCRUMB_JOINER = " \u203a ";
-
-/**
- * Render a breadcrumb string like `Agents › Integrations › MCP`.
- * Callers pass their own translate fn (usually `t` from react-i18next).
- */
-export function buildBreadcrumbString(
-  pathname: string,
-  translate: (key: string) => string
-): string {
-  return deriveBreadcrumbKeys(pathname)
-    .map((key) => translate(key))
-    .join(BREADCRUMB_JOINER);
-}
 
 /**
  * Derive both the leaf label and the full breadcrumb path from a URL.

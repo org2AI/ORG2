@@ -2,12 +2,34 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useKeyboardSave } from "@src/hooks/keyboard";
 import { createLogger } from "@src/hooks/logger";
-import { useUndoableState } from "@src/hooks/ui";
+import { useUndoableState } from "@src/hooks/ui/useUndoableState";
 import type { WorkItem as WorkItemExtended } from "@src/types/core/workItem";
 
 import type { WorkItemDetailActions, WorkItemUpdateHandler } from "../types";
 
 const logger = createLogger("WorkItemDetail");
+
+const IMMEDIATE_UPDATE_KEYS = ["status", "workItemStatus"] as const;
+
+export function needsImmediateWorkItemUpdate(
+  updates: Partial<WorkItemExtended>
+): boolean {
+  return IMMEDIATE_UPDATE_KEYS.some((key) => key in updates);
+}
+
+export function routeWorkItemUpdate(
+  updates: Partial<WorkItemExtended>,
+  handlers: {
+    local?: (updates: Partial<WorkItemExtended>) => void;
+    immediate?: (updates: Partial<WorkItemExtended>) => void;
+  }
+): void {
+  if (needsImmediateWorkItemUpdate(updates)) {
+    (handlers.immediate ?? handlers.local)?.(updates);
+    return;
+  }
+  handlers.local?.(updates);
+}
 
 function sanitizePendingUpdates(
   updates: Partial<WorkItemExtended>

@@ -16,7 +16,7 @@ import { useProjectDataChanged } from "@src/hooks/project";
 import { CloudIcon, HugeiconsIcon, LaptopIcon } from "@src/icons";
 import { openOrganizationInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { DEFAULT_SESSION_ORG_ID } from "@src/store/session";
-import type { ChatPanelSelectedOrganization } from "@src/store/ui/chatPanelAtom";
+import type { ChatPanelSelectedOrganization } from "@src/store/ui/chatPanel/selectionAtoms";
 import { PROJECT_ORG_SURFACE_VIEW } from "@src/store/workstation/tabs";
 import { STORY_ORG_SCOPE } from "@src/store/workstation/tabs";
 

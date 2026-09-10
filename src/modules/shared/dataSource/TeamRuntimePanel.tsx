@@ -16,7 +16,6 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { externalCliSourcesDetect } from "@src/api/tauri/externalHistory/detection";
-import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
 import type {
   MemberRuntimeListEntry,
@@ -25,14 +24,13 @@ import type {
 import { useCloudOrgRemoteSessions } from "@src/features/Org2Cloud/org2CloudRemoteSessionsAtom";
 import { useOpenCloudSessionReference } from "@src/features/Org2Cloud/useOpenCloudSessionReference";
 import { useOrg2CloudSignIn } from "@src/features/Org2Cloud/useOrg2CloudSignIn";
-import { useRefreshSpin } from "@src/hooks/ui";
-import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import {
   SECTION_GAP_CLASSES,
   SECTION_SUBHEADING_CLASSES,
 } from "@src/modules/shared/layouts/SectionLayout";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 
+import { RuntimeRefreshButton } from "./RuntimeSectionHeader";
 import TeamMemberCard, {
   type AgentCatalog,
   type AgentCatalogEntry,
@@ -78,40 +76,6 @@ function useAgentCatalog(enabled: boolean): AgentCatalog {
   return enabled ? catalog : EMPTY_AGENT_CATALOG;
 }
 
-function RuntimeRefreshButton({
-  onRefresh,
-  refreshing,
-}: {
-  onRefresh: () => void;
-  refreshing: boolean;
-}) {
-  const { t } = useTranslation("teamRuntime");
-  const { spinClass, handleClick } = useRefreshSpin(onRefresh, refreshing);
-  return (
-    <Button
-      htmlType="button"
-      variant="tertiary"
-      appearance="ghost"
-      size="small"
-      disabled={refreshing}
-      aria-label={t("refresh")}
-      title={t("refresh")}
-      onClick={handleClick}
-      icon={
-        <HugeiconsIcon
-          icon={Refresh04Icon}
-          data-icon="refresh-cw"
-          size={14}
-          className={spinClass}
-        />
-      }
-      data-testid="team-runtime-refresh"
-    >
-      {t("refresh")}
-    </Button>
-  );
-}
-
 interface TeamRuntimeTodayConnectedProps {
   orgId: string;
   members: readonly MemberRuntimeListEntry[];
@@ -139,6 +103,7 @@ function TeamRuntimeTodayConnected({
   refreshRoster,
   rosterRefreshing,
 }: TeamRuntimeTodayConnectedProps) {
+  const { t } = useTranslation("teamRuntime");
   const remoteSessions = useCloudOrgRemoteSessions(orgId);
   const openCloudSessionReference = useOpenCloudSessionReference();
   const refreshSessions = remoteSessions.refresh;
@@ -174,8 +139,10 @@ function TeamRuntimeTodayConnected({
       onOpenSession={handleOpenSession}
       headerAction={
         <RuntimeRefreshButton
+          label={t("refresh")}
           onRefresh={refreshAll}
           refreshing={rosterRefreshing}
+          dataTestId="team-runtime-refresh"
         />
       }
     />
@@ -334,8 +301,10 @@ export default function TeamRuntimePanel({
             onBack={() => setOpenMemberId(null)}
             headerAction={
               <RuntimeRefreshButton
+                label={t("refresh")}
                 onRefresh={roster.refresh}
                 refreshing={roster.refreshing}
+                dataTestId="team-runtime-refresh"
               />
             }
           />
@@ -357,23 +326,6 @@ export default function TeamRuntimePanel({
       } else {
         content = (
           <div className="flex flex-col gap-5">
-            <div
-              className="flex min-h-9 flex-wrap items-center justify-between gap-3"
-              data-testid="team-runtime-members-title-row"
-            >
-              <h3 className={SECTION_SUBHEADING_CLASSES}>
-                {t("overview.members")}
-              </h3>
-              <div
-                className="flex shrink-0 items-center"
-                data-testid="team-runtime-controls"
-              >
-                <RuntimeRefreshButton
-                  onRefresh={roster.refresh}
-                  refreshing={roster.refreshing}
-                />
-              </div>
-            </div>
             {roster.members.length > 0 ? (
               <div
                 className="flex flex-col gap-5"
@@ -391,9 +343,25 @@ export default function TeamRuntimePanel({
                       className="flex flex-col gap-3"
                       data-testid={`team-runtime-${activity}-today`}
                     >
-                      <h4 className={SECTION_SUBHEADING_CLASSES}>
-                        {t(`overview.${activity}Today`)}
-                      </h4>
+                      <div className="flex min-h-9 items-center justify-between gap-3">
+                        <h4 className={SECTION_SUBHEADING_CLASSES}>
+                          {t(`overview.${activity}Today`)}
+                        </h4>
+                        {activity === "active" ||
+                        membersByActivity.active.length === 0 ? (
+                          <div
+                            className="flex shrink-0 items-center"
+                            data-testid="team-runtime-controls"
+                          >
+                            <RuntimeRefreshButton
+                              label={t("refresh")}
+                              onRefresh={roster.refresh}
+                              refreshing={roster.refreshing}
+                              dataTestId="team-runtime-refresh"
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                       <div className="grid grid-cols-1 gap-3 @[640px]:grid-cols-2">
                         {members.map((member) => (
                           <TeamMemberCard
@@ -442,8 +410,10 @@ export default function TeamRuntimePanel({
           data-testid="team-runtime-controls"
         >
           <RuntimeRefreshButton
+            label={t("refresh")}
             onRefresh={roster.refresh}
             refreshing={roster.refreshing}
+            dataTestId="team-runtime-refresh"
           />
         </div>
       ) : null}

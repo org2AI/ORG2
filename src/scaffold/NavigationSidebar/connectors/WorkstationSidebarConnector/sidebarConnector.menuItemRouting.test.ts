@@ -138,10 +138,10 @@ describe("sidebar cross-surface routing precedence", () => {
     expect(closeOtherTabs).not.toHaveBeenCalled();
   });
 
-  it("preserves Team Inbox routing in the legacy projects scope", () => {
+  it("preserves Team Inbox routing in the Work Items view", () => {
     render(true);
     const item = row(TEAM_INBOX_MENU_ITEM_ID);
-    routing.handleProjectsScopeMenuItemClick(item.key, item, mouseEvent());
+    click(item);
     expect(openTeamInbox).toHaveBeenCalledWith(item.label);
     expect(projectsClick).not.toHaveBeenCalled();
     expect(closeOtherTabs).not.toHaveBeenCalled();

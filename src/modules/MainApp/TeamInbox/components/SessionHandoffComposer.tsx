@@ -113,6 +113,7 @@ const SessionHandoffComposer: React.FC<SessionHandoffComposerProps> = ({
         loading: submitting,
         disabled: Boolean(validationError),
       }}
+      closable={!submitting}
       cancelButtonProps={{ disabled: submitting }}
       maskClosable={!submitting}
       escToExit={!submitting}
@@ -238,6 +239,7 @@ const SessionHandoffComposer: React.FC<SessionHandoffComposerProps> = ({
               {t("projects:workItems.properties.propertiesSection")}
             </legend>
             <WorkItemProperties
+              statusOrgId={selectedDestination?.orgId ?? null}
               workItem={propertyWorkItem}
               onUpdate={handlePropertyUpdate}
               visibleFields={SESSION_HANDOFF_PROPERTY_FIELDS}

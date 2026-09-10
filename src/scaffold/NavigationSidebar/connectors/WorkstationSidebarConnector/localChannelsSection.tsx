@@ -26,11 +26,11 @@ import LocalChannelSettingsDialog from "@src/features/LocalChannels/components/L
 import { createLogger } from "@src/hooks/logger";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import {
-  activeChatPanelTabAtom,
   closeOtherThanActiveChatPanelTabsAtom,
   openChannelInChatPanelTabAtom,
   reconcileDiscussionChannelTabsAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import {
   type LocalChannel,
   activeLocalChannelsAtom,

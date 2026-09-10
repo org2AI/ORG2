@@ -11,7 +11,6 @@
   "secondaryNote": "— większość weryfikacji nie zostawia śladu, więc pewność jest niska.",
   "byTool": "Wg narzędzia",
   "byToolHint": "Punkty neutralne są wszędzie takie same, więc te wiersze są porównywalne. Litera prawdziwa tylko w jednym narzędziu budzi wątpliwości.",
-  "sessionCount": "{{count}} sesji",
   "overTime": "W czasie",
   "overTimeHint": "Okna kroczące, od najnowszych.",
   "status": "Stan",
@@ -47,7 +46,6 @@
   },
   "types": {
     "title": "Typy twórców",
-    "subtitle": "Poznaj 16 sposobów pracy z agentami programistycznymi.",
     "howTitle": "Jak czytać kod",
     "howBody": "Cztery obserwowane preferencje tworzą typ twórcy. Litery opisują wzorzec pracy, a nie stałą tożsamość — mogą się zmieniać wraz z nawykami i narzędziami.",
     "galleryTitle": "Wszystkie 16 typów",

@@ -9,7 +9,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import { replayModeAtom } from "@src/engines/SessionCore";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
 
@@ -43,7 +43,7 @@ export function useFollowAgent(): UseFollowAgentReturn {
     followAgentTooltipLabel: t("common:actions.switchToStation", {
       station: agentStationLabel,
     }),
-    followAgentShortcut: getShortcutKeys(AGENT_STATION_SHORTCUT_ID),
+    followAgentShortcut: useShortcutKeys(AGENT_STATION_SHORTCUT_ID),
     handleFollowAgent,
   };
 }

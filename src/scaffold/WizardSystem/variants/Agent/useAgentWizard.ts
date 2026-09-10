@@ -10,7 +10,7 @@ import type {
   CapabilitySet,
   SubAgentRef,
 } from "@src/modules/MainApp/AgentOrgs/types";
-import { useMarkdownEditorTabs } from "@src/modules/shared/components/MarkdownEditor";
+import { useMarkdownEditorTabs } from "@src/modules/shared/components/MarkdownEditor/useMarkdownEditorTabs";
 
 interface UseAgentWizardReturn {
   // Navigation

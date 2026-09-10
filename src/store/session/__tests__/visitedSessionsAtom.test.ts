@@ -62,6 +62,32 @@ describe("visited session persistence", () => {
     expect(storage.getItem("orgii:org2-cloud-v1:auth")).toBe("protected-auth");
   });
 
+  it("marks a full unread batch in one persisted update while retaining existing read state", async () => {
+    const storage = installStorage({
+      "orgii:visited-sessions": JSON.stringify(["already-read"]),
+    });
+    const { store, markAllSessionsVisited, visitedSessionsAtom } =
+      await loadVisitedSessions();
+    const changed = vi.fn();
+    const stop = store.sub(visitedSessionsAtom, changed);
+    // Ignore the storage hydration notification produced by mounting.
+    changed.mockClear();
+    const ids = Array.from({ length: 8 }, (_, i) => `unread-${i}`);
+    try {
+      markAllSessionsVisited(ids);
+      expect(changed).toHaveBeenCalledOnce();
+      expect(store.get(visitedSessionsAtom)).toEqual(
+        new Set([...ids, "already-read"])
+      );
+      expect(JSON.parse(storage.getItem("orgii:visited-sessions")!)).toEqual([
+        ...ids,
+        "already-read",
+      ]);
+    } finally {
+      stop();
+    }
+  });
+
   it("bounds and deduplicates an oversized hydrated list", async () => {
     const sessionIds = Array.from(
       { length: 5_100 },

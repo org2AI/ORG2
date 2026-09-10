@@ -1,4 +1,6 @@
-import { createElement } from "react";
+// @vitest-environment jsdom
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -11,6 +13,11 @@ vi.mock("@src/engines/ChatPanel/hooks/useChatEventReplay", () => ({
     replayEventById: vi.fn(),
     canReplay: false,
   }),
+}));
+
+vi.mock("@src/engines/SessionCore/rendering/registry/events", () => ({
+  getChatLazyComponent: () => () =>
+    createElement("div", null, "Failed command details"),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -35,6 +42,83 @@ const translateSummary = (
 };
 
 describe("buildGroupSummary", () => {
+  it("renders failed terminal groups collapsed with no individual error rows", () => {
+    const events = ["python3", "from", "import"].map((command) =>
+      makeSessionEvent({
+        action_type: "tool_call",
+        function: "run_shell",
+        status: "failed",
+        args: { command },
+        result: { success: false, error: "Command failed" },
+      })
+    );
+    const markup = renderToStaticMarkup(
+      createElement(TerminalActivityGroup, {
+        events,
+        closedByBoundary: true,
+      })
+    );
+    expect(markup).toContain("tools.runCommands");
+    expect(markup).not.toContain("Command failed");
+    expect(markup).not.toContain("overflow-y-auto");
+  });
+
+  it("collapses an open failed stack at the boundary and still allows manual expansion", () => {
+    const events = [
+      makeSessionEvent({
+        action_type: "tool_call",
+        function: "run_shell",
+        args: { command: "python3" },
+        result: { success: false, error: "Command failed" },
+      }),
+    ];
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const environment = globalThis as typeof globalThis & {
+      IS_REACT_ACT_ENVIRONMENT?: boolean;
+    };
+    const previousActEnvironment = environment.IS_REACT_ACT_ENVIRONMENT;
+    environment.IS_REACT_ACT_ENVIRONMENT = true;
+    try {
+      act(() =>
+        root.render(
+          createElement(TerminalActivityGroup, {
+            events,
+            closedByBoundary: false,
+          })
+        )
+      );
+      expect(container.textContent).toContain("Failed command details");
+      act(() =>
+        root.render(
+          createElement(TerminalActivityGroup, {
+            events,
+            closedByBoundary: true,
+          })
+        )
+      );
+      expect(container.textContent).not.toContain("Failed command details");
+      const header = container.querySelector(".chat-block-header");
+      expect(header).not.toBeNull();
+      act(() =>
+        header!.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      );
+      expect(container.textContent).toContain("Failed command details");
+      act(() =>
+        root.render(
+          createElement(TerminalActivityGroup, {
+            events,
+            closedByBoundary: true,
+          })
+        )
+      );
+      expect(container.textContent).toContain("Failed command details");
+    } finally {
+      act(() => root.unmount());
+      environment.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+    }
+  });
+
   it("summarizes mixed shell and MCP activity with MCP calls after commands", () => {
     const events = [
       makeSessionEvent({

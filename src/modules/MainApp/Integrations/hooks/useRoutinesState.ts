@@ -1,4 +1,3 @@
-import { listen } from "@tauri-apps/api/event";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,6 +10,7 @@ import {
 import Message from "@src/components/Message";
 import { WIZARD_IDS } from "@src/config/mainAppPaths";
 import { useWizardParam } from "@src/hooks/navigation";
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 import {
   builtInAgentsAtom,
   customAgentsAtom,
@@ -65,25 +65,14 @@ export function useRoutinesState(
 
   // Live updates: scheduler fires / terminal write-backs happen entirely in
   // the backend, so the page must react to the fine-grained routine event.
-  useEffect(() => {
-    if (!routinesActive) return undefined;
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    void listen(ROUTINE_CHANGED_EVENT, () => {
+  useTauriListen(
+    ROUTINE_CHANGED_EVENT,
+    () => {
       invalidateProjectCache("__routines__");
       void refreshRoutines();
-    }).then((dispose) => {
-      if (cancelled) {
-        dispose();
-      } else {
-        unlisten = dispose;
-      }
-    });
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, [routinesActive, refreshRoutines]);
+    },
+    { enabled: routinesActive }
+  );
 
   const { wizard, entityId, openWizard, closeWizard } = useWizardParam();
   const routineWizardMode =
@@ -172,9 +161,7 @@ export function useRoutinesState(
         result.fire.status === "skipped"
       ) {
         Message.info(
-          t("routineFields.fireAccepted", {
-            defaultValue: `Run ${result.fire.status}`,
-          })
+          t("routineFields.fireAccepted", { status: result.fire.status })
         );
       } else {
         Message.success(
@@ -187,6 +174,7 @@ export function useRoutinesState(
       const detail = error instanceof Error ? error.message : String(error);
       Message.error(
         t("routineFields.fireError", {
+          detail,
           defaultValue: `Could not start the Routine: ${detail}`,
         }),
         5000

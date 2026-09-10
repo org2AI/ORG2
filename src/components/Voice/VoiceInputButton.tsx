@@ -14,7 +14,6 @@ import { PILL_CONTROL_HOVER_CLASS } from "@src/components/CompoundPill/config";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip from "@src/components/Tooltip";
 import { INPUT_AREA_BUTTONS } from "@src/config/inputAreaTokens";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import { HugeiconsIcon, Mic01Icon } from "@src/icons";
 
 interface VoiceInputButtonProps {
@@ -131,7 +130,7 @@ const VoiceInputButton: React.FC<VoiceInputButtonProps> = memo(
         content={
           <KeyboardShortcutTooltipContent
             label={t("common:tooltips.startVoiceInput")}
-            shortcut={getShortcutKeys("voice_input")}
+            shortcutId={"voice_input"}
           />
         }
         position="top"

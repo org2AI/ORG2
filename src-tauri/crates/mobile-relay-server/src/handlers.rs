@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::time::Duration;
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
@@ -641,9 +640,4 @@ fn api_error(status: StatusCode, code: &str, message: &str) -> Response {
         Json(json!({ "error": { "code": code, "message": message } })),
     )
         .into_response()
-}
-
-#[allow(dead_code)]
-fn _query_without_unknown_fields(query: HashMap<String, String>) -> HashMap<String, String> {
-    query
 }

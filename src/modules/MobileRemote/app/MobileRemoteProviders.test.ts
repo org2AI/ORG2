@@ -267,6 +267,120 @@ describe("MobileRemoteProviders send lifecycle", () => {
     });
   });
 
+  it("observes revocation while the initial roster is still loading", async () => {
+    const roster = deferred<{ sessions: never[] }>();
+    const original = mocks.call.getMockImplementation()!;
+    mocks.call.mockImplementation((method, params) =>
+      method === "session/list" ? roster.promise : original(method, params)
+    );
+    let connecting: Promise<void> | undefined;
+    await act(async () => {
+      connecting = latestContext?.connectLive({
+        wsUrl: "wss://relay.example.test/v1/mobile/ws",
+      });
+    });
+    const socket = FakeWebSocket.instances.at(-1)!;
+    await act(async () => {
+      socket.readyState = FakeWebSocket.CLOSED;
+      socket.dispatchEvent(new CloseEvent("close", { code: 1008 }));
+    });
+    expect(latestContext?.connection.status).toBe("error");
+    await act(async () => {
+      roster.resolve({ sessions: [] });
+      await connecting;
+    });
+    expect(latestContext?.connection.status).toBe("error");
+  });
+
+  it("keeps the newest desktop choice when configuration reads finish out of order", async () => {
+    act(() => root.unmount());
+    root = createRoot(container);
+    const first = deferred<{ wsUrl: string }>();
+    const browser = createBrowserMobileRemotePlatform();
+    const platform = {
+      ...browser,
+      connection: {
+        ...browser.connection,
+        selectPairedDesktop: vi.fn((_user: string, desktop: string) =>
+          desktop === "a"
+            ? first.promise
+            : Promise.resolve({ wsUrl: "wss://b.example/v1/mobile/ws" })
+        ),
+      },
+    };
+    await act(async () =>
+      root.render(
+        React.createElement(
+          TestMobileRemotePlatformProvider,
+          { platform },
+          React.createElement(
+            TestMobileRemoteProviders,
+            {
+              authUserId: "user-a",
+              demoByDefault: false,
+              suppressInitialBootstrap: true,
+            },
+            React.createElement(Probe)
+          )
+        )
+      )
+    );
+    let a!: Promise<void>;
+    await act(async () => {
+      a = latestContext!.switchPairedDesktop("a");
+    });
+    await act(async () => latestContext!.switchPairedDesktop("b"));
+    const socketCount = FakeWebSocket.instances.length;
+    await act(async () => {
+      first.resolve({ wsUrl: "wss://a.example/v1/mobile/ws" });
+      await a;
+    });
+    expect(latestContext!.connectionConfig?.wsUrl).toBe(
+      "wss://b.example/v1/mobile/ws"
+    );
+    expect(FakeWebSocket.instances).toHaveLength(socketCount);
+  });
+
+  it("loads additional workspace rows, preserves the loaded window on refresh and retains it on failure", async () => {
+    mocks.call.mockImplementation((method, params) => {
+      if (method !== "session/list") return Promise.resolve({});
+      const offset = Number(params?.offset ?? 0);
+      return Promise.resolve({
+        sessions: [
+          {
+            id: `row-${offset}`,
+            name: "Row",
+            status: "idle",
+            repoPath: `/workspace/${offset}`,
+            updatedAtMs: offset,
+          },
+        ],
+        nextOffset: offset + 50,
+        hasMore: offset === 0,
+      });
+    });
+    await act(async () => {
+      await latestContext!.refreshSessions();
+    });
+    expect(latestContext!.sessionsHasMore).toBe(true);
+    await act(async () => {
+      await latestContext!.loadMoreSessions();
+    });
+    expect(latestContext!.sessions.map((row) => row.repoPath)).toEqual([
+      "/workspace/0",
+      "/workspace/50",
+    ]);
+    await act(async () => {
+      await latestContext!.refreshSessions();
+    });
+    expect(latestContext!.sessions).toHaveLength(2);
+    mocks.call.mockRejectedValueOnce(new Error("offline"));
+    await act(async () => {
+      await expect(latestContext!.refreshSessions()).rejects.toThrow("offline");
+    });
+    expect(latestContext!.sessions).toHaveLength(2);
+  });
+
   it("renders the user message before the send RPC is acknowledged and deduplicates its echo", async () => {
     let pendingSend!: Promise<void>;
     await act(async () => {
@@ -395,6 +509,38 @@ describe("MobileRemoteProviders send lifecycle", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("ignores a late send failure after leaving and reopening the same session", async () => {
+    let oldSend!: Promise<void>;
+    const oldResult = sendResult;
+    await act(async () => {
+      oldSend = latestContext!.sendMessage("session-a", "old message");
+      void oldSend.catch(() => undefined);
+    });
+    await act(async () => {
+      await latestContext!.unsubscribeSession();
+      await latestContext!.subscribeSession("session-a");
+    });
+    sendResult = deferred<{ execution: string }>();
+    let newSend!: Promise<void>;
+    await act(async () => {
+      newSend = latestContext!.sendMessage("session-a", "new message");
+    });
+    const currentStatus = latestContext!.sendStatus;
+    const currentItems = latestContext!.transcriptItems;
+    await act(async () => {
+      oldResult.reject(new Error("Relay rejected the old message"));
+      await expect(oldSend).resolves.toBeUndefined();
+    });
+    expect(latestContext!.sendStatus).toEqual(currentStatus);
+    expect(latestContext!.transcriptItems).toEqual(currentItems);
+    expect(latestContext!.sendStatus?.phase).toBe("submitting");
+    await act(async () => {
+      sendResult.resolve({ execution: "native_agent" });
+      await newSend;
+    });
+    expect(latestContext!.sendStatus?.phase).toBe("accepted");
   });
 
   it("removes the optimistic row when dispatch fails", async () => {
@@ -628,6 +774,75 @@ describe("MobileRemoteProviders send lifecycle", () => {
       FakeWebSocket.flushCloseEvents();
       Reflect.deleteProperty(document, "hidden");
     }
+  });
+
+  it("stops automatic reconnect after a device-revoked close, including focus return", async () => {
+    const socket = FakeWebSocket.instances[0];
+    await act(async () => {
+      socket.readyState = FakeWebSocket.CLOSED;
+      socket.dispatchEvent(new CloseEvent("close", { code: 1008 }));
+    });
+    expect(latestContext?.connection.status).toBe("error");
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(FakeWebSocket.instances).toHaveLength(1);
+  });
+
+  it("never opens a socket from a late ticket after disconnect or account switch", async () => {
+    act(() => root.unmount());
+    root = createRoot(container);
+    latestContext = null;
+    FakeWebSocket.instances = [];
+    const prepared = deferred<string>();
+    const browser = createBrowserMobileRemotePlatform();
+    let signal: AbortSignal | undefined;
+    const prepareSocketUrl = vi.fn((_config, context) => {
+      signal = context.signal;
+      return prepared.promise;
+    });
+    const platform = {
+      ...browser,
+      connection: { ...browser.connection, prepareSocketUrl },
+    };
+    const render = (authUserId: string) =>
+      root.render(
+        React.createElement(
+          TestMobileRemotePlatformProvider,
+          { platform },
+          React.createElement(
+            TestMobileRemoteProviders,
+            {
+              authUserId,
+              demoByDefault: false,
+              suppressInitialBootstrap: true,
+            },
+            React.createElement(Probe)
+          )
+        )
+      );
+    await act(async () => render("user-a"));
+    let connecting: Promise<void> | undefined;
+    await act(async () => {
+      connecting = latestContext?.connectLive({
+        wsUrl: "wss://relay.example/v1/mobile/ws",
+      });
+      await Promise.resolve();
+    });
+    expect(prepareSocketUrl).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      latestContext?.disconnect();
+      render("user-b");
+    });
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      prepared.resolve("wss://relay.example/v1/mobile/ws?ticket=stale");
+      await expect(connecting).rejects.toThrow();
+    });
+    expect(FakeWebSocket.instances).toHaveLength(0);
+    expect(
+      (latestContext as MobileRemoteContextValue | null)?.connection.status
+    ).not.toBe("connected");
   });
 
   it("does not let a slow bootstrap load replace an explicit connection", async () => {
@@ -921,6 +1136,76 @@ describe("MobileRemoteProviders send lifecycle", () => {
     });
   });
 
+  it("ignores a pending subscription failure after transport revocation", async () => {
+    const result = deferred<unknown>();
+    mocks.call.mockImplementationOnce(() => result.promise);
+    let pending!: Promise<void>;
+    await act(async () => {
+      pending = latestContext!.subscribeSession("session-b");
+      void pending.catch(() => undefined);
+    });
+    act(() => {
+      FakeWebSocket.instances
+        .at(-1)!
+        .dispatchEvent(new CloseEvent("close", { code: 1008 }));
+    });
+    const phase = latestContext!.transcriptPhase;
+    await act(async () => {
+      result.reject(new Error("late subscribe failure"));
+      await expect(pending).resolves.toBeUndefined();
+    });
+    expect(latestContext!.connection.status).toBe("error");
+    expect(latestContext!.transcriptPhase).toBe(phase);
+    expect(latestContext!.transcriptError).not.toBe("late subscribe failure");
+  });
+
+  it.each(["resolve", "reject"] as const)(
+    "ignores a late historical round %s after transport revocation",
+    async (outcome) => {
+      const result = deferred<unknown>();
+      mocks.call.mockImplementationOnce(() => result.promise);
+      act(() => latestContext!.selectRound("round-1"));
+      expect(mocks.call).toHaveBeenLastCalledWith("session/round", {
+        sessionId: "session-a",
+        roundId: "round-1",
+      });
+      act(() => {
+        FakeWebSocket.instances
+          .at(-1)!
+          .dispatchEvent(new CloseEvent("close", { code: 1008 }));
+      });
+      const phase = latestContext!.transcriptPhase;
+      const items = latestContext!.transcriptItems;
+      await act(async () => {
+        if (outcome === "reject")
+          result.reject(new Error("late round failure"));
+        else
+          result.resolve({
+            sessionId: "session-a",
+            roundId: "round-1",
+            snapshot: {
+              sessionId: "session-a",
+              roundId: "round-1",
+              version: 1,
+              snapshotDelta: false,
+              upserts: [
+                {
+                  id: "late",
+                  source: "assistant",
+                  displayVariant: "message",
+                  displayText: "stale history",
+                },
+              ],
+            },
+          });
+        await Promise.resolve();
+      });
+      expect(latestContext!.transcriptPhase).toBe(phase);
+      expect(latestContext!.transcriptItems).toEqual(items);
+      expect(latestContext!.transcriptError).not.toBe("late round failure");
+    }
+  );
+
   it("loads a selected historical round through session/round", async () => {
     act(() => latestContext?.selectRound("round-1"));
     await act(async () => {
@@ -1150,6 +1435,49 @@ describe("MobileRemoteProviders send lifecycle", () => {
       expect(respondCalls()).toHaveLength(1);
       expect(latestContext?.permissionQueueDepth).toBe(1);
       expect(latestContext?.activePermission?.requestId).toBe("hookperm-2");
+      expect(latestContext?.permissionSubmitting).toBe(false);
+    });
+
+    it("does not let an old desktop response dequeue or unlock a new desktop prompt", async () => {
+      const oldReply = deferred<{ accepted: boolean }>();
+      const newReply = deferred<{ accepted: boolean }>();
+      const baseCall = mocks.call.getMockImplementation()!;
+      let answers = 0;
+      mocks.call.mockImplementation((method, params) =>
+        method === "interaction/respond_permission"
+          ? ++answers === 1
+            ? oldReply.promise
+            : newReply.promise
+          : baseCall(method, params)
+      );
+      emitPermission(flatPermissionEnvelope("same-id"));
+      let oldRequest!: Promise<void>;
+      await act(async () => {
+        oldRequest = latestContext!.respondPermission("allow");
+      });
+      await act(async () =>
+        latestContext!.connectLive({
+          wsUrl: "wss://new-desktop.example/v1/mobile/ws",
+        })
+      );
+      expect(latestContext?.activePermission).toBeNull();
+      expect(latestContext?.permissionSubmitting).toBe(false);
+      emitPermission(flatPermissionEnvelope("same-id"));
+      let newRequest!: Promise<void>;
+      await act(async () => {
+        newRequest = latestContext!.respondPermission("deny");
+      });
+      await act(async () => {
+        oldReply.resolve({ accepted: true });
+        await oldRequest;
+      });
+      expect(latestContext?.activePermission?.requestId).toBe("same-id");
+      expect(latestContext?.permissionSubmitting).toBe(true);
+      await act(async () => {
+        newReply.resolve({ accepted: true });
+        await newRequest;
+      });
+      expect(latestContext?.activePermission).toBeNull();
       expect(latestContext?.permissionSubmitting).toBe(false);
     });
 

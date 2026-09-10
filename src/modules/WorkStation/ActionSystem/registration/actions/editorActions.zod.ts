@@ -34,7 +34,9 @@ export const editorGoToLine = defineZodAction(
         .min(1, "Line must be at least 1")
         .describe("Line number to go to"),
     }),
-    shortcut: getShortcutKeys("go_to_line"),
+    get shortcut() {
+      return getShortcutKeys("go_to_line");
+    },
     examples: ["go to line 42", "jump to line 100"],
   },
   async ({ line }) => {
@@ -68,7 +70,9 @@ export const editorFind = defineZodAction(
         .default(false)
         .describe("Case sensitive search"),
     }),
-    shortcut: getShortcutKeys("find"),
+    get shortcut() {
+      return getShortcutKeys("find");
+    },
     examples: ["find TODO", "search for function"],
   },
   async ({ query, caseSensitive }) => {
@@ -103,7 +107,9 @@ export const editorReplace = defineZodAction(
         .default(false)
         .describe("Replace all occurrences"),
     }),
-    shortcut: getShortcutKeys("find_replace"),
+    get shortcut() {
+      return getShortcutKeys("find_replace");
+    },
     examples: ["replace foo with bar"],
   },
   async ({ find, replace, all }) => {
@@ -132,7 +138,9 @@ export const editorUndo = defineZodAction(
     category: "editor",
     description: "Undo last edit",
     params: z.object({}),
-    shortcut: getShortcutKeys("undo"),
+    get shortcut() {
+      return getShortcutKeys("undo");
+    },
     examples: ["undo", "undo last change"],
   },
   async () => {
@@ -156,7 +164,9 @@ export const editorRedo = defineZodAction(
     category: "editor",
     description: "Redo last undone edit",
     params: z.object({}),
-    shortcut: getShortcutKeys("redo"),
+    get shortcut() {
+      return getShortcutKeys("redo");
+    },
     examples: ["redo", "redo last change"],
   },
   async () => {
@@ -180,7 +190,9 @@ export const editorFormat = defineZodAction(
     category: "editor",
     description: "Format the current document",
     params: z.object({}),
-    shortcut: "Shift+Alt+F",
+    get shortcut() {
+      return getShortcutKeys("format_document");
+    },
     examples: ["format document", "format code", "prettify"],
   },
   async () => {

@@ -4,6 +4,7 @@ import type { TodoItem } from "@src/store/ui/todoAtom";
 import {
   extractTodosFromManageTodoSequence,
   findLatestManageTodoEvent,
+  hasAuthoritativeEmptyTodoSnapshot,
   serializeTodoSnapshot,
 } from "./todoReplayDerivation";
 
@@ -79,7 +80,16 @@ export function syncTodosFromReplayEvents(
     sessionId,
     maxIndex
   );
-  if (todos.length === 0) {
+  if (
+    todos.length === 0 &&
+    !replayEvents
+      .slice(0, maxIndex + 1)
+      .some(
+        (event) =>
+          (!event.sessionId || event.sessionId === sessionId) &&
+          hasAuthoritativeEmptyTodoSnapshot(event)
+      )
+  ) {
     return null;
   }
 

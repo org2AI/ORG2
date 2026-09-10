@@ -1871,6 +1871,29 @@ describe("forkSession (design §16.11, fork & continue)", () => {
     eventStoreMock.saveToCache.mockResolvedValue(1);
   });
 
+  it("classifies a stale explicit account as recoverable before creating a fork", async () => {
+    const client = { getSessionEventSegments: vi.fn() };
+    await expect(
+      forkSession({
+        client,
+        orgId: "org-1",
+        remoteSession: makeRemote(),
+        execution: {
+          agentDefinitionId: "builtin:sde",
+          accountId: "removed-account",
+          model: "removed-model",
+        },
+      })
+    ).rejects.toMatchObject({
+      name: "ForkOperationError",
+      kind: "agent_unavailable",
+      sourceSessionId: "remote-1",
+    });
+    expect(client.getSessionEventSegments).not.toHaveBeenCalled();
+    expect(eventStoreMock.set).not.toHaveBeenCalled();
+    expect(store.get(sessionsAtom)).toEqual([]);
+  });
+
   it("preserves every frozen segment plus the mutable tail in source order", async () => {
     const snapshot = await sealSnapshot({
       epoch: 3,

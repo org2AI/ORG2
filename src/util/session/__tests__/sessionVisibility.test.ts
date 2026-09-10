@@ -3,6 +3,20 @@ import { describe, expect, it } from "vitest";
 import { isPrimarySessionListSession } from "@src/util/session/sessionVisibility";
 
 describe("isPrimarySessionListSession", () => {
+  it("keeps an exact-ID hydrated managed native mirror out of primary lists", () => {
+    expect(
+      isPrimarySessionListSession({
+        session_id: "codexapp-rollout-native-id",
+        clientOrigin: "org2",
+      })
+    ).toBe(false);
+    expect(
+      isPrimarySessionListSession({
+        session_id: "codexapp-rollout-native-id",
+        clientOrigin: "cli",
+      })
+    ).toBe(true);
+  });
   it("keeps Agent Team coordinator root sessions visible", () => {
     expect(
       isPrimarySessionListSession({

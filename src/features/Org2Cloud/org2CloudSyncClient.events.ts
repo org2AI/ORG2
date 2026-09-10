@@ -17,7 +17,7 @@ import { getCloudCapabilities } from "./org2CloudCapabilities";
 import { endpointForOrg } from "./org2CloudOrgEndpointRouter";
 import {
   buildReplayObjectPath,
-  uploadReplayObject,
+  ensureReplayObject,
 } from "./org2CloudStorageClient";
 import {
   Org2CloudSyncError,
@@ -78,7 +78,7 @@ async function uploadFrozenSegmentsToStorage(
       encoded.seq,
       encoded.segmentHash
     );
-    await uploadReplayObject(accessToken, storagePath, encoded.bytes, endpoint);
+    await ensureReplayObject(accessToken, storagePath, encoded.bytes, endpoint);
     return {
       seq: encoded.seq,
       storagePath,

@@ -28,7 +28,7 @@ export const STORY_ORG_SCOPE = {
 } as const;
 
 export const STORY_PERSONAL_ORG_FILTER_ID = "personal-org";
-export const STORY_PERSONAL_ORG_NAME = "Personal Org";
+export const STORY_PERSONAL_ORG_NAME = "My workspace";
 
 export type ProjectOrgScope =
   (typeof STORY_ORG_SCOPE)[keyof typeof STORY_ORG_SCOPE];
@@ -300,25 +300,6 @@ export const projectOrgSettingsTabFactory =
     getTitle: (data) => `${data.orgName ?? "Org"} Settings`,
     icon: "Settings",
   });
-
-export function createProjectOrgSettingsTab(
-  org: {
-    id: string;
-    name?: string;
-    sync_provider?: string | null;
-  },
-  _section?: string
-): WorkStationTab {
-  return createProjectOrgTab(
-    {
-      id: org.id,
-      name: org.name,
-      sync_provider: org.sync_provider,
-    },
-    PROJECT_ORG_SURFACE_VIEW.SETTINGS,
-    STORY_ORG_SCOPE.PROJECT_ORG
-  );
-}
 
 export interface ProjectOrgTabData extends ProjectOrgFilterTabData {
   orgView?: ProjectOrgSurfaceView;

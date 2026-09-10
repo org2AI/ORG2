@@ -4,18 +4,26 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
+import SessionHistoryNav from "@src/components/SessionHistoryNav";
 import Tooltip from "@src/components/Tooltip";
-import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
-import { getCollapsedSidebarButtonLeft } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
+import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
+import { hasMacWindowChrome } from "@src/config/windowChromeRadius";
+import {
+  COLLAPSED_SIDEBAR_CHROME_CENTER_TOP,
+  useCollapsedSidebarButtonLeft,
+} from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
 import { HugeiconsIcon, LayoutAlignLeftIcon, PanelLeftIcon } from "@src/icons";
 import { sidebarCollapsedAtom } from "@src/store/ui/sidebarAtom";
+
+import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "./config";
 
 const CollapsedSidebarButtonComponent: React.FC = () => {
   const { t } = useTranslation("sessions");
   const collapsed = useAtomValue(sidebarCollapsedAtom);
   const setSidebarCollapsed = useSetAtom(sidebarCollapsedAtom);
   const label = t("common:tooltips.showSidebar");
-  const shortcut = getShortcutKeys("toggle_sidebar");
+  const shortcut = useShortcutKeys("toggle_sidebar");
+  const left = useCollapsedSidebarButtonLeft();
   const tooltipContent = (
     <KeyboardShortcutTooltipContent label={label} shortcut={shortcut} />
   );
@@ -24,16 +32,20 @@ const CollapsedSidebarButtonComponent: React.FC = () => {
     setSidebarCollapsed(false);
   }, [setSidebarCollapsed]);
 
-  if (!collapsed) return null;
+  // On macOS the group is drawn once, pinned in window space by
+  // `PinnedSidebarChrome`; hosts only reserve the space under it.
+  if (!collapsed || hasMacWindowChrome()) return null;
 
+  // Back / Forward ride along so they hold the spot they had in the sidebar
+  // header; `getCollapsedSidebarChromeOffset` reserves room for both.
   return (
     <div
-      className="absolute z-20 flex -translate-y-1/2 items-center"
+      className="absolute z-20 flex -translate-y-1/2 items-center gap-px"
       data-collapsed-sidebar-button
       style={
         {
-          left: getCollapsedSidebarButtonLeft(),
-          top: "calc(50% + 4px)",
+          left,
+          top: COLLAPSED_SIDEBAR_CHROME_CENTER_TOP,
           WebkitAppRegion: "no-drag",
         } as React.CSSProperties & { WebkitAppRegion: string }
       }
@@ -41,7 +53,7 @@ const CollapsedSidebarButtonComponent: React.FC = () => {
       <Tooltip
         content={tooltipContent}
         position="bottom"
-        mouseEnterDelay={200}
+        mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
         framedPanel
       >
         <span className="inline-flex">
@@ -52,7 +64,6 @@ const CollapsedSidebarButtonComponent: React.FC = () => {
             iconOnly
             className="group/collapsed-sidebar"
             onClick={handleClick}
-            title={label}
             aria-label={label}
             icon={
               <>
@@ -75,6 +86,10 @@ const CollapsedSidebarButtonComponent: React.FC = () => {
           />
         </span>
       </Tooltip>
+      <SessionHistoryNav
+        variant="chat"
+        tooltipMouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
+      />
     </div>
   );
 };

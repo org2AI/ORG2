@@ -13,10 +13,10 @@ import type { TFunction } from "i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 
-import { useRefreshSpin } from "@src/hooks/ui";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import type { QuickAction } from "@src/modules/WorkStation/shared";
 import type { SourceControlFilterMode } from "@src/modules/WorkStation/shared/SidebarModules";
-import { workStationPrimarySidebarCollapsedPersistAtom } from "@src/store/ui/workStationAtom";
+import { workStationPrimarySidebarCollapsedPersistAtom } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import {
   type GitReviewNavigationSnapshot,
   gitReviewNavigationAtom,

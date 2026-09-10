@@ -1,4 +1,5 @@
 import type { MergeStatus } from "@src/api/tauri/rpc/schemas/validation";
+import { cliSessionContextUsage } from "@src/api/tauri/session/contextUsage";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { normalizeChunkRust } from "@src/engines/SessionCore/ingestion/rustBridge";
@@ -8,6 +9,11 @@ import {
   createStreamThinkingId,
 } from "@src/engines/SessionCore/sync/utils/activityIds";
 import { createLogger } from "@src/hooks/logger";
+import {
+  clearPendingPermissionRequest,
+  pendingPermissionRequestsAtom,
+  upsertPendingPermissionRequest,
+} from "@src/store/session/permissionRequestAtom";
 import {
   clearPendingPlanApproval,
   pendingPlanApprovalsAtom,
@@ -29,7 +35,7 @@ import type {
   RawSessionEvent,
   SessionEventHandler,
 } from "../../types";
-import { makeToolCallEvent } from "../shared/eventBuilders";
+import { makeToolCallEvent } from "../shared/eventFactories";
 import {
   appendBoundedToolCallArgs,
   makeRoomForToolCallDelta,
@@ -44,6 +50,7 @@ import type { AgentWSEvent, PermissionRequestEvent } from "../shared/types";
 import {
   isCliTerminalStatus,
   markObservedCliTerminalStatus,
+  trackCliEventPersistence,
 } from "./cliLifecycle";
 import { buildCliStreamingEvent } from "./streamingEvent";
 
@@ -56,6 +63,36 @@ export function createCliEventHandler(
 ): SessionEventHandler {
   let streaming = false;
   let cancelled = false;
+  let disposed = false;
+  let contextGeneration = 0;
+  let contextReadPending = false;
+  let contextReadQueued = false;
+
+  function requestContextRefresh(): void {
+    refreshContext().catch((error: unknown) => {
+      log.warn("CLI context refresh failed", error);
+    });
+  }
+
+  async function refreshContext(): Promise<void> {
+    if (disposed) return;
+    if (contextReadPending) {
+      contextReadQueued = true;
+      return;
+    }
+    contextReadPending = true;
+    contextReadQueued = false;
+    const generation = contextGeneration;
+    try {
+      const usage = await cliSessionContextUsage(sessionId);
+      if (!disposed && generation === contextGeneration) {
+        callbacks.onTokenUpdate?.(usage?.usedTokens ?? 0, usage);
+      }
+    } finally {
+      contextReadPending = false;
+      if (contextReadQueued && !disposed) requestContextRefresh();
+    }
+  }
 
   // Lightweight local accumulators for the typewriter effect only.
   // Rust's StreamingBuffer is authoritative and replaces these when
@@ -63,9 +100,11 @@ export function createCliEventHandler(
   let msgContent = "";
   let msgStreamId = "";
   let msgStartedAt = "";
+  let msgTurnIntentId: string | undefined;
   let thinkContent = "";
   let thinkStreamId = "";
   let thinkStartedAt = "";
+  let thinkTurnIntentId: string | undefined;
   let observedTerminalStatus: CliSessionStatus | undefined;
   const finalizedStreamEventIds = new Set<string>();
   const toolCallDeltaBuffers = new Map<
@@ -84,12 +123,14 @@ export function createCliEventHandler(
     msgContent = "";
     msgStreamId = "";
     msgStartedAt = "";
+    msgTurnIntentId = undefined;
   }
 
   function clearThinkingStream(): void {
     thinkContent = "";
     thinkStreamId = "";
     thinkStartedAt = "";
+    thinkTurnIntentId = undefined;
   }
 
   function clearToolCallDeltaBuffers(): void {
@@ -108,11 +149,46 @@ export function createCliEventHandler(
 
   function reconcileTerminalEventsIfNeeded(): void {
     if (!observedTerminalStatus) return;
-    markObservedCliTerminalStatus(sessionId, observedTerminalStatus);
+    void markObservedCliTerminalStatus(sessionId, observedTerminalStatus).catch(
+      (error: unknown) => {
+        log.error("CLI terminal reconciliation failed", error);
+      }
+    );
+  }
+
+  /**
+   * Register the exact normalization + EventStore write with the CLI
+   * lifecycle barrier. The terminal status and background native reconcile
+   * may otherwise overtake this promise and snapshot an older transcript.
+   */
+  function persistObservedEvent(operation: Promise<unknown>): void {
+    trackCliEventPersistence(sessionId, operation);
+    void operation.then(reconcileTerminalEventsIfNeeded).catch((error) => {
+      log.warn("[CliAdapter] normalizeChunkRust failed:", error);
+    });
   }
 
   function asString(value: unknown): string | undefined {
     return typeof value === "string" && value.length > 0 ? value : undefined;
+  }
+
+  /** Preserve an exact runner identity without reshaping opaque provider data. */
+  function withTurnIntentId(
+    event: SessionEvent,
+    turnIntentId: string | undefined
+  ): SessionEvent {
+    if (
+      !turnIntentId ||
+      !event.result ||
+      typeof event.result !== "object" ||
+      Array.isArray(event.result)
+    ) {
+      return event;
+    }
+    return {
+      ...event,
+      result: { ...event.result, turnIntentId },
+    };
   }
 
   function getStore() {
@@ -194,7 +270,10 @@ export function createCliEventHandler(
    * malformed-frame edge. Only the card is skipped now; the transcript row
    * is written either way, and the skip is logged.
    */
-  function handlePlanApprovalActivity(chunk: ActivityChunk): boolean {
+  function handlePlanApprovalActivity(
+    chunk: ActivityChunk,
+    turnIntentId: string | undefined
+  ): boolean {
     if (chunk.action_type !== "plan_approval") return false;
     const args = chunk.args ?? {};
     const planPath = asString(args.planPath);
@@ -221,17 +300,18 @@ export function createCliEventHandler(
         })
       );
     }
-    normalizeChunkRust(chunk, sessionId)
-      .then((event) => {
-        eventStoreProxy.upsert(event, sessionId);
-      })
-      .catch((error) => {
-        log.warn("[CliAdapter] normalizeChunkRust failed:", error);
-      });
+    persistObservedEvent(
+      normalizeChunkRust(chunk, sessionId).then((event) =>
+        eventStoreProxy.upsert(withTurnIntentId(event, turnIntentId), sessionId)
+      )
+    );
     return true;
   }
 
-  function handleToolCallDeltaActivity(chunk: ActivityChunk): void {
+  function handleToolCallDeltaActivity(
+    chunk: ActivityChunk,
+    turnIntentId: string | undefined
+  ): void {
     setStreamingMode(true);
     const indexValue = chunk.result?.index;
     const index = typeof indexValue === "number" ? indexValue : 0;
@@ -260,20 +340,28 @@ export function createCliEventHandler(
 
     const parsed = parsePartialToolArgs(nextBuffer.argsJson);
     const args = buildToolArgsFromParsed(parsed);
-    eventStoreProxy.upsert(
-      makeToolCallEvent(
-        `tool-call-${nextBuffer.toolCallId}`,
-        sessionId,
-        nextBuffer.toolName,
-        nextBuffer.toolCallId,
-        args,
-        true
-      ),
-      sessionId
+    persistObservedEvent(
+      eventStoreProxy.upsert(
+        withTurnIntentId(
+          makeToolCallEvent(
+            `tool-call-${nextBuffer.toolCallId}`,
+            sessionId,
+            nextBuffer.toolName,
+            nextBuffer.toolCallId,
+            args,
+            true
+          ),
+          turnIntentId
+        ),
+        sessionId
+      )
     );
   }
 
-  function handleActivity(chunk: ActivityChunk): void {
+  function handleActivity(
+    chunk: ActivityChunk,
+    turnIntentId: string | undefined
+  ): void {
     if (
       chunk.function === "user_message" &&
       (chunk.action_type === "raw" || chunk.action_type === "raw_event")
@@ -286,7 +374,7 @@ export function createCliEventHandler(
     const isDelta = chunk.result?.is_delta === true;
     const actionType = chunk.action_type;
 
-    if (handlePlanApprovalActivity(chunk)) return;
+    if (handlePlanApprovalActivity(chunk, turnIntentId)) return;
 
     const isMessageType =
       actionType === "assistant" ||
@@ -297,7 +385,7 @@ export function createCliEventHandler(
       actionType === "llm_thinking" || actionType === "llm_thinking_delta";
 
     if (actionType === "tool_call_delta") {
-      handleToolCallDeltaActivity(chunk);
+      handleToolCallDeltaActivity(chunk, turnIntentId);
       return;
     }
 
@@ -311,16 +399,22 @@ export function createCliEventHandler(
         msgStreamId = createStreamMessageId(sessionId);
         msgStartedAt = chunk.created_at || new Date().toISOString();
       }
+      msgTurnIntentId ??= turnIntentId;
       msgContent = capStreamContent(mergeStreamingText(msgContent, deltaText));
-      eventStoreProxy.upsert(
-        buildCliStreamingEvent(
-          msgStreamId,
-          sessionId,
-          msgContent,
-          "message",
-          msgStartedAt
-        ),
-        sessionId
+      persistObservedEvent(
+        eventStoreProxy.upsert(
+          withTurnIntentId(
+            buildCliStreamingEvent(
+              msgStreamId,
+              sessionId,
+              msgContent,
+              "message",
+              msgStartedAt
+            ),
+            msgTurnIntentId
+          ),
+          sessionId
+        )
       );
       return;
     }
@@ -336,18 +430,24 @@ export function createCliEventHandler(
         thinkStreamId = createStreamThinkingId(sessionId);
         thinkStartedAt = chunk.created_at || new Date().toISOString();
       }
+      thinkTurnIntentId ??= turnIntentId;
       thinkContent = capStreamContent(
         mergeStreamingText(thinkContent, deltaText)
       );
-      eventStoreProxy.upsert(
-        buildCliStreamingEvent(
-          thinkStreamId,
-          sessionId,
-          thinkContent,
-          "thinking",
-          thinkStartedAt
-        ),
-        sessionId
+      persistObservedEvent(
+        eventStoreProxy.upsert(
+          withTurnIntentId(
+            buildCliStreamingEvent(
+              thinkStreamId,
+              sessionId,
+              thinkContent,
+              "thinking",
+              thinkStartedAt
+            ),
+            thinkTurnIntentId
+          ),
+          sessionId
+        )
       );
       return;
     }
@@ -355,51 +455,37 @@ export function createCliEventHandler(
     // Final message/thinking chunks replace any TS typewriter placeholder.
     if (isMessageType || isThinkingType) {
       const tempId = isMessageType ? msgStreamId : thinkStreamId;
-      const reconcileAfterFinalEvent = () => {
-        reconcileTerminalEventsIfNeeded();
-      };
-      normalizeChunkRust(chunk, sessionId)
-        .then((event) => {
+      const persistence = normalizeChunkRust(chunk, sessionId).then(
+        async (event) => {
+          event = withTurnIntentId(event, turnIntentId);
           if (finalizedStreamEventIds.has(event.id)) return;
           if (tempId && tempId !== event.id) {
             if (isMessageType) clearMessageStream();
             else clearThinkingStream();
             rememberFinalizedStreamEvent(event.id);
-            eventStoreProxy
-              .replaceAndRemove(tempId, event, sessionId)
-              .then(reconcileAfterFinalEvent);
+            await eventStoreProxy.replaceAndRemove(tempId, event, sessionId);
             return;
           }
-          eventStoreProxy
-            .append([event], sessionId)
-            .then(reconcileAfterFinalEvent);
-        })
-        .catch((error) => {
-          log.warn("[CliAdapter] normalizeChunkRust failed:", error);
-        });
+          await eventStoreProxy.append([event], sessionId);
+        }
+      );
+      persistObservedEvent(persistence);
       return;
     }
 
-    normalizeChunkRust(chunk, sessionId)
-      .then((event) => {
-        if (actionType === "tool_call") {
-          for (const [index, buffer] of toolCallDeltaBuffers.entries()) {
-            if (buffer.toolCallId && buffer.toolCallId === event.callId) {
-              toolCallDeltaBuffers.delete(index);
-            }
+    const persistence = normalizeChunkRust(chunk, sessionId).then((event) => {
+      event = withTurnIntentId(event, turnIntentId);
+      if (actionType === "tool_call") {
+        for (const [index, buffer] of toolCallDeltaBuffers.entries()) {
+          if (buffer.toolCallId && buffer.toolCallId === event.callId) {
+            toolCallDeltaBuffers.delete(index);
           }
-          eventStoreProxy
-            .upsert(event, sessionId)
-            .then(reconcileTerminalEventsIfNeeded);
-          return;
         }
-        eventStoreProxy
-          .append([event], sessionId)
-          .then(reconcileTerminalEventsIfNeeded);
-      })
-      .catch((error) => {
-        log.warn("[CliAdapter] normalizeChunkRust failed:", error);
-      });
+        return eventStoreProxy.upsert(event, sessionId);
+      }
+      return eventStoreProxy.append([event], sessionId);
+    });
+    persistObservedEvent(persistence);
   }
 
   function handleStreamingComplete(raw: RawSessionEvent): void {
@@ -416,39 +502,44 @@ export function createCliEventHandler(
 
     if (streamType === "message") {
       const tsTempId = msgStreamId;
+      const turnIntentId = msgTurnIntentId;
       clearMessageStream();
-      const reconcileAfterCompleteMessage = () => {
-        reconcileTerminalEventsIfNeeded();
-      };
+      const attributedEvent = withTurnIntentId(completeEvent, turnIntentId);
       if (tsTempId && tsTempId !== completeEvent.id) {
-        eventStoreProxy
-          .replaceAndRemove(tsTempId, completeEvent, sessionId)
-          .then(reconcileAfterCompleteMessage);
+        const persistence = eventStoreProxy.replaceAndRemove(
+          tsTempId,
+          attributedEvent,
+          sessionId
+        );
+        persistObservedEvent(persistence);
       } else {
-        eventStoreProxy
-          .upsert(completeEvent, sessionId)
-          .then(reconcileAfterCompleteMessage);
+        const persistence = eventStoreProxy.upsert(attributedEvent, sessionId);
+        persistObservedEvent(persistence);
       }
     } else if (streamType === "thinking") {
       const tsTempId = thinkStreamId;
+      const turnIntentId = thinkTurnIntentId;
       clearThinkingStream();
+      const attributedEvent = withTurnIntentId(completeEvent, turnIntentId);
       if (tsTempId && tsTempId !== completeEvent.id) {
-        eventStoreProxy
-          .replaceAndRemove(tsTempId, completeEvent, sessionId)
-          .then(reconcileTerminalEventsIfNeeded);
+        const persistence = eventStoreProxy.replaceAndRemove(
+          tsTempId,
+          attributedEvent,
+          sessionId
+        );
+        persistObservedEvent(persistence);
       } else {
-        eventStoreProxy
-          .upsert(completeEvent, sessionId)
-          .then(reconcileTerminalEventsIfNeeded);
+        const persistence = eventStoreProxy.upsert(attributedEvent, sessionId);
+        persistObservedEvent(persistence);
       }
     } else {
-      eventStoreProxy
-        .upsert(completeEvent, sessionId)
-        .then(reconcileTerminalEventsIfNeeded);
+      const persistence = eventStoreProxy.upsert(completeEvent, sessionId);
+      persistObservedEvent(persistence);
     }
   }
 
-  function handleStatusChange(status: string): void {
+  function handleStatusChange(raw: RawSessionEvent): void {
+    const status = raw.status as string;
     const terminalStatus = isCliTerminalStatus(status as CliSessionStatus)
       ? (status as CliSessionStatus)
       : undefined;
@@ -458,9 +549,30 @@ export function createCliEventHandler(
       clearThinkingStream();
       clearToolCallDeltaBuffers();
       setStreamingMode(false);
-      markObservedCliTerminalStatus(sessionId, observedTerminalStatus);
       if (status === "cancelled") cancelled = true;
-      callbacks.onAgentComplete?.();
+      // Do not expose the runtime as switchable until visible partial message
+      // buffers and interrupted tool-call fences are durably terminalized.
+      // Otherwise a fast Stop -> runtime switch can read the old native fork
+      // before EventStore owns the interrupted suffix.
+      void markObservedCliTerminalStatus(sessionId, observedTerminalStatus)
+        .then(() => {
+          if (disposed) return;
+          // The shared lifecycle callback owns native transcript reconciliation.
+          // Notify it after streamed writes settle, preserving the turn identity
+          // so a late terminal cannot reconcile a newer dispatch.
+          callbacks.onStatusChange?.(
+            status,
+            asString(raw.error_message) ?? asString(raw.errorMessage),
+            {
+              turnIntentId:
+                asString(raw.turn_intent_id) ?? asString(raw.turnIntentId),
+            }
+          );
+          callbacks.onAgentComplete?.();
+        })
+        .catch((error: unknown) => {
+          log.error("CLI terminal completion failed", error);
+        });
     }
 
     if (isSessionRuntimeExecuting(status)) {
@@ -485,19 +597,30 @@ export function createCliEventHandler(
           : {},
       origin,
     };
-    window.dispatchEvent(
-      new CustomEvent("agent-permission-request", { detail: permissionEvent })
+    getStore()?.set(pendingPermissionRequestsAtom, (prev) =>
+      upsertPendingPermissionRequest(prev, permissionEvent)
     );
   }
 
   return {
     handleEvent(raw: RawSessionEvent): void {
+      if (disposed) return;
       const msgSessionId =
         (raw.session_id as string) || (raw.sessionId as string);
       if (msgSessionId !== sessionId) return;
 
       if (raw.type === "agent:interaction_finalized") {
         handleInteractionFinalized(raw as unknown as AgentWSEvent, sessionId);
+      } else if (raw.type === "permission:resolved") {
+        if (typeof raw.requestId === "string" && raw.requestId) {
+          getStore()?.set(pendingPermissionRequestsAtom, (prev) =>
+            clearPendingPermissionRequest(
+              prev,
+              sessionId,
+              raw.requestId as string
+            )
+          );
+        }
       } else if (raw.type === "permission:request") {
         handleCliPermissionRequest(raw);
       } else if (raw.type === "agent:plan_ready_for_approval") {
@@ -507,14 +630,18 @@ export function createCliEventHandler(
       } else if (raw.type === "agent:plan_approval_archived") {
         handlePlanApprovalArchivedBroadcast(raw);
       } else if (raw.type === "code_session.activity" && raw.chunk) {
-        handleActivity(raw.chunk as unknown as ActivityChunk);
+        handleActivity(
+          raw.chunk as unknown as ActivityChunk,
+          asString(raw.turn_intent_id) ?? asString(raw.turnIntentId)
+        );
       } else if (raw.type === "agent:streaming_complete") {
         handleStreamingComplete(raw);
       } else if (raw.type === "code_session.status_changed") {
-        handleStatusChange(raw.status as string);
+        handleStatusChange(raw);
       } else if (raw.type === "code_session.token_usage_updated") {
         const total = raw.total_tokens;
-        if (typeof total === "number") callbacks.onTokenUpdate?.(total);
+        // Billing events invalidate telemetry; their cumulative total is not context.
+        if (typeof total === "number") requestContextRefresh();
       } else if (raw.type === "code_session.worktree_created") {
         // Neither `code_session.worktree_created`
         // (src-tauri/src/agent_sessions/cli/commands/create.rs) nor
@@ -554,6 +681,8 @@ export function createCliEventHandler(
     },
 
     reset(): void {
+      contextGeneration += 1;
+      contextReadQueued = false;
       clearMessageStream();
       clearThinkingStream();
       clearToolCallDeltaBuffers();
@@ -567,6 +696,7 @@ export function createCliEventHandler(
     },
 
     dispose(): void {
+      disposed = true;
       this.reset();
     },
   };

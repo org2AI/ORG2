@@ -1,10 +1,11 @@
-import React, { memo, useCallback, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
 import ModelIcon from "@src/components/ModelIcon";
 import { resolveAgentIcon } from "@src/config/agentIcons";
 import { createLogger } from "@src/hooks/logger";
+import { useKeyedCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
   Clock01Icon,
   FingerPrintIcon,
@@ -35,17 +36,11 @@ import HoverCardBase, {
   type HoverCardPosition,
   HoverCardRow,
 } from "./HoverCardBase";
+import { COPIED_FLASH_MS, formatCompactSessionId } from "./sessionIdFormat";
 
 const logger = createLogger("CloudSessionHoverCard");
-const COPIED_FLASH_MS = 1500;
-const COMPACT_ID_EDGE_CHARS = 8;
 const SESSION_ID_BUTTON_CLASS_NAME =
   "block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-left text-text-2 underline-offset-2 transition-colors hover:text-accent-9 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-8";
-
-function formatCompactSessionId(id: string): string {
-  if (id.length <= COMPACT_ID_EDGE_CHARS * 2 + 2) return id;
-  return `${id.slice(0, COMPACT_ID_EDGE_CHARS)}…${id.slice(-COMPACT_ID_EDGE_CHARS)}`;
-}
 
 /**
  * Hover metadata card for "Team sessions" rows (cloudremote-* sidebar ids).
@@ -66,8 +61,6 @@ function renderAgentIcon(display: SessionDisplayMetadata) {
 export const CloudSessionHoverCardContent: React.FC<CloudSessionHoverCardContentProps> =
   memo(({ row, viewers = [] }) => {
     const { t, i18n } = useTranslation(["navigation", "sessions", "common"]);
-    const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
-    const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const display = resolveSessionDisplayMetadata({
       kind: "remote",
       session: row,
@@ -98,34 +91,18 @@ export const CloudSessionHoverCardContent: React.FC<CloudSessionHoverCardContent
       .filter(Boolean)
       .join(", ");
 
-    useEffect(
-      () => () => {
-        if (copiedTimerRef.current !== null) {
-          clearTimeout(copiedTimerRef.current);
-        }
-      },
-      []
-    );
-
-    const handleCopySessionId = useCallback(() => {
-      void copyText(row.sourceSessionId)
-        .then(() => {
-          setCopiedSessionId(row.sourceSessionId);
-          if (copiedTimerRef.current !== null) {
-            clearTimeout(copiedTimerRef.current);
-          }
-          copiedTimerRef.current = setTimeout(() => {
-            copiedTimerRef.current = null;
-            setCopiedSessionId(null);
-          }, COPIED_FLASH_MS);
-        })
-        .catch((error: unknown) => {
-          logger.warn("failed to copy shared session id", {
-            error,
-            sessionId: row.sourceSessionId,
-          });
-        });
-    }, [row.sourceSessionId]);
+    const copySessionId = useCallback(async (sessionId: string) => {
+      try {
+        await copyText(sessionId);
+      } catch (error) {
+        logger.warn("failed to copy shared session id", { error, sessionId });
+        throw error;
+      }
+    }, []);
+    // Keyed on the session id so a card re-rendered for another row never
+    // shows a stale check.
+    const { copiedKey: copiedSessionId, handleCopy: handleCopySessionId } =
+      useKeyedCopyCheck(copySessionId, { durationMs: COPIED_FLASH_MS });
 
     return (
       // Fork provenance renders as the lineage row below — drop the fork
@@ -322,7 +299,7 @@ export const CloudSessionHoverCardContent: React.FC<CloudSessionHoverCardContent
             aria-label={`${t("common:actions.copy")} ${t(
               "sessions:history.detail.sessionId"
             )}`}
-            onClick={handleCopySessionId}
+            onClick={() => handleCopySessionId(row.sourceSessionId)}
           >
             <span className="text-text-3">
               {t("sessions:history.detail.sessionId")}

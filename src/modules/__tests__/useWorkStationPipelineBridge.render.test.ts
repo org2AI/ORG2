@@ -14,12 +14,12 @@ import {
   vi,
 } from "vitest";
 
+import { activateChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { type ChatPanelTabsState } from "@src/store/chatPanel/chatPanelTabsModel";
 import {
-  type ChatPanelTabsState,
-  activateChatPanelTabAtom,
   activeChatPanelTabAtom,
   chatPanelTabsAtom,
-} from "@src/store/chatPanel/chatPanelTabsAtom";
+} from "@src/store/chatPanel/chatPanelTabsState";
 import {
   activeSessionIdAtom,
   workstationActiveSessionIdAtom,

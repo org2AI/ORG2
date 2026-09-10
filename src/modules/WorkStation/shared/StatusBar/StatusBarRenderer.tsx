@@ -14,7 +14,7 @@ import React, { memo } from "react";
 import {
   activeStatusBarCallbacksAtom,
   activeStatusBarStateAtom,
-} from "@src/store/ui/workStationAtom";
+} from "@src/store/ui/workStationLayout/statusBarAtoms";
 
 import BrowserStatusBar from "./BrowserStatusBar";
 import { EditorStatusBar } from "./EditorStatusBar";

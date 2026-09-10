@@ -1,20 +1,11 @@
-import { vi } from "vitest";
-
 import {
   getImageMimeType,
   getPreviewType,
   isPreviewOnlyFile,
   isPreviewableFile,
+  requiresFilePreviewRoute,
   supportsPreviewToggle,
 } from "../previewTypes";
-
-vi.mock("@src/util/platform/tauri", () => ({
-  isMacOS: vi.fn(() => true),
-}));
-
-vi.mock("../binaryDetection", () => ({
-  isBinaryByExtension: vi.fn(() => false),
-}));
 
 describe("getPreviewType", () => {
   it("classifies common extensions", () => {
@@ -40,8 +31,13 @@ describe("getPreviewType", () => {
     expect(getPreviewType("")).toBe("code");
   });
 
-  it("returns pages on macOS for .pages", () => {
-    expect(getPreviewType("doc.pages")).toBe("pages");
+  it("routes Pages documents to the unsupported binary view", () => {
+    expect(getPreviewType("doc.pages")).toBe("binary");
+    expect(getPreviewType("DOC.PAGES")).toBe("binary");
+    expect(requiresFilePreviewRoute("doc.pages")).toBe(true);
+    expect(isPreviewableFile("doc.pages")).toBe(false);
+    expect(isPreviewOnlyFile("doc.pages")).toBe(false);
+    expect(supportsPreviewToggle("doc.pages")).toBe(false);
   });
 
   it("classifies office document extensions individually", () => {
@@ -52,7 +48,7 @@ describe("getPreviewType", () => {
     expect(getPreviewType("a.xls")).toBe("xlsx");
     expect(getPreviewType("a.pptx")).toBe("pptx");
     expect(getPreviewType("a.ppt")).toBe("pptx");
-    expect(getPreviewType("a.pages")).toBe("pages");
+    expect(getPreviewType("a.pages")).toBe("binary");
     expect(getPreviewType("a.sqlite")).toBe("database");
   });
 });
@@ -84,7 +80,6 @@ describe("isPreviewOnlyFile", () => {
     expect(isPreviewOnlyFile("x.docx")).toBe(true);
     expect(isPreviewOnlyFile("x.xlsx")).toBe(true);
     expect(isPreviewOnlyFile("x.pptx")).toBe(true);
-    expect(isPreviewOnlyFile("x.pages")).toBe(true);
     expect(isPreviewOnlyFile("x.db")).toBe(true);
     expect(isPreviewOnlyFile("x.mp4")).toBe(true);
   });

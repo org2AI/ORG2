@@ -47,7 +47,7 @@ import {
   sessionRuntimeStatusAtom,
 } from "@src/store/session/cliSessionStatusAtom";
 import { sessionByIdAtom } from "@src/store/session/sessionAtom/atoms";
-import { wpReadOnlyAtom } from "@src/store/ui/chatPanelAtom";
+import { wpReadOnlyAtom } from "@src/store/ui/chatPanel/miscAtoms";
 import { workspaceFoldersAtom } from "@src/store/ui/workspaceFoldersAtom";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 import { getCompactPathLabel } from "@src/util/file/pathUtils";
@@ -66,9 +66,11 @@ import { canvasSlashCommandNeedsInstruction } from "./canvasSlashCommand";
 import { resolveDraftRestoreAction } from "./draftRestore";
 import {
   type PlanMentionSourceItem,
+  resolveInputAreaWorkingState,
   useInputAreaChatRoundCount,
   useInputAreaComposerStopBlockingWork,
   useInputAreaPlanMentionSource,
+  useInputAreaRunnerTurnActive,
 } from "./inputAreaEventSelectors";
 import type {
   CustomMentionOption,
@@ -163,9 +165,11 @@ export function useInputArea(
     customMentionOptions,
     onSubmitOverride,
     sessionId: propSessionId,
+    controlSessionId,
     sessionScope = "active",
     submitDisabled = false,
     enableAgentInterceptors = true,
+    executionControlsEnabled = true,
   } = options;
 
   // ============================================
@@ -186,6 +190,10 @@ export function useInputArea(
   // Workspace Chat
   // ============================================
 
+  const conversationRunnerTurnActive = useInputAreaRunnerTurnActive(
+    controlSessionId ?? null
+  );
+
   const {
     handleSessInputChange,
     handleSessChatSubmit,
@@ -194,7 +202,11 @@ export function useInputArea(
     isHosted,
     canStopAgent,
     canResume,
-  } = useWorkspaceChat({ sessionId: propSessionId, sessionScope });
+  } = useWorkspaceChat({
+    sessionId: propSessionId,
+    sessionScope,
+    controlSessionId,
+  });
 
   // ============================================
   // Atoms (Global State)
@@ -264,8 +276,14 @@ export function useInputArea(
   // This uses the composer-specific gate: foreground tools remain stoppable,
   // while background processes and hidden status sentinels stay in footer/replay
   // surfaces without keeping the main button stuck in Stop.
-  const isWpGeneWorking =
-    (isSessionActive || hasComposerStopBlockingWork) && !isPendingCancel;
+  const isWpGeneWorking = resolveInputAreaWorkingState({
+    runnerSessionId: controlSessionId ?? null,
+    runnerTurnActive: conversationRunnerTurnActive,
+    sourceSessionActive: isSessionActive,
+    hasComposerStopBlockingWork,
+    pendingCancel: isPendingCancel,
+    executionControlsEnabled,
+  });
 
   const sessionFileReloadKey = buildCompactFilesReloadKey(
     activeSessionId ?? null,
@@ -669,7 +687,8 @@ export function useInputArea(
     setIsInputFocused: state.setIsInputFocused,
     handleInputBlur,
     handleContentChange,
-    compactHintVisible,
+    compactHintVisible:
+      compactHintVisible && activeSession?.cliAgentType !== "codex",
     canvasHintVisible,
     handleAtMention: atMention.handleAtMention,
     handleAtMentionClose: atMention.handleAtMentionClose,

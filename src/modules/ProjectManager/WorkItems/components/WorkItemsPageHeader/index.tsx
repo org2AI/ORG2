@@ -13,7 +13,7 @@ import SplitListHeader from "@src/modules/shared/layouts/SplitListHeader";
 import { WorkItemsHeaderContent } from "./WorkItemsHeaderContent";
 import type { WorkItemsPageHeaderProps } from "./types";
 
-export type { StatusCounts, WorkItemsViewTab } from "./types";
+export type { WorkItemsViewTab } from "./types";
 
 const WorkItemsPageHeader = ({
   projectName,
@@ -42,7 +42,7 @@ const WorkItemsPageHeader = ({
   splitHeaderLeading,
   publishToWorkstationHeader = false,
   workstationHeaderHost = "project",
-  sidebarToggleDisabled = false,
+  shellLeadingChromeHidden = false,
   className = "",
 }: WorkItemsPageHeaderProps) => {
   const { t } = useTranslation("projects");
@@ -108,7 +108,7 @@ const WorkItemsPageHeader = ({
     content: {
       content: headerContent,
       trailing: headerTrailing,
-      sidebarToggleDisabled,
+      shellLeadingChromeHidden,
       hidden: splitListHeader,
     },
     enabled: publishToWorkstationHeader,

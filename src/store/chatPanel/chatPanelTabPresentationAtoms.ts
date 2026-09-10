@@ -8,14 +8,17 @@ import {
   workstationActiveSessionIdAtom,
 } from "@src/store/session/viewAtom";
 import {
-  CHAT_PANEL_SURFACE_KIND,
   DEFAULT_CHAT_PANEL_CREATE_TARGET,
   chatPanelCreateTargetAtom,
-  chatPanelNavigateAtom,
   chatPanelStartPageOpenAtom,
+} from "@src/store/ui/chatPanel/selectionAtoms";
+import {
+  chatPanelNavigateAtom,
   toggleChatPanelMaximizedAtom,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/surfaceAtoms";
+import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 
+import { recordChatPanelTabTransitionAtom } from "./chatPanelRecentTabsState";
 import {
   type ChatPanelTab,
   isChatPanelTabStationAvailable,
@@ -165,6 +168,12 @@ export const activateChatPanelTabAtom = atom(
     const tab = state.tabs.find((candidate) => candidate.id === tabId);
     if (!tab) return;
     if (state.activeTabId !== tabId) {
+      set(recordChatPanelTabTransitionAtom, {
+        previousTab: state.tabs.find(
+          (candidate) => candidate.id === state.activeTabId
+        ),
+        nextTab: tab,
+      });
       set(chatPanelTabsAtom, { ...state, activeTabId: tabId });
     }
 
@@ -242,6 +251,10 @@ export const appendAndActivateChatPanelTabAtom = atom(
             candidate.id === activeTab.id ? tab : candidate
           )
         : [...state.tabs, tab];
+    set(recordChatPanelTabTransitionAtom, {
+      previousTab: activeTab,
+      nextTab: tab,
+    });
     set(chatPanelTabsAtom, {
       tabs,
       activeTabId: tab.id,

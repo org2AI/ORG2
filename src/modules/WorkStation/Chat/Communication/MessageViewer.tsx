@@ -22,7 +22,6 @@ import { usePendingPlanApproval } from "@src/hooks/session/usePendingPlanApprova
 import { HugeiconsIcon, UnfoldMoreIcon } from "@src/icons";
 import type { SessionReplayPlaceholderMode } from "@src/modules/WorkStation/shared";
 
-import { isEmailBubbleEvent } from "./EmailMessageBubble";
 import { EmptyState } from "./EmptyState";
 import {
   BubbleWrapper,
@@ -44,6 +43,7 @@ import {
 } from "./MessageViewer/planDocViewModel";
 import { PlanDocPanel } from "./PlanDocPanel";
 import { TodoKanban } from "./TodoKanban";
+import { isEmailBubbleEvent } from "./emailBubbleEvent";
 import type { MessageEntry, MessageViewMode } from "./types";
 
 function minuteBucket(timestamp: string): number {

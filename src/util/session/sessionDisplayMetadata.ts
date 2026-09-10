@@ -49,6 +49,7 @@ export interface LocalSessionDisplayInput {
 type RemoteSessionDisplayInput = Pick<
   RemoteTeammateSessionMetadata,
   | "sourceSessionId"
+  | "forkedFrom"
   | "cliAgentType"
   | "agentDisplayName"
   | "agentDefinitionId"
@@ -105,6 +106,9 @@ function normalizeSessionDisplayInput(
     const { session } = source;
     return {
       kind: source.kind,
+      // Provider identity belongs to the visible execution episode. The
+      // canonical root id is grouping lineage, not display metadata: using it
+      // here would relabel a Claude continuation under a Codex root as Codex.
       sessionId: session.sourceSessionId,
       cliAgentType: session.cliAgentType,
       agentDisplayName: session.agentDisplayName,
@@ -217,17 +221,6 @@ function resolveAgentIconId(
   );
 }
 
-function resolveCliAgentLabel(
-  kind: SessionDisplayMetadataSource["kind"],
-  agentType: string | undefined
-): string | undefined {
-  if (!agentType) return undefined;
-  if (kind === "local" && agentType === CLI_AGENT.CLAUDE_CODE) {
-    return "Claude CLI";
-  }
-  return formatAgentType(agentType);
-}
-
 function resolveAgentLabel(
   input: NormalizedSessionDisplayInput,
   agentType: string | undefined,
@@ -251,7 +244,7 @@ function resolveAgentLabel(
 
   return (
     input.agentDisplayName ||
-    resolveCliAgentLabel(input.kind, agentType) ||
+    (agentType ? formatAgentType(agentType) : undefined) ||
     "Agent"
   );
 }

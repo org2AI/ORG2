@@ -54,6 +54,8 @@ export interface ActiveAddressRun {
   orgId: string;
   cloudSessionId: string;
   localSessionId: string;
+  /** Stable idempotency namespace for every reply produced by this turn. */
+  turnIntentId: string;
   validHeadIds: ReadonlySet<string>;
   replied: Map<string, string>;
 }
@@ -189,6 +191,7 @@ export async function replyViaActiveAddressRun(
     body: trimmedBody,
     parentId: commentId,
     kind: "agent_report",
+    clientMessageKey: `agent-report:${run.turnIntentId}:${commentId}`,
   });
   run.replied.set(commentId, trimmedBody);
   broadcastCommentsChanged(run.orgId, run.cloudSessionId);
@@ -198,13 +201,6 @@ export async function replyViaActiveAddressRun(
 type AddressRunFinishedListener = () => void;
 const addressRunFinishedListeners = new Set<AddressRunFinishedListener>();
 
-export function registerAddressRunFinishedListener(
-  listener: AddressRunFinishedListener
-): () => void {
-  addressRunFinishedListeners.add(listener);
-  return () => addressRunFinishedListeners.delete(listener);
-}
-
 function notifyAddressRunFinished(): void {
   for (const listener of [...addressRunFinishedListeners]) {
     try {
@@ -213,10 +209,6 @@ function notifyAddressRunFinished(): void {
       log.warn(`address-run finished listener threw: ${String(error)}`);
     }
   }
-}
-
-export function isAddressRunActive(localSessionId: string): boolean {
-  return (scheduledRunsBySession.get(localSessionId)?.length ?? 0) > 0;
 }
 
 async function freshAccessToken(): Promise<string> {
@@ -421,6 +413,7 @@ async function executeAddressCommentsRound(
       orgId,
       cloudSessionId,
       localSessionId,
+      turnIntentId,
       validHeadIds: new Set(threads.map((thread) => thread.headId)),
       replied: new Map(),
     };

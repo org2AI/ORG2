@@ -76,7 +76,7 @@ vi.mock("@src/hooks/settings/useSettings", () => ({
   useSetting: (key: string) => [mocks.settings.get(key), vi.fn()],
 }));
 
-vi.mock("@src/hooks/async", () => ({
+vi.mock("@src/hooks/async/useAsyncData", () => ({
   useAsyncData: <T>({ initialData }: { initialData: T }) => ({
     data: initialData,
     error: null,
@@ -139,7 +139,6 @@ describe("MobileRemoteSettingsSection outdoor pairing", () => {
       "mobileRemote.relayUrl",
       "wss://relay.example.test/v1/mobile/ws"
     );
-    mocks.settings.set("mobileRemote.desktopToken", "123456789012345678901234");
     mocks.settings.set("mobileRemote.allowLanExposure", false);
     mocks.settings.set("mobileRemote.lanToken", "lan-token");
     mocks.settings.set("mobileRemote.lanPort", 13847);

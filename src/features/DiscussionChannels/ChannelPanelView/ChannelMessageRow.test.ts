@@ -59,11 +59,11 @@ vi.mock("@src/components/SessionHoverCard/useSessionTurnOverview", () => ({
 }));
 
 vi.mock(
-  "@src/store/chatPanel/chatPanelTabOpenAtoms",
+  "@src/store/chatPanel/chatPanelTabOpen/session",
   async (importOriginal) => {
     const actual =
       await importOriginal<
-        typeof import("@src/store/chatPanel/chatPanelTabOpenAtoms")
+        typeof import("@src/store/chatPanel/chatPanelTabOpen/session")
       >();
     const { atom } = await import("jotai");
     return {

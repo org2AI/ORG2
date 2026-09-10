@@ -9,6 +9,7 @@ import { type UnlistenFn, listen } from "@tauri-apps/api/event";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 
+import type { BrowserSession } from "@src/engines/BrowserCore/types";
 import { createLogger } from "@src/hooks/logger";
 import { useInlineWebview } from "@src/hooks/platform/useInlineWebview";
 import { sidebarWidthAtom } from "@src/store/ui/sidebarAtom";
@@ -18,7 +19,6 @@ import {
   simulatorPrimarySidebarWidthAtom,
 } from "@src/store/ui/simulatorAtom";
 import { NEW_TAB_TITLE } from "@src/store/workstation/browser/tabs";
-import { BrowserSession } from "@src/types/ui/tabs";
 
 const log = createLogger("BrowserSessionWebview");
 
@@ -134,10 +134,6 @@ const BrowserSessionWebview: React.FC<BrowserSessionWebviewProps> = ({
           title,
           history: newHistory,
           historyIndex: newHistory.length - 1,
-          historyEntries: [
-            ...(session.historyEntries ?? []),
-            { url, title, visitedAt: Date.now() },
-          ],
           isLoading: false,
         });
       } else {
@@ -148,7 +144,6 @@ const BrowserSessionWebview: React.FC<BrowserSessionWebviewProps> = ({
     [
       onSessionUpdate,
       session.history,
-      session.historyEntries,
       session.historyIndex,
       session.id,
       session.url,

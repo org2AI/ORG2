@@ -9,13 +9,16 @@ import type { TabPillItem } from "@/src/components/TabPill";
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Placeholder } from "@src/components/Placeholder";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
-import type { DependencyStatus } from "@src/modules/MainApp/Integrations/hooks/useSystemDependencies";
+import {
+  type DependencyStatus,
+  NON_DB_CATEGORIES,
+} from "@src/modules/MainApp/Integrations/hooks/useSystemDependencies";
+import { RuntimeRefreshButton } from "@src/modules/shared/dataSource/RuntimeSectionHeader";
 import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
 
 import {
@@ -42,6 +45,8 @@ const CATEGORY_LABEL_KEYS: Record<string, string> = {
 interface DependenciesTableProps {
   dependencies: DependencyStatus[];
   loading: boolean;
+  refreshing?: boolean;
+  onRefresh?: () => void;
   selectedDepId?: string | null;
   onSelectDep?: (dep: DependencyStatus | null) => void;
 }
@@ -49,6 +54,8 @@ interface DependenciesTableProps {
 const DependenciesTable: React.FC<DependenciesTableProps> = ({
   dependencies,
   loading,
+  refreshing = false,
+  onRefresh,
   selectedDepId,
   onSelectDep,
 }) => {
@@ -60,9 +67,7 @@ const DependenciesTable: React.FC<DependenciesTableProps> = ({
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
 
   const categoryTabs = useMemo<TabPillItem[]>(() => {
-    const categories = new Set<string>();
-    dependencies.forEach((dep) => categories.add(dep.category));
-    const sorted = Array.from(categories).sort();
+    const sorted = [...NON_DB_CATEGORIES].sort();
     const ordered = sorted.includes(DEFAULT_CATEGORY_KEY)
       ? [
           DEFAULT_CATEGORY_KEY,
@@ -73,7 +78,7 @@ const DependenciesTable: React.FC<DependenciesTableProps> = ({
       key: cat,
       label: CATEGORY_LABEL_KEYS[cat] ? t(CATEGORY_LABEL_KEYS[cat]) : cat,
     }));
-  }, [dependencies, t]);
+  }, [t]);
 
   const activeCategory = categoryTabs.some(
     (tab) => tab.key === selectedCategory
@@ -165,22 +170,26 @@ const DependenciesTable: React.FC<DependenciesTableProps> = ({
     [t]
   );
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-lg bg-fill-2">
-        <Placeholder variant="loading" />
-      </div>
-    );
-  }
-
   return (
     <SettingsTable<DependencyStatus>
+      loading={loading}
       hover
       searchBar={{
         searchValue: searchQuery,
         onSearchChange: setSearchQuery,
         searchPlaceholder: tCommon("common.searchPlaceholder"),
         allowSearchClear: true,
+        rightContent: onRefresh ? (
+          <RuntimeRefreshButton
+            iconOnly
+            variant="secondary"
+            label={tCommon("actions.refresh")}
+            onRefresh={onRefresh}
+            refreshing={refreshing}
+            disabled={loading}
+            dataTestId="dependencies-refresh"
+          />
+        ) : undefined,
         tabPills: (
           <TabPill
             tabs={categoryTabs}

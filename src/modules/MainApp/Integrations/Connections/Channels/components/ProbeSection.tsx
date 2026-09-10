@@ -7,7 +7,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 
 import type { ChannelProbeResult } from "../types";
 
@@ -43,7 +43,7 @@ const ProbeSection: React.FC<ProbeSectionProps> = ({
       )}
 
       {result && (
-        <InlineAlert
+        <PageNotice
           type={result.ok ? "success" : "danger"}
           title={`${result.ok ? t("integrations.probeSuccess") : t("integrations.probeFailed")} (${result.elapsed_ms}ms)`}
         >
@@ -51,7 +51,7 @@ const ProbeSection: React.FC<ProbeSectionProps> = ({
             <span className="text-[12px]">{result.identity}</span>
           )}
           {result.error && <span className="text-[12px]">{result.error}</span>}
-        </InlineAlert>
+        </PageNotice>
       )}
     </div>
   );

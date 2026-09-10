@@ -64,7 +64,6 @@ const QuitConfirmationModal = () => {
       maskClosable={false}
       onCancel={handleCancel}
       bodyClassName="px-5 py-3"
-      footerTopBorder={false}
       footer={
         <div className="flex h-12 items-center justify-end gap-2 px-3">
           <Button variant="tertiary" onClick={handleCancel}>

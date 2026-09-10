@@ -4,7 +4,7 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import ModelIcon from "@src/components/ModelIcon";
 import Select from "@src/components/Select";
-import { SETTINGS_TABLE_CELL } from "@src/components/SettingsTable";
+import { SETTINGS_TABLE_CELL } from "@src/components/SettingsTable/tokens";
 import Switch from "@src/components/Switch";
 import { MODEL_TABLE_CONTROL_SIZE } from "@src/config/modelTable";
 import {
@@ -169,9 +169,11 @@ export function renderGroupSummaryCell(
         <span className={`${SETTINGS_TABLE_CELL.primary} truncate font-medium`}>
           {row.groupLabel}
         </span>
-        <span className="shrink-0 text-[12px] text-text-3">
-          · {t("modelsTable.variantCount", { count: versionCount })}
-        </span>
+        {versionCount > 1 && (
+          <span className="shrink-0 text-[12px] text-text-3">
+            · {t("modelsTable.variantCount", { count: versionCount })}
+          </span>
+        )}
       </div>
       <GroupRowEraTag era={row.type === "current" ? "current" : "older"} />
     </div>

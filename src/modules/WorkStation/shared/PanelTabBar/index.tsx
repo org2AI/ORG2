@@ -28,7 +28,7 @@ import {
   SquareChevronRightIcon as SquareChevronRight,
   TriangleAlertIcon as TriangleAlert,
 } from "@src/icons";
-import type { SecondaryPanelPosition } from "@src/store/ui/workStationAtom";
+import type { SecondaryPanelPosition } from "@src/store/ui/workStationLayout/secondaryPanelPositionAtoms";
 
 export { PanelPositionToggle } from "./PositionToggle";
 

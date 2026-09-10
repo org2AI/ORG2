@@ -7,22 +7,50 @@
 //! Org task tools and recovery paths. Ownerless tasks are durable
 //! "awaiting assignment" rows; workers never claim them autonomously.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use database::db::{get_connection, with_sessions_writer};
-use rusqlite::{params, Connection, Result as SqliteResult};
+use rusqlite::{Connection, Result as SqliteResult};
+use sha2::{Digest, Sha256};
 
-use crate::coordination::agent_org_runs::{
-    recovery_dispatch_recipient_is_available, AgentOrgRunStore,
-};
-
+mod actor;
+pub(crate) use actor::TaskActorAudit;
+#[cfg(test)]
+pub(crate) use actor::TaskActorKind;
 pub(super) mod graph;
 pub(super) mod helpers;
 mod store;
-pub(crate) use graph::validate_dependency_graph;
+pub(crate) use actor::{PlanDecisionTaskAuthority, SystemArchiveOrRecovery, SystemTaskOperation};
+pub use actor::{TaskGraphWriterAdmin, TaskOwnerExecution, UserTaskHandoffAdmin};
 pub use graph::TaskGraphIndex;
 pub use store::AgentOrgTaskStore;
 
+/// Exact durable output of one failed TaskExecution recovery.
+///
+/// `receipt_id` is present only for startup recovery, where the Task mutation
+/// and the Coordinator-facing recovery doorbell are committed atomically.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskExecutionRecovery {
+    pub task: Task,
+    pub previous_owner_member_id: String,
+    pub failed_session_id: String,
+    pub failed_turn_intent_id: String,
+    pub receipt_id: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskAssignmentDoorbellRepair {
+    pub org_run_id: String,
+    pub task_id: String,
+    pub owner_member_id: String,
+    pub assignment_event_id: String,
+    pub owner_inbox_id: i64,
+    pub coordinator_receipt_id: String,
+}
+
+#[cfg(test)]
+mod task_store_contract_tests;
 #[cfg(test)]
 mod tests;
 
@@ -30,19 +58,21 @@ pub const TASK_DEPENDENCY_CYCLE_ERROR: &str = "task_dependency_cycle";
 pub const TASK_DEPENDENCY_LIMIT_ERROR: &str = "task_dependency_limit";
 pub const TASK_RUN_TASK_LIMIT_ERROR: &str = "task_run_task_limit";
 pub const TASK_GRAPH_OPEN_WORK_CONFLICT_ERROR: &str = "task_graph_unlisted_open_tasks";
-pub const TASK_COMPLETED_IMMUTABLE_ERROR: &str = "task_completed_immutable";
+pub const TASK_TERMINAL_IMMUTABLE_ERROR: &str = "task_terminal_immutable";
+pub const TASK_COMPLETED_IMMUTABLE_ERROR: &str = TASK_TERMINAL_IMMUTABLE_ERROR;
 pub const TASK_MUTATION_CONFLICT_ERROR: &str = "task_mutation_conflict";
 pub const TASK_DELETE_HAS_DEPENDENTS_ERROR: &str = "task_delete_has_dependents";
 pub const TASK_DELETE_IS_DELIVERY_REPLACEMENT_ERROR: &str = "task_delete_is_delivery_replacement";
 pub const TASK_METADATA_ELIGIBLE_MEMBER_IDS: &str = "eligible_member_ids";
 pub const TASK_METADATA_REQUIRED_ROLE: &str = "required_role";
-pub const TASK_METADATA_OUTPUT: &str = "output";
-pub const TASK_METADATA_EXECUTION_MODE: &str = "execution_mode";
+pub const TASK_ACTIVE_EPISODE_DUPLICATE_ERROR: &str = "task_active_episode_semantic_duplicate";
+pub(crate) const TASK_METADATA_OUTPUT: &str = "output";
+pub(crate) const TASK_METADATA_EXECUTION_MODE: &str = "execution_mode";
 
-/// SQL predicate shared by finality and watchdog repair discovery.
+/// SQL predicate shared by Quiescence and watchdog repair discovery.
 ///
 /// Historical/manual SQLite rows can bypass the typed write boundary.  Keep
-/// this predicate in one place so the finality count and the watchdog's
+/// this predicate in one place so the Quiescence count and the watchdog's
 /// concrete repair identities cannot disagree about whether a row is safe to
 /// deserialize.  The numeric values are interpolated from the same payload
 /// constants used by new writes.
@@ -51,275 +81,97 @@ pub(crate) fn corrupt_task_row_predicate_sql() -> String {
 
     format!(
         r#"(
-            status NOT IN ('pending','in_progress','completed')
-            OR (status='in_progress' AND owner IS NULL)
-            OR trim(id)=''
-            OR id<>trim(id)
-            OR length(id)>{id_chars}
-            OR length(CAST(id AS BLOB))>{id_bytes}
+            status NOT IN ('pending','in_progress','completed','failed','cancelled')
+            OR execution_mode NOT IN ('build','plan')
+            OR (owner IS NOT NULL AND (trim(owner)='' OR owner<>trim(owner) OR owner='coordinator'))
+            OR (status IN ('in_progress','completed','failed') AND owner IS NULL)
+            OR trim(id)='' OR id<>trim(id)
+            OR length(id)>{id_chars} OR length(CAST(id AS BLOB))>{id_bytes}
             OR trim(subject)=''
-            OR length(subject)>{subject_chars}
-            OR length(CAST(subject AS BLOB))>{subject_bytes}
-            OR length(description)>{description_chars}
-            OR length(CAST(description AS BLOB))>{description_bytes}
+            OR length(subject)>{subject_chars} OR length(CAST(subject AS BLOB))>{subject_bytes}
+            OR length(description)>{description_chars} OR length(CAST(description AS BLOB))>{description_bytes}
             OR (active_form IS NOT NULL AND (
-                length(active_form)>{active_chars}
-                OR length(CAST(active_form AS BLOB))>{active_bytes}
+                length(active_form)>{active_chars} OR length(CAST(active_form AS BLOB))>{active_bytes}
             ))
-            OR (owner IS NOT NULL AND (
-                trim(owner)='' OR owner<>trim(owner) OR length(owner)>{id_chars}
-                OR length(CAST(owner AS BLOB))>{id_bytes}
+            OR trim(created_by_participant_id)=''
+            OR trim(source_turn_intent_id)=''
+            OR datetime(created_at) IS NULL OR datetime(updated_at) IS NULL
+            OR length(CAST(blocked_by_json AS BLOB))>{dependency_json_bytes}
+            OR json_valid(blocked_by_json)=0 OR json_type(blocked_by_json)<>'array'
+            OR EXISTS (SELECT 1 FROM json_each(blocked_by_json)
+                       WHERE type<>'text' OR trim(value)='' OR value<>trim(value))
+            OR (metadata_json IS NOT NULL AND (
+                length(CAST(metadata_json AS BLOB))>{metadata_bytes}
+                OR json_valid(metadata_json)=0 OR json_type(metadata_json)<>'object'
+                OR json_type(metadata_json,'$.output') IS NOT NULL
+                OR json_type(metadata_json,'$.execution_mode') IS NOT NULL
+                OR (json_type(metadata_json,'$.eligible_member_ids') IS NOT NULL
+                    AND json_type(metadata_json,'$.eligible_member_ids')<>'array')
+                OR EXISTS (
+                    SELECT 1 FROM json_each(metadata_json,'$.eligible_member_ids')
+                    WHERE type<>'text' OR trim(value)='' OR value<>trim(value)
+                       OR length(value)>{id_chars} OR length(CAST(value AS BLOB))>{id_bytes}
+                )
+                OR (json_type(metadata_json,'$.required_role') IS NOT NULL
+                    AND (json_type(metadata_json,'$.required_role')<>'text'
+                         OR trim(json_extract(metadata_json,'$.required_role'))=''))
             ))
-            OR length(created_at)>{timestamp_chars}
-            OR length(CAST(created_at AS BLOB))>{timestamp_bytes}
-            OR datetime(created_at) IS NULL
-            OR length(updated_at)>{timestamp_chars}
-            OR length(CAST(updated_at AS BLOB))>{timestamp_bytes}
-            OR datetime(updated_at) IS NULL
-            OR CASE WHEN length(CAST(blocks_json AS BLOB))>{dependency_json_bytes}
-                    THEN 1 ELSE json_valid(blocks_json)=0 END
-            OR CASE WHEN length(CAST(blocked_by_json AS BLOB))>{dependency_json_bytes}
-                    THEN 1 ELSE json_valid(blocked_by_json)=0 END
-            OR (metadata_json IS NOT NULL AND CASE
-                WHEN length(CAST(metadata_json AS BLOB))>{metadata_bytes}
-                THEN 1 ELSE json_valid(metadata_json)=0 END)
-            OR json_type(CASE WHEN length(CAST(blocks_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocks_json)=1 THEN blocks_json ELSE '[]' END)<>'array'
-            OR json_type(CASE WHEN length(CAST(blocked_by_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocked_by_json)=1 THEN blocked_by_json ELSE '[]' END)<>'array'
-            OR (metadata_json IS NOT NULL AND json_type(
-                CASE WHEN length(CAST(metadata_json AS BLOB))<={metadata_bytes} AND json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END
-            )<>'object')
-            OR EXISTS (
-                SELECT 1 FROM json_each(
-                    CASE WHEN length(CAST(blocks_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocks_json)=1 THEN blocks_json ELSE '[]' END
-                ) WHERE type<>'text' OR trim(value)=''
-                    OR value<>trim(value)
-                    OR length(value)>{id_chars}
-                    OR length(CAST(value AS BLOB))>{id_bytes}
+            OR (output_json IS NOT NULL AND json_valid(output_json)=0)
+            OR (failure_reason_json IS NOT NULL AND json_valid(failure_reason_json)=0)
+            OR (cancel_reason_json IS NOT NULL AND json_valid(cancel_reason_json)=0)
+            OR (output_json IS NOT NULL AND (
+                json_type(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.summary') IS NOT 'text'
+                OR trim(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.summary'))=''
+                OR length(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.summary'))>{output_summary_chars}
+                OR length(CAST(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.summary') AS BLOB))>{output_summary_bytes}
+                OR (json_type(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.content') IS NOT NULL
+                    AND json_type(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.content') NOT IN ('text','null'))
+                OR (json_type(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.content')='text'
+                    AND (length(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.content'))>{output_content_chars}
+                         OR length(CAST(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.content') AS BLOB))>{output_content_bytes}))
+                OR json_type(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.artifactIds') IS NOT 'array'
+                OR json_array_length(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.artifactIds')>{artifact_count}
+                OR EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.artifactIds')
+                           WHERE type<>'text' OR trim(value)='' OR value<>trim(value)
+                              OR length(value)>{artifact_chars} OR length(CAST(value AS BLOB))>{artifact_bytes})
+                OR (SELECT COALESCE(SUM(length(value)),0) FROM json_each(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.artifactIds'))>{artifact_total_chars}
+                OR (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM json_each(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.artifactIds'))>{artifact_total_bytes}
+                OR json_type(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.producedByMemberId') IS NOT 'text'
+                OR trim(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.producedByMemberId'))=''
+                OR json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.producedByMemberId')<>owner
+                OR length(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.producedByMemberId'))>{id_chars}
+                OR length(CAST(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.producedByMemberId') AS BLOB))>{id_bytes}
+                OR json_type(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.producedAt') IS NOT 'text'
+                OR instr(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.producedAt'),'T')=0
+                OR datetime(json_extract(CASE WHEN json_valid(output_json)=1 THEN output_json ELSE '{{}}' END,'$.producedAt')) IS NULL
+            ))
+            OR (failure_reason_json IS NOT NULL AND (
+                json_type(CASE WHEN json_valid(failure_reason_json)=1 THEN failure_reason_json ELSE '{{}}' END,'$.code') IS NOT 'text'
+                OR json_type(CASE WHEN json_valid(failure_reason_json)=1 THEN failure_reason_json ELSE '{{}}' END,'$.message') IS NOT 'text'
+                OR trim(json_extract(CASE WHEN json_valid(failure_reason_json)=1 THEN failure_reason_json ELSE '{{}}' END,'$.code'))=''
+                OR trim(json_extract(CASE WHEN json_valid(failure_reason_json)=1 THEN failure_reason_json ELSE '{{}}' END,'$.message'))=''
+                OR length(json_extract(CASE WHEN json_valid(failure_reason_json)=1 THEN failure_reason_json ELSE '{{}}' END,'$.code'))>128
+                OR length(CAST(json_extract(CASE WHEN json_valid(failure_reason_json)=1 THEN failure_reason_json ELSE '{{}}' END,'$.code') AS BLOB))>512
+                OR length(json_extract(CASE WHEN json_valid(failure_reason_json)=1 THEN failure_reason_json ELSE '{{}}' END,'$.message'))>2000
+                OR length(CAST(json_extract(CASE WHEN json_valid(failure_reason_json)=1 THEN failure_reason_json ELSE '{{}}' END,'$.message') AS BLOB))>8000
+            ))
+            OR (cancel_reason_json IS NOT NULL AND (
+                json_type(CASE WHEN json_valid(cancel_reason_json)=1 THEN cancel_reason_json ELSE '{{}}' END,'$.code') IS NOT 'text'
+                OR json_type(CASE WHEN json_valid(cancel_reason_json)=1 THEN cancel_reason_json ELSE '{{}}' END,'$.message') IS NOT 'text'
+                OR trim(json_extract(CASE WHEN json_valid(cancel_reason_json)=1 THEN cancel_reason_json ELSE '{{}}' END,'$.code'))=''
+                OR trim(json_extract(CASE WHEN json_valid(cancel_reason_json)=1 THEN cancel_reason_json ELSE '{{}}' END,'$.message'))=''
+                OR length(json_extract(CASE WHEN json_valid(cancel_reason_json)=1 THEN cancel_reason_json ELSE '{{}}' END,'$.code'))>128
+                OR length(CAST(json_extract(CASE WHEN json_valid(cancel_reason_json)=1 THEN cancel_reason_json ELSE '{{}}' END,'$.code') AS BLOB))>512
+                OR length(json_extract(CASE WHEN json_valid(cancel_reason_json)=1 THEN cancel_reason_json ELSE '{{}}' END,'$.message'))>2000
+                OR length(CAST(json_extract(CASE WHEN json_valid(cancel_reason_json)=1 THEN cancel_reason_json ELSE '{{}}' END,'$.message') AS BLOB))>8000
+            ))
+            OR external_effect_unknown NOT IN (0,1)
+            OR NOT (
+                (status IN ('pending','in_progress') AND output_json IS NULL AND failure_reason_json IS NULL AND cancel_reason_json IS NULL)
+                OR (status='completed' AND output_json IS NOT NULL AND failure_reason_json IS NULL AND cancel_reason_json IS NULL)
+                OR (status='failed' AND output_json IS NULL AND failure_reason_json IS NOT NULL AND cancel_reason_json IS NULL)
+                OR (status='cancelled' AND output_json IS NULL AND failure_reason_json IS NULL AND cancel_reason_json IS NOT NULL)
             )
-            OR EXISTS (
-                SELECT 1 FROM json_each(
-                    CASE WHEN length(CAST(blocked_by_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocked_by_json)=1 THEN blocked_by_json ELSE '[]' END
-                ) WHERE type<>'text' OR trim(value)=''
-                    OR value<>trim(value)
-                    OR length(value)>{id_chars}
-                    OR length(CAST(value AS BLOB))>{id_bytes}
-            )
-            OR (SELECT COUNT(*) FROM json_each(
-                CASE WHEN length(CAST(blocks_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocks_json)=1 THEN blocks_json ELSE '[]' END
-            ))>{dependency_count}
-            OR (SELECT COUNT(*) FROM json_each(
-                CASE WHEN length(CAST(blocked_by_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocked_by_json)=1 THEN blocked_by_json ELSE '[]' END
-            ))>{dependency_count}
-            OR (SELECT COALESCE(SUM(length(value)),0) FROM json_each(
-                CASE WHEN length(CAST(blocks_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocks_json)=1 THEN blocks_json ELSE '[]' END
-            ) WHERE type='text')>{dependency_chars}
-            OR (SELECT COALESCE(SUM(length(value)),0) FROM json_each(
-                CASE WHEN length(CAST(blocked_by_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocked_by_json)=1 THEN blocked_by_json ELSE '[]' END
-            ) WHERE type='text')>{dependency_chars}
-            OR (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM json_each(
-                CASE WHEN length(CAST(blocks_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocks_json)=1 THEN blocks_json ELSE '[]' END
-            ) WHERE type='text')>{dependency_bytes}
-            OR (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM json_each(
-                CASE WHEN length(CAST(blocked_by_json AS BLOB))<={dependency_json_bytes} AND json_valid(blocked_by_json)=1 THEN blocked_by_json ELSE '[]' END
-            ) WHERE type='text')>{dependency_bytes}
-            OR (json_type(
-                    CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                    '$.eligible_member_ids'
-                ) IS NOT NULL
-                AND json_type(
-                    CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                    '$.eligible_member_ids'
-                )<>'array')
-            OR EXISTS (
-                SELECT 1 FROM json_each(
-                    CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                    '$.eligible_member_ids'
-                ) WHERE type<>'text' OR trim(value)=''
-                    OR value<>trim(value)
-                    OR length(value)>{id_chars}
-                    OR length(CAST(value AS BLOB))>{id_bytes}
-            )
-            OR (SELECT COUNT(*) FROM json_each(
-                CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                '$.eligible_member_ids'
-            ))>{eligibility_count}
-            OR (SELECT COALESCE(SUM(length(value)),0) FROM json_each(
-                CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                '$.eligible_member_ids'
-            ) WHERE type='text')>{eligibility_chars}
-            OR (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM json_each(
-                CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                '$.eligible_member_ids'
-            ) WHERE type='text')>{eligibility_bytes}
-            OR (json_type(
-                    CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                    '$.required_role'
-                ) IS NOT NULL
-                AND (json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.required_role'
-                     )<>'text'
-                     OR trim(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.required_role'
-                     ))=''
-                     OR length(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.required_role'
-                     ))>{role_chars}
-                     OR length(CAST(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.required_role'
-                     ) AS BLOB))>{role_bytes}))
-            OR (json_type(
-                    CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                    '$.execution_mode'
-                ) IS NOT NULL
-                AND (json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.execution_mode'
-                     )<>'text'
-                     OR json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.execution_mode'
-                     ) NOT IN ('build','plan')))
-            OR (json_type(
-                    CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                    '$.output'
-                ) IS NOT NULL
-                AND (
-                    json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output'
-                    )<>'object'
-                    OR status<>'completed'
-                    OR json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.summary'
-                    ) IS NULL
-                    OR json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.summary'
-                    )<>'text'
-                    OR trim(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.summary'
-                    ))=''
-                    OR length(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.summary'
-                    ))>{output_summary_chars}
-                    OR length(CAST(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.summary'
-                    ) AS BLOB))>{output_summary_bytes}
-                    OR (json_type(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.content'
-                        ) IS NOT NULL
-                        AND json_type(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.content'
-                        ) NOT IN ('null','text'))
-                    OR length(COALESCE(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.content'
-                    ),''))>{output_content_chars}
-                    OR length(CAST(COALESCE(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.content'
-                    ),'') AS BLOB))>{output_content_bytes}
-                    OR json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.artifactIds'
-                    ) IS NULL
-                    OR json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.artifactIds'
-                    )<>'array'
-                    OR (SELECT COUNT(*) FROM json_each(
-                        CASE WHEN json_type(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.artifactIds'
-                        )='array' THEN json_extract(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.artifactIds'
-                        ) ELSE '[]' END
-                    ))>{artifact_count}
-                    OR EXISTS (SELECT 1 FROM json_each(
-                        CASE WHEN json_type(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.artifactIds'
-                        )='array' THEN json_extract(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.artifactIds'
-                        ) ELSE '[]' END
-                    ) WHERE type<>'text' OR trim(value)=''
-                        OR length(value)>{artifact_chars}
-                        OR length(CAST(value AS BLOB))>{artifact_bytes})
-                    OR (SELECT COALESCE(SUM(length(value)),0) FROM json_each(
-                        CASE WHEN json_type(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.artifactIds'
-                        )='array' THEN json_extract(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.artifactIds'
-                        ) ELSE '[]' END
-                    ) WHERE type='text')>{artifact_total_chars}
-                    OR (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM json_each(
-                        CASE WHEN json_type(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.artifactIds'
-                        )='array' THEN json_extract(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.artifactIds'
-                        ) ELSE '[]' END
-                    ) WHERE type='text')>{artifact_total_bytes}
-                    OR json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.producedByMemberId'
-                    ) IS NULL
-                    OR json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.producedByMemberId'
-                    )<>'text'
-                    OR trim(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.producedByMemberId'
-                    ))=''
-                    OR length(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.producedByMemberId'
-                    ))>{id_chars}
-                    OR length(CAST(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.producedByMemberId'
-                    ) AS BLOB))>{id_bytes}
-                    OR json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.producedAt'
-                    ) IS NULL
-                    OR json_type(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.producedAt'
-                    )<>'text'
-                    OR datetime(json_extract(
-                        CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                        '$.output.producedAt'
-                    )) IS NULL
-                    OR (json_extract(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.producedAt'
-                        ) NOT GLOB '*T*Z'
-                        AND json_extract(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.producedAt'
-                        ) NOT GLOB '*T*+??:??'
-                        AND json_extract(
-                            CASE WHEN json_valid(metadata_json)=1 THEN metadata_json ELSE '{{}}' END,
-                            '$.output.producedAt'
-                        ) NOT GLOB '*T*-??:??')
-                ))
         )"#,
         id_chars = limits::TASK_IDENTIFIER_MAX_CHARS,
         id_bytes = limits::TASK_IDENTIFIER_MAX_BYTES,
@@ -331,14 +183,6 @@ pub(crate) fn corrupt_task_row_predicate_sql() -> String {
         active_bytes = limits::TASK_ACTIVE_FORM_MAX_BYTES,
         metadata_bytes = limits::TASK_METADATA_MAX_BYTES,
         dependency_json_bytes = limits::TASK_DEPENDENCY_JSON_MAX_BYTES,
-        dependency_count = limits::TASK_DEPENDENCY_MAX_COUNT,
-        dependency_chars = limits::TASK_DEPENDENCY_TOTAL_MAX_CHARS,
-        dependency_bytes = limits::TASK_DEPENDENCY_TOTAL_MAX_BYTES,
-        eligibility_count = limits::TASK_ELIGIBILITY_MAX_COUNT,
-        eligibility_chars = limits::TASK_ELIGIBILITY_TOTAL_MAX_CHARS,
-        eligibility_bytes = limits::TASK_ELIGIBILITY_TOTAL_MAX_BYTES,
-        role_chars = limits::TASK_REQUIRED_ROLE_MAX_CHARS,
-        role_bytes = limits::TASK_REQUIRED_ROLE_MAX_BYTES,
         output_summary_chars = limits::TASK_OUTPUT_SUMMARY_MAX_CHARS,
         output_summary_bytes = limits::TASK_OUTPUT_SUMMARY_MAX_BYTES,
         output_content_chars = limits::TASK_OUTPUT_CONTENT_MAX_CHARS,
@@ -348,38 +192,21 @@ pub(crate) fn corrupt_task_row_predicate_sql() -> String {
         artifact_bytes = limits::TASK_ARTIFACT_ID_MAX_BYTES,
         artifact_total_chars = limits::TASK_ARTIFACT_IDS_TOTAL_MAX_CHARS,
         artifact_total_bytes = limits::TASK_ARTIFACT_IDS_TOTAL_MAX_BYTES,
-        timestamp_chars = limits::RFC3339_TIMESTAMP_MAX_CHARS,
-        timestamp_bytes = limits::RFC3339_TIMESTAMP_MAX_BYTES,
     )
 }
 
-/// Transaction-time scheduling decision for a single task created through
-/// the Agent Org tool boundary.
-///
-/// The tool may perform an earlier read to return richer guidance, but that
-/// snapshot is advisory only. The store must apply this policy again while it
-/// holds the shared writer lock and an IMMEDIATE SQLite transaction, using
-/// the task graph that is current at the moment of commit.
+/// Transaction-time scheduling decision for a single Task created through
+/// the graph-writer boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TaskCreateSchedulingPolicy {
-    /// The coordinator explicitly confirmed that this task is independent of
-    /// every currently-open task omitted from its dependency closure.
     pub allow_parallel_with_unlisted_open_tasks: bool,
 }
 
-/// Return every task reached by following `blocked_by` links upstream from
-/// `task_ids`, including the starting ids. Scheduling guards share this
-/// helper so single-task creation, atomic graph creation, and the store's
-/// transaction-time recheck agree on what an existing dependency covers.
+/// Return every Task reached by following canonical `blocked_by` edges.
 pub fn task_dependency_closure(task_ids: &[String], tasks: &[Task]) -> HashSet<String> {
     TaskGraphIndex::new(tasks).dependency_closure(task_ids)
 }
 
-/// Execution mode requested by the task assignment itself.
-///
-/// This is deliberately task-scoped: a planning task must start its very
-/// first provider turn in Plan mode, rather than relying on a separate inbox
-/// control message that may only be drained after the mode was selected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskExecutionMode {
@@ -388,7 +215,7 @@ pub enum TaskExecutionMode {
 }
 
 impl TaskExecutionMode {
-    pub fn as_wire(self) -> &'static str {
+    pub const fn as_wire(self) -> &'static str {
         match self {
             Self::Build => "build",
             Self::Plan => "plan",
@@ -396,7 +223,7 @@ impl TaskExecutionMode {
     }
 
     pub fn from_wire(value: &str) -> Result<Self, String> {
-        match value.trim() {
+        match value {
             "build" => Ok(Self::Build),
             "plan" => Ok(Self::Plan),
             other => Err(format!(
@@ -406,14 +233,8 @@ impl TaskExecutionMode {
     }
 }
 
-/// Historical tasks predate the typed field and retain Build semantics.
 pub fn task_execution_mode(task: &Task) -> TaskExecutionMode {
-    task.metadata
-        .as_ref()
-        .and_then(|metadata| metadata.get(TASK_METADATA_EXECUTION_MODE))
-        .and_then(serde_json::Value::as_str)
-        .and_then(|value| TaskExecutionMode::from_wire(value).ok())
-        .unwrap_or(TaskExecutionMode::Build)
+    task.execution_mode
 }
 
 /// Durable, task-scoped result used for cross-session handoff.
@@ -426,22 +247,45 @@ pub struct TaskOutput {
     pub summary: String,
     pub content: Option<String>,
     pub artifact_ids: Vec<String>,
+    /// Server-owned immutable PlanRevision binding. Provider-facing task
+    /// output schemas never expose this field; only the plan decision
+    /// transaction may set it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan_revision_id: Option<String>,
     pub produced_by_member_id: String,
     pub produced_at: String,
 }
 
 pub fn task_output(task: &Task) -> Option<TaskOutput> {
-    task.metadata
-        .as_ref()
-        .and_then(|metadata| metadata.get(TASK_METADATA_OUTPUT))
-        .cloned()
-        .and_then(|value| serde_json::from_value(value).ok())
+    task.output.clone()
 }
 
-/// A quiet Running owner keeps its task; this age only controls when the
-/// watchdog asks the coordinator to inspect it. Explicit failure disposition
-/// is the only automatic task-release path.
-pub const STALE_MEMBER_NOTICE_SECS: i64 = 15 * 60;
+pub fn task_output_digest(output: &TaskOutput) -> Result<String, String> {
+    let canonical = serde_json::to_vec(output)
+        .map_err(|error| format!("serialize canonical TaskOutput failed: {error}"))?;
+    Ok(format!("{:x}", Sha256::digest(canonical)))
+}
+
+/// Owner-supplied completion payload.  The Store, not the caller, records
+/// who produced it and when.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskOutputInput {
+    pub summary: String,
+    pub content: Option<String>,
+    #[serde(default)]
+    pub artifact_ids: Vec<String>,
+}
+
+/// Bounded machine-readable reason for a failed or cancelled task.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskTerminalReason {
+    pub code: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_event_id: Option<String>,
+}
 
 pub fn eligible_member_ids(task: &Task) -> Vec<String> {
     task.metadata
@@ -483,9 +327,9 @@ pub fn ready_unassigned_tasks(tasks: &[Task]) -> Vec<&Task> {
 
 pub(super) const TASK_EVENT_CREATED: &str = "created";
 pub(super) const TASK_EVENT_UPDATED: &str = "updated";
+#[cfg(test)]
 pub(super) const TASK_EVENT_DELETED: &str = "deleted";
 pub(super) const TASK_EVENT_RELEASED: &str = "released";
-pub(super) const TASK_EVENT_ESCALATED_TO_COORDINATOR: &str = "escalated_to_coordinator";
 
 /// Task status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -494,6 +338,8 @@ pub enum TaskStatus {
     Pending,
     InProgress,
     Completed,
+    Failed,
+    Cancelled,
 }
 
 impl TaskStatus {
@@ -502,6 +348,8 @@ impl TaskStatus {
             TaskStatus::Pending => "pending",
             TaskStatus::InProgress => "in_progress",
             TaskStatus::Completed => "completed",
+            TaskStatus::Failed => "failed",
+            TaskStatus::Cancelled => "cancelled",
         }
     }
 
@@ -510,13 +358,22 @@ impl TaskStatus {
             "pending" => Ok(TaskStatus::Pending),
             "in_progress" => Ok(TaskStatus::InProgress),
             "completed" => Ok(TaskStatus::Completed),
+            "failed" => Ok(TaskStatus::Failed),
+            "cancelled" => Ok(TaskStatus::Cancelled),
             other => Err(format!("invalid TaskStatus wire value: {other}")),
         }
     }
 
-    /// `completed` is treated as resolved for dependency and finality checks.
-    pub fn is_resolved(&self) -> bool {
-        matches!(self, TaskStatus::Completed)
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, Self::Completed | Self::Failed | Self::Cancelled)
+    }
+
+    pub fn is_open(&self) -> bool {
+        matches!(self, Self::Pending | Self::InProgress)
+    }
+
+    pub fn satisfies_dependency(&self) -> bool {
+        matches!(self, Self::Completed)
     }
 }
 
@@ -526,14 +383,25 @@ impl TaskStatus {
 pub struct Task {
     pub id: String,
     pub org_run_id: String,
+    /// Formal episode that admitted this Task. Completion validation uses it
+    /// to exclude historical Tasks from the current certificate closure.
+    pub activation_generation: i64,
     pub subject: String,
     pub description: String,
     pub active_form: Option<String>,
     pub owner: Option<String>,
     pub status: TaskStatus,
+    pub execution_mode: TaskExecutionMode,
     pub blocks: Vec<String>,
     pub blocked_by: Vec<String>,
     pub metadata: Option<serde_json::Value>,
+    pub output: Option<TaskOutput>,
+    pub failure_reason: Option<TaskTerminalReason>,
+    pub cancel_reason: Option<TaskTerminalReason>,
+    pub created_by_participant_id: String,
+    pub source_turn_intent_id: String,
+    pub originating_message_id: Option<String>,
+    pub replaces_task_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -546,6 +414,8 @@ pub struct Task {
 #[serde(rename_all = "camelCase")]
 pub struct TaskSummary {
     pub id: String,
+    #[serde(skip_serializing)]
+    pub activation_generation: i64,
     pub subject: String,
     pub description: String,
     pub description_truncated: bool,
@@ -556,11 +426,15 @@ pub struct TaskSummary {
     pub blocks_truncated: bool,
     pub blocked_by: Vec<String>,
     pub blocked_by_truncated: bool,
+    pub dependencies_satisfied: bool,
     pub eligible_member_ids: Vec<String>,
     pub eligible_member_ids_truncated: bool,
     pub required_role: Option<String>,
     pub execution_mode: TaskExecutionMode,
     pub output: Option<TaskOutputSummary>,
+    pub failure_reason: Option<TaskTerminalReason>,
+    pub cancel_reason: Option<TaskTerminalReason>,
+    pub replaces_task_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -576,18 +450,53 @@ pub struct TaskOutputSummary {
     pub has_content: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TaskSummaryPage {
     pub tasks: Vec<TaskSummary>,
     pub filtered_total: usize,
     pub has_more: bool,
     pub next_cursor: Option<String>,
+    pub previous_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskPageBucket {
+    Current,
+    History,
+}
+
+impl TaskPageBucket {
+    pub fn accepts(self, status: TaskStatus) -> bool {
+        match self {
+            Self::Current => status.is_open(),
+            Self::History => status.is_terminal(),
+        }
+    }
+
+    pub const fn as_wire(self) -> &'static str {
+        match self {
+            Self::Current => "current",
+            Self::History => "history",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskPageDirection {
+    Forward,
+    Backward,
 }
 
 #[derive(Debug, Clone)]
 pub struct TaskMutationOutcome {
     pub previous: Task,
     pub current: Task,
+    /// The exact Task-board revision committed by this mutation. Idempotent
+    /// no-op calls return the revision observed inside their transaction.
+    pub new_work_revision: i64,
     pub owner_changed: bool,
     pub status_changed: bool,
     pub became_completed: bool,
@@ -606,13 +515,65 @@ pub struct TaskHistoryEvent {
     pub previous_status: Option<TaskStatus>,
     pub next_status: Option<TaskStatus>,
     pub actor_member_id: Option<String>,
+    pub actor_kind: String,
+    pub source_turn_intent_id: Option<String>,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskAnnotationKind {
+    Progress,
+    Evidence,
+    AuditNote,
+}
+
+impl TaskAnnotationKind {
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::Progress => "progress",
+            Self::Evidence => "evidence",
+            Self::AuditNote => "audit_note",
+        }
+    }
+
+    pub fn from_wire(value: &str) -> Result<Self, String> {
+        match value {
+            "progress" => Ok(Self::Progress),
+            "evidence" => Ok(Self::Evidence),
+            "audit_note" => Ok(Self::AuditNote),
+            other => Err(format!("invalid TaskAnnotationKind wire value: {other}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskAnnotation {
+    pub id: String,
+    pub org_run_id: String,
+    pub task_id: String,
+    pub kind: TaskAnnotationKind,
+    pub body: String,
+    pub actor_kind: String,
+    pub actor_participant_id: String,
+    pub source_turn_intent_id: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskAnnotationPage {
+    pub annotations: Vec<TaskAnnotation>,
+    pub has_more: bool,
+    pub next_cursor: Option<String>,
 }
 
 /// Inputs for creating a task. `id` is caller-supplied so the LLM tool
 /// layer can deterministically generate UUIDs. If you want the store to
 /// mint one, call `new_task_id()` first.
 #[derive(Debug, Clone)]
+#[cfg(test)]
 pub struct CreateTaskParams {
     pub id: String,
     pub org_run_id: String,
@@ -626,11 +587,57 @@ pub struct CreateTaskParams {
     pub metadata: Option<serde_json::Value>,
 }
 
-/// Patch applied by `update`. Every field is `Option`; only `Some(_)`
-/// fields are written. `None` keeps the existing value. To clear a
-/// nullable column (e.g. unassign owner), use the explicit clear-flag
-/// pattern via `UpdateTaskPatch::clear_owner` etc.
+/// Canonical graph-writer request.  Creation is always `pending`; provenance
+/// is injected from the persisted Coordinator turn context inside the Store.
+#[derive(Debug, Clone)]
+pub struct CreatePendingTaskParams {
+    pub id: String,
+    pub org_run_id: String,
+    pub subject: String,
+    pub description: String,
+    pub active_form: Option<String>,
+    pub owner: Option<String>,
+    pub execution_mode: TaskExecutionMode,
+    pub blocked_by: Vec<String>,
+    pub metadata: Option<serde_json::Value>,
+    pub originating_message_id: Option<String>,
+    pub replaces_task_id: Option<String>,
+}
+
+/// One atomic cancel-and-replace transition. Grouping these inseparable
+/// values keeps every caller on the same handoff-aware state-machine path.
+pub(crate) struct TaskCancelAndReplaceInput<'a> {
+    pub reason: TaskTerminalReason,
+    pub replacement: CreatePendingTaskParams,
+    pub handoff: Option<
+        &'a crate::coordination::agent_org_task_execution_fence::TaskExecutionHandoffAuthority,
+    >,
+}
+
+/// Sparse graph-admin patch.  It intentionally contains no lifecycle result
+/// fields, so a graph writer cannot accidentally impersonate an Owner.
 #[derive(Debug, Clone, Default)]
+pub struct PendingTaskGraphPatch {
+    pub subject: Option<String>,
+    pub description: Option<String>,
+    pub active_form: Option<Option<String>>,
+    pub owner: Option<Option<String>>,
+    pub execution_mode: Option<TaskExecutionMode>,
+    pub blocked_by: Option<Vec<String>>,
+    /// RFC 7396-style object merge patch. Absent keys retain their persisted
+    /// value, non-null values replace it, and null removes it. Reserved typed
+    /// Task fields never enter this bag.
+    pub metadata_merge_patch: Option<serde_json::Value>,
+    pub eligible_member_ids: Option<Vec<String>>,
+    /// `Some("")` explicitly clears the typed role hint; `None` retains it.
+    pub required_role: Option<String>,
+}
+
+/// Test-only compatibility patch for Store fixtures that exercise the
+/// untyped update surface. Production code cannot compile this type and must
+/// use the typed actor requests.
+#[derive(Debug, Clone, Default)]
+#[cfg(test)]
 pub struct UpdateTaskPatch {
     pub subject: Option<String>,
     pub description: Option<String>,
@@ -653,27 +660,78 @@ pub fn new_task_id() -> String {
 ///   recovery diagnostics.
 /// - `(org_run_id, owner)` -- per-member listings and failure requeue.
 pub fn init_schema(conn: &Connection) -> SqliteResult<()> {
+    // Isolated Task test/sandbox entry points must include every companion
+    // owner now consulted by a Task mutation. Production still uses the
+    // canonical runtime initializer, which calls `create_schema` directly in
+    // manifest order and adds the finality schema after manifest verification.
+    super::agent_org_run_completion::create_schema(conn)?;
+    super::agent_org_turn_contexts::create_schema(conn)?;
+    create_schema(conn)?;
+    super::agent_org_plan_approvals::create_schema(conn)?;
+    super::agent_org_finality::create_schema(conn)
+}
+
+pub(crate) fn create_history_page_index(conn: &Connection) -> SqliteResult<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_tasks (
+        "CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_tasks_history_page
+         ON agent_org_runtime_tasks(org_run_id, status, updated_at, id);",
+    )
+}
+
+pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS agent_org_runtime_tasks (
             id TEXT NOT NULL,
             org_run_id TEXT NOT NULL,
+            activation_generation INTEGER NOT NULL CHECK(activation_generation >= 1),
             subject TEXT NOT NULL,
             description TEXT NOT NULL DEFAULT '',
             active_form TEXT,
             owner TEXT,
-            status TEXT NOT NULL,
-            blocks_json TEXT NOT NULL DEFAULT '[]',
+            status TEXT NOT NULL CHECK(status IN ('pending','in_progress','completed','failed','cancelled')),
+            execution_mode TEXT NOT NULL CHECK(execution_mode IN ('build','plan')),
             blocked_by_json TEXT NOT NULL DEFAULT '[]',
             metadata_json TEXT,
+            output_json TEXT,
+            failure_reason_json TEXT,
+            cancel_reason_json TEXT,
+            external_effect_unknown INTEGER NOT NULL DEFAULT 0
+                CHECK(external_effect_unknown IN (0,1)),
+            created_by_participant_id TEXT NOT NULL CHECK(trim(created_by_participant_id) <> ''),
+            source_turn_intent_id TEXT NOT NULL CHECK(trim(source_turn_intent_id) <> ''),
+            originating_message_id TEXT,
+            replaces_task_id TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
-            PRIMARY KEY (org_run_id, id)
+            PRIMARY KEY (org_run_id, id),
+            FOREIGN KEY (org_run_id, replaces_task_id)
+                REFERENCES agent_org_runtime_tasks(org_run_id, id),
+            CHECK(owner IS NULL OR (trim(owner) <> '' AND owner <> 'coordinator')),
+            CHECK(replaces_task_id IS NULL OR replaces_task_id <> id),
+            CHECK(json_valid(blocked_by_json)=1 AND json_type(blocked_by_json)='array'),
+            CHECK(metadata_json IS NULL OR (
+                json_valid(metadata_json)=1 AND json_type(metadata_json)='object'
+                AND json_type(metadata_json,'$.output') IS NULL
+                AND json_type(metadata_json,'$.execution_mode') IS NULL
+            )),
+            CHECK(output_json IS NULL OR (json_valid(output_json)=1 AND json_type(output_json)='object')),
+            CHECK(failure_reason_json IS NULL OR (json_valid(failure_reason_json)=1 AND json_type(failure_reason_json)='object')),
+            CHECK(cancel_reason_json IS NULL OR (json_valid(cancel_reason_json)=1 AND json_type(cancel_reason_json)='object')),
+            CHECK(status NOT IN ('in_progress','completed','failed') OR owner IS NOT NULL),
+            CHECK(
+                (status IN ('pending','in_progress') AND output_json IS NULL AND failure_reason_json IS NULL AND cancel_reason_json IS NULL)
+                OR (status='completed' AND output_json IS NOT NULL AND failure_reason_json IS NULL AND cancel_reason_json IS NULL)
+                OR (status='failed' AND output_json IS NULL AND failure_reason_json IS NOT NULL AND cancel_reason_json IS NULL)
+                OR (status='cancelled' AND output_json IS NULL AND failure_reason_json IS NULL AND cancel_reason_json IS NOT NULL)
+            )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_tasks_status
-            ON agent_org_tasks(org_run_id, status, owner);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_tasks_owner
-            ON agent_org_tasks(org_run_id, owner);
-        CREATE TABLE IF NOT EXISTS agent_org_task_events (
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_tasks_page
+            ON agent_org_runtime_tasks(org_run_id, status, created_at, id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_tasks_owner
+            ON agent_org_runtime_tasks(org_run_id, owner, status);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_tasks_replacement
+            ON agent_org_runtime_tasks(org_run_id, replaces_task_id);
+        CREATE TABLE IF NOT EXISTS agent_org_runtime_task_events (
             id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             task_id TEXT NOT NULL,
@@ -683,49 +741,31 @@ pub fn init_schema(conn: &Connection) -> SqliteResult<()> {
             previous_status TEXT,
             next_status TEXT,
             actor_member_id TEXT,
+            actor_kind TEXT NOT NULL CHECK(actor_kind IN ('graph_writer','owner_execution','system')),
+            source_turn_intent_id TEXT,
             created_at TEXT NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_task_events_run
-            ON agent_org_task_events(org_run_id, created_at, id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_task_events_task
-            ON agent_org_task_events(org_run_id, task_id, created_at, id);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_task_events_run
+            ON agent_org_runtime_task_events(org_run_id, created_at, id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_task_events_task
+            ON agent_org_runtime_task_events(org_run_id, task_id, created_at, id);
+        CREATE TABLE IF NOT EXISTS agent_org_runtime_task_annotations (
+            id TEXT PRIMARY KEY,
+            org_run_id TEXT NOT NULL,
+            task_id TEXT NOT NULL,
+            kind TEXT NOT NULL CHECK(kind IN ('progress','evidence','audit_note')),
+            body TEXT NOT NULL CHECK(trim(body) <> ''),
+            actor_kind TEXT NOT NULL CHECK(actor_kind IN ('graph_writer','owner_execution','system')),
+            actor_participant_id TEXT NOT NULL CHECK(trim(actor_participant_id) <> ''),
+            source_turn_intent_id TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (org_run_id, task_id)
+                REFERENCES agent_org_runtime_tasks(org_run_id, id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_task_annotations_page
+            ON agent_org_runtime_task_annotations(org_run_id, task_id, created_at, id);",
     )?;
-    add_column_if_missing(conn, "agent_org_tasks", "active_form", "TEXT")?;
-    add_column_if_missing(
-        conn,
-        "agent_org_tasks",
-        "blocks_json",
-        "TEXT NOT NULL DEFAULT '[]'",
-    )?;
-    add_column_if_missing(
-        conn,
-        "agent_org_tasks",
-        "blocked_by_json",
-        "TEXT NOT NULL DEFAULT '[]'",
-    )?;
-    add_column_if_missing(conn, "agent_org_tasks", "metadata_json", "TEXT")?;
-    add_column_if_missing(conn, "agent_org_task_events", "actor_member_id", "TEXT")?;
-    store::normalize_legacy_dependency_rows(conn)?;
-    Ok(())
-}
-
-fn add_column_if_missing(
-    conn: &Connection,
-    table_name: &str,
-    column_name: &str,
-    column_definition: &str,
-) -> SqliteResult<()> {
-    let sql = format!("ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}");
-    match conn.execute(&sql, []) {
-        Ok(_) => Ok(()),
-        Err(rusqlite::Error::SqliteFailure(err, Some(message)))
-            if err.code == rusqlite::ErrorCode::Unknown
-                && message.contains("duplicate column name") =>
-        {
-            Ok(())
-        }
-        Err(err) => Err(err),
-    }
+    create_history_page_index(conn)
 }
 
 /// Inbox helper: enqueue a `TaskAssigned` payload into the task owner's
@@ -790,134 +830,9 @@ pub fn enqueue_task_assigned_to_with_tasks(
         sender_agent_id,
         sender_member_id,
         assigned_by_display_name,
+        None,
         TaskAssignedInsert::Normal,
     )
-}
-
-/// Batch recovery assignments for one member in one writer transaction.
-///
-/// Assignment actions are already grouped by member. Rechecking the session,
-/// task graph, and existing durable deliveries once per member avoids opening
-/// one IMMEDIATE transaction and rescanning the whole board for every task.
-/// Invalidated tasks are skipped independently; all still-current deliveries
-/// commit together.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn enqueue_task_assignments_if_still_ready_for_recovery(
-    org_run_id: &str,
-    task_ids: &[String],
-    recipient_agent_id: &str,
-    recipient_member_id: &str,
-    sender_agent_id: &str,
-    sender_member_id: Option<&str>,
-    assigned_by_display_name: &str,
-) -> Result<Vec<i64>, String> {
-    if task_ids.is_empty() {
-        return Ok(Vec::new());
-    }
-    with_sessions_writer(|| -> Result<Vec<i64>, String> {
-        let mut conn = get_connection().map_err(|err| err.to_string())?;
-        let tx = conn
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .map_err(|err| err.to_string())?;
-        let running: bool = tx
-            .query_row(
-                "SELECT EXISTS(
-                     SELECT 1 FROM agent_org_runs WHERE id=?1 AND status='running'
-                 )",
-                params![org_run_id],
-                |row| row.get(0),
-            )
-            .map_err(|err| err.to_string())?;
-        if !running {
-            tx.commit().map_err(|err| err.to_string())?;
-            return Ok(Vec::new());
-        }
-
-        let sessions =
-            AgentOrgRunStore::list_descendant_worker_sessions_with_connection(&tx, org_run_id)?;
-        if !recovery_dispatch_recipient_is_available(
-            &sessions,
-            recipient_member_id,
-            recipient_agent_id,
-        ) {
-            tx.commit().map_err(|err| err.to_string())?;
-            return Ok(Vec::new());
-        }
-
-        let all_tasks = AgentOrgTaskStore::list_with_connection(&tx, org_run_id)?;
-        let graph = TaskGraphIndex::new(&all_tasks);
-        let requested_task_ids = task_ids.iter().map(String::as_str).collect::<HashSet<_>>();
-        let current_tasks = all_tasks
-            .iter()
-            .filter(|task| requested_task_ids.contains(task.id.as_str()))
-            .filter(|task| {
-                task.status == TaskStatus::Pending
-                    && task.owner.as_deref() == Some(recipient_member_id)
-                    && graph.is_ready(task)
-            })
-            .collect::<Vec<_>>();
-        if current_tasks.is_empty() {
-            tx.commit().map_err(|err| err.to_string())?;
-            return Ok(Vec::new());
-        }
-
-        // Another producer may have delivered one or more exact assignments
-        // after the analyzer snapshot. Load the recipient's unread assignment
-        // set once and reuse those durable rows instead of inserting copies.
-        let mut existing_stmt = tx
-            .prepare(
-                "SELECT id,
-                        CASE
-                            WHEN json_valid(payload_json)
-                             AND json_type(payload_json, '$.task_id')='text'
-                            THEN json_extract(payload_json, '$.task_id')
-                        END
-                 FROM agent_inbox INDEXED BY idx_agent_inbox_run_unread_recipient
-                 WHERE org_run_id=?1
-                   AND recipient_member_id=?2
-                   AND payload_kind='task_assigned'
-                   AND read_at IS NULL
-                   AND NOT EXISTS (
-                       SELECT 1 FROM agent_inbox_delivery_resolutions resolution
-                       WHERE resolution.inbox_id=agent_inbox.id
-                   )
-                 ORDER BY id ASC",
-            )
-            .map_err(|err| err.to_string())?;
-        let existing_rows = existing_stmt
-            .query_map(params![org_run_id, recipient_member_id], |row| {
-                Ok((row.get::<_, i64>(0)?, row.get::<_, Option<String>>(1)?))
-            })
-            .map_err(|err| err.to_string())?;
-        let mut existing_by_task_id = HashMap::new();
-        for row in existing_rows {
-            let (row_id, task_id) = row.map_err(|err| err.to_string())?;
-            if let Some(task_id) = task_id {
-                existing_by_task_id.entry(task_id).or_insert(row_id);
-            }
-        }
-        drop(existing_stmt);
-
-        let mut row_ids = Vec::with_capacity(current_tasks.len());
-        for task in current_tasks {
-            if let Some(existing_row_id) = existing_by_task_id.get(&task.id) {
-                row_ids.push(*existing_row_id);
-                continue;
-            }
-            row_ids.push(enqueue_task_assigned_to_with_tasks_impl(
-                task,
-                &all_tasks,
-                recipient_agent_id,
-                recipient_member_id,
-                sender_agent_id,
-                sender_member_id,
-                assigned_by_display_name,
-                TaskAssignedInsert::Transaction(&tx),
-            )?);
-        }
-        tx.commit().map_err(|err| err.to_string())?;
-        Ok(row_ids)
-    })
 }
 
 /// Transaction-aware variant used when a task mutation and its TaskAssigned
@@ -932,6 +847,7 @@ pub(crate) fn enqueue_task_assigned_to_with_tasks_in_tx(
     sender_agent_id: &str,
     sender_member_id: Option<&str>,
     assigned_by_display_name: &str,
+    source_turn_intent_id: Option<&str>,
 ) -> Result<i64, String> {
     enqueue_task_assigned_to_with_tasks_impl(
         task,
@@ -941,6 +857,7 @@ pub(crate) fn enqueue_task_assigned_to_with_tasks_in_tx(
         sender_agent_id,
         sender_member_id,
         assigned_by_display_name,
+        source_turn_intent_id,
         TaskAssignedInsert::Transaction(conn),
     )
 }
@@ -959,6 +876,7 @@ fn enqueue_task_assigned_to_with_tasks_impl<'a>(
     sender_agent_id: &str,
     sender_member_id: Option<&str>,
     assigned_by_display_name: &str,
+    source_turn_intent_id: Option<&str>,
     insertion: TaskAssignedInsert<'a>,
 ) -> Result<i64, String> {
     let owner_member_id = task
@@ -1045,17 +963,122 @@ fn enqueue_task_assigned_to_with_tasks_impl<'a>(
         message,
     };
     match insertion {
-        TaskAssignedInsert::Transaction(conn) => {
-            crate::core::coordination::agent_inbox::AgentInboxStore::insert_in_tx(conn, params)
-                .map(|row| row.id)
-                .map_err(|err| format!("failed to insert TaskAssigned inbox row: {err}"))
-        }
-        TaskAssignedInsert::Normal => {
-            crate::core::coordination::agent_inbox::AgentInboxStore::insert(params)
-                .map(|row| row.id)
-                .map_err(|err| format!("failed to insert TaskAssigned inbox row: {err}"))
-        }
+        TaskAssignedInsert::Transaction(conn) => persist_task_assignment_fact_in_tx(
+            conn,
+            task,
+            params,
+            assigned_by_display_name,
+            source_turn_intent_id,
+        ),
+        TaskAssignedInsert::Normal => database::db::with_sessions_writer(|| {
+            let mut conn = database::db::get_connection().map_err(|error| error.to_string())?;
+            let tx = conn
+                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                .map_err(|error| error.to_string())?;
+            let row_id = persist_task_assignment_fact_in_tx(
+                &tx,
+                task,
+                params,
+                assigned_by_display_name,
+                source_turn_intent_id,
+            )?;
+            tx.commit().map_err(|error| error.to_string())?;
+            Ok(row_id)
+        }),
     }
+}
+
+fn persist_task_assignment_fact_in_tx(
+    conn: &rusqlite::Connection,
+    task: &Task,
+    owner_delivery: crate::coordination::agent_inbox::InsertInboxParams,
+    assigned_by_display_name: &str,
+    source_turn_intent_id: Option<&str>,
+) -> Result<i64, String> {
+    use crate::coordination::agent_inbox::{AgentInboxStore, AgentMessage, InsertInboxParams};
+    use crate::coordination::agent_org_formal_triggers::{
+        record_inbox_trigger_in_tx, InboxFormalTriggerSource,
+    };
+    use crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID;
+
+    let owner_member_id = task
+        .owner
+        .as_deref()
+        .ok_or_else(|| "Task assignment fact requires an exact owner".to_string())?;
+    let sender_agent_id = owner_delivery.sender_agent_id.clone();
+    let sender_member_id = owner_delivery.sender_member_id.clone();
+    let owner_row = AgentInboxStore::insert_in_tx(conn, owner_delivery)
+        .map_err(|error| format!("failed to insert TaskAssigned owner delivery: {error}"))?;
+
+    if task_assignment_is_observed_by_coordinator(
+        sender_member_id.as_deref(),
+        source_turn_intent_id,
+    ) {
+        record_inbox_trigger_in_tx(
+            conn,
+            &task.org_run_id,
+            owner_row.id,
+            InboxFormalTriggerSource {
+                source_kind: "task_assignment",
+                task_id: Some(&task.id),
+                owner_member_id: Some(owner_member_id),
+                source_turn_intent_id,
+                task_output_digest: None,
+                plan_revision_id: None,
+                suppress_self_wake: true,
+            },
+        )?;
+        return Ok(owner_row.id);
+    }
+
+    let coordinator_agent_id: String = conn
+        .query_row(
+            "SELECT coordinator_agent_id FROM agent_org_runtime_runs WHERE id=?1",
+            [&task.org_run_id],
+            |row| row.get(0),
+        )
+        .map_err(|error| format!("Task assignment Coordinator lookup failed: {error}"))?;
+    let observer_message = AgentMessage::TaskAssignmentCommitted {
+        task_id: task.id.clone(),
+        owner_member_id: owner_member_id.to_string(),
+        subject: task.subject.clone(),
+        assigned_by: assigned_by_display_name.to_string(),
+    };
+    let (observer_row, _) = AgentInboxStore::insert_in_tx_for_causation_without_formal_trigger(
+        conn,
+        InsertInboxParams {
+            recipient_agent_id: coordinator_agent_id,
+            recipient_member_id: Some(COORDINATOR_MEMBER_ID.to_string()),
+            sender_agent_id,
+            sender_member_id,
+            org_run_id: Some(task.org_run_id.clone()),
+            message: observer_message,
+        },
+        owner_row.id,
+    )?;
+    record_inbox_trigger_in_tx(
+        conn,
+        &task.org_run_id,
+        observer_row.id,
+        InboxFormalTriggerSource {
+            source_kind: "task_assignment",
+            task_id: Some(&task.id),
+            owner_member_id: Some(owner_member_id),
+            source_turn_intent_id,
+            task_output_digest: None,
+            plan_revision_id: None,
+            suppress_self_wake: false,
+        },
+    )?;
+    Ok(owner_row.id)
+}
+
+pub(crate) fn task_assignment_is_observed_by_coordinator(
+    sender_member_id: Option<&str>,
+    source_turn_intent_id: Option<&str>,
+) -> bool {
+    sender_member_id == Some(crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID)
+        && source_turn_intent_id.is_some()
 }
 
 fn bounded_assignment_description(description: &str) -> String {

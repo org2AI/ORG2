@@ -1,0 +1,26 @@
+title = "ORG2 secret scanning"
+
+[extend]
+useDefault = true
+
+# v8.24.3 extends global paths/regexes but omits global stopwords. Preserve
+# the two upstream defaults rather than reclassifying existing fixtures.
+# https://github.com/gitleaks/gitleaks/blob/v8.24.3/config/gitleaks.toml
+[allowlist]
+stopwords = [
+  "abcdefghijklmnopqrstuvwxyz",
+  "014df517-39d1-4453-b7b3-9930c563627c",
+]
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Generated typed-lint finding identities, not authentication keys"
+condition = "AND"
+paths = ['''^config/typed-lint-baseline\.json$''']
+regexTarget = "line"
+# Produced by scripts/quality/typed-lint/findings.mjs as SHA-256 of the
+# file/rule/message/source tuple. Only this standalone field is exempt:
+# source/message values and other rules in the same file remain scanned.
+regexes = ['''^\s*"key": "[0-9a-f]{64}",?\s*$''']

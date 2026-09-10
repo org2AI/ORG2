@@ -265,6 +265,7 @@ interface NormalComposerContentProps extends SharedComposerBarProps {
   onBlur: () => void;
   onSubmit: (capturedText?: string) => void;
   placeholder?: string;
+  commentMode?: boolean;
   /** Inline ghost hint after the last content node (see ComposerInput) */
   trailingHint?: string | null;
   currentInputEmpty: boolean;
@@ -321,6 +322,7 @@ export const NormalComposerContent: React.FC<NormalComposerContentProps> = ({
   contextualPanel = false,
   inlineLeadingContent,
   placeholder,
+  commentMode = false,
   trailingHint,
   currentInputEmpty,
   stopSuppressedForEmptyInput,
@@ -437,6 +439,7 @@ export const NormalComposerContent: React.FC<NormalComposerContentProps> = ({
                 onInterrupt={onInterrupt}
                 onResume={onResume}
                 submitDisabled={submitDisabled}
+                commentMode={commentMode}
               />
             </div>
           }

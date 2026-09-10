@@ -2,11 +2,11 @@ import { useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback, useState } from "react";
 
 import { LaunchpadDashboard } from "@src/modules/shared/launchpad/components";
-import { openWorkspaceSpotlight } from "@src/scaffold/GlobalSpotlight/openSpotlight";
+import { openWorkingDirectorySpotlight } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import { openWorkspaceOverviewInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import type { Repo } from "@src/store/repo";
 import { repoLoadingAtom, reposAtom } from "@src/store/repo";
-import { WORKSPACE_OVERVIEW_TAB } from "@src/store/ui/chatPanelAtom";
+import { WORKSPACE_OVERVIEW_TAB } from "@src/store/ui/chatPanel/selectionAtoms";
 
 function repoDisplayName(repo: Repo): string {
   return repo.name || repo.path?.split("/").pop() || "Repo";
@@ -46,7 +46,7 @@ export default function WorkspaceDashboardPanelView(): React.ReactElement {
       selectedDashboardRepoId={selectedDashboardRepoId}
       onSelectDashboardRepo={setSelectedDashboardRepoId}
       onOpenRepoDetails={handleOpenRepoDetails}
-      onAddWorkspace={() => openWorkspaceSpotlight("add")}
+      onAddWorkspace={() => openWorkingDirectorySpotlight("add")}
     />
   );
 }

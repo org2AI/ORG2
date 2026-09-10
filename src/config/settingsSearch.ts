@@ -46,6 +46,7 @@ const APPEARANCE_APP_KEYS = new Set<SettingsKey>([
   "general.primaryColorDark",
   "general.translucentSidebar",
   "general.iconStyle",
+  "general.dockIcon",
   "general.uiScale",
   "general.usePointerCursors",
   "general.applicationUiFont",
@@ -80,6 +81,7 @@ const SETTINGS_SEARCH_UI_OVERRIDES: Partial<
   Record<SettingsKey, SettingsSearchUiOverride>
 > = {
   "general.theme": { labelKey: "settings:general.appearanceMode" },
+  "general.dockIcon": { labelKey: "settings:general.appIcon" },
   "general.primaryColorLight": {
     labelKey: "settings:general.lightAccent",
     aliasLabelKeys: ["settings:general.accent"],
@@ -216,7 +218,7 @@ const CATEGORY_OWNER: Record<SettingsCategory, SettingsSearchOwner> = {
   agent: { navigationItemId: "agent-orgs" },
   agentBrowser: { navigationItemId: "computerUse" },
   housekeeper: { navigationItemId: "housekeeper" },
-  network: { navigationItemId: "monitor", tab: "network" },
+  network: { navigationItemId: "general", tab: "general" },
   privacy: { navigationItemId: "general", tab: "general" },
   mobileRemote: { navigationItemId: "connections" },
 };
@@ -241,7 +243,11 @@ function resolveOwner(
     return { navigationItemId: "appearance", tab: "chat-panel" };
   }
   if (MY_ROLE_KEYS.has(key)) return { navigationItemId: "myRoles" };
-  if (SECURITY_KEYS.has(key)) return { navigationItemId: "security" };
+  // Security is the fourth tab of Rules / Memory / Evolution, not a sidebar
+  // item of its own, so its settings resolve to that destination.
+  if (SECURITY_KEYS.has(key)) {
+    return { navigationItemId: "rulesMemoryEvolution" };
+  }
   return CATEGORY_OWNER[category];
 }
 

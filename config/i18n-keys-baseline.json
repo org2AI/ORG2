@@ -1,0 +1,27 @@
+{
+  "missing": [],
+  "unused": [
+    "common:workstation.browserCore.tlsDevNote",
+    "common:teamInbox.title",
+    "common:teamInbox.allRead",
+    "common:teamInbox.loading",
+    "integrations:keyVault.quota.resetsAvailable",
+    "integrations:keyVault.quota.resetsAvailable_one",
+    "integrations:keyVault.quota.resetsAvailable_few",
+    "integrations:keyVault.quota.resetsAvailable_many",
+    "integrations:keyVault.quota.resetsAvailable_other",
+    "mobileRemote:welcome.tryDemo",
+    "navigation:cloud.channels.feed.loadingMessages",
+    "profile:name",
+    "profile:role",
+    "profile:location",
+    "profile:commits",
+    "profile:activity",
+    "sessions:creator.contextMenu.back",
+    "settings:harnessConnections.description",
+    "teamRuntime:title"
+  ],
+  "localeGaps": [],
+  "localeExtras": [],
+  "placeholderMismatches": []
+}

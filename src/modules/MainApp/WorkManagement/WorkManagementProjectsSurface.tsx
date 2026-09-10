@@ -15,15 +15,11 @@ import type { LinearProjectSelection } from "@src/modules/ProjectManager/Panels/
 import type { ProjectWorkItemSelection } from "@src/modules/ProjectManager/ProjectManagerLayout/components/ProjectWorkItemsTabContent";
 import type { ActiveRepoView } from "@src/modules/ProjectManager/ProjectManagerLayout/types";
 import {
-  openCreateTargetInChatPanelStartPageAtom,
+  openChatPanelCreateTargetAtom,
   openWorkItemInChatPanelTabAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { projectListRefreshAtom } from "@src/store/project/projectAtom";
-import {
-  CHAT_PANEL_CREATE_TARGET,
-  activeStationChatVisibleAtom,
-} from "@src/store/ui/chatPanelAtom";
-import { stationModeAtom } from "@src/store/ui/simulatorAtom";
+import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanel/selectionAtoms";
 import {
   STORY_ORG_SCOPE,
   WORK_MANAGEMENT_PROJECTS_VIEW,
@@ -102,11 +98,7 @@ const WorkManagementProjectsSurface: React.FC<{
   const { openTab } = useWorkStationTabs();
   const openWorkItemInChatPanel = useSetAtom(openWorkItemInChatPanelTabAtom);
 
-  const setStationMode = useSetAtom(stationModeAtom);
-  const setStationChatVisible = useSetAtom(activeStationChatVisibleAtom);
-  const openCreateTargetInStartPage = useSetAtom(
-    openCreateTargetInChatPanelStartPageAtom
-  );
+  const openCreateTarget = useSetAtom(openChatPanelCreateTargetAtom);
 
   const activeOrgScope =
     view.kind === "repo" ? (view.orgScope ?? STORY_ORG_SCOPE.ALL) : null;
@@ -184,20 +176,16 @@ const WorkManagementProjectsSurface: React.FC<{
   }, [bumpProjectListRefresh, handleOpenProjects]);
 
   const handleCreateProject = useCallback(() => {
-    openCreateTargetInStartPage({
+    openCreateTarget({
       target: CHAT_PANEL_CREATE_TARGET.PROJECT,
     });
-    setStationMode("my-station");
-    setStationChatVisible("my-station", true);
-  }, [openCreateTargetInStartPage, setStationChatVisible, setStationMode]);
+  }, [openCreateTarget]);
 
   const handleCreateWorkItem = useCallback(() => {
-    openCreateTargetInStartPage({
+    openCreateTarget({
       target: CHAT_PANEL_CREATE_TARGET.WORK_ITEM,
     });
-    setStationMode("my-station");
-    setStationChatVisible("my-station", true);
-  }, [openCreateTargetInStartPage, setStationChatVisible, setStationMode]);
+  }, [openCreateTarget]);
 
   const handleOpenProjectWorkItem = useCallback(
     (

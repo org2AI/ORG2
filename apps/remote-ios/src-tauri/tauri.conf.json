@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' 'nonce-orgii-codemirror-style'; style-src-attr 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://fpdyejwbiriliuqqcjoy.supabase.co https://org2-cloud-infra.vercel.app wss:; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' 'nonce-orgii-codemirror-style'; style-src-attr 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://fpdyejwbiriliuqqcjoy.supabase.co https://org2-cloud-infra.vercel.app https://orgii-mobile-relay.superficial-jasper.workers.dev wss:; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
     }
   },
   "bundle": {

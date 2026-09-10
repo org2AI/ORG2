@@ -260,13 +260,10 @@ fn claude_native_key_info_exposes_output_config_effort_variants() {
     }));
 }
 
-/// Claude Fable 5.1 (`claude-fable-5-1`) is the newest Claude model. It ships
-/// in the baked Claude Code OAuth catalog and, being the same family as Fable
-/// 5, must get the Fable effort ladder (the five Anthropic rungs plus
-/// `ultracode`) rather than the generic Anthropic one. The `-1` minor-version
-/// segment must not be mistaken for an effort suffix.
+/// Fable 5.1's documented ladder has five levels, unlike Fable 5's legacy
+/// fallback. The minor-version segment must not become an effort suffix.
 #[test]
-fn claude_fable_5_1_is_catalogued_and_gets_the_fable_effort_ladder() {
+fn claude_fable_5_1_is_catalogued_with_five_documented_efforts() {
     use crate::commands::crud::KeyInfo;
     use crate::commands::crud::{
         CLAUDE_CODE_OAUTH_DEFAULT_ENABLED_MODELS, CLAUDE_CODE_OAUTH_MODELS,
@@ -296,12 +293,71 @@ fn claude_fable_5_1_is_catalogued_and_gets_the_fable_effort_ladder() {
             "claude-fable-5-1-high",
             "claude-fable-5-1-xhigh",
             "claude-fable-5-1-max",
-            "claude-fable-5-1-ultracode",
         ]
     );
     assert!(info.default_variants.iter().any(|variant| {
         variant.base_model == "claude-fable-5-1" && variant.model == "claude-fable-5-1-high"
     }));
+}
+
+#[test]
+fn fable_51_api_and_oauth_fallbacks_agree_and_live_metadata_wins() {
+    use crate::commands::crud::KeyInfo;
+    use crate::commands::validate::{resolved_oauth_catalog, OAuthModelCatalogSource};
+    use crate::key_store::{ModelKey, ModelType};
+    use crate::types::DiscoveredModel;
+
+    let mut key = ModelKey::new(ModelType::AnthropicApi);
+    key.available_models = vec!["claude-fable-5-1".into()];
+    let info = KeyInfo::from(key);
+    let api_variants: Vec<_> = info
+        .model_variants
+        .iter()
+        .map(|v| v.model.as_str())
+        .collect();
+    assert_eq!(
+        api_variants,
+        vec![
+            "claude-fable-5-1-low",
+            "claude-fable-5-1-medium",
+            "claude-fable-5-1-high",
+            "claude-fable-5-1-xhigh",
+            "claude-fable-5-1-max",
+        ]
+    );
+
+    for efforts in [vec![], vec!["medium".to_string(), "max".to_string()]] {
+        let catalog = resolved_oauth_catalog(
+            "claude_code",
+            vec![DiscoveredModel {
+                id: "claude-fable-5-1".into(),
+                supported_efforts: efforts.clone(),
+                context_window: Some(1_000_000),
+                default_effort: Some("medium".into()),
+                ..DiscoveredModel::default()
+            }],
+            OAuthModelCatalogSource::Live,
+        )
+        .unwrap();
+        let variants: Vec<_> = catalog
+            .model_variants
+            .iter()
+            .map(|v| v.model.as_str())
+            .collect();
+        if efforts.is_empty() {
+            assert_eq!(variants, api_variants);
+        } else {
+            assert_eq!(
+                variants,
+                vec!["claude-fable-5-1-medium", "claude-fable-5-1-max"]
+            );
+        }
+        assert!(catalog
+            .model_variants
+            .iter()
+            .all(|v| v.context_window == Some(1_000_000)));
+        assert_eq!(catalog.default_variants[0].model, "claude-fable-5-1-medium");
+    }
 }
 
 #[test]
@@ -350,6 +406,86 @@ fn codex_key_info_exposes_requested_gpt_effort_and_speed_variants() {
         .default_variants
         .iter()
         .any(|variant| variant.base_model == "gpt-5.5" && variant.model == "gpt-5.5-medium"));
+}
+
+#[test]
+fn astra_fallback_catalog_and_saved_account_expose_the_same_efforts() {
+    use crate::commands::crud::KeyInfo;
+    use crate::commands::validate::{resolved_oauth_catalog, OAuthModelCatalogSource};
+    use crate::key_store::{AuthMethod, ModelKey, ModelType};
+
+    let catalog = resolved_oauth_catalog("codex", vec![], OAuthModelCatalogSource::Fallback)
+        .expect("fallback catalog");
+    assert!(catalog.models.iter().any(|model| model == "gpt-6-astra"));
+    let mut key = ModelKey::new(ModelType::Codex);
+    key.auth_method = AuthMethod::Oauth;
+    key.available_models = catalog.models.clone();
+    let saved = KeyInfo::from(key);
+
+    for variants in [&catalog.model_variants, &saved.model_variants] {
+        let astra: Vec<_> = variants
+            .iter()
+            .filter(|variant| variant.base_model == "gpt-6-astra")
+            .collect();
+        assert_eq!(astra.len(), 12);
+        for fast in [false, true] {
+            assert_eq!(
+                astra
+                    .iter()
+                    .filter(|variant| variant.fast == fast)
+                    .map(|variant| variant.reasoning.as_deref().unwrap())
+                    .collect::<Vec<_>>(),
+                vec!["low", "medium", "high", "xhigh", "max", "ultra"]
+            );
+        }
+    }
+    for defaults in [&catalog.default_variants, &saved.default_variants] {
+        assert!(defaults
+            .iter()
+            .any(|variant| variant.base_model == "gpt-6-astra"
+                && variant.model == "gpt-6-astra-medium"));
+    }
+}
+
+#[test]
+fn astra_live_catalog_keeps_provider_efforts_context_and_default() {
+    use crate::commands::validate::{resolved_oauth_catalog, OAuthModelCatalogSource};
+    use crate::types::DiscoveredModel;
+
+    let catalog = resolved_oauth_catalog(
+        "codex",
+        vec![DiscoveredModel {
+            id: "gpt-6-astra".to_string(),
+            context_window: Some(256_000),
+            supported_efforts: vec!["low".to_string(), "high".to_string()],
+            default_effort: Some("high".to_string()),
+            ..DiscoveredModel::default()
+        }],
+        OAuthModelCatalogSource::Live,
+    )
+    .unwrap();
+    assert_eq!(
+        catalog
+            .models
+            .iter()
+            .filter(|model| *model == "gpt-6-astra")
+            .count(),
+        1
+    );
+    let variants: Vec<_> = catalog
+        .model_variants
+        .iter()
+        .filter(|variant| variant.base_model == "gpt-6-astra")
+        .collect();
+    assert_eq!(variants.len(), 4);
+    assert!(variants
+        .iter()
+        .all(|variant| variant.context_window == Some(256_000)
+            && matches!(variant.reasoning.as_deref(), Some("low" | "high"))));
+    assert!(catalog
+        .default_variants
+        .iter()
+        .any(|variant| variant.base_model == "gpt-6-astra" && variant.model == "gpt-6-astra-high"));
 }
 
 #[test]

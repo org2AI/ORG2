@@ -3,7 +3,7 @@
 //! Three cycles run on independent timers:
 //! - **push cycle** every `PUSH_INTERVAL_SECS` (default 30s): claim
 //!   pending rows, dispatch to the matching `SyncAdapter`, persist
-//!   success / failure-with-backoff. Tail-end GC sweep deletes
+//!   success / failure-with-backoff. Independent five-minute GC deletes
 //!   succeeded rows older than [`OUTBOX_GC_RETENTION_MS`].
 //! - **merge cycle** every `MERGE_INTERVAL_SECS` (default 30s):
 //!   drains `merge_external` rows produced by the pull cycle, runs
@@ -50,6 +50,8 @@ pub const OUTBOX_GC_RETENTION_MS: i64 = 7 * 24 * 60 * 60 * 1000;
 /// Cap on rows GC'd per tick. Bounded so a long-stalled sweep doesn't
 /// monopolize the worker.
 pub const OUTBOX_GC_LIMIT: usize = 500;
+/// Housekeeping cadence, independent of durable push/merge/retry work.
+const OUTBOX_GC_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
 /// Webhook freshness window. When a project received a webhook
 /// delivery within this many milliseconds, the next scheduled pull
@@ -178,6 +180,7 @@ impl Default for LoopConfig {
 }
 
 async fn run_loop(config: LoopConfig) {
+    let mut next_gc = std::time::Instant::now();
     let mut last_pull_tick = std::time::Instant::now() - config.pull_interval;
     let mut last_merge_tick = std::time::Instant::now() - config.merge_interval;
     let mut last_import_tick = std::time::Instant::now() - config.import_interval;
@@ -186,7 +189,7 @@ async fn run_loop(config: LoopConfig) {
         if let Err(err) = push_cycle(config.max_pushes_per_tick).await {
             warn!("[sync::worker] push cycle failed: {}", err);
         }
-        if let Err(err) = gc_cycle().await {
+        if let Err(err) = gc_cycle_if_due(&mut next_gc, std::time::Instant::now()).await {
             warn!("[sync::worker] gc cycle failed: {}", err);
         }
         if last_merge_tick.elapsed() >= config.merge_interval {
@@ -210,10 +213,28 @@ async fn run_loop(config: LoopConfig) {
     }
 }
 
-/// Tail-end garbage collection of succeeded outbox rows. Runs once
-/// per push tick — cheap when there's nothing to delete, bounded by
-/// [`OUTBOX_GC_LIMIT`] when there is.
-async fn gc_cycle() -> Result<(), String> {
+/// Skip SQL entirely until housekeeping is due. Advance before attempting
+/// the sweep so database failures do not restore per-push GC retries.
+async fn gc_cycle_if_due(
+    next_gc: &mut std::time::Instant,
+    now: std::time::Instant,
+) -> Result<(), String> {
+    if now < *next_gc {
+        return Ok(());
+    }
+    *next_gc = now + OUTBOX_GC_INTERVAL;
+    let deleted = gc_cycle().await?;
+    if deleted == OUTBOX_GC_LIMIT {
+        // A full batch may leave a backlog. Keep the original drain cadence
+        // until it is gone instead of reducing maximum cleanup throughput.
+        *next_gc = now + Duration::from_secs(PUSH_INTERVAL_SECS);
+    }
+    Ok(())
+}
+
+/// Garbage collection of succeeded outbox rows, bounded by
+/// [`OUTBOX_GC_LIMIT`] once per housekeeping deadline.
+async fn gc_cycle() -> Result<usize, String> {
     tokio::task::spawn_blocking(|| {
         let conn = io::conn()?;
         let deleted = io::gc_succeeded(&conn, now_ms(), OUTBOX_GC_RETENTION_MS, OUTBOX_GC_LIMIT)?;
@@ -223,7 +244,7 @@ async fn gc_cycle() -> Result<(), String> {
                 deleted
             );
         }
-        Ok(())
+        Ok(deleted)
     })
     .await
     .map_err(|err| format!("gc-cycle join error: {}", err))?

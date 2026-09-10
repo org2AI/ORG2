@@ -37,6 +37,11 @@ import { disposeSessionStreamingState } from "@src/engines/SessionCore/sync/adap
 import { conversationComposerModeAtomFamily } from "@src/features/Org2Cloud/SessionConversation/conversationComposerMode";
 import { disposeCanvasRevisionDraftState } from "@src/store/session/canvasRevisionDraftAtom";
 import { cursorIdeTurnSummariesAtomFamily } from "@src/store/session/cursorIdeTurnSummariesAtom";
+import {
+  clearSessionPermissionRequests,
+  pendingPermissionRequestsAtom,
+  permissionRequestsForSessionAtomFamily,
+} from "@src/store/session/permissionRequestAtom";
 import { pendingPlanApprovalForSessionAtomFamily } from "@src/store/session/planApprovalAtom";
 import { tuiModeAtom } from "@src/store/session/tuiModeAtom";
 import {
@@ -46,11 +51,7 @@ import {
 import { clearTodosForSessionAtom } from "@src/store/ui/todoAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
-import {
-  sessionFlatListLastLoadedBySignatureAtom,
-  sessionLastLoadedAtom,
-  sessionsAtom,
-} from "./atoms";
+import { sessionsAtom } from "./atoms";
 import { removeGuestImportedSession } from "./guestImportRegistry";
 import { registerNewNativeSidebarSession } from "./loaders";
 import type { Session, SessionStatus } from "./types";
@@ -201,6 +202,10 @@ export const removeSession = (sessionId: string) => {
   // A removed session has no live viewers, so free its per-session caches.
   // Without this they accumulate one entry per session for the app lifetime —
   // and tuiMode additionally leaves a `orgii:tuiMode:<id>` localStorage key.
+  store.set(pendingPermissionRequestsAtom, (prev) =>
+    clearSessionPermissionRequests(prev, sessionId)
+  );
+  permissionRequestsForSessionAtomFamily.remove(sessionId);
   cursorIdeTurnSummariesAtomFamily.remove(sessionId);
   tuiModeAtom.remove(sessionId);
   // jotai-family pins every key it has ever been called with, so a family that
@@ -261,23 +266,4 @@ export const updateSessionStatus = (
     });
     return changed ? next : prev;
   });
-};
-
-/**
- * Invalidate cache and force refresh
- */
-export const resetSessionStore = () => {
-  const store = getStore();
-  store.set(sessionLastLoadedAtom, null);
-  store.set(sessionFlatListLastLoadedBySignatureAtom, {});
-};
-
-/**
- * Clear all sessions (use with caution)
- */
-export const clearSessions = () => {
-  const store = getStore();
-  store.set(sessionsAtom, []);
-  store.set(sessionLastLoadedAtom, null);
-  store.set(sessionFlatListLastLoadedBySignatureAtom, {});
 };

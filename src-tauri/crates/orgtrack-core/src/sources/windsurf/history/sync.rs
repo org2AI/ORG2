@@ -40,8 +40,8 @@ pub(super) fn list_windsurf_composer_meta_from_conn(
         .query_map([], |row| row.get::<_, Option<String>>(0))
         .map_err(|err| format!("Failed to query Windsurf composers: {err}"))?;
 
-    // A single `state.vscdb` backs every composer, so fold its WAL/`-shm`
-    // sidecars into each composer's fingerprint once.
+    // A single `state.vscdb` backs every composer, so fold its WAL
+    // sidecar into each composer's fingerprint once.
     let sidecar_signature = imported_paths::sqlite_sidecar_signature(db_path);
     let mut metas = Vec::new();
     for row in rows {
@@ -88,7 +88,7 @@ pub(super) fn list_windsurf_composer_meta_from_conn(
 ///
 /// The `state.vscdb` mtime alone can stay flat across a same-mtime rewrite, so
 /// this folds the composer's own identity/status/timestamp/token/turn-count
-/// fields together with the shared WAL/`-shm` sidecar signature.
+/// fields together with the shared WAL sidecar signature.
 fn windsurf_source_fingerprint(composer: &RawComposerData, sidecar_signature: &str) -> String {
     [
         composer.composer_id.as_str(),

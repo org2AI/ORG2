@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, createElement } from "react";
 import {
   afterAll,
   afterEach,
@@ -87,6 +87,31 @@ describe("Message (lazy toast container)", () => {
     expect(root?.textContent).toContain("saved ok");
   });
 
+  it("replaces a fixed refresh slot instead of stacking opposite results", async () => {
+    await act(async () => {
+      Message.success({
+        id: "account-usage-refresh",
+        content: "usage refreshed",
+        duration: 0,
+      });
+    });
+    await waitForToastText("usage refreshed");
+
+    await act(async () => {
+      Message.error({
+        id: "account-usage-refresh",
+        content: "sign-in expired",
+        duration: 0,
+      });
+    });
+    await waitForToastText("sign-in expired");
+
+    const root = document.querySelector("[data-message-root]");
+    expect(root?.textContent).not.toContain("usage refreshed");
+    expect(root?.textContent).toContain("sign-in expired");
+    expect(root?.children).toHaveLength(1);
+  });
+
   it("removes toasts and the container on destroy", async () => {
     await act(async () => {
       Message.info("temporary", { duration: 0 });
@@ -95,4 +120,30 @@ describe("Message (lazy toast container)", () => {
     act(() => Message.destroy());
     expect(document.querySelector("[data-message-root]")).toBeNull();
   });
+
+  it.each(["success", "info", "warning", "error"] as const)(
+    "omits default and custom leading icons from %s toasts",
+    async (type) => {
+      for (const custom of [false, true]) {
+        const content = `${type} ${custom ? "custom" : "default"}`;
+        await act(async () => {
+          Message[type]({
+            content,
+            duration: 0,
+            closable: false,
+            ...(custom
+              ? {
+                  icon: createElement("span", { "data-testid": "custom-icon" }),
+                }
+              : {}),
+          });
+        });
+        await waitForToastText(content);
+        const root = document.querySelector("[data-message-root]");
+        expect(root?.querySelector("svg")).toBeNull();
+        expect(root?.querySelector('[data-testid="custom-icon"]')).toBeNull();
+        act(() => Message.clear());
+      }
+    }
+  );
 });

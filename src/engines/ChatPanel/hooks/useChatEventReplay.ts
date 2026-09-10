@@ -31,7 +31,7 @@ import {
 } from "@src/engines/SessionCore/derived/planDisplayEvents";
 import { resolveReplayEventLookup } from "@src/engines/SessionCore/replay/resolveReplayEventLookup";
 import { createLogger } from "@src/hooks/logger";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import {
   simulatorFollowAppLockAtom,
   simulatorSelectedAppAtom,

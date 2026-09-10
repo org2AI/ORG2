@@ -7,7 +7,7 @@ import type {
   FileNode,
   FileSearchResult,
 } from "@src/modules/WorkStation/CodeEditor/hooks/useCodeEditor";
-import type { PrimarySidebarTabKey } from "@src/store/ui/workStationAtom";
+import type { PrimarySidebarTabKey } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import type { GitFile } from "@src/types/git/types";
 
 // ============================================

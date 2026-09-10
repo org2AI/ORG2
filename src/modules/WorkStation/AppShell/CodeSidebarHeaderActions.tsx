@@ -10,10 +10,10 @@ import { type IconSvgElement, Search01Icon } from "@src/icons";
 import {
   PRIMARY_SIDEBAR_TABS,
   type PrimarySidebarTabKey,
-  activeStatusBarAppAtom,
   workStationPrimarySidebarCollapsedPersistAtom,
   workStationPrimarySidebarTabAtom,
-} from "@src/store/ui/workStationAtom";
+} from "@src/store/ui/workStationLayout/primarySidebarAtoms";
+import { activeStatusBarAppAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import {
   type WorkStationTab,
   activeWorkStationTabAtom,

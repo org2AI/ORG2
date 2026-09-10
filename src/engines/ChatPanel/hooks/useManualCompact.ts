@@ -19,8 +19,11 @@ import { Message } from "@src/components/Message";
 import { triggerSessionReloadAtom } from "@src/engines/SessionCore";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import { compactBoundaryToSessionEvent } from "@src/engines/SessionCore/ingestion/agentMessageAdapters";
+import { isAgentSession } from "@src/util/session/sessionDispatch";
 
+import { useConversationExecutionBinding } from "../ConversationExecutionBindingContext";
 import { formatTokenCount } from "../InputArea/components/useContextUsageInfo";
+import type { ConversationTargetBinding } from "../conversationTargetSelection";
 
 /** Session id with a manual compaction in flight, or `null`. */
 export const manualCompactInFlightSessionAtom = atom<string | null>(null);
@@ -76,9 +79,23 @@ export interface UseManualCompactReturn {
   ) => Promise<boolean>;
 }
 
+export function resolveManualCompactSessionId(
+  sessionId: string | null | undefined,
+  binding: ConversationTargetBinding | null
+): string | null {
+  if (!sessionId || !isAgentSession(sessionId)) return null;
+  if (!binding) return sessionId;
+  return binding.readiness === "ready" &&
+    Boolean(binding.target?.agentDefinitionId) &&
+    binding.appOpenSessionId === sessionId
+    ? sessionId
+    : null;
+}
+
 export function useManualCompact(): UseManualCompactReturn {
   const { t } = useTranslation();
   const store = useStore();
+  const binding = useConversationExecutionBinding();
 
   const runManualCompact = useCallback(
     async (
@@ -91,6 +108,15 @@ export function useManualCompact(): UseManualCompactReturn {
       }
       if (!sessionId) {
         Message.info(t("contextInfo.manualCompactNoRuntime"));
+        return false;
+      }
+      if (resolveManualCompactSessionId(sessionId, binding) === null) {
+        Message.info(
+          t("contextInfo.manualCompactNativeProvider", {
+            defaultValue:
+              "Manual compaction here supports built-in Agent sessions. Compact native CLI history in its provider app.",
+          })
+        );
         return false;
       }
 
@@ -187,7 +213,7 @@ export function useManualCompact(): UseManualCompactReturn {
         store.set(manualCompactInFlightSessionAtom, null);
       }
     },
-    [store, t]
+    [binding, store, t]
   );
 
   return { runManualCompact };

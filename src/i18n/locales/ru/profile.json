@@ -1,34 +1,9 @@
 {
-  "connect": "Подключить",
   "name": "Имя",
   "genderOptions": {},
   "role": "Роль",
   "location": "Местоположение",
-  "timezone": "Часовой пояс",
   "commits": "коммитов",
   "activity": "Активность",
-  "specialty": {
-    "frontend": "Frontend",
-    "backend": "Backend",
-    "fullstack": "Full Stack",
-    "mobile": "Mobile",
-    "devops": "DevOps",
-    "data": "Data",
-    "systems": "Systems"
-  },
-  "bio": "О себе",
-  "social": {},
-  "edu": {
-    "edit": "Редактировать образование",
-    "present": "По настоящее время"
-  },
-  "exp": {
-    "edit": "Редактировать опыт работы"
-  },
-  "sections": {
-    "about": "О себе",
-    "developerActivity": "Активность разработчика",
-    "projectsAndAchievements": "Projects и достижения",
-    "professionalBackground": "Профессиональный опыт"
-  }
+  "social": {}
 }

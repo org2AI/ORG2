@@ -4,7 +4,7 @@
  * State management for all Workstation apps:
  * - Code Editor: terminal, file explorer, search, test runner, extensions
  * - Database: connections, tabs
- * - Browser: sessions, design tokens
+ * - Browser: sessions
  *
  * Also includes the shared tab system.
  *
@@ -28,7 +28,6 @@ export { activeHostAtom } from "./tabHost";
 export {
   workstationNewBrowserSessionRequestAtom,
   requestNewBrowserSessionAtom,
-  type WorkstationNewBrowserSessionRequest,
   workstationProjectTabBarAtom,
   WORK_MANAGEMENT_SECTION,
   WORK_MANAGEMENT_PROJECTS_VIEW,
@@ -45,9 +44,7 @@ export {
 // Code Editor app (terminal, file, search, testRunner, extensions)
 export * from "./codeEditor";
 
-// Browser app - tokens only
 // Note: Import browser tabs from "@src/store/workstation/browser/tabs" directly
-export * from "./browser/tokens";
 
 // Note: Database has name conflicts with shared tabs - import directly:
 // import { ... } from "@src/store/workstation/database";

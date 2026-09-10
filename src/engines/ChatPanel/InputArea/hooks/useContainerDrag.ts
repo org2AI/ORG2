@@ -16,8 +16,8 @@ import {
 import { insertPillFromTabPayload } from "@src/shared/dnd/dropTargetUtils";
 import { hasReferenceDragData } from "@src/shared/dnd/referenceDragData";
 import { useTabDragEndToPill } from "@src/shared/dnd/useTabDragEndToPill";
+import { reorderActiveRef } from "@src/store/ui/queueReorderState";
 
-import { reorderActiveRef } from "../components/QueuedMessages";
 import { isInternalDropType } from "./containerDropHelpers";
 import { useTabDragHover } from "./useTabDragHover";
 

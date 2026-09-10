@@ -1,6 +1,6 @@
 /**
  * Assembles the Team Sessions section's `NavigationMenuItem[]` list
- * (`cloudSessionsSection.tsx`): the separator header (refresh + member
+ * (`cloudSessionsSection.tsx`): the separator header (search, refresh + member
  * filter row actions), one row per visible fork thread via `buildRowItem`,
  * the "Load more" pagination row, and the empty/loading/error placeholder
  * row.
@@ -11,7 +11,8 @@ import React, { useMemo } from "react";
 import type { CloudSessionFilter } from "@src/features/Org2Cloud/cloudSessionFilter";
 import type { CloudSessionThread } from "@src/features/Org2Cloud/cloudSessionThreads";
 import type { CloudRemoteSessionsFetchState } from "@src/features/Org2Cloud/org2CloudRemoteSessionsAtom";
-import { FilterMailIcon, Refresh04Icon } from "@src/icons";
+import { FilterMailIcon, Refresh04Icon, Search01Icon } from "@src/icons";
+import { openAgentSessionSearchSpotlight } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 
 import { separator } from "../useSessionMenuItems/menuItemBuilders";
@@ -65,6 +66,15 @@ export function useCloudTeamSessionMenuItems({
     );
     header.rowActions = [
       {
+        showOnSidebarHover: true,
+        icon: Search01Icon,
+        dataIcon: "search",
+        label: t("sidebar.search.sessions"),
+        dataTestId: "cloud-team-sessions-search",
+        onClick: openAgentSessionSearchSpotlight,
+      },
+      {
+        showOnSidebarHover: true,
         icon: Refresh04Icon,
         dataIcon: "refresh-cw",
         iconClassName: refreshSpinClass,
@@ -75,6 +85,7 @@ export function useCloudTeamSessionMenuItems({
       ...(showSessionFilter
         ? [
             {
+              showOnSidebarHover: true,
               icon: FilterMailIcon,
               label: t("cloud.sidebar.sessionFilter"),
               active: memberMenu !== null || filter.kind !== "all",

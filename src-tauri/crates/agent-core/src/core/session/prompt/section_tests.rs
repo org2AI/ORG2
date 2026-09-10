@@ -1,13 +1,16 @@
 use super::section_builders::{
-    build_agent_org_context_section, build_project_environment, build_rules_section,
-    cap_rule_content, format_user_profile,
+    build_agent_org_context_section, build_agent_org_context_section_with_task_snapshot,
+    build_project_environment, build_rules_section, cap_rule_content, format_user_profile,
+};
+use crate::coordination::agent_org_run_completion::{
+    RunCompletionCandidateAssessment, RunCompletionCandidateState, RunCompletionOutcome,
 };
 use crate::coordination::agent_org_runs::{
     AgentOrgContextMember, AgentOrgRunContext, AgentOrgRunEntryMode, AgentOrgRunStatus,
     AgentOrgRunStore, CreateAgentOrgRunParams, COORDINATOR_MEMBER_ID,
 };
 use crate::coordination::agent_org_tasks::{AgentOrgTaskStore, CreateTaskParams, TaskStatus};
-use crate::definitions::orgs::{HierarchyMode, OrgDefinition, OrgMember, PlanApprovalPolicy};
+use crate::definitions::orgs::{FlatOrgMember, OrgDefinition, PlanApprovalPolicy};
 use serial_test::serial;
 use test_helpers::test_env;
 
@@ -53,10 +56,9 @@ fn prompt_test_agent_org_context() -> AgentOrgRunContext {
             name: "Worker".to_string(),
             role: "implementer".to_string(),
             agent_id: "agent-worker".to_string(),
-            parent_member_id: None,
         }],
-        hierarchy_mode: HierarchyMode::Flat,
         plan_approval_policy: PlanApprovalPolicy::Coordinator,
+        capability_index: Default::default(),
         root_session_id: Some("root-prompt-test".to_string()),
     }
 }
@@ -66,27 +68,28 @@ fn materialize_prompt_test_run(context: &AgentOrgRunContext) -> String {
         org_id: context.org_id.clone(),
         coordinator_agent_id: context.coordinator_agent_id.clone(),
         root_session_id: context.root_session_id.clone(),
-        org_snapshot: OrgDefinition {
+        org_snapshot: (&OrgDefinition {
             id: context.org_id.clone(),
             name: context.org_name.clone(),
             role: context.org_role.clone(),
             agent_id: context.coordinator_agent_id.clone(),
             description: None,
-            hierarchy_mode: context.hierarchy_mode,
             plan_approval_policy: context.plan_approval_policy,
-            children: context
+            members: context
                 .members
                 .iter()
-                .map(|member| OrgMember {
-                    id: member.member_id.clone(),
+                .map(|member| FlatOrgMember {
+                    member_id: member.member_id.clone(),
                     name: member.name.clone(),
                     role: member.role.clone(),
                     agent_id: member.agent_id.clone(),
                     runtime_config: None,
-                    children: Vec::new(),
                 })
                 .collect(),
-        },
+            additional_task_graph_writer_member_ids: Vec::new(),
+            member_communication_links: Vec::new(),
+        })
+            .into(),
         entry_mode: AgentOrgRunEntryMode::StandaloneSession,
         status: AgentOrgRunStatus::Running,
         work_item_id: None,
@@ -140,6 +143,17 @@ fn agent_org_prompt_uses_task_board_for_roster_delegation() {
         "prompt must describe member-session reaction semantics: {section}"
     );
     assert!(
+        section.contains("Routine progress is not a Coordinator message or assistant reply")
+            && section.contains("call the next required tool directly")
+            && section.contains("purpose` to `blocker`")
+            && section.contains("TaskOutput for completion"),
+        "prompt must keep routine progress out of the durable coordination channel: {section}"
+    );
+    assert!(
+        !section.contains("status notes that are not task-state transitions"),
+        "prompt must not encourage work-liveblog messages: {section}"
+    );
+    assert!(
         section.contains("set `eligible_member_ids` to the exact candidates"),
         "prompt must describe eligible_member_ids as a coordinator-validated candidate list: {section}"
     );
@@ -179,12 +193,12 @@ fn agent_org_prompt_uses_task_board_for_roster_delegation() {
     assert!(
         section.contains("Your task authority:** coordinator")
             && section.contains("being allowed to message a peer never grants permission")
-            && section.contains("may NOT impersonate another member's work"),
+            && section.contains("may NOT reassign or rewrite the core goal")
+            && section.contains("impersonate its Owner"),
         "prompt must separate communication reachability from task authority: {section}"
     );
     assert!(
-        section
-            .contains("first call `task_update` for that exact task id with `status=in_progress`")
+        section.contains("first call `task_update` for that exact task id with `operation=start`")
             && section.contains("`output={summary, content?, artifact_ids?}`")
             && section.contains("`summary` is required"),
         "prompt must state the owner-authored task lifecycle contract: {section}"
@@ -203,19 +217,20 @@ fn agent_org_prompt_uses_task_board_for_roster_delegation() {
 }
 
 #[test]
-fn agent_org_prompt_worker_cannot_confuse_soft_chat_with_peer_delegation() {
-    let mut context = prompt_test_agent_org_context();
-    context.hierarchy_mode = HierarchyMode::Soft;
+fn agent_org_prompt_worker_cannot_confuse_peer_chat_with_delegation() {
+    let context = prompt_test_agent_org_context();
     let section = build_agent_org_context_section(&context, "agent-worker", Some("member-worker"));
     assert!(
         section.contains("Your task authority:** worker")
-            && section.contains("may not assign or rewrite their work")
-            && section.contains("Only you may record `in_progress`, `completed`, and `output`"),
+            && section.contains("configured Writer grants are not active in this phase")
+            && section.contains("cannot create, assign, or rewrite the Task graph")
+            && section.contains("exact Task bound to your persisted TaskExecution turn")
+            && section.contains("only you may start it"),
         "worker prompt must explain self-only task authority: {section}"
     );
     assert!(
-        section.contains("you may message any peer directly"),
-        "Soft routing should still permit peer discussion: {section}"
+        section.contains("peer delivery remains disabled until the peer-send phase"),
+        "prompt must not activate configured peer links before the peer-send phase: {section}"
     );
 }
 
@@ -248,7 +263,15 @@ fn agent_org_prompt_includes_bounded_task_snapshot() {
         status: TaskStatus::Completed,
         blocks: vec![],
         blocked_by: vec![],
-        metadata: None,
+        metadata: Some(serde_json::json!({
+            "output": {
+                "summary": "Done prompt result",
+                "content": null,
+                "artifactIds": [],
+                "producedByMemberId": "member-worker",
+                "producedAt": "2026-08-20T00:00:00Z"
+            }
+        })),
     })
     .unwrap();
 
@@ -256,7 +279,7 @@ fn agent_org_prompt_includes_bounded_task_snapshot() {
     assert!(section.contains("### Current task board snapshot"));
     assert!(section.contains("`prompt-open` [in_progress] owner=member-worker blocked_by=[prompt-blocker] — Open prompt task"));
     assert!(!section.contains("Done prompt task"));
-    assert!(section.contains("Use `task_list` for the full board"));
+    assert!(section.contains("Terminal history is not loaded into this prompt"));
 }
 
 #[test]
@@ -265,12 +288,99 @@ fn agent_org_prompt_snapshot_warns_before_duplicate_task_creation() {
     let _sandbox = prompt_task_sandbox();
     let context = prompt_test_agent_org_context();
     let section = build_agent_org_context_section(&context, "agent-coord", None);
-    assert!(section.contains("No tasks currently exist on this run."));
+    assert!(section.contains("No open tasks currently exist on this run"));
     assert!(section.contains("update it instead of creating a duplicate"));
     assert!(section.contains(
         "Ownerless means waiting for explicit coordinator assignment, never an automatic claim pool"
     ));
     assert!(section.contains("Workers must not set themselves as owner"));
+}
+
+#[test]
+fn coordinator_ready_snapshot_requires_scope_coverage_before_completion() {
+    let context = prompt_test_agent_org_context();
+    let section = build_agent_org_context_section_with_task_snapshot(
+        &context,
+        "agent-coord",
+        Some(COORDINATOR_MEMBER_ID),
+        Ok(Vec::new()),
+        Some(RunCompletionCandidateAssessment {
+            state: RunCompletionCandidateState::Ready,
+            checked_outcome: RunCompletionOutcome::Delivered,
+            activation_generation: Some(1),
+            work_revision: Some(9),
+            blockers: Vec::new(),
+        }),
+    );
+
+    assert!(section.contains("state=`ready`"), "{section}");
+    assert!(
+        section.contains("proves only that the formal Tasks already present"),
+        "{section}"
+    );
+    assert!(
+        section.contains("does NOT prove that you created Tasks for every deliverable"),
+        "{section}"
+    );
+    assert!(
+        section.contains("`member_idle` event only reports availability"),
+        "{section}"
+    );
+    assert!(
+        section.contains("never authorizes recreating completed Tasks"),
+        "{section}"
+    );
+    assert!(
+        section.contains("create the missing dependency graph instead of completing the run"),
+        "{section}"
+    );
+    assert!(
+        section.contains("Do not refresh with `task_list` or `task_get` merely"),
+        "{section}"
+    );
+    assert!(
+        !section.contains("run_summary.completion_ready"),
+        "{section}"
+    );
+    assert!(!section.contains("terminal history is available through `task_list`"));
+}
+
+#[test]
+fn coordinator_without_active_episode_is_told_idle_team_accepts_new_missions() {
+    let context = prompt_test_agent_org_context();
+    let section = build_agent_org_context_section_with_task_snapshot(
+        &context,
+        "agent-coord",
+        Some(COORDINATOR_MEMBER_ID),
+        Ok(Vec::new()),
+        Some(RunCompletionCandidateAssessment {
+            state: RunCompletionCandidateState::NotApplicable,
+            checked_outcome: RunCompletionOutcome::Delivered,
+            activation_generation: Some(5),
+            work_revision: Some(29),
+            blockers: Vec::new(),
+        }),
+    );
+
+    assert!(section.contains("state=`not_applicable`"), "{section}");
+    assert!(
+        section.contains("certificate belongs only to its already-closed episode"),
+        "{section}"
+    );
+    assert!(
+        section.contains("it never makes the long-lived Team unavailable"),
+        "{section}"
+    );
+    assert!(section.contains("leave an Idle Team Idle"), "{section}");
+    assert!(
+        section.contains("atomically reactivates an Idle Team and opens the next work episode"),
+        "{section}"
+    );
+    assert!(
+        section.contains("Do not ask the user to reopen or restore the Team in the UI"),
+        "{section}"
+    );
+    assert!(!section.contains("run_unavailable"), "{section}");
 }
 
 #[test]
@@ -320,6 +430,12 @@ fn agent_org_prompt_explains_member_plan_protocol() {
     assert!(
         section.contains("never switch the Group chat or coordinator session into Plan mode"),
         "active org planning must use member Plan tasks instead of a root mode switch: {section}"
+    );
+    assert!(
+        section.contains("a lone Plan task is never the complete task graph")
+            && section.contains("every requested downstream Build task in the same graph")
+            && section.contains("Plan approval closes only the planning deliverable"),
+        "multi-stage requests must keep downstream implementation and test work in the formal graph: {section}"
     );
 }
 

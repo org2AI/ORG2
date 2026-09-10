@@ -231,7 +231,7 @@ async fn refresh_and_store_key_quota(
             KEY_SERVICE.merge_key_account_metadata(&commit_key_id, account_metadata)?;
         }
 
-        KEY_SERVICE
+        let updated = KEY_SERVICE
             .update_key_health(
                 &commit_key_id,
                 HealthStatus::Valid,
@@ -242,6 +242,13 @@ async fn refresh_and_store_key_quota(
                 None,
             )?
             .ok_or_else(|| format!("Key not found: {commit_key_id}"))?;
+        if crate::commands::quota_history_identity::preserve_profile_history(&current, &updated)
+            .is_err()
+        {
+            // Historical observations are supplementary; a local history-store
+            // failure must not change the authenticated account's health.
+            log::warn!("Could not preserve weekly quota history after profile enrichment");
+        }
         Ok(())
     })
     .await

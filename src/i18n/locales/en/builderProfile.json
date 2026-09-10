@@ -11,7 +11,6 @@
   "secondaryNote": "— most verification leaves no trace in a transcript, so this is low confidence.",
   "byTool": "By tool",
   "byToolHint": "Same neutral points everywhere, so these rows are comparable. A letter that only holds in one tool is worth doubting.",
-  "sessionCount": "{{count}} sessions",
   "overTime": "Over time",
   "overTimeHint": "Rolling windows, most recent first.",
   "status": "Status",
@@ -47,7 +46,6 @@
   },
   "types": {
     "title": "Builder types",
-    "subtitle": "Explore the 16 ways people work with coding agents.",
     "howTitle": "How to read the code",
     "howBody": "Four observed preferences combine into a builder type. The letters describe a working pattern, not a fixed identity — each can shift as your habits and tools change.",
     "galleryTitle": "All 16 types",

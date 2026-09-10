@@ -3,7 +3,7 @@ import { useAtomValue } from "jotai";
 import {
   chatFindInChatOpenAtomFamily,
   chatSearchSyncAtomFamily,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/miscAtoms";
 
 /** Read the shared chat-search sync snapshot for any pane (history / station). */
 export function useChatSearchSyncState(sessionId: string | null) {

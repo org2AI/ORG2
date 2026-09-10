@@ -389,12 +389,6 @@ export const sortedEventIndexMapAtom = atom((get) => {
 });
 sortedEventIndexMapAtom.debugLabel = "session/sortedEventIndexMap";
 
-// ============================================
-// Last Event (reference-stable)
-// ============================================
-
-let _prevLastEvent: SessionEvent | null = null;
-
 /**
  * Drop module-level memo state when the active session departs.
  *
@@ -422,29 +416,7 @@ export function resetEventAtomMemoCaches(): void {
   };
   _prevSortedForIndex = [];
   _prevSortedIndexMap = new Map<string, number>();
-  _prevLastEvent = null;
 }
-
-export const lastEventAtom = atom<SessionEvent | null>((get) => {
-  const snap = get(derivedSnapshotAtom);
-
-  if (snap) {
-    const last = snap.lastEvent ?? null;
-    if (last === _prevLastEvent) return _prevLastEvent;
-    if (
-      last &&
-      _prevLastEvent &&
-      last.id === _prevLastEvent.id &&
-      last.displayStatus === _prevLastEvent.displayStatus
-    ) {
-      return _prevLastEvent;
-    }
-    _prevLastEvent = last;
-    return last;
-  }
-  return null;
-});
-lastEventAtom.debugLabel = "session/lastEvent";
 
 // ============================================
 // Event Count (present in both snapshot types)

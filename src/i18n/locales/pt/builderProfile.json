@@ -11,7 +11,6 @@
   "secondaryNote": "— a maioria das verificações não deixa rasto, por isso a confiança é baixa.",
   "byTool": "Por ferramenta",
   "byToolHint": "Os pontos neutros são iguais em todo o lado, por isso estas linhas são comparáveis. Uma letra que só se sustenta numa ferramenta merece dúvida.",
-  "sessionCount": "{{count}} sessões",
   "overTime": "Ao longo do tempo",
   "overTimeHint": "Janelas móveis, as mais recentes primeiro.",
   "status": "Estado",
@@ -47,7 +46,6 @@
   },
   "types": {
     "title": "Tipos de construtor",
-    "subtitle": "Conheça as 16 formas de trabalhar com agentes de programação.",
     "howTitle": "Como ler o código",
     "howBody": "Quatro preferências observadas formam um tipo de construtor. As letras descrevem um padrão de trabalho, não uma identidade fixa — podem mudar com os seus hábitos e ferramentas.",
     "galleryTitle": "Os 16 tipos",

@@ -13,10 +13,11 @@
  *
  * Keyboard shortcuts live in useChatPanelTabShortcuts (mounted by ChatPanel
  * itself, not this strip, so they keep working while the strip is hidden):
- *   Cmd+W  — close active tab
- *   Cmd+]  — next tab    Cmd+[  — prev tab
- *   Cmd+N  — new session tab
- *   Cmd+T  — new terminal tab (via global "create-chat-tab" event)
+ *   Cmd+W        — close active tab
+ *   Cmd+[ / ]    — back / forward through the active tab's session history
+ *   Shift+Cmd+[ / ] — prev / next tab
+ *   Cmd+N        — new session tab
+ *   Cmd+T        — new terminal tab (via global "create-chat-tab" event)
  */
 import {
   DndContext,
@@ -50,23 +51,22 @@ import { requestTeamInboxSessionHandoffAtom } from "@src/modules/MainApp/TeamInb
 import {
   SESSION_TAB_DROP_TARGET_HIGHLIGHT_CLASS,
   type SessionReferenceOpen,
-  type SessionTabTransfer,
   dispatchSessionTabDragCancel,
   dispatchSessionTabDragEnd,
   dispatchSessionTabDragStart,
 } from "@src/shared/dnd/sessionTabDrag";
 import { useSessionTabDropTarget } from "@src/shared/dnd/useSessionTabDropTarget";
 import { useTabInsertionIndicator } from "@src/shared/dnd/useTabInsertionIndicator";
-import { openTeamInboxInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpenAtoms";
+import { openTeamInboxInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpen/integrations";
 import {
   activateChatPanelTabAtom,
   canMoveChatPanelTabToWorkstation,
-  chatPanelTabsAtom,
   closeAndDestroyChatPanelTabAtom,
   closeOtherChatPanelTabsAtom,
   moveChatPanelTabToWorkstationAtom,
   reorderChatPanelTabsAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { moveSessionTabAtom } from "@src/store/session/sessionTabPlacementAtom";
 import { openSideChatAtom } from "@src/store/ui/sideChatAtom";
 
@@ -105,14 +105,10 @@ export function ChatPanelTabBar(): React.ReactNode {
   const draggingTab = state.tabs.find((tab) => tab.id === draggingTabId);
   const contextMenuTab = state.tabs.find((tab) => tab.id === contextMenuTabId);
 
-  const handleSessionTabDrop = useCallback(
-    (transfer: SessionTabTransfer) => moveSessionTab(transfer),
-    [moveSessionTab]
-  );
   const isSessionDragOver = useSessionTabDropTarget({
     target: "chat-panel",
     containerRef: barRef,
-    onDrop: handleSessionTabDrop,
+    onDrop: moveSessionTab,
   });
 
   const removePointerTracker = useCallback(() => {

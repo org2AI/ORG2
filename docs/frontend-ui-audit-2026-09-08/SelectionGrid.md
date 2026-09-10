@@ -1,0 +1,12 @@
+# SelectionGrid UI audit
+
+| Line                                                         | Element                   | Verdict          | Reason                                                                                                                                    | Suggested change                                                           |
+| ------------------------------------------------------------ | ------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `src/scaffold/WizardSystem/primitives/SelectionGrid.tsx:147` | Shared pill size default  | fix              | API-key and endpoint choices omit compactCards and inherit padding-based heights                                                          | Default description-free grids to existing 36px compact mode (implemented) |
+| `src/components/ActionCard/index.tsx:139`                    | Compact height            | keep with reason | Existing h-9 token supplies 36px with zero vertical padding across selected/unselected variants                                           | None                                                                       |
+| `src/scaffold/WizardSystem/primitives/SelectionGrid.tsx:147` | Description-bearing grids | keep with reason | Multiline descriptions need content height; these are cards rather than single-line pills                                                 | None                                                                       |
+| `src/scaffold/WizardSystem/primitives/SelectionGrid.tsx:218` | Caller overrides          | keep with reason | Source sweep found no cardClassName, cardLayout, or explicit compactCards=false overrides; existing compactCards opt-ins already use 36px | None                                                                       |
+
+Verdict totals: **1 fix**, **3 keep with reason**, **0 abstract**.
+
+Scope: all SelectionGrid call sites in src, including KeyVault API/provider/setup/endpoint choices, Channel, MCP, Database, Spotlight, and inline account editing. Shared primitive supplies the fix; no site-by-site overrides added. Native ActionCard button semantics remain unchanged. Visual inspection was not run because computer control was not authorized.

@@ -16,7 +16,7 @@ import {
   ZoomInAreaIcon,
   ZoomOutAreaIcon,
 } from "@src/icons";
-import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks";
+import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 
 import { VIEW_SCOPE_OPTIONS } from "../../config";
 import type { ZoomLevel } from "../../hooks/useGanttZoom";

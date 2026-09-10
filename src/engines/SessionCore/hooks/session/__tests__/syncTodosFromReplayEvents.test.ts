@@ -136,4 +136,64 @@ describe("syncTodosFromReplayEvents", () => {
 
     expect(result?.todos.map((todo) => todo.content)).toEqual(["Old task"]);
   });
+  it.each(["running", "pending", "failed", "completed"] as const)(
+    "only clears a completed authoritative empty result (%s)",
+    (displayStatus) => {
+      const result = syncTodosFromReplayEvents({
+        sessionId: "session-a",
+        pipelineSessionId: "session-a",
+        simulatorEvents: [],
+        currentEvent: null,
+        lastSnapshot: null,
+        liveEvents: [
+          makeManageTodoEvent(
+            {
+              id: "empty",
+              displayStatus,
+              result: {},
+              extracted: { kind: "todo", todos: [], wasMerge: false },
+            },
+            []
+          ),
+        ],
+      });
+      if (displayStatus === "completed") expect(result?.todos).toEqual([]);
+      else expect(result).toBeNull();
+    }
+  );
+
+  it("refreshes a same-ID tool result without rewinding to the replay cursor", () => {
+    const event = makeManageTodoEvent({
+      id: "same",
+      extracted: {
+        kind: "todo",
+        todos: [{ id: "1", content: "Task", status: "pending" }],
+        wasMerge: false,
+      },
+    });
+    const input = {
+      sessionId: "session-a",
+      pipelineSessionId: "session-a",
+      liveEvents: [event],
+      simulatorEvents: [],
+      currentEvent: null,
+      lastSnapshot: null,
+    };
+    const before = syncTodosFromReplayEvents(input)!;
+    const after = syncTodosFromReplayEvents({
+      ...input,
+      lastSnapshot: before.snapshot,
+      liveEvents: [
+        {
+          ...event,
+          extracted: {
+            kind: "todo",
+            todos: [{ id: "1", content: "Task", status: "completed" }],
+            wasMerge: false,
+          },
+        },
+      ],
+    });
+    expect(after?.todos[0].status).toBe("completed");
+  });
 });

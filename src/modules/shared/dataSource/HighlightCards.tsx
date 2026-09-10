@@ -2,6 +2,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Highlight, HighlightKind } from "@src/api/tauri/builderProfile";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import { STAT_GRID_TOKENS } from "@src/modules/shared/layouts/blocks";
 
 /**
@@ -99,7 +100,7 @@ const HighlightCards = memo(function HighlightCards({
         return (
           <div
             key={card.id}
-            className="flex flex-col gap-1.5 rounded-xl border border-border-1 bg-primary-container p-4"
+            className={`flex flex-col gap-1.5 ${DETAIL_PANEL_TOKENS.primaryContainer}`}
             data-testid={`highlight-${card.id}`}
           >
             <span

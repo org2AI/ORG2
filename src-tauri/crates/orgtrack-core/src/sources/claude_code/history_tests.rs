@@ -80,6 +80,161 @@ fn parses_claude_jsonl_into_replay_chunks() {
 }
 
 #[test]
+fn normalizes_claude_read_tool_to_the_shared_storage_identity() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-claude-read-tool-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("claude-read.jsonl");
+    let content = r#"{"type":"assistant","sessionId":"abc","timestamp":"2026-09-04T19:14:56Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_read","name":"Read","input":{"file_path":"/tmp/CLAUDE.md","limit":10}}]}}
+{"type":"user","sessionId":"abc","timestamp":"2026-09-04T19:14:57Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_read","content":"contents"}]}}"#;
+    std::fs::write(&path, content).expect("write fixture");
+
+    let chunks = load_claude_code_history_from_path("claudecodeapp-read", &path)
+        .expect("parse read tool transcript");
+    let tool = chunks
+        .iter()
+        .find(|chunk| chunk.action_type == imported_history::ACTION_TYPE_TOOL_CALL)
+        .expect("read tool call");
+
+    assert_eq!(tool.function, imported_history::FUNCTION_READ_FILE);
+    assert_eq!(tool.result["raw_tool_name"], "Read");
+    assert_eq!(tool.result["call_id"], "toolu_read");
+    assert_eq!(tool.args["file_path"], "/tmp/CLAUDE.md");
+    assert_eq!(tool.args["limit"], 10);
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn marks_an_unresolved_claude_tool_as_interrupted_not_completed() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-claude-interrupted-tool-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("claude-interrupted.jsonl");
+    let content = r#"{"type":"user","sessionId":"abc","timestamp":"2026-08-30T01:00:00Z","message":{"role":"user","content":"inspect"}}
+{"type":"assistant","sessionId":"abc","timestamp":"2026-08-30T01:00:01Z","message":{"role":"assistant","content":[{"type":"text","text":"I found one thing."}]}}
+{"type":"assistant","sessionId":"abc","timestamp":"2026-08-30T01:00:02Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_interrupted","name":"Bash","input":{"command":"sleep 30"}}]}}
+"#;
+    std::fs::write(&path, content).expect("write fixture");
+
+    let chunks = load_claude_code_history_from_path("claudecodeapp-interrupted", &path)
+        .expect("parse interrupted transcript");
+    let tool = chunks
+        .iter()
+        .find(|chunk| chunk.action_type == "tool_call")
+        .expect("interrupted tool is diagnostic history");
+    assert_eq!(tool.result["status"], "pending");
+    assert_eq!(tool.result["interrupted"], true);
+    assert!(chunks.iter().any(|chunk| {
+        chunk.function == "assistant"
+            && chunk.result["content"].as_str() == Some("I found one thing.")
+    }));
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn preserves_claude_native_tool_error_status() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-claude-tool-error-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("claude-tool-error.jsonl");
+    let content = r#"{"type":"assistant","sessionId":"abc","timestamp":"2026-08-30T01:00:02Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_failed","name":"Bash","input":{"command":"false"}}]}}
+{"type":"user","sessionId":"abc","timestamp":"2026-08-30T01:00:03Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_failed","content":"exit code 1","is_error":true}]}}"#;
+    std::fs::write(&path, content).expect("write fixture");
+
+    let chunks = load_claude_code_history_from_path("claudecodeapp-tool-error", &path)
+        .expect("parse failed tool result");
+    let tool = chunks
+        .iter()
+        .find(|chunk| chunk.action_type == "tool_call")
+        .expect("failed tool is preserved");
+    assert_eq!(tool.result["success"], false);
+    assert_eq!(tool.result["status"], "failed");
+    assert_eq!(tool.result["is_error"], true);
+    assert_eq!(tool.result["output"], "exit code 1");
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn compact_summary_is_system_metadata_not_a_shared_user_turn() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-claude-compact-history-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("claude-compact-replay.jsonl");
+    let content = r#"{"type":"user","uuid":"u-before","timestamp":"2026-08-29T07:00:00Z","message":{"role":"user","content":"inspect the repo"}}
+{"type":"assistant","uuid":"a-tool","timestamp":"2026-08-29T07:00:01Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_before_compact","name":"Bash","input":{"command":"pwd"}}]}}
+{"type":"user","uuid":"tool-result","timestamp":"2026-08-29T07:00:02Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_before_compact","content":"/repo"}]}}
+{"type":"system","subtype":"compact_boundary","uuid":"compact-boundary-1","parentUuid":null,"timestamp":"2026-08-29T07:00:03Z","compactMetadata":{"trigger":"auto"}}
+{"type":"queue-operation","operation":"dequeue","timestamp":"2026-08-29T07:00:03Z"}
+{"type":"user","uuid":"compact-summary-1","parentUuid":"compact-boundary-1","isCompactSummary":true,"timestamp":"2026-08-29T07:00:03Z","message":{"role":"user","content":"Native compact summary; this is not a human prompt."}}
+{"type":"user","uuid":"u-after","timestamp":"2026-08-29T07:00:04Z","message":{"role":"user","content":"continue after compact"}}
+{"type":"assistant","uuid":"a-after","timestamp":"2026-08-29T07:00:05Z","message":{"role":"assistant","content":[{"type":"text","text":"continued"}]}}
+"#;
+    std::fs::write(&path, content).expect("write fixture");
+
+    let chunks = load_claude_code_history_from_path("claudecodeapp-compact", &path)
+        .expect("parse compact transcript");
+    let human_messages = chunks
+        .iter()
+        .filter(|chunk| chunk.function == imported_history::FUNCTION_USER_MESSAGE)
+        .map(|chunk| {
+            chunk.result["message"]["content"]
+                .as_str()
+                .unwrap_or_default()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        human_messages,
+        vec!["inspect the repo", "continue after compact"]
+    );
+    assert!(!human_messages
+        .iter()
+        .any(|message| message.contains("Native compact summary")));
+    let boundary = chunks
+        .iter()
+        .find(|chunk| chunk.function == "context_compacted")
+        .expect("compact boundary marker");
+    assert_eq!(
+        chunks
+            .iter()
+            .filter(|chunk| chunk.function == "context_compacted")
+            .count(),
+        1
+    );
+    assert_eq!(boundary.action_type, "context_compacted");
+    assert_eq!(
+        boundary.result["observation"].as_str(),
+        Some("Native compact summary; this is not a human prompt.")
+    );
+    let tool = chunks
+        .iter()
+        .find(|chunk| chunk.action_type == imported_history::ACTION_TYPE_TOOL_CALL)
+        .expect("tool pair before compact");
+    assert_eq!(tool.args["command"], "pwd");
+    assert_eq!(tool.result["output"], "/repo");
+
+    let indexed =
+        index_claude_user_turns("claudecodeapp-compact", &path).expect("index compact transcript");
+    assert_eq!(indexed.len(), 2, "compact summary is not a turn header");
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
 fn byte_index_discovers_rounds_without_parsing_tool_result_bodies() {
     let temp_dir = std::env::temp_dir().join(format!(
         "orgii-claude-history-window-test-{}",
@@ -320,8 +475,10 @@ fn harness_injected_first_line_does_not_title_session() {
     ));
     std::fs::create_dir_all(&temp_dir).expect("create temp dir");
     let path = temp_dir.join("claude-synthetic-title.jsonl");
-    let content = r#"{"type":"user","timestamp":"2026-04-01T07:00:00Z","isMeta":true,"message":{"role":"user","content":"<local-command-caveat>Caveat: the following was run</local-command-caveat>"}}
-{"type":"user","timestamp":"2026-04-01T07:00:01Z","origin":{"kind":"human"},"message":{"role":"user","content":"actual request"}}
+    let content = r#"{"type":"system","subtype":"compact_boundary","uuid":"title-boundary","timestamp":"2026-04-01T06:59:59Z"}
+{"type":"user","uuid":"title-compact-summary","isCompactSummary":true,"timestamp":"2026-04-01T06:59:59Z","message":{"role":"user","content":"provider compact summary"}}
+{"type":"user","timestamp":"2026-04-01T07:00:00Z","isMeta":true,"message":{"role":"user","content":"<local-command-caveat>Caveat: the following was run</local-command-caveat>"}}
+{"type":"user","uuid":"actual-user-uuid","timestamp":"2026-04-01T07:00:01Z","origin":{"kind":"human"},"message":{"role":"user","content":"actual request"}}
 {"type":"assistant","timestamp":"2026-04-01T07:00:02Z","message":{"role":"assistant","model":"claude-sonnet-4","content":[{"type":"text","text":"done"}],"usage":{"input_tokens":1,"output_tokens":1}}}
 "#;
     std::fs::write(&path, content).expect("write fixture");
@@ -342,6 +499,7 @@ fn harness_injected_first_line_does_not_title_session() {
         .expect("session meta");
 
     assert_eq!(meta.name, "actual request");
+    assert_eq!(meta.first_user_uuid.as_deref(), Some("actual-user-uuid"));
 
     std::fs::remove_file(&path).expect("remove fixture");
     std::fs::remove_dir(&temp_dir).expect("remove temp dir");
@@ -366,9 +524,8 @@ fn claude_initial_window_placeholders_advertise_fetchable_bodies() {
     }
     std::fs::write(&path, content).expect("write fixture");
 
-    let window =
-        load_claude_code_initial_window_from_path("claudecodeapp-counts", &path, 1)
-            .expect("load initial window");
+    let window = load_claude_code_initial_window_from_path("claudecodeapp-counts", &path, 1)
+        .expect("load initial window");
 
     assert_eq!(window.total_turn_count, 3);
     assert_eq!(window.loaded_turn_count, 1);
@@ -391,7 +548,10 @@ fn claude_initial_window_placeholders_advertise_fetchable_bodies() {
             Some(&Value::Bool(true))
         );
         assert_eq!(
-            placeholder.result.get("observation").and_then(Value::as_str),
+            placeholder
+                .result
+                .get("observation")
+                .and_then(Value::as_str),
             Some(format!("round {round} done").as_str())
         );
         // …and a real end timestamp so the collapse bar shows the round's
@@ -402,7 +562,10 @@ fn claude_initial_window_placeholders_advertise_fetchable_bodies() {
         let ended_at = placeholder.result["unloadedTurn"]["endedAt"]
             .as_str()
             .expect("endedAt");
-        assert!(ended_at > started_at, "{ended_at} must be after {started_at}");
+        assert!(
+            ended_at > started_at,
+            "{ended_at} must be after {started_at}"
+        );
     }
     // The loaded newest round keeps its exact projected counts (no overlay).
     assert_eq!(window.turns[2].body_event_count, 2);
@@ -450,7 +613,10 @@ fn claude_initial_window_previews_skip_tool_use_only_assistant_lines() {
         .find(|chunk| chunk.chunk_id.starts_with("imported-unloaded-turn-"))
         .expect("round 1 placeholder");
     assert_eq!(
-        placeholder.result.get("observation").and_then(Value::as_str),
+        placeholder
+            .result
+            .get("observation")
+            .and_then(Value::as_str),
         Some("first reply")
     );
     // No stray body chunks may survive next to an unloaded round: its user
@@ -459,8 +625,10 @@ fn claude_initial_window_previews_skip_tool_use_only_assistant_lines() {
         window
             .chunks
             .iter()
-            .filter(|chunk| chunk.function != imported_history::FUNCTION_USER_MESSAGE
-                && !chunk.chunk_id.starts_with("imported-unloaded-turn-"))
+            .filter(
+                |chunk| chunk.function != imported_history::FUNCTION_USER_MESSAGE
+                    && !chunk.chunk_id.starts_with("imported-unloaded-turn-")
+            )
             .count(),
         1 // the loaded newest round's single assistant reply
     );
@@ -823,6 +991,91 @@ fn prefers_claude_subagent_metadata_description_over_prompt() {
     std::fs::remove_dir_all(&temp_dir).expect("remove temp dir");
 }
 
+#[cfg(unix)]
+#[test]
+fn claude_discovery_skips_broken_transcript_symlink() {
+    use std::os::unix::fs::symlink;
+
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-claude-broken-symlink-test-{}",
+        std::process::id()
+    ));
+    std::fs::remove_dir_all(&temp_dir).ok();
+    let projects_dir = temp_dir.join("projects/project");
+    std::fs::create_dir_all(&projects_dir).expect("create projects dir");
+    let live_id = "11111111-1111-1111-1111-111111111111";
+    std::fs::write(
+        projects_dir.join(format!("{live_id}.jsonl")),
+        format!(
+            r#"{{"type":"user","sessionId":"{live_id}","timestamp":"2026-08-28T00:00:00Z","message":{{"role":"user","content":"live"}}}}
+"#
+        ),
+    )
+    .expect("write live transcript");
+    symlink(
+        temp_dir.join("missing-native-transcript.jsonl"),
+        projects_dir.join("22222222-2222-2222-2222-222222222222.jsonl"),
+    )
+    .expect("create broken transcript symlink");
+
+    let previous = HashMap::new();
+    let mut walker =
+        imported_history::scan_snapshot::SnapshotDirWalker::new(&previous, "jsonl", "Claude");
+    let discovery = discover_claude_code_history_records(&[temp_dir.join("projects")], &mut walker)
+        .expect("broken symlink must not abort Claude discovery");
+
+    assert_eq!(discovery.records.len(), 1);
+    assert_eq!(discovery.records[0].source_session_id, live_id);
+    std::fs::remove_dir_all(&temp_dir).expect("remove temp dir");
+}
+
+#[cfg(unix)]
+#[test]
+fn claude_native_profile_alias_has_one_stable_discovery_signature() {
+    use std::os::unix::fs::symlink;
+    let temp = std::env::temp_dir().join(format!("orgii-claude-alias-{}", std::process::id()));
+    std::fs::remove_dir_all(&temp).ok();
+    let native = temp.join("native/projects/project");
+    let profile = temp.join("profile/projects/project");
+    std::fs::create_dir_all(&native).unwrap();
+    std::fs::create_dir_all(&profile).unwrap();
+    let path = native.join("session.jsonl");
+    std::fs::write(&path, "{\"type\":\"user\"}\n").unwrap();
+    symlink(&path, profile.join("session.jsonl")).unwrap();
+    let discover = |roots: &[std::path::PathBuf]| {
+        let snapshots = HashMap::new();
+        let mut walker =
+            imported_history::scan_snapshot::SnapshotDirWalker::new(&snapshots, "jsonl", "Claude");
+        discover_claude_code_history_records(roots, &mut walker)
+            .unwrap()
+            .records
+    };
+    let first = discover(&[profile.clone(), native.clone()]);
+    assert_eq!(
+        first.len(),
+        1,
+        "native and profile alias must not alternate cache writers"
+    );
+    let second = discover(&[native.clone(), profile.clone()]);
+    assert_eq!(second.len(), 1);
+    assert!(imported_history::cache::record_matches_cached_signature(
+        &first[0].signature(),
+        &second[0].signature()
+    ));
+    std::fs::OpenOptions::new()
+        .append(true)
+        .open(&path)
+        .and_then(|mut f| std::io::Write::write_all(&mut f, b"{\"type\":\"assistant\"}\n"))
+        .unwrap();
+    let appended = discover(&[profile, native]);
+    assert_eq!(appended.len(), 1);
+    assert!(!imported_history::cache::record_matches_cached_signature(
+        &second[0].signature(),
+        &appended[0].signature()
+    ));
+    std::fs::remove_dir_all(temp).unwrap();
+}
+
 #[test]
 fn claude_subagent_metadata_change_invalidates_fingerprint() {
     let temp_dir = std::env::temp_dir().join(format!(
@@ -1050,6 +1303,7 @@ fn captures_first_user_uuid_as_continuation_group_key() {
     let content = r#"{"type":"custom-title","customTitle":"My convo","sessionId":"d0641111-1111-1111-1111-111111111111"}
 {"type":"user","uuid":"b7b5ae5f-0000-0000-0000-000000000001","sessionId":"d0641111-1111-1111-1111-111111111111","cwd":"/tmp/project","gitBranch":"main","timestamp":"2026-07-17T10:00:00.000Z","message":{"role":"user","content":"first message"}}
 {"type":"system","subtype":"compact_boundary","uuid":"eeb66522-0000-0000-0000-000000000001","sessionId":"d0641111-1111-1111-1111-111111111111","timestamp":"2026-07-17T10:00:30.000Z"}
+{"type":"user","uuid":"compact-summary-not-a-family-key","isCompactSummary":true,"sessionId":"d0641111-1111-1111-1111-111111111111","timestamp":"2026-07-17T10:00:30.000Z","message":{"role":"user","content":"provider compact summary"}}
 {"type":"user","uuid":"b7b5ae5f-0000-0000-0000-000000000002","sessionId":"d0641111-1111-1111-1111-111111111111","cwd":"/tmp/project","gitBranch":"main","timestamp":"2026-07-17T10:01:00.000Z","message":{"role":"user","content":"second message"}}
 "#;
     std::fs::write(&path, content).expect("write fixture");
@@ -1105,7 +1359,7 @@ fn captures_first_user_uuid_as_continuation_group_key() {
 }
 
 #[test]
-fn strips_ide_context_from_claude_replay() {
+fn strips_all_orgii_context_wrappers_from_claude_replay() {
     let temp_dir = std::env::temp_dir().join(format!(
         "orgii-claude-history-ide-context-test-{}",
         std::process::id()
@@ -1113,9 +1367,10 @@ fn strips_ide_context_from_claude_replay() {
     std::fs::create_dir_all(&temp_dir).expect("create temp dir");
     let path = temp_dir.join("claude-ide-context.jsonl");
     // Line 1: ide_context-only user message (no user-authored text at all).
-    // Line 2: bridge + ide_context prefixed user message with real text.
+    // Line 2 matches a real continuation prompt: provider context + execution
+    // bridge + IDE context followed by the user-authored text.
     let content = r#"{"type":"user","sessionId":"abc","cwd":"/tmp/project","gitBranch":"main","timestamp":"2026-04-01T07:06:46.543Z","message":{"role":"user","content":"<ide_context>\nopen file: src/app.ts\n</ide_context>"}}
-{"type":"user","sessionId":"abc","cwd":"/tmp/project","gitBranch":"main","timestamp":"2026-04-01T07:06:47.000Z","message":{"role":"user","content":"<orgii_cli_exec_mode_bridge>\ninternal briefing\n</orgii_cli_exec_mode_bridge>\n\n<ide_context>\nopen file: src/app.ts\n</ide_context>\n\nfix the login bug"}}
+{"type":"user","sessionId":"abc","cwd":"/tmp/project","gitBranch":"main","timestamp":"2026-04-01T07:06:47.000Z","message":{"role":"user","content":"<orgii_provider_context>\nrepository rules\n</orgii_provider_context>\n\n<orgii_cli_exec_mode_bridge>\ninternal briefing\n</orgii_cli_exec_mode_bridge>\n\n<ide_context>\nopen file: src/app.ts\n</ide_context>\n\nfix the login bug"}}
 {"type":"assistant","sessionId":"abc","cwd":"/tmp/project","gitBranch":"main","timestamp":"2026-04-01T07:06:49.000Z","message":{"role":"assistant","model":"claude-sonnet-4","content":[{"type":"text","text":"done"}],"usage":{"input_tokens":3,"output_tokens":5}}}
 "#;
     std::fs::write(&path, content).expect("write fixture");
@@ -1578,4 +1833,155 @@ fn transcript_without_entrypoint_has_no_client_origin() {
     assert_eq!(cache_input.client_origin_raw, None);
 
     std::fs::remove_dir_all(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn raw_new_uuid_continuation_preserves_ancestry_after_first_user_rewrite() {
+    use serde_json::json;
+    let directory =
+        std::env::temp_dir().join(format!("orgii-raw-continuation-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let mut conn = Connection::open_in_memory().unwrap();
+    crate::store::sqlite::SqliteRecordStore::init_tables(&conn).unwrap();
+    crate::store::sqlite::SqliteRecordStore::init_source_cache_tables(&conn).unwrap();
+    let old_id = "10000000-0000-4000-8000-000000000001";
+    let new_id = "10000000-0000-4000-8000-000000000002";
+    for (index, id, first) in [
+        (0, old_id, "old-first-user"),
+        (1, new_id, "rewritten-first-user"),
+    ] {
+        let path = directory.join(format!("{id}.jsonl"));
+        let timestamp = format!("2026-09-09T10:0{index}:00Z");
+        let rows = [
+            json!({"type":"user","uuid":first,"sessionId":id,"cwd":"/tmp/continuation-project","timestamp":timestamp,"message":{"role":"user","content":format!("question-{index}")}}),
+            json!({"type":"system","subtype":"compact_boundary","uuid":"preserved-compact-ancestry","sessionId":id,"timestamp":timestamp}),
+            json!({"type":"user","uuid":format!("summary-{index}"),"isCompactSummary":true,"sessionId":id,"timestamp":timestamp,"message":{"role":"user","content":"provider summary"}}),
+            json!({"type":"assistant","uuid":format!("answer-{index}"),"sessionId":id,"timestamp":timestamp,"message":{"role":"assistant","content":[{"type":"text","text":format!("continuation-answer-{index}")}]}}),
+        ];
+        std::fs::write(
+            &path,
+            rows.iter()
+                .map(|row| format!("{row}\n"))
+                .collect::<String>(),
+        )
+        .unwrap();
+        let (mtime, bytes) = imported_paths::file_metadata_signature(&path, "Claude").unwrap();
+        let record = ImportedHistoryDiscoveredRecord {
+            source_session_id: id.into(),
+            source_path: path.clone(),
+            source_record_key: id.into(),
+            source_mtime_ms: mtime,
+            source_size_bytes: bytes,
+            source_fingerprint: String::new(),
+            parser_version: CLAUDE_CODE_METADATA_PARSER_VERSION,
+        };
+        let meta = parse_claude_session_meta(&record).unwrap().unwrap();
+        let input = session_meta_to_cache_input(meta);
+        imported_cache::upsert_imported_session_cache_from_conn(&mut conn, &[input]).unwrap();
+        imported_cache::demote_superseded_continuations_from_conn(&conn, SOURCE_CLAUDE_CODE)
+            .unwrap();
+        let full = load_claude_code_history_from_path(id, &path).unwrap();
+        let mut visited = Vec::new();
+        visit_claude_code_history_from_path(id, &path, &mut |chunks| {
+            visited.extend(chunks);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            serde_json::to_value(full).unwrap(),
+            serde_json::to_value(visited).unwrap()
+        );
+    }
+    for _ in 0..2 {
+        imported_cache::demote_superseded_continuations_from_conn(&conn, SOURCE_CLAUDE_CODE)
+            .unwrap();
+        let listable: Vec<String> = conn.prepare("SELECT source_session_id FROM imported_history_session_cache WHERE listable = 1 ORDER BY source_session_id").unwrap()
+            .query_map([], |row| row.get(0)).unwrap().collect::<Result<_,_>>().unwrap();
+        assert_eq!(listable, vec![new_id]);
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM imported_history_session_cache",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 2, "superseded history must remain readable");
+    }
+    std::fs::remove_dir_all(directory).unwrap();
+}
+
+#[test]
+fn local_command_stdout_survives_native_replay_as_a_completed_command() {
+    let dir =
+        std::env::temp_dir().join(format!("orgii-claude-local-command-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("local-command.jsonl");
+    std::fs::write(&path, r#"{"type":"user","uuid":"u","timestamp":"2026-09-10T07:00:00Z","message":{"role":"user","content":"<command-name>/context</command-name>\n <command-message>context</command-message>\n <command-args></command-args>"}}
+{"type":"system","subtype":"local_command","uuid":"out","timestamp":"2026-09-10T07:00:01Z","content":"<local-command-stdout>## Context Usage</local-command-stdout>"}
+"#).unwrap();
+    let chunks = load_claude_code_history_from_path("claudecodeapp-test", &path).unwrap();
+    assert_eq!(chunks.len(), 3);
+    assert_eq!(chunks[0].result["message"]["content"], "/context");
+    assert_eq!(chunks[1].function, "native_command");
+    assert_eq!(chunks[1].result["output"], "## Context Usage");
+    assert_eq!(chunks[2].action_type, "task_completed");
+    let again = load_claude_code_history_from_path("claudecodeapp-test", &path).unwrap();
+    assert_eq!(chunks[1].chunk_id, again[1].chunk_id);
+    std::fs::remove_file(path).unwrap();
+    std::fs::remove_dir(dir).unwrap();
+}
+
+#[test]
+fn custom_command_envelope_replays_as_the_original_user_prompt() {
+    let dir = std::env::temp_dir().join(format!(
+        "orgii-claude-custom-command-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("custom-command.jsonl");
+    std::fs::write(&path, r#"{"type":"user","uuid":"u","timestamp":"2026-09-10T07:00:00Z","message":{"role":"user","content":"<command-message>fixture</command-message>\n<command-name>/fixture</command-name>\n<command-args>APP_OK</command-args>"}}
+{"type":"assistant","uuid":"a","parentUuid":"u","timestamp":"2026-09-10T07:00:01Z","message":{"role":"assistant","content":[{"type":"text","text":"CC_COMMAND_APP_OK"}]}}
+"#).unwrap();
+    let chunks = load_claude_code_history_from_path("claudecodeapp-custom", &path).unwrap();
+    assert_eq!(chunks.len(), 2);
+    assert_eq!(chunks[0].result["message"]["content"], "/fixture APP_OK");
+    assert_eq!(chunks[1].result["content"], "CC_COMMAND_APP_OK");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn sdk_compact_user_stdout_is_a_command_result_but_unrelated_user_text_is_preserved() {
+    let dir = std::env::temp_dir().join(format!("orgii-claude-sdk-stdout-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("compact.jsonl");
+    std::fs::write(&path, r#"{"type":"user","uuid":"cmd","message":{"role":"user","content":"<command-name>/compact</command-name><command-message>compact</command-message><command-args>preserve marker</command-args>"}}
+{"type":"user","uuid":"stdout","entrypoint":"sdk-cli","message":{"role":"user","content":"<local-command-stdout>Compacted </local-command-stdout>"}}
+{"type":"user","uuid":"ordinary","message":{"role":"user","content":"<local-command-stdout>my example</local-command-stdout>"}}
+"#).unwrap();
+    let chunks = load_claude_code_history_from_path("claudecodeapp-compact", &path).unwrap();
+    let indexed = index_claude_user_turns("claudecodeapp-compact", &path).unwrap();
+    assert_eq!(indexed.len(), 2);
+    assert_eq!(
+        indexed[0].user_chunk.result["message"]["content"],
+        "/compact preserve marker"
+    );
+    let window =
+        load_claude_code_initial_window_from_path("claudecodeapp-compact", &path, 1).unwrap();
+    assert!(window
+        .chunks
+        .iter()
+        .any(|chunk| chunk.result["message"]["content"] == "/compact preserve marker"));
+    assert_eq!(chunks.len(), 4);
+    assert_eq!(
+        chunks[0].result["message"]["content"],
+        "/compact preserve marker"
+    );
+    assert_eq!(chunks[1].function, "native_command");
+    assert_eq!(chunks[1].result["output"], "Compacted ");
+    assert_eq!(chunks[2].action_type, "task_completed");
+    assert_eq!(
+        chunks[3].result["message"]["content"],
+        "<local-command-stdout>my example</local-command-stdout>"
+    );
+    std::fs::remove_dir_all(dir).unwrap();
 }

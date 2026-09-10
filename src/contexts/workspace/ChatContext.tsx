@@ -38,7 +38,7 @@ import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { createChatTranscriptVersionTracker } from "@src/engines/SessionCore/derived/chatTranscriptStructure";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 import { activeSessionIdAtom } from "@src/store/session";
-import { chatWidthAtom } from "@src/store/ui/chatPanelAtom";
+import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { FeedBackInfo } from "@src/types/session/steps";
 
 /**

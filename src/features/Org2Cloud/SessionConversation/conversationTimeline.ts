@@ -9,12 +9,21 @@
  * imported replay copy of it) keeps its local identity and takes the plane's
  * position; local events that predate the plane keep the timestamp merge.
  */
+import {
+  CONVERSATION_SENDER_ARG,
+  CONVERSATION_VIEWER_LOADING,
+  type ConversationSenderStamp,
+  type ConversationViewerState,
+} from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
+import { CONVERSATION_TURN_ID_ARG } from "@src/engines/SessionCore/conversations/localConversationContinuation";
+import { nativeConversationEventSemanticKey } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import { isSyntheticUserInputEvent } from "@src/engines/SessionCore/sync/utils/activityIds";
 
 import type { CloudConversationEvent } from "../org2CloudConversationEventsClient";
 import {
-  CONVERSATION_SENDER_ARG,
-  type ConversationSenderStamp,
+  collapseConversationSourceCopies,
+  materializedConversationTurnIdOf,
   sourceEventIdOf,
 } from "./continuationEvents";
 import { buildConversationPlaneStreamEvents } from "./conversationPlaneEvents";
@@ -32,6 +41,8 @@ export function conversationEventKey(event: SessionEvent): string {
     if (typeof intent === "string" && intent.length > 0) {
       return `intent:${intent}`;
     }
+    const materializedIntent = materializedConversationTurnIdOf(event);
+    if (materializedIntent) return `intent:${materializedIntent}`;
   }
   return `event:${sourceEventIdOf(event)}`;
 }
@@ -41,17 +52,25 @@ function timestampMs(value: string | undefined): number {
   return Number.isFinite(ms) ? ms : 0;
 }
 
-function stampSender(
+function stampPlaneMetadata(
   event: SessionEvent,
-  row: CloudConversationEvent
+  row: CloudConversationEvent,
+  includeSender: boolean
 ): SessionEvent {
   const stamp: ConversationSenderStamp = {
     userId: row.authorUserId,
-    displayName: row.authorDisplayName?.trim() || row.authorUserId,
+    ...(row.authorDisplayName?.trim()
+      ? { displayName: row.authorDisplayName.trim() }
+      : {}),
+    ...(row.authorAvatarUrl ? { avatarUrl: row.authorAvatarUrl } : {}),
   };
   return {
     ...event,
-    args: { ...event.args, [CONVERSATION_SENDER_ARG]: stamp },
+    args: {
+      ...event.args,
+      ...(includeSender ? { [CONVERSATION_SENDER_ARG]: stamp } : {}),
+      [CONVERSATION_TURN_ID_ARG]: row.turnId,
+    },
   };
 }
 
@@ -60,7 +79,7 @@ function stampSender(
  *
  * - A plane row whose twin exists locally renders the LOCAL event (stable
  *   ids, stable collapse state, the viewer's own rows stay editable) at the
- *   plane's position; other authors' user rows get the author stamp.
+ *   plane's position; user rows get the authoritative plane author stamp.
  * - A plane row without a twin renders as a namespaced plane row.
  * - Plane order is seq order, made monotone in time so a skewed sender
  *   clock can never reorder it; unclaimed local events (pre-plane history,
@@ -70,26 +89,79 @@ export function mergePlaneIntoTranscript(
   base: readonly SessionEvent[],
   rows: readonly CloudConversationEvent[],
   streamSessionId: string,
-  viewerUserId?: string | null
+  viewer: ConversationViewerState = CONVERSATION_VIEWER_LOADING
 ): SessionEvent[] {
   if (rows.length === 0) return [...base];
-  const twins = new Map<string, SessionEvent>();
+  // A provider-native owner can fold a plane turn into its own transcript and
+  // later publish that Session replay. Imports then contain both the original
+  // plane identity and a namespaced native echo of it. Collapse those copies
+  // before matching plane rows; repeated equal text with distinct source ids
+  // remains distinct.
+  const uniqueBase: SessionEvent[] = [];
+  const baseIndexByKey = new Map<string, number>();
   for (const event of base) {
     const key = conversationEventKey(event);
+    const existingIndex = baseIndexByKey.get(key);
+    if (existingIndex !== undefined) {
+      // Publishing a user row does not prove provider execution succeeded.
+      // The sender's durable failed projection owns Retry/Edit, even when a
+      // replay of the published prompt appears earlier in the family. Keep
+      // that projection at the same position instead of hiding its failure
+      // behind a completed copy. Distinct intents remain independent.
+      if (
+        isSyntheticUserInputEvent(event) &&
+        event.result?.deliveryStatus === "failed"
+      ) {
+        uniqueBase[existingIndex] = event;
+      }
+      continue;
+    }
+    baseIndexByKey.set(key, uniqueBase.length);
+    uniqueBase.push(event);
+  }
+  const twins = new Map<string, SessionEvent>();
+  const semanticTwins = new Map<string, SessionEvent[]>();
+  for (const event of uniqueBase) {
+    const key = conversationEventKey(event);
     if (!twins.has(key)) twins.set(key, event);
+    const semanticKey = nativeConversationEventSemanticKey(event);
+    if (semanticKey) {
+      const candidates = semanticTwins.get(semanticKey) ?? [];
+      candidates.push(event);
+      semanticTwins.set(semanticKey, candidates);
+    }
   }
   const planeStream = buildConversationPlaneStreamEvents(rows, streamSessionId);
   const claimed = new Set<SessionEvent>();
   const planeItems: { event: SessionEvent; ms: number }[] = [];
+  const seenPlaneKeys = new Set<string>();
   let floorMs = 0;
   rows.forEach((row, index) => {
-    const twin = twins.get(conversationEventKey(row.event));
+    const key = conversationEventKey(row.event);
+    // The plane is idempotent per wire row, while an older client may still
+    // have republished a materialized echo under a new row id. Source identity
+    // is the canonical idempotency boundary for rendering and rematerializing.
+    if (seenPlaneKeys.has(key)) return;
+    seenPlaneKeys.add(key);
+    let twin = twins.get(key);
+    if (!twin || claimed.has(twin)) {
+      const semanticKey = nativeConversationEventSemanticKey(row.event);
+      twin = semanticKey
+        ? semanticTwins
+            .get(semanticKey)
+            ?.find((candidate) => !claimed.has(candidate))
+        : undefined;
+    }
     let event: SessionEvent;
     if (twin && !claimed.has(twin)) {
       claimed.add(twin);
+      // An imported/native replay may carry the root owner's fallback stamp
+      // even for this viewer's own turn. Correct both sides from the plane;
+      // preserving that stale stamp misattributes self turns after a cold
+      // import and can incorrectly remove owner actions.
       event =
-        row.event.source === "user" && row.authorUserId !== viewerUserId
-          ? stampSender(twin, row)
+        row.event.source === "user" && viewer.status !== "loading"
+          ? stampPlaneMetadata(twin, row, true)
           : twin;
     } else {
       event = planeStream[index];
@@ -99,7 +171,7 @@ export function mergePlaneIntoTranscript(
   });
   const merged: SessionEvent[] = [];
   let cursor = 0;
-  for (const event of base) {
+  for (const event of uniqueBase) {
     if (claimed.has(event)) continue;
     const eventMs = timestampMs(event.createdAt);
     while (cursor < planeItems.length && planeItems[cursor].ms < eventMs) {
@@ -112,5 +184,11 @@ export function mergePlaneIntoTranscript(
     merged.push(planeItems[cursor].event);
     cursor += 1;
   }
-  return merged;
+  // User rows normally match by turn intent so optimistic/backend/plane
+  // lifecycle copies retain one visible bubble. A native replay can preserve
+  // the same globally scoped source event under a different turn intent,
+  // though; in that case intent matching alone admits the same canonical item
+  // twice. The source boundary is the final idempotency owner. It compares no
+  // content, so genuinely repeated messages with distinct source ids survive.
+  return collapseConversationSourceCopies(merged);
 }

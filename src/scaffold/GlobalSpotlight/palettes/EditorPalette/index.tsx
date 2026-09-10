@@ -12,11 +12,11 @@ import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
 import { File01Icon } from "@src/icons";
+import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 
 import { PaletteBody, SpotlightShell } from "../../shell";
 import type { PathSegment } from "../../types";
 import { EDITOR_PALETTE_CONFIG } from "../config";
-import { useSelectorKernel } from "../core";
 import { ModeIndicator } from "./components/ModeIndicator";
 import useEditorPalette from "./hooks/useEditorPalette";
 import type { EditorPaletteMode } from "./types";

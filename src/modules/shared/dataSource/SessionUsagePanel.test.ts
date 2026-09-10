@@ -67,6 +67,15 @@ vi.mock("./UsageRoundsTable", () => ({
 }));
 
 vi.mock("./UsageStatCards", () => ({ default: () => null }));
+vi.mock("./WeeklyQuotaHistoryPanel", () => ({
+  default: () =>
+    createElement("div", { "data-testid": "weekly-quota-history" }),
+}));
+
+vi.mock("@src/engines/ChatPanel/StartPageQuotaGrid", () => ({
+  StartPageQuotaGrid: () =>
+    createElement("div", { "data-testid": "quota-summary" }),
+}));
 vi.mock("./UsageTrendChart", () => ({
   default: ({ points }: { points: unknown[] }) =>
     createElement("div", {
@@ -129,23 +138,146 @@ describe("SessionUsagePanel", () => {
     Reflect.deleteProperty(reactActEnvironment, "IS_REACT_ACT_ENVIRONMENT");
   });
 
-  it("pins the source and range controls above the scrolling usage content", () => {
-    const markup = renderToStaticMarkup(createElement(SessionUsagePanel));
+  it("applies custom hours only on confirmation and discards cancelled edits", async () => {
+    await act(async () => root.render(createElement(SessionUsagePanel)));
+    const clickText = async (text: string) => {
+      const element = Array.from(
+        document.querySelectorAll<HTMLElement>("button, [role=option]")
+      ).find((item) => item.textContent === text);
+      expect(element, text).toBeTruthy();
+      await act(async () => element!.click());
+    };
+    const openCustom = async () => {
+      await act(async () =>
+        container.querySelector<HTMLButtonElement>(".select-ghost")!.click()
+      );
+      const customOption = document.querySelector<HTMLDivElement>(
+        '[data-testid="usage-custom-range-option"]'
+      );
+      expect(customOption).not.toBeNull();
+      expect(customOption!.getAttribute("role")).toBe("option");
+      expect(
+        customOption!
+          .closest('[role="listbox"]')
+          ?.querySelectorAll('[role="option"]')
+      ).toHaveLength(6);
+      if (customOption!.getAttribute("aria-selected") === "false") {
+        expect(customOption!.querySelector("svg")).toBeNull();
+      }
+      await act(async () => customOption!.click());
+    };
+    await openCustom();
+    const callsBeforeEdit = mocks.usageDashboardOverview.mock.calls.length;
+    const fields = document.querySelectorAll<HTMLInputElement>(
+      'input[type="datetime-local"]'
+    );
+    expect(fields).toHaveLength(2);
+    for (const field of fields) {
+      expect(field.step).toBe("3600");
+      expect(field.closest(".input-size-default")).not.toBeNull();
+      expect(field.value).toMatch(/T\d{2}:00$/);
+    }
+    expect(document.body.textContent).not.toContain("customRange.hint");
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => {
+      fields[0].dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      fields[0].click();
+    });
+    expect(
+      document.querySelectorAll('input[type="datetime-local"]')
+    ).toHaveLength(2);
+    const setValue = (field: HTMLInputElement, value: string) => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value"
+      )!.set!.call(field, value);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    act(() => setValue(fields[0], "2026-09-07T04:08:18"));
+    act(() => setValue(fields[1], "2026-09-07T04:08:19"));
+    expect(mocks.usageDashboardOverview).toHaveBeenCalledTimes(callsBeforeEdit);
+    expect(
+      document.querySelector("[role=alert]")?.textContent,
+      Array.from(fields)
+        .map((f) => f.value)
+        .join(" / ")
+    ).toBeUndefined();
+    await clickText("actions.apply");
+    expect(mocks.usageDashboardOverview).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        startMs: new Date(2026, 8, 7, 4, 0, 0).getTime(),
+        endMs: new Date(2026, 8, 7, 4, 0, 0, 999).getTime(),
+      }),
+      expect.anything()
+    );
+    const callsAfterApply = mocks.usageDashboardOverview.mock.calls.length;
+    await openCustom();
+    const editedStart = document.querySelector<HTMLInputElement>(
+      'input[type="datetime-local"]'
+    )!;
+    act(() => setValue(editedStart, "2026-09-08T04:08:18"));
+    expect(document.querySelector("[role=alert]")).not.toBeNull();
+    const apply = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("button")
+    ).find((item) => item.textContent === "actions.apply");
+    expect(apply!.disabled).toBe(true);
+    await clickText("customRange.cancel");
+    expect(document.querySelector('input[type="datetime-local"]')).toBeNull();
+    const customOption = document.querySelector<HTMLDivElement>(
+      '[data-testid="usage-custom-range-option"]'
+    )!;
+    await act(async () => customOption.click());
+    act(() =>
+      document
+        .querySelector('input[type="datetime-local"]')!
+        .dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+        )
+    );
+    expect(document.querySelector('input[type="datetime-local"]')).toBeNull();
+    expect(document.activeElement?.contains(customOption)).toBe(true);
+    expect(mocks.usageDashboardOverview).toHaveBeenCalledTimes(callsAfterApply);
+  });
 
+  it("places the Usage title above a sticky filter and refresh toolbar", () => {
+    const markup = renderToStaticMarkup(createElement(SessionUsagePanel));
+    const quotaSummary = markup.indexOf('data-testid="quota-summary"');
+    const titleControls = markup.indexOf('data-testid="usage-title-controls"');
+    const sourceControls = markup.indexOf(
+      'data-testid="usage-source-controls"'
+    );
+
+    expect(quotaSummary).toBeGreaterThanOrEqual(0);
+    expect(markup).toContain('data-testid="weekly-quota-history"');
+    expect(quotaSummary).toBeLessThan(sourceControls);
+    expect(titleControls).toBeGreaterThan(quotaSummary);
+    expect(titleControls).toBeLessThan(sourceControls);
     expect(markup).toContain('data-testid="usage-source-controls"');
     expect(markup).toContain(
       'class="sticky top-0 z-20 -mx-4 bg-chat-pane px-4 pb-1"'
     );
     expect(markup).toContain("flex flex-col gap-3");
-    expect(markup).toContain("flex min-h-9 flex-wrap items-center");
+    expect(markup).toContain(
+      "flex min-h-9 flex-wrap items-center justify-between"
+    );
     expect(markup).toContain('data-testid="usage-source-range-controls"');
     expect(markup).toContain("h-4 w-px shrink-0 bg-border-2");
     expect(markup).toContain("select-size-small");
-    expect(markup).toContain("bg-surface-hover font-semibold text-primary-6");
+    expect(markup).toContain("bg-surface-hover font-semibold text-text-1");
+    expect(markup).toContain('data-active="true" data-tab-key="all"');
+    expect(markup).not.toMatch(
+      /data-tab-key="all"[^>]*aria-label="usage\.allSources"/
+    );
+    expect(markup).toContain("usage.allSources");
+    expect(markup).toMatch(
+      /data-active="false" data-tab-key="codex" aria-label="usage\.bucket\.codex" title="usage\.bucket\.codex"/
+    );
+    expect(markup).toContain("h-7 w-7 p-0");
     expect(markup).toContain('data-testid="usage-title-controls"');
     expect(markup).toContain('data-testid="usage-refresh"');
     expect(markup).toContain('aria-label="usage.refresh"');
-    expect(markup).toContain("usage.title");
+    expect(markup).toContain("views.usage");
   });
 
   it("refreshes headline data and an open request page together", async () => {

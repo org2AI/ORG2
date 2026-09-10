@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { TFunction } from "i18next";
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -45,6 +45,8 @@ function status(
       orgChannelMessages: false,
       orgChannelMessagesIdempotency: false,
       conversationEvents: false,
+      conversationEventsIdempotency: false,
+      conversationTurnCoordination: false,
     },
     capabilitiesLoading: false,
     lastSync: { lastPassAtMs: null, lastSuccessAtMs: null },
@@ -388,6 +390,19 @@ describe("CloudOrgSyncSection manual sync", () => {
     );
     expect(button?.disabled).toBe(true);
     expect(button?.textContent).toContain("cloud.orgPanel.sync.manualRunning");
+    expect(
+      button?.querySelector('[data-icon="refresh-cw"]')?.classList
+    ).toContain("refresh-spinning");
+  });
+
+  it("centers the manual row and shows the standard refresh icon", () => {
+    const root = renderSection();
+    const row = root.querySelector('[data-testid="cloud-org-sync-manual"]');
+    const icon = row?.querySelector('[data-icon="refresh-cw"]');
+
+    expect(row?.className).toContain("@[480px]:items-center");
+    expect(row?.className).not.toContain("@[480px]:items-start");
+    expect(icon).not.toBeNull();
   });
 
   it("surfaces success and failure inline", () => {
@@ -433,7 +448,12 @@ describe("CloudOrgSyncSection manual sync", () => {
       const button = root.container.querySelector<HTMLButtonElement>(
         '[data-testid="cloud-org-sync-run"]'
       );
-      await dispatch(() => button?.click());
+      await act(async () => {
+        button?.click();
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve())
+        );
+      });
       expect(runSync).toHaveBeenCalledTimes(1);
     } finally {
       await root.unmount();

@@ -24,7 +24,6 @@
  * delivery while every atom write (status, rename, account switch, turn
  * lifecycle) still applies, so a terminal turn never notifies twice.
  */
-import { listen } from "@tauri-apps/api/event";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,6 +32,7 @@ import {
   isNotificationAttentionRequired,
   isSuccessfulNotificationTurnStatus,
 } from "@src/api/services/notificationPolicy";
+import { refreshAgentOrgRunViewForChangedSession } from "@src/engines/ChatPanel/InputArea/components/agentOrgRunViewStore";
 import {
   markTurnRunning,
   markTurnTerminal,
@@ -42,6 +42,7 @@ import {
   toCliSessionStatus,
   toSessionListStatus,
 } from "@src/engines/SessionCore/sync/sessionSyncUtils";
+import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 import {
   deliverSessionTerminalNotification,
   shouldDeliverSessionTerminalNotification,
@@ -49,6 +50,7 @@ import {
 import {
   activeSessionIdAtom,
   sessionByIdAtom,
+  setSessionRuntimeStatusAtom,
   updateSessionStatus,
 } from "@src/store/session";
 import { notificationSettingsAtom } from "@src/store/ui/notificationAtom";
@@ -100,111 +102,129 @@ export function useNativeSessionStatusMonitor(options?: {
     translationRef.current = t;
   }, [t]);
 
-  useEffect(() => {
-    const unlistenPromise = listen<SessionStatusChangedPayload>(
-      "session-status-changed",
-      (event) => {
-        const { sessionId, status } = event.payload;
-        const completedTurn = isSuccessfulNotificationTurnStatus(status);
-        const session = isStoreInitialized()
-          ? getInstrumentedStore().get(sessionByIdAtom(sessionId))
-          : undefined;
-        if (completedTurn) {
-          markTurnTerminal(sessionId, "completed");
-        } else if (isTerminalStatus(status)) {
-          markTurnTerminal(sessionId, toTurnTerminalStatus(status));
-        } else if (isSessionRuntimeExecuting(status)) {
-          markTurnRunning(sessionId);
-        }
-
-        const completedBoundary =
-          completedTurn &&
-          !isSuccessfulNotificationTurnStatus(session?.status ?? "");
-        const notificationBoundary =
-          completedBoundary ||
-          shouldDeliverSessionTerminalNotification(session?.status, status);
-        if (notificationsEnabled && session && notificationBoundary) {
-          const outsideActiveSession =
-            session.background === true ||
-            activeSessionIdRef.current !== sessionId;
-          deliverSessionTerminalNotification(
-            {
-              sessionId,
-              status: completedBoundary ? "completed" : status,
-              sessionName:
-                session.name ||
-                translationRef.current("notifications.backgroundSession"),
-              attentionRequired:
-                isNotificationAttentionRequired(outsideActiveSession),
-              errorMessage: session.error_message,
-            },
-            settingsRef.current,
-            translationRef.current
-          );
-        }
-        // `status` is the raw wire string off the Tauri event payload and is
-        // written straight into the session-list row that drives sidebar
-        // grouping, Kanban lanes and every terminal-status predicate. Narrow
-        // it against the Rust enum mirror, then map it onto `SessionStatus`,
-        // instead of laundering it through `as SessionStatus`.
-        updateSessionStatus(
+  useTauriListen<SessionStatusChangedPayload>(
+    "session-status-changed",
+    ({ sessionId, status }) => {
+      const cliStatus = toCliSessionStatus(status);
+      const completedTurn = isSuccessfulNotificationTurnStatus(status);
+      const session = isStoreInitialized()
+        ? getInstrumentedStore().get(sessionByIdAtom(sessionId))
+        : undefined;
+      let lifecycleAccepted = true;
+      if (completedTurn) {
+        lifecycleAccepted = markTurnTerminal(sessionId, "completed");
+      } else if (isTerminalStatus(status)) {
+        lifecycleAccepted = markTurnTerminal(
           sessionId,
-          toSessionListStatus(toCliSessionStatus(status))
+          toTurnTerminalStatus(status)
         );
+      } else if (isSessionRuntimeExecuting(status)) {
+        lifecycleAccepted = markTurnRunning(sessionId);
       }
-    );
 
-    const unlistenRenamePromise = listen<SessionRenamedPayload>(
-      "session-renamed",
-      (event) => {
-        const { sessionId, name } = event.payload;
-        void (async () => {
-          const [{ getInstrumentedStore }, { sessionByIdAtom, upsertSession }] =
-            await Promise.all([
-              import("@src/util/core/state/instrumentedStore"),
-              import("@src/store/session"),
-            ]);
-          const store = getInstrumentedStore();
-          const before = store.get(sessionByIdAtom(sessionId));
-          if (!before || before.name === name) return;
-          upsertSession({ ...before, name });
-        })();
+      // Finality and every presentation mirror move together. A late
+      // terminal/running event rejected by the generation-aware lifecycle
+      // must not still flip the footer, sidebar row, or notification state.
+      if (!lifecycleAccepted) return;
+
+      // This Tauri event is the durable, process-wide status edge emitted
+      // after Rust commits the session row. The per-session Channel normally
+      // updates the foreground runtime mirror through agent:turn_completed,
+      // but an IPC frame can be lost while the global event still arrives.
+      // Keep the composer/Stop-button mirror convergent as well; the scoped
+      // write atom drops background-session updates when another Session is
+      // visible, so this cannot bleed a terminal into the wrong tab.
+      if (isStoreInitialized()) {
+        getInstrumentedStore().set(setSessionRuntimeStatusAtom, {
+          sessionId,
+          status: cliStatus,
+          source: "sync",
+        });
       }
-    );
 
-    const unlistenAccountPromise = listen<SessionAccountSwitchedPayload>(
-      "session-account-switched",
-      (event) => {
-        const { sessionId, toAccountId, model } = event.payload;
-        void (async () => {
-          const [{ getInstrumentedStore }, { sessionByIdAtom, upsertSession }] =
-            await Promise.all([
-              import("@src/util/core/state/instrumentedStore"),
-              import("@src/store/session"),
-            ]);
-          const store = getInstrumentedStore();
-          const before = store.get(sessionByIdAtom(sessionId));
-          // Unknown session (not yet loaded in this window) — the next
-          // full session-list sync will carry the new account anyway.
-          if (!before) return;
-          if (
-            before.accountId === toAccountId &&
-            (model == null || before.model === model)
-          )
-            return;
-          upsertSession({
-            ...before,
-            accountId: toAccountId,
-            ...(model != null ? { model } : {}),
-          });
-        })();
+      const completedBoundary =
+        completedTurn &&
+        !isSuccessfulNotificationTurnStatus(session?.status ?? "");
+      const notificationBoundary =
+        completedBoundary ||
+        shouldDeliverSessionTerminalNotification(session?.status, status);
+      if (notificationsEnabled && session && notificationBoundary) {
+        const outsideActiveSession =
+          session.background === true ||
+          activeSessionIdRef.current !== sessionId;
+        deliverSessionTerminalNotification(
+          {
+            sessionId,
+            status: completedBoundary ? "completed" : status,
+            sessionName:
+              session.name ||
+              translationRef.current("notifications.backgroundSession"),
+            attentionRequired:
+              isNotificationAttentionRequired(outsideActiveSession),
+            errorMessage: session.error_message,
+          },
+          settingsRef.current,
+          translationRef.current
+        );
+        if (session?.orgMemberId) {
+          // The backend persists the direct FIFO terminal before emitting this
+          // native event. Reconcile once from that exact boundary so Idle and
+          // Paused Teams do not depend on polling or the optional IDE socket
+          // to replace Stop with Return. Ordinary SDE Sessions skip this path.
+          refreshAgentOrgRunViewForChangedSession(sessionId);
+        }
       }
-    );
+      // `status` is the raw wire string off the Tauri event payload and is
+      // written straight into the session-list row that drives sidebar
+      // grouping, Kanban lanes and every terminal-status predicate. Narrow
+      // it against the Rust enum mirror, then map it onto `SessionStatus`,
+      // instead of laundering it through `as SessionStatus`.
+      updateSessionStatus(sessionId, toSessionListStatus(cliStatus));
+    }
+  );
 
-    return () => {
-      unlistenPromise.then((unlisten) => unlisten());
-      unlistenRenamePromise.then((unlisten) => unlisten());
-      unlistenAccountPromise.then((unlisten) => unlisten());
-    };
-  }, [notificationsEnabled]);
+  useTauriListen<SessionRenamedPayload>(
+    "session-renamed",
+    ({ sessionId, name }) => {
+      void (async () => {
+        const [{ getInstrumentedStore }, { sessionByIdAtom, upsertSession }] =
+          await Promise.all([
+            import("@src/util/core/state/instrumentedStore"),
+            import("@src/store/session"),
+          ]);
+        const store = getInstrumentedStore();
+        const before = store.get(sessionByIdAtom(sessionId));
+        if (!before || before.name === name) return;
+        upsertSession({ ...before, name });
+      })();
+    }
+  );
+
+  useTauriListen<SessionAccountSwitchedPayload>(
+    "session-account-switched",
+    ({ sessionId, toAccountId, model }) => {
+      void (async () => {
+        const [{ getInstrumentedStore }, { sessionByIdAtom, upsertSession }] =
+          await Promise.all([
+            import("@src/util/core/state/instrumentedStore"),
+            import("@src/store/session"),
+          ]);
+        const store = getInstrumentedStore();
+        const before = store.get(sessionByIdAtom(sessionId));
+        // Unknown session (not yet loaded in this window) — the next
+        // full session-list sync will carry the new account anyway.
+        if (!before) return;
+        if (
+          before.accountId === toAccountId &&
+          (model == null || before.model === model)
+        )
+          return;
+        upsertSession({
+          ...before,
+          accountId: toAccountId,
+          ...(model != null ? { model } : {}),
+        });
+      })();
+    }
+  );
 }

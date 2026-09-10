@@ -4,16 +4,12 @@ import { Navigate, type RouteObject, useLocation } from "react-router-dom";
 import { Placeholder } from "@src/components/Placeholder";
 import { ROUTES } from "@src/config/routes";
 import { HOSTED_LOGIN_ENABLED } from "@src/config/serviceAuth";
-import MainAppShell from "@src/modules/shared/layouts/MainAppShell";
 import {
   AuthCallback,
-  FlowAwarenessTestPage,
   LoginPage,
   MobileRemotePage,
-  SelectRepoPage,
   SessionWindowPage,
 } from "@src/router/lazy/pages";
-import ComingSoonRoutePage from "@src/router/routes/ComingSoonRoutePage";
 import { WorkStationRoutePlaceholder } from "@src/router/routes/placeholders";
 
 const Loading = () => <Placeholder variant="loading" />;
@@ -103,7 +99,6 @@ export const appStandaloneRouteGroup: RouteObject[] = [
       false
     ),
   },
-  { path: "app/select-repo", element: lazy(<SelectRepoPage />, false) },
   // Detached session window route — loaded by `open_session_window` (Rust)
   // with the label `app-window-session-<id>`. Keep the path in sync with
   // that command and `getSessionWindowPath`.
@@ -171,15 +166,3 @@ export const workbenchAppRouteGroup: RouteObject[] = [
     element: <LegacyAgentOrgsRedirect />,
   },
 ];
-
-export const mainAppRouteGroup: RouteObject = {
-  path: "app",
-  element: <MainAppShell />,
-  children: [
-    {
-      path: "dev-tools/flow-awareness-test",
-      element: lazy(<FlowAwarenessTestPage />),
-    },
-    { path: "ideas", element: <ComingSoonRoutePage /> },
-  ],
-};

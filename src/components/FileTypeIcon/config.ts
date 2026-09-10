@@ -96,9 +96,11 @@ import NginxIcon from "@src/assets/fileTypeIcons/nginx.svg?url";
 import NimIcon from "@src/assets/fileTypeIcons/nim.svg?url";
 import NixIcon from "@src/assets/fileTypeIcons/nix.svg?url";
 import NpmIcon from "@src/assets/fileTypeIcons/npm.svg?url";
+import NumbersIcon from "@src/assets/fileTypeIcons/numbers.svg?url";
 import NuxtIcon from "@src/assets/fileTypeIcons/nuxt.svg?url";
 import ObjectiveCIcon from "@src/assets/fileTypeIcons/objective-c.svg?url";
 import OcamlIcon from "@src/assets/fileTypeIcons/ocaml.svg?url";
+import PagesIcon from "@src/assets/fileTypeIcons/pages.svg?url";
 import PdfIcon from "@src/assets/fileTypeIcons/pdf.svg?url";
 import PerlIcon from "@src/assets/fileTypeIcons/perl.svg?url";
 import PhpIcon from "@src/assets/fileTypeIcons/php.svg?url";
@@ -288,7 +290,8 @@ export const ICON_MAP: Record<FileType, string> = {
   excel: ExcelIcon,
   document: DocumentIcon,
   powerpoint: PowerpointIcon,
-  "pages-doc": WordIcon,
+  "pages-doc": PagesIcon,
+  numbers: NumbersIcon,
   zip: ZipIcon,
   lock: LockIcon,
   log: LogIcon,

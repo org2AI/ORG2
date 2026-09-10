@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { DatabaseIcon } from "@src/assets/databaseIcons";
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
@@ -298,7 +298,7 @@ export const DatabasesTable: React.FC<DatabasesTableProps> = ({
                               right={
                                 probeResult && selectedRowId === row.id ? (
                                   <InlineCardColumnStack>
-                                    <InlineAlert
+                                    <PageNotice
                                       type={
                                         probeResult.ok ? "success" : "danger"
                                       }
@@ -316,7 +316,7 @@ export const DatabasesTable: React.FC<DatabasesTableProps> = ({
                                           {probeResult.error}
                                         </span>
                                       )}
-                                    </InlineAlert>
+                                    </PageNotice>
                                   </InlineCardColumnStack>
                                 ) : (
                                   <InlineCardColumnStack>

@@ -7,20 +7,22 @@
     "allRead": "모두 확인했습니다",
     "loadMore": "더 불러오기",
     "filters": {
-      "all": "전체",
       "mentions": "멘션",
       "assigned": "할당됨"
     },
     "sections": {
       "reviewRequested": "리뷰 요청됨",
-      "authoredByMe": "내가 작성"
+      "authoredByMe": "내가 작성",
+      "updates": "업데이트"
     },
     "status": {
       "read": "읽음",
       "unread": "읽지 않음"
     },
     "row": {
-      "ariaLabel": "{{title}}, {{status}}"
+      "ariaLabel": "{{title}}, {{status}}",
+      "issueSource": "{{repository}} issue",
+      "issueSourceFallback": "Issue"
     },
     "empty": {
       "title": "아직 항목이 없습니다",
@@ -38,6 +40,10 @@
       "noResults": {
         "title": "일치하는 항목이 없습니다",
         "subtitle": "“{{query}}”와(과) 일치하는 항목이 없습니다."
+      },
+      "archived": {
+        "title": "보관된 항목이 없습니다",
+        "subtitle": "보관한 항목이 여기에 표시됩니다."
       }
     },
     "loading": "팀 수신함을 불러오는 중…",
@@ -87,7 +93,18 @@
       "identityUnavailable": "팀 신원을 확인할 수 없습니다. 응답하기 전에 프로젝트 프로필을 확인하세요.",
       "rowPending": "{{name}} 님으로부터 · 응답 대기 중",
       "rowAccepted": "인계 수락됨 · {{status}} · {{priority}}",
-      "rowReturned": "{{name}} 님이 반려함 · {{status}} · {{priority}}"
+      "rowReturned": "{{name}} 님이 반려함 · {{status}} · {{priority}}",
+      "destination": "대상",
+      "chooseDestination": "대상 선택",
+      "cloudDestination": "{{name}} · 팀 수신함",
+      "todoCount_one": "할 일 {{count}}개",
+      "validation": {
+        "title_required": "작업 항목 제목을 입력하세요.",
+        "project_required": "대상을 선택하세요.",
+        "project_unavailable": "이 대상은 더 이상 사용할 수 없습니다. 다른 대상을 선택하세요.",
+        "recipient_required": "받는 사람을 선택하세요.",
+        "recipient_unavailable": "이 받는 사람은 더 이상 사용할 수 없습니다. 다른 받는 사람을 선택하세요."
+      }
     },
     "errors": {
       "loadTitle": "팀 수신함을 불러올 수 없습니다",
@@ -103,20 +120,26 @@
       "pullRequestsPartialLoadHelp": "사용 가능한 항목은 계속 표시됩니다. 새로 고쳐 누락된 pull request를 다시 불러오세요",
       "workItemContext": "일부 프로젝트 정보를 사용할 수 없습니다. 작업 항목은 계속 사용할 수 있습니다.",
       "workItemLoad": "이 작업 항목을 불러올 수 없습니다. 다시 시도해 주세요.",
+      "githubIssueLoad": "이 작업 항목의 GitHub 이슈를 불러오지 못했습니다. 로컬 작업 항목 정보는 계속 표시됩니다.",
       "workItemUpdate": "작업 항목의 최신 변경 사항을 저장할 수 없습니다. 다시 시도해 주세요.",
-      "githubIssueLoad": "이 작업 항목의 GitHub 이슈를 불러오지 못했습니다. 로컬 작업 항목 정보는 계속 표시됩니다."
+      "archive": "이 항목을 보관할 수 없습니다. 다시 시도해 주세요.",
+      "unarchive": "이 항목을 복원할 수 없습니다. 다시 시도해 주세요.",
+      "mutePreferences": "알림 카테고리를 업데이트할 수 없습니다. 다시 시도해 주세요."
     },
     "detail": {
       "assignedSubtitle": "할당된 작업 항목",
       "standaloneProject": "독립 항목",
       "mentionSubtitle": "댓글에서 멘션됨",
       "mentionedYou": "님이 회원님을 멘션했습니다",
-      "threadComments_other": "이 스레드에 댓글 {{count}}개가 있습니다"
+      "threadComments_other": "이 스레드에 댓글 {{count}}개가 있습니다",
+      "threadComments_one": "이 스레드에 댓글 {{count}}개가 있습니다"
     },
     "actions": {
       "markRead": "읽음으로 표시",
       "markUnread": "읽지 않음으로 표시",
-      "openWorkItem": "작업 항목 열기"
+      "openWorkItem": "작업 항목 열기",
+      "archive": "보관",
+      "unarchive": "수신함으로 복원"
     },
     "workItemStatus": {
       "backlog": "백로그",
@@ -133,6 +156,26 @@
       "medium": "중간",
       "high": "높음",
       "urgent": "긴급"
+    },
+    "notifications": {
+      "assignmentTitle": "새 작업 항목이 할당되었습니다",
+      "mentionTitle": "{{name}} 님이 회원님을 멘션했습니다",
+      "handoffTitle": "{{name}} 님의 인계",
+      "multipleTitle": "새 팀 수신함 업데이트 {{count}}개",
+      "multipleBody": "팀 수신함을 열어 할당과 멘션을 확인하세요."
+    },
+    "mute": {
+      "title": "업데이트 카테고리 음소거"
+    },
+    "events": {
+      "mention": "댓글에서 멘션됨",
+      "discussion_updated": "토론 업데이트됨",
+      "run_failed": "실행 실패",
+      "status_changed": "상태 변경됨",
+      "assignee_changed": "담당자 변경됨",
+      "priority_changed": "우선순위 변경됨",
+      "dates_changed": "날짜 변경됨",
+      "child_completed": "하위 작업 항목 완료됨"
     }
   },
   "windowChrome": {
@@ -160,7 +203,7 @@
       "commandPalette": "명령 팔레트",
       "goToFile": "파일로 이동...",
       "selectModel": "모델 선택...",
-      "switchWorkspace": "작업 영역 전환...",
+      "switchWorkspace": "작업 디렉터리 전환...",
       "switchBranch": "브랜치 전환...",
       "switchRunningLocation": "실행 위치 전환...",
       "settings": "설정...",
@@ -183,26 +226,25 @@
     "replyEmpty": "답장을 입력하세요",
     "sessionNotFound": "세션을 찾을 수 없습니다",
     "answerSubmitted": "답변을 제출했습니다",
-    "answerFailed": "답변 제출에 실패했습니다. 다시 시도하세요.",
     "replyError": "답장을 보내는 중 오류가 발생했습니다",
     "questionIgnored": "질문을 무시했습니다",
     "addedAsContext": "{{name}}을(를) 컨텍스트로 추가했습니다",
     "addedFilesAsContext": "{{count}}개의 파일을 컨텍스트로 추가했습니다",
+    "chooseExecutionAgentAi": "AI로 생성하기 전에 담당 에이전트를 선택하세요.",
+    "autoExecuteRequiresExecutionAgent": "자동 실행에는 담당 에이전트가 필요합니다.",
     "openSessionBeforeLinking": "작업 항목을 연결하기 전에 세션을 여세요.",
     "sessionLinkedToWorkItem": "세션을 작업 항목에 연결했습니다.",
     "sessionLinkFailed": "세션 연결에 실패했습니다: {{message}}",
-    "chooseFolderNewWorkspace": "작업 공간을 만들 폴더 선택",
-    "chooseExistingWorkspace": "기존 작업 공간 선택",
+    "chooseFolderNewWorkspace": "작업 디렉터리의 상위 폴더 선택",
+    "chooseExistingWorkspace": "기존 작업 디렉터리 선택",
     "selectDirectoryFailed": "디렉터리 선택에 실패했습니다",
-    "workspaceCreated": "작업 공간을 만들었습니다",
-    "workspaceCreateFailed": "작업 공간 생성에 실패했습니다",
-    "workspaceImported": "작업 공간을 가져왔습니다",
-    "workspaceImportFailed": "작업 공간 가져오기에 실패했습니다",
+    "workspaceCreated": "작업 디렉터리를 만들었습니다",
+    "workspaceCreateFailed": "작업 디렉터리 생성에 실패했습니다",
+    "workspaceImported": "작업 디렉터리를 가져왔습니다",
+    "workspaceImportFailed": "작업 디렉터리 가져오기에 실패했습니다",
     "chooseFolderCloneRepo": "리포지토리를 클론할 폴더 선택",
     "repositoryCloned": "리포지토리를 클론했습니다",
-    "repositoryCloneFailed": "리포지토리 클론에 실패했습니다",
-    "chooseExecutionAgentAi": "AI로 생성하기 전에 담당 에이전트를 선택하세요.",
-    "autoExecuteRequiresExecutionAgent": "자동 실행에는 담당 에이전트가 필요합니다."
+    "repositoryCloneFailed": "리포지토리 클론에 실패했습니다"
   },
   "previews": {
     "noCanvasAvailable": "사용 가능한 캔버스가 없습니다",
@@ -252,12 +294,10 @@
     "save": "저장",
     "cancel": "취소",
     "delete": "삭제",
-    "deleteCount": "삭제 ({{count}})",
     "removeFromOrgii": "ORGII에서 제거",
     "removeFromOrgiiCount": "ORGII에서 제거 ({{count}})",
     "edit": "편집",
     "write": "쓰기",
-    "reply": "답장",
     "close": "닫기",
     "expand": "확장",
     "confirm": "확인",
@@ -267,16 +307,13 @@
     "add": "추가",
     "remove": "제거",
     "create": "생성",
-    "update": "업데이트",
     "submit": "제출",
     "loadMore": "더 보기",
-    "load": "불러오기",
     "back": "뒤로",
     "next": "다음",
     "previous": "이전",
     "done": "완료",
     "retry": "재시도",
-    "regenerate": "다시 생성",
     "refresh": "새로고침",
     "rescan": "다시 스캔",
     "reload": "다시 로드",
@@ -284,35 +321,20 @@
     "reviewPreviousFile": "이전 파일 검토",
     "copy": "복사",
     "paste": "붙여넣기",
-    "cut": "잘라내기",
     "undo": "실행 취소",
-    "redo": "다시 실행",
-    "keep": "유지",
-    "reject": "거부",
-    "accept": "수락",
     "review": "검토",
     "undoAll": "모두 실행 취소",
-    "redoAll": "모두 다시 실행",
-    "keepAll": "모두 유지",
-    "select": "선택",
     "selectAll": "모두 선택",
     "unselectAll": "모두 선택 해제",
     "clear": "지우기",
     "open": "열기",
     "view": "보기",
-    "openInApp": "앱에서 열기",
     "openToRight": "오른쪽에 열기",
-    "new": "새로 만들기",
     "rename": "이름 바꾸기",
     "duplicate": "복제",
-    "export": "내보내기",
-    "import": "가져오기",
     "download": "다운로드",
     "upload": "업로드",
-    "insertImage": "이미지 삽입",
     "browse": "찾아보기",
-    "discover": "탐색",
-    "discoverTests": "테스트 검색",
     "newFile": "새 파일",
     "newFolder": "새 폴더",
     "copyPath": "경로 복사",
@@ -332,16 +354,9 @@
     "configure": "구성",
     "manage": "관리",
     "uninstall": "제거",
-    "connect": "연결",
-    "customize": "사용자 지정",
-    "goToSettings": "설정으로 이동",
     "restart": "재시작",
     "switchToStation": "{{station}}로 전환",
-    "rate": "평가",
-    "openInTab": "탭에서 열기",
-    "insert": "삽입",
     "discard": "버리기",
-    "disable": "비활성화",
     "run": "실행",
     "clone": "클론",
     "send": "보내기",
@@ -353,20 +368,12 @@
     "filter": "필터",
     "loading": "로딩 중...",
     "replace": "바꾸기",
-    "publish": "Publish",
-    "acceptAll": "모두 수락",
-    "rejectAll": "모두 거부",
-    "install": "설치",
-    "expandAll": "모두 펼치기",
     "collapseAll": "모두 접기",
     "viewOnGitHub": "GitHub에서 보기",
     "selectRepository": "리포지토리 선택",
     "all": "전체",
     "collapse": "접기",
     "toggle": "스레드 토글",
-    "addRepo": "리포지토리 추가",
-    "addFolder": "폴더 추가",
-    "resume": "이어서",
     "yes": "예",
     "more": "더 많은 작업",
     "advanced": "고급",
@@ -374,22 +381,20 @@
     "moreSettings": "더 많은 설정",
     "sort": "정렬",
     "openFolder": "폴더 열기",
-    "addWorkspace": "Workspace 추가",
-    "openSpotlight": "Spotlight 열기",
-    "openWorkspace": "Workspace 열기",
-    "skipThisVersion": "이 버전 건너뛰기",
+    "addWorkspace": "작업 디렉터리 추가",
+    "openWorkspace": "작업 디렉터리 열기",
     "later": "나중에",
     "link": "연결",
     "copyName": "이름 복사",
     "switchMethod": "방법 전환",
     "dismiss": "무시",
-    "comingSoon": "출시 예정",
     "clearSelection": "선택 지우기",
     "uiSettings": "UI 설정",
-    "clearAll": "모두 지우기"
-  },
-  "refreshToast": {
-    "successName": "{{name}} 새로고침됨"
+    "clearAll": "모두 지우기",
+    "openOnGitHub": "GitHub에서 열기",
+    "createPullRequest": "Pull request 만들기",
+    "expandView": "보기 확장",
+    "restoreSplitView": "분할 보기 복원"
   },
   "status": {
     "yes": "예",
@@ -465,18 +470,13 @@
     "lastPage": "마지막 페이지",
     "selectPage": "페이지 선택",
     "title": "페이지네이션",
-    "roundOf": "Round {{current}} / {{total}}",
     "round": "Round {{current}}",
     "previousRound": "이전 Round",
     "nextRound": "다음 Round",
-    "latestRound": "최신 Round",
-    "searchRounds": "Round 검색"
+    "latestRound": "최신 Round"
   },
   "optional": "선택",
   "common": {
-    "yes": "예",
-    "no": "아니오",
-    "ok": "확인",
     "on": "켜기",
     "off": "끄기",
     "default": "기본값",
@@ -485,32 +485,20 @@
     "s": "s",
     "multiplier": "배",
     "spaces": "칸",
-    "font": "글꼴",
     "name": "이름",
     "description": "설명",
     "type": "유형",
     "date": "날짜",
     "time": "시간",
-    "size": "크기",
-    "path": "경로",
     "status": "상태",
     "actions": "작업",
-    "options": "옵션",
     "details": "세부 정보",
     "more": "더 보기",
-    "less": "접기",
-    "all": "전체",
     "none": "없음",
-    "selected": "선택됨",
-    "items": "개 항목",
-    "item": "개 항목",
-    "empty": "비어 있음",
     "noResults": "결과를 찾을 수 없습니다",
     "searchPlaceholder": "검색...",
     "properties": "속성",
     "overview": "개요",
-    "appearance": "모양",
-    "theme": "테마",
     "timezone": "시간대",
     "language": "언어",
     "preview": "미리보기",
@@ -518,17 +506,11 @@
     "sourceCode": "소스 코드",
     "raw": "원본",
     "table": "테이블",
-    "filter": "필터",
-    "filters": "필터",
     "selectDate": "날짜 선택",
-    "files": "파일",
-    "required": "필수",
-    "pending": "대기 중",
     "error": "오류",
     "pid": "PID",
     "shell": "Shell",
-    "source": "소스",
-    "filterByLanguage": "언어로 필터"
+    "source": "소스"
   },
   "labels": {
     "accounts": "계정",
@@ -646,19 +628,36 @@
     "noAppliedCommit": "No linked commit yet",
     "noSessionsForFile": "No sessions found for this file",
     "committedRate": "커밋됨",
-    "email": "이메일"
+    "email": "이메일",
+    "noPullRequestForBranch": "이 브랜치에는 아직 pull request가 없습니다.",
+    "creatingPullRequest": "만드는 중…",
+    "failedToLoadPullRequest": "pull request를 불러오지 못했습니다",
+    "noCommitsInPullRequest": "이 pull request에 커밋이 없습니다",
+    "prStatus": {
+      "open": "열림",
+      "merged": "병합됨",
+      "closed": "닫힘",
+      "draft": "초안",
+      "unknown": "알 수 없음"
+    },
+    "sendingNow": "지금 보내는 중…",
+    "issues": "Issues",
+    "noIssues": "issue 없음",
+    "openIssues": "열림",
+    "closedIssues": "닫힘",
+    "issueComments": "댓글 {{count}}개",
+    "issueComments_one": "댓글 1개",
+    "issueComments_other": "댓글 {{count}}개",
+    "tokens": "토큰",
+    "actions": "작업",
+    "all": "전체"
   },
   "searchModes": {},
   "tabs": {
     "terminal": "터미널",
-    "problems": "문제",
-    "output": "출력",
-    "testResults": "테스트 결과",
     "explorer": "탐색기",
     "search": "검색",
     "sourceControl": "소스 제어",
-    "testing": "테스트",
-    "extensions": "확장 프로그램",
     "sessions": "Session",
     "myTabs": "내 탭 ({{count}})",
     "design": "디자인",
@@ -667,23 +666,12 @@
     "console": "콘솔",
     "network": "네트워크",
     "css": "CSS",
-    "source": "소스",
-    "connections": "연결",
-    "queryHistory": "쿼리 기록",
-    "table": "테이블",
-    "sql": "SQL",
-    "tools": "도구",
-    "overview": "개요"
+    "source": "소스"
   },
   "errors": {
     "generic": "문제가 발생했습니다",
-    "networkError": "네트워크 오류. 연결을 확인하세요.",
     "notFound": "찾을 수 없음",
-    "unauthorized": "인증이 필요합니다. 로그인하세요.",
     "forbidden": "접근이 거부되었습니다",
-    "serverError": "서버 오류. 나중에 다시 시도하세요.",
-    "timeout": "요청 시간이 초과되었습니다",
-    "validation": "유효성 검사 오류",
     "pageNotFound": "페이지를 찾을 수 없습니다",
     "failedToLoadComponent": "컴포넌트 로드 실패",
     "networkErrorShort": "네트워크 오류",
@@ -692,13 +680,11 @@
     "couldntConnect": "서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요.",
     "failedToLoadProperly": "컴포넌트를 올바르게 로드하지 못했습니다.",
     "requiredFileCouldntLoad": "필수 파일을 로드할 수 없습니다. 재시작하면 보통 해결됩니다.",
-    "failedToRenderActivity": "활동 렌더링 실패",
-    "failedToRenderEvent": "이벤트 렌더링 실패",
     "unknown": "알 수 없는 오류",
     "agentRequestFailed": "Agent 요청 실패",
     "codexLoginExpired": "Codex 로그인 만료",
     "codexLoginExpiredDescription": "이 계정을 복구하려면 Codex에 다시 연결하세요. 새 로그인이 저장되면 이 세션으로 돌아옵니다",
-    "reconnectCodex": "Codex 다시 연결",
+    "reconnectCodex": "다시 연결",
     "technicalDetails": "기술 세부 정보",
     "failedToCopy": "복사에 실패했습니다",
     "api": {
@@ -739,14 +725,14 @@
       },
       "workflow": "워크플로 서비스를 일시적으로 사용할 수 없습니다. 나중에 다시 시도하세요."
     },
-    "imageUploadFailed": "이미지 업로드 실패",
-    "imageTooLarge": "이미지가 너무 큽니다",
     "failedToLoad": "로드 실패",
-    "unknownError": "알 수 없는 오류가 발생했습니다"
+    "unknownError": "알 수 없는 오류가 발생했습니다",
+    "componentLoadingFailed": "컴포넌트를 불러오지 못했습니다",
+    "noLocalPath": "사용 가능한 로컬 경로가 없습니다",
+    "openInFinderFailed": "Finder에서 열지 못했습니다"
   },
   "confirmation": {
     "delete": "정말 삭제하시겠습니까?",
-    "discard": "변경 사항을 취소하시겠습니까?",
     "removeTitle": "\"{{name}}\"을(를) ORGII에서 제거하시겠습니까?",
     "removeMessage": "ORGII와의 연결만 제거됩니다. 디스크에서는 아무것도 제거되지 않습니다.",
     "deleteWorkspaceTitle": "Workspace \"{{name}}\"을(를) 삭제하시겠습니까?",
@@ -764,32 +750,14 @@
     "unsavedCloseMultipleMessage": "{{count}}개의 파일에 저장되지 않은 변경 사항이 있습니다. 그래도 닫으시겠습니까?",
     "undoAllChanges": "Agent가 수행한 {{count}}개의 파일 변경 사항을 모두 되돌립니다. 이 작업은 취소할 수 없습니다. 계속하시겠습니까?"
   },
-  "dateRange": {
-    "1d": "1일",
-    "7d": "7일",
-    "1w": "1주",
-    "30d": "30일",
-    "1m": "1개월",
-    "3m": "3개월",
-    "1y": "1년"
-  },
   "filters": {
     "all": "전체",
     "source": "소스",
-    "local": "로컬",
     "member": "멤버",
-    "model": "모델",
-    "custom": "사용자 지정",
     "tokenMarket": "Token Market",
-    "market": "마켓",
-    "agentOrAgentOrg": "Session agent",
     "searchAgentOrOrg": "Agent 또는 Agent 팀 선택...",
-    "tplSelectAgentOrOrg": "{agent} 선택",
-    "cliAgent": "CLI Agent",
     "searchModel": "모델 검색...",
-    "searchModelFor": "{{target}}의 모델 선택...",
-    "tplSelectModel": "{model} 선택",
-    "tplSelectModelFor": "{{target}}의 {model} 선택"
+    "searchModelFor": "{{target}}의 모델 선택..."
   },
   "prerequisite": {
     "missingTitle": "필수 구성 요소 누락",
@@ -799,29 +767,14 @@
     "agent": "Agent",
     "you": "나",
     "session": "Session",
-    "agentSession": "Agent Session",
     "workStation": "Workstation",
-    "osAgent": "OS Agent",
-    "coding": "Coding",
     "agentTerminal": "Agent 터미널",
     "myStation": "내 스테이션",
     "agentStation": "Agent 스테이션",
-    "projectManager": "Project 관리자",
-    "myTerminal": "My Terminal",
-    "myTerminalInfo": "My Terminal 정보"
-  },
-  "pageSearch": {
-    "placeholder": "페이지 검색...",
-    "tooltip": "페이지 검색",
-    "categories": {
-      "workspace": "워크스페이스",
-      "tools": "도구",
-      "market": "마켓"
-    }
+    "myTerminal": "My Terminal"
   },
   "tooltips": {
     "closeEsc": "닫기 (Esc)",
-    "hidePanel": "패널 숨기기 (⌘J)",
     "refreshTree": "트리 새로고침",
     "copy": "복사",
     "previous": "이전",
@@ -832,7 +785,7 @@
     "openInEditorTab": "편집기 탭에서 열기",
     "openFile": "파일 열기",
     "openNativeDevTools": "네이티브 브라우저 개발자 도구 열기",
-    "captureScreenshot": "페이지를 캡처하여 채팅에 첨부",
+    "captureScreenshot": "스크린샷",
     "enableInspectMode": "요소 검사",
     "disableInspectMode": "검사 종료 (Esc)",
     "killTerminal": "터미널 종료",
@@ -859,24 +812,20 @@
     "searchInOpenEditors": "열린 편집기에서만 검색",
     "replace": "바꾸기 (Ctrl+Shift+1)",
     "replaceAll": "모두 바꾸기 (Ctrl+Alt+Enter)",
-    "uninstall": "제거",
-    "dismiss": "무시",
     "moreActions": "추가 작업...",
     "formatSql": "SQL 포맷",
     "queryHistory": "쿼리 기록",
-    "executeQuery": "쿼리 실행 (Ctrl+Enter)",
+    "executeQuery": "쿼리 실행 ({{shortcut}})",
     "startVoiceInput": "음성 입력 시작",
     "cancelRecording": "녹음 취소",
     "stopAndTranscribe": "중지하고 전사",
     "htmlPreview": "HTML 미리보기",
     "manual": "수동",
-    "scrollLeft": "탭을 왼쪽으로 스크롤",
     "toggleFileFilters": "파일 필터 전환",
     "closeDevTools": "개발자 도구 닫기",
     "movePanelToRight": "패널을 오른쪽으로 이동",
     "movePanelToBottom": "패널을 아래쪽으로 이동",
     "domTree": "DOM 트리",
-    "clearUiIndex": "컴포넌트 인덱스 지우기",
     "closeSession": "Session 닫기",
     "clearNetworkLogs": "네트워크 로그 지우기",
     "clearConsole": "콘솔 지우기",
@@ -892,6 +841,8 @@
     "copyValueRightClickForPath": "클릭하여 값을 복사하고, 우클릭하여 경로를 복사"
   },
   "placeholders": {
+    "enterFileName": "파일 이름 입력",
+    "enterFolderName": "폴더 이름 입력",
     "loading": "로딩 중...",
     "selectToViewConfig": "{{type}}을(를) 선택하여 보기 또는 설정",
     "selectToViewConfigSubtitle": "왼쪽 목록에서 항목을 선택하세요",
@@ -911,7 +862,6 @@
     "failedToParseSymbols": "심볼 분석에 실패했습니다",
     "outlineParseError": "이 파일의 개요를 사용할 수 없습니다",
     "runQueryToSeeResults": "결과를 보려면 쿼리를 실행하세요",
-    "noProjectsFound": "Project를 찾을 수 없습니다",
     "failedToLoad": "로드에 실패했습니다",
     "noItems": "표시할 항목이 없습니다",
     "nothingHereYet": "표시할 항목이 없습니다",
@@ -942,7 +892,6 @@
     "chatHistoryAgentWorkingHint": "첫 응답부터 메시지가 표시되며 그전에는 도구 모음이 유휴 상태로 보일 수 있습니다",
     "pleaseSelect": "선택해 주세요",
     "noSessionsFound": "Session을 찾을 수 없습니다",
-    "noBrowsingHistory": "방문 기록 없음",
     "typeToSearchFiles": "파일을 검색하려면 입력...",
     "selectFileToViewChanges": "변경사항을 보려면 파일을 선택하세요",
     "failedToLoadHistory": "기록 로드 실패",
@@ -980,16 +929,9 @@
     "noStyles": "스타일이 없습니다",
     "noDomTree": "DOM 트리가 없습니다",
     "noSourceDetected": "소스 코드가 감지되지 않았습니다",
-    "notIndexed": "아직 index 안 됨",
-    "indexedInspectElement": "인덱싱됨, 요소를 검사하세요",
-    "buildIndexToStart": "인덱스를 빌드하여 시작",
     "noMatchingFilesFound": "일치하는 파일을 찾을 수 없습니다",
-    "scanning": "스캔 중...",
-    "retryToScanAgain": "다시 스캔하려면 재시도",
-    "noTokensFound": "Token을 찾을 수 없습니다",
-    "addCssVariables": "프로젝트에 CSS 변수를 추가하세요",
-    "noWorkspaceExplorerTitle": "열린 Workspace가 없습니다",
-    "noWorkspaceExplorerSubtitle": "Workspace를 열어 파일 보기",
+    "noWorkspaceExplorerTitle": "열린 작업 디렉터리가 없습니다",
+    "noWorkspaceExplorerSubtitle": "작업 디렉터리를 열어 파일 보기",
     "cannotFindRepo": "{{repoName}}을(를) 찾을 수 없습니다",
     "lastSeenAtPath": "마지막으로 확인된 경로: {{path}}",
     "unsupportedFileType": "지원되지 않는 파일 형식",
@@ -1014,61 +956,45 @@
     "noRepoSelected": "No repository selected",
     "previewUnavailable": "미리보기를 사용할 수 없습니다",
     "selectRepositoryFromWorkspace": "워크스페이스 리포지토리 선택",
-    "noData": "데이터 없음"
+    "noData": "데이터 없음",
+    "noResults": "결과 없음",
+    "noSessionHistoryForFile": "{{file}}에 대한 세션 활동이 없습니다",
+    "noSessionHistory": "세션 기록 없음"
   },
   "inbox": {
-    "searchPlaceholder": "메시지 검색...",
-    "channels": {
-      "title": "채널",
-      "git": "Git",
-      "workItems": "작업 항목",
-      "promotions": "프로모션"
-    },
-    "selectChannel": "채널을 선택하세요",
-    "noMessages": "아직 메시지가 없습니다",
-    "noMessagesSubtitle": "이벤트가 발생하면 여기에 메시지가 표시됩니다",
-    "composerPlaceholder": "메모 작성…",
     "scrollToBottom": "맨 아래로",
-    "markAllAsRead": "모두 읽음으로 표시",
-    "scrollToUnread": "읽지 않은 메시지로 이동"
+    "markAllAsRead": "모두 읽음으로 표시"
   },
   "placeholderTypes": {
     "mcpServer": "MCP 서버",
-    "connection": "연결",
-    "policy": "정책",
-    "skill": "skill",
-    "message": "메시지"
+    "connection": "연결"
   },
   "workstation": {
     "expandReplace": "바꾸기 확장",
     "collapseReplace": "바꾸기 접기",
     "tooltipRefreshExplorer": "탐색기 새로 고침",
-    "refreshFiles": "파일 새로 고침",
-    "deleteSelectedRows": "선택한 {{count}}개 행 삭제",
     "agentBrowser": "Agent Browser",
     "userInControl": "User in control",
     "agentControlling": "Agent controlling",
     "returnToAgent": "Return to Agent",
     "takeOver": "Take Over",
-    "chromeInForeground": "Chrome window is in the foreground — interact directly",
     "chromeWindowOpen": "Chrome 창이 열려 있습니다 — 직접 조작한 후 Agent로 돌아가세요",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
     "split": "Split",
-    "reloadFromDiskConfirm": "Reload from disk (will prompt to confirm)",
-    "reloadFromDisk": "Reload from disk",
     "publishingBranch": "Publishing...",
-    "refreshGitStatus": "Refresh git status",
     "notGitInitialized": "Git 초기화 안 됨",
-    "notGitInitializedTooltip": "이 Workspace에는 아직 .git 디렉터리가 없습니다.",
+    "notGitInitializedTooltip": "이 작업 디렉터리에는 아직 .git 디렉터리가 없습니다.",
     "publishBranchToOrigin": "Publish branch \"{{branch}}\" to origin",
-    "syncWithRemote": "Sync with remote ({{behind}} to pull, {{ahead}} to push)",
     "scanningFiles": "Scanning files...",
-    "branchTooltip": "브랜치: {{branch}}",
     "branchTooltipSwitching": "브랜치: {{branch}} (전환 중…)",
-    "switchWorkspaceTooltip": "Workspace 전환",
+    "switchWorkspaceTooltip": "작업 디렉터리 전환",
     "switchWorktreeTooltip": "Worktree 전환",
     "switchBranchTooltip": "브랜치 전환",
+    "switchLocalBranchTooltip": "로컬 브랜치 전환",
+    "sessionEnvCloud": "클라우드",
+    "sessionEnvLocal": "로컬",
+    "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Git 작업",
     "switchToSessionRepo": "{{name}}(으)로 전환",
     "embeddingProgress": "Embedding: {{count}}개 청크 처리됨",
@@ -1077,83 +1003,45 @@
     "embeddingLabel": "Embedding",
     "indexingProgress": "인덱싱: {{processed}}/{{total}} 파일 ({{percent}}%)",
     "indexingProgressWithFile": "인덱싱: {{processed}}/{{total}} 파일 ({{percent}}%)\n현재: {{file}}",
-    "languageServices": "Language Services",
     "ports": {
       "workspaceSection": "현재 작업 영역",
       "externalSection": "외부",
-      "tooltip": "포트: Workspace {{workspace}}, 외부 {{external}}",
       "viewPortsTooltip": "사용 중인 포트 보기",
       "noWorkspacePorts": "Workspace 포트가 감지되지 않았습니다",
-      "externalLabel": "외부",
       "unknownProcess": "알 수 없는 프로세스",
       "pidLabel": "PID {{pid}}",
       "openInBrowser": "브라우저에서 열기",
-      "openAddress": "{{address}} 열기",
       "copyAddress": "주소 복사",
       "stopProcess": "프로세스 중지",
       "searchPlaceholder": "포트 검색…",
       "noSearchResults": "일치하는 포트 없음",
+      "openAddress": "{{address}} 열기",
       "rescan": "다시 검색",
       "rescanning": "검색 중…",
       "rescanTooltip": "수신 대기 포트를 다시 검색합니다",
       "lastScannedAt": "마지막 검색 {{time}}"
     },
-    "noLanguageServicesActive": "No language services active",
     "linesSelected": "{{count}} lines selected",
     "charsSelected": "{{count}} selected",
     "nLines": "{{count}} lines",
-    "blameOn": "Blame: On",
-    "blameOff": "Blame: Off",
     "hideFilter": "Hide filter",
     "filterFilesAction": "Filter files",
     "switchToTreeView": "Switch to tree view",
     "switchToListView": "Switch to list view",
     "discardChanges": "Discard Changes",
-    "stagedChangesCount": "{{count}} Staged Changes",
-    "changesCount": "{{count}} Changes",
-    "acceptAllMergeChanges": "Accept All Merge Changes (Stage resolved files)",
     "toOrigin": "to origin",
     "discardChangesConfirm": "Discard changes to {{files}}? This cannot be undone.",
     "discardAllUnstagedConfirm": "Discard all unstaged changes? This cannot be undone.",
     "addedToAgent": "{{fileName}} added to agent",
-    "privateBrowsing": "Private",
-    "standardBrowsing": "표준",
-    "openNativeDevTools": "Open native browser DevTools (Safari Inspector / Edge DevTools)",
-    "extractingProps": "Extracting props...",
-    "initializingPreview": "Initializing preview...",
-    "buildUiIndex": "Build component index",
     "componentLabel": "Component",
     "definitionLabel": "Definition",
     "findSource": "Find Source",
     "preserveConsole": "Preserve",
     "consoleShowStackTrace": "스택 추적 표시",
     "consoleHideStackTrace": "스택 추적 숨기기",
-    "loadingData": "Loading data...",
-    "noData": "No data",
-    "tokenName": "token-name",
-    "manualMode": "Manual",
-    "position": "Position",
-    "flow": "Flow",
-    "size": "Size",
-    "paddingLabel": "Padding",
-    "marginLabel": "Margin",
-    "boxModel": "Box Model",
-    "opacityLabel": "Opacity",
-    "cornersLabel": "Corners",
-    "textLabel": "Text",
-    "weightLabel": "Weight",
-    "lineLabel": "Line",
-    "borderLabel": "Border",
-    "widthLabel": "Width",
-    "heightLabel": "Height",
-    "colorLabel": "Color",
-    "shadowAndBlur": "Shadow & Blur",
-    "blurLabel": "Blur",
-    "spreadLabel": "Spread",
     "styleEditsCount_one": "{{count}}개 편집",
     "styleEditsCount_other": "{{count}}개 편집",
     "sendStyleEdits": "보내기",
-    "addToChat": "채팅에 추가",
     "browserCore": {
       "desktopOnlyTitle": "브라우저는 데스크톱 앱에서만 사용할 수 있습니다",
       "desktopOnlyBody": "임베디드 브라우저는 Tauri 데스크톱 애플리케이션에서만 사용할 수 있습니다.",
@@ -1161,32 +1049,32 @@
       "debugTauriInternals": "__TAURI_INTERNALS__: {{value}}",
       "debugTauriIpc": "__TAURI_IPC__: {{value}}",
       "debugTauri": "__TAURI__: {{value}}",
-      "privateBrowsingLabel": "프라이빗 브라우징:",
       "enterUrlToStart": "URL을 입력하여 시작",
       "privateBrowsingEmptyTitle": "프라이빗 브라우징: URL을 입력하여 시작",
       "simulatorBrowserNotice": "이 브라우저는 세션 재생 전용입니다. 지속적인 탐색은 메인 앱의 브라우저(도구 → 브라우저)를 사용하세요.",
       "tlsDevNote": "참고: GitHub 등 일부 HTTPS 사이트는 개발 모드에서 인증서 검증으로 TLS 오류가 날 수 있습니다. HTTP 또는 example.com 같은 단순 HTTPS를 시도하세요.",
       "siteUnreachableTitle": "사이트에 연결할 수 없음",
-      "errorTls": "이 사이트에 대한 연결이 안전하지 않습니다. 개발 모드에서 HTTPS 사이트에 자주 발생합니다.",
-      "errorTimeout": "연결 시간이 초과되었습니다. 서버 응답이 너무 느립니다.",
-      "errorDns": "서버의 DNS 주소를 찾을 수 없습니다. URL을 확인하세요.",
-      "errorRefused": "서버가 연결을 거부했습니다.",
-      "errorGeneric": "서버에 연결할 수 없습니다. 사이트가 다운되었거나 네트워크 문제가 있을 수 있습니다.",
-      "technicalDetails": "기술 정보",
-      "tryHeading": "시도:",
-      "tryCheckConnection": "인터넷 연결 확인",
-      "tryVerifyUrl": "URL이 올바른지 확인",
-      "tryAgainLater": "나중에 다시 시도",
       "webviewHiddenTitle": "웹뷰가 일시적으로 숨겨졌습니다",
-      "webviewHiddenBody": "메뉴나 대화 상자를 닫으면 다시 표시됩니다."
+      "webviewHiddenBody": "메뉴나 대화 상자를 닫으면 다시 표시됩니다.",
+      "embeddedFallbackTitle": "이 사이트는 임베디드 브라우저에서 작동하지 않을 수 있습니다",
+      "embeddedFallbackBody": "일부 사이트는 앱 WebView 안에서 차단되거나 렌더링되지 않습니다. 페이지가 계속 비어 있으면 시스템 브라우저에서 여세요.",
+      "currentUrl": "현재 URL"
     },
     "unsavedChangesTitle": "Unsaved Changes",
-    "prkPlaceholder": "PRJ",
-    "gitSyncMenuTitle": "Git sync actions",
-    "switchLocalBranchTooltip": "로컬 브랜치 전환",
-    "sessionEnvCloud": "클라우드",
-    "sessionEnvLocal": "로컬",
-    "sessionHarness": "{{name}} Harness"
+    "ci": {
+      "openPullRequest": "GitHub에서 pull request 열기",
+      "viewDetails": "검사 세부 정보 보기",
+      "refresh": "검사 새로 고침",
+      "refreshing": "새로 고치는 중…",
+      "lastFetchedAt": "마지막 조회 {{time}}",
+      "unavailable": "검사 결과를 읽을 수 없습니다",
+      "sections": {
+        "failed": "실패",
+        "running": "실행 중",
+        "skipped": "건너뜀",
+        "passed": "통과"
+      }
+    }
   },
   "git": {
     "loading": "Git 상태 로딩 중...",
@@ -1227,10 +1115,6 @@
       "compareBranch": "브랜치 비교"
     },
     "rail": {
-      "openTabs": "열린 탭",
-      "closeItem": "{{label}} 닫기",
-      "expand": "워크스테이션 정보 펼치기",
-      "collapse": "워크스테이션 정보 접기",
       "subagents": "subagent",
       "subagentsCount_one": "subagent {{count}}개",
       "subagentsCount_other": "subagents {{count}}개",
@@ -1239,6 +1123,10 @@
       "subagentPending": "대기 중",
       "subagentCompleted": "완료",
       "subagentFailed": "실패",
+      "openTabs": "열린 탭",
+      "closeItem": "{{label}} 닫기",
+      "expand": "워크스테이션 정보 펼치기",
+      "collapse": "워크스테이션 정보 접기",
       "restoreWidth": "원래 너비로 복원({{width}}px)",
       "setMinimumWidth": "현재 너비를 최소값으로 설정({{width}}px)",
       "widerWidth": "넓게({{width}}px)",
@@ -1280,40 +1168,11 @@
         "approved": "변경 사항을 승인했습니다",
         "changesRequested": "변경을 요청했습니다",
         "reviewDismissed": "리뷰를 기각했습니다",
-        "reviewed": "리뷰했습니다"
+        "reviewed": "리뷰했습니다",
+        "appendedSession": "세션을 추가했습니다"
       },
       "summary": {
         "label": "pull request 요약"
-      },
-      "flow": {
-        "wantsToMergeCommitsInto_one": "님이 {{count}}개의 커밋을 병합하려고 합니다:",
-        "wantsToMergeCommitsInto_other": "님이 {{count}}개의 커밋을 병합하려고 합니다:",
-        "mergedCommitsInto_one": "님이 {{count}}개의 커밋을 병합했습니다:",
-        "mergedCommitsInto_other": "님이 {{count}}개의 커밋을 병합했습니다:",
-        "from": "←",
-        "copyHeadBranch": "브랜치 이름 복사",
-        "branchCopied": "브랜치 이름이 복사되었습니다"
-      },
-      "sidebar": {
-        "reviewers": "리뷰어",
-        "requestReviewers": "리뷰어 요청",
-        "awaitingReview": "리뷰 대기 중",
-        "noReviews": "리뷰 없음",
-        "assignees": "담당자",
-        "noAssignees": "담당자 없음",
-        "labels": "레이블",
-        "noLabels": "아직 없음",
-        "actions": "작업",
-        "editAssignees": "담당자 편집",
-        "searchAssignees": "사용자 검색",
-        "noAssigneeCandidates": "사용 가능한 사용자가 없습니다",
-        "assigneesLoadFailed": "사용자를 불러오지 못했습니다",
-        "assigneesUpdated": "담당자가 업데이트되었습니다",
-        "editLabels": "레이블 편집",
-        "searchLabels": "레이블 검색",
-        "noLabelCandidates": "사용 가능한 레이블이 없습니다",
-        "labelsLoadFailed": "레이블을 불러오지 못했습니다",
-        "labelsUpdated": "레이블이 업데이트되었습니다"
       },
       "tabs": {
         "conversation": "대화",
@@ -1334,6 +1193,35 @@
         "noneShort": "CI 없음",
         "unavailableShort": "CI를 사용할 수 없음",
         "branchStatus": "Pull request #{{number}} CI: {{status}}"
+      },
+      "mergeStatus": {
+        "label": "병합 상태",
+        "viewChecks": "모든 검사 보기",
+        "ableToMerge": "병합 준비 완료",
+        "blocked": "병합 차단됨",
+        "conflicts": "병합 충돌",
+        "queued": "병합 대기열에 등록됨",
+        "draft": "초안 — 아직 병합할 수 없음",
+        "merged": "풀 리퀘스트가 병합됨",
+        "closed": "풀 리퀘스트가 닫힘",
+        "checking": "병합 가능 여부 확인 중…",
+        "checksPassed": "모든 검사 통과",
+        "checksFailing_one": "검사 {{count}}건 실패",
+        "checksFailing_other": "검사 {{count}}건 실패",
+        "checksRunning_one": "검사 {{count}}건 진행 중",
+        "checksRunning_other": "검사 {{count}}건 진행 중",
+        "checksSkipped_one": "검사 {{count}}건 건너뜀",
+        "checksSkipped_other": "검사 {{count}}건 건너뜀",
+        "checksNone": "보고된 검사가 없습니다",
+        "reviewApproved": "변경 사항 승인됨",
+        "reviewRequired": "리뷰 필요",
+        "reviewChangesRequested": "변경 요청됨",
+        "noConflicts": "기준 브랜치와 충돌 없음",
+        "hasConflicts": "기준 브랜치와 충돌 있음",
+        "outOfDate": "기준 브랜치보다 오래됨",
+        "checkingConflicts": "충돌 확인 중…",
+        "autoMergeEnabled": "자동 병합 활성화됨",
+        "inMergeQueue": "병합 대기열에서 대기 중"
       },
       "commits": {
         "backToList": "모든 커밋",
@@ -1371,8 +1259,6 @@
         "removedFromQueue": "병합 대기열에서 제거했습니다",
         "autoMergeEnabled": "자동 병합을 활성화했습니다",
         "autoMergeDisabled": "자동 병합을 비활성화했습니다",
-        "convertToDraft": "초안으로 전환",
-        "convertedToDraft": "pull request를 초안으로 전환했습니다",
         "confirmCloseTitle": "pull request를 닫을까요?",
         "confirmCloseMessage": "pull request는 계속 사용할 수 있으며 나중에 다시 열 수 있습니다.",
         "closeSuccess": "pull request를 닫았습니다",
@@ -1407,8 +1293,58 @@
           "checksFailed": "병합하기 전에 필수 검사를 통과해야 합니다",
           "checksPending": "필수 검사를 기다리거나 자동 병합을 활성화하세요",
           "mergeBlocked": "GitHub에서 충족되지 않은 병합 요구 사항을 보고했습니다"
-        }
-      }
+        },
+        "convertToDraft": "초안으로 전환",
+        "convertedToDraft": "pull request를 초안으로 전환했습니다",
+        "markReady": "리뷰 준비 완료로 표시",
+        "markedReady": "pull request를 리뷰 준비 완료로 표시했습니다"
+      },
+      "flow": {
+        "wantsToMergeCommitsInto_one": "님이 {{count}}개의 커밋을 병합하려고 합니다:",
+        "wantsToMergeCommitsInto_other": "님이 {{count}}개의 커밋을 병합하려고 합니다:",
+        "mergedCommitsInto_one": "님이 {{count}}개의 커밋을 병합했습니다:",
+        "mergedCommitsInto_other": "님이 {{count}}개의 커밋을 병합했습니다:",
+        "from": "←",
+        "copyHeadBranch": "브랜치 이름 복사",
+        "branchCopied": "브랜치 이름이 복사되었습니다"
+      },
+      "sidebar": {
+        "reviewers": "리뷰어",
+        "requestReviewers": "리뷰어 요청",
+        "awaitingReview": "리뷰 대기 중",
+        "noReviews": "리뷰 없음",
+        "assignees": "담당자",
+        "noAssignees": "담당자 없음",
+        "labels": "레이블",
+        "noLabels": "아직 없음",
+        "actions": "작업",
+        "editAssignees": "담당자 편집",
+        "searchAssignees": "사용자 검색",
+        "noAssigneeCandidates": "사용 가능한 사용자가 없습니다",
+        "assigneesLoadFailed": "사용자를 불러오지 못했습니다",
+        "assigneesUpdated": "담당자가 업데이트되었습니다",
+        "editLabels": "레이블 편집",
+        "searchLabels": "레이블 검색",
+        "noLabelCandidates": "사용 가능한 레이블이 없습니다",
+        "labelsLoadFailed": "레이블을 불러오지 못했습니다",
+        "labelsUpdated": "레이블이 업데이트되었습니다"
+      },
+      "creating": "pull request 만드는 중…",
+      "createError": "pull request를 만들지 못했습니다",
+      "readyHint": "브랜치가 푸시되어 pull request를 만들 준비가 되었습니다",
+      "neutralHint": "브랜치를 푸시하면 pull request를 만들 수 있습니다",
+      "noBranch": "선택된 브랜치가 없습니다",
+      "noRepoPath": "사용 가능한 저장소 경로가 없습니다",
+      "notAuthenticated": "pull request를 만들려면 로그인하세요",
+      "noOriginRemote": "origin 원격 저장소가 설정되지 않았습니다",
+      "cannotParseRepoName": "origin 원격 저장소에서 저장소 이름을 파싱할 수 없습니다",
+      "authRequired": {
+        "title": "GitHub 연결",
+        "description": "설정 → 연결에서 GitHub 계정을 연결하세요."
+      },
+      "navigationTrail": "Pull request 탐색",
+      "failedToLoad": "pull request를 불러오지 못했습니다",
+      "label": "Pull request"
     },
     "messages": {
       "pushSuccess": "Successfully pushed changes to remote",
@@ -1521,7 +1457,8 @@
         "reviewRequestRemoved": "님이 리뷰 요청을 제거했습니다",
         "reviewed": "님이 이 변경 사항을 리뷰했습니다",
         "reviewDismissed": "님이 리뷰를 기각했습니다",
-        "userBlocked": "님이 이 사용자를 차단했습니다"
+        "userBlocked": "님이 이 사용자를 차단했습니다",
+        "appendedSession": "님이 세션을 추가했습니다"
       },
       "composer": {
         "addComment": "댓글 추가",
@@ -1553,18 +1490,40 @@
         "count_other": "관련 항목 {{count}}개",
         "unavailable": "세부 정보를 가져올 수 없습니다",
         "unavailableCount_one": "관련 항목 {{count}}개를 확인할 수 없습니다",
-        "unavailableCount_other": "관련 항목 {{count}}개를 확인할 수 없습니다"
-      }
+        "unavailableCount_other": "관련 항목 {{count}}개를 확인할 수 없습니다",
+        "reference": "GitHub 참조"
+      },
+      "title": "Issues",
+      "loading": "issue 불러오는 중…",
+      "empty": "{{state}} 상태의 issue가 없습니다",
+      "failedToLoad": "issue를 불러오지 못했습니다",
+      "failedToCreate": "issue를 만들지 못했습니다",
+      "failedToUpdate": "issue를 업데이트하지 못했습니다",
+      "failedToComment": "댓글을 추가하지 못했습니다",
+      "filterAll": "전체",
+      "filterOpen": "열림",
+      "filterClosed": "닫힘",
+      "noGitHubRepo": "issue를 관리하려면 GitHub 저장소를 연결하세요",
+      "commentPlaceholder": "댓글을 남겨 주세요…",
+      "submitComment": "댓글 작성",
+      "newIssueTitlePlaceholder": "Issue 제목",
+      "newIssueBodyPlaceholder": "Issue 설명 (선택 사항)…",
+      "authRequired": {
+        "title": "GitHub 연결",
+        "description": "설정 → 연결에서 GitHub 계정을 연결하세요."
+      },
+      "reAuthRequired": "GitHub 인증 필요",
+      "reAuthDescription": "GitHub token이 만료되었습니다. 설정 → 연결에서 다시 연결하세요.",
+      "goToSettings": "설정으로 이동",
+      "loadingTimeline": "활동 불러오는 중…",
+      "label": "Issue",
+      "linkedLoading": "연결된 항목 불러오는 중",
+      "detailNavigation": "Issue 탐색"
     }
   },
   "selectors": {
     "shared": {
-      "repo": "리포지토리",
-      "workspace": "작업 공간",
-      "folder": "폴더",
-      "source": "소스",
-      "branch": "브랜치",
-      "name": "이름"
+      "workspace": "작업 공간"
     },
     "labels": {
       "recent": "최근"
@@ -1577,60 +1536,66 @@
       "chooseKey": "키 선택",
       "noCompatibleAccounts": "호환되는 키 없음",
       "chooseModelHint": "키보드로 이동하거나 마우스로 모델을 클릭하세요",
-      "selectAccount": "계정 선택",
       "chooseKeyHint": "키보드로 이동하거나 마우스로 키를 클릭하세요",
-      "noModelsForKey": "이 키에 활성화된 모델이 없습니다"
+      "noModelsForKey": "이 키에 활성화된 모델이 없습니다",
+      "selectAccount": "계정 선택"
     },
     "modelProperties": {
       "effort": "Effort",
-      "default": "기본"
+      "default": "기본",
+      "settings": "모델 설정",
+      "model": "모델",
+      "speed": "속도",
+      "standard": "표준",
+      "fast": "빠름",
+      "thinking": "Thinking",
+      "on": "켜짐",
+      "off": "꺼짐"
     },
     "repo": {
-      "workspaceFolders": "Workspace 폴더",
       "addEntry": "추가 import 옵션",
       "sections": {
-        "coding": "Workspace",
         "pinned": "Pinned",
         "current": "Current",
         "repo": "리포지토리",
         "systemPaths": "시스템 경로",
-        "usedElsewhere": "다른 곳에서 사용됨",
-        "workspace": "Workspace",
+        "usedElsewhere": "다른 앱에서 사용됨",
+        "workspace": "작업 디렉터리",
         "thisOrg": "이 조직",
-        "outsideOrg": "이 조직 외부"
+        "outsideOrg": "이 조직 외부",
+        "outsideNamedOrg": "{{org}} 외부",
+        "recent": "최근"
       },
       "tabs": {},
       "addOptions": {
         "cloneFromGitHubUrl": "GitHub URL에서 클론",
         "cloneFromMyGitHub": "내 GitHub에서 클론",
-        "createWorkspace": "새 Workspace 만들기"
+        "createWorkspace": "새 작업 디렉터리 만들기"
       },
       "sources": {
         "cloningFromGitHub": "GitHub에서 클론 중",
         "cloningFromGitHubUrl": "GitHub URL에서 클론",
         "cloningFromMyGitHub": "내 GitHub에서 클론",
-        "creatingWorkspace": "새 Workspace 만드는 중",
-        "creatingMultiRepoWorkspace": "Multi-repo Workspace 구성 중"
+        "creatingWorkspace": "새 작업 디렉터리 만드는 중",
+        "creatingMultiRepoWorkspace": "다중 리포지토리 작업 디렉터리 구성 중"
       },
       "forms": {
-        "repoName": "저장소 이름",
         "localPath": "로컬 경로",
         "chooseDestinationPath": "대상 경로 선택",
         "choose": "선택",
         "createAt": "{{path}}에 생성",
-        "createWorkspaceTitle": "새 Workspace",
-        "creatingWorkspace": "Workspace 만드는 중...",
-        "readyToCreateWorkspace": "Workspace 생성 준비 완료",
-        "workspaceName": "Workspace 이름",
-        "workspaceNamePlaceholder": "내 Workspace"
+        "createWorkspaceTitle": "새 작업 디렉터리",
+        "creatingWorkspace": "작업 디렉터리 만드는 중...",
+        "readyToCreateWorkspace": "작업 디렉터리 생성 준비 완료",
+        "workspaceName": "디렉터리 이름",
+        "workspaceNamePlaceholder": "내 디렉터리"
       },
       "path": {
         "switchTo": "다음으로 전환",
         "switchToTemplate": "{workspace}(으)로 전환",
-        "search": "검색",
-        "manageWorkspace": "워크스페이스 관리",
-        "addBy": "Workspace 추가 방식",
-        "addByTemplate": "{source}(으)로 Workspace 추가"
+        "manageWorkspace": "작업 디렉터리 관리",
+        "addBy": "작업 디렉터리 추가 방식",
+        "addByTemplate": "{source}(으)로 작업 디렉터리 추가"
       },
       "pathImport": {
         "addLabel": "추가",
@@ -1639,20 +1604,14 @@
       },
       "gitInitPrompt": {
         "title": "Git 초기화?",
-        "message": "이 Workspace에는 .git 폴더가 없습니다. Git 저장소로 초기화할까요?",
+        "message": "이 작업 디렉터리에는 .git 폴더가 없습니다. Git 저장소로 초기화할까요?",
         "ok": "Git 초기화",
         "cancel": "폴더로 유지"
       }
     },
     "folder": {
-      "path": {
-        "switchTo": "전환"
-      },
       "addOptions": {},
-      "sources": {},
-      "forms": {
-        "choose": "선택"
-      }
+      "sources": {}
     },
     "branch": {
       "path": {
@@ -1699,12 +1658,11 @@
         "noGithubRemote": "GitHub 원격 저장소가 설정되지 않았습니다",
         "prSearchScope": "불러온 Pull requests {{count}}개 내에서 검색",
         "prLimit": "열린 PR 최대 {{count}}개 표시",
-        "noPullRequests": "일치하는 Pull requests가 없습니다"
+        "noPullRequests": "일치하는 Pull requests가 없습니다",
+        "mainWorktree": "메인"
       },
       "placeholders": {
-        "checkout": "브랜치",
         "add": "새 브랜치 이름...",
-        "remove": "브랜치",
         "pullRequests": "Pull requests 검색..."
       },
       "tabs": {
@@ -1714,14 +1672,12 @@
     },
     "sessionInfo": {
       "sourcePlaceholder": "소스 선택",
-      "start": "시작",
       "sourceAria": "Workspace 소스 선택",
-      "on": "에서",
       "branchAria": "브랜치 선택",
-      "switchWorkspace": "Workspace 전환",
+      "switchWorkspace": "작업 디렉터리 전환",
       "switchBranch": "Branch 전환",
       "switchLocation": "실행 위치 전환",
-      "sessionWorkspace": "세션 Workspace 전환",
+      "sessionWorkspace": "세션 작업 디렉터리 전환",
       "locationAria": "실행 위치 선택",
       "systemPaths": {
         "home": {
@@ -1732,23 +1688,24 @@
           "label": "Documents",
           "description": "Documents 폴더"
         }
-      }
+      },
+      "selectWorktreeSource": "Worktree 브랜치 또는 pull request 선택"
     },
     "spotlightFooter": {
       "navigate": "이동",
       "select": "선택",
       "switchColumn": "열 전환",
       "switchSection": "Switch section",
+      "showPath": "경로 표시",
+      "keyFirst": "키 우선",
+      "showBranchInfo": "브랜치 정보 표시",
       "compatibleKeys": "호환",
       "planSupport": "Plan",
       "byokSupport": "Keys",
       "incompatible": "비호환",
       "manageModels": "모델 관리",
       "manageKeys": "키 관리",
-      "manageAgents": "Agent 관리",
-      "showPath": "경로 표시",
-      "keyFirst": "키 우선",
-      "showBranchInfo": "브랜치 정보 표시"
+      "manageAgents": "Agent 관리"
     },
     "editorSpotlight": {
       "searchPlaceholder": "명령 검색...",
@@ -1800,7 +1757,7 @@
     "spotlight": {
       "placeholder": "검색하거나 명령을 입력하세요…",
       "placeholders": {
-        "workspace": "검색하거나 폴더 경로 입력",
+        "workspace": "검색하거나 폴더 경로 입력...",
         "branch": "브랜치 검색...",
         "source": "소스 검색...",
         "actions": "작업 검색...",
@@ -1808,7 +1765,8 @@
       },
       "groups": {
         "agentSession": "Agent 세션",
-        "workspace": "Workspace",
+        "workspace": "작업 디렉터리",
+        "organization": "조직 / 워크스페이스",
         "quickNavigation": "빠른 탐색",
         "editor": "에디터",
         "view": "보기",
@@ -1828,9 +1786,6 @@
           "label": "Finder에서 리포지토리 찾기",
           "pillLabel": "찾기"
         },
-        "createSession": {
-          "label": "새 세션 만들기"
-        },
         "searchAgentSessions": {
           "label": "Agent 세션 검색",
           "pillLabel": "세션 검색",
@@ -1842,16 +1797,17 @@
           "placeholder": "Search across all sessions..."
         },
         "switchWorkspace": {
-          "label": "Workspace 전환"
+          "label": "작업 디렉터리 전환"
         },
         "switchBranch": {
+          "repoLabel": "{{repoName}}의 브랜치 전환",
           "label": "브랜치 전환"
         },
         "addWorkspace": {
-          "label": "Workspace 추가"
+          "label": "작업 디렉터리 추가"
         },
         "createMultiRepoWorkspace": {
-          "label": "Multi-repo Workspace 추가"
+          "label": "다중 리포지토리 작업 디렉터리 추가"
         },
         "showSourceControl": {
           "label": "Source Control 표시"
@@ -1905,10 +1861,10 @@
           "label": "Work Item 생성"
         },
         "createOrganization": {
-          "label": "조직 만들기"
+          "label": "워크스페이스 만들기"
         },
         "joinOrganization": {
-          "label": "조직 참여"
+          "label": "워크스페이스 참여"
         }
       },
       "toast": {
@@ -1923,18 +1879,14 @@
   },
   "ellipsisMenu": {},
   "layoutSettings": {
-    "chatPanelLocation": "채팅 패널 위치",
+    "chatPanelLocation": "채팅 패널",
     "chatLeft": "왼쪽 채팅",
     "chatRight": "오른쪽 채팅",
-    "full": "전체",
-    "theme": "테마",
-    "sidebarPosition": "사이드바 위치",
+    "sidebarPosition": "Workstation 사이드바",
     "modelPickerStyle": "선택기",
-    "captionPlacement": "캡션 행",
+    "paginateChatHistory": "채팅 기록 페이지 나누기",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "메뉴",
-    "above": "위",
-    "below": "아래",
     "left": "왼쪽",
     "right": "오른쪽",
     "ramFps": "FPS",
@@ -1957,13 +1909,9 @@
     "ramHydratedEvents": "Hydrated 이벤트",
     "ramTurnBodies": "히스토리 lazy load",
     "ramFileTrees": "파일 트리",
-    "ramCodeMirrors": "File rendering",
-    "paginateChatHistory": "채팅 기록 페이지 나누기"
+    "ramCodeMirrors": "File rendering"
   },
   "spotlightActions": {
-    "switchToLightTheme": "라이트 테마로 전환",
-    "switchToDarkTheme": "다크 테마로 전환",
-    "switchToHighContrastTheme": "고대비 테마로 전환",
     "enableChatPagination": "채팅 페이지 나누기 켜기",
     "disableChatPagination": "채팅 페이지 나누기 끄기",
     "useModelPickerSpotlight": "Spotlight 모델 선택기 사용",
@@ -1974,13 +1922,12 @@
     "openAgentStation": "Agent Station으로 이동",
     "openKanban": "Kanban로 이동",
     "changeLanguage": "언어 변경",
-    "switchToSystemTheme": "시스템 테마 따르기",
-    "detectUpdate": "업데이트 확인",
-    "recentlyUsed": "최근 사용",
     "changeTheme": "테마 변경",
     "changeSkin": "스킨 변경",
     "searchThemes": "테마 검색...",
-    "searchSkins": "스킨 검색..."
+    "searchSkins": "스킨 검색...",
+    "detectUpdate": "업데이트 확인",
+    "recentlyUsed": "최근 사용"
   },
   "commands": {
     "showBottomPanel": "하단 패널 표시",
@@ -1988,110 +1935,28 @@
     "showPrimarySidebar": "사이드바 표시",
     "hidePrimarySidebar": "사이드바 숨기기",
     "searchFiles": "파일 검색",
-    "openBrowser": "브라우저 열기",
-    "switchWorkspace": "Workspace 전환 / 추가",
-    "openEditor": "편집기 열기",
-    "hideTerminal": "터미널 숨기기",
-    "hideFiles": "파일 숨기기",
-    "maximizeChat": "Chat 패널 포커스",
-    "toggleSidebar": "사이드바 전환",
-    "openDevTools": "DevTools 열기",
-    "showDevTools": "DevTools 표시",
-    "hideDevTools": "DevTools 숨기기",
-    "connections": "연결",
-    "newTab": "새 탭",
-    "newPrivateTab": "새 시크릿 탭",
-    "openDashboard": "Dashboard 열기",
-    "runQuery": "쿼리 실행",
-    "newProject": "새 Project"
-  },
-  "lsp": {
-    "installPrompt": "\"{{language}}\"의 Language Server가 설치되어 있지 않습니다. 설치하시겠습니까?",
-    "installing": "Language Server 설치 중..."
+    "switchWorkspace": "작업 디렉터리 전환 / 추가",
+    "newTab": "새 탭"
   },
   "gitDashboard": {
-    "title": "Git 대시보드",
     "author": "작성자",
-    "commits": "커밋",
-    "additions": "추가",
-    "deletions": "삭제",
-    "filesChanged": "변경된 파일",
-    "files": "파일",
-    "other": "기타",
-    "showMore": "더 보기",
-    "showLess": "접기"
+    "commits": "커밋"
   },
   "aiImpact": {
-    "title": "AI Impact",
-    "noData": "AI 세션 영향 데이터가 없습니다",
-    "sessions": "세션",
-    "files": "관련 파일",
-    "functions": "함수",
-    "commits": "Commit",
-    "lines": "코드 행",
-    "sessionBreakdown": "세션 상세",
-    "human": "Human",
-    "completed": "완료",
-    "incomplete": "미완료"
+    "lines": "코드 행"
   },
   "sessions": {
-    "title": "세션",
-    "myUsage": "내 사용량",
-    "teamUsage": "팀 사용량"
-  },
-  "otherUsage": {
-    "title": "기타 사용",
-    "sessions": "세션",
-    "completed": "완료",
-    "incomplete": "미완료",
-    "tabs": {
-      "overview": "개요",
-      "cursor": "Cursor",
-      "cli": "CLI"
-    }
-  },
-  "devActivity": {
-    "title": "코딩 프로필",
-    "sessions": "세션",
-    "source": "소스",
-    "commits": "Commits",
-    "active": "활성"
-  },
-  "devRecord": {
-    "loading": "로딩 중…",
-    "custom": "사용자 지정",
-    "startDate": "시작일",
-    "endDate": "종료일",
-    "statCards": {
-      "commits": "커밋",
-      "filesChanged": "변경된 파일",
-      "sessions": "세션",
-      "projects": "히트맵"
-    },
-    "team": {
-      "title": "팀 활동",
-      "member": "멤버",
-      "email": "이메일",
-      "model": "모델",
-      "sessions": "세션",
-      "tokens": "Token",
-      "days": "일"
-    }
-  },
-  "actionSummary": {
-    "read": "읽기"
+    "title": "세션"
   },
   "sourceControl": {
     "notGitInitialized": "Git 초기화 안 됨",
-    "notGitInitializedSubtitle": "Git을 초기화하면 이 Workspace에서 변경 사항 추적, 커밋 생성, 브랜치 도구를 사용할 수 있습니다.",
+    "notGitInitializedSubtitle": "Git을 초기화하면 이 작업 디렉터리에서 변경 사항 추적, 커밋 생성, 브랜치 도구를 사용할 수 있습니다.",
     "initializeGit": "Git 초기화",
     "initializingGit": "Git 초기화 중...",
-    "noRemoteForPublish": "이 Workspace는 이제 Git 저장소이지만 아직 remote가 없습니다. 이 브랜치를 게시하기 전에 origin 같은 remote를 추가하세요.",
-    "generateCommitMessage": "AI로 커밋 메시지 생성",
+    "noRemoteForPublish": "이 작업 디렉터리는 이제 Git 저장소이지만 아직 remote가 없습니다. 이 브랜치를 게시하기 전에 origin 같은 remote를 추가하세요.",
     "pull": "Pull",
     "push": "Push",
     "fetch": "Fetch",
-    "sync": "Sync",
     "worktreeActions": "Worktree 작업",
     "removeWorktree": "Worktree 제거",
     "removeWorktreeTitle": "Worktree {{name}}을(를) 제거할까요?",
@@ -2107,21 +1972,18 @@
     "pill": {
       "focus": "포커스",
       "allChanges": "모든 변경 사항"
+    },
+    "scope": {
+      "main": "메인 체크아웃",
+      "worktrees": "Worktree",
+      "searchPlaceholder": "Worktree 필터…",
+      "switchScopeActive": "Source Control 범위 전환: {{repo}}, {{branch}}"
     }
   },
   "contextInfo": {
     "contextUsed": "컨텍스트 사용량",
     "title": "Context",
-    "full": "사용됨",
     "ariaLabel": "Context 사용량",
-    "categories": {
-      "rules": "Rules",
-      "conversation": "대화",
-      "tools": "도구",
-      "skills": "스킬",
-      "mcp": "MCP",
-      "subagents": "subagent"
-    },
     "autoCompactNote": "컨텍스트가 곧 요약됩니다",
     "compactBoundaryTitle": "컨텍스트 압축됨",
     "compactBoundarySubtitle_other": "이전 메시지 {{count}}개 요약됨",
@@ -2136,14 +1998,25 @@
     "manualCompactNoRuntime": "압축하기 전에 메시지를 보내세요",
     "manualCompactFailed": "압축 실패: {{message}}",
     "manualCompactChannelAttached": "이 세션은 채널에서 관리됩니다 — 그곳에서 /compact를 사용하세요",
-    "manualCompactInstructionsPlaceholder": "선택: 요약 시 집중할 내용"
+    "manualCompactInstructionsPlaceholder": "선택: 요약 시 집중할 내용",
+    "categories": {
+      "unattributed": "미분류"
+    },
+    "cacheSaved": "캐시 절감: 읽기 {{read}}, 쓰기 {{write}}",
+    "cacheHero": "{{pct}}%가 캐시에서 제공됨 · 이번 턴에 ~{{tokens}} 재사용",
+    "cacheHeroSub": "프롬프트 캐싱으로 비용을 최대 90%까지 줄일 수 있습니다",
+    "compactBoundarySubtitle_one": "이전 메시지 {{count}}개 요약됨",
+    "manualCompactSectionTitle": "수동 압축",
+    "miniCpmCompactTitle": "MiniCPM 무음 자동 압축",
+    "miniCpmCompactDescription": "오래된 컨텍스트를 비동기로 처리합니다",
+    "miniCpmCompactToggleAria": "MiniCPM 무음 자동 압축 활성화",
+    "manualCompactNativeProvider": "여기서의 수동 압축은 내장 Agent 세션만 지원합니다. 네이티브 CLI 기록은 해당 제공자 앱에서 압축하세요."
   },
   "relativeDate": {
+    "justNow": "방금",
     "today": "오늘",
     "yesterday": "어제",
-    "tomorrow": "내일",
-    "last7Days": "최근 7일",
-    "last30Days": "최근 30일"
+    "tomorrow": "내일"
   },
   "cloneForm": {
     "titleCloneFromGitHub": "GitHub에서 클론",
@@ -2174,54 +2047,32 @@
     "parentFolderPlaceholder": "선택 Parent folder"
   },
   "workspaceForm": {
-    "title": "멀티 Repo Workspace 만들기",
-    "editTitle": "Workspace 편집",
-    "createWorkspace": "멀티 Repo Workspace 만들기",
-    "multiRepoWorkspace": "멀티 Repo Workspace",
-    "createWorkspaceDesc": "여러 Repo로 Workspace 구성",
+    "title": "다중 리포지토리 작업 디렉터리 만들기",
+    "editTitle": "작업 디렉터리 편집",
+    "createWorkspace": "다중 리포지토리 작업 디렉터리 만들기",
+    "multiRepoWorkspace": "다중 리포지토리 작업 디렉터리",
+    "createWorkspaceDesc": "여러 Repo로 작업 디렉터리 구성",
     "filterPlaceholder": "Repo 필터...",
-    "selectRepos": "Workspace에 포함할 Repo 선택",
+    "selectRepos": "작업 디렉터리에 포함할 Repo 선택",
     "noReposFound": "일치하는 Repo 없음",
     "noRepos": "사용 가능한 Repo 없음",
     "current": "현재",
-    "workspaceName": "Workspace 이름",
-    "workspaceNamePlaceholder": "내 Workspace",
-    "willInclude": "Workspace에 {{count}}개의 Repo가 포함됩니다",
+    "workspaceName": "작업 디렉터리 이름",
+    "workspaceNamePlaceholder": "내 작업 디렉터리",
+    "willInclude": "작업 디렉터리에 {{count}}개의 Repo가 포함됩니다",
     "statusSelectAtLeastTwo": "최소 2개의 Repo를 선택하세요",
-    "statusReadyToCreate": "Workspace 생성 준비 완료",
-    "defaultName": "Workspace",
-    "defaultNameWithRepo": "{{repo}} Workspace",
-    "windowTitle": "Workspace"
+    "statusReadyToCreate": "작업 디렉터리 생성 준비 완료",
+    "defaultName": "작업 디렉터리",
+    "defaultNameWithRepo": "{{repo}} 작업 디렉터리",
+    "windowTitle": "작업 디렉터리",
+    "statusMaxRepos": "최대 5개의 Repo를 선택할 수 있습니다"
   },
   "database": {
-    "addConnection": "Add Database Connection",
-    "databaseType": "Database Type",
-    "connectionName": "Connection Name",
     "databaseFile": "Database File",
     "projectUrl": "Project URL",
     "accessToken": "Access Token",
     "databaseUrl": "Database URL",
     "authToken": "Auth Token",
-    "testingConnection": "Testing connection...",
-    "addingConnection": "Adding connection...",
-    "connectionSuccessful": "Connection successful!",
-    "testConnection": "Test Connection",
-    "addConnectionAction": "추가",
-    "testing": "Testing...",
-    "adding": "Adding...",
-    "notValidSqlite": "Not a valid SQLite database file",
-    "connectionFailed": "Connection failed",
-    "failedToAddConnection": "Failed to add connection",
-    "supabaseHint": "Found in Supabase Dashboard → Project Settings → API",
-    "supabaseTokenHint": "Personal Access Token (PAT). Generate at",
-    "tursoTokenHint": "Generate at Turso CLI: turso db tokens create",
-    "neonHint": "Neon 콘솔 → 연결 세부 정보에서 연결 문자열을 가져옵니다",
-    "sqliteDescription": "Local .sqlite file",
-    "supabaseDescription": "PostgreSQL in the cloud",
-    "tursoDescription": "SQLite at the edge",
-    "neonDescription": "Serverless PostgreSQL",
-    "postgresDescription": "PostgreSQL 직접 연결",
-    "mysqlDescription": "MySQL / MariaDB",
     "connectionString": "연결 문자열",
     "host": "호스트",
     "port": "포트",
@@ -2229,10 +2080,6 @@
     "user": "사용자",
     "password": "비밀번호",
     "ssl": "SSL 필수",
-    "requireSsl": "SSL 연결 필수",
-    "newConnection": "New {{type}} connection",
-    "changePending": "change",
-    "changesPending": "changes",
     "spotlight": {
       "scanFolder": "Scan folder",
       "scanFolderDesc": "Find all .sqlite, .db files in a folder",
@@ -2252,25 +2099,13 @@
   "dragDrop": {
     "couldNotExtractPathFromItem": "Could not extract file path from dropped item"
   },
-  "contextList": {
-    "task": "Task",
-    "repo": "Repo",
-    "ref": "Ref",
-    "key": "Key",
-    "image": "Image",
-    "group": "Group",
-    "unknown": "Unknown"
-  },
   "showMore": "더 보기",
   "showLess": "접기",
   "schedule": {
     "recurring": "반복",
     "oneShot": "일회성",
     "noSchedule": "스케줄 없음",
-    "active": "활성",
-    "inactive": "비활성",
     "scheduleType": "일정 유형",
-    "dateAndTime": "날짜 및 시간",
     "frequency": "빈도",
     "time": "시간",
     "dayOfWeek": "요일",
@@ -2279,7 +2114,6 @@
     "hideCustomCron": "사용자 정의 cron 숨기기",
     "cronHelp": "예: 0 9 * * 1 = 매주 월요일 9:00",
     "lastRun": "마지막 실행",
-    "enableSchedule": "일정 활성화",
     "freq": {
       "daily": "매일",
       "weekday": "평일 (월~금)",
@@ -2294,16 +2128,9 @@
       "thu": "목요일",
       "fri": "금요일",
       "sat": "토요일"
-    },
-    "humanReadable": {
-      "daily": "매일 {{time}}",
-      "weekday": "평일 {{time}}",
-      "weekly": "매주 {{day}} {{time}}",
-      "monthly": "매월 {{day}}일 {{time}}"
     }
   },
   "selectionMenu": {
-    "title": "채팅에 추가",
     "addToChat": "채팅에 추가",
     "addThisFile": "이 파일 추가",
     "addLines": "{{from}} – {{to}} 줄 추가"
@@ -2321,43 +2148,14 @@
     "openedInBrowser": "브라우저에서 열림",
     "goToBrowser": "브라우저로 이동"
   },
-  "ideaArea": {
-    "menu": {
-      "shared": "공유됨"
-    },
-    "trending": {
-      "title": "트렌딩 아이디어"
-    },
-    "shared": {
-      "title": "공유된 아이디어",
-      "searchPlaceholder": "아이디어 검색..."
-    },
-    "myIdeas": {
-      "title": "내 아이디어",
-      "empty": "아직 아이디어를 공유하지 않았습니다"
-    }
-  },
   "controlTower": {
     "sidebar": {
-      "terminal": "Terminal",
-      "browser": "브라우저",
-      "settings": "설정",
       "newTab": "새 탭",
       "newPrivateTab": "새 시크릿 탭",
       "newTerminal": "새 터미널",
       "untitled": "제목 없음"
     },
     "statusBar": {}
-  },
-  "notifications": {
-    "backgroundSession": "백그라운드 세션",
-    "taskCompletedTitle": "작업 완료",
-    "taskCompletedBody": "“{{name}}” 작업이 완료되어 검토할 수 있습니다",
-    "taskCompletedToast": "“{{name}}” 작업이 완료되었습니다. 세션을 열어 결과를 검토하세요.",
-    "openSessionAction": "세션 열기",
-    "taskFailedTitle": "작업 실패",
-    "taskFailedBody": "“{{name}}” 작업에 실패했습니다{{detail}}",
-    "taskCancelledToast": "“{{name}}” 작업이 취소되었습니다"
   },
   "globalToolbar": {},
   "quitConfirmation": {
@@ -2366,18 +2164,6 @@
     "cancel": "취소",
     "confirm": "종료"
   },
-  "projects": {
-    "title": "히트맵",
-    "workspace": "작업 공간",
-    "duration": "시간",
-    "codingTime": "코딩 시간",
-    "noData": "프로젝트 데이터가 없습니다",
-    "topLanguage": "주요 언어",
-    "editCount": "편집 횟수"
-  },
-  "dashboard": {
-    "other": "기타"
-  },
   "imagePreview": {
     "dialogLabel": "이미지 미리보기",
     "copyImage": "이미지 복사",
@@ -2385,14 +2171,6 @@
     "closePreview": "미리보기 닫기",
     "copiedToClipboard": "이미지를 클립보드에 복사했습니다",
     "previewAlt": "미리보기"
-  },
-  "update": {
-    "downloading": "업데이트 다운로드 중",
-    "installing": "업데이트 설치 중",
-    "progressPercent": "{{percent}}%",
-    "downloadedOfTotal": "{{downloaded}} / {{total}}",
-    "preparingDownload": "다운로드 준비 중…",
-    "downloadingAndInstalling": "업데이트 다운로드 및 설치 중 (v{{version}})…"
   },
   "workManagementTable": {
     "columns": {
@@ -2408,5 +2186,97 @@
     "officialApp": "앱",
     "cli": "CLI",
     "thirdParty": "서드파티"
+  },
+  "browserCookieImport": {
+    "safari": {
+      "needsFullDiskAccess": "Needs Full Disk Access",
+      "explain": "Safari keeps its cookies in a folder macOS protects. Allow ORG2 under Full Disk Access in System Settings, then check again.",
+      "openSettings": "Open System Settings",
+      "checkAgain": "Check again"
+    },
+    "title": "Import cookies from your browser",
+    "action": "Import cookies from browser",
+    "scanning": "Looking for installed browsers…",
+    "reading": "Reading cookies from {{browser}}…",
+    "keychainHint": "Your system may ask for permission to read the browser's saved data",
+    "selectAll": "Select all",
+    "selectedSummary": "{{sites}} sites · {{cookies}} cookies",
+    "cookieCount_one": "{{count}} cookie",
+    "cookieCount_other": "{{count}} cookies",
+    "noSites": "No cookies were found in this profile",
+    "noMatchingSites": "No matching sites",
+    "importAction_one": "Import {{count}} site",
+    "importAction_other": "Import {{count}} sites",
+    "imported_one": "Imported {{count}} cookie",
+    "imported_other": "Imported {{count}} cookies",
+    "doneTitle_one": "Imported {{count}} cookie",
+    "doneTitle_other": "Imported {{count}} cookies",
+    "doneSkipped_one": "{{count}} cookie was skipped",
+    "doneSkipped_other": "{{count}} cookies were skipped",
+    "empty": {
+      "title": "No supported browsers found",
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+    },
+    "category": {
+      "banking": "Bank",
+      "email": "Mail",
+      "sso": "Sign-in"
+    },
+    "errors": {
+      "openSettingsFailed": "Couldn't open System Settings",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "listFailed": "Couldn't find browsers to import from",
+      "previewFailed": "Couldn't read cookies from that browser",
+      "importFailed": "Couldn't import the selected cookies"
+    }
+  },
+  "notifications": {
+    "taskCancelledToast": "“{{name}}” 취소됨",
+    "taskCompletedToast": "“{{name}}” 완료. 세션을 열어 결과를 확인하세요.",
+    "backgroundSession": "백그라운드 세션",
+    "taskCompletedTitle": "작업 완료",
+    "taskCompletedBody": "“{{name}}” 완료 — 검토할 준비가 되었습니다",
+    "openSessionAction": "세션 열기",
+    "taskFailedTitle": "작업 실패",
+    "taskFailedBody": "“{{name}}” 실패{{detail}}"
+  },
+  "documentOpen": {
+    "openInDefault": "{{name}}에서 열기",
+    "openDefaultApp": "기본 앱에서 열기",
+    "openExternally": "외부 앱에서 열기",
+    "label": "다음에서 열기…",
+    "defaultApp": "기본 애플리케이션",
+    "appDefault": "{{name}} (기본)",
+    "loading": "애플리케이션 불러오는 중…",
+    "loadFailed": "애플리케이션을 사용할 수 없습니다 — 다시 열어 재시도하세요",
+    "openFailed": "문서를 열 수 없습니다",
+    "saveFirst": "다른 애플리케이션에서 열기 전에 변경 사항을 저장하거나 버리세요"
+  },
+  "sqlEditor": {
+    "placeholder": "SQL 쿼리를 입력하세요...",
+    "format": "서식 정리",
+    "runQueryToSeeResults": "쿼리를 실행하면 결과가 표시됩니다",
+    "executingQuery": "쿼리 실행 중...",
+    "queryFailed": "쿼리 실패",
+    "queryCompleted": "쿼리 완료",
+    "noResults": "쿼리 결과가 없습니다",
+    "rowCount_one": "{{count}}개 행",
+    "rowCount_other": "{{count}}개 행",
+    "press": "실행하려면",
+    "toRun": "키를 누르세요",
+    "nullValue": "NULL",
+    "booleanTrue": "true",
+    "booleanFalse": "false"
+  },
+  "chatImage": {
+    "maxReached": "이미지는 최대 {{max}}개까지 허용됩니다",
+    "remainingWarning": "이미지를 {{remaining}}개만 더 추가할 수 있습니다 (최대 {{max}}개)",
+    "processFailed": "이미지를 처리하지 못했습니다",
+    "loadFailed": "이미지를 불러오지 못했습니다: {{fileName}}"
+  },
+  "navigation": {
+    "goToSection": "{{label}}(으)로 이동, 섹션 {{current}}/{{total}}",
+    "section": "섹션 {{current}}",
+    "sectionPosition": "섹션 {{current}}/{{total}}"
   }
 }

@@ -1,34 +1,9 @@
 {
-  "connect": "連接",
   "name": "姓名",
   "genderOptions": {},
   "role": "角色",
   "location": "位置",
-  "timezone": "時區",
   "commits": "次提交",
   "activity": "活躍度",
-  "specialty": {
-    "frontend": "前端",
-    "backend": "後端",
-    "fullstack": "全棧",
-    "mobile": "移動端",
-    "devops": "DevOps",
-    "data": "數據",
-    "systems": "系統"
-  },
-  "bio": "個人簡介",
-  "social": {},
-  "edu": {
-    "edit": "編輯教育經歷",
-    "present": "至今"
-  },
-  "exp": {
-    "edit": "編輯工作經歷"
-  },
-  "sections": {
-    "about": "關於",
-    "developerActivity": "開發活動",
-    "projectsAndAchievements": "專案與成就",
-    "professionalBackground": "職業背景"
-  }
+  "social": {}
 }

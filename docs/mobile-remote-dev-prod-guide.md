@@ -27,7 +27,7 @@ flowchart LR
   end
 
   PWA -->|"wss/ws + 配对"| WS
-  Settings -->|"出站 WSS + ORG2 Cloud JWT"| WS
+  Settings -->|"出站 WebSocket + ORG2 Cloud JWT"| WS
   WS --> DB
   Settings --> Agent
   PWA -.->|"OAuth（GitHub）"| Cloud["ORG2 Cloud / Supabase"]
@@ -43,10 +43,14 @@ flowchart LR
 
 **认证方式：**
 
-| 场景                  | 桌面侧认证                       | 手机侧认证        |
-| --------------------- | -------------------------------- | ----------------- |
-| **生产 / 公网 Relay** | ORG2 Cloud 登录（每用户 JWT）    | GitHub OAuth 登录 |
-| **本地 Relay 开发**   | 共享 `ORGII_RELAY_DESKTOP_TOKEN` | dev session stub  |
+| 场景                  | 桌面侧认证                    | 手机侧认证        |
+| --------------------- | ----------------------------- | ----------------- |
+| **生产 / 公网 Relay** | ORG2 Cloud 登录（每用户 JWT） | GitHub OAuth 登录 |
+| **本地 Relay 开发**   | ORG2 Cloud 登录（每用户 JWT） | GitHub OAuth 登录 |
+
+`本地` 与 `生产` 预设只切换 Relay 地址，不切换身份系统。Rust Relay 仍支持显式启用的共享密钥 fallback，但它仅用于协议测试或旧客户端，ORG2 Desktop 设置页不提供该认证路径。
+
+旧版本写入 `settings.jsonc` 的 `mobileRemote.desktopToken` 会被保留但不再读取；升级不会自动删除这项历史配置。
 
 ---
 
@@ -91,12 +95,18 @@ pnpm run dev:frontend
 
 ```bash
 cd src-tauri
-# Local dev legacy fallback (shared secret, optional):
-export ORGII_RELAY_DESKTOP_TOKEN_FALLBACK=true
-ORGII_RELAY_DESKTOP_TOKEN=123456789012345678901234 cargo run -p orgii-mobile-relay
+cargo run -p orgii-mobile-relay
 ```
 
-Production path uses per-user ORG2 Cloud JWT (same as mobile PWA); the shared token is accepted only when `ORGII_RELAY_DESKTOP_TOKEN_FALLBACK=true`.
+本地 Relay 默认与生产一样校验 ORG2 Cloud JWT。仅在协议测试或兼容旧客户端时，才显式开启服务端共享密钥 fallback：
+
+```bash
+ORGII_RELAY_DESKTOP_TOKEN_FALLBACK=true \
+ORGII_RELAY_DESKTOP_TOKEN=123456789012345678901234 \
+cargo run -p orgii-mobile-relay
+```
+
+> ORG2 Desktop 不读取这个共享密钥；日常本地联调仍需先登录 ORG2 Cloud。
 
 Relay 默认监听 `127.0.0.1:8787`，数据库写入 `~/.orgii/mobile-relay.sqlite3`（避免写在 `src-tauri/` 内触发 Tauri dev 文件监听导致桌面退出——此问题已在 PR 中修复）。
 
@@ -131,20 +141,15 @@ ipconfig getifaddr en0   # Wi-Fi
 
 ### 本地 Relay 开发（预设「本地」）
 
-1. 打开 **设置 → 移动遥控**
-2. 开启 **移动遥控**
+1. 先在 **设置 → 通用** 登录 **ORG2 Cloud**
+2. 打开 **设置 → 移动遥控**，开启 **移动遥控**
 3. 在 **户外连接** 区域：
-   - 开启 **连接公网 Relay**（本地开发时也通过 relay 走完整配对流程）
+   - 开启 **连接 Relay**（本地开发时也通过 Relay 走完整配对流程）
    - 选择预设 **「本地」** → Relay 地址应为：
      ```
      ws://127.0.0.1:8787/v1/mobile/ws
      ```
-   - **桌面访问密钥** 填写：
-     ```
-     123456789012345678901234
-     ```
-     必须与 relay 启动时的 `ORGII_RELAY_DESKTOP_TOKEN` **完全一致**（至少 24 字符）
-4. 确认 **Relay 状态** 为「已连接」或「正在连接」
+4. 确认 **ORG2 Cloud 登录** 行显示已登录账号，**Relay 状态** 为「已连接」或「正在连接」
 5. 点击 **生成户外配对码**，出现 QR 码与配对载荷文本
 
 预设 URL 定义见 `src/config/mobileRemoteRelay.ts`。
@@ -157,7 +162,7 @@ ipconfig getifaddr en0   # Wi-Fi
 4. 确认 **ORG2 Cloud 登录** 行显示已登录账号（未登录时先登录）
 5. 确认 **Relay 状态** 已连接后 **生成户外配对码**
 
-生产预设不再使用「桌面访问密钥」；Relay 通过桌面出站连接携带的 ORG2 Cloud JWT 识别用户。
+本地、生产和自定义预设都通过桌面出站连接携带的 ORG2 Cloud JWT 识别用户。
 
 ---
 
@@ -194,8 +199,9 @@ http://<mac-ip>:1998/orgii/mobile
 
 - [ ] `pnpm install` 完成
 - [ ] 前端 dev server 运行于 **:1998**（`pnpm run dev:frontend` 或 `pnpm run tauri:dev`）
-- [ ] Relay 已启动，`ORGII_RELAY_DESKTOP_TOKEN` 已设置
-- [ ] 桌面 **设置 → 移动遥控**：已开启、预设「本地」、桌面访问密钥与 relay 一致、Relay 已连接
+- [ ] Relay 已启动并监听 **:8787**
+- [ ] 桌面 **设置 → 通用** 已登录 ORG2 Cloud
+- [ ] 桌面 **设置 → 移动遥控**：已开启、预设「本地」、Relay 已连接
 - [ ] 桌面已 **生成户外配对码**
 - [ ] 手机打开 `http://<host>:1998/orgii/mobile`，完成 GitHub 登录
 - [ ] 手机扫码/粘贴配对码，桌面确认 SAS 短语
@@ -212,16 +218,15 @@ http://<mac-ip>:1998/orgii/mobile
 
 ## 常见问题与排查
 
-| 现象                                  | 可能原因                                     | 处理                                                                                                                       |
-| ------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `Connection refused` / 无法连接 Relay | dev server 或 relay 未启动                   | 确认终端 1（:1998）和终端 2（:8787）均在运行                                                                               |
-| `invalid desktop token`（本地预设）   | 桌面密钥与 relay 不一致                      | 检查「桌面访问密钥」与 `ORGII_RELAY_DESKTOP_TOKEN` 完全相同                                                                |
-| 生产预设 Relay 401 / `auth_required`  | 未登录 ORG2 Cloud 或会话过期                 | 在 **设置 → 通用** 登录 ORG2 Cloud，回到移动遥控刷新 Relay 状态                                                            |
-| 选择「生产」预设后连接失败            | Relay 未连通或未登录 ORG2 Cloud              | 确认预设地址为下文生产 URL；确认通用设置中已登录                                                                           |
-| 配对后桌面意外退出                    | 旧版 relay DB 写在 `src-tauri/` 触发文件监听 | 已修复：DB 默认在 `~/.orgii/mobile-relay.sqlite3`；拉取最新分支即可                                                        |
-| `/orgii/mobile` 显示桌面 UI           | dev bundler 未加载 mobile 入口               | 确认使用 webpack/rspack 配置（含 `mobile` entry 与 `/orgii/mobile` → `mobile.html` rewrite）；勿用仅编译 `main` 的简化配置 |
-| 手机打不开 Mac IP:1998                | dev server 只监听 localhost                  | 尝试 host `0.0.0.0` 绑定；检查防火墙与同一 Wi-Fi                                                                           |
-| OAuth 登录卡住                        | dev stub 未生效                              | 确认通过 `webpack-server.js` / `rspack-server.js` 启动，而非静态文件服务                                                   |
+| 现象                                    | 可能原因                                     | 处理                                                                                                                       |
+| --------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `Connection refused` / 无法连接 Relay   | dev server 或 relay 未启动                   | 确认终端 1（:1998）和终端 2（:8787）均在运行                                                                               |
+| Relay 401 / `auth_required`（任何预设） | 未登录 ORG2 Cloud 或会话过期                 | 在 **设置 → 通用** 登录 ORG2 Cloud，回到移动遥控刷新 Relay 状态                                                            |
+| 切换 Relay 预设后连接失败               | Relay 未连通或 ORG2 Cloud 会话无效           | 确认预设地址正确；确认通用设置中已登录                                                                                     |
+| 配对后桌面意外退出                      | 旧版 relay DB 写在 `src-tauri/` 触发文件监听 | 已修复：DB 默认在 `~/.orgii/mobile-relay.sqlite3`；拉取最新分支即可                                                        |
+| `/orgii/mobile` 显示桌面 UI             | dev bundler 未加载 mobile 入口               | 确认使用 webpack/rspack 配置（含 `mobile` entry 与 `/orgii/mobile` → `mobile.html` rewrite）；勿用仅编译 `main` 的简化配置 |
+| 手机打不开 Mac IP:1998                  | dev server 只监听 localhost                  | 尝试 host `0.0.0.0` 绑定；检查防火墙与同一 Wi-Fi                                                                           |
+| OAuth 登录卡住                          | dev stub 未生效                              | 确认通过 `webpack-server.js` / `rspack-server.js` 启动，而非静态文件服务                                                   |
 
 ---
 
@@ -343,10 +348,6 @@ Relay 实现位于 `src-tauri/crates/mobile-relay-server/`（crate 名 `orgii-mo
 ```bash
 cd src-tauri
 
-# Local dev legacy fallback (shared secret, optional):
-export ORGII_RELAY_DESKTOP_TOKEN_FALLBACK=true
-export ORGII_RELAY_DESKTOP_TOKEN="<your-secret-token>"
-
 # 可选
 export ORGII_RELAY_LISTEN="0.0.0.0:8787"
 export ORGII_RELAY_PUBLIC_WS_URL="wss://relay.example.com/v1/mobile/ws"
@@ -364,7 +365,7 @@ cargo run -p orgii-mobile-relay --release
 **3. 桌面连接**
 
 - **公网 / 每用户 Relay（推荐）：** 桌面在 **设置 → 通用** 登录 ORG2 Cloud，Relay 地址填 `wss://<host>/v1/mobile/ws`
-- **本地 Rust relay dev：** 预设「本地」+ 桌面访问密钥与 `ORGII_RELAY_DESKTOP_TOKEN` 一致
+- **本地 Rust Relay：** 桌面仍先登录 ORG2 Cloud，然后选择预设「本地」
 
 **4. 覆盖默认生产 Relay URL（构建时）**
 
@@ -391,7 +392,8 @@ REACT_APP_MOBILE_RELAY_PRODUCTION_URL=wss://your-relay.example.com/v1/mobile/ws 
 若不用 Cloudflare Workers，而是自建 `cargo run -p orgii-mobile-relay`：
 
 - [ ] TLS 终止（Caddy / nginx）与持久化 `~/.orgii/` 或 `ORGII_RELAY_DATABASE`
-- [ ] `ORGII_RELAY_DESKTOP_TOKEN` 与桌面「本地」预设访问密钥一致（仅本地 dev 路径）
+- [ ] Relay 可访问与 Desktop 相同的 ORG2 Cloud / Supabase 认证服务
+- [ ] 桌面已登录 ORG2 Cloud，并在设置中填写该 Relay 地址
 - [ ] 单独部署 HTTPS 版 Mobile PWA（`/orgii/mobile`）
 
 ---

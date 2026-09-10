@@ -81,7 +81,7 @@ const WorkspaceDefaultPathSection: React.FC = () => {
   }, [setCustomDefaultRepoPath, t]);
 
   return (
-    <SectionContainer title={t("editor.workspaceDefaults")}>
+    <SectionContainer>
       <SectionRow
         label={t("editor.defaultRepoFolder")}
         description={t("editor.defaultRepoFolderDesc")}

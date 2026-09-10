@@ -70,6 +70,8 @@ beforeEach(() => {
     orgChannelMessages: false,
     orgChannelMessagesIdempotency: false,
     conversationEvents: false,
+    conversationEventsIdempotency: false,
+    conversationTurnCoordination: false,
   });
 });
 
@@ -276,6 +278,8 @@ describe("storage segment offload (0006)", () => {
       orgChannelMessages: false,
       orgChannelMessagesIdempotency: false,
       conversationEvents: false,
+      conversationEventsIdempotency: false,
+      conversationTurnCoordination: false,
     });
   });
 
@@ -293,14 +297,23 @@ describe("storage segment offload (0006)", () => {
   }
 
   it("uploads frozen segment objects and ships storagePath wire with an inline tail", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 404 }));
     const frozen = [makeEvent("f1")];
     const tail = [makeEvent("t1")];
     await appendSessionEvents("jwt-1", appendInput(frozen, tail));
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     const hash = await computeSegmentHash(frozen);
     const path = `org-1/s-1/2/6-${hash}.gz`;
-    const [uploadUrl, uploadInit] = fetchMock.mock.calls[0] as [
+    const [probeUrl, probeInit] = fetchMock.mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(probeUrl).toBe(
+      `${ORG2_CLOUD_OFFICIAL_SUPABASE_URL}/storage/v1/object/replay/${path}`
+    );
+    expect(probeInit.method).toBe("HEAD");
+    const [uploadUrl, uploadInit] = fetchMock.mock.calls[1] as [
       string,
       RequestInit,
     ];
@@ -364,6 +377,8 @@ describe("storage segment offload (0006)", () => {
       orgChannelMessages: false,
       orgChannelMessagesIdempotency: false,
       conversationEvents: false,
+      conversationEventsIdempotency: false,
+      conversationTurnCoordination: false,
     });
     await appendSessionEvents("jwt-1", appendInput([makeEvent("f1")], null));
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -423,14 +438,30 @@ describe("storage segment offload (0006)", () => {
   });
 
   it("propagates an upload failure before any RPC is attempted", async () => {
-    fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(new Response(null, { status: 403 }));
     await expect(
       appendSessionEvents("jwt-1", appendInput([makeEvent("f1")], null))
     ).rejects.toSatisfy(
       (error: unknown) =>
         error instanceof Error && error.name === "Org2CloudStorageError"
     );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not re-upload a segment object that already exists", async () => {
+    const frozen = [makeEvent("f1")];
+    await appendSessionEvents("jwt-1", appendInput(frozen, [makeEvent("t1")]));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [probeUrl, probeInit] = fetchMock.mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(probeUrl).toContain("/storage/v1/object/replay/org-1/s-1/2/6-");
+    expect(probeInit.method).toBe("HEAD");
+    expect(lastCall().url).toContain("/rest/v1/rpc/");
   });
 });
 

@@ -8,6 +8,7 @@ type AgentOrgE2EHelpers = Pick<
   E2EHelpers,
   | "listAgentOrgs"
   | "removeAgentOrg"
+  | "debugAgentOrgEnableRedesign"
   | "debugSessionOrgRuntimeSnapshot"
   | "debugSessionExecuteTool"
   | "debugSessionExecuteOrgTool"
@@ -17,12 +18,8 @@ type AgentOrgE2EHelpers = Pick<
   | "listAgentOrgSessionInbox"
   | "debugAgentOrgTasksList"
   | "agentOrgSessionRunView"
-  | "agentOrgGroupChatHistoryPage"
+  | "agentOrgGroupProjectionPage"
   | "agentOrgSessionInterventionState"
-  | "agentOrgSessionEnterIntervention"
-  | "agentOrgSessionReturnToWork"
-  | "agentOrgSendUserMessageToMember"
-  | "agentOrgSendGroupChatMessage"
   | "agentOrgRunList"
   | "agentOrgPauseRun"
   | "agentOrgResumeRun"
@@ -30,6 +27,17 @@ type AgentOrgE2EHelpers = Pick<
 >;
 
 export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
+  const debugAgentOrgEnableRedesign = async (): Promise<
+    Result<{ enabled: true }>
+  > => {
+    try {
+      await invoke("debug_agent_org_enable_redesign");
+      return { ok: true, enabled: true };
+    } catch (err) {
+      return asError(err);
+    }
+  };
+
   const listAgentOrgs = async (): Promise<Result<{ orgs: Json[] }>> => {
     try {
       const orgs = (await invoke("agent_orgs_list")) as Json[];
@@ -291,22 +299,22 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
     }
   };
 
-  const agentOrgGroupChatHistoryPage = async (
+  const agentOrgGroupProjectionPage = async (
     sessionId: string,
-    beforeId?: number | null,
+    cursor?: string | null,
     limit?: number
   ): Promise<Result<{ page: Json }>> => {
     try {
       if (!sessionId) {
         return {
           ok: false,
-          error: "agentOrgGroupChatHistoryPage: `sessionId` is required",
+          error: "agentOrgGroupProjectionPage: `sessionId` is required",
         };
       }
-      const page = (await invoke("agent_org_group_chat_history_page", {
+      const page = (await invoke("agent_org_group_projection_page", {
         sessionId,
-        beforeId: beforeId ?? null,
-        limit: limit ?? 100,
+        cursor: cursor ?? null,
+        limit: limit ?? 50,
       })) as Json;
       return { ok: true, page };
     } catch (err) {
@@ -333,108 +341,6 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
     }
   };
 
-  const agentOrgSessionEnterIntervention = async (
-    sessionId: string
-  ): Promise<Result<{ entered: boolean }>> => {
-    try {
-      if (!sessionId) {
-        return {
-          ok: false,
-          error: "agentOrgSessionEnterIntervention: `sessionId` is required",
-        };
-      }
-      const entered = (await invoke("agent_org_session_enter_intervention", {
-        sessionId,
-      })) as boolean;
-      return { ok: true, entered };
-    } catch (err) {
-      return asError(err);
-    }
-  };
-
-  const agentOrgSessionReturnToWork = async (
-    sessionId: string
-  ): Promise<Result<{ returned: boolean }>> => {
-    try {
-      if (!sessionId) {
-        return {
-          ok: false,
-          error: "agentOrgSessionReturnToWork: `sessionId` is required",
-        };
-      }
-      const returned = (await invoke("agent_org_session_return_to_work", {
-        sessionId,
-      })) as boolean;
-      return { ok: true, returned };
-    } catch (err) {
-      return asError(err);
-    }
-  };
-
-  const agentOrgSendUserMessageToMember = async (
-    sessionId: string,
-    memberId: string,
-    content: string
-  ): Promise<Result<{ result: Json }>> => {
-    try {
-      if (!sessionId) {
-        return {
-          ok: false,
-          error: "agentOrgSendUserMessageToMember: `sessionId` is required",
-        };
-      }
-      if (!memberId) {
-        return {
-          ok: false,
-          error: "agentOrgSendUserMessageToMember: `memberId` is required",
-        };
-      }
-      if (!content.trim()) {
-        return {
-          ok: false,
-          error: "agentOrgSendUserMessageToMember: `content` is required",
-        };
-      }
-      const result = (await invoke("agent_org_send_user_message_to_member", {
-        sessionId,
-        memberId,
-        content,
-      })) as Json;
-      return { ok: true, result };
-    } catch (err) {
-      return asError(err);
-    }
-  };
-
-  const agentOrgSendGroupChatMessage = async (
-    sessionId: string,
-    targetMemberId: string | null,
-    content: string
-  ): Promise<Result<{ result: Json }>> => {
-    try {
-      if (!sessionId) {
-        return {
-          ok: false,
-          error: "agentOrgSendGroupChatMessage: `sessionId` is required",
-        };
-      }
-      if (!content.trim()) {
-        return {
-          ok: false,
-          error: "agentOrgSendGroupChatMessage: `content` is required",
-        };
-      }
-      const result = (await invoke("agent_org_send_group_chat_message", {
-        sessionId,
-        targetMemberId,
-        content,
-      })) as Json;
-      return { ok: true, result };
-    } catch (err) {
-      return asError(err);
-    }
-  };
-
   const agentOrgRunList = async (
     limit?: number
   ): Promise<Result<{ runs: Json[] }>> => {
@@ -449,8 +355,9 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
   };
 
   const agentOrgPauseRun = async (
-    sessionId: string
-  ): Promise<Result<{ transitioned: boolean }>> => {
+    sessionId: string,
+    requestId: string = crypto.randomUUID()
+  ): Promise<Result<{ outcome: Json }>> => {
     try {
       if (!sessionId) {
         return {
@@ -458,18 +365,20 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
           error: "agentOrgPauseRun: `sessionId` is required",
         };
       }
-      const transitioned = (await invoke("agent_org_pause_run", {
+      const outcome = (await invoke("agent_org_pause_run", {
         sessionId,
-      })) as boolean;
-      return { ok: true, transitioned };
+        requestId,
+      })) as Json;
+      return { ok: true, outcome };
     } catch (err) {
       return asError(err);
     }
   };
 
   const agentOrgResumeRun = async (
-    sessionId: string
-  ): Promise<Result<{ transitioned: boolean }>> => {
+    sessionId: string,
+    requestId: string = crypto.randomUUID()
+  ): Promise<Result<{ outcome: Json }>> => {
     try {
       if (!sessionId) {
         return {
@@ -477,10 +386,11 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
           error: "agentOrgResumeRun: `sessionId` is required",
         };
       }
-      const transitioned = (await invoke("agent_org_resume_run", {
+      const outcome = (await invoke("agent_org_resume_run", {
         sessionId,
-      })) as boolean;
-      return { ok: true, transitioned };
+        requestId,
+      })) as Json;
+      return { ok: true, outcome };
     } catch (err) {
       return asError(err);
     }
@@ -535,6 +445,7 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
   };
 
   return {
+    debugAgentOrgEnableRedesign,
     listAgentOrgs,
     removeAgentOrg,
     debugSessionOrgRuntimeSnapshot,
@@ -546,12 +457,8 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
     listAgentOrgSessionInbox,
     debugAgentOrgTasksList,
     agentOrgSessionRunView,
-    agentOrgGroupChatHistoryPage,
+    agentOrgGroupProjectionPage,
     agentOrgSessionInterventionState,
-    agentOrgSessionEnterIntervention,
-    agentOrgSessionReturnToWork,
-    agentOrgSendUserMessageToMember,
-    agentOrgSendGroupChatMessage,
     agentOrgRunList,
     agentOrgPauseRun,
     agentOrgResumeRun,

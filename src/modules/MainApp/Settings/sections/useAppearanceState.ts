@@ -28,12 +28,14 @@ import {
   supportsBothVariants,
 } from "@src/config/appearance/skins/registry";
 import type { SkinVariant } from "@src/config/appearance/skins/types";
+import { updateSettingsBatchAtom } from "@src/store/settings/settingsAtom";
 import {
   UI_SCALE_CONFIG,
   activeSkinIdAtom,
   applicationUiFontAtom,
   darkAccentPresetAtom,
   darkSkinIdAtom,
+  dockIconAtom,
   globalThemeIdAtom,
   iconStyleAtom,
   lightAccentPresetAtom,
@@ -44,8 +46,7 @@ import {
   systemColorSchemeAtom,
   translucentSidebarAtom,
   uiScaleAtom,
-  updateSettingsBatchAtom,
-} from "@src/store";
+} from "@src/store/ui/uiAtom";
 import { swapThemeCss } from "@src/util/ui/theme/swapThemeCss";
 import { showThemeTransitionCover } from "@src/util/ui/theme/themeTransitionCover";
 
@@ -83,6 +84,7 @@ export function useAppearanceState() {
   const [lightAccent, setLightAccent] = useAtom(lightAccentPresetAtom);
   const [darkAccent, setDarkAccent] = useAtom(darkAccentPresetAtom);
   const [iconStyle, setIconStyle] = useAtom(iconStyleAtom);
+  const [dockIcon, setDockIcon] = useAtom(dockIconAtom);
   const [translucentSidebar, setTranslucentSidebar] = useAtom(
     translucentSidebarAtom
   );
@@ -281,6 +283,15 @@ export function useAppearanceState() {
     [t]
   );
 
+  const dockIconOptions = useMemo(
+    () =>
+      (["dark", "light", "rainbow"] as const).map((variant) => ({
+        label: t(`general.appIconOptions.${variant}`),
+        value: variant,
+      })),
+    [t]
+  );
+
   return {
     uiScale,
     applicationUiFont,
@@ -324,5 +335,8 @@ export function useAppearanceState() {
     iconStyle,
     setIconStyle,
     iconStyleOptions,
+    dockIcon,
+    setDockIcon,
+    dockIconOptions,
   };
 }

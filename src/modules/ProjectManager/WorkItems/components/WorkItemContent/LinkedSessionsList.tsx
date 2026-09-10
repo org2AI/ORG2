@@ -128,9 +128,7 @@ export const LinkedSessionsList: React.FC<LinkedSessionsListProps> = ({
                 });
                 onOpenSession?.(session.session_id);
               }}
-              aria-label={t("workItems.sessions.retry", {
-                defaultValue: "Retry",
-              })}
+              aria-label={t("common:actions.retry")}
               data-testid={`work-item-session-retry-${session.session_id}`}
             >
               <HugeiconsIcon
@@ -138,7 +136,7 @@ export const LinkedSessionsList: React.FC<LinkedSessionsListProps> = ({
                 data-icon="rotate-ccw"
                 size={12}
               />
-              {t("workItems.sessions.retry", { defaultValue: "Retry" })}
+              {t("common:actions.retry")}
             </button>
           ) : undefined,
       };

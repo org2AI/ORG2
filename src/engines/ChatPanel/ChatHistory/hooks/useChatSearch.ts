@@ -14,16 +14,13 @@ import {
   useState,
 } from "react";
 
+import { useChatCollapseState } from "@src/engines/ChatPanel/ChatCollapseScope";
 import { useEventNavigation } from "@src/engines/SessionCore";
 import { useDebouncedCallback } from "@src/hooks/perf";
 import {
   chatFindInChatOpenAtomFamily,
   chatSearchSyncAtomFamily,
-} from "@src/store/ui/chatPanelAtom";
-import {
-  setCollapseStateAtom,
-  setTurnCollapseOverrideAtom,
-} from "@src/store/ui/collapseStateAtom";
+} from "@src/store/ui/chatPanel/miscAtoms";
 
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
 import type { ChatHistoryListHandle } from "../components/ChatHistoryList";
@@ -33,7 +30,7 @@ import {
   useChatSearchPanePresentation,
   writeChatSearchSyncState,
 } from "./chatSearch";
-import { resolveVisibleSearchResultIndex } from "./chatSearchDom";
+import { resolveVisibleSearchResultIndex } from "./chatSearch";
 import {
   type ChatSearchModes,
   DEFAULT_CHAT_SEARCH_MODES,
@@ -185,6 +182,8 @@ export function useChatSearch(
   const pendingScrollNeedsLayoutRef = useRef(false);
 
   const { navigateToEvent } = useEventNavigation();
+  const { setTurnCollapseOverrideAtom, setCollapseStateAtom } =
+    useChatCollapseState();
   const setTurnCollapseOverride = useSetAtom(setTurnCollapseOverrideAtom);
   const setCollapseState = useSetAtom(setCollapseStateAtom);
 

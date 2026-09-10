@@ -3,7 +3,7 @@ import React from "react";
 import {
   WORKSTATION_TRAIL_RAIL_PADDING_CLASS,
   WORKSTATION_TRAIL_WIDTH,
-} from "@src/modules/shared/layouts/blocks/WorkstationTrailSurface";
+} from "@src/modules/shared/layouts/blocks/workstationTrailTokens";
 import { classNames } from "@src/util/ui/classNames";
 
 interface PropertiesRailFrameProps {

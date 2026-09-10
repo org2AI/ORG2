@@ -393,7 +393,13 @@ impl RepoWatcher {
     }
 
     pub fn set_active_polling_repo(&self, repo_id: Option<String>) {
-        *self.active_poll_repo_id.write() = repo_id;
+        let previous = std::mem::replace(&mut *self.active_poll_repo_id.write(), repo_id.clone());
+        if previous != repo_id {
+            if let Some(repo_id) = repo_id {
+                self.debounce_manager
+                    .trigger_event(repo_id, RepoChangeType::GitMeta, 1);
+            }
+        }
         let (lock, condvar) = &*self.poll_wake;
         let mut wake_generation = lock.lock().expect("RepoWatch poll wake mutex poisoned");
         *wake_generation = wake_generation.wrapping_add(1);

@@ -44,6 +44,42 @@ describe("Table row interactions", () => {
     Reflect.deleteProperty(reactActEnvironment, "IS_REACT_ACT_ENVIRONMENT");
   });
 
+  it("keeps headers visible and confines loading to the body across transitions", () => {
+    const render = (loading: boolean, data: { id: string }[]) => {
+      act(() =>
+        root.render(
+          createElement(Table<{ id: string }>, {
+            columns: [{ key: "id", title: "Name", dataIndex: "id" }],
+            data,
+            loading,
+            pagination: false,
+            noDataElement: createElement("span", null, "Empty records"),
+          })
+        )
+      );
+    };
+    render(true, []);
+    expect(container.querySelector("thead")?.textContent).toContain("Name");
+    expect(
+      container.querySelector("tbody[aria-busy='true'] [role='status']")
+    ).not.toBeNull();
+    expect(container.textContent).not.toContain("Empty records");
+    render(false, [{ id: "Loaded record" }]);
+    expect(container.querySelector("tbody")?.textContent).toContain(
+      "Loaded record"
+    );
+    expect(container.querySelector("tbody[aria-busy='true']")).toBeNull();
+    render(true, [{ id: "Loaded record" }]);
+    expect(container.querySelector("thead")?.textContent).toContain("Name");
+    expect(container.querySelector("tbody")?.textContent).not.toContain(
+      "Loaded record"
+    );
+    render(false, []);
+    expect(container.querySelector("tbody")?.textContent).toContain(
+      "Empty records"
+    );
+  });
+
   it("lets checkbox chrome toggle without invoking the row action", () => {
     const onCheckboxChange = vi.fn();
     const onRowClick = vi.fn();
@@ -98,5 +134,106 @@ describe("Table row interactions", () => {
       container.querySelector<HTMLInputElement>("[data-checkbox-input]")
         ?.checked
     ).toBe(false);
+  });
+
+  it("uses right and down chevrons for collapsed and expanded settings rows", () => {
+    act(() => {
+      root.render(
+        createElement(Table<{ id: string }>, {
+          columns: [{ key: "id", dataIndex: "id" }],
+          data: [{ id: "row-1" }],
+          rowKey: "id",
+          pagination: false,
+          showHeader: false,
+          settings: true,
+          expandable: {
+            expandedRowRender: () => createElement("div", null, "Details"),
+          },
+        })
+      );
+    });
+
+    const expandButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Expand row"]'
+    );
+    expect(expandButton).not.toBeNull();
+    expect(
+      expandButton?.querySelector('[data-icon="chevron-right"]')
+    ).not.toBeNull();
+
+    act(() => expandButton?.click());
+
+    const collapseButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Collapse row"]'
+    );
+    expect(collapseButton).not.toBeNull();
+    expect(
+      collapseButton?.querySelector('[data-icon="chevron-down"]')
+    ).not.toBeNull();
+  });
+
+  it("toggles a settings row from non-interactive content when a row callback is present", () => {
+    const onRowClick = vi.fn();
+    const onActionClick = vi.fn();
+
+    act(() => {
+      root.render(
+        createElement(Table<{ id: string }>, {
+          columns: [
+            {
+              key: "name",
+              render: () => createElement("span", null, "Row 1"),
+            },
+            {
+              key: "action",
+              render: () =>
+                createElement(
+                  "button",
+                  { type: "button", onClick: onActionClick },
+                  "Action"
+                ),
+            },
+          ],
+          data: [{ id: "row-1" }],
+          rowKey: "id",
+          pagination: false,
+          showHeader: false,
+          settings: true,
+          onRowClick,
+          expandable: {
+            expandedRowRender: () => createElement("div", null, "Details"),
+          },
+        })
+      );
+    });
+
+    const rowLabel = Array.from(container.querySelectorAll("span")).find(
+      (element) => element.textContent === "Row 1"
+    );
+    const actionButton = Array.from(container.querySelectorAll("button")).find(
+      (element) => element.textContent === "Action"
+    );
+
+    act(() => rowLabel?.click());
+
+    expect(onRowClick).toHaveBeenCalledTimes(1);
+    expect(
+      container.querySelector('button[aria-label="Collapse row"]')
+    ).not.toBeNull();
+
+    act(() => actionButton?.click());
+
+    expect(onActionClick).toHaveBeenCalledTimes(1);
+    expect(onRowClick).toHaveBeenCalledTimes(1);
+    expect(
+      container.querySelector('button[aria-label="Collapse row"]')
+    ).not.toBeNull();
+
+    act(() => rowLabel?.click());
+
+    expect(onRowClick).toHaveBeenCalledTimes(2);
+    expect(
+      container.querySelector('button[aria-label="Expand row"]')
+    ).not.toBeNull();
   });
 });

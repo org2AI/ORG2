@@ -5,11 +5,13 @@ import Button from "@src/components/Button";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip from "@src/components/Tooltip";
 import { Download01Icon, HugeiconsIcon } from "@src/icons";
+import { installAvailableAppUpdate } from "@src/scaffold/AppUpdater/actions";
 import {
-  installAvailableAppUpdate,
   useAvailableAppUpdate,
   useIsAppUpdateInstalling,
-} from "@src/scaffold/AppUpdater";
+} from "@src/scaffold/AppUpdater/state";
+
+import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "../config";
 
 const SidebarUpdateButton: React.FC = React.memo(() => {
   const { t } = useTranslation("navigation");
@@ -30,7 +32,7 @@ const SidebarUpdateButton: React.FC = React.memo(() => {
     <Tooltip
       content={<KeyboardShortcutTooltipContent label={label} />}
       position="top"
-      mouseEnterDelay={200}
+      mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
       framedPanel
     >
       <Button
@@ -38,7 +40,6 @@ const SidebarUpdateButton: React.FC = React.memo(() => {
         variant="primary"
         appearance="solid"
         size="small"
-        shape="circle"
         iconOnly
         icon={
           <HugeiconsIcon icon={Download01Icon} data-icon="download" size={14} />

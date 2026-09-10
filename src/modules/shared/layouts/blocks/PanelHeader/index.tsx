@@ -36,7 +36,7 @@ import React, { createContext, memo, useContext } from "react";
 import Button from "@src/components/Button";
 import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import { EDITOR_TAB_CANVAS_BG_CLASS } from "@src/config/workstation/tokens";
-import { useRefreshSpin } from "@src/hooks/ui";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   ArrowLeft02Icon,
   ArrowRight01Icon,
@@ -45,6 +45,8 @@ import {
   Refresh04Icon,
   Search01Icon,
 } from "@src/icons";
+
+import { PANEL_HEADER_TOKENS } from "./tokens";
 
 /**
  * Surface background context for nested PanelHeader instances.
@@ -63,73 +65,7 @@ const PanelHeaderSurfaceContext = createContext<PanelHeaderSurface | null>(
   null
 );
 
-// ============================================
-// Tokens
-// ============================================
-
-/** Standard sizes and button props for PanelHeader elements */
-export const PANEL_HEADER_TOKENS = {
-  /**
-   * Header row layout for custom panel headers (when not using PanelHeader component).
-   * Matches the 40px row used by PanelHeader: flex, px-3 (no border — add `border-b border-border-2` if needed).
-   */
-  row: "flex h-10 shrink-0 items-center gap-2 px-3",
-
-  /** Icon size for title icons (breadcrumb, title prefix) */
-  iconSize: 14,
-  /** Icon size inside action buttons (slightly larger for tap target) */
-  buttonIconSize: 16,
-  /** Stroke width for glyph icons in panel header buttons */
-  iconStrokeWidth: 1.75,
-  /** Font size for title text */
-  fontSize: 13,
-  /** Header height */
-  height: 40,
-  /** TabPill size for header-level pill toggles — always small in 40px headers */
-  tabPillSize: "small" as const,
-
-  /**
-   * Standard props for ALL icon-only action buttons in 40px headers.
-   * 24×24 circle, 16px icon, hover shows fill-2 background.
-   * Spread on `<Button>`, add `icon`, `onClick`, `title`.
-   */
-  actionButton: {
-    variant: "tertiary" as const,
-    size: "mini" as const,
-    shape: "circle" as const,
-    iconOnly: true as const,
-    className: "hover:bg-fill-2!",
-  },
-
-  /**
-   * Pill-shaped action button (32×24) for dropdown triggers.
-   * Use instead of actionButton when the control opens a dropdown (e.g. Add + chevron).
-   */
-  actionButtonPill: {
-    variant: "tertiary" as const,
-    size: "mini" as const,
-    shape: "round" as const,
-    iconOnly: true as const,
-    className: "hover:bg-fill-2! h-6! w-9! min-w-9!",
-  },
-
-  /**
-   * Props for danger action buttons (delete, close).
-   * 24×24 circle, 16px icon, hover shows danger-1 background with danger-6 text.
-   */
-  dangerButton: {
-    variant: "tertiary" as const,
-    size: "mini" as const,
-    shape: "circle" as const,
-    iconOnly: true as const,
-    className: "hover:bg-danger-1! hover:text-danger-6!",
-  },
-
-  /**
-   * Vertical rule between header controls (same as FileHeader tab | actions separator).
-   */
-  verticalSeparator: "h-4 w-px shrink-0 bg-border-2",
-} as const;
+export { PANEL_HEADER_TOKENS } from "./tokens";
 
 // ============================================
 // PanelRefreshButton — guaranteed min-spin refresh for panel headers
@@ -139,6 +75,8 @@ interface PanelRefreshButtonProps {
   onRefresh: () => void;
   loading: boolean;
   title?: string;
+  disabled?: boolean;
+  dataTestId?: string;
 }
 
 /**
@@ -150,13 +88,15 @@ export const PanelRefreshButton: React.FC<PanelRefreshButtonProps> = ({
   onRefresh,
   loading,
   title,
+  disabled = false,
+  dataTestId,
 }) => {
   const { spinClass, handleClick } = useRefreshSpin(onRefresh, loading);
   return (
     <Button
       {...PANEL_HEADER_TOKENS.actionButton}
       onClick={handleClick}
-      disabled={!!spinClass}
+      disabled={disabled || !!spinClass}
       icon={
         <HugeiconsIcon
           icon={Refresh04Icon}
@@ -167,6 +107,8 @@ export const PanelRefreshButton: React.FC<PanelRefreshButtonProps> = ({
         />
       }
       title={title}
+      aria-label={title ?? "Refresh"}
+      data-testid={dataTestId}
     />
   );
 };
@@ -199,6 +141,8 @@ export interface PanelHeaderProps {
 
   /** Back button click handler - shows back arrow when provided */
   onBack?: () => void;
+  /** Accessible label and tooltip for the back button. */
+  backLabel?: string;
 
   /** Breadcrumb navigation (used with onBack) */
   breadcrumb?: PanelHeaderBreadcrumb;
@@ -265,6 +209,7 @@ const PanelHeader: React.FC<PanelHeaderProps> = memo(
     iconElement,
     subtitle,
     onBack,
+    backLabel,
     breadcrumb,
     actions,
     onSearch,
@@ -283,7 +228,9 @@ const PanelHeader: React.FC<PanelHeaderProps> = memo(
     const displayIcon = searchQuery ? Search01Icon : icon;
     const displayIconElement = searchQuery ? undefined : iconElement;
     const isListVariant = variant === "list";
-    const paddingClass = isListVariant ? "px-3" : "px-4";
+    const paddingClass = isListVariant
+      ? "px-3"
+      : "px-[var(--modal-chrome-padding,1rem)]";
     const heightClass =
       height === "detail" ? DETAIL_PANEL_TOKENS.headerHeight : "h-10";
     const baseClasses = `relative z-30 flex ${heightClass} shrink-0 items-center gap-2 ${paddingClass}`;
@@ -395,7 +342,8 @@ const PanelHeader: React.FC<PanelHeaderProps> = memo(
               />
             }
             onClick={onBack}
-            title="Back"
+            title={backLabel ?? "Back"}
+            aria-label={backLabel ?? "Back"}
           />
         )}
 

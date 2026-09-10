@@ -3,11 +3,11 @@
  *
  * Detects internal vs external drag operations
  */
-import { reorderActiveRef } from "@src/engines/ChatPanel/InputArea/components/QueuedMessages";
 import {
   isInternalFileTreeDragActive,
   isWorkstationTabDragActive,
 } from "@src/shared/dnd/dragSideChannel";
+import { reorderActiveRef } from "@src/store/ui/queueReorderState";
 import { getNativeFrameScale } from "@src/util/platform/tauri/nativeFrame";
 
 /**

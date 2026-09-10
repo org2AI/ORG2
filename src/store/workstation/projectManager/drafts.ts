@@ -22,10 +22,17 @@ export const PROJECT_CREATOR_DRAFT_ID = "project-creator";
 /** Shared draft key for chat-panel and modal work item creators. */
 export const WORK_ITEM_CREATOR_DRAFT_ID = "work-item-creator";
 
-const PINNED_PROJECT_DRAFT_IDS = new Set<string>([PROJECT_CREATOR_DRAFT_ID]);
+export const MANUAL_PROJECT_CREATOR_DRAFT_ID = "manual-project-creator";
+export const MANUAL_WORK_ITEM_CREATOR_DRAFT_ID = "manual-work-item-creator";
+
+const PINNED_PROJECT_DRAFT_IDS = new Set<string>([
+  PROJECT_CREATOR_DRAFT_ID,
+  MANUAL_PROJECT_CREATOR_DRAFT_ID,
+]);
 
 const PINNED_WORK_ITEM_DRAFT_IDS = new Set<string>([
   WORK_ITEM_CREATOR_DRAFT_ID,
+  MANUAL_WORK_ITEM_CREATOR_DRAFT_ID,
 ]);
 
 function writeDraftMapEntry<K, V>(

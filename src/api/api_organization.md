@@ -16,7 +16,6 @@ src/api/
 │   │   ├── errorHandling.ts       # Error notifications
 │   │   ├── tokenRefresh.ts        # Marketplace token refresh
 │   │   ├── mainApi.ts             # getApi, postApi, etc.
-│   │   ├── agentApi.ts            # getAgentApi, postAgentApi
 │   │   └── marketplaceApi.ts      # getMarketplaceApi, postMarketplaceApi
 │   │
 │   ├── auth/                      # Auth endpoints (login, secure storage, token)
@@ -44,7 +43,7 @@ src/api/
 │   ├── agent/                     # Agent commands (session, gateway, config, tools, etc.)
 │   ├── session/                   # Aggregate session queries (cross-CLI/SDE/OS)
 │   ├── search/                    # Code + semantic search subsystem
-│   ├── perf/                      # Performance utilities (hash, binary, metrics, luminance)
+│   ├── perf/                      # Performance utilities (hash, binary, metrics)
 │   ├── diff/                      # Diff computation (delegates to rpc)
 │   ├── devRecord/                 # DevRecord Tauri commands
 │   ├── repo/                      # Repo management Tauri commands

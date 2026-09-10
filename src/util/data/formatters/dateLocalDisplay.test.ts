@@ -17,6 +17,8 @@ import {
   formatLocalClock,
   formatLocalMonthDay,
   formatRelativeElapsedShort,
+  formatShortLocalTime,
+  formatSmartDateTime,
   getLocalDateKey,
   getLocalDayDiff,
   getStartOfLocalDay,
@@ -115,13 +117,26 @@ describe("local date display helpers", () => {
     vi.setSystemTime(new Date(2026, 1, 25, 14, 30, 0));
 
     expect(formatRelativeElapsedShort(new Date(2026, 1, 25, 14, 29, 30))).toBe(
-      "just now"
+      "Now"
     );
     expect(formatRelativeElapsedShort(new Date(2026, 1, 25, 14, 25, 0))).toBe(
       "5m ago"
     );
     expect(formatRelativeElapsedShort(new Date(2026, 1, 25, 12, 30, 0))).toBe(
       "2h ago"
+    );
+
+    expect(
+      formatRelativeElapsedShort(
+        new Date(2026, 1, 25, 14, 25, 0),
+        new Date(2026, 1, 25, 14, 30, 0),
+        "zh"
+      )
+    ).toBe(
+      new Intl.RelativeTimeFormat("zh", {
+        numeric: "always",
+        style: "narrow",
+      }).format(-5, "minute")
     );
 
     vi.useRealTimers();
@@ -133,5 +148,52 @@ describe("local date display helpers", () => {
     expect(getLocalDayDiff(new Date(2026, 1, 25, 1, 0), now)).toBe(0);
     expect(getLocalDayDiff(new Date(2026, 1, 24, 23, 59), now)).toBe(1);
     expect(getLocalDayDiff(new Date(2026, 1, 21, 12, 0), now)).toBe(4);
+  });
+
+  it("reuses bounded Intl formatters across repeated chat timestamp renders", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-02-25T14:30:00.000Z"));
+    const formatterConstructor = vi.spyOn(Intl, "DateTimeFormat");
+
+    const first = formatSmartDateTime("2026-02-25T14:25:00.000Z", {
+      locale: "en-US",
+    });
+    const constructorCountAfterFirstRender =
+      formatterConstructor.mock.calls.length;
+    const second = formatSmartDateTime("2026-02-25T14:25:00.000Z", {
+      locale: "en-US",
+    });
+
+    expect(second).toBe(first);
+    expect(constructorCountAfterFirstRender).toBeGreaterThan(0);
+    expect(formatterConstructor).toHaveBeenCalledTimes(
+      constructorCountAfterFirstRender
+    );
+
+    formatterConstructor.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it("reuses the browser-local short-time formatter used by Group activity rows", () => {
+    const date = new Date(2026, 1, 25, 14, 25, 0);
+    const expected = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const formatterConstructor = vi.spyOn(Intl, "DateTimeFormat");
+
+    const first = formatShortLocalTime(date);
+    const constructorCountAfterFirstRender =
+      formatterConstructor.mock.calls.length;
+    const second = formatShortLocalTime(date);
+
+    expect(first).toBe(expected);
+    expect(second).toBe(first);
+    expect(constructorCountAfterFirstRender).toBeGreaterThan(0);
+    expect(formatterConstructor).toHaveBeenCalledTimes(
+      constructorCountAfterFirstRender
+    );
+
+    formatterConstructor.mockRestore();
   });
 });

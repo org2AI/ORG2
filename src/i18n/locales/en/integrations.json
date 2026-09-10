@@ -24,14 +24,14 @@
     "toasts": {
       "refreshed": "{{name}} refreshed successfully",
       "refreshedDelta": "Models refreshed: +{{added}} added, -{{removed}} removed",
-      "refreshedNoChange": "Models refreshed — no changes",
-      "refreshPartial": "Models refreshed (+{{added}} / -{{removed}}), but {{failed}} of {{total}} accounts failed",
+      "refreshedNoChange": "Models refreshed: no changes",
+      "refreshPartial": "Models refreshed: +{{added}} / -{{removed}}, but {{failed}} of {{total}} accounts failed",
       "refreshError": "Failed to refresh {{name}}: {{error}}",
       "localRemoved": "{{name}} removed",
       "deleteError": "Failed to delete {{name}}"
     },
-    "configure": "Configure {{provider}}",
     "providerGroups": {
+      "mostUsed": "Most used",
       "cloud": "Cloud",
       "local": "Local"
     },
@@ -44,7 +44,6 @@
       "verifying": "Verifying",
       "verifyingKeys": "Verifying keys...",
       "verificationFailedMismatch": "Verification failed — key mismatch",
-      "failed": "Failed",
       "suspendedApiKey": "Suspended - API key failed",
       "suspended": "Suspended",
       "validationFailed": "Validation failed: {{error}}",
@@ -53,22 +52,17 @@
       "validating": "Validating"
     },
     "info": {
-      "title": "Account Info",
-      "enable": "Enable",
-      "authMethod": "Auth Method",
       "oauthLogin": "OAuth",
       "apiKey": "API Key",
       "configured": "✓ Configured",
       "cursorSessionAccess": "Cursor session",
       "cursorSessionReady": "Connected for Cursor model refresh + quota",
       "cursorApiKeyAccess": "Cursor API key",
-      "cursorApiKeyReady": "Provided for Cursor CLI/API calls",
-      "cursorApiKeyNotProvided": "Not provided — Cursor CLI/API calls unavailable",
-      "sessionToken": "Session Token",
+      "cursorApiKeyReady": "Provided for Cursor API calls",
+      "cursorApiKeyNotProvided": "Not provided — Cursor API calls unavailable",
       "baseUrl": "Base URL",
       "connectedAt": "Connected",
       "accountEmail": "Account Email",
-      "organization": "Organization",
       "availableModels": "Available Models",
       "modelsEnabledAddable": "{{enabled}} enabled · {{addable}} addable",
       "noModelsConfigured": "No models configured",
@@ -76,21 +70,13 @@
       "supportCliAgents": "Support CLI Agents",
       "noCliAgentSupport": "No CLI agent support for this provider"
     },
-    "manualModels": {
-      "notice": "Could not auto-detect available models from this proxy. You can add models manually below, or try clicking Validate again."
-    },
     "customModels": {
-      "notice": "Model name = id used to call the LLM. Display name = label shown in selectors.",
       "modelNamePlaceholder": "Enter model id...",
-      "displayName": "Display Name",
       "displayNamePlaceholder": "Optional label",
-      "optional": "Optional",
       "emptyHint": "No custom models added yet.",
-      "addModel": "Add Model",
-      "icon": "Icon"
+      "addModel": "Add Model"
     },
     "quickActions": {
-      "title": "Quick Actions",
       "multipleKeysFound": "Multiple keys found",
       "useSelected": "Use Selected",
       "valid": "Valid",
@@ -106,8 +92,9 @@
       "saved": "Changes saved"
     },
     "quota": {
-      "title": "Quota Info",
       "plan": "Plan",
+      "balance": "Balance",
+      "payAsYouGo": "Pay as you go",
       "includedRequests": "Included Requests",
       "cursorIncludedRequests": "Auto/Composer quota",
       "quotaUsage": "Quota Usage",
@@ -116,10 +103,13 @@
       "sessionUsage": "5h usage",
       "weeklyUsage": "Weekly usage",
       "monthlyUsage": "Monthly usage",
+      "resetsAvailable": "{{count}} resets available",
+      "resetsAvailable_one": "{{count}} reset available",
+      "resetsAvailable_few": "{{count}} resets available",
+      "resetsAvailable_many": "{{count}} resets available",
+      "resetsAvailable_other": "{{count}} resets available",
       "percentLeft": "{{percent}}% left",
       "refreshUsage": "Refresh usage",
-      "used": "Used",
-      "limit": "Limit",
       "resets": "Resets {{date}}",
       "availableNow": "Available now",
       "nextUsePlusFiveHours": "Next use +5h"
@@ -127,18 +117,18 @@
     "health": {
       "cloudListingInvalid": "Cloud listing invalid",
       "cloudListingDegraded": "Cloud listing degraded",
-      "cloudInvalidMessage": "Your local key works, but the marketplace listing has issues.",
-      "cloudDegradedMessage": "Your local key works, but the cloud listing has some models unavailable.",
-      "invalidListingMessage": "This listing key is invalid and needs to be updated.",
-      "invalidKeyMessage": "This API key is no longer valid. Please update your keys.",
+      "cloudInvalidMessage": "Your local key works, but the marketplace listing has issues",
+      "cloudDegradedMessage": "Your local key works, but the cloud listing has some models unavailable",
+      "invalidListingMessage": "This listing key is invalid and needs to be updated",
+      "invalidKeyMessage": "This API key is no longer valid. Please update your keys",
       "failuresDetected_one": "{{count}} failure detected",
       "failuresDetected_other": "{{count}} failures detected",
       "errorWithMessage": "Error: {{message}}",
       "degradedListing": "Degraded Listing",
       "degradedKey": "Degraded key",
-      "modelsUnavailable": "{{disabled}} model(s) unavailable. Only {{available}} model(s) working.",
-      "someModelsFailures": "Some models are experiencing failures.",
-      "someModelsUnavailable": "Some models are unavailable."
+      "modelsUnavailable": "{{disabled}} model(s) unavailable. Only {{available}} model(s) working",
+      "someModelsFailures": "Some models are experiencing failures",
+      "someModelsUnavailable": "Some models are unavailable"
     },
     "verification": {
       "pendingVerification": "Pending Verification",
@@ -220,7 +210,6 @@
     "detected": "Detected",
     "extract": "Extract",
     "extracting": "Extracting...",
-    "auth": "Auth",
     "tokenDetectedFromKiroCli": "Token detected from kiro-cli",
     "findTokensFromKiroCli": "Find tokens from kiro-cli local storage",
     "readsFromKiroCliConfig": "Reads from local kiro-cli config",
@@ -264,14 +253,12 @@
     "sessionTokenLabel": "Session Token",
     "sessionTokenAutoHint": "Click to detect, or agent auto-detects during sessions",
     "sessionTokenManualHint": "Paste your Cursor session token in the format user_id::jwt_token",
-    "baseUrl": "Base URL",
     "extractParseHint": "Click Extract to parse the key and settings",
     "switchMethod": "Switch method",
     "planLabel": "Plan: {{plan}}",
     "quotaUsageLabel": "Quota Usage",
     "quotaUsageDesc": "Current plan usage and remaining allowance",
     "providerRequired": "{{label}} (Provider required)",
-    "creating": "Completing...",
     "keysFoundForAgent": "We found {{count}} keys for this agent. Choose which one to use:",
     "fromCodexAuthLogin": "From Codex OAuth session",
     "openBrowser": "Open Internal Browser",
@@ -309,20 +296,16 @@
     "filterAllProviders": "All Providers",
     "filterAllKeyTypes": "All Key Types",
     "filterAllEnabled": "All Enabled Status",
-    "regionWarning": {
-      "title": "Regional Availability Notice",
-      "message": "{{provider}} may not be officially available in your detected region. Certain models might not be displayed; change your region to use models from OpenAI, Anthropic, or Google. You can still proceed with setup."
-    },
     "cursorSessionTokenCapturedTitle": "Cursor connected",
     "cursorSessionTokenCapturedDesc": "Signed in as {{user}}…",
     "cursorLoginBrowserTitle": "Cursor sign-in",
     "modelCount": "{{count}} models",
     "cursorLoginReadyTitle": "Cursor account connected",
-    "cursorLoginReadyDesc": "Generate and paste a Cursor API key below. Cursor CLI agent will not work without it.",
+    "cursorLoginReadyDesc": "Generate and paste a Cursor API key below. Cursor agent will not work without it.",
     "cursorApiKeyBrowserHint": "After sign-in, ORGII opens Cursor's dashboard. Generate a User API Key there, then paste it below",
     "cursorApiKeyRecommendedTitle": "Cursor API key recommended",
     "cursorApiKeyRecommendedDesc": "You can continue without a Cursor API key if you only want to use Cursor with ORGII's Rust agents; just sign in with the internal browser or provide a session token",
-    "cursorApiKeyRecommendedAction": "Provide a Cursor API key if you also want to use Cursor CLI within ORGII",
+    "cursorApiKeyRecommendedAction": "Provide a Cursor API key if you also want to use Cursor within ORGII",
     "openCursorApiKeys": "Open Cursor API Keys",
     "codexSetupMethodDesc": "Connect Codex with ChatGPT login, local detection, or an OpenAI API key",
     "codexSignInTitle": "Codex Sign In",
@@ -338,67 +321,35 @@
     "codexCredentialLabel": "Codex Credential",
     "codexCredentialDesc": "Paste a Codex OAuth access token or an OpenAI API key",
     "codexCredentialPlaceholder": "eyJ... or sk-...",
-    "codexConnected": "Codex connected",
     "codexDetectErrorHint": "Sign in with the embedded browser, or paste an OpenAI API key manually",
     "codexValidationErrorHint": "Check that the token or API key is valid and try again",
     "claudeCodeAutodetectTitle": "Detect Claude Code session",
     "claudeCodeAutodetectDesc": "Reads your local Claude Code login from macOS Keychain or ~/.claude/.credentials.json",
-    "claudeCodeConnected": "Claude Code connected",
     "claudeCodeDetectErrorHint": "Sign in with the embedded browser, or run claude auth login and try detection again",
     "refreshModels": {
       "button": "Refresh models",
       "failed": "Refresh models failed: {{error}}"
     },
-    "authentication": "Authentication",
     "revalidate": "Revalidate"
   },
   "integrations": {
-    "title": "Integrations",
-    "description": "Channels, messaging integrations, and node control",
     "searchPlaceholder": "Search connections...",
     "noConnections": "No connections yet",
-    "noConnectionsDesc": "Add an integration to get started",
-    "active": "Active",
-    "available": "Available",
-    "enabled": "Enabled",
     "disabled": "Disabled",
-    "enableChannel": "Enabled",
-    "enableChannelDesc": "Turn this channel on or off",
     "testConnection": "Test Connection",
     "testConnectionDesc": "Validate keys before creating",
     "addAccount": "Add Connection",
-    "removeAccount": "Remove Account",
     "removeAccountTitle": "Remove \"{{name}}\"?",
     "removeAccountConfirm": "This will remove the connection and its config. This action cannot be undone.",
-    "descriptionDesc": "Optional note about this connection's purpose",
-    "descriptionPlaceholder": "Customer support, team notifications, etc.",
-    "selectChannelType": "Channel Type",
-    "selectChannelTypeDesc": "Chat platform to connect",
-    "selectServiceType": "Service",
-    "selectServiceTypeDesc": "Third-party service to integrate",
-    "selectCategory": "Connection Type",
-    "selectGitProvider": "Git Provider",
-    "selectGitProviderDesc": "Where your repository is hosted",
-    "selectProjectAdapter": "Project Sync Adapter",
-    "selectProjectAdapterDesc": "External tracker to connect for project sync",
-    "configured": "Configured",
     "connected": "Connected",
     "connecting": "Connecting",
     "reconnecting": "Reconnecting",
     "connectionError": "Connection Error",
     "reconnect": "Reconnect",
-    "gitProviderRequired": "Please select a git provider",
-    "defaultAccount": "default",
-    "readyToCreate": "Ready to create",
     "accountNameDuplicate": "An account with this name already exists",
-    "channelTypeRequired": "Please select a channel type",
     "probeSuccess": "Connection successful",
     "probeFailed": "Connection failed",
-    "verified": "Verified",
-    "sanctionWarning": {
-      "title": "Service Availability Warning",
-      "message": "{{services}} may not be available in your region due to trade restrictions"
-    }
+    "verified": "Verified"
   },
   "channels": {
     "github": "GitHub",
@@ -631,23 +582,15 @@
     },
     "emailProtocol": "Protocol"
   },
-  "tabs": {
-    "current": "Current",
-    "add": "Add",
-    "discover": "Discover"
-  },
   "modelsTabs": {
     "myAccounts": "My Keys",
     "models": "Models",
-    "available": "Available",
-    "preferred": "Preferred",
     "comingSoon": "Coming soon",
     "installedClis": "CLI Clients",
     "myRoles": "My roles"
   },
   "wizard": {
     "pickProvider": "Provider",
-    "pickProviderDesc": "Select a provider",
     "selectVariant": "Connection method",
     "variantSubscription": "Subscription",
     "variantApiKey": "API Key",
@@ -661,7 +604,6 @@
     "groupView": "Group view",
     "showMoreOlder": "Show more",
     "showLessOlder": "Show less",
-    "includeOlder": "Include older models",
     "scopeSelectCurrentModels": "Latest only",
     "scopeSelectIncludeOlder": "All models",
     "filterAllProvider": "All Provider",
@@ -694,10 +636,7 @@
     "sortAlphabetical": "Sort: A–Z"
   },
   "modelPreview": {
-    "title": "Model Details",
-    "noSources": "No accounts with this model",
-    "specs": "Specs",
-    "capabilities": "Capabilities"
+    "noSources": "No accounts with this model"
   },
   "cliPreview": {
     "clientSection": "Client",
@@ -731,20 +670,7 @@
     "filterReady": "Ready",
     "filterNoSubscriptions": "No Subscriptions"
   },
-  "lspPreview": {
-    "enable": "Enable",
-    "status": "Status",
-    "language": "Language",
-    "command": "Command",
-    "documentation": "Documentation",
-    "install": "Install",
-    "uninstall": "Uninstall"
-  },
-  "lintPreview": {
-    "version": "Version"
-  },
   "mcpPreview": {
-    "title": "Server Info",
     "status": "Status",
     "transport": "Transport",
     "tools": "Tools",
@@ -755,20 +681,15 @@
     "toolsList": "Tools ({{count}})"
   },
   "skillPreview": {
-    "title": "Skill Info",
     "source": "Source",
-    "path": "Path",
     "status": "Status",
     "issues": "Issues",
-    "ready": "Ready",
     "version": "Version",
-    "dependencies": "Dependencies",
     "binaries": "Binaries",
     "envVars": "Env vars",
     "location": "Location"
   },
   "gitPreview": {
-    "title": "Provider Info",
     "provider": "Provider",
     "connections": "Connections"
   },
@@ -778,21 +699,11 @@
     "discover": "Discover",
     "comingSoon": "Coming soon"
   },
-  "mcpTabs": {
-    "installed": "Installed",
-    "discover": "Discover"
-  },
-  "skillsTabs": {
-    "installed": "Installed",
-    "discover": "Discover"
-  },
   "externalSkillsets": {
     "tabs": {
       "skills": "Skills",
       "mcp": "MCP",
-      "cursorPlugins": "Plugins",
-      "discoverMcp": "Discover MCP",
-      "discoverSkills": "Discover Skills"
+      "cursorPlugins": "Plugins"
     }
   },
   "cursorPlugins": {
@@ -808,23 +719,19 @@
     "mcpConfigured": "MCP Configured"
   },
   "rulesImport": {
-    "title": "Loadable rules",
-    "description": "Import rules detected from Cursor, Claude Code, Copilot, Kiro, Codex, and Gemini sources",
-    "scanning": "Scanning external rule sources…",
-    "empty": "No loadable rules found.",
+    "title": "Import rules from other apps",
+    "empty": "No rules found to import.",
     "allImported": "All detected rules have already been imported"
   },
   "skillsImport": {
     "title": "Import skills from other apps",
     "itemColumn": "Skill",
-    "scanning": "Scanning external skill sources…",
     "empty": "No skills found to import.",
     "allImported": "All detected skills have already been imported"
   },
   "mcpImport": {
     "title": "Import MCP servers from other apps",
     "itemColumn": "MCP server",
-    "scanning": "Scanning external MCP configs…",
     "empty": "No MCP servers found to import.",
     "allImported": "All detected MCP servers have already been imported"
   },
@@ -853,7 +760,6 @@
   },
   "projectConnections": {
     "linear": "Linear",
-    "authMethod": "Authentication",
     "personalAccessToken": "Personal Access Token",
     "personalAccessTokenDesc": "Stored locally for this project sync connection",
     "personalAccessTokenPlaceholder": "Paste token...",
@@ -869,22 +775,21 @@
     "methodOAuth": "Sign in with GitHub",
     "methodPickerDesc": "Pick how you want to authenticate to GitHub.",
     "oauthDeviceDesc": "Open the verification URL and enter this code to authorize GitHub.",
-    "scanGhCli": "GitHub CLI (gh)",
     "scanCredHelper": "Git credential helper ({{name}})",
+    "scanEmpty": "Nothing detected",
+    "scanEmptyDesc": "No gh CLI tokens, credential helpers, or SSH keys were found. Pick another method above.",
+    "scanGhCli": "GitHub CLI (gh)",
+    "scanResults": "Detected credentials",
+    "scanResultsDesc": "Pick one to import. We validate tokens against GitHub before saving.",
     "scanSshKey": "SSH key — {{name}}",
     "scanning": "Scanning…",
     "scanningDesc": "Looking for gh CLI tokens, credential helpers, and SSH keys on this machine.",
-    "scanEmpty": "Nothing detected",
-    "scanEmptyDesc": "No gh CLI tokens, credential helpers, or SSH keys were found. Pick another method above.",
-    "scanResults": "Detected credentials",
-    "scanResultsDesc": "Pick one to import. We validate tokens against GitHub before saving.",
     "sshKeyPath": "SSH key path",
     "sshKeyPathDesc": "Absolute path to the private key (e.g. ~/.ssh/id_ed25519). The matching public key must already be registered on GitHub.",
     "scanSelectRequired": "Pick a detected credential to import.",
     "sshKeyPathRequired": "SSH key path is required."
   },
   "builtInTools": {
-    "title": "Built-in tools",
     "tabTools": "Built-in tools",
     "tabDesktopControl": "Computer Use",
     "computerUsePermissionsSectionTitle": "Permissions",
@@ -925,57 +830,13 @@
     "sidecarLastError": "Last error"
   },
   "toolsArea": {
-    "builtin": "Built-in tools",
     "mcp": "MCP",
     "devtools": "Playground"
   },
-  "toolsAddMenu": {
-    "title": "Add"
-  },
   "toolbarPlusMenu": {
-    "addProviderKey": "Add provider key",
-    "addMcpServer": "Add MCP server",
-    "createSkill": "Create skills",
-    "addDatabaseConnection": "Add database connection",
-    "addChannelOrService": "Add channel or service",
-    "addGitConnection": "Add Git connection",
-    "createRule": "Create Policy",
-    "addRoutine": "Add Routine",
-    "importSkill": "Import skills from other apps",
     "addAgent": "Add Agent"
   },
   "toolbarEllipsis": {},
-  "webharness": {
-    "title": "Web Apps",
-    "searchPlaceholder": "Search commands…",
-    "installed": "Installed",
-    "notInstalled": "Not installed",
-    "install": "Install",
-    "pipeline": "Output Columns",
-    "optional": "Optional",
-    "defaultValue": "Default: {{value}}",
-    "domain": "Domain",
-    "source": "Source",
-    "strategy": "Strategy",
-    "desktopStatus": {
-      "not_installed": "Not Installed",
-      "installed": "Installed",
-      "running": "Running",
-      "connected": "Connected"
-    },
-    "desktopActions": {
-      "launch": "Launch",
-      "connect": "Connect"
-    }
-  },
-  "webharnessWizard": {
-    "title": "Create Web App Command",
-    "description": "Description",
-    "domain": "Domain",
-    "strategy": "Strategy",
-    "columns": "Columns",
-    "limit": "Limit"
-  },
   "addOptions": {
     "addModel": "Add Model API Key",
     "addConnection": "Add",
@@ -999,14 +860,6 @@
   "routines": {
     "searchPlaceholder": "Search routines...",
     "noRoutines": "No routines defined"
-  },
-  "services": {
-    "smithery": "Smithery",
-    "apiKeySection": "API Key",
-    "currentKey": "Current key",
-    "smitheryApiKey": "Smithery API Key",
-    "smitheryApiKeyPlaceholder": "smi_...",
-    "smitheryApiKeyDesc": "API key for browsing MCP servers on Smithery. Get your key at smithery.ai/account/api-keys"
   },
   "git": {
     "searchPlaceholder": "Search git providers...",
@@ -1087,26 +940,8 @@
     "pullRequestInstructionsPlaceholder": "For example: Prefix titles with the issue ID and include a testing section"
   },
   "skillsHub": {
-    "title": "Skills Hub",
-    "tab": "Skills",
     "searchPlaceholder": "Search skills...",
-    "install": "Install",
-    "installing": "Installing...",
-    "downloads": "Downloads",
-    "stars": "Stars",
-    "version": "Version",
     "noInstalled": "No skills installed",
-    "marketplace": "Marketplace",
-    "author": "Author",
-    "createdAt": "Created",
-    "updatedAt": "Updated",
-    "source": "Source",
-    "path": "Path",
-    "available": "Available",
-    "notInstalled": "not installed",
-    "sources": {
-      "github": "GitHub"
-    },
     "createSkill": "Create Skill",
     "editSkill": "Edit Skill",
     "nameLabel": "Name",
@@ -1121,7 +956,6 @@
     "previewEmpty": "Nothing to preview yet",
     "tokenEstimate": "~{{count}} tokens",
     "saveSkill": "Save",
-    "nameTaken": "A skill with this name already exists",
     "descriptionQualityGood": "Description: Good",
     "descriptionQualityShort": "Description is very short",
     "descriptionQualityMissing": "No description — agent won't discover this skill",
@@ -1146,8 +980,6 @@
     "compatibilityDesc": "Environment requirements (e.g. Requires Python 3.14+ and uv)",
     "compatibilityPlaceholder": "e.g. Requires Python 3.14+ and uv",
     "tokenWarning": "exceeds 5 000 recommended",
-    "license": "License",
-    "compatibility": "Compatibility",
     "bundledFilesLabel": "Bundled files",
     "bundledFilesDesc": "Add scripts, references, or assets. Scripts are executed but not loaded into the context window",
     "addFileButton": "Add file",
@@ -1162,7 +994,6 @@
   "mcp": {
     "tab": "MCP",
     "searchPlaceholder": "Search MCP servers...",
-    "serversLabel": "Servers",
     "noServers": "No MCP servers configured",
     "noServersDesc": "Add an MCP server to extend agent capabilities with external tools.",
     "addServer": "Add MCP Server",
@@ -1187,7 +1018,6 @@
     "enabled": "Enabled",
     "enabledDesc": "Enable or disable this MCP server",
     "reconnect": "Reconnect",
-    "connecting": "Connecting...",
     "connectingTitle": "Starting {{count}} MCP server(s)… (can take a few seconds)",
     "connectingSlow": "Still connecting…",
     "connectingSlowBody": "This may take a moment on first launch. If a server seems stuck, open its detail panel to reconnect",
@@ -1199,52 +1029,17 @@
     "toolsLabel": "Tools",
     "noTools": "No tools available",
     "infoSection": "Server Info",
-    "saved": "Server saved",
-    "savedDesc": "has been added to your MCP config.",
-    "testHint": "Test the connection before saving to verify the server is reachable.",
-    "discoverServers": "Discover MCP Servers",
-    "hubSearchPlaceholder": "Search MCP servers...",
-    "hubNoResults": "No MCP servers found",
-    "hubNoResultsDesc": "Try a different search term",
-    "addToConfig": "Add to Config",
-    "addingToConfig": "Adding...",
-    "addedToConfig": "Server added",
-    "addedToConfigDesc": "has been added to your MCP config.",
-    "alreadyConfigured": "Configured",
-    "publishedAt": "Published",
-    "website": "Website",
-    "source": "Source",
-    "viewOnGlama": "View on Glama",
-    "remotes": "Remote Endpoints",
-    "packages": "Packages",
-    "sourceOfficial": "MCP Registry",
-    "sourceSmithery": "Smithery",
-    "sourceMcpBar": "MCP.Bar",
-    "sourceGlama": "Glama",
-    "selectRegistry": "Registry",
-    "selectRegistryDesc": "Choose an MCP server registry to browse",
-    "connections": "Connections",
-    "securityPassed": "Scan Passed",
-    "securityFailed": "Scan Failed",
-    "serverCommand": "Server Command",
-    "requiredInputs": "Required Inputs",
-    "smitheryApiKeyRequired": "Smithery API key required. Add it in Integrations → Connections → Add → Services.",
-    "smitheryGetKey": "Get your key at smithery.ai/account/api-keys",
     "envVars": "Environment Variables",
     "envVarsHint": "e.g. GITHUB_PERSONAL_ACCESS_TOKEN",
     "envKey": "KEY",
     "envValue": "value",
     "addEnvVar": "Add variable",
-    "envVarCount": "environment variable(s)",
     "headers": "Headers",
     "headersHint": "e.g. Authorization",
     "headerKey": "Header",
     "headerValue": "value",
     "addHeader": "Add header",
-    "headerCount": "custom header(s)",
     "restart": "Restart",
-    "enable": "Enable",
-    "disable": "Disable",
     "uptime": "Uptime",
     "bulkSelected": "{{count}} selected",
     "bulkRestart": "Restart",
@@ -1270,91 +1065,33 @@
     "scopeWorkspace": "Repo-specific",
     "userScopeLabel": "User",
     "workspaceScopeLabel": "Repo-specific",
-    "userServersLabel": "User MCP Servers",
-    "workspaceServersLabel": "Repo-specific MCP Servers",
     "noUserServers": "No user-level MCP servers configured",
     "noWorkspaceServers": "No repo-specific MCP servers configured",
     "deleteConfirmTitle": "Remove MCP server \"​{{name}}\"?",
     "deleteConfirmMessage": "This will remove the server from the config file. Running sessions will be disconnected."
   },
   "agentOrgs": {
-    "title": "Agent Teams",
     "cliUpdateAlerts": {
       "label": "Alert CLI updates",
       "description": "Check CLI versions and alert when updates are available. Off disables checks"
     },
-    "running": "Running",
-    "activeRules": "active",
-    "fires": "fires",
     "addRule": "Add Policy",
-    "addRoutine": "Add Routine",
-    "editRoutine": "Edit routine",
     "ruleName": "Rule name",
     "ruleNameDesc": "A unique name to identify this rule",
-    "routineName": "Routine name",
-    "routineNameDesc": "A unique name to identify this routine",
-    "routineNamePlaceholder": "e.g. Auto-deploy on commit",
-    "ruleNameRequired": "Rule name is required",
-    "routineNameRequired": "Routine name is required",
-    "trigger": "Trigger",
-    "triggerDesc": "Which event starts this routine",
-    "scopeDesc": "Which repos this routine applies to",
-    "advancedDesc": "Cooldown and max fires per routine",
-    "action": "Action",
-    "interval": "Interval",
-    "cooldown": "Cooldown",
-    "cooldownDesc": "Minimum seconds between consecutive fires",
-    "maxFires": "Max fires",
-    "maxFiresDesc": "Maximum number of times this rule can fire (0 = unlimited)",
-    "advanced": "Advanced",
-    "advancedSettings": "Advanced Settings",
-    "applicableAgent": "Assigned Agent",
-    "applicableAgentDesc": "The agent that will execute this routine (leave empty to allow any agent)",
-    "selectAgent": "Select agent…",
     "scope": "Applicable Repos",
     "allRepos": "All Repos",
-    "allReposDesc": "Apply to all repositories",
-    "specificRepos": "Specific Repos",
-    "specificReposDesc": "Apply only to selected repositories",
-    "selectRepos": "Select repos...",
-    "includeRepos": "Include",
-    "includeReposDesc": "Repos where this routine applies",
-    "excludeRepos": "Exclude",
-    "excludeReposDesc": "Repos to exclude from this routine",
-    "includeReposPlaceholder": "Select repositories…",
-    "excludeReposPlaceholder": "Select repositories to exclude…",
-    "step1": "Step 1 — Setup",
-    "step2": "Step 2 — Action",
-    "promptPlaceholder": "Enter the prompt to send to the agent...",
-    "sessionPrompt": "Session prompt",
-    "repoPath": "Repo path (optional)",
-    "sessionId": "Session ID",
-    "channel": "Channel name",
-    "messageContent": "Message content",
     "enabled": "Enabled",
     "enabledDesc": "Enable or disable this routine",
-    "disabled": "Disabled",
-    "noRulesOrRoutines": "No rules or routines yet",
-    "noTemplates": "No templates yet",
     "addOrg": "Add Agent Team",
     "addAgent": "Add Agent",
-    "agentSections": {
-      "builtInAgents": "Built-in Agents",
-      "customAgents": "Custom Agents",
-      "cli": "CLI Agents",
-      "orgs": "Teams"
-    },
     "memorySections": {
       "personalMemory": "Personal",
-      "workspaceMemory": "Workspace",
-      "title": "Memory"
+      "workspaceMemory": "Workspace"
     },
-    "importAgent": "Import",
     "agentDetail": {
       "type": "Type",
       "builtIn": "Built-in",
-      "custom": "Custom",
-      "noModel": "(not set)"
+      "custom": "Custom"
     },
     "cliAgentDetail": {
       "installed": "Installed",
@@ -1363,19 +1100,12 @@
       "keyStatus": "Key status",
       "keysConfigured": "Configured",
       "noKeys": "Not Configured",
-      "authMethod": "Auth Method",
-      "baseUrl": "Base URL",
-      "availableModels": "Available Models",
-      "noModels": "No models available",
-      "editKeys": "Edit keys",
       "detectKeys": "Detect keys",
       "detectSuccess": "Keys detected successfully",
       "keys": "Keys",
       "docs": "Documentation",
       "tabCore": "Core",
-      "tabConfig": "Config",
       "addKey": "Add key",
-      "compatibility": "Compatibility",
       "bringYourOwnKeys": "Bring your own keys",
       "supported": "Supported",
       "notSupported": "Not Supported",
@@ -1385,237 +1115,16 @@
       "keyType": "Type",
       "typePlan": "Plan",
       "typeApiKey": "API Key",
-      "keyPreview": "Key",
       "addedTime": "Added",
       "secretBearingConfig": "May contain API keys or tokens",
       "revealConfigFile": "Reveal in file manager",
       "launchConfiguration": "Launch configuration",
       "configFiles": "Config Files",
       "configFile": "Config file",
-      "tokenCount": "~{{count}} Token",
-      "emptyConfigPreview": "No config content"
+      "tokenCount": "~{{count}} Token"
     },
-    "codexConfig": {
-      "sectionTitle": "Configuration",
-      "model": "Model",
-      "modelDesc": "Default model for Codex CLI sessions",
-      "approvalPolicyLabel": "Approval Policy",
-      "approvalPolicyDesc": "When Codex pauses to ask before running commands",
-      "approvalPolicy": {
-        "untrusted": "Untrusted",
-        "on-request": "On Request",
-        "never": "Never"
-      },
-      "sandboxModeLabel": "Sandbox Mode",
-      "sandboxModeDesc": "Filesystem and network access for executed commands",
-      "sandboxMode": {
-        "read-only": "Read Only",
-        "workspace-write": "Workspace Write",
-        "danger-full-access": "Full Access (Danger)"
-      },
-      "webSearchLabel": "Web Search",
-      "webSearchDesc": "How Codex handles web search requests",
-      "webSearch": {
-        "disabled": "Disabled",
-        "cached": "Cached",
-        "live": "Live"
-      },
-      "reasoningTitle": "Reasoning & Style",
-      "reasoningEffortLabel": "Reasoning Effort",
-      "reasoningEffortDesc": "How much reasoning the model applies",
-      "reasoningEffort": {
-        "none": "None",
-        "minimal": "Minimal",
-        "low": "Low",
-        "medium": "Medium",
-        "high": "High",
-        "xhigh": "Extra High"
-      },
-      "personalityLabel": "Personality",
-      "personalityDesc": "Communication style for responses",
-      "personality": {
-        "friendly": "Friendly",
-        "pragmatic": "Pragmatic",
-        "none": "None"
-      },
-      "unset": "(not set)",
-      "featuresTitle": "Feature Flags",
-      "features": {
-        "shell_snapshot": "Shell Snapshot",
-        "shell_snapshotDesc": "Snapshot shell environment to speed up repeated commands",
-        "multi_agent": "Multi-Agent",
-        "multi_agentDesc": "Enable multi-agent collaboration tools",
-        "collaboration_modes": "Collaboration Modes",
-        "collaboration_modesDesc": "Enable collaboration modes such as plan mode",
-        "undo": "Undo",
-        "undoDesc": "Enable undo via per-turn git ghost snapshots",
-        "shell_tool": "Shell Tool",
-        "shell_toolDesc": "Enable the default shell tool",
-        "personality": "Personality Controls",
-        "personalityDesc": "Enable personality selection in the CLI"
-      }
-    },
-    "cursorConfig": {
-      "sectionTitle": "Configuration",
-      "vimMode": "Vim Mode",
-      "vimModeDesc": "Enable Vim keybindings in the CLI editor",
-      "http1Fallback": "HTTP/1.1 Fallback",
-      "http1FallbackDesc": "Use HTTP/1.1 instead of HTTP/2 for agent connections (useful for enterprise proxies)",
-      "attributionTitle": "Attribution",
-      "attributeCommits": "Attribute Commits",
-      "attributeCommitsDesc": "Add 'Made with Cursor' trailer to Agent commits",
-      "attributePRs": "Attribute PRs",
-      "attributePRsDesc": "Add 'Made with Cursor' footer to Agent pull requests",
-      "permissionsTitle": "Permissions",
-      "permissionsAllow": "Allow",
-      "permissionsDeny": "Deny",
-      "noPermissions": "No permission rules configured",
-      "sandboxTitle": "Sandbox",
-      "sandboxTypeLabel": "Sandbox Mode",
-      "sandboxTypeDesc": "Controls filesystem access for sandboxed commands",
-      "sandboxType": {
-        "workspace_readwrite": "Workspace Read/Write",
-        "workspace_readonly": "Workspace Read-Only",
-        "insecure_none": "Disabled (Insecure)"
-      },
-      "disableTmpWrite": "Disable /tmp Write",
-      "disableTmpWriteDesc": "Removes default write access to temp directories",
-      "sharedBuildCache": "Shared Build Cache",
-      "sharedBuildCacheDesc": "Share build caches (npm, cargo, pip) between sandboxed and unsandboxed commands",
-      "networkPolicyTitle": "Network Policy",
-      "networkDefaultPolicy": "Default Policy",
-      "networkDefaultPolicyDesc": "Action when no allow/deny rule matches",
-      "networkDefault": {
-        "allow": "Allow",
-        "deny": "Deny"
-      },
-      "networkAllow": "Allow Domains",
-      "networkDeny": "Deny Domains"
-    },
-    "claudeCodeConfig": {
-      "sectionTitle": "Configuration",
-      "noItems": "No items configured",
-      "model": "Default Model",
-      "modelDesc": "Override the default model for Claude Code sessions",
-      "thinkingMode": "Extended Thinking",
-      "thinkingModeDesc": "Enable extended thinking (thinking mode) by default for all sessions",
-      "gitInstructions": "Git Instructions",
-      "gitInstructionsDesc": "Include built-in commit and PR workflow instructions in system prompt",
-      "cleanupPeriod": "Cleanup Period",
-      "cleanupPeriodDesc": "Sessions inactive for longer than this period are deleted at startup",
-      "days": "days",
-      "language": "Response Language",
-      "languageDesc": "Configure Claude's preferred response language (e.g. japanese, spanish)",
-      "attributionTitle": "Attribution",
-      "commitAttribution": "Commit Message",
-      "commitAttributionDesc": "Custom message added to git commits made by Claude Code",
-      "prAttribution": "PR Message",
-      "prAttributionDesc": "Custom message added to pull requests created by Claude Code",
-      "coAuthoredBy": "Co-authored-by",
-      "coAuthoredByDesc": "Include 'co-authored-by Claude' in git commits and PRs",
-      "permissionsTitle": "Permissions",
-      "defaultMode": "Default Permission Mode",
-      "defaultModeDesc": "Default permission mode when opening Claude Code",
-      "permissionMode": {
-        "default": "Default",
-        "plan": "Plan",
-        "acceptEdits": "Accept Edits",
-        "bypassPermissions": "Bypass Permissions"
-      },
-      "permAllow": "Allow",
-      "permAsk": "Ask",
-      "permDeny": "Deny",
-      "sandboxTitle": "Sandbox",
-      "sandboxEnabled": "Enable Sandbox",
-      "sandboxEnabledDesc": "Isolate bash commands from your filesystem and network",
-      "autoAllowBash": "Auto-approve Bash",
-      "autoAllowBashDesc": "Automatically approve bash commands when sandbox is enabled",
-      "allowLocalBinding": "Allow Localhost Binding",
-      "allowLocalBindingDesc": "Allow binding to localhost ports inside sandbox (macOS only)",
-      "excludedCommands": "Excluded Commands",
-      "allowedDomains": "Allowed Domains",
-      "fsAllowWrite": "Filesystem Allow Write",
-      "fsDenyWrite": "Filesystem Deny Write",
-      "fsDenyRead": "Filesystem Deny Read"
-    },
-    "noMemory": "No memory items yet",
-    "memoryDescription": "Memory stores knowledge and context that members can reference across sessions.",
-    "tabs": {
-      "org": "Team",
-      "agents": "Members",
-      "integrations": "Integrations",
-      "rules": "Rules",
-      "orgs": "Teams"
-    },
-    "searchPlaceholder": "Search rules…",
-    "searchOrgsPlaceholder": "Search teams...",
-    "searchAgentsPlaceholder": "Search members...",
-    "searchMemoryPlaceholder": "Search memory...",
-    "searchIntegrationsPlaceholder": "Search integrations...",
-    "integrationsSections": {
-      "core": "Core",
-      "tools": "Agent Tools",
-      "connections": "Connections",
-      "customization": "Customization"
-    },
-    "triggerNotConfigurable": "No additional config for this trigger",
     "sections": {
-      "quickActions": "Quick Actions",
-      "trigger": "Trigger Config",
-      "actions": "Action Chain"
-    },
-    "quickActions": {
-      "editDesc": "Modify trigger, action, and settings",
-      "delete": "Delete routine",
-      "deleteDesc": "Permanently remove this routine"
-    },
-    "overview": {
-      "triggerConfig": "Trigger Config",
-      "fireCount": "Fire Count",
-      "lastFired": "Last Fired",
-      "maxFires": "Max Fires",
-      "actions": "Actions"
-    },
-    "cronExpression": "Cron expression (e.g. 0 9 * * *)",
-    "cronHint": "Standard 5-field cron: minute hour day month weekday",
-    "patternRegex": "Regex pattern (optional)",
-    "filePathPlaceholder": "File or directory path to watch",
-    "debounce": "Debounce",
-    "webhookRoute": "Webhook route (e.g. /automation/webhook/deploy)",
-    "webhookHint": "POST requests to this route will fire the trigger",
-    "scheduleTimezone": "Timezone",
-    "scheduleTimezoneDesc": "Defaults to your current timezone. Offsets are shown in UTC format.",
-    "triggerConfig": {
-      "timer": {
-        "label": "Interval",
-        "desc": "How often the routine fires (in seconds)"
-      },
-      "scheduledTime": {
-        "label": "Scheduled Time",
-        "desc": "Calendar-style schedule with frequency, time, and timezone"
-      },
-      "cron": {
-        "label": "Schedule",
-        "desc": "Cron expression defining when the routine fires"
-      },
-      "gitActivity": {
-        "label": "Git Events",
-        "desc": "Which git operations trigger this routine"
-      },
-      "channelMessage": {
-        "label": "Channel",
-        "desc": "Channel name to listen for messages on",
-        "patternDesc": "Optional regex to filter messages"
-      },
-      "fileWatch": {
-        "label": "Watch Paths",
-        "desc": "Files and directories to monitor for changes",
-        "debounceDesc": "Wait time before firing after last change"
-      },
-      "webhook": {
-        "label": "Webhook Endpoint",
-        "desc": "HTTP route that accepts incoming POST requests"
-      }
+      "quickActions": "Quick Actions"
     },
     "orgWizard": {
       "title": "Add Agent Team",
@@ -1625,27 +1134,8 @@
       "orgDescription": "Description",
       "orgDescriptionDesc": "Optional summary of what this agent team does",
       "orgDescriptionPlaceholder": "What does this agent team do?",
-      "members": "Members",
       "addMember": "Add Member",
-      "editMember": "Edit Member",
       "noMembers": "Add members to build your team hierarchy",
-      "previewEmpty": "Add agents to see the team chart preview",
-      "hierarchyMode": {
-        "label": "Hierarchy mode",
-        "description": "How Reports-to controls communication routing and task-assignment authority at runtime",
-        "flat": {
-          "label": "Flat",
-          "description": "No reporting hierarchy. Peer messaging is open, but non-coordinator members manage only their own tasks. The Reports-to column is hidden"
-        },
-        "soft": {
-          "label": "Soft (recommended)",
-          "description": "Peer messaging is unrestricted, but task authority is enforced: members manage themselves and direct reports only. Talking to a peer never grants permission to assign it work"
-        },
-        "strict": {
-          "label": "Strict",
-          "description": "Reports-to is enforced for both communication and task authority. Members may message their manager/direct reports/coordinator, and may assign tasks only to themselves or direct reports"
-        }
-      },
       "planApprovalPolicy": {
         "label": "Plan approval",
         "description": "Who decides when a Planner's submitted plan is ready to unlock dependent tasks",
@@ -1662,39 +1152,33 @@
           "description": "A valid submitted plan is accepted immediately and its dependent tasks are unlocked"
         }
       },
-      "strictBanner": "Strict mode: members can only message their manager, direct reports, or the coordinator. Sibling-to-sibling messaging is blocked at runtime.",
-      "missingParentWarn": "In strict mode, top-level members report directly to the coordinator and can only reach the coordinator.",
-      "reachability": {
-        "label": "Strict-mode reachability",
-        "description": "Dry-run preview of which agents can directly message which under the current chain. Use it to spot isolated members before launching",
-        "fromHeader": "from \\ to",
-        "empty": "Add at least one team member to see how strict-mode routing will look at runtime.",
-        "isolatedWarn": "These members can only reach the coordinator — they cannot collaborate with peers under strict mode: {{names}}",
-        "allowedTitle": "{{from}} can directly message {{to}}",
-        "blockedTitle": "{{from}} cannot directly message {{to}} under strict mode — escalate via the coordinator instead"
-      },
       "membersLabel": "Team Members",
-      "membersDesc": "Each row is a routing alias. The coordinator addresses members by name; names must be unique. Role is a specialty hint shown to the LLM",
+      "membersDesc": "Each row is a Member with an independent Writer grant and communication settings. Names must be unique; role is only a specialty hint.",
       "memberName": "Name",
       "memberNamePlaceholder": "Unique routing name (e.g. SDE-1)",
       "memberNameDuplicate": "Another member already uses this name. Names must be unique within the team.",
       "role": "Role",
       "rolePlaceholder": "Specialty (e.g. backend dev)",
       "agent": "Agent",
-      "reportsTo": "Reports to",
-      "reportsToCoordinator": "Coordinator (top level)",
-      "status": "Status",
       "coordinator": "Coordinator",
       "coordinatorDesc": "Lead agent that owns the coordinator session for this team run",
       "coordinatorPlaceholder": "Select coordinator agent",
-      "tabs": {
-        "edit": "Edit",
-        "previewDiagram": "Preview Diagram"
-      },
       "dangerZone": "Danger Zone",
       "deleteOrg": "Delete this team",
       "deleteOrgDesc": "Permanently delete this agent team. Member agents are not affected. This action cannot be undone",
-      "deleteThisOrg": "Delete this team"
+      "deleteThisOrg": "Delete this team",
+      "writer": "Writer",
+      "connected": "Connected",
+      "connectedCount": "Connected to {{count}}",
+      "manageCommunication": "Manage communication",
+      "futureTeamsOnly": "Template changes only affect Teams created in the future. They do not change running Team Sessions.",
+      "communicationPanel": {
+        "title": "{{name}} communication",
+        "coordinatorAlwaysReachable": "The Coordinator is always mutually reachable with every Member and is not listed here.",
+        "search": "Search Members by name or role",
+        "noPeers": "No matching Members",
+        "saveWithTeam": "Changes stay in the Team draft and are saved from the main Team settings page."
+      }
     },
     "agentWizard": {
       "title": "Config Agent",
@@ -1704,11 +1188,7 @@
       "descriptionLabel": "Description",
       "descriptionDesc": "What does this agent do?",
       "descriptionPlaceholder": "What does this agent do? (optional)",
-      "defaultModelLabel": "Default Model",
-      "defaultModelDesc": "AI model used by this agent",
-      "defaultModelPlaceholder": "Select model...",
       "subAgentsTab": "Subagents",
-      "subAgentConcurrencyTitle": "Concurrency Control",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
       "maxToolUseConcurrencyDesc": "Concurrent tool calls per assistant message. Default: 10.",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
@@ -1716,39 +1196,18 @@
       "addSubAgent": "Add Sub-Agent...",
       "noSubAgents": "No sub-agents configured."
     },
-    "ruleKindLabel": "Kind",
-    "ruleKindDesc": "How this item is defined",
     "ruleKinds": {
-      "rule": "Rules",
-      "routine": "Routines"
+      "rule": "Rules"
     },
-    "ruleKindsDesc": {
-      "rule": "Markdown instructions injected into the agent prompt",
-      "routine": "Automated trigger + action chains"
-    },
-    "ruleActions": {
-      "create": "Create New",
-      "import": "Import"
-    },
-    "ruleActionsDesc": {
-      "create": "Write a new markdown rule",
-      "import": "Import .cursor/rules from this workspace"
-    },
-    "ruleActionLabel": "Method",
-    "ruleActionDesc": "Write from scratch or import from an existing source",
     "markdownRuleNamePlaceholder": "e.g. Code Style Guide",
     "markdownContent": "Rule content",
     "markdownContentDesc": "Markdown instructions injected into the agent system prompt",
-    "markdownContentPlaceholder": "Write markdown rules here…",
     "editRule": "Edit rule",
     "noMarkdownContent": "No content",
-    "importSelected": "Import ({{count}})",
+    "importSelected": "Import {{count}}",
     "importRuleColumn": "Rule",
     "allImported": "All {{item}} have been imported",
-    "importedItemRules": "rules",
     "externalImport": {
-      "noResults": "No importable rules found. Looked in .cursor/rules, CLAUDE.md, .github/copilot-instructions.md, .kiro/steering, and your home directory.",
-      "globalScope": "(global)",
       "applyFailed": "Import failed: {{message}}",
       "partialFailure": "Some items could not be imported:",
       "sources": {
@@ -1758,17 +1217,9 @@
         "kiro": "Kiro",
         "codex": "Codex"
       },
-      "noSkillsResults": "No importable skills found. Looked in ~/.claude/skills and ~/.claude/commands.",
       "noAgentResults": "No agents to import yet",
-      "addManually": "Add agent manually",
       "readonlyDowngradedBadge": "Read-only — write tools disabled",
-      "readonlyDowngradedTooltip": "Source declared readonly:true. We disable: {{tools}}.",
-      "workspaceScope": "(workspace)"
-    },
-    "previewEmpty": "Nothing to preview yet",
-    "editorTabs": {
-      "edit": "Edit",
-      "preview": "Preview"
+      "readonlyDowngradedTooltip": "Source declared readonly:true. We disable: {{tools}}."
     },
     "applicableAgents": "Applicable Agents",
     "applicableAgentsDesc": "Which agents this rule applies to (leave empty for all)",
@@ -1782,22 +1233,11 @@
     "ruleRepo": "Repo",
     "ruleRepoDesc": "The single repo this guideline applies to",
     "selectRepo": "Select repo…",
-    "ruleSourceGlobal": "User",
-    "ruleSourceGlobalDesc": "Stored at ~/.orgii/rules/. Applies across repos.",
     "ruleSourcePersonal": "Personal",
     "ruleSourcePersonalDesc": "Stored at ~/.orgii/personal/rules/. OS Agent / channel sessions only.",
-    "importSkillTitle": "Import skill from another agent",
-    "importSkillColumn": "Skill",
-    "importedItemSkills": "skills",
     "findSkills": {
       "title": "Search Skills",
-      "description": "Search skills.sh and press Enter to show matching ORGII skills. Click a result to preview its SKILL.md in WorkStation.",
-      "openDirectory": "Open skills.sh",
-      "hint": "Paste a skills.sh URL or id like vercel-labs/skills/find-skills. ORGII downloads the skill snapshot directly from skills.sh.",
       "placeholder": "Search Skills...",
-      "install": "Install skill",
-      "installing": "Installing...",
-      "installSuccess": "Installed {{name}}",
       "installs": "Installs",
       "emptyTitle": "Search Skills",
       "emptySubtitle": "Enter at least 2 characters, then press Enter to find Skills.",
@@ -1807,193 +1247,6 @@
     "importAgentTitle": "Import agents from other apps",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agents",
-    "importAgentButton": "Import from another platform",
-    "workflowActions": {
-      "categories": {
-        "all": "All",
-        "controls": "Controls",
-        "sessionWorkflow": "Session Workflow",
-        "actions": "Actions"
-      },
-      "inline": {
-        "runWith": "Run with",
-        "using": "using",
-        "retryMax": "retry max",
-        "times": "times",
-        "timeout": "timeout",
-        "transitionTo": "Transition to",
-        "stage": "stage",
-        "configureAutoApprove": "Configure workflow: auto-approve",
-        "onFailure": "on failure",
-        "open": "Open",
-        "inExternalEditor": "in external editor",
-        "waitFor": "Wait for",
-        "ifOutput": "If output",
-        "agentPlaceholder": "agent",
-        "modelPlaceholder": "model",
-        "stagePlaceholder": "stage",
-        "stagesPlaceholder": "stages",
-        "actionPlaceholder": "action",
-        "repoPlaceholder": "repo",
-        "conditionPlaceholder": "condition",
-        "valuePlaceholder": "value",
-        "autoApproveNone": "None (manual)",
-        "autoApproveIntake": "Intake only",
-        "autoApproveIntakeSpec": "Intake + Spec",
-        "autoApproveExceptReview": "All except Review",
-        "autoApproveAll": "All (automated)",
-        "failurePause": "Pause",
-        "failureRetry": "Retry",
-        "failureRollback": "Rollback",
-        "failureSkip": "Skip",
-        "condEquals": "equals",
-        "condNotEquals": "not equals",
-        "condContains": "contains",
-        "condIsEmpty": "is empty",
-        "condIsNotEmpty": "is not empty",
-        "emptyTitle": "No actions yet",
-        "emptySubtitle": "Select an action from the panel to get started."
-      },
-      "fields": {
-        "session": "Session",
-        "model": "Model",
-        "agent": "Agent",
-        "timeout": "Timeout",
-        "maxRetries": "Max Retries",
-        "customPrompt": "Custom Prompt",
-        "prompt": "Prompt",
-        "sessionConfig": "Session Configuration",
-        "channel": "Channel",
-        "content": "Content",
-        "message": "Message",
-        "targetStage": "Target Stage",
-        "transitionType": "Transition Type",
-        "stageTimeout": "Stage timeout"
-      },
-      "placeholders": {
-        "selectSession": "Select a session",
-        "selectModel": "Select AI model",
-        "selectAgent": "Select agent",
-        "stageTimeout": "Stage timeout",
-        "maxRetries": "Maximum retry attempts",
-        "customPrompt": "Optional: Override default prompt...",
-        "compareValue": "Compare value",
-        "iterations": "Number of times to repeat",
-        "injectPrompt": "Enter prompt to inject...",
-        "selectSessionOptional": "Select target session (optional)",
-        "selectSessionToStop": "Select session to stop",
-        "channelName": "Channel name",
-        "messageContent": "Message content...",
-        "selectTargetSession": "Select target session",
-        "injectMessage": "Message to inject...",
-        "selectTargetStage": "Select target stage"
-      },
-      "units": {
-        "second": "second"
-      },
-      "stages": {
-        "intake": {
-          "title": "Intake Stage",
-          "description": "Gather initial requirements and clarifications"
-        },
-        "spec": {
-          "title": "Specification Stage",
-          "description": "Define detailed specifications and requirements"
-        },
-        "planning": {
-          "title": "Planning Stage",
-          "description": "Break down work into tasks and milestones"
-        },
-        "execution": {
-          "title": "Execution Stage",
-          "description": "Execute planned tasks with AI agents"
-        },
-        "review": {
-          "title": "Review Stage",
-          "description": "Review changes and validate results"
-        },
-        "merge": {
-          "title": "Merge Stage",
-          "description": "Merge approved changes to target branch"
-        }
-      },
-      "wait": {
-        "title": "Wait",
-        "description": "Pause execution for a specified time"
-      },
-      "if": {
-        "title": "If",
-        "description": "Conditional logic based on output",
-        "condition": "Condition"
-      },
-      "loop": {
-        "title": "Loop",
-        "description": "Repeat actions multiple times",
-        "loopType": "Loop Type",
-        "iterations": "Iterations",
-        "types": {
-          "count": "Fixed Count",
-          "foreach": "For Each Item",
-          "while": "While Condition"
-        }
-      },
-      "operators": {
-        "equals": "Equals",
-        "notEquals": "Not Equals",
-        "contains": "Contains",
-        "greaterThan": "Greater Than",
-        "lessThan": "Less Than",
-        "isEmpty": "Is Empty",
-        "isNotEmpty": "Is Not Empty"
-      },
-      "injectPrompt": {
-        "title": "Inject Prompt",
-        "description": "Send a prompt to the agent"
-      },
-      "startSession": {
-        "title": "Start Session",
-        "description": "Start a new coding agent session"
-      },
-      "killSession": {
-        "title": "Kill Session",
-        "description": "Stop an existing session"
-      },
-      "sendMessage": {
-        "title": "Send Message",
-        "description": "Send a message to a channel"
-      },
-      "injectToSession": {
-        "title": "Inject to Session",
-        "description": "Send a message into a specific session"
-      },
-      "stageTransition": {
-        "title": "Stage Transition",
-        "description": "Configure conditional or unconditional stage transitions"
-      },
-      "workflowConfig": {
-        "title": "Session Workflow Config",
-        "description": "Configure the full session workflow pipeline",
-        "autoApprove": "Auto-approve stages",
-        "onFailure": "On failure"
-      },
-      "transitionTypes": {
-        "unconditional": "Unconditional (always)",
-        "conditional": "Conditional (based on output)"
-      },
-      "autoApproveOptions": {
-        "none": "None (manual approval)",
-        "intake": "Intake only",
-        "intakeSpec": "Intake + Spec",
-        "allExceptReview": "All except Review",
-        "all": "All (fully automated)"
-      },
-      "onFailureOptions": {
-        "pause": "Pause and notify",
-        "retry": "Retry (max 3)",
-        "rollback": "Rollback to previous stage",
-        "skip": "Skip and continue"
-      }
-    },
     "emptySelectionTitle": "Select a member or an Agent Team",
     "emptySelectionSubtitle": "Choose an Agent or Agent Team from the sidebar to view and configure it.",
     "applicableWorkspace": "Applicable Workspace",
@@ -2034,7 +1287,6 @@
       "proxyDefault": "Default mode",
       "proxyReady": "Proxy ready",
       "proxyNotReady": "Proxy not ready",
-      "proxyDesc": "Local requests route through ORGII KeyVault.",
       "keyLabel": "Key",
       "keyDesc": "Only API keys compatible with this CLI and managed proxy are shown.",
       "selectKey": "Select key",
@@ -2055,10 +1307,8 @@
       "title": "Session Provenance",
       "capture": "Capture file interactions",
       "description": "Records file reads and writes as metadata. Prompts, tool output, and file contents are not stored.",
-      "configPath": "Records file reads and writes as metadata. Prompts, tool output, and file contents are not stored. Config: {{path}}",
       "installDrift": "The saved preference and installed hook differ. Toggle capture to repair the managed hook. Config: {{path}}",
       "copyPath": "Copy",
-      "reveal": "Reveal",
       "col": {
         "source": "Tool",
         "config": "Config",
@@ -2112,14 +1362,10 @@
     }
   },
   "tableHeaders": {
-    "agentType": "Agent Type",
-    "cli": "CLI",
     "type": "Type",
     "transport": "Transport",
     "tools": "Tools",
-    "category": "Category",
-    "added": "Added",
-    "enabledModels": "Enabled models"
+    "added": "Added"
   },
   "status": {
     "ready": "Ready",
@@ -2138,38 +1384,24 @@
     "searchPlaceholder": "Search databases...",
     "providers": {
       "sqlite": "SQLite",
-      "sqliteDesc": "Local SQLite database file",
       "postgres": "PostgreSQL",
-      "postgresDesc": "Direct PostgreSQL connection",
       "mysql": "MySQL",
-      "mysqlDesc": "MySQL / MariaDB database",
       "supabase": "Supabase",
-      "supabaseDesc": "Supabase PostgreSQL cloud database",
       "turso": "Turso",
-      "tursoDesc": "Turso distributed SQLite (libSQL)",
-      "neon": "Neon",
-      "neonDesc": "Neon serverless PostgreSQL"
+      "neon": "Neon"
     },
     "detail": {
       "type": "Type",
       "url": "URL",
       "status": "Status",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "connectionInfo": "Connection Info",
-      "actions": "Actions",
       "testConnection": "Test Connection",
       "probeSuccess": "Connected successfully",
-      "probeFailed": "Connection failed",
-      "disableAgent": "Disable Agent Access",
-      "enableAgent": "Enable Agent Access"
+      "probeFailed": "Connection failed"
     },
     "wizard": {
       "title": "Add Database Connection",
       "providerType": "Database Type",
       "providerTypeDesc": "Select the database engine for this connection",
-      "connectionDetails": "Connection Details",
-      "connectionNameDesc": "A display name for this connection in the sidebar and agent tools",
       "databaseFileDesc": "Path to a local .sqlite, .sqlite3, or .db file",
       "projectUrlDesc": "Your Supabase project URL from the dashboard",
       "accessTokenDesc": "Service role or anon key for API access",
@@ -2181,7 +1413,6 @@
       "mysqlHostDesc": "Hostname or IP address of the MySQL server",
       "testConnectionDesc": "Validate the connection before saving",
       "addConnection": "Add",
-      "testPassed": "Connection test passed",
       "saved": "Connection added",
       "savedDesc": "The database connection has been saved. You can close this wizard",
       "connectionNameOptional": "Connection Name (Optional)",
@@ -2190,7 +1421,6 @@
     }
   },
   "devTools": {
-    "mode": "Mode",
     "modeUi": "UI Preview",
     "modeTool": "Tools",
     "modeInput": "Input",
@@ -2203,12 +1433,9 @@
     "toolTypeFilterPlaceholder": "Search tools…",
     "commands": "Commands",
     "status": "Status",
-    "statusRunning": "Running",
-    "variant": "Variant",
     "variantChat": "Chat Panel",
     "variantSimulator": "Simulator",
     "reset": "Reset",
-    "activityData": "ActivityData (JSON)",
     "activityDataPlaceholder": "Enter ActivityData JSON...",
     "preview": "Preview",
     "jsonParseError": "JSON Parse Error",
@@ -2216,40 +1443,18 @@
     "chatExtras": "Chat Extras",
     "queuedMessages": "Queued Messages",
     "fileReview": "File Review",
-    "terminalProcesses": "Terminal Processes",
-    "sessionSimulation": "Session Simulation",
-    "selectScenario": "Select a scenario",
-    "scenario": "Scenario",
-    "chatPreview": "Chat Preview"
+    "terminalProcesses": "Terminal Processes"
   },
   "agentTools": {
-    "enabled": "Enabled",
-    "systemPinned": "System-pinned",
-    "searchPlaceholder": "Search tools...",
-    "toolColumn": "Tool",
-    "typeColumn": "Type"
+    "enabled": "Enabled"
   },
   "dependencies": {
-    "installed": "Installed",
-    "notFound": "Not found",
-    "noDbClientsFound": "No database clients found",
-    "tableClient": "Client",
-    "tableName": "Name",
-    "tableStatus": "Status",
-    "tableVersion": "Version",
-    "tableBinary": "Binary",
-    "tableCategory": "Category",
     "categoryDatabase": "Database",
     "categoryPackageManager": "Package Manager",
     "categoryRuntime": "Runtime",
     "categoryShellUtility": "Shell Utility",
     "categoryToolchain": "Toolchain",
-    "categoryVersionControl": "Version Control",
-    "installHintNote": "Install the missing dependency to enable this feature",
-    "installSection": "Installation"
-  },
-  "creator": {
-    "assign": "Assign"
+    "categoryVersionControl": "Version Control"
   },
   "routineFields": {
     "addRoutine": "Add Routine",
@@ -2298,31 +1503,22 @@
     "noFires": "No runs yet",
     "openSession": "Open session",
     "openWorkItem": "Open work item",
+    "extraActivations": "Additional activations",
+    "activationSchedule": "Schedule",
+    "activationOneTime": "One time",
+    "activationProviderEvent": "Provider event",
+    "activationManual": "Manual",
+    "providerPlaceholder": "github",
+    "eventKindPlaceholder": "pull_request",
+    "fireError": "Could not start the Routine: {{detail}}",
+    "provider": "Provider",
+    "eventKind": "Event",
+    "fireAccepted": "Run {{status}}",
     "openSessionError": "Could not open the session",
     "openWorkItemError": "Could not open the Work Item",
-    "fireStarted": "Routine run started",
-    "fireAccepted": "Run {{status}}",
-    "fireError": "Could not start the Routine: {{detail}}"
-  },
-  "localModels": {
-    "title": "On prem",
-    "description": "Detect this device and rank Ollama / llama.cpp friendly local models using a lightweight hardware-fit score.",
-    "searchPlaceholder": "Search local models...",
-    "hardware": {
-      "system": "System",
-      "cpu": "CPU",
-      "memory": "Memory",
-      "gpu": "GPU / Backend"
-    },
-    "fit": {
-      "good": "Good"
-    },
-    "runMode": {
-      "gpu": "GPU"
-    }
+    "fireStarted": "Routine run started"
   },
   "housekeeper": {
-    "eyebrow": "MiniCPM Resident Housekeeper",
     "title": "Resident Housekeeper",
     "description": "Local MiniCPM handles prompt polishing, short step explanations, and lightweight UI control. Coding tasks and complex ADE setup still use the main agent model.",
     "addModel": "Add model",
@@ -2397,7 +1593,6 @@
   },
   "cliLaunchProfiles": {
     "title": "Launch profile",
-    "plain": "Base",
     "plan": "Plan",
     "fullPermission": "Full permission",
     "autoEdit": "Auto edit",
@@ -2442,5 +1637,34 @@
     "deleteMessage": "Delete the profile “{{name}}”? This does not change your current global Git config.",
     "loadFailed": "Failed to load the global Git profile",
     "applyFailed": "Failed to activate the Git profile"
+  },
+  "credentialImport": {
+    "title": "Import credentials from other apps",
+    "itemColumn": "Credential",
+    "sourceColumn": "Found in",
+    "empty": "No credentials found to import. Looked at environment variables, shell profiles, Claude Code settings, cc-switch profiles, and the login stores of Claude Code, Codex, Cursor, GitHub CLI, Kiro, and OpenCode.",
+    "allImported": "All detected credentials have already been imported",
+    "authMethod": {
+      "api_key": "API key",
+      "oauth": "Login token"
+    },
+    "sourceKind": {
+      "env": "Environment variable",
+      "shell_profile": "Shell profile",
+      "config_file": "Config file",
+      "oauth_store": "Login store",
+      "keychain": "Keychain",
+      "state_db": "App state",
+      "cc_switch": "cc-switch"
+    },
+    "applyFailed": "Import failed: {{message}}",
+    "partialFailure": "Some credentials could not be imported:"
+  },
+  "skills": {
+    "shareToOrg": "Share to organization",
+    "share": "Share",
+    "sharedToOrg": "Skill shared with the organization",
+    "shareToOrgHint": "Members of the organization receive this skill's current snapshot; share again after editing to publish an update.",
+    "shareOrgPlaceholder": "Organization"
   }
 }

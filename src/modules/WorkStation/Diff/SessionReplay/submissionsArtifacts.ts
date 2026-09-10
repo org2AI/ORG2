@@ -18,7 +18,7 @@ import { getGitArtifactsFromEvent } from "@src/shared/git/sessionGitArtifacts";
 import type {
   SubmissionArtifact,
   SubmissionArtifactOrigin,
-} from "./SubmissionsContent";
+} from "./submissionsData";
 
 export interface SubmissionRepoContext {
   repoId?: string;

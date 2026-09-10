@@ -37,10 +37,13 @@ import {
   activeExternalSessionRefreshFrequencyAtom,
 } from "@src/store/session/dataSourceConfigAtom";
 import { pendingPlanApprovalsAtom } from "@src/store/session/planApprovalAtom";
-import { wpReadOnlyAtom } from "@src/store/ui/chatPanelAtom";
+import { wpReadOnlyAtom } from "@src/store/ui/chatPanel/miscAtoms";
 
 import "./adapters";
+import { isInterruptedCliTerminalStatus } from "./adapters/cli/cliLifecycle";
 import { useExternalHistoryAutoRefresh } from "./externalHistoryAutoRefresh";
+import { useNativeHistoryAutoRefresh } from "./nativeHistoryAutoRefresh";
+import type { NativeHistoryLoadRevision } from "./nativeHistoryLoadRevision";
 import { scheduleNativeTranscriptReconcile } from "./nativeTranscriptReconcile";
 import {
   resetEmptySessionRefs,
@@ -72,7 +75,38 @@ export function useSessionSync(
   sessionId: string | null,
   reloadEpoch = 0
 ): void {
-  const dispatchLoadSession = useSetAtom(loadSessionAtom);
+  const applyLoadedSession = useSetAtom(loadSessionAtom);
+  // Owned by this mounted view. Background reads cannot certify its history.
+  const loadedNativeRevision = useRef<
+    | {
+        sessionId: string;
+        revision: NativeHistoryLoadRevision;
+      }
+    | undefined
+  >(undefined);
+  const dispatchLoadSession = useCallback(
+    (
+      payload: Parameters<typeof applyLoadedSession>[0] & {
+        nativeHistoryRevision?: NativeHistoryLoadRevision;
+      }
+    ) => {
+      applyLoadedSession(payload);
+      loadedNativeRevision.current = payload.nativeHistoryRevision
+        ? {
+            sessionId: payload.sessionId,
+            revision: payload.nativeHistoryRevision,
+          }
+        : undefined;
+    },
+    [applyLoadedSession]
+  );
+  const getLoadedNativeRevision = useCallback(
+    () =>
+      loadedNativeRevision.current?.sessionId === sessionId
+        ? loadedNativeRevision.current.revision
+        : undefined,
+    [sessionId]
+  );
   const clearSessionLoadError = useSetAtom(clearSessionLoadErrorAtom);
   const failSessionLoad = useSetAtom(failSessionLoadAtom);
   const setLoadStatus = useSetAtom(loadStatusAtom);
@@ -191,19 +225,13 @@ export function useSessionSync(
   );
 
   const scheduleReconcile = useCallback(
-    (sid: string) => {
+    (sid: string, terminalStatus: string) => {
       scheduleNativeTranscriptReconcile(sid, {
-        loadHistory: async (target) => {
-          const adapter = getAdapterForSession(target);
-          if (!adapter) return [];
-          const controller = new AbortController();
-          return adapter.loadHistory(target, controller.signal);
-        },
-        dispatchLoadSession,
-        isSessionLive: (target) => liveSessionIdRef.current === target,
+        preserveInterruptedSuffix:
+          isInterruptedCliTerminalStatus(terminalStatus),
       });
     },
-    [dispatchLoadSession]
+    []
   );
 
   const handlerActions = useMemo(
@@ -307,6 +335,7 @@ export function useSessionSync(
     dispatchLoadSession,
   });
 
+  useNativeHistoryAutoRefresh(sessionId, getLoadedNativeRevision);
   useEventStoreCacheSync(sessionId);
   useSessionSyncCleanup(refs);
 }

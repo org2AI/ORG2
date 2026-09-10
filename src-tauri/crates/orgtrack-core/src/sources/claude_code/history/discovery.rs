@@ -28,6 +28,7 @@ pub(super) fn discover_claude_code_history_records(
 ) -> Result<ClaudeCodeDiscovery, String> {
     let mut records = Vec::new();
     let mut external_titles = HashMap::new();
+    let mut discovered_files = HashSet::new();
     for projects_dir in projects_dirs {
         if !projects_dir.is_dir() {
             continue;
@@ -47,7 +48,28 @@ pub(super) fn discover_claude_code_history_records(
                 continue;
             };
             let (source_mtime_ms, source_size_bytes) =
-                imported_paths::file_metadata_signature(&path, "Claude")?;
+                match imported_paths::file_metadata_signature(&path, "Claude") {
+                    Ok(signature) => signature,
+                    // Files can disappear between directory enumeration and
+                    // metadata lookup, and old native-materialization runs
+                    // may leave a broken transcript symlink behind. Neither
+                    // makes the other Claude sessions unreadable.
+                    Err(_) if !path.exists() => continue,
+                    Err(error) => return Err(error),
+                };
+            // Native handoff exposes the same transcript through an account
+            // profile symlink. A cache row is keyed by session ID, so emitting
+            // both paths makes unchanged files alternate writers on every scan.
+            // Normalize the path as well as deduplicating it, making discovery
+            // stable when the native/profile root enumeration order changes.
+            let source_path = match fs::canonicalize(&path) {
+                Ok(path) => path,
+                Err(_) if !path.exists() => continue,
+                Err(error) => return Err(format!("Failed to resolve Claude transcript: {error}")),
+            };
+            if !discovered_files.insert((file_stem.clone(), source_path.clone())) {
+                continue;
+            }
             let subagent_title = claude_subagent_metadata_title(&path);
             if let Some(title) = subagent_title.as_ref() {
                 external_titles.insert(file_stem.clone(), title.clone());
@@ -59,7 +81,7 @@ pub(super) fn discover_claude_code_history_records(
             }
             records.push(ImportedHistoryDiscoveredRecord {
                 source_session_id: file_stem.clone(),
-                source_path: path,
+                source_path,
                 source_record_key: file_stem.clone(),
                 source_mtime_ms,
                 source_size_bytes,
@@ -248,7 +270,7 @@ pub(super) fn claude_file_stem_from_session_id(session_id: &str) -> Result<&str,
     Ok(file_stem)
 }
 
-pub(super) fn resolve_claude_session_path(
+pub fn resolve_claude_session_path(
     conn: &Connection,
     file_stem: &str,
 ) -> Result<PathBuf, String> {

@@ -1,11 +1,11 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import { HugeiconsIcon, Login02Icon } from "@src/icons";
 
+import { MobileActionButton } from "../components/MobileActionButton";
 import { MobileShell } from "../components/MobileShell";
 import type { MobileAuthState } from "./mobileAuthState";
 
@@ -13,12 +13,14 @@ export interface MobileAuthScreenProps {
   state: MobileAuthState;
   onSignIn: () => void;
   onRetry: () => void;
+  onCancel: () => void;
 }
 
 export function MobileAuthScreen({
   state,
   onSignIn,
   onRetry,
+  onCancel,
 }: MobileAuthScreenProps) {
   const { t } = useTranslation("mobileRemote");
   const loading =
@@ -36,7 +38,7 @@ export function MobileAuthScreen({
     <MobileShell>
       <main className="flex min-h-0 flex-1 flex-col px-5 py-6">
         <div className="flex items-center gap-2 text-lg font-semibold text-text-1">
-          <span aria-hidden="true" className="text-primary-6">
+          <span aria-hidden="true" className="mobile-brand-mark">
             ●
           </span>
           ORG2
@@ -48,8 +50,23 @@ export function MobileAuthScreen({
                 variant="loading"
                 placement="sidebar"
                 title={loadingTitle}
-                subtitle={t("auth.wait")}
+                subtitle={t(
+                  state.phase === "redirecting"
+                    ? "auth.browserWait"
+                    : "auth.wait"
+                )}
               />
+              {state.phase === "redirecting" ? (
+                <MobileActionButton
+                  htmlType="button"
+                  variant="tertiary"
+                  long
+                  centerLabel
+                  onClick={onCancel}
+                >
+                  {t("auth.cancel")}
+                </MobileActionButton>
+              ) : null}
             </div>
           ) : (
             <>
@@ -62,7 +79,7 @@ export function MobileAuthScreen({
                 </p>
               </div>
               {state.phase === "error" ? (
-                <InlineAlert
+                <PageNotice
                   type="danger"
                   role="alert"
                   title={t("auth.errorTitle")}
@@ -73,9 +90,9 @@ export function MobileAuthScreen({
                   }
                 >
                   {state.message}
-                </InlineAlert>
+                </PageNotice>
               ) : null}
-              <Button
+              <MobileActionButton
                 htmlType="button"
                 variant="primary"
                 long
@@ -84,7 +101,7 @@ export function MobileAuthScreen({
                 onClick={onSignIn}
               >
                 {t("auth.signIn")}
-              </Button>
+              </MobileActionButton>
             </>
           )}
         </div>

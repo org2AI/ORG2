@@ -8,6 +8,7 @@
  */
 import { z } from "zod/v4";
 
+import { CredentialSuggestionSchema } from "./validationDiscovery";
 import {
   CliAgentTypeSchema,
   HealthStatusSchema,
@@ -337,6 +338,10 @@ export const AutoDetectKeyInput = z.object({
   agentType: ModelTypeSchema,
 });
 
+export const ImportCredentialSuggestionsInput = z.object({
+  selections: z.array(CredentialSuggestionSchema),
+});
+
 export const ScanCliVersionInput = z.object({
   agentType: CliAgentTypeSchema,
   force: z.boolean().nullable().optional(),
@@ -389,7 +394,6 @@ export const CursorNativeModelSchema = z.object({
   aliases: z.array(z.string()).optional().default([]),
   maxMode: z.boolean().optional().default(false),
 });
-export type CursorNativeModel = z.infer<typeof CursorNativeModelSchema>;
 
 export const CursorNativeOauthStartResponseSchema = z.object({
   loginUrl: z.string(),

@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 
-import { shouldShowCodexReconnect } from "../accountInlineActions";
+import {
+  areAccountRefreshActionsDisabled,
+  shouldShowCodexReconnect,
+} from "../accountInlineActions";
 
 function createAccount(
   overrides: Partial<KeyVaultAccount> = {}
@@ -23,6 +26,22 @@ function createAccount(
     ...overrides,
   };
 }
+
+describe("areAccountRefreshActionsDisabled", () => {
+  it.each([
+    [false, false, false],
+    [true, false, true],
+    [false, true, true],
+    [true, true, true],
+  ])(
+    "keeps both refresh actions disabled while either operation is active",
+    (refreshingUsage, refreshingModels, expected) => {
+      expect(
+        areAccountRefreshActionsDisabled(refreshingUsage, refreshingModels)
+      ).toBe(expected);
+    }
+  );
+});
 
 describe("shouldShowCodexReconnect", () => {
   it("shows reconnect for a failed local Codex OAuth account", () => {

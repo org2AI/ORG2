@@ -16,7 +16,9 @@ const fileClose = defineZodAction(
     category: "file",
     description: "Close the current file tab",
     params: z.object({}),
-    shortcut: getShortcutKeys("close_file"),
+    get shortcut() {
+      return getShortcutKeys("close_file");
+    },
     examples: ["close this file", "close current tab", "close tab"],
   },
   async () => {
@@ -45,7 +47,9 @@ const fileSaveAll = defineZodAction(
     category: "file",
     description: "Save all open files with unsaved changes",
     params: z.object({}),
-    shortcut: getShortcutKeys("save_all"),
+    get shortcut() {
+      return getShortcutKeys("save_all");
+    },
     examples: ["save all files", "save everything", "save all"],
   },
   async () => {

@@ -38,6 +38,7 @@ import {
   org2CloudPushCursorsAtom,
   org2CloudPushedMetadataAtom,
   org2CloudRepoScopesAtom,
+  org2CloudRetentionParkedAtom,
   org2CloudSyncEnabledAtom,
 } from "./org2CloudSyncAtoms";
 
@@ -131,6 +132,14 @@ export function reconcileOrg2CloudPersistedState(
     org2CloudCollabStateCursorsAtom,
     liveOrgIds,
     prunedByOrg
+  );
+  sweepAtom(
+    store,
+    "retentionParked",
+    org2CloudRetentionParkedAtom,
+    liveOrgIds,
+    prunedByOrg,
+    orgIdOfCompositeKey
   );
   for (const [orgId, mapNames] of prunedByOrg) {
     log.info(

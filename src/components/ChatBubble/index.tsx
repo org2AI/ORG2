@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import Message from "@src/components/Message";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import { Copy01Icon, HugeiconsIcon } from "@src/icons";
+import { copyText } from "@src/util/data/clipboard";
 
 export const CHAT_BUBBLE_WIDTH_TOKENS = {
   row: `mx-auto flex w-full min-w-0 gap-3 overflow-hidden ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`,
@@ -162,7 +163,7 @@ const ChatBubbleCopyButtonComponent: React.FC<ChatBubbleCopyButtonProps> = ({
   const handleCopy = useCallback(
     async (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
-      await navigator.clipboard.writeText(content);
+      await copyText(content);
       Message.success(t("status.copied"));
     },
     [content, t]

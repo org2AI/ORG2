@@ -4,10 +4,22 @@
  * Thin TypeScript wrappers around the `mobile_remote_*` Tauri commands
  * registered in `src-tauri/src/commands/handler_list.inc`. The Rust
  * commands return camelCase JSON (see `#[serde(rename_all = "camelCase")]`
- * on `PairingInitOutput` / `PairedDeviceInfo` / `RelayUrlInfo`), so the
- * types below mirror that wire shape directly — no conversion layer.
+ * on `PairingInitResponse` / `PairedDeviceInfo` / `RelayUrlInfo`). Shared
+ * wire types are generated from Rust; no conversion layer is needed.
  */
 import { invoke } from "@tauri-apps/api/core";
+
+import type {
+  PairedDeviceInfo,
+  PairingInitResponse as PairingInitOutput,
+  PermissionTier,
+} from "@src/contracts/mobile-relay/v1/relay";
+
+export type {
+  PairedDeviceInfo,
+  PermissionTier,
+  PairingInitResponse as PairingInitOutput,
+} from "@src/contracts/mobile-relay/v1/relay";
 
 // ============================================================
 // Types
@@ -17,37 +29,10 @@ import { invoke } from "@tauri-apps/api/core";
  * Permission tier for a paired mobile device. Mirrors the Rust
  * `PermissionTier` enum's `serde(rename_all = "snake_case")` shape.
  */
-export type PermissionTier = "read_only" | "full";
-
 export const PERMISSION_TIER = {
   READ_ONLY: "read_only" as const,
   FULL: "full" as const,
 } as const;
-
-/** Output of `mobile_remote_pair_init`. */
-export interface PairingInitOutput {
-  pairingCode: string;
-  confirmationPhrase: string;
-  /** Hosted PWA URL with the one-time pairing payload in its fragment. */
-  qrPayload: string;
-  expiresInSeconds: number;
-}
-
-/** One row in the paired-device list. */
-export interface PairedDeviceInfo {
-  deviceId: string;
-  /**
-   * Desktop the device is paired to. Required for the "set as primary"
-   * affordance, which targets a desktop (not a device) at the relay layer.
-   */
-  desktopId: string;
-  label: string;
-  /** Wire string — narrowed via `PermissionTier` after parsing. */
-  tier: string;
-  isPrimary: boolean;
-  pairedAtMs: number;
-  lastSeenMs: number | null;
-}
 
 /** Snapshot of the relay URL config. */
 export interface RelayUrlInfo {
@@ -75,6 +60,9 @@ export interface MobileSidebarSessionSnapshotRow {
   id: string;
   name: string;
   status: "running" | "idle";
+  repoPath?: string | null;
+  repoName?: string | null;
+  updatedAtMs?: number | null;
 }
 
 // ============================================================

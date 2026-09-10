@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { MOBILE_REMOTE_ROUTE, ROUTES } from "@src/config/routes";
 import { HOSTED_LOGIN_ENABLED, setAuthSkipped } from "@src/config/serviceAuth";
 import {
@@ -18,13 +18,11 @@ import {
 import { createLogger } from "@src/hooks/logger";
 import { HugeiconsIcon, Login01Icon, Refresh04Icon } from "@src/icons";
 import { captureOpaquePairingReturnLocation } from "@src/modules/MobileRemote/auth/mobileAuthIntent";
-import {
-  ONBOARDING_LOADING_VIDEO_WIDTH_CLASS,
-  OnboardingLayout,
-  OnboardingLoadingVideo,
-} from "@src/modules/shared/layouts";
 
-const LOGIN_COLUMN_WIDTH_CLASS = ONBOARDING_LOADING_VIDEO_WIDTH_CLASS;
+import { LOGIN_ARTWORK_WIDTH_CLASS, LoginArtwork } from "./LoginArtwork";
+import LoginCard from "./LoginCard";
+
+const LOGIN_COLUMN_WIDTH_CLASS = LOGIN_ARTWORK_WIDTH_CLASS;
 const log = createLogger("LoginPage");
 
 /** Primary CTAs — taller than default `Button` large for login prominence */
@@ -63,7 +61,7 @@ export const LoginLoadingState: React.FC<LoginLoadingStateProps> = ({
     >
       {error ? (
         <>
-          <OnboardingLoadingVideo />
+          <LoginArtwork />
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="text-lg font-medium text-red-500">
               {t("loading.failed")}
@@ -75,12 +73,12 @@ export const LoginLoadingState: React.FC<LoginLoadingStateProps> = ({
           </div>
         </>
       ) : (
-        <OnboardingLoadingVideo />
+        <LoginArtwork />
       )}
     </div>
   );
 
-  return <OnboardingLayout variant="contained" leftContent={leftContent} />;
+  return <LoginCard content={leftContent} />;
 };
 
 // ============================================
@@ -110,25 +108,25 @@ const LoginForm: React.FC<LoginFormProps> = ({
       <div
         className={`flex flex-col items-center gap-6 ${LOGIN_COLUMN_WIDTH_CLASS}`}
       >
-        <OnboardingLoadingVideo />
+        <LoginArtwork />
 
         <div
           className={`flex flex-col items-center gap-2 ${LOGIN_COLUMN_WIDTH_CLASS}`}
         >
           {sessionExpired && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            <PageNotice type="warning" role="alert" className="mb-4">
               {t("login.sessionExpired")}
-            </div>
+            </PageNotice>
           )}
 
           {callbackError && (
-            <InlineAlert
+            <PageNotice
               type="danger"
               title={t("common:status.error")}
               className="mb-4"
             >
               {callbackError}
-            </InlineAlert>
+            </PageNotice>
           )}
 
           <Button
@@ -197,7 +195,7 @@ const AuthenticatedForm: React.FC<AuthenticatedFormProps> = ({
       <div
         className={`flex flex-col items-center gap-6 ${LOGIN_COLUMN_WIDTH_CLASS}`}
       >
-        <OnboardingLoadingVideo />
+        <LoginArtwork />
 
         <div
           className={`flex flex-col items-center gap-2 ${LOGIN_COLUMN_WIDTH_CLASS}`}
@@ -249,7 +247,7 @@ const AuthenticatedForm: React.FC<AuthenticatedFormProps> = ({
 /**
  * Login Page Component
  *
- * Single-column card via OnboardingLayout (no right pane).
+ * Single-column card via LoginCard (no right pane).
  *
  * When already authenticated, shows options to:
  * - Continue with current account
@@ -363,9 +361,8 @@ const LoginPage: React.FC = () => {
   // Show authenticated options if user has a valid session
   if (showAccountOptions && isAuthenticated) {
     return (
-      <OnboardingLayout
-        variant="contained"
-        leftContent={
+      <LoginCard
+        content={
           <AuthenticatedForm
             isLoading={isLoading}
             onContinue={handleContinue}
@@ -377,9 +374,8 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <OnboardingLayout
-      variant="contained"
-      leftContent={
+    <LoginCard
+      content={
         <LoginForm
           isLoading={isLoading}
           sessionExpired={sessionExpired}

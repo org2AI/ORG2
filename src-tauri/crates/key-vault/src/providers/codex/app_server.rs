@@ -17,7 +17,6 @@ pub(super) const APP_SERVER_SHUTDOWN_TIMEOUT_SECS: u64 = 2;
 
 pub(super) async fn write_temporary_codex_home(
     access_token: &str,
-    refresh_token: Option<&str>,
     id_token: Option<&str>,
 ) -> Result<PathBuf, String> {
     let codex_home =
@@ -27,11 +26,18 @@ pub(super) async fn write_temporary_codex_home(
         .map_err(|err| format!("Failed to create temporary Codex home: {err}"))?;
 
     let account_id = id_token.and_then(extract_account_id_from_id_token);
+    // The temporary app-server is a read-only consumer of the access token.
+    // Never give it the rotating refresh token: Codex may exchange and rewrite
+    // that token inside this disposable directory, which would strand Key
+    // Vault with the already-consumed value when the directory is removed.
+    // Refreshes must go through KeyService's per-account lock and persistence.
+    // Codex deserializes refresh_token as a String: an empty string withholds
+    // the secret while keeping this auth file readable; JSON null does not.
     let auth_json = serde_json::json!({
         "OPENAI_API_KEY": serde_json::Value::Null,
         "tokens": {
             "access_token": access_token,
-            "refresh_token": refresh_token,
+            "refresh_token": "",
             "id_token": id_token,
             "account_id": account_id,
         },
@@ -48,6 +54,18 @@ pub(super) async fn write_temporary_codex_home(
         .map_err(|err| format!("Failed to secure Codex auth file: {err}"))?;
 
     Ok(codex_home)
+}
+
+#[cfg(test)]
+pub(super) async fn read_temporary_codex_auth(
+    codex_home: &std::path::Path,
+) -> Result<serde_json::Value, String> {
+    let auth_path = codex_home.join("auth.json");
+    let auth_bytes = tokio::fs::read(&auth_path)
+        .await
+        .map_err(|err| format!("Failed to read temporary Codex auth file: {err}"))?;
+    serde_json::from_slice(&auth_bytes)
+        .map_err(|err| format!("Failed to parse temporary Codex auth file: {err}"))
 }
 
 pub(super) async fn cleanup_temporary_codex_home(codex_home: &PathBuf, operation: &str) {

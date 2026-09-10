@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "@src/hooks/logger";
 import type { EditOperation, EditSource } from "@src/types/editor/document";
 import {
-  createEditOperation,
+  createMinimalEditOperation,
   filterEditsBySource,
 } from "@src/types/editor/document";
 import {
@@ -24,7 +24,6 @@ import {
   hasLoadedFileThisSession,
   invalidateFileCache,
   markFileLoadedThisSession,
-  onExternalFileChange,
   popUnsavedContent,
   subscribeToFileChanges,
   updateCachedFileMtime,
@@ -45,7 +44,6 @@ export {
   clearFileCache,
   clearUnsavedContentCache,
   invalidateFileCache,
-  onExternalFileChange,
   subscribeToFileChanges,
   updateCachedFileMtime,
 };
@@ -158,6 +156,8 @@ export function useFileContent(
       setHasUnsavedChanges(false);
       setLoading(false);
       loadingRef.current = false;
+      // This cache hit bypasses finally; publish it as the current file's result.
+      setLoadedFilePath(filePath);
       return;
     }
 
@@ -203,8 +203,12 @@ export function useFileContent(
         return;
       }
 
-      // Check for cached unsaved content from a previous tab switch
-      const cachedUnsaved = popUnsavedContent(filePath);
+      // Check for cached unsaved content from a previous tab switch. The
+      // text may come back from an on-disk draft, so this can yield.
+      const cachedUnsaved = await popUnsavedContent(filePath);
+      if (currentFilePathRef.current !== filePath) {
+        return;
+      }
 
       if (cachedUnsaved) {
         // Restore unsaved content from cache
@@ -231,8 +235,8 @@ export function useFileContent(
         setDiskVersion(nextVersion);
 
         // Create reload edit operation
-        const reloadEdit = createEditOperation(
-          { from: 0, to: 0 },
+        const reloadEdit = createMinimalEditOperation(
+          "",
           fileContent,
           { type: "reload" },
           nextVersion
@@ -336,9 +340,10 @@ export function useFileContent(
     (newContent: string, source: EditSource) => {
       const nextVersion = version + 1;
 
-      // Create edit operation
-      const edit = createEditOperation(
-        { from: 0, to: content.length }, // Simplified: full replacement
+      // Record only the changed span: the log is for attribution, and the
+      // full buffer already lives in `content` (and in CodeMirror's history).
+      const edit = createMinimalEditOperation(
+        content,
         newContent,
         source,
         nextVersion

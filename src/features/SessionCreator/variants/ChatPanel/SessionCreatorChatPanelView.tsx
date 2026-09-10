@@ -6,7 +6,7 @@ import type { CliAgentType } from "@src/api/types/keys";
 import Button from "@src/components/Button";
 import type { ComposerInputRef } from "@src/components/ComposerInput";
 import { pillControlStateClass } from "@src/components/CompoundPill/config";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import SelectorPill from "@src/components/SelectorPill";
 import { COMPOSER_HORIZONTAL_GUTTER_CLASS } from "@src/config/composerStackTokens";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
@@ -32,13 +32,11 @@ import {
   CREATOR_BOTTOM_DOCK_PADDING_CLASS,
   CREATOR_MIDDLE_POSITION_STYLE,
 } from "@src/modules/shared/layouts/blocks";
-import {
-  type AgentSelection,
-  DispatchCategoryPalette,
-} from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette";
-import { DispatchCategoryDropdown } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette/DispatchCategoryDropdown";
+import type { AgentSelection } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette";
+import { DispatchCategoryPicker } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette/DispatchCategoryPicker";
 import { PresenceMenuButton } from "@src/scaffold/NavigationSidebar/blocks/SidebarBottomBar";
 import type { CreatorRepoChromePosition } from "@src/store/session";
+import type { ModelPickerStyle } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 import { EditorArea, SessionInfoLine } from "../../components";
 import RepoChromeRow from "./RepoChromeRow";
@@ -63,7 +61,7 @@ interface CategoryPickerProps {
   currentCategory: DispatchCategory;
   currentCliAgentType?: CliAgentType;
   includeHumanSession: boolean;
-  modelPickerStyle: string;
+  modelPickerStyle: ModelPickerStyle;
   onClose: () => void;
   onSelect: (selection: AgentSelection) => void;
 }
@@ -320,7 +318,7 @@ const SessionCreatorChatPanelView: React.FC<
       <div
         className={`mx-auto w-full ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
       >
-        <InlineAlert
+        <PageNotice
           type="warning"
           compact
           icon={
@@ -418,17 +416,21 @@ const SessionCreatorChatPanelView: React.FC<
       onClick={onCategoryPickerOpen}
     />
   );
+  const launchpadActionPresentation = isCenteredComposer ? "pill" : "card";
+  const groupAgentHeroWithLaunchpadActions =
+    launchpadActionPresentation === "card" && !hideWorkItemAttachmentControl;
   const launchpadSuggestionContent = hideWorkItemAttachmentControl ? (
     heroFooterSlot
   ) : (
     <LaunchpadActionGrid
       className="mx-auto w-full"
       layoutActionCount={Children.count(heroFooterSlot) + 1}
-      presentation={isCenteredComposer ? "pill" : "card"}
+      presentation={launchpadActionPresentation}
       collapsible
       controlAlignment="center"
       collapseLabel={t("common:actions.collapse")}
       expandLabel={t("common:actions.expand")}
+      header={groupAgentHeroWithLaunchpadActions ? agentHero : undefined}
     >
       <WorkItemAttachmentControl
         composerInputRef={composerInputRef}
@@ -437,14 +439,22 @@ const SessionCreatorChatPanelView: React.FC<
         repoId={sessionInfoProps.repoId}
         repoPath={sessionInfoProps.repoPath}
         mode="solve"
-        presentation={isCenteredComposer ? "pill" : "card"}
+        presentation={launchpadActionPresentation}
       />
       {heroFooterSlot}
     </LaunchpadActionGrid>
   );
   const launchpadMiddleContent = isLaunchpadLayout ? (
     <div
-      className="session-creator-chat-panel-launchpad-middle absolute inset-x-0 flex -translate-y-1/2 flex-col items-center gap-2"
+      // `top` resolves to a percentage of the pane height and `-translate-y-1/2`
+      // subtracts half of a text-driven box height, so this block almost always
+      // lands on a fractional device pixel (measured 325.43px / 108.5px tall on
+      // a 904px viewport). Everything inside — the hero pill and every action
+      // card icon — then rasterizes off the pixel grid, and any repaint that
+      // re-layers the subtree re-rounds it, which reads as the icons shaking.
+      // `transform-gpu` pins the block to its own compositor layer so the
+      // fractional offset is snapped once instead of on every hover.
+      className="session-creator-chat-panel-launchpad-middle absolute inset-x-0 flex -translate-y-1/2 transform-gpu flex-col items-center gap-2"
       style={CREATOR_MIDDLE_POSITION_STYLE}
     >
       {/* Multi-runner owns the whole middle slot: with N runners listed below
@@ -458,7 +468,7 @@ const SessionCreatorChatPanelView: React.FC<
         </div>
       ) : (
         <>
-          {agentHero}
+          {!groupAgentHeroWithLaunchpadActions && agentHero}
           {!isCenteredComposer && launchpadSuggestionContent && (
             <div className="session-creator-chat-panel-launchpad-suggestions w-full">
               {launchpadSuggestionContent}
@@ -582,9 +592,9 @@ const SessionCreatorChatPanelView: React.FC<
             <div
               className={`mx-auto w-full ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
             >
-              <InlineAlert type="warning" title={t("creator.missingGit.title")}>
+              <PageNotice type="warning" title={t("creator.missingGit.title")}>
                 {t("creator.missingGit.body")}
-              </InlineAlert>
+              </PageNotice>
             </div>
           )}
 
@@ -634,34 +644,18 @@ const SessionCreatorChatPanelView: React.FC<
         />
       )}
 
-      {categoryPickerProps.modelPickerStyle === "dropdown" ? (
-        <DispatchCategoryDropdown
-          includeHumanSession={categoryPickerProps.includeHumanSession}
-          isOpen={isCategorySelectorOpen}
-          onClose={categoryPickerProps.onClose}
-          onSelect={categoryPickerProps.onSelect}
-          currentCategory={categoryPickerProps.currentCategory}
-          currentAgentDefinitionId={
-            categoryPickerProps.currentAgentDefinitionId
-          }
-          currentAgentOrgId={categoryPickerProps.currentAgentOrgId}
-          currentCliAgentType={categoryPickerProps.currentCliAgentType}
-          anchorRef={categoryPickerProps.anchorRef}
-        />
-      ) : (
-        <DispatchCategoryPalette
-          includeHumanSession={categoryPickerProps.includeHumanSession}
-          isOpen={isCategorySelectorOpen}
-          onClose={categoryPickerProps.onClose}
-          onSelect={categoryPickerProps.onSelect}
-          currentCategory={categoryPickerProps.currentCategory}
-          currentAgentDefinitionId={
-            categoryPickerProps.currentAgentDefinitionId
-          }
-          currentAgentOrgId={categoryPickerProps.currentAgentOrgId}
-          currentCliAgentType={categoryPickerProps.currentCliAgentType}
-        />
-      )}
+      <DispatchCategoryPicker
+        style={categoryPickerProps.modelPickerStyle}
+        includeHumanSession={categoryPickerProps.includeHumanSession}
+        isOpen={isCategorySelectorOpen}
+        onClose={categoryPickerProps.onClose}
+        onSelect={categoryPickerProps.onSelect}
+        currentCategory={categoryPickerProps.currentCategory}
+        currentAgentDefinitionId={categoryPickerProps.currentAgentDefinitionId}
+        currentAgentOrgId={categoryPickerProps.currentAgentOrgId}
+        currentCliAgentType={categoryPickerProps.currentCliAgentType}
+        anchorRef={categoryPickerProps.anchorRef}
+      />
 
       {screenPickerProps && <ScreenPickerModal {...screenPickerProps} />}
     </div>

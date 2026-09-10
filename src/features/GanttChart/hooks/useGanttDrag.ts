@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 
+import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
+
 import { getMsPerColumn, getStartOfPeriod } from "../config";
 import type { GanttTimeScale, GanttViewScope } from "../types";
 
@@ -189,6 +191,10 @@ export function useGanttDrag({
         }
       }
 
+      // End the interaction before a consumer callback can throw.
+      setDragState(null);
+      setGhostPreview(null);
+
       // Call update callback
       if (onTaskUpdate) {
         onTaskUpdate(dragState.taskId, {
@@ -196,10 +202,6 @@ export function useGanttDrag({
           endDate: finalEnd,
         });
       }
-
-      // Clear drag state
-      setDragState(null);
-      setGhostPreview(null);
     },
     [
       dragState,
@@ -221,6 +223,7 @@ export function useGanttDrag({
       originalEnd: Date,
       e: ReactMouseEvent
     ) => {
+      if (e.button !== 0) return;
       e.stopPropagation();
 
       setDragState({
@@ -242,6 +245,7 @@ export function useGanttDrag({
       originalEnd: Date,
       e: ReactMouseEvent
     ) => {
+      if (e.button !== 0) return;
       setDragState({
         taskId,
         type: "move",
@@ -259,16 +263,22 @@ export function useGanttDrag({
 
     const onMouseUp = (event: globalThis.MouseEvent) => handleMouseUp(event);
 
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    const dispose = listenForDrag({
+      onMove: handleMouseMove,
+      onEnd: onMouseUp,
+      onCancel: () => {
+        setDragState(null);
+        setGhostPreview(null);
+        document.body.style.cursor = "";
+      },
+    });
 
     // Change cursor
     document.body.style.cursor =
       dragState.type === "move" ? "grabbing" : "ew-resize";
 
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
+      dispose();
       document.body.style.cursor = "";
     };
   }, [dragState, handleMouseMove, handleMouseUp]);

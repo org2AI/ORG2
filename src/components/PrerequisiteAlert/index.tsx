@@ -2,12 +2,12 @@
  * PrerequisiteAlert
  *
  * Inline warning shown when a required binary (npm, brew, pip, etc.)
- * is not found on the user's system. Wraps InlineAlert with type="warning".
+ * is not found on the user's system. Wraps PageNotice with type="warning".
  */
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 
 interface PrerequisiteAlertProps {
   /** The binary that is missing (e.g. "npm", "brew", "pip"). */
@@ -22,13 +22,13 @@ const PrerequisiteAlert: React.FC<PrerequisiteAlertProps> = ({
   const { t } = useTranslation();
 
   return (
-    <InlineAlert
+    <PageNotice
       type="warning"
       title={t("prerequisite.missingTitle")}
       className={className}
     >
       {t("prerequisite.missing", { binary })}
-    </InlineAlert>
+    </PageNotice>
   );
 };
 

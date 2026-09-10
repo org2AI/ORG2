@@ -4,16 +4,33 @@ import { runSessionSwitchOrchestrator } from "../sessionSwitchOrchestrator";
 import type { SessionAdapter } from "../types";
 
 const mocks = vi.hoisted(() => ({
+  revision: vi.fn(),
+  turnActive: vi.fn(() => false),
+  generation: vi.fn(() => 0),
   applyPostLoadResult: vi.fn(),
+  capturePostLoadLifecycleSnapshot: vi.fn(() => ({
+    lastTerminal: null,
+    generation: 0,
+  })),
   dispatchLoadSession: vi.fn(),
   getEvents: vi.fn(),
   hydrateSessionStoreBeforeDisplay: vi.fn(),
+  isCollaborationImportedSession: vi.fn(() => false),
   loadInitialTurnWindow: vi.fn(),
   loadPersistedHistory: vi.fn(),
   messageError: vi.fn(),
   reconcileInFlightHistory: vi.fn(),
   rehydratePendingPlanApproval: vi.fn(),
   switchSession: vi.fn(),
+}));
+
+vi.mock("../../control/turnLifecycle", () => ({
+  isTurnActive: mocks.turnActive,
+  getTurnGeneration: mocks.generation,
+}));
+
+vi.mock("../nativeConversationRevision", () => ({
+  loadNativeConversationRevision: mocks.revision,
 }));
 
 vi.mock("@src/components/Message", () => ({
@@ -34,7 +51,7 @@ vi.mock("@src/engines/SessionCore/ingestion/visibilityFilters", () => ({
 
 vi.mock("@src/util/session/sessionDispatch", () => ({
   composerIdFromSessionId: () => null,
-  isCollaborationImportedSession: () => false,
+  isCollaborationImportedSession: mocks.isCollaborationImportedSession,
   isImportedHistorySession: () => false,
 }));
 
@@ -52,6 +69,8 @@ vi.mock("../sessionSyncReconcile", () => ({
 
 vi.mock("../sessionSyncStateHelpers", () => ({
   applyPostLoadResult: mocks.applyPostLoadResult,
+  capturePostLoadLifecycleSnapshot: mocks.capturePostLoadLifecycleSnapshot,
+  isPostLoadRunStatusSuperseded: vi.fn(() => false),
 }));
 
 vi.mock("../sessionSyncUtils", () => ({
@@ -80,8 +99,191 @@ function createActions() {
 describe("runSessionSwitchOrchestrator reconciliation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.turnActive.mockReturnValue(false);
+    mocks.generation.mockReturnValue(0);
+    mocks.revision.mockReset().mockResolvedValue("v1");
+    mocks.isCollaborationImportedSession.mockReturnValue(false);
     mocks.switchSession.mockResolvedValue(true);
     mocks.getEvents.mockResolvedValue([{ id: "visible" }]);
+  });
+
+  it.each(["stable", "changed", "aborted"])(
+    "hands off only a published stable cold load (%s)",
+    async (state) => {
+      mocks.switchSession.mockResolvedValue(false);
+      mocks.loadPersistedHistory.mockResolvedValue([{ id: "native-history" }]);
+      const controller = new AbortController();
+      if (state === "changed")
+        mocks.revision.mockResolvedValueOnce("v1").mockResolvedValue("v2");
+      mocks.hydrateSessionStoreBeforeDisplay.mockImplementationOnce(
+        async () => {
+          expect(mocks.dispatchLoadSession).not.toHaveBeenCalled();
+          if (state === "aborted") controller.abort();
+        }
+      );
+      const actions = createActions();
+      runSessionSwitchOrchestrator({
+        sessionId: "cli-cold-load",
+        adapter: {
+          category: "cli",
+          postLoad: vi.fn().mockResolvedValue({ runStatus: "idle" }),
+        } as unknown as SessionAdapter,
+        abortController: controller,
+        refs: { liveSessionIdRef: { current: "cli-cold-load" } },
+        actions,
+        setPendingPlanApprovals: vi.fn(),
+        logger: { error: vi.fn() } as never,
+      });
+      await vi.waitFor(() =>
+        expect(mocks.hydrateSessionStoreBeforeDisplay).toHaveBeenCalledOnce()
+      );
+      if (state === "aborted") {
+        expect(mocks.dispatchLoadSession).not.toHaveBeenCalled();
+      } else {
+        expect(mocks.dispatchLoadSession).toHaveBeenCalledWith(
+          expect.objectContaining({
+            storeHydrated: true,
+            nativeHistoryRevision:
+              state === "stable"
+                ? { revision: "v1", generation: 0 }
+                : undefined,
+          })
+        );
+      }
+      expect(actions.failSessionLoad).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(["stable", "new-turn", "finished-turn", "aborted"])(
+    "reloads a native cache hit containing only assistant answers (%s)",
+    async (state) => {
+      const sessionId = "cli-native-cached";
+      const cached = [{ id: "assistant-only" }];
+      const authoritative = [
+        { id: "catalog" },
+        { id: "native-user" },
+        { id: "answer" },
+      ];
+      mocks.getEvents.mockResolvedValue(cached);
+      const controller = new AbortController();
+      mocks.loadPersistedHistory.mockImplementationOnce(async () => {
+        if (state === "new-turn" || state === "finished-turn") {
+          mocks.generation.mockReturnValue(1);
+          mocks.turnActive.mockReturnValue(state === "new-turn");
+          mocks.getEvents.mockResolvedValue([{ id: "new-live-answer" }]);
+        }
+        if (state === "aborted") controller.abort();
+        return authoritative;
+      });
+      const adapter = {
+        category: "cli",
+        postLoad: vi.fn().mockResolvedValue({
+          runStatus: "completed",
+          transcriptSource: "native",
+        }),
+      } as unknown as SessionAdapter;
+      runSessionSwitchOrchestrator({
+        sessionId,
+        adapter,
+        abortController: controller,
+        refs: { liveSessionIdRef: { current: sessionId } },
+        actions: createActions(),
+        setPendingPlanApprovals: vi.fn(),
+        logger: { error: vi.fn() } as never,
+      });
+      await vi.waitFor(() =>
+        expect(mocks.loadPersistedHistory).toHaveBeenCalledOnce()
+      );
+      if (state === "stable") {
+        await vi.waitFor(() =>
+          expect(mocks.dispatchLoadSession).toHaveBeenCalledWith(
+            expect.objectContaining({
+              events: authoritative,
+              storeHydrated: true,
+              nativeHistoryRevision: { revision: "v1", generation: 0 },
+            })
+          )
+        );
+        expect(mocks.hydrateSessionStoreBeforeDisplay).toHaveBeenCalledWith(
+          sessionId,
+          authoritative
+        );
+      } else if (state === "new-turn" || state === "finished-turn") {
+        await vi.waitFor(() =>
+          expect(mocks.dispatchLoadSession).toHaveBeenCalledWith(
+            expect.objectContaining({ events: [{ id: "new-live-answer" }] })
+          )
+        );
+        expect(mocks.hydrateSessionStoreBeforeDisplay).not.toHaveBeenCalled();
+        expect(mocks.reconcileInFlightHistory).toHaveBeenCalledTimes(
+          state === "new-turn" ? 1 : 0
+        );
+      } else {
+        expect(mocks.hydrateSessionStoreBeforeDisplay).not.toHaveBeenCalled();
+        expect(mocks.dispatchLoadSession).not.toHaveBeenCalled();
+      }
+    }
+  );
+
+  it("preserves an active native cache without starting a replacement read", async () => {
+    mocks.turnActive.mockReturnValue(true);
+    runSessionSwitchOrchestrator({
+      sessionId: "cli-native-active",
+      adapter: {
+        category: "cli",
+        postLoad: vi.fn().mockResolvedValue({
+          runStatus: "running",
+          transcriptSource: "native",
+        }),
+      } as unknown as SessionAdapter,
+      abortController: new AbortController(),
+      refs: { liveSessionIdRef: { current: "cli-native-active" } },
+      actions: createActions(),
+      setPendingPlanApprovals: vi.fn(),
+      logger: { error: vi.fn() } as never,
+    });
+    await vi.waitFor(() =>
+      expect(mocks.dispatchLoadSession).toHaveBeenCalledOnce()
+    );
+    expect(mocks.loadPersistedHistory).not.toHaveBeenCalled();
+    expect(mocks.reconcileInFlightHistory).toHaveBeenCalledOnce();
+  });
+
+  it("uses the complete persisted projection on an imported-session cache hit", async () => {
+    const sessionId = "imported-session-retry";
+    const events = [{ id: "history" }, { id: "failed-delivery" }];
+    mocks.isCollaborationImportedSession.mockReturnValue(true);
+    mocks.loadPersistedHistory.mockResolvedValue(events);
+    const adapter = {
+      category: "agent",
+      postLoad: vi.fn().mockResolvedValue({ runStatus: "idle" }),
+    } as unknown as SessionAdapter;
+    runSessionSwitchOrchestrator({
+      sessionId,
+      adapter,
+      abortController: new AbortController(),
+      refs: { liveSessionIdRef: { current: sessionId } },
+      actions: createActions(),
+      setPendingPlanApprovals: vi.fn(),
+      logger: { error: vi.fn() } as never,
+    });
+
+    await vi.waitFor(() =>
+      expect(mocks.dispatchLoadSession).toHaveBeenCalledOnce()
+    );
+    expect(mocks.loadPersistedHistory).toHaveBeenCalledWith(
+      adapter,
+      sessionId,
+      expect.any(AbortSignal)
+    );
+    expect(mocks.hydrateSessionStoreBeforeDisplay).toHaveBeenCalledWith(
+      sessionId,
+      events
+    );
+    expect(mocks.dispatchLoadSession).toHaveBeenCalledWith(
+      expect.objectContaining({ events })
+    );
+    expect(mocks.loadInitialTurnWindow).not.toHaveBeenCalled();
   });
 
   it.each([

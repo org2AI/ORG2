@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanelAtom";
+import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 const ChatHistoryDisplayModeContext =
   createContext<ChatHistoryDisplayMode>("full");

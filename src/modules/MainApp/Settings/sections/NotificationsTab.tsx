@@ -5,9 +5,7 @@
  * system / dock-badge / test-notification blocks. Lives as a tab inside
  * the General section (formerly a top-level Settings section).
  *
- * The two slot components below are also referenced by the row slot
- * registry — keeping the composition here means the tab body matches
- * exactly what the old standalone section rendered.
+ * Composes the master toggle and advanced blocks directly.
  */
 import {
   SectionContainer,

@@ -11,7 +11,7 @@ import {
 import Message from "@src/components/Message";
 import CloudSessionShareDialog from "@src/features/Org2Cloud/CloudSessionShareDialog";
 import { useCloudSessionShareDialog } from "@src/features/Org2Cloud/CloudSessionShareDialog/useCloudSessionShareDialog";
-import { SessionImportExportModal } from "@src/scaffold/NavigationSidebar/connectors/SessionImportExportModal";
+import { SessionExportModal } from "@src/scaffold/NavigationSidebar/connectors/SessionExportModal";
 import type { Session } from "@src/store/session/sessionAtom/types";
 
 import LinkSessionToWorkItemModal from "../panels/LinkSessionToWorkItemModal";
@@ -23,7 +23,7 @@ const SessionRawTranscriptDialog = lazy(
 );
 
 type ExportActiveSession = ComponentProps<
-  typeof SessionImportExportModal
+  typeof SessionExportModal
 >["activeSession"];
 
 interface UseSessionActionModalsOptions {
@@ -90,13 +90,11 @@ export function useSessionActionModals({
         onClose={() => setLinkWorkItemModalOpen(false)}
         onLinked={handleSessionLinkedToWorkItem}
       />
-      <SessionImportExportModal
+      <SessionExportModal
         visible={isExportModalOpen}
-        mode="export"
         activeSession={activeSession}
         sessionFallbackName={t("chat.defaultTitle")}
         onClose={() => setExportModalOpen(false)}
-        onImported={() => undefined}
       />
       <CloudSessionShareDialog
         session={cloudShare.cloudShareSession}

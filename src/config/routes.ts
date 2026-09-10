@@ -18,8 +18,6 @@ import { ICON_NAME_MAP } from "./iconMapping";
 // Route group constants — imported for use below and re-exported for consumers
 import {
   APP_AGENT_ORGS_ROUTE,
-  APP_IDEA_ROUTES,
-  APP_SELECT_REPO_ROUTE,
   APP_SETTINGS_ROUTE,
   AUTH_ROUTES,
   MOBILE_REMOTE_ROUTE,
@@ -33,8 +31,6 @@ export type { RouteLabelContext, RouteInfo };
 
 export {
   APP_AGENT_ORGS_ROUTE,
-  APP_IDEA_ROUTES,
-  APP_SELECT_REPO_ROUTE,
   APP_SETTINGS_ROUTE,
   AUTH_ROUTES,
   MOBILE_REMOTE_ROUTE,
@@ -50,10 +46,8 @@ export const ROUTES = {
   workStation: WORK_STATION_ROUTES,
   auth: AUTH_ROUTES,
   app: {
-    selectRepo: APP_SELECT_REPO_ROUTE,
     agentOrgs: APP_AGENT_ORGS_ROUTE,
     settings: APP_SETTINGS_ROUTE,
-    ideas: APP_IDEA_ROUTES,
   },
 } as const;
 

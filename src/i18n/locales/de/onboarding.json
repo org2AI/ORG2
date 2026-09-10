@@ -1,7 +1,5 @@
 {
   "tutorials": {
-    "modalTitle": "Tutorials",
-    "start": "Start",
     "chrome": {
       "stepProgress": "Schritt {{current}} von {{total}}",
       "close": "Schließen",
@@ -16,7 +14,7 @@
     },
     "generalLayout": {
       "title": "Allgemeine Layout-Tour",
-      "description": "Lernen Sie die Sitzungsseitenleiste, das Chat-Panel, den Stationsmodus-Umschalter, die Workstation, das Dock und die App-Bereiche kennen.",
+      "description": "Lerne Chat-Panel, Runtime, Stationsmodus-Umschalter und Dock kennen.",
       "duration": "1 Minute",
       "steps": {
         "chat-panel": {
@@ -25,7 +23,7 @@
         },
         "runtime": {
           "title": "Laufzeit",
-          "body": "Hier siehst du deine Nutzung und den Laufzeitstatus. In einer Organisation kannst du außerdem den Synchronisierungsstatus der Mitglieder prüfen und ihre Codex-, Claude- und Cursor-Nutzung öffnen."
+          "body": "Hier siehst du deine Nutzung und den Laufzeitstatus. In einem Arbeitsbereich kannst du außerdem den Synchronisierungsstatus der Mitglieder prüfen und ihre Codex-, Claude- und Cursor-Nutzung öffnen."
         },
         "station-mode-pill": {
           "title": "Wechseln Sie die Station Modi",
@@ -34,41 +32,17 @@
         "dock": {
           "title": "Agent Station-Dock",
           "body": "Das Dock wechselt zwischen Apps innerhalb der Station. Die Tour deaktiviert vorübergehend das automatische Ausblenden, sodass diese Steuerelemente sichtbar bleiben."
-        },
-        "all-tabs": {
-          "title": "Alle Registerkarten",
-          "body": "Das erste Docksymbol zeigt alle geöffneten Registerkarten zusammen, unabhängig davon, welche Workstation-App sie besitzt."
-        },
-        "code-editor": {
-          "title": "Code-Editor",
-          "body": "Verwenden Sie den Code-Editor für Dateien, Diffs, Terminals, Quellcodeverwaltung und Codierungsänderungen, die während eines vorgenommen wurden Sitzung."
-        },
-        "browser": {
-          "title": "Browser",
-          "body": "Verwenden Sie den Browser für Webseiten, Vorschauen, App-Tests und browserbasierte Untersuchungen neben dem Chat."
-        },
-        "projects": {
-          "title": "Projekte",
-          "body": "Verwenden Sie Projekte, um Arbeitselemente, Pläne und Projektstatus zu verfolgen, die mit dem aktuellen Arbeitsbereich verbunden sind."
         }
       }
     },
     "codeEditor": {
       "title": "Code-Editor-Tour",
-      "description": "Lernen Sie Registerkarten, Repo- und Branch-Wechsel, Quellcodeverwaltung, Git-Verlauf und das Projekt-Dashboard kennen.",
+      "description": "Lerne Tabs, Editor-Arbeitsbereich, Quellcodeverwaltung und Git-Verlauf kennen.",
       "duration": "2 Minuten",
       "steps": {
         "tabs": {
           "title": "Code-Editor-Registerkarten",
           "body": "Tabs sammeln die Dateien, Unterschiede, Terminals, Quellcodeverwaltungsansichten und Dashboards, die Sie während der Arbeit öffnen im Repo."
-        },
-        "repo-selector": {
-          "title": "Repos erstellen oder wechseln",
-          "body": "Verwenden Sie den Repo-Selektor, um das aktive Repo zu wechseln oder ein anderes Repository oder einen anderen Arbeitsbereich hinzuzufügen."
-        },
-        "branch-selector": {
-          "title": "Zweige ändern",
-          "body": "Der Zweigselektor zeigt den aktuellen Git-Zweig an und öffnet den Zweigwechsel oder den Erstellungsfluss für dieses Repo."
         },
         "editor-surface": {
           "title": "Editor-Arbeitsbereich",
@@ -85,12 +59,15 @@
         "git-history": {
           "title": "Git-Verlauf",
           "body": "Git-Verlauf schaltet die Quellcodeverwaltung in den Commit-Verlaufsmodus, sodass Sie frühere Commits und damit verbundene Änderungen überprüfen können."
-        },
-        "dashboard": {
-          "title": "Code-Editor-Dashboard",
-          "body": "Das Dashboard ist die Startseite des Code-Editors für Arbeitsbereiche. Verwenden Sie es, um Repos hinzuzufügen, Repo-Details zu öffnen und in die Projektarbeit einzusteigen."
         }
       }
     }
+  },
+  "discovery": {
+    "title": "Einstieg und neue Funktionen",
+    "getStarted": "Erste Schritte",
+    "newFeatures": "Neue Funktionen",
+    "branchesTitle": "Repository-Branches",
+    "branchesDescription": "Wechsle Repository-Branches direkt in Spotlight."
   }
 }

@@ -3,64 +3,46 @@
 //! current-owner task-assignment snapshot.
 
 use rusqlite::{params, Connection, OptionalExtension};
-use std::collections::HashSet;
 
 use crate::coordination::agent_org_payload_limits as limits;
 use database::db::{get_connection, with_sessions_writer};
 
-use super::message::AgentMessage;
 #[cfg(test)]
 use super::record::AgentInboxRecipientCounts;
 use super::record::{
     row_to_preview_record, row_to_record, AgentInboxDeliveryResolution,
     AgentInboxDeliveryResolutionKind, AgentInboxPage, AgentInboxPreviewRecord, AgentInboxRecord,
-    AgentInboxUnreadRecipientCounts, ResolveInboxDeliveryError, ResolveInboxDeliveryParams,
+    AgentInboxUnreadRecipientCounts, InboxRepairEligibility, ResolveInboxDeliveryError,
+    ResolveInboxDeliveryParams,
 };
 use super::{
     AgentInboxStore, MAX_INBOX_HISTORY_PAGE_BYTES, MAX_INBOX_HISTORY_PAGE_ROWS,
     MAX_RUN_INBOX_PREVIEW_CHARS, MAX_RUN_INBOX_SNAPSHOT_ROWS,
 };
 
+type ReplacementInboxSnapshot = (
+    Option<String>,
+    Option<String>,
+    bool,
+    String,
+    String,
+    Option<String>,
+);
+
 pub(super) const UNREAD_COUNTS_BY_RECIPIENT_SQL: &str = "SELECT recipient_agent_id,
             recipient_member_id,
             COUNT(*) AS unread_count,
             MAX(id) AS max_unread_id
-     FROM agent_inbox INDEXED BY idx_agent_inbox_run_unread_recipient
+     FROM agent_org_runtime_inbox INDEXED BY idx_agent_org_runtime_inbox_run_unread_recipient
      WHERE org_run_id = ?1
+       AND delivery_class='formal_work'
        AND read_at IS NULL
        AND NOT EXISTS (
-            SELECT 1 FROM agent_inbox_delivery_resolutions resolution
-            WHERE resolution.inbox_id=agent_inbox.id
+            SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+            WHERE resolution.inbox_id=agent_org_runtime_inbox.id
        )
      GROUP BY recipient_member_id, recipient_agent_id
      ORDER BY recipient_member_id ASC, recipient_agent_id ASC";
-
-pub(super) fn task_assignment_lookup_sql() -> String {
-    let payload_max = limits::AGENT_INBOX_PAYLOAD_MAX_BYTES;
-    format!(
-        "SELECT payload_json
-         FROM agent_inbox INDEXED BY idx_agent_inbox_run_task_assignment_v4
-         WHERE org_run_id=?1
-           AND recipient_member_id=?2
-           AND payload_kind='task_assigned'
-           AND CASE WHEN length(CAST(payload_json AS BLOB))<={payload_max}
-                    THEN json_valid(payload_json) ELSE 0 END
-           AND json_type(
-                CASE WHEN length(CAST(payload_json AS BLOB))<={payload_max}
-                               AND json_valid(payload_json)
-                     THEN payload_json ELSE '{{}}' END,
-                '$.task_id'
-              )='text'
-           AND json_extract(
-                CASE WHEN length(CAST(payload_json AS BLOB))<={payload_max}
-                               AND json_valid(payload_json)
-                     THEN payload_json ELSE '{{}}' END,
-                '$.task_id'
-              )=?3
-         ORDER BY id DESC
-         LIMIT 1"
-    )
-}
 
 fn inbox_recipient_is_permanently_unavailable(
     conn: &Connection,
@@ -101,6 +83,107 @@ fn inbox_recipient_is_permanently_unavailable(
     )
 }
 
+fn repair_eligibility_with_connection(
+    conn: &Connection,
+    org_run_id: &str,
+    inbox_id: i64,
+) -> Result<Option<InboxRepairEligibility>, String> {
+    type RepairShape = (
+        Option<String>,
+        Option<String>,
+        String,
+        String,
+        Option<String>,
+        bool,
+        bool,
+    );
+    let shape: Option<RepairShape> = conn
+        .query_row(
+            "SELECT inbox.recipient_member_id,inbox.sender_member_id,
+                    inbox.delivery_class,inbox.payload_kind,inbox.read_at,
+                    EXISTS(
+                        SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                        WHERE resolution.inbox_id=inbox.id
+                    ),
+                    EXISTS(
+                        SELECT 1 FROM agent_org_runtime_inbox_task_bindings binding
+                        WHERE binding.inbox_id=inbox.id
+                    )
+             FROM agent_org_runtime_inbox inbox
+             WHERE inbox.org_run_id=?1 AND inbox.id=?2
+             LIMIT 1",
+            params![org_run_id, inbox_id],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                    row.get(6)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|error| error.to_string())?;
+    let Some((
+        recipient_member_id,
+        sender_member_id,
+        delivery_class,
+        payload_kind,
+        read_at,
+        is_resolved,
+        has_task_binding,
+    )) = shape
+    else {
+        return Ok(None);
+    };
+    if delivery_class != "formal_work" {
+        return Ok(Some(InboxRepairEligibility::NotRepairable {
+            reason: "not_formal_work".to_string(),
+        }));
+    }
+    if read_at.is_some() {
+        return Ok(Some(InboxRepairEligibility::NotRepairable {
+            reason: "already_delivered".to_string(),
+        }));
+    }
+    if is_resolved {
+        return Ok(Some(InboxRepairEligibility::NotRepairable {
+            reason: "already_resolved".to_string(),
+        }));
+    }
+    if inbox_recipient_is_permanently_unavailable(conn, org_run_id, recipient_member_id.as_deref())?
+    {
+        return Ok(Some(
+            InboxRepairEligibility::PermanentlyUnavailableRecipient,
+        ));
+    }
+
+    use crate::coordination::agent_org_runs::{AgentOrgRunStore, COORDINATOR_MEMBER_ID};
+    let roster = AgentOrgRunStore::snapshot_member_ids_with_connection(conn, org_run_id)?;
+    let recipient_is_canonical_worker = recipient_member_id
+        .as_deref()
+        .filter(|member_id| *member_id != COORDINATOR_MEMBER_ID)
+        .is_some_and(|member_id| {
+            roster
+                .as_ref()
+                .is_some_and(|members| members.contains(member_id))
+        });
+    if delivery_class == "formal_work"
+        && payload_kind == "plain"
+        && sender_member_id.as_deref() == Some(COORDINATOR_MEMBER_ID)
+        && recipient_is_canonical_worker
+        && !has_task_binding
+    {
+        return Ok(Some(InboxRepairEligibility::UnboundCoordinatorTaskMessage));
+    }
+    Ok(Some(InboxRepairEligibility::NotRepairable {
+        reason: "recoverable_canonical_delivery".to_string(),
+    }))
+}
+
 fn load_delivery_resolution(
     conn: &Connection,
     org_run_id: &str,
@@ -121,7 +204,7 @@ fn load_delivery_resolution(
             "SELECT inbox_id, org_run_id, resolution_kind,
                     resolved_by_member_id, reason,
                     replacement_inbox_id, replacement_task_id, created_at
-             FROM agent_inbox_delivery_resolutions
+             FROM agent_org_runtime_inbox_delivery_resolutions
              WHERE inbox_id=?1 AND org_run_id=?2
              LIMIT 1",
             params![inbox_id, org_run_id],
@@ -185,7 +268,7 @@ impl AgentInboxStore {
                         request_id,
                         created_at,
                         read_at
-                 FROM agent_inbox
+                 FROM agent_org_runtime_inbox
                  WHERE org_run_id = ?1
                  ORDER BY id ASC",
             )
@@ -245,7 +328,7 @@ impl AgentInboxStore {
                         CASE WHEN request_id IS NULL THEN NULL ELSE substr(request_id,1,1000) END,
                         substr(created_at,1,64),
                         CASE WHEN read_at IS NULL THEN NULL ELSE substr(read_at,1,64) END
-                 FROM agent_inbox
+                 FROM agent_org_runtime_inbox
                  WHERE org_run_id=?1 AND id>?2
                  ORDER BY id ASC
                  LIMIT ?3",
@@ -303,7 +386,7 @@ impl AgentInboxStore {
         let conn = get_connection().map_err(|err| err.to_string())?;
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_inbox WHERE org_run_id=?1",
+                "SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE org_run_id=?1",
                 params![org_run_id],
                 |row| row.get(0),
             )
@@ -357,7 +440,7 @@ impl AgentInboxStore {
                     CASE WHEN request_id IS NULL THEN NULL ELSE substr(request_id,1,1000) END,
                     substr(created_at,1,64),
                     CASE WHEN read_at IS NULL THEN NULL ELSE substr(read_at,1,64) END
-             FROM agent_inbox
+             FROM agent_org_runtime_inbox
              WHERE org_run_id=?1 AND id=?2
              LIMIT 1",
             params![
@@ -380,11 +463,48 @@ impl AgentInboxStore {
         load_delivery_resolution(&conn, org_run_id, inbox_id)
     }
 
+    pub fn repair_eligibility_for_inbox(
+        org_run_id: &str,
+        inbox_id: i64,
+    ) -> Result<Option<InboxRepairEligibility>, String> {
+        if inbox_id <= 0 {
+            return Err("inbox_id must be a positive integer".to_string());
+        }
+        let conn = get_connection().map_err(|error| error.to_string())?;
+        repair_eligibility_with_connection(&conn, org_run_id, inbox_id)
+    }
+
+    pub(crate) fn repair_eligibility_for_inbox_with_connection(
+        conn: &Connection,
+        org_run_id: &str,
+        inbox_id: i64,
+    ) -> Result<Option<InboxRepairEligibility>, String> {
+        repair_eligibility_with_connection(conn, org_run_id, inbox_id)
+    }
+
     /// Resolve an otherwise-undeliverable source row without falsifying its
     /// read receipt. Only the canonical coordinator may call this store path;
     /// the LLM tool also enforces that authority before entering the blocking
     /// transaction.
     pub fn resolve_delivery(
+        params: ResolveInboxDeliveryParams,
+    ) -> Result<AgentInboxDeliveryResolution, ResolveInboxDeliveryError> {
+        let storage = ResolveInboxDeliveryError::Storage;
+        with_sessions_writer(
+            || -> Result<AgentInboxDeliveryResolution, ResolveInboxDeliveryError> {
+                let mut conn = get_connection().map_err(|err| storage(err.to_string()))?;
+                let tx = conn
+                    .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                    .map_err(|err| storage(err.to_string()))?;
+                let resolution = Self::resolve_delivery_in_tx(&tx, params)?;
+                tx.commit().map_err(|err| storage(err.to_string()))?;
+                Ok(resolution)
+            },
+        )
+    }
+
+    pub(crate) fn resolve_delivery_in_tx(
+        conn: &Connection,
         params: ResolveInboxDeliveryParams,
     ) -> Result<AgentInboxDeliveryResolution, ResolveInboxDeliveryError> {
         use crate::coordination::agent_org_runs::{
@@ -446,185 +566,220 @@ impl AgentInboxStore {
             }
         }
 
-        with_sessions_writer(
-            || -> Result<AgentInboxDeliveryResolution, ResolveInboxDeliveryError> {
-                let mut conn = get_connection().map_err(|err| storage(err.to_string()))?;
-                let tx = conn
-                    .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-                    .map_err(|err| storage(err.to_string()))?;
-                let run_status =
-                    AgentOrgRunStore::get_run_status_with_connection(&tx, &params.org_run_id)
-                        .map_err(storage)?;
-                if run_status != Some(AgentOrgRunStatus::Running) {
-                    return Err(constraint(format!(
-                        "Agent Org run {} is not Running; Inbox delivery repair was not applied",
-                        params.org_run_id
-                    )));
-                }
+        let run_status = AgentOrgRunStore::get_run_status_with_connection(conn, &params.org_run_id)
+            .map_err(storage)?;
+        if run_status != Some(AgentOrgRunStatus::Running) {
+            if run_status == Some(AgentOrgRunStatus::Archived) {
+                return Err(constraint(format!(
+                    "team_archived: Agent Org run {} is read-only",
+                    params.org_run_id
+                )));
+            }
+            return Err(constraint(format!(
+                "Agent Org run {} is not Running; Inbox delivery repair was not applied",
+                params.org_run_id
+            )));
+        }
 
-                let source: Option<(Option<String>, Option<String>)> = tx
-                    .query_row(
-                        "SELECT recipient_member_id, read_at
-                     FROM agent_inbox
-                     WHERE id=?1 AND org_run_id=?2
+        let source: Option<(Option<String>, Option<String>)> = conn
+            .query_row(
+                "SELECT recipient_member_id, read_at
+                     FROM agent_org_runtime_inbox
+                     WHERE id=?1 AND org_run_id=?2 AND delivery_class='formal_work'
                      LIMIT 1",
-                        params![params.inbox_id, &params.org_run_id],
-                        |row| Ok((row.get(0)?, row.get(1)?)),
-                    )
-                    .optional()
-                    .map_err(|err| storage(err.to_string()))?;
-                let Some((source_recipient_member_id, read_at)) = source else {
-                    return Err(constraint(format!(
+                params![params.inbox_id, &params.org_run_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()
+            .map_err(|err| storage(err.to_string()))?;
+        let Some((_source_recipient_member_id, read_at)) = source else {
+            return Err(constraint(format!(
+                "Inbox row {} does not belong to Agent Org run {}",
+                params.inbox_id, params.org_run_id
+            )));
+        };
+        if read_at.is_some() {
+            return Err(constraint(format!(
+                "Inbox row {} was already delivered and cannot be resolved as undeliverable",
+                params.inbox_id
+            )));
+        }
+
+        if let Some(existing) =
+            load_delivery_resolution(conn, &params.org_run_id, params.inbox_id).map_err(storage)?
+        {
+            let is_same = existing.resolution_kind == params.resolution_kind
+                && existing.resolved_by_member_id == params.resolved_by_member_id
+                && existing.reason == params.reason
+                && existing.replacement_inbox_id == params.replacement_inbox_id
+                && existing.replacement_task_id == params.replacement_task_id;
+            if is_same {
+                return Ok(existing);
+            }
+            return Err(constraint(format!(
+                "Inbox row {} already has a different delivery resolution",
+                params.inbox_id
+            )));
+        }
+
+        // Re-evaluate the store-owned eligibility in the same writer
+        // transaction that appends the resolution. Model prose or an earlier
+        // inspection can never authorize a later destructive correction.
+        let eligibility =
+            repair_eligibility_with_connection(conn, &params.org_run_id, params.inbox_id)
+                .map_err(storage)?
+                .ok_or_else(|| {
+                    constraint(format!(
                         "Inbox row {} does not belong to Agent Org run {}",
                         params.inbox_id, params.org_run_id
-                    )));
-                };
-                if read_at.is_some() {
-                    return Err(constraint(format!(
-                    "Inbox row {} was already delivered and cannot be resolved as undeliverable",
-                    params.inbox_id
-                )));
-                }
+                    ))
+                })?;
+        if !eligibility.is_repairable() {
+            return Err(constraint(format!(
+                "Inbox row {} is not repairable: {}. Resume/retry healthy delivery instead of discarding it.",
+                params.inbox_id,
+                eligibility.reason_code()
+            )));
+        }
 
-                if let Some(existing) =
-                    load_delivery_resolution(&tx, &params.org_run_id, params.inbox_id)
-                        .map_err(storage)?
-                {
-                    let is_same = existing.resolution_kind == params.resolution_kind
-                        && existing.resolved_by_member_id == params.resolved_by_member_id
-                        && existing.reason == params.reason
-                        && existing.replacement_inbox_id == params.replacement_inbox_id
-                        && existing.replacement_task_id == params.replacement_task_id;
-                    if is_same {
-                        tx.commit().map_err(|err| storage(err.to_string()))?;
-                        return Ok(existing);
-                    }
-                    return Err(constraint(format!(
-                        "Inbox row {} already has a different delivery resolution",
-                        params.inbox_id
-                    )));
-                }
-
-                // A model-visible repair tool must not be able to discard healthy
-                // work merely because the coordinator changed its mind. Only
-                // identities that are provably outside a deliverable production
-                // path may be resolved here. Recoverable states (Idle, terminal
-                // retry candidates, Pending, Paused, Running/waiting) must instead
-                // be resumed/retried or explicitly archived by the user first.
-                let permanently_unavailable = inbox_recipient_is_permanently_unavailable(
-                    &tx,
-                    &params.org_run_id,
-                    source_recipient_member_id.as_deref(),
-                )
-                .map_err(storage)?;
-                if !permanently_unavailable {
-                    return Err(constraint(format!(
-                    "Inbox row {} still has a recoverable canonical recipient. Resume/retry that recipient instead of discarding or superseding healthy delivery; archive it explicitly first only if the user has decided it is permanently unavailable.",
-                    params.inbox_id
-                )));
-                }
-
-                if let Some(replacement_inbox_id) = params.replacement_inbox_id {
-                    let replacement: Option<(Option<String>, Option<String>, bool)> = tx
-                        .query_row(
-                            "SELECT inbox.recipient_member_id,
+        if let Some(replacement_inbox_id) = params.replacement_inbox_id {
+            let replacement: Option<ReplacementInboxSnapshot> = conn
+                .query_row(
+                    "SELECT inbox.recipient_member_id,
                                 inbox.read_at,
                                 EXISTS(
                                     SELECT 1
-                                    FROM agent_inbox_delivery_resolutions resolution
+                                    FROM agent_org_runtime_inbox_delivery_resolutions resolution
                                     WHERE resolution.inbox_id=inbox.id
-                                )
-                         FROM agent_inbox inbox
+                                ),
+                                inbox.delivery_class,
+                                inbox.payload_kind,
+                                inbox.sender_member_id
+                         FROM agent_org_runtime_inbox inbox
                          WHERE inbox.id=?1 AND inbox.org_run_id=?2
+                           AND inbox.delivery_class='formal_work'
                          LIMIT 1",
-                            params![replacement_inbox_id, &params.org_run_id],
-                            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-                        )
-                        .optional()
-                        .map_err(|err| storage(err.to_string()))?;
-                    let Some((Some(replacement_member_id), replacement_read_at, is_resolved)) =
-                        replacement
-                    else {
-                        return Err(constraint(format!(
+                    params![replacement_inbox_id, &params.org_run_id],
+                    |row| {
+                        Ok((
+                            row.get(0)?,
+                            row.get(1)?,
+                            row.get(2)?,
+                            row.get(3)?,
+                            row.get(4)?,
+                            row.get(5)?,
+                        ))
+                    },
+                )
+                .optional()
+                .map_err(|err| storage(err.to_string()))?;
+            let Some((
+                Some(replacement_member_id),
+                replacement_read_at,
+                is_resolved,
+                replacement_delivery_class,
+                replacement_payload_kind,
+                replacement_sender_member_id,
+            )) = replacement
+            else {
+                return Err(constraint(format!(
                         "replacement Inbox row {replacement_inbox_id} must exist in the same run and name a canonical recipient_member_id"
                     )));
-                    };
-                    if is_resolved {
-                        return Err(constraint(format!(
+            };
+            if is_resolved {
+                return Err(constraint(format!(
                         "replacement Inbox row {replacement_inbox_id} already has a delivery resolution and cannot be used as a live replacement"
                     )));
-                    }
-                    let replacement_is_unavailable = inbox_recipient_is_permanently_unavailable(
-                        &tx,
-                        &params.org_run_id,
-                        Some(&replacement_member_id),
-                    )
-                    .map_err(storage)?;
-                    if replacement_read_at.is_none() && replacement_is_unavailable {
-                        return Err(constraint(format!(
+            }
+            let replacement_is_unavailable = inbox_recipient_is_permanently_unavailable(
+                conn,
+                &params.org_run_id,
+                Some(&replacement_member_id),
+            )
+            .map_err(storage)?;
+            if replacement_read_at.is_none() && replacement_is_unavailable {
+                return Err(constraint(format!(
                         "replacement Inbox row {replacement_inbox_id} has not been delivered and its recipient {replacement_member_id:?} is permanently unavailable"
                     )));
-                    }
+            }
+            let replacement_requires_task_binding = replacement_delivery_class == "formal_work"
+                && replacement_payload_kind == "plain"
+                && replacement_sender_member_id.as_deref() == Some(COORDINATOR_MEMBER_ID)
+                && replacement_member_id != COORDINATOR_MEMBER_ID;
+            if replacement_requires_task_binding {
+                let has_binding: bool = conn
+                    .query_row(
+                        "SELECT EXISTS(
+                             SELECT 1 FROM agent_org_runtime_inbox_task_bindings
+                             WHERE inbox_id=?1 AND org_run_id=?2
+                         )",
+                        params![replacement_inbox_id, &params.org_run_id],
+                        |row| row.get(0),
+                    )
+                    .map_err(|error| storage(error.to_string()))?;
+                if !has_binding {
+                    return Err(constraint(format!(
+                        "replacement Inbox row {replacement_inbox_id} is a Coordinator formal task message without a durable task binding"
+                    )));
                 }
-                if let Some(replacement_task_id) = params.replacement_task_id.as_deref() {
-                    let replacement_exists: bool = tx
-                        .query_row(
-                            "SELECT EXISTS(
-                             SELECT 1 FROM agent_org_tasks
+            }
+        }
+        if let Some(replacement_task_id) = params.replacement_task_id.as_deref() {
+            let replacement_exists: bool = conn
+                .query_row(
+                    "SELECT EXISTS(
+                             SELECT 1 FROM agent_org_runtime_tasks
                              WHERE id=?1 AND org_run_id=?2
                          )",
-                            params![replacement_task_id, &params.org_run_id],
-                            |row| row.get(0),
-                        )
-                        .map_err(|err| storage(err.to_string()))?;
-                    if !replacement_exists {
-                        return Err(constraint(format!(
-                        "replacement task {replacement_task_id:?} does not exist in Agent Org run {}",
-                        params.org_run_id
-                    )));
-                    }
-                }
+                    params![replacement_task_id, &params.org_run_id],
+                    |row| row.get(0),
+                )
+                .map_err(|err| storage(err.to_string()))?;
+            if !replacement_exists {
+                return Err(constraint(format!(
+                    "replacement task {replacement_task_id:?} does not exist in Agent Org run {}",
+                    params.org_run_id
+                )));
+            }
+        }
 
-                let created_at = chrono::Utc::now().to_rfc3339();
-                tx.execute(
-                    "INSERT INTO agent_inbox_delivery_resolutions (
+        let created_at = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "INSERT INTO agent_org_runtime_inbox_delivery_resolutions (
                     inbox_id, org_run_id, resolution_kind,
                     resolved_by_member_id, reason,
                     replacement_inbox_id, replacement_task_id, created_at
                  ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-                    params![
-                        params.inbox_id,
-                        &params.org_run_id,
-                        params.resolution_kind.as_str(),
-                        &params.resolved_by_member_id,
-                        &params.reason,
-                        params.replacement_inbox_id,
-                        params.replacement_task_id.as_deref(),
-                        &created_at,
-                    ],
-                )
-                .map_err(|err| storage(err.to_string()))?;
-                // A Session that materialized the old row before this repair must
-                // not later acknowledge it as delivered. The guarded mark-read
-                // path also rechecks the resolution table.
-                tx.execute(
-                    "DELETE FROM agent_inbox_materializations WHERE inbox_id=?1",
-                    params![params.inbox_id],
-                )
-                .map_err(|err| storage(err.to_string()))?;
-                tx.commit().map_err(|err| storage(err.to_string()))?;
-                Ok(AgentInboxDeliveryResolution {
-                    inbox_id: params.inbox_id,
-                    org_run_id: params.org_run_id,
-                    resolution_kind: params.resolution_kind,
-                    resolved_by_member_id: params.resolved_by_member_id,
-                    reason: params.reason,
-                    replacement_inbox_id: params.replacement_inbox_id,
-                    replacement_task_id: params.replacement_task_id,
-                    created_at,
-                })
-            },
+            params![
+                params.inbox_id,
+                &params.org_run_id,
+                params.resolution_kind.as_str(),
+                &params.resolved_by_member_id,
+                &params.reason,
+                params.replacement_inbox_id,
+                params.replacement_task_id.as_deref(),
+                &created_at,
+            ],
         )
+        .map_err(|err| storage(err.to_string()))?;
+        // A Session that materialized the old row before this repair must
+        // not later acknowledge it as delivered. The guarded mark-read
+        // path also rechecks the resolution table.
+        conn.execute(
+            "DELETE FROM agent_org_runtime_inbox_materializations WHERE inbox_id=?1",
+            params![params.inbox_id],
+        )
+        .map_err(|err| storage(err.to_string()))?;
+        Ok(AgentInboxDeliveryResolution {
+            inbox_id: params.inbox_id,
+            org_run_id: params.org_run_id,
+            resolution_kind: params.resolution_kind,
+            resolved_by_member_id: params.resolved_by_member_id,
+            reason: params.reason,
+            replacement_inbox_id: params.replacement_inbox_id,
+            replacement_task_id: params.replacement_task_id,
+            created_at,
+        })
     }
 
     /// Return a bounded tail of one run's inbox history in chronological
@@ -677,7 +832,7 @@ impl AgentInboxStore {
                             request_id,
                             created_at,
                             read_at
-                     FROM agent_inbox
+                     FROM agent_org_runtime_inbox
                      WHERE org_run_id = ?1
                      ORDER BY id DESC
                      LIMIT ?2
@@ -788,11 +943,11 @@ impl AgentInboxStore {
                             ELSE NULL END AS display_preview,
                             (
                                 SELECT resolution.resolution_kind
-                                FROM agent_inbox_delivery_resolutions resolution
-                                WHERE resolution.inbox_id=agent_inbox.id
+                                FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                                WHERE resolution.inbox_id=agent_org_runtime_inbox.id
                                 LIMIT 1
                             ) AS delivery_resolution
-                     FROM agent_inbox
+                     FROM agent_org_runtime_inbox
                      WHERE org_run_id = ?1
                      ORDER BY id DESC
                      LIMIT ?2
@@ -838,14 +993,14 @@ impl AgentInboxStore {
                 "SELECT recipient_agent_id,
                         recipient_member_id,
                         COUNT(*) AS activity_count,
-                        SUM(CASE WHEN read_at IS NULL
+                        SUM(CASE WHEN delivery_class='formal_work' AND read_at IS NULL
                                       AND NOT EXISTS (
                                           SELECT 1
-                                          FROM agent_inbox_delivery_resolutions resolution
-                                          WHERE resolution.inbox_id=agent_inbox.id
+                                          FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                                          WHERE resolution.inbox_id=agent_org_runtime_inbox.id
                                       )
                                  THEN 1 ELSE 0 END) AS unread_count
-                 FROM agent_inbox
+                 FROM agent_org_runtime_inbox
                  WHERE org_run_id = ?1
                  GROUP BY recipient_member_id, recipient_agent_id
                  ORDER BY recipient_member_id ASC, recipient_agent_id ASC",
@@ -897,106 +1052,6 @@ impl AgentInboxStore {
         Ok(out)
     }
 
-    /// Load only the durable task ids that have ever received a TaskAssigned
-    /// envelope in this run. Recovery uses this instead of decoding the full
-    /// inbox history in Rust.
-    #[cfg(test)]
-    pub(super) fn task_assignment_ids_by_run(org_run_id: &str) -> Result<HashSet<String>, String> {
-        let conn = get_connection().map_err(|err| err.to_string())?;
-        let mut stmt = conn
-            .prepare(
-                "SELECT DISTINCT json_extract(payload_json, '$.task_id')
-                 FROM agent_inbox
-                 WHERE org_run_id=?1
-                   AND payload_kind='task_assigned'
-                   AND json_valid(payload_json)
-                   AND json_type(payload_json, '$.task_id')='text'",
-            )
-            .map_err(|err| err.to_string())?;
-        let rows = stmt
-            .query_map(params![org_run_id], |row| row.get::<_, String>(0))
-            .map_err(|err| err.to_string())?;
-        let mut task_ids = HashSet::new();
-        for row in rows {
-            let task_id = row.map_err(|err| err.to_string())?;
-            if !task_id.trim().is_empty() {
-                task_ids.insert(task_id);
-            }
-        }
-        Ok(task_ids)
-    }
-
-    /// Return only current open task ids whose *current owner* has a valid,
-    /// durable `TaskAssigned` envelope. The expression index turns this into
-    /// bounded lookups from the current task board instead of re-running
-    /// `json_extract` over the run's entire historical Inbox on every
-    /// watchdog tick. Rust still performs the authoritative typed decode so
-    /// a hand-edited or partially-written JSON object cannot suppress a
-    /// legitimate redelivery.
-    pub(crate) fn task_assignment_ids_for_open_tasks_with_connection(
-        conn: &Connection,
-        org_run_id: &str,
-    ) -> Result<HashSet<String>, String> {
-        let mut task_stmt = conn
-            .prepare(
-                "SELECT id, owner
-                 FROM agent_org_tasks
-                 WHERE org_run_id=?1
-                   AND status IN ('pending','in_progress')
-                   AND owner IS NOT NULL
-                 ORDER BY id ASC
-                 LIMIT ?2",
-            )
-            .map_err(|err| err.to_string())?;
-        let open_tasks = task_stmt
-            .query_map(
-                params![
-                    org_run_id,
-                    (crate::coordination::agent_org_payload_limits::TASK_RUN_MAX_TASKS + 1) as i64,
-                ],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            )
-            .map_err(|err| err.to_string())?
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| err.to_string())?;
-        if open_tasks.len() > crate::coordination::agent_org_payload_limits::TASK_RUN_MAX_TASKS {
-            return Err(
-                "Agent Org task board exceeds the supported assignment snapshot limit".to_string(),
-            );
-        }
-
-        // At most 200 exact probes are preferable to one nominally joined
-        // query here. SQLite does not bind an outer task.id into the third
-        // expression-index column and otherwise scans historical Inbox rows
-        // plus a temp sort. One reused prepared statement with ?3 uses all
-        // `(run, member, task_id)` keys and traverses rowid newest-first.
-        let lookup_sql = task_assignment_lookup_sql();
-        let mut assignment_stmt = conn.prepare(&lookup_sql).map_err(|err| err.to_string())?;
-        let mut task_ids = HashSet::new();
-        for (task_id, owner) in open_tasks {
-            let payload_json = assignment_stmt
-                .query_row(params![org_run_id, &owner, &task_id], |row| {
-                    row.get::<_, String>(0)
-                })
-                .optional()
-                .map_err(|err| err.to_string())?;
-            let Some(payload_json) = payload_json else {
-                continue;
-            };
-            let Ok(message) = serde_json::from_str::<AgentMessage>(&payload_json) else {
-                continue;
-            };
-            if message.validate().is_err() {
-                continue;
-            }
-            if matches!(message, AgentMessage::TaskAssigned { task_id: ref id, .. } if id == &task_id)
-            {
-                task_ids.insert(task_id);
-            }
-        }
-        Ok(task_ids)
-    }
-
     /// Compact identity of the current unread set without loading payloads.
     /// Useful for coalescing/backoff decisions; `None` means no unread rows.
     pub fn unread_fingerprint_for_member(
@@ -1018,13 +1073,14 @@ impl AgentInboxStore {
         let (max_id, count): (Option<i64>, i64) = conn
             .query_row(
                 "SELECT MAX(id), COUNT(*)
-                 FROM agent_inbox
+                 FROM agent_org_runtime_inbox
                  WHERE recipient_member_id=?1
                    AND org_run_id=?2
+                   AND delivery_class='formal_work'
                    AND read_at IS NULL
                    AND NOT EXISTS (
-                       SELECT 1 FROM agent_inbox_delivery_resolutions resolution
-                       WHERE resolution.inbox_id=agent_inbox.id
+                       SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                       WHERE resolution.inbox_id=agent_org_runtime_inbox.id
                    )",
                 params![recipient_member_id, org_run_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),

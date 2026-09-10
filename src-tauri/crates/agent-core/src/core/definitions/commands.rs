@@ -74,31 +74,26 @@ pub async fn agent_definitions_remove(
 pub async fn agent_orgs_list(
     state: tauri::State<'_, std::sync::Arc<AgentOrgsStore>>,
 ) -> Result<Vec<OrgDefinition>, String> {
-    let orgs = state
-        .orgs
-        .lock()
-        .map_err(|err| format!("Lock error: {}", err))?;
-    Ok(orgs.clone())
+    state.list()
+}
+
+pub(in crate::core::definitions) struct TrustedAgentOrgSettingsActor {
+    _private: (),
 }
 
 #[tauri::command]
-pub async fn agent_orgs_add(
+pub async fn agent_orgs_save_trusted_settings(
     state: tauri::State<'_, std::sync::Arc<AgentOrgsStore>>,
     org_json: String,
-) -> Result<String, String> {
+) -> Result<OrgDefinition, String> {
     let org: OrgDefinition =
         serde_json::from_str(&org_json).map_err(|err| format!("Invalid org JSON: {}", err))?;
-    state.insert(org)
-}
-
-#[tauri::command]
-pub async fn agent_orgs_update(
-    state: tauri::State<'_, std::sync::Arc<AgentOrgsStore>>,
-    org_json: String,
-) -> Result<(), String> {
-    let org: OrgDefinition =
-        serde_json::from_str(&org_json).map_err(|err| format!("Invalid org JSON: {}", err))?;
-    state.replace(org)
+    let store = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        store.save_trusted_settings(org, TrustedAgentOrgSettingsActor { _private: () })
+    })
+    .await
+    .map_err(|err| format!("Agent Org settings save task failed: {}", err))?
 }
 
 #[tauri::command]
@@ -106,7 +101,10 @@ pub async fn agent_orgs_remove(
     state: tauri::State<'_, std::sync::Arc<AgentOrgsStore>>,
     org_id: String,
 ) -> Result<bool, String> {
-    state.remove(&org_id)
+    let store = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || store.remove(&org_id))
+        .await
+        .map_err(|err| format!("Agent Org remove task failed: {}", err))?
 }
 
 /// One row in the Inbox flat chat list — a persisted agent-org run that
@@ -137,9 +135,10 @@ pub struct InboxRunSummary {
 #[tauri::command]
 pub async fn agent_org_run_list(limit: Option<usize>) -> Result<Vec<InboxRunSummary>, String> {
     use crate::core::coordination::agent_org_runs::AgentOrgRunStore;
+    crate::core::coordination::agent_org_runs::require_agent_org_redesign()?;
     const MAX_LIMIT: usize = 200;
     let effective_limit = limit.map(|n| n.min(MAX_LIMIT)).unwrap_or(MAX_LIMIT);
-    // This command backs a read-only Inbox list. Finality reconciliation is a
+    // This command backs a read-only Inbox list. Quiescence reconciliation is a
     // lifecycle/watchdog responsibility: doing it here used to turn one UI
     // refresh into as many as 200 global writer-lock + IMMEDIATE
     // transactions. Keep the read off the async command executor as well.

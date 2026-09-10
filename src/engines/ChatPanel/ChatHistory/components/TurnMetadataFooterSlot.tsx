@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import React, { memo } from "react";
 
-import { chatTurnMetadataVisibleAtom } from "@src/store/ui/chatPanelAtom";
+import { chatTurnMetadataVisibleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import { hasLoadedMoreActivitiesAtom } from "@src/store/ui/sessionPaginationAtom";
 
 import { turnMetadataAtomFamily, turnMetadataKey } from "../turnMetadataAtom";

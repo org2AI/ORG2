@@ -7,7 +7,6 @@
  */
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
 
 import { hoverSidebarOpenAtom } from "@src/store/ui/hoverSidebarAtom";
 import { useOverlayLayer } from "@src/store/ui/overlayLayerAtom";
@@ -34,13 +33,10 @@ const HOVER_SIDEBAR_WIDTH = DEFAULT_SIDEBAR_WIDTH; // Width of the hover sidebar
  * Shows sidebar when user hovers over it
  */
 const HoverSidebarTrigger: React.FC = () => {
-  const location = useLocation();
   const isSidebarCollapsed = useAtomValue(sidebarCollapsedAtom);
   const setIsHoverSidebarOpen = useSetAtom(hoverSidebarOpenAtom);
 
   const showTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const isSelectRepoPage = location.pathname.includes("/orgii/app/select-repo");
 
   const handleMouseEnter = useCallback(() => {
     showTimeoutRef.current = setTimeout(() => {
@@ -63,7 +59,7 @@ const HoverSidebarTrigger: React.FC = () => {
     };
   }, []);
 
-  if (!isSidebarCollapsed || isSelectRepoPage) {
+  if (!isSidebarCollapsed) {
     return null;
   }
 

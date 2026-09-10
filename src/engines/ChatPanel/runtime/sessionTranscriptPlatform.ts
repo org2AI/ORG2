@@ -10,7 +10,7 @@ import {
   triggerSessionReloadAtom,
 } from "@src/engines/SessionCore";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
-import { useAgentWorkingRef } from "@src/hooks/streaming";
+import { useAgentWorkingRef } from "@src/hooks/streaming/useAgentWorkingRef";
 import { activeSessionIdAtom, sessionByIdAtom } from "@src/store/session";
 import {
   isPendingCancelAtom,

@@ -1,28 +1,4 @@
-/**
- * RepoSearchPanel Configuration
- */
-import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
-  Cancel01Icon,
-  CaseSensitiveIcon,
-  Refresh04Icon,
-  RegexIcon,
-  Search01Icon,
-  WholeWordIcon,
-} from "@src/icons";
-
-export const ICON_CONFIG = {
-  search: Search01Icon,
-  caseSensitive: CaseSensitiveIcon,
-  wholeWord: WholeWordIcon,
-  regex: RegexIcon,
-  refresh: Refresh04Icon,
-  clear: Cancel01Icon,
-  chevronRight: ArrowRight01Icon,
-  chevronDown: ArrowDown01Icon,
-} as const;
-
+/** Repo search configuration. */
 export const SEARCH_CONSTANTS = {
   /** Debounce delay for search input (ms) - VSCode uses 150ms */
   DEBOUNCE_MS: 150,

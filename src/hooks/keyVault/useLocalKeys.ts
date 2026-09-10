@@ -33,6 +33,7 @@ import {
   publishSharedLocalKeys,
   subscribeSharedLocalKeys,
   updateSharedLocalKeys,
+  upsertSharedLocalKey,
 } from "./sharedLocalKeyStore";
 
 const log = createLogger("useLocalKeys");
@@ -373,6 +374,21 @@ export function useLocalKeys(
 
           return true;
         } catch (err) {
+          // OAuth refresh failures update health in the backend before the RPC
+          // rejects. Pull that one account back into the shared store so every
+          // mounted consumer observes invalid/degraded state without forcing a
+          // whole-vault reload (which would flash loading across the table).
+          if (keyId) {
+            try {
+              const updated = await getKey(agentType, keyId);
+              if (updated) upsertSharedLocalKey(updated);
+            } catch (reloadErr) {
+              log.warn(
+                "Failed to reload account after quota refresh error:",
+                reloadErr
+              );
+            }
+          }
           log.error(`[Refresh] Error:`, err);
           throw err;
         }

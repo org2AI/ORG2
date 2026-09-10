@@ -14,6 +14,7 @@
 import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 
+import { deliverOptimisticOutgoing } from "@src/engines/SessionCore/services/optimisticOutgoingDelivery";
 import { createLogger } from "@src/hooks/logger";
 
 import {
@@ -37,8 +38,10 @@ import {
 } from "./org2CloudCommentsClient";
 import {
   EMPTY_ENTRY,
+  OPTIMISTIC_SESSION_COMMENT_ID_PREFIX,
   decideSessionCommentsFetch,
   insertComment,
+  isOptimisticSessionCommentId,
   mergeDeltaSessionComments,
   mergeFullSessionComments,
   patchComment,
@@ -57,9 +60,11 @@ import {
   rememberCompletedForceToken,
 } from "./org2CloudSessionCommentsAtom.forceTokenTracker";
 import { useCloudFreshAccessToken } from "./org2CloudSessionCommentsAtom.freshToken";
+import { SessionCommentDeliveryError } from "./org2CloudSessionCommentsAtom.types";
 import type {
   AddCommentInput,
   CloudSessionCommentsEntry,
+  SessionComment,
   UseSessionCommentsResult,
 } from "./org2CloudSessionCommentsAtom.types";
 
@@ -71,23 +76,22 @@ export type {
   AddCommentInput,
   CloudSessionCommentsEntry,
   CloudSessionCommentsFetchState,
-  CommentThread,
   GroupedCommentThreads,
-  SessionCommentsFetchDecision,
+  SessionComment,
+  SessionCommentDeliveryStatus,
   UseSessionCommentsResult,
 } from "./org2CloudSessionCommentsAtom.types";
 export {
   MAX_SESSION_COMMENT_CACHE_ENTRIES,
+  OPTIMISTIC_SESSION_COMMENT_ID_PREFIX,
   SESSION_COMMENTS_DELTA_OVERLAP_MS,
-  SESSION_COMMENTS_ERROR_RETRY_MS,
-  SESSION_COMMENTS_ERROR_RETRY_MAX_MS,
   sessionCommentsDeltaSince,
-  sessionCommentsErrorRetryDelayMs,
   countLiveComments,
   decideSessionCommentsFetch,
   getThreadResolution,
   groupCommentThreads,
   insertComment,
+  isOptimisticSessionCommentId,
   isThreadResolved,
   mergeDeltaSessionComments,
   mergeFullSessionComments,
@@ -97,6 +101,7 @@ export {
   shouldEvictSessionCommentsOnError,
   writeSessionCommentsEntry,
 } from "./org2CloudSessionCommentsAtom.commentTransforms";
+export { SessionCommentDeliveryError } from "./org2CloudSessionCommentsAtom.types";
 export { useCloudFreshAccessToken } from "./org2CloudSessionCommentsAtom.freshToken";
 
 const log = createLogger("Org2CloudSessionComments");
@@ -440,7 +445,7 @@ export function useSessionComments(
   const patchEntry = useCallback(
     (
       targetKey: string,
-      transform: (comments: CloudSessionComment[]) => CloudSessionComment[]
+      transform: (comments: SessionComment[]) => SessionComment[]
     ) => {
       const identityKey = authIdentityKey;
       if (!identityKey) return;
@@ -496,23 +501,100 @@ export function useSessionComments(
       if (!orgId || !sessionId || !key) {
         throw new Error("no cloud comment target");
       }
-      const { accessToken, identityKey } = await freshTokenForCurrentIdentity();
-      const comment = await addSessionComment(accessToken, {
-        orgId,
-        sessionId,
-        body: input.body,
+      const optimistic: CloudSessionComment = {
+        id:
+          input.optimisticId ??
+          `${OPTIMISTIC_SESSION_COMMENT_ID_PREFIX}${crypto.randomUUID()}`,
         eventId: input.eventId,
         parentId: input.parentId,
-        mentionedUserIds: input.mentionedUserIds,
-        ...(originSessionId && originSessionId !== sessionId
-          ? { originSessionId }
+        authorUserId: authRef.current?.userId ?? "",
+        authorDisplayName: authRef.current?.profile?.displayName ?? undefined,
+        body: input.body,
+        createdAt: new Date().toISOString(),
+        kind: "user",
+        mentionedUserIds: input.mentionedUserIds ?? [],
+        clientDeliveryStatus: "pending",
+        ...(input.replaceExisting
+          ? {
+              clientRetryExpectedBody: input.expectedBody,
+              clientRetryExpectedMentionedUserIds:
+                input.expectedMentionedUserIds ?? [],
+            }
           : {}),
+      };
+      // A retry re-sends under the SAME optimistic id: replace the row in
+      // place and keep its original timestamp so the retained message does
+      // not jump out of the transcript position the user is looking at.
+      patchEntry(key, (comments) => {
+        const retainedRow = comments.find(
+          (candidate) => candidate.id === optimistic.id
+        );
+        return insertComment(
+          comments,
+          retainedRow
+            ? { ...optimistic, createdAt: retainedRow.createdAt }
+            : optimistic
+        );
       });
-      if (!isCurrentIdentity(identityKey)) return comment;
-      // The RPC returns the row in listing shape — insert without a refetch.
-      patchEntry(key, (comments) => insertComment(comments, comment));
-      broadcastCommentsChangedToPeers(orgId, sessionId);
-      return comment;
+      let retained = false;
+      const delivered = await deliverOptimisticOutgoing({
+        send: async () => {
+          const { accessToken, identityKey } =
+            await freshTokenForCurrentIdentity();
+          const comment = await addSessionComment(accessToken, {
+            orgId,
+            sessionId,
+            body: input.body,
+            eventId: input.eventId,
+            parentId: input.parentId,
+            mentionedUserIds: input.mentionedUserIds,
+            clientMessageKey: optimistic.id,
+            replaceExisting: input.replaceExisting,
+            expectedBody: input.expectedBody,
+            expectedMentionedUserIds: input.expectedMentionedUserIds,
+            ...(originSessionId && originSessionId !== sessionId
+              ? { originSessionId }
+              : {}),
+          });
+          return { comment, identityKey };
+        },
+        markSent: ({ comment, identityKey }) => {
+          if (!isCurrentIdentity(identityKey)) return;
+          // Replace the local echo with the server-authored row atomically.
+          patchEntry(key, (comments) =>
+            insertComment(
+              comments.filter((candidate) => candidate.id !== optimistic.id),
+              comment
+            )
+          );
+          broadcastCommentsChangedToPeers(orgId, sessionId);
+        },
+        markFailed: (error) => {
+          patchEntry(key, (comments) => {
+            retained = comments.some(
+              (candidate) => candidate.id === optimistic.id
+            );
+            return patchComment(comments, optimistic.id, {
+              clientDeliveryStatus: "failed",
+              clientDeliveryError:
+                error instanceof Error ? error.message : String(error),
+            });
+          });
+        },
+        onProjectionError: (phase, error) => {
+          log.error(
+            `Failed to project ${phase} Cloud comment delivery for ${sessionId}`,
+            error
+          );
+        },
+      }).catch((error: unknown) => {
+        // Only claim delivery ownership when a failed row is actually on
+        // screen. Otherwise the composer is still the sole copy of the text
+        // and must restore it.
+        if (!retained) throw error;
+        throw new SessionCommentDeliveryError(optimistic.id, error);
+      });
+      return delivered.comment;
     },
     [
       orgId,
@@ -528,6 +610,23 @@ export function useSessionComments(
   const editComment = useCallback(
     async (commentId: string, body: string): Promise<void> => {
       if (!orgId || !key) throw new Error("no cloud comment target");
+      if (isOptimisticSessionCommentId(commentId)) {
+        let edited = false;
+        patchEntry(key, (comments) =>
+          comments.map((comment) => {
+            if (
+              comment.id !== commentId ||
+              comment.clientDeliveryStatus !== "failed"
+            ) {
+              return comment;
+            }
+            edited = true;
+            return { ...comment, body };
+          })
+        );
+        if (!edited) throw new Error("only failed Team Chat messages can edit");
+        return;
+      }
       const { accessToken, identityKey } = await freshTokenForCurrentIdentity();
       const editedAt = await editSessionComment(
         accessToken,
@@ -562,6 +661,7 @@ export function useSessionComments(
         patchComment(comments, commentId, {
           deletedAt: new Date().toISOString(),
           body: "",
+          mentionedUserIds: [],
         })
       );
       if (sessionId) broadcastCommentsChangedToPeers(orgId, sessionId);

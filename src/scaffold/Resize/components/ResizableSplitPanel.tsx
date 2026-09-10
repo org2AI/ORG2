@@ -7,6 +7,7 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import { useResizeContextMenu } from "@src/hooks/ui/useResizeContextMenu";
+import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
 
 import { VerticalResizeHandle } from "./ResizeHandle";
 
@@ -109,6 +110,7 @@ const ResizableSplitPanel: React.FC<ResizableSplitPanelProps> = ({
    */
   const handleMouseDown = useCallback(
     (event: React.MouseEvent) => {
+      if (event.button !== 0) return;
       event.preventDefault();
 
       // Ignore double-click (detail >= 2) to prevent accidental triggers
@@ -155,8 +157,9 @@ const ResizableSplitPanel: React.FC<ResizableSplitPanelProps> = ({
       };
 
       const handleMouseUp = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
+        dispose();
+        dragCleanupRef.current = null;
+        isResizingRef.current = false;
 
         // Only do cleanup if we actually started dragging
         if (hasDraggedRef.current) {
@@ -174,15 +177,19 @@ const ResizableSplitPanel: React.FC<ResizableSplitPanelProps> = ({
           setLeftWidth(pendingWidthRef.current);
           onSplitChange?.(pendingWidthRef.current);
         }
-        isResizingRef.current = false;
       };
 
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
+      const dispose = listenForDrag({
+        onMove: handleMouseMove,
+        onEnd: handleMouseUp,
+        onCancel: handleMouseUp,
+      });
 
       dragCleanupRef.current = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
+        dispose();
+        dragCleanupRef.current = null;
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
         isResizingRef.current = false;

@@ -350,24 +350,6 @@ pub async fn toggle_webview_inspect_mode(app: AppHandle, label: String) -> Resul
     Ok(state_str == "true")
 }
 
-/// Enable element inspect mode in a webview.
-#[tauri::command]
-pub async fn enable_webview_inspect_mode(app: AppHandle, label: String) -> Result<(), String> {
-    let webview = app
-        .get_webview(&label)
-        .ok_or_else(|| format!("Webview '{}' not found", label))?;
-
-    let _ = webview.eval(
-        r#"
-        if (typeof window.__ORGII_ENABLE_INSPECT_MODE__ === 'function') {
-            window.__ORGII_ENABLE_INSPECT_MODE__();
-        }
-    "#,
-    );
-
-    Ok(())
-}
-
 /// Disable element inspect mode in a webview.
 #[tauri::command]
 pub async fn disable_webview_inspect_mode(app: AppHandle, label: String) -> Result<(), String> {

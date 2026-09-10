@@ -11,7 +11,6 @@
   "secondaryNote": "— phần lớn việc kiểm chứng không để lại dấu vết, nên độ tin cậy thấp.",
   "byTool": "Theo công cụ",
   "byToolHint": "Điểm trung tính giống nhau ở mọi nơi nên các hàng này so sánh được. Một chữ cái chỉ đúng trong một công cụ thì đáng ngờ.",
-  "sessionCount": "{{count}} phiên",
   "overTime": "Theo thời gian",
   "overTimeHint": "Cửa sổ trượt, mới nhất trước.",
   "status": "Trạng thái",
@@ -47,7 +46,6 @@
   },
   "types": {
     "title": "Kiểu người xây dựng",
-    "subtitle": "Khám phá 16 cách con người làm việc với tác tử lập trình.",
     "howTitle": "Cách đọc mã",
     "howBody": "Bốn xu hướng quan sát được tạo thành một kiểu người xây dựng. Các chữ cái mô tả cách làm việc, không phải bản sắc cố định — chúng có thể thay đổi theo thói quen và công cụ của bạn.",
     "galleryTitle": "Đủ 16 kiểu",

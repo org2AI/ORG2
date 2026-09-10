@@ -10,16 +10,42 @@ import {
 } from "../modelGrouping";
 
 describe("modelGrouping current thresholds", () => {
-  it("treats GPT 5.2 and 5.3 as non-current", () => {
-    const groups = groupModels(["gpt-5.2", "gpt-5.3"]);
+  it("treats GPT below 5.5 as non-current", () => {
+    const groups = groupModels(["gpt-5.2", "gpt-5.3", "gpt-5.4-mini"]);
 
     expect(groups.every(isLegacyGroup)).toBe(true);
   });
 
-  it("treats GPT 5.4 and newer as current", () => {
-    const groups = groupModels(["gpt-5.4", "gpt-5.5"]);
+  it("treats GPT 5.5 and newer as current", () => {
+    const groups = groupModels([
+      "gpt-5.5",
+      "gpt-5.6-sol",
+      "gpt-6",
+      "gpt-6-astra",
+      "gpt-6.1",
+      "gpt-7",
+    ]);
 
     expect(groups.every((group) => !isLegacyGroup(group))).toBe(true);
+  });
+
+  it("marks Fable 5, 5.1 and newer Claude generations as current", () => {
+    const current = groupModels([
+      "claude-sonnet-4-8",
+      "claude-opus-4-8",
+      "claude-haiku-4-8",
+      "claude-fable-5",
+      "claude-fable-5-1",
+      "claude-fable-6",
+      "claude-mythos-5",
+    ]);
+    expect(current.every((group) => !isLegacyGroup(group))).toBe(true);
+    const older = groupModels([
+      "claude-sonnet-4-6",
+      "claude-opus-4-7",
+      "claude-haiku-4-5",
+    ]);
+    expect(older.every(isLegacyGroup)).toBe(true);
   });
 
   it("splits GPT sub-variants (nano/mini/codex) into their own groups", () => {

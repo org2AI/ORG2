@@ -7,6 +7,10 @@ pub mod store;
 use axum::http::{HeaderName, Method};
 use axum::routing::{get, post};
 use axum::Router;
+use mobile_relay_protocol::{
+    DESKTOP_WS_PATH, DEVICES_PATH, DEVICE_REVOKE_PATH, MOBILE_WS_PATH, PAIRINGS_PATH,
+    PAIRING_COMPLETE_PATH, PRIMARY_DESKTOP_PATH,
+};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
@@ -30,13 +34,13 @@ pub fn build_router(state: RelayState) -> Router {
         ]);
     Router::new()
         .route("/healthz", get(handlers::health))
-        .route("/v1/pairings", post(handlers::create_pairing))
-        .route("/v1/pairings/complete", post(handlers::complete_pairing))
-        .route("/v1/devices", get(handlers::list_devices))
-        .route("/v1/devices/revoke", post(handlers::revoke_device))
-        .route("/v1/desktops/primary", post(handlers::set_primary_desktop))
-        .route("/v1/desktop/ws", get(handlers::desktop_socket))
-        .route("/v1/mobile/ws", get(handlers::mobile_socket))
+        .route(PAIRINGS_PATH, post(handlers::create_pairing))
+        .route(PAIRING_COMPLETE_PATH, post(handlers::complete_pairing))
+        .route(DEVICES_PATH, get(handlers::list_devices))
+        .route(DEVICE_REVOKE_PATH, post(handlers::revoke_device))
+        .route(PRIMARY_DESKTOP_PATH, post(handlers::set_primary_desktop))
+        .route(DESKTOP_WS_PATH, get(handlers::desktop_socket))
+        .route(MOBILE_WS_PATH, get(handlers::mobile_socket))
         .layer(RequestBodyLimitLayer::new(MAX_FRAME_BYTES))
         .layer(cors)
         // Device credentials are carried in WebSocket query parameters. Log

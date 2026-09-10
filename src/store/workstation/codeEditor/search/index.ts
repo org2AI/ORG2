@@ -5,12 +5,14 @@
  * Shared by both UI (useRepoSearchPanel) and AI (SearchService).
  *
  * Related submodules (also re-exported below):
- * - cacheAtom: Search result caching with TTL and stats
  * - indexingProgressAtom: Indexing progress UI state
  */
 import { atom } from "jotai";
 
+import { shareSearchLineContext } from "./lineContext";
 import type { SearchOptions, SearchResultFile } from "./types";
+
+export { shareSearchLineContext } from "./lineContext";
 
 export type { SearchMatch, SearchResultFile, SearchOptions } from "./types";
 
@@ -131,7 +133,7 @@ export const searchAppendResultsAtom = atom(
       retained += file.matches.length;
     }
     if (accepted.length > 0) {
-      set(searchResultsAtom, [...current, ...accepted]);
+      set(searchResultsAtom, [...current, ...shareSearchLineContext(accepted)]);
     }
     if (truncated || retained >= SEARCH_MAX_RETAINED_MATCHES) {
       set(searchHasMoreAtom, false);
@@ -143,8 +145,6 @@ export const searchAppendResultsAtom = atom(
 // Re-exports from submodules
 // ============================================
 
-export * from "./cacheAtom";
-export type { IndexingProgress } from "./indexingProgressAtom";
 export {
   indexingProgressAtom,
   isIndexingAtom,

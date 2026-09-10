@@ -15,10 +15,15 @@ import { useProjectOrgCloudPermissions } from "@src/features/Org2Cloud/useProjec
 import { createLogger } from "@src/hooks/logger";
 import {
   ArrowRightDoubleIcon,
+  CloudIcon,
   HugeiconsIcon,
   InformationCircleIcon,
+  LaptopIcon,
 } from "@src/icons";
-import { filterSelectableProjectOrgs } from "@src/modules/ProjectManager/projectOrgVisibility";
+import {
+  DEFAULT_PERSONAL_PROJECT_ORG_ID,
+  filterSelectableProjectOrgs,
+} from "@src/modules/ProjectManager/projectOrgVisibility";
 import {
   type ProjectData,
   ProjectOrganizationField,
@@ -31,7 +36,7 @@ import {
   WorkstationTrailSurface,
 } from "@src/modules/shared/layouts/blocks";
 import { openProjectInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
-import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanelAtom";
+import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanel/selectionAtoms";
 
 const logger = createLogger("ProjectPanelView");
 
@@ -162,20 +167,35 @@ export function useProjectProperties(
   );
   const projectOrgOptions = useMemo<SelectOption[]>(
     () =>
-      selectableProjectOrgs.map((org) => ({
-        value: org.id,
-        label: org.name,
-        triggerLabel: org.name,
-        dataTestId: `project-org-option-${org.id}`,
-      })),
-    [selectableProjectOrgs]
+      selectableProjectOrgs.map((org) => {
+        const isCloud = cloudOrgs.some(
+          (cloud) =>
+            cloud.orgId === org.id || cloud.orgId === org.external_org_id
+        );
+        const name =
+          org.id === DEFAULT_PERSONAL_PROJECT_ORG_ID
+            ? t("orgs.personalOrg")
+            : org.name;
+        const label = name;
+        return {
+          value: org.id,
+          label,
+          triggerLabel: label,
+          icon: (
+            <HugeiconsIcon icon={isCloud ? CloudIcon : LaptopIcon} size={14} />
+          ),
+          dataTestId: `project-org-option-${org.id}`,
+        };
+      }),
+    [selectableProjectOrgs, cloudOrgs, t]
   );
   const canMoveProject = canAdminister(selectedProject.orgId);
-  const selectedProjectOrgLabel =
-    selectableProjectOrgs.find((org) => org.id === selectedProject.orgId)
-      ?.name ??
-    selectedProject.orgName ??
-    selectedProject.orgId;
+  const selectedProjectOrgLabel = String(
+    projectOrgOptions.find((option) => option.value === selectedProject.orgId)
+      ?.label ??
+      selectedProject.orgName ??
+      selectedProject.orgId
+  );
 
   const handleProjectOrgChange = useCallback(
     (value: string | number | (string | number)[]) => {
@@ -251,7 +271,7 @@ export function useProjectProperties(
             title={
               canMoveProject
                 ? undefined
-                : "Only an organization owner or admin can move this project"
+                : "Only a workspace owner or admin can move this project"
             }
           >
             <ProjectOrganizationField

@@ -1,4 +1,4 @@
-import type { ForkSessionSetupSelection } from "./components/ForkSessionSetupDialog";
+import type { ForkSessionSetupSelection } from "./forkDialogState";
 
 const STORAGE_KEY = "orgii:fork-setup-memory-v1";
 const NO_REPO_KEY = "__no_repo__";

@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EnrichedWorkItem } from "@src/api/http/project";
 import type { ProjectDataChange } from "@src/hooks/project/useProjectDataChanged";
-import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanelAtom";
+import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanel/selectionAtoms";
 
 import ProjectPanelView from "./ProjectPanelView";
 
@@ -152,6 +152,8 @@ vi.mock("@src/engines/ChatPanel/header", () => ({
   },
 }));
 vi.mock("@src/icons", () => ({
+  CloudIcon: "cloud",
+  LaptopIcon: "laptop",
   UserCircleIcon: "user",
   CancelCircleIcon: "cancel",
   CheckmarkCircle01Icon: "check",
@@ -162,6 +164,7 @@ vi.mock("@src/icons", () => ({
   AlertCircleIcon: "alert-circle",
   MinusSignIcon: "minus",
   Alert01Icon: "alert",
+  BanIcon: "ban",
   HugeiconsIcon: (props: Props) =>
     createElement("i", { "data-icon": props["data-icon"] }),
   ArrowRightDoubleIcon: "right",
@@ -278,6 +281,7 @@ function item(
     labels: [],
     createdAt: "2026-01-01",
     updatedAt: "2026-01-01",
+    revision: 1,
     assignee: { id: "member-1", name: "Ada", color: "#3b82f6" },
     todos: [],
     comments: [],

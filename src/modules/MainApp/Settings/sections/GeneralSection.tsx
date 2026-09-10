@@ -1,11 +1,12 @@
 /**
  * General Settings Section
  *
- * Hosts four tabs:
+ * Hosts five tabs:
  *   - `general` — ORG2 login, language/date, input, app behavior, update,
  *     settings file
  *   - `notifications` — master toggle + advanced blocks (lazy)
  *   - `shortcuts` — keyboard shortcuts viewer (lazy)
+ *   - `storage` — disk usage and cleanup
  *   - `self-hosted` — custom ORG2 Cloud backend endpoint
  *
  * The General tab is rendered eagerly; the heavier Notifications and
@@ -14,8 +15,9 @@
  */
 import {
   PathCopyOpenRow,
+  SECTION_ACTION_GAP_CLASSES,
   SECTION_CONTROL_STYLE,
-  SECTION_VALUE_TEXT_CLASSES,
+  SECTION_PATH_TEXT_CLASSES,
   SectionContainer,
   SectionRow,
 } from "@/src/modules/shared/layouts/SectionLayout";
@@ -44,9 +46,10 @@ import Message from "@src/components/Message";
 import { Placeholder } from "@src/components/Placeholder";
 import Select from "@src/components/Select";
 import Switch from "@src/components/Switch";
+import type { TimezoneOption } from "@src/config/timezone";
 import CloudEndpointCard from "@src/features/Org2Cloud/CloudEndpointCard";
 import { Org2CloudLoginRows } from "@src/features/Org2Cloud/Org2CloudSection";
-import { useTimezoneSelect } from "@src/hooks/geo";
+import { useTimezoneSelect } from "@src/hooks/geo/useTimezoneSelect";
 import {
   LANGUAGE_NAMES,
   LANGUAGE_PREFERENCE,
@@ -59,13 +62,12 @@ import {
 } from "@src/i18n";
 import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import { NAV_BUTTON_PROPS } from "@src/modules/MainApp/Settings/config";
+import { HintWithInfo } from "@src/modules/shared/layouts/blocks/HintWithInfo";
 import {
   checkForAppUpdates,
   checkForUpdatesManually,
-  useAppBuildProvenance,
-} from "@src/scaffold/AppUpdater";
-import { formatAppBuildRevision } from "@src/scaffold/AppUpdater/buildProvenance";
-import { type TimezoneOption, timezoneAtom } from "@src/store";
+} from "@src/scaffold/AppUpdater/actions";
+import { useAppBuildProvenance } from "@src/scaffold/AppUpdater/state";
 import { chatAppearancePersistAtom } from "@src/store/config/configAtom";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import { preventSleepWhileRunningAtom } from "@src/store/platform/preventSleepAtom";
@@ -76,18 +78,20 @@ import {
 } from "@src/store/platform/updateChannelAtom";
 import { voiceInputEnabledAtom } from "@src/store/platform/voiceInputAtom";
 import { languageAtom } from "@src/store/ui/languageAtom";
+import { timezoneAtom } from "@src/store/ui/timezoneAtom";
 import { copyText } from "@src/util/data/clipboard";
+
+import HttpVersionSettingsBlock from "./HttpVersionSettingsBlock";
 
 export const GENERAL_TAB_KEYS = {
   GENERAL: "general",
   NOTIFICATIONS: "notifications",
   SHORTCUTS: "shortcuts",
+  STORAGE: "storage",
   SELF_HOSTED: "self-hosted",
 } as const;
 
-export type GeneralTabKey =
-  (typeof GENERAL_TAB_KEYS)[keyof typeof GENERAL_TAB_KEYS];
-
+const StorageTab = lazy(() => import("./StorageSection"));
 const NotificationsTab = lazy(() => import("./NotificationsTab"));
 const ShortcutsTab = lazy(() => import("./ShortcutsSection"));
 
@@ -114,6 +118,16 @@ const GeneralSection: React.FC<GeneralSectionProps> = ({
         fallback={<Placeholder variant="loading" placement="detail-panel" />}
       >
         <ShortcutsTab />
+      </Suspense>
+    );
+  }
+
+  if (activeTab === GENERAL_TAB_KEYS.STORAGE) {
+    return (
+      <Suspense
+        fallback={<Placeholder variant="loading" placement="detail-panel" />}
+      >
+        <StorageTab />
       </Suspense>
     );
   }
@@ -346,6 +360,7 @@ const GeneralTabBody: React.FC = () => {
         <SectionRow label={t("common:common.timezone")}>
           <Select {...timezoneSelectProps} />
         </SectionRow>
+        <HttpVersionSettingsBlock />
       </SectionContainer>
       <SectionContainer>
         <SectionRow
@@ -395,29 +410,34 @@ const GeneralTabBody: React.FC = () => {
 
       <SectionContainer>
         <SectionRow
-          label={t("general.preventSleep")}
-          description={t("general.preventSleepDesc")}
+          label={
+            <span className="inline-flex items-center gap-1">
+              {t("general.preventSleep")}
+              <HintWithInfo
+                content={t("general.preventSleepDesc")}
+                position="right"
+              />
+            </span>
+          }
         >
           <Switch
             checked={preventSleepWhileRunning}
             onCheckedChange={setPreventSleepWhileRunning}
           />
         </SectionRow>
-        <SectionRow
-          label={t("general.devMode")}
-          description={t("general.devModeDesc")}
-        >
-          <Switch
-            checked={devModeEnabled}
-            onCheckedChange={setDevModeEnabled}
-          />
-        </SectionRow>
       </SectionContainer>
 
       <SectionContainer>
         <SectionRow
-          label={t("update.channel")}
-          description={t("update.channelDesc")}
+          label={
+            <span className="inline-flex items-center gap-1">
+              {t("update.channel")}
+              <HintWithInfo
+                content={t("update.channelDesc")}
+                position="right"
+              />
+            </span>
+          }
         >
           <Select
             value={resolveUpdateChannel(
@@ -430,29 +450,48 @@ const GeneralTabBody: React.FC = () => {
             style={SECTION_CONTROL_STYLE}
           />
         </SectionRow>
-        <SectionRow label={t("update.detectUpdate")}>
-          <Button
-            size="default"
-            onClick={checkForUpdatesManually}
-            icon={
-              <HugeiconsIcon
-                icon={Refresh04Icon}
-                data-icon="refresh-cw"
-                size={14}
-              />
-            }
-          >
-            {t("update.detectUpdate")}
-          </Button>
-        </SectionRow>
         <SectionRow label={t("update.currentVersion")}>
-          <span className={SECTION_VALUE_TEXT_CLASSES}>
-            {appVersion
-              ? buildProvenance?.kind === "local"
-                ? `v${appVersion} · ${t("update.localBuild")} · ${formatAppBuildRevision(buildProvenance)}`
-                : `v${appVersion}`
-              : "—"}
-          </span>
+          <div className={SECTION_ACTION_GAP_CLASSES}>
+            <span className={SECTION_PATH_TEXT_CLASSES}>
+              {appVersion
+                ? buildProvenance?.kind === "local"
+                  ? `v${appVersion} · ${t("update.localBuild")}`
+                  : `v${appVersion}`
+                : "—"}
+            </span>
+            <Button
+              size="default"
+              onClick={checkForUpdatesManually}
+              icon={
+                <HugeiconsIcon
+                  icon={Refresh04Icon}
+                  data-icon="refresh-cw"
+                  size={14}
+                />
+              }
+            >
+              {t("update.detectUpdate")}
+            </Button>
+          </div>
+        </SectionRow>
+      </SectionContainer>
+
+      <SectionContainer>
+        <SectionRow
+          label={
+            <span className="inline-flex items-center gap-1">
+              {t("general.devMode")}
+              <HintWithInfo
+                content={t("general.devModeDesc")}
+                position="right"
+              />
+            </span>
+          }
+        >
+          <Switch
+            checked={devModeEnabled}
+            onCheckedChange={setDevModeEnabled}
+          />
         </SectionRow>
       </SectionContainer>
 

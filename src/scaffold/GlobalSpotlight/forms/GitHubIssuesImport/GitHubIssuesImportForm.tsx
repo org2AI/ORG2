@@ -16,9 +16,9 @@ import {
 } from "@src/api/http/integrations/syncConnections";
 import { projectApi } from "@src/api/http/project";
 import { projectSyncApi } from "@src/api/http/project/sync";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
 import { Message } from "@src/components/Message";
+import PageNotice from "@src/components/PageNotice";
 import Select, { type SelectOption } from "@src/components/Select";
 import { createLogger } from "@src/hooks/logger";
 import { HugeiconsIcon, Loading03Icon } from "@src/icons";
@@ -305,12 +305,12 @@ const GitHubIssuesImportForm: React.FC<GitHubIssuesImportFormProps> = ({
                     showSearch
                   />
                 ) : (
-                  <InlineAlert
+                  <PageNotice
                     type="warning"
                     title={t("projects:githubIssuesImport.noConnectionTitle")}
                   >
                     {t("projects:githubIssuesImport.noConnectionDescription")}
-                  </InlineAlert>
+                  </PageNotice>
                 )}
               </div>
 

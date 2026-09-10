@@ -7,6 +7,9 @@ import {
   requestSessionSidebarRevealAtom,
   sessionBranchTagsVisibleAtom,
   sessionSidebarRevealRequestAtom,
+  sidebarCollapsedAtom,
+  sidebarWidthAtom,
+  updateSidebarViewportAtom,
 } from "../sidebarAtom";
 
 beforeEach(() => {
@@ -115,5 +118,61 @@ describe("requestSessionSidebarRevealAtom", () => {
 
     store.set(requestSessionSidebarRevealAtom, { sessionId: "session-c" });
     expect(store.get(sessionSidebarRevealRequestAtom)?.requestId).toBe(3);
+  });
+});
+
+describe("responsive sidebar", () => {
+  function wideStore(collapsed = false) {
+    const store = createStore();
+    store.set(updateSidebarViewportAtom, 1200);
+    store.set(sidebarCollapsedAtom, collapsed);
+    return store;
+  }
+
+  it("collapses below 960 and restores at 960 without persisting automatic changes", () => {
+    const store = wideStore();
+    store.set(sidebarWidthAtom, 280);
+    for (let cycle = 0; cycle < 3; cycle++) {
+      store.set(updateSidebarViewportAtom, 959);
+      expect(store.get(sidebarCollapsedAtom)).toBe(true);
+      expect(localStorage.getItem("orgii_sidebar_collapsed")).toBe("false");
+      store.set(updateSidebarViewportAtom, 960);
+      expect(store.get(sidebarCollapsedAtom)).toBe(false);
+      expect(store.get(sidebarWidthAtom)).toBe(280);
+    }
+  });
+
+  it("preserves a manually collapsed wide-window preference", () => {
+    const store = wideStore(true);
+    store.set(updateSidebarViewportAtom, 700);
+    store.set(sidebarCollapsedAtom, false);
+    store.set(updateSidebarViewportAtom, 1200);
+    expect(store.get(sidebarCollapsedAtom)).toBe(true);
+    expect(localStorage.getItem("orgii_sidebar_collapsed")).toBe("true");
+  });
+
+  it("allows manual expansion while narrow until the next crossing", () => {
+    const store = wideStore();
+    store.set(updateSidebarViewportAtom, 700);
+    store.set(sidebarCollapsedAtom, false);
+    store.set(updateSidebarViewportAtom, 800);
+    expect(store.get(sidebarCollapsedAtom)).toBe(false);
+    store.set(updateSidebarViewportAtom, 1200);
+    store.set(updateSidebarViewportAtom, 700);
+    expect(store.get(sidebarCollapsedAtom)).toBe(true);
+  });
+
+  it("does not publish changes for same-side resizes or share responsive state across stores", () => {
+    const first = wideStore();
+    const second = wideStore();
+    let changes = 0;
+    const unsubscribe = first.sub(sidebarCollapsedAtom, () => changes++);
+    first.set(updateSidebarViewportAtom, 1100);
+    expect(changes).toBe(0);
+    first.set(updateSidebarViewportAtom, 700);
+    first.set(updateSidebarViewportAtom, 800);
+    expect(changes).toBe(1);
+    expect(second.get(sidebarCollapsedAtom)).toBe(false);
+    unsubscribe();
   });
 });

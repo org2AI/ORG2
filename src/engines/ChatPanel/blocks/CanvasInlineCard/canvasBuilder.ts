@@ -19,8 +19,10 @@ const CANVAS_THEME_VARIABLES = [
   "--color-bg-2",
   "--color-fill-2",
   "--color-fill-3",
+  "--scrollbar-size",
+  "--scrollbar-hit-area-size",
+  "--scrollbar-edge-inset",
   "--scrollbar-thumb-color",
-  "--scrollbar-thumb-hover-color",
   "--color-border-1",
   "--color-text-1",
   "--color-text-2",
@@ -51,7 +53,6 @@ function buildThemeStyleTag(): string {
 
 function injectThemeVariables(html: string): string {
   const themeStyleTag = buildThemeStyleTag();
-  if (!themeStyleTag) return html;
 
   if (/<head\b[^>]*>/i.test(html)) {
     return html.replace(/<head\b([^>]*)>/i, `<head$1>${themeStyleTag}`);
@@ -65,6 +66,7 @@ function injectThemeVariables(html: string): string {
 
 const BASE_STYLES = `
   *,*::before,*::after{box-sizing:border-box;}
+  *{scrollbar-gutter:auto;scrollbar-width:thin;scrollbar-color:var(--scrollbar-thumb-color,rgba(128,128,128,.72)) transparent;}
   html,body{margin:0;padding:0;background:var(--color-bg-2,#141420);color:var(--color-text-1,#e2e2e8);
     font-family:var(--app-font-family,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif);
     font-size:14px;line-height:1.6;min-height:100%;overflow-x:auto;}
@@ -77,10 +79,9 @@ const BASE_STYLES = `
   pre code{background:none;padding:0;}
   img{max-width:100%;height:auto;border-radius:4px;}
   button{cursor:var(--interactive-cursor,default);}
-  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar{width:var(--scrollbar-hit-area-size,12px);height:var(--scrollbar-hit-area-size,12px);}
   ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb-color,rgba(255,255,255,.09));border-radius:3px;}
-  ::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover-color,rgba(255,255,255,.15));}
+  ::-webkit-scrollbar-thumb,::-webkit-scrollbar-thumb:hover,::-webkit-scrollbar-thumb:active{background:var(--scrollbar-thumb-color,rgba(128,128,128,.72));background-clip:padding-box;border:var(--scrollbar-edge-inset,3px) solid transparent;border-radius:calc(var(--scrollbar-hit-area-size,12px)/2);}
 `;
 
 /**

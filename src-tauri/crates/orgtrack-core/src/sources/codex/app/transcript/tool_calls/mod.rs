@@ -388,21 +388,23 @@ pub(crate) fn output_parts_for_tool_calls(calls: &[ImportedToolCall], output: &s
         return vec![output.to_string(); calls.len()];
     };
 
-    let lines = output.split_inclusive('\n').collect::<Vec<_>>();
+    let mut lines = output.split_inclusive('\n');
     let mut cursor = 0usize;
     calls
         .iter()
         .enumerate()
         .map(|(index, _)| {
-            let remaining = lines.len().saturating_sub(cursor);
-            let take = if index + 1 == calls.len() {
-                remaining
+            let start = cursor;
+            if index + 1 == calls.len() {
+                cursor = output.len();
             } else {
-                limits[index].min(remaining)
-            };
-            let part = lines[cursor..cursor.saturating_add(take)].concat();
-            cursor = cursor.saturating_add(take);
-            part
+                cursor += lines
+                    .by_ref()
+                    .take(limits[index])
+                    .map(str::len)
+                    .sum::<usize>();
+            }
+            output[start..cursor].to_string()
         })
         .collect()
 }

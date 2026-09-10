@@ -2,7 +2,7 @@
 //!
 //! The frontend persists `orgii:org2-cloud-v1:auth` in
 //! `shared-service-auth.json` (see `sharedAuthStorage.ts`). Relay and pairing
-//! commands consume the access token from here instead of `mobileRemote.desktopToken`.
+//! commands consume the access token from here instead of a settings-managed shared token.
 
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};

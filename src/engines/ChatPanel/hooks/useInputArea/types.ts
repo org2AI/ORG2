@@ -9,8 +9,12 @@ import type {
   RefObject,
 } from "react";
 
-import type { ComposerInputRef } from "@src/components/ComposerInput";
+import type {
+  ComposerInputRef,
+  ComposerSnapshot,
+} from "@src/components/ComposerInput";
 import type { ComposerModeEntry } from "@src/config/sessionCreatorConfig";
+import type { MessageAudienceTarget } from "@src/features/TeamCollaboration/messageAudienceRouting";
 import type { MenuItemId } from "@src/scaffold/ContextMenu/config";
 import type { ChatImageAttachment } from "@src/store/ui/chatImageAtom";
 import type { SlashItem } from "@src/types/extensions/types";
@@ -23,6 +27,40 @@ export interface SubmitOverrideInput {
   displayText: string;
   agentContent?: string;
   imageDataUrls?: string[];
+  /**
+   * The exact editor document captured when Submit was pressed. Team Chat
+   * reads stable member ids from its mention pills instead of reparsing a
+   * mutable display name after asynchronous preprocessing.
+   */
+  composerSnapshot?: ComposerSnapshot;
+  /** Ordered canonical Member pill identities from the same snapshot. */
+  memberMentions?: Array<{ memberId: string; displayName: string }>;
+  /** Display/agent copies with only Member pills removed. */
+  displayTextWithoutMemberMentions?: string;
+  agentContentWithoutMemberMentions?: string;
+}
+
+/** Rejected before any network/provider delivery was attempted. */
+export class SubmitValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SubmitValidationError";
+  }
+}
+
+/**
+ * The transport rejected the send after its owning surface had already
+ * retained the optimistic message as a visible failed row. Callers must not
+ * also restore the submitted content into the composer.
+ */
+export class SubmitRetainedDeliveryError extends Error {
+  readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = "SubmitRetainedDeliveryError";
+    this.cause = cause;
+  }
 }
 
 export interface CustomMentionOption {
@@ -33,6 +71,8 @@ export interface CustomMentionOption {
   selectType?: MenuItemId;
   selectValue?: string;
   selectDisplayName?: string;
+  /** Identity-stable collaboration target carried by the inserted pill. */
+  audienceTarget?: MessageAudienceTarget;
 }
 
 export interface UseInputAreaOptions {
@@ -40,17 +80,25 @@ export interface UseInputAreaOptions {
   placeholder?: string;
   /** Explicit session ID for the chat surface using this composer. */
   sessionId?: string;
+  /** Native execution episode controlled by Stop without retargeting messages. */
+  controlSessionId?: string | null;
   /** Session whose comment threads Address Comments targets when the
    * composer dispatches elsewhere (external-history fork composer). */
   sessionScope?: "active" | "none";
   submitDisabled?: boolean;
   enableAgentInterceptors?: boolean;
+  /** False for human discussion composers, which must not expose Agent Stop. */
+  executionControlsEnabled?: boolean;
   onSubmitOverride?: (input: SubmitOverrideInput) => Promise<boolean>;
   customMentionOptions?: ReadonlyArray<CustomMentionOption>;
 }
 
 export interface SubmitMessageOptions {
   capturedText?: string;
+  /** Submit a button-owned message without including or mutating the live draft. */
+  source?: "editor" | "explicit-action";
+  /** Runs only after the normal dispatch/override pipeline accepts the message. */
+  onSubmitted?: () => void;
 }
 
 // ============================================

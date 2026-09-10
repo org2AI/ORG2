@@ -422,13 +422,9 @@ export function GitHubWorkItemsView({
             item.state === GITHUB_QUERY_STATE.OPEN ? "open" : "closed";
           const prStatusLabel =
             item.state === GITHUB_QUERY_STATE.MERGED
-              ? t("common:pullRequests.status.merged", {
-                  defaultValue: "Merged",
-                })
+              ? t("common:labels.prStatus.merged")
               : item.rawPr.draft
-                ? t("common:pullRequests.status.draft", {
-                    defaultValue: "Draft",
-                  })
+                ? t("common:labels.prStatus.draft")
                 : prStatusValue === "open"
                   ? t("chat.panels.manageIssues.stateOpen")
                   : t("chat.panels.manageIssues.stateClosed");

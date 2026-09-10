@@ -6,7 +6,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
+import { formatCompactAge } from "@src/util/time/formatRelativeTime";
 
 import type { BranchItem, SpotlightItem } from "../../types";
 import { categorizeBranches } from "../../utils/branchUtils";
@@ -63,7 +63,7 @@ export function useBranchItems(
     // Helper to create branch item
     const createBranchItem = (branch: BranchItem): SpotlightItem => {
       const lastCommit = branch.lastCommitDate
-        ? formatRelativeTime(branch.lastCommitDate, "short")
+        ? formatCompactAge(branch.lastCommitDate)
         : "";
 
       return {
@@ -125,7 +125,7 @@ export function useBranchItems(
 
       deletableBranches.forEach((branch) => {
         const lastCommit = branch.lastCommitDate
-          ? formatRelativeTime(branch.lastCommitDate, "short")
+          ? formatCompactAge(branch.lastCommitDate)
           : "";
         result.push({
           id: `delete_${branch.name}`,
@@ -180,7 +180,7 @@ export function useBranchItems(
       const branchesToShow = searchQuery ? filteredBranches : branches;
       branchesToShow.forEach((branch) => {
         const lastCommit = branch.lastCommitDate
-          ? formatRelativeTime(branch.lastCommitDate, "short")
+          ? formatCompactAge(branch.lastCommitDate)
           : "";
 
         refList.push({

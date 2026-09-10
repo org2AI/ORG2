@@ -231,5 +231,3 @@ export const LinkedInputPair: React.FC<LinkedInputPairProps> = memo(
 );
 
 LinkedInputPair.displayName = "LinkedInputPair";
-
-export default LinkedInputPair;

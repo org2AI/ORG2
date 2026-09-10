@@ -4,7 +4,7 @@
 use rusqlite::{params, OptionalExtension, Result as SqliteResult};
 
 use agent_core::session::AgentExecMode;
-use database::db::get_connection;
+use database::db::{begin_immediate, get_connection, sessions_writer_guard};
 
 use super::resume_state::mapped_cli_session_id_for_account_with_conn;
 use super::shared::{now_iso, sync_orgtrack_mirror};
@@ -35,8 +35,11 @@ pub fn update_model_and_account(
     model: Option<&str>,
     account_id: Option<&str>,
 ) -> SqliteResult<bool> {
+    // Acquire write ownership before reading the identity. A deferred
+    // read transaction cannot wait when upgrading a stale WAL snapshot.
+    let writer_guard = sessions_writer_guard();
     let conn = get_connection()?;
-    let tx = conn.unchecked_transaction()?;
+    let tx = begin_immediate(&conn)?;
     let current: Option<(Option<String>, Option<String>)> = tx
         .query_row(
             "SELECT account_id, cli_session_id FROM code_sessions WHERE session_id = ?1",
@@ -82,6 +85,7 @@ pub fn update_model_and_account(
         (None, None) => 0,
     };
     tx.commit()?;
+    drop(writer_guard);
     if affected > 0 {
         sync_orgtrack_mirror(session_id);
     }

@@ -296,3 +296,27 @@ pub async fn cursor_cli_recent_paths(
     .await
     .map_err(|err| format!("Task join error: {err}"))?
 }
+
+#[tauri::command]
+pub async fn codex_app_context_usage(
+    session_id: String,
+) -> Result<Option<imported_history::context_usage::ImportedContextUsage>, String> {
+    tokio::task::spawn_blocking(move || {
+        let conn = open_cache_conn()?;
+        codex_app::load_codex_context_usage_for_session(&conn, &session_id)
+    })
+    .await
+    .map_err(|err| format!("Task join error: {err}"))?
+}
+
+#[tauri::command]
+pub async fn claude_code_context_usage(
+    session_id: String,
+) -> Result<Option<imported_history::context_usage::ImportedContextUsage>, String> {
+    tokio::task::spawn_blocking(move || {
+        let conn = open_cache_conn()?;
+        claude_code_history::load_claude_context_usage_for_session(&conn, &session_id)
+    })
+    .await
+    .map_err(|err| format!("Task join error: {err}"))?
+}

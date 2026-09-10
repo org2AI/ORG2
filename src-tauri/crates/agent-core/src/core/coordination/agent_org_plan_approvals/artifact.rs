@@ -7,7 +7,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use database::db::{get_connection, with_sessions_writer};
 
 use super::persistence::query_record;
-use super::AgentOrgPlanApproval;
+use super::AgentOrgPlanRevision;
 
 /// A fully-written, fsynced artifact waiting for its short atomic install.
 ///
@@ -22,7 +22,7 @@ pub(super) struct OwnedPlanPath {
     file_name: String,
 }
 
-pub(super) struct StagedPlanArtifact {
+pub(crate) struct StagedPlanArtifact {
     owned: OwnedPlanPath,
     temp_path: PathBuf,
     target_path: PathBuf,
@@ -31,7 +31,7 @@ pub(super) struct StagedPlanArtifact {
 /// Plan artifacts are a derived filesystem projection of SQLite state. A
 /// dedicated lock preserves commit/install order without holding the global
 /// sessions writer across rename or directory fsync.
-pub(super) fn plan_artifact_install_lock() -> &'static parking_lot::Mutex<()> {
+pub(crate) fn plan_artifact_install_lock() -> &'static parking_lot::Mutex<()> {
     static LOCK: OnceLock<parking_lot::Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| parking_lot::Mutex::new(()))
 }
@@ -254,7 +254,7 @@ pub(super) fn resolve_owned_plan_target(
     }
 }
 
-pub(super) fn stage_plan_artifact_with_connection(
+pub(crate) fn stage_plan_artifact_with_connection(
     conn: &Connection,
     source_session_id: &str,
     plan_path: &str,
@@ -268,26 +268,6 @@ pub(super) fn stage_plan_artifact_with_connection(
         )
     })?;
     stage_owned_plan_artifact(owned, target_path, canonical_content)
-}
-
-pub(super) fn stage_plan_artifact_for_existing_revision_with_connection(
-    conn: &Connection,
-    source_session_id: &str,
-    plan_path: &str,
-    canonical_content: &str,
-) -> Result<Option<StagedPlanArtifact>, String> {
-    let Some(owned) =
-        owned_plan_path_for_existing_revision_with_connection(conn, source_session_id, plan_path)?
-    else {
-        return Ok(None);
-    };
-    let target_path = resolve_owned_plan_target(&owned, true)?.ok_or_else(|| {
-        format!(
-            "could not materialize managed Agent Org plan root for {}",
-            owned.logical_path.display()
-        )
-    })?;
-    stage_owned_plan_artifact(owned, target_path, canonical_content).map(Some)
 }
 
 fn owned_plan_path_for_existing_revision_with_connection(
@@ -355,7 +335,7 @@ fn stage_owned_plan_artifact(
 /// Install only the already-fsynced bytes. Callers invoke this after SQLite
 /// commits while holding the dedicated artifact lock so two revisions cannot
 /// install out of commit order and unrelated database writes are not blocked.
-pub(super) fn install_staged_plan_artifact(
+pub(crate) fn install_staged_plan_artifact(
     staged: Option<&StagedPlanArtifact>,
 ) -> Result<(), String> {
     let Some(staged) = staged else {
@@ -431,7 +411,7 @@ pub(super) fn list_distinct_plan_paths_after(
     let mut stmt = conn
         .prepare(
             "SELECT DISTINCT plan_path
-             FROM agent_org_plan_approvals
+             FROM agent_org_runtime_plan_revisions
              WHERE (?1 IS NULL OR plan_path > ?1)
              ORDER BY plan_path ASC
              LIMIT ?2",
@@ -449,15 +429,16 @@ pub(super) fn list_distinct_plan_paths_after(
 fn latest_plan_revision_for_path_with_connection(
     conn: &Connection,
     plan_path: &str,
-) -> Result<Option<AgentOrgPlanApproval>, String> {
+) -> Result<Option<AgentOrgPlanRevision>, String> {
     query_record(
         conn,
-        "WHERE plan_path=?1 ORDER BY created_at DESC, rowid DESC",
+        "WHERE revision.plan_path=?1
+         ORDER BY revision.revision_number DESC,revision.plan_revision_id DESC",
         params![plan_path],
     )
 }
 
-fn latest_plan_revision_for_path(plan_path: &str) -> Result<Option<AgentOrgPlanApproval>, String> {
+fn latest_plan_revision_for_path(plan_path: &str) -> Result<Option<AgentOrgPlanRevision>, String> {
     let conn = get_connection().map_err(|err| err.to_string())?;
     latest_plan_revision_for_path_with_connection(&conn, plan_path)
 }

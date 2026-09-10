@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 
+import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import type { PendingPlanApproval } from "@src/store/session/planApprovalAtom";
 
 function formatPlanPillLabel(
@@ -30,8 +31,12 @@ export function useChatViewPlanPillState({
   const currentPlanAutoApproveAt = currentPlanApproval?.autoApproveAt ?? null;
   useEffect(() => {
     if (!hasPlan || !currentPlanAutoApproveAt) return;
-    const timer = window.setInterval(() => setPlanPillNowMs(Date.now()), 1000);
-    return () => window.clearInterval(timer);
+    const timer = startVisibilityAwareInterval(
+      document,
+      () => setPlanPillNowMs(Date.now()),
+      1000
+    );
+    return () => timer();
   }, [currentPlanAutoApproveAt, hasPlan]);
   const planPillLabel = useMemo(
     () =>

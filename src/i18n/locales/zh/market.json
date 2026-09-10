@@ -1,27 +1,8 @@
 {
-  "selectRepo": {
-    "title": "Orgii",
-    "subtitle": "选择一个仓库开始",
-    "recentRepos": "最近的仓库",
-    "loadingProjects": "正在加载 Repo...",
-    "noRepositories": "暂无仓库",
-    "getStartedHint": "创建或克隆 Repo 以开始",
-    "noPath": "无路径",
-    "searchPlaceholder": "搜索 Repo...",
-    "loadMore": "加载更多",
-    "actions": {
-      "importLocal": "导入本地仓库",
-      "cloneUrl": "从 GitHub URL 克隆",
-      "cloneGithub": "从我的 GitHub 克隆",
-      "createNew": "创建新仓库"
-    }
-  },
   "market": {
     "auth": {
       "noAuthCode": "未收到授权码",
-      "authSessionExpired": "认证 Session 已过期，请重试。",
-      "tokenExchangeFailed": "Token 交换失败",
-      "defaultUser": "用户"
+      "tokenExchangeFailed": "Token 交换失败"
     }
   }
 }

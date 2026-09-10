@@ -54,10 +54,3 @@ pub struct SearchFilters {
     pub use_regex: Option<bool>,
     pub max_results: Option<usize>,
 }
-
-#[derive(Serialize, Clone)]
-pub struct EmbeddingModelStatus {
-    pub installed: bool,
-    pub model_size_bytes: Option<u64>,
-    pub model_dir: String,
-}

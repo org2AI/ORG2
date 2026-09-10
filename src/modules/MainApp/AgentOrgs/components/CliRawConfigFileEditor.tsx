@@ -149,7 +149,7 @@ const CliRawConfigFileEditor: React.FC<CliRawConfigFileEditorProps> = ({
         description={configPath}
         labelAlign="start"
       >
-        <div className={SECTION_ACTION_GAP_CLASSES}>
+        <div className={`group ${SECTION_ACTION_GAP_CLASSES}`}>
           <span className={SECTION_PATH_TEXT_CLASSES}>
             {t("agentOrgs.cliAgentDetail.tokenCount", {
               count: tokenCount,
@@ -187,6 +187,7 @@ const CliRawConfigFileEditor: React.FC<CliRawConfigFileEditorProps> = ({
               <HugeiconsIcon icon={Copy01Icon} data-icon="copy" size={14} />
             }
             iconOnly
+            className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
             onClick={handleCopy}
             disabled={!value.trim()}
             aria-label={t("common:actions.copy")}
@@ -201,6 +202,7 @@ const CliRawConfigFileEditor: React.FC<CliRawConfigFileEditorProps> = ({
               />
             }
             iconOnly
+            className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
             onClick={handleRevealConfig}
             aria-label={t("agentOrgs.cliAgentDetail.revealConfigFile")}
             title={t("agentOrgs.cliAgentDetail.revealConfigFile")}

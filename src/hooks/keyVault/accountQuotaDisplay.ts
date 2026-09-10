@@ -42,6 +42,7 @@ export interface AccountQuotaCard {
   id: string;
   accountName: string;
   accountPlan?: string | null;
+  quotaMessage?: string | null;
   modelType: KeyVaultAccount["modelType"];
   metrics: AccountQuotaMetric[];
 }
@@ -148,6 +149,9 @@ function formatPlanLabel(value: string | null | undefined): string | null {
   const trimmed = normalizeDisplayText(value);
   if (!trimmed) return null;
 
+  const claudeTier = /^(?:default_claude_)?max_(5|20)x$/i.exec(trimmed);
+  if (claudeTier) return `Max ${claudeTier[1]}x`;
+
   return trimmed
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
@@ -163,6 +167,10 @@ const GENERIC_QUOTA_PLAN_TYPES = new Set<string>([
   CLI_AGENT.CODEX,
 ]);
 
+const QUOTA_PLAN_TRANSLATION_KEYS: Record<string, string> = {
+  "pay as you go": "keyVault.quota.payAsYouGo",
+};
+
 function isGenericQuotaPlanType(
   modelType: KeyVaultAccount["modelType"],
   planType: string | null | undefined
@@ -177,12 +185,21 @@ function getQuotaAccountIdentityLabel(account: KeyVaultAccount): string {
   return normalizeDisplayText(account.name) ?? account.modelType;
 }
 
-export function resolveQuotaPlanLabel(account: KeyVaultAccount): string | null {
+export function resolveQuotaPlanLabel(
+  account: KeyVaultAccount,
+  tIntegrations?: TFunction<"integrations">
+): string | null {
   if (!account.quotaInfo) return null;
 
   if (account.modelType === CLI_AGENT.CLAUDE_CODE) {
     const tier = formatPlanLabel(account.accountMetadata?.rate_limit_tier);
-    if (tier) return tier;
+    if (tier) return localizeQuotaPlanLabel(tier, tIntegrations);
+  }
+
+  if (account.modelType === CLI_AGENT.CODEX) {
+    const planType = account.quotaInfo.plan_type?.trim().toLowerCase();
+    if (planType === "prolite") return "Pro 5x";
+    if (planType === "pro") return "Pro 20x";
   }
 
   const planFromQuota = formatPlanLabel(account.quotaInfo.plan_type);
@@ -193,19 +210,36 @@ export function resolveQuotaPlanLabel(account: KeyVaultAccount): string | null {
     return null;
   }
 
-  return planFromQuota;
+  return localizeQuotaPlanLabel(planFromQuota, tIntegrations);
 }
 
-function getQuotaAccountPlanLabel(account: KeyVaultAccount): string | null {
-  return resolveQuotaPlanLabel(account);
+function localizeQuotaPlanLabel(
+  planLabel: string,
+  tIntegrations?: TFunction<"integrations">
+): string {
+  const translationKey = QUOTA_PLAN_TRANSLATION_KEYS[planLabel.toLowerCase()];
+  return translationKey
+    ? (tIntegrations?.(translationKey, { defaultValue: planLabel }) ??
+        planLabel)
+    : planLabel;
 }
 
-function getQuotaCardLabels(account: KeyVaultAccount): {
+function getQuotaAccountPlanLabel(
+  account: KeyVaultAccount,
+  tIntegrations: TFunction<"integrations">
+): string | null {
+  return resolveQuotaPlanLabel(account, tIntegrations);
+}
+
+function getQuotaCardLabels(
+  account: KeyVaultAccount,
+  tIntegrations: TFunction<"integrations">
+): {
   accountName: string;
   accountPlan: string | null;
 } {
   const identityLabel = getQuotaAccountIdentityLabel(account);
-  const planLabel = getQuotaAccountPlanLabel(account);
+  const planLabel = getQuotaAccountPlanLabel(account, tIntegrations);
   if (!planLabel) {
     return { accountName: identityLabel, accountPlan: null };
   }
@@ -272,34 +306,6 @@ function formatBalanceValue(amount: number, currency: string): string {
   }
 }
 
-function formatQuotaResetDurationUntil(
-  resetTime: string | null | undefined,
-  now: Date = new Date()
-): { compact: string; full: string } | null {
-  if (!resetTime) return null;
-
-  const resetDate = new Date(resetTime);
-  if (Number.isNaN(resetDate.getTime())) return null;
-
-  const diffMs = resetDate.getTime() - now.getTime();
-  if (diffMs <= 0) return null;
-
-  const totalMinutes = Math.ceil(diffMs / 60_000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  const compact =
-    hours > 0
-      ? minutes > 0
-        ? `${hours}h ${minutes}m`
-        : `${hours}h`
-      : `${minutes}m`;
-  const full =
-    formatQuotaResetTime(resetTime)?.full ??
-    `${compact} (${resetDate.toISOString()})`;
-
-  return { compact, full };
-}
-
 export function formatQuotaResetTime(
   resetTime: string | null | undefined
 ): { compact: string; full: string } | null {
@@ -308,26 +314,15 @@ export function formatQuotaResetTime(
   const resetDate = new Date(resetTime);
   if (Number.isNaN(resetDate.getTime())) return null;
 
-  const now = new Date();
-  const sameDay = resetDate.toDateString() === now.toDateString();
-  const sameYear = resetDate.getFullYear() === now.getFullYear();
-  const compact = new Intl.DateTimeFormat(undefined, {
-    ...(sameDay ? {} : { month: "short", day: "numeric" }),
-    ...(sameDay || sameYear ? {} : { year: "numeric" }),
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(resetDate);
-  const full = new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
+  const formatted = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
-    second: "2-digit",
-    timeZoneName: "short",
+    hour12: true,
   }).format(resetDate);
 
-  return { compact, full };
+  return { compact: formatted, full: formatted };
 }
 
 export function formatQuotaResetHint(
@@ -336,13 +331,8 @@ export function formatQuotaResetHint(
   resetTime: string | null | undefined,
   tIntegrations: TFunction<"integrations">
 ): { compact: string; full?: string } | null {
-  if (usageType === "session") {
-    const sessionResetLabel = formatQuotaResetDurationUntil(resetTime);
-    if (sessionResetLabel) return sessionResetLabel;
-  } else {
-    const resetLabel = formatQuotaResetTime(resetTime);
-    if (resetLabel) return resetLabel;
-  }
+  const resetLabel = formatQuotaResetTime(resetTime);
+  if (resetLabel) return resetLabel;
 
   if (remainingPercent < 99.5) return null;
 
@@ -464,6 +454,25 @@ export function getQuotaUsageLabel(
   return usageType.replace(/_/g, " ");
 }
 
+function getResetCreditsLabel(
+  account: KeyVaultAccount,
+  tIntegrations: TFunction<"integrations">
+): string | null {
+  if (account.modelType !== CLI_AGENT.CODEX) return null;
+  // Adapt the existing backend's reset-credit message, including cached legacy summaries.
+  const message = account.quotaInfo?.named_message;
+  const match = message?.match(
+    /^Reset credits(?: available)?: (\d+)(?=$|[ /,(])/
+  );
+  if (!match) return null;
+  const count = Number(match[1]);
+  if (!Number.isSafeInteger(count)) return null;
+  return tIntegrations("keyVault.quota.resetsAvailable", {
+    count,
+    defaultValue: `${count} ${count === 1 ? "reset" : "resets"} available`,
+  });
+}
+
 export function collectAccountQuotaCards(
   accounts: KeyVaultAccount[],
   tSessions: TFunction<"sessions">,
@@ -474,7 +483,7 @@ export function collectAccountQuotaCards(
   for (const account of accounts) {
     if (!account.quotaInfo || account.healthStatus === "invalid") continue;
 
-    const accountLabels = getQuotaCardLabels(account);
+    const accountLabels = getQuotaCardLabels(account, tIntegrations);
     const usageItems = resolveAccountUsageItems(account);
     const metrics =
       usageItems.length > 0
@@ -516,6 +525,7 @@ export function collectAccountQuotaCards(
         id: account.id,
         accountName: accountLabels.accountName,
         accountPlan: accountLabels.accountPlan,
+        quotaMessage: getResetCreditsLabel(account, tIntegrations),
         modelType: account.modelType,
         metrics: [
           {
@@ -533,6 +543,7 @@ export function collectAccountQuotaCards(
       id: account.id,
       accountName: accountLabels.accountName,
       accountPlan: accountLabels.accountPlan,
+      quotaMessage: getResetCreditsLabel(account, tIntegrations),
       modelType: account.modelType,
       metrics,
     });

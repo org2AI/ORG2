@@ -10,7 +10,13 @@ import {
 } from "../sessionTerminalNotifications";
 
 vi.mock("@src/components/Message", () => ({
-  default: { warning: vi.fn() },
+  default: { warning: vi.fn(), success: vi.fn() },
+}));
+
+vi.mock("@src/api/services/notification", () => ({
+  TASK_FAILURE_NOTIFICATION_BODY: "Task failed",
+  notifyError: vi.fn(),
+  notifyTaskCompletion: vi.fn().mockResolvedValue({ disposition: "delivered" }),
 }));
 
 describe("shouldDeliverSessionTerminalNotification", () => {
@@ -31,29 +37,57 @@ describe("shouldDeliverSessionTerminalNotification", () => {
 });
 
 describe("deliverSessionTerminalNotification", () => {
+  const settings: NotificationSettings = {
+    enabled: true,
+    systemNotificationEnabled: false,
+    dockBadgeEnabled: false,
+    soundEnabled: false,
+    soundPreset: "classic",
+    soundVolume: 70,
+    criticalOnly: false,
+    quietHours: {
+      enabled: false,
+      start: "23:00",
+      end: "08:00",
+      allowCritical: true,
+    },
+    backgroundCompletionSummary: true,
+    categories: {
+      taskCompletion: true,
+      agentApproval: true,
+      errors: true,
+      teamInbox: true,
+    },
+  };
+  it.each(["completed", "idle"])(
+    "expires a delivered %s toast after six seconds while keeping its action",
+    async (status) => {
+      vi.mocked(Message.success).mockClear();
+      deliverSessionTerminalNotification(
+        {
+          sessionId: "session-a",
+          sessionName: "Session A",
+          status,
+          attentionRequired: true,
+        },
+        settings,
+        ((key: string) => key) as TFunction
+      );
+      await Promise.resolve();
+      expect(Message.success).toHaveBeenCalledOnce();
+      expect(Message.success).toHaveBeenCalledWith({
+        content: "notifications.taskCompletedToast",
+        duration: 6000,
+        closable: true,
+        action: {
+          label: "notifications.openSessionAction",
+          onClick: expect.any(Function),
+        },
+      });
+    }
+  );
+
   it("ignores removed mute preferences for cancellation while honoring the master toggle", () => {
-    const settings: NotificationSettings = {
-      enabled: true,
-      systemNotificationEnabled: false,
-      dockBadgeEnabled: false,
-      soundEnabled: false,
-      soundPreset: "classic",
-      soundVolume: 70,
-      criticalOnly: false,
-      quietHours: {
-        enabled: false,
-        start: "23:00",
-        end: "08:00",
-        allowCritical: true,
-      },
-      backgroundCompletionSummary: true,
-      categories: {
-        taskCompletion: true,
-        agentApproval: true,
-        errors: true,
-        teamInbox: true,
-      },
-    };
     const obsoleteSettings = { ...settings, mutedSessionIds: ["session-a"] };
     const event = {
       sessionId: "session-a",

@@ -972,7 +972,21 @@ async fn gc_cycle_deletes_only_old_succeeded_rows() {
     let old_pending_id = io::append(&conn, &old_pending).expect("append old pending");
     drop(conn);
 
-    gc_cycle().await.expect("gc cycle ok");
+    let started = std::time::Instant::now();
+    let mut next_gc = started + OUTBOX_GC_INTERVAL;
+    // Exercise the production scheduling boundary at each intervening push
+    // tick. Eligible data proves a skipped sweep did not touch the outbox.
+    for seconds in (30..300).step_by(30) {
+        gc_cycle_if_due(&mut next_gc, started + Duration::from_secs(seconds))
+            .await
+            .expect("not due");
+        let conn = io::conn().expect("inspect retained row");
+        assert!(io::load_by_id(&conn, old_id).is_ok());
+    }
+    gc_cycle_if_due(&mut next_gc, started + OUTBOX_GC_INTERVAL)
+        .await
+        .expect("due gc cycle ok");
+    assert_eq!(next_gc, started + OUTBOX_GC_INTERVAL * 2);
 
     let conn = io::conn().expect("reopen");
     assert!(
@@ -981,6 +995,40 @@ async fn gc_cycle_deletes_only_old_succeeded_rows() {
     );
     assert!(io::load_by_id(&conn, young_id).is_ok());
     assert!(io::load_by_id(&conn, old_pending_id).is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn gc_deadline_drains_full_batches_before_returning_to_idle_cadence() {
+    let _sandbox = test_env::sandbox();
+    let conn = io::conn().expect("conn");
+    crate::projects::schema::init_project_tables(&conn).expect("init");
+    seed_project(&conn, "alpha", "echo");
+    for index in 0..=OUTBOX_GC_LIMIT {
+        let mut row = sample_entry("alpha");
+        row.entity_id = format!("old-{index}");
+        row.created_at = now_ms() - OUTBOX_GC_RETENTION_MS - 1000;
+        let id = io::append(&conn, &row).unwrap();
+        conn.execute(
+            "UPDATE outbox_entries SET status='succeeded' WHERE id=?1",
+            [id],
+        )
+        .unwrap();
+    }
+    let started = std::time::Instant::now();
+    let mut next_gc = started;
+    gc_cycle_if_due(&mut next_gc, started).await.unwrap();
+    let remaining: i64 = conn
+        .query_row("SELECT COUNT(*) FROM outbox_entries", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(remaining, 1);
+    assert_eq!(next_gc, started + Duration::from_secs(PUSH_INTERVAL_SECS));
+    let drain_at = next_gc;
+    gc_cycle_if_due(&mut next_gc, drain_at).await.unwrap();
+    let remaining: i64 = conn
+        .query_row("SELECT COUNT(*) FROM outbox_entries", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(remaining, 0);
+    assert_eq!(next_gc, drain_at + OUTBOX_GC_INTERVAL);
 }
 
 // ---- event emission probe ----

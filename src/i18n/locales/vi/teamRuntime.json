@@ -6,7 +6,6 @@
     "today": "Hôm nay",
     "everyone": "Mọi người",
     "activeMembers": "Thành viên hoạt động",
-    "systemsCurrent": "{{current}}/{{total}} hệ thống đang cập nhật",
     "usageByAgent": "Mức sử dụng theo tác tử",
     "recentSessions": "Phiên được chia sẻ gần đây",
     "recentLoading": "Đang tải các phiên được chia sẻ…",
@@ -22,17 +21,17 @@
     "action": "Đăng nhập"
   },
   "noOrgs": {
-    "title": "Chưa có tổ chức đám mây nào",
-    "subtitle": "Tham gia hoặc tạo một tổ chức và đồng đội của bạn sẽ xuất hiện ở đây."
+    "title": "Chưa có không gian làm việc đám mây nào",
+    "subtitle": "Tham gia hoặc tạo một không gian làm việc và đồng đội của bạn sẽ xuất hiện ở đây."
   },
   "unsupported": {
     "title": "Backend cần được nâng cấp",
-    "subtitle": "Backend đám mây của tổ chức này chưa hỗ trợ chia sẻ runtime của nhóm."
+    "subtitle": "Backend đám mây của không gian làm việc này chưa hỗ trợ chia sẻ runtime của nhóm."
   },
   "disabled": {
     "title": "Chia sẻ runtime của nhóm đang tắt",
-    "subtitle": "Quản trị viên tổ chức có thể bật trong cài đặt tổ chức.",
-    "adminSubtitle": "Bạn có thể bật trong cài đặt tổ chức."
+    "subtitle": "Quản trị viên không gian làm việc có thể bật trong cài đặt không gian làm việc.",
+    "adminSubtitle": "Bạn có thể bật trong cài đặt không gian làm việc."
   },
   "empty": {
     "title": "Chưa có dữ liệu thành viên",
@@ -72,13 +71,9 @@
     "totalSessions": "Tổng số phiên",
     "lastSynced": "Đồng bộ lần cuối"
   },
-  "selfService": {
-    "hint": "Khi chia sẻ đang bật, runtime của chính bạn được chia sẻ với tổ chức này.",
-    "action": "Ngừng chia sẻ và xóa dữ liệu của tôi"
-  },
   "orgSettings": {
     "label": "Chia sẻ runtime của nhóm",
-    "help": "Tải máy, tổng mức sử dụng và hồ sơ người xây dựng của thành viên được chia sẻ với tổ chức theo khoảng thời gian này. Chỉ dữ liệu tổng hợp — không bao giờ gồm bản ghi hội thoại, kho mã hay tiêu đề.",
+    "help": "Tải máy, tổng mức sử dụng và hồ sơ người xây dựng của thành viên được chia sẻ với không gian làm việc theo khoảng thời gian này. Chỉ dữ liệu tổng hợp — không bao giờ gồm bản ghi hội thoại, kho mã hay tiêu đề.",
     "memberNote": "Đã được quản trị viên bật. Khoảng thời gian: {{interval}}.",
     "off": "Tắt",
     "interval": {

@@ -9,7 +9,7 @@
  * reason. Closing = cancel (fork aborts quietly via ForkCancelledError).
  */
 import Modal from "@/src/scaffold/ModalSystem";
-import { atom, useAtom } from "jotai";
+import { useAtom } from "jotai";
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -17,6 +17,7 @@ import useSharedRepoList from "@src/scaffold/GlobalSpotlight/hooks/data/useShare
 import type { RepoItem } from "@src/scaffold/GlobalSpotlight/types";
 
 import { normalizeRepoScopeKey } from "../../collabSyncUtils";
+import { forkCheckoutRequestAtom } from "../../forkDialogState";
 import {
   getShareableScopeKeyVersion,
   peekMatchingOrgRepoScope,
@@ -24,19 +25,6 @@ import {
   primeShareableScopeKey,
   subscribeShareableScopeKeys,
 } from "../../repoScopeResolver";
-
-interface ForkCheckoutRequest {
-  /** Normalized scope key of the SOURCE repo the fork must land in. */
-  sourceScopeKey: string;
-  /** Source session title (dialog context line). */
-  sourceTitle: string;
-  /** Resolves with the picked local path, or null on cancel. */
-  resolve: (localPath: string | null) => void;
-}
-
-/** One-shot handoff: fork flow parks a request; the dialog consumes it. */
-export const forkCheckoutRequestAtom = atom<ForkCheckoutRequest | null>(null);
-forkCheckoutRequestAtom.debugLabel = "forkCheckoutRequestAtom";
 
 function repoScopeKeys(repo: RepoItem): string[] | null | undefined {
   // A workspace row's repo_url is only its primary/display remote and may be

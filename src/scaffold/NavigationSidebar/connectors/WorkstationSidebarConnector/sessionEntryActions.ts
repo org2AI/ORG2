@@ -3,10 +3,10 @@ import { useCallback } from "react";
 import type { GoToNewSessionOptions } from "@src/hooks/navigation/useAppNavigation";
 import {
   CHAT_PANEL_CREATE_TARGET,
-  CHAT_PANEL_SURFACE_KIND,
   type ChatPanelCreateTarget,
-  type ChatPanelNavigateCommand,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
+import { type ChatPanelNavigateCommand } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 
 interface UseSessionEntryActionsParams {
   goToNewSession: (options?: GoToNewSessionOptions) => void;

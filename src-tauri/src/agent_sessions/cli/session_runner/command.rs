@@ -5,6 +5,7 @@ use crate::agent_sessions::cli::parsers::codex::CodexParser;
 use crate::agent_sessions::cli::parsers::cursor::CursorParser;
 use crate::agent_sessions::cli::parsers::plain_text::PlainTextParser;
 use crate::agent_sessions::cli::parsers::CliAgentParser;
+use crate::agent_sessions::cli::session_runner::input_assembly::CliTurnEnvelope;
 use crate::agent_sessions::cli::session_runner::launch_profiles::{
     defaults_for_agent, static_args_to_vec, uses_codex_app_server, ResolvedCliLaunchProfile,
 };
@@ -15,13 +16,15 @@ pub(super) struct CliCommandBuildRequest<'a> {
     pub agent: &'a ModelType,
     pub launch_profile: &'a ResolvedCliLaunchProfile,
     pub model: Option<&'a str>,
-    pub task: &'a str,
+    pub turn: &'a CliTurnEnvelope,
     pub resume_id: Option<&'a str>,
     pub api_key: Option<&'a str>,
     pub endpoint: Option<&'a str>,
     pub mode: Option<&'a str>,
     pub repo_path: Option<&'a str>,
     pub additional_dirs: &'a [String],
+    pub mcp_config_path: Option<&'a str>,
+    pub codex_mcp_profile: Option<&'a str>,
 }
 
 pub(super) fn build_command_with_launch_profile(
@@ -31,13 +34,15 @@ pub(super) fn build_command_with_launch_profile(
         agent,
         launch_profile,
         model,
-        task,
+        turn,
         resume_id,
         api_key,
         endpoint,
         mode,
         repo_path,
         additional_dirs,
+        mcp_config_path,
+        codex_mcp_profile,
     } = request;
 
     if !additional_dirs.is_empty() && !matches!(agent, ModelType::ClaudeCode | ModelType::Codex) {
@@ -54,13 +59,26 @@ pub(super) fn build_command_with_launch_profile(
     // sandbox, approval policy, cwd, model, resume and the task itself all
     // travel over JSON-RPC (`thread/start` / `turn/start` params) instead.
     if uses_codex_app_server(agent, launch_profile) {
-        let mut cmd = vec![launch_profile.command.clone(), "app-server".into()];
+        let mut cmd = vec![launch_profile.command.clone()];
+        // app-server rejects `--profile`; per-run MCP config travels in the
+        // thread JSON-RPC params so secrets never appear in argv.
+        cmd.push("app-server".into());
         if let Some(m) = model {
             let codex_model = map_codex_model_variant(m);
             for config in codex_model.config_overrides {
                 cmd.push("-c".into());
                 cmd.push(config);
             }
+        }
+        let writable_roots: Vec<_> = additional_dirs.iter().filter(|dir| !dir.is_empty()).collect();
+        if !writable_roots.is_empty() {
+            // app-server has no --add-dir flag. Preserve the session's explicit
+            // extra workspace roots through the equivalent native config.
+            cmd.push("-c".into());
+            cmd.push(format!(
+                "sandbox_workspace_write.writable_roots={}",
+                serde_json::to_string(&writable_roots).expect("directory strings serialize")
+            ));
         }
         return cmd;
     }
@@ -105,13 +123,20 @@ pub(super) fn build_command_with_launch_profile(
                 cmd.push(ws.into());
             }
             cmd.push("-p".into());
-            cmd.push(task.into());
+            cmd.push(turn.merged_for_legacy());
             cmd
         }
         ModelType::ClaudeCode => {
             cmd.push("--output-format".into());
             cmd.push("stream-json".into());
             cmd.push("--verbose".into());
+            if let Some(path) = mcp_config_path {
+                cmd.push("--mcp-config".into());
+                cmd.push(path.into());
+                // The per-run config is the resolved ORGII binding set. Do
+                // not let user/project configs silently add unbound servers.
+                cmd.push("--strict-mcp-config".into());
+            }
             if let Some(rid) = resume_id {
                 cmd.push("--resume".into());
                 cmd.push(rid.into());
@@ -132,11 +157,22 @@ pub(super) fn build_command_with_launch_profile(
                 cmd.push("--add-dir".into());
                 cmd.push(dir.clone());
             }
+            if let Some(provider_context) = turn.provider_context() {
+                // Claude Code appends this to its native system prompt. Keep
+                // `-p` reserved for the literal user-authored message so the
+                // provider JSONL and Claude app render the correct user row.
+                cmd.push("--append-system-prompt".into());
+                cmd.push(provider_context);
+            }
             cmd.push("-p".into());
-            cmd.push(task.into());
+            cmd.push(turn.user_text().into());
             cmd
         }
         ModelType::Codex => {
+            if let Some(profile) = codex_mcp_profile {
+                cmd.push("--profile".into());
+                cmd.push(profile.into());
+            }
             cmd.push("--json".into());
             cmd.push("--skip-git-repo-check".into());
             if let Some(ws) = repo_path {
@@ -163,7 +199,7 @@ pub(super) fn build_command_with_launch_profile(
                 cmd.push("--add-dir".into());
                 cmd.push(dir.clone());
             }
-            cmd.push(task.into());
+            cmd.push(turn.merged_for_legacy());
             cmd
         }
         ModelType::Copilot => {
@@ -178,7 +214,7 @@ pub(super) fn build_command_with_launch_profile(
             }
             cmd
         }
-        ModelType::Kiro | ModelType::OpenCode => cmd,
+        ModelType::Kiro | ModelType::OpenCode | ModelType::DeepseekHarness => cmd,
         ModelType::Antigravity => {
             if let Some(rid) = resume_id {
                 cmd.push("--conversation".into());
@@ -196,7 +232,7 @@ pub(super) fn build_command_with_launch_profile(
                 cmd.push(dir.clone());
             }
             cmd.push("--print".into());
-            cmd.push(task.into());
+            cmd.push(turn.merged_for_legacy());
             cmd
         }
         ModelType::KimiCli
@@ -221,10 +257,10 @@ pub(super) fn build_command_with_launch_profile(
         | ModelType::Omp
         | ModelType::Pi
         | ModelType::QoderCli
-        | ModelType::TraeCli
-        | ModelType::DeepseekHarness => {
-            if !task.is_empty() {
-                cmd.push(task.into());
+        | ModelType::TraeCli => {
+            let merged_task = turn.merged_for_legacy();
+            if !merged_task.is_empty() {
+                cmd.push(merged_task);
             }
             cmd
         }
@@ -255,7 +291,8 @@ pub(super) fn codex_app_server_thread_model(model: Option<&str>) -> Option<Strin
 }
 
 fn map_codex_model_variant(model: &str) -> CodexModelLaunchConfig {
-    const CODEX_VARIANT_BASES: [&str; 8] = [
+    const CODEX_VARIANT_BASES: [&str; 9] = [
+        "gpt-6-astra",
         "gpt-5.6-sol",
         "gpt-5.6-terra",
         "gpt-5.6-luna",
@@ -278,11 +315,14 @@ fn map_codex_model_variant(model: &str) -> CodexModelLaunchConfig {
         let Some(reasoning) = suffix_parts.first().copied() else {
             continue;
         };
-        // GPT-5.6 adds Max above xhigh; do not reinterpret unsupported Max
+        // Astra and GPT-5.6 support Max above xhigh; do not reinterpret unsupported Max
         // suffixes for older families as a launch override.
-        let supports_gpt_5_6_max = reasoning == "max"
-            && matches!(base_model, "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna");
-        if !CODEX_REASONING_LEVELS.contains(&reasoning) && !supports_gpt_5_6_max {
+        let supports_max = reasoning == "max"
+            && matches!(
+                base_model,
+                "gpt-6-astra" | "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna"
+            );
+        if !CODEX_REASONING_LEVELS.contains(&reasoning) && !supports_max {
             continue;
         }
 

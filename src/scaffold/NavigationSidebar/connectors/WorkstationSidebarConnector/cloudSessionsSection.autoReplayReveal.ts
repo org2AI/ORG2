@@ -34,6 +34,7 @@ import { useEffect } from "react";
 import { parseCloudRemoteItemId } from "@src/features/Org2Cloud/cloudRemoteItemId";
 import type { CloudSessionBusyEntry } from "@src/features/Org2Cloud/cloudSessionBusyAtom";
 import type { CloudRemoteSessionsFetchState } from "@src/features/Org2Cloud/org2CloudRemoteSessionsAtom";
+import { rerootSessionCommentTarget } from "@src/features/Org2Cloud/sessionCommentTarget";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import {
   type SessionSidebarRevealRequest,
@@ -113,24 +114,47 @@ export function decideCloudAutoReplay({
   const parsed = request.sidebarItemId
     ? parseCloudRemoteItemId(request.sidebarItemId)
     : null;
-  if (!parsed || parsed.orgId !== orgId) return null;
+  if (request.sidebarItemId && (!parsed || parsed.orgId !== orgId)) return null;
+
+  // Exact text references carry a cloud row id. Team Inbox mentions carry
+  // the canonical conversation root instead; resolve it through the same
+  // deterministic live-root fallback the discussion plane uses, then let the
+  // existing replay/import owner do the rest.
+  const row = parsed
+    ? rows.find((candidate) => candidate.id === parsed.rowId)
+    : (() => {
+        const target = rerootSessionCommentTarget(
+          { orgId, sessionId: request.sessionId },
+          rows
+        );
+        return target
+          ? rows.find(
+              (candidate) => candidate.sourceSessionId === target.sessionId
+            )
+          : undefined;
+      })();
 
   // Busy-ness is per row: an unrelated in-flight download must not defer
   // this reference. The referenced row itself being busy means the download
   // the reference wants is already running — refocus it, consume the request.
-  const targetBusy = busySessionRows.get(parsed.rowId);
+  const targetBusy = row
+    ? busySessionRows.get(row.id)
+    : parsed
+      ? busySessionRows.get(parsed.rowId)
+      : undefined;
   if (targetBusy) {
-    const busyRow = rows.find((candidate) => candidate.id === parsed.rowId);
-    if (!busyRow) return null;
+    // Preserve the exact-row race: the listing may temporarily omit a row
+    // whose replay is already in flight. Wait for that owner to republish it
+    // instead of probing absence or starting a duplicate replay.
+    if (!row) return null;
     return {
       kind: "focus-busy",
       requestId: request.requestId,
-      row: busyRow,
+      row,
       localSessionId: targetBusy.localSessionId,
     };
   }
 
-  const row = rows.find((candidate) => candidate.id === parsed.rowId);
   if (!row) {
     // No listing has ever landed for this org: the initial fetch decides.
     if (state !== "ready") return null;
@@ -149,8 +173,14 @@ export function decideCloudAutoReplay({
     return null;
   }
 
-  // The viewer's own row, with the session already writable on this device.
+  // An exact row reference to the viewer's own session can open the writable
+  // local original. A canonical-root request (Team Inbox) must keep its Cloud
+  // authority, though: the raw external-history row carries no org/root
+  // provenance, so revealing it would drop the plane and show only the stale
+  // provider transcript. Replaying through the existing deterministic cache
+  // preserves importedFrom and therefore the canonical conversation binding.
   if (
+    parsed &&
     selfUserId &&
     row.ownerUserId === selfUserId &&
     localOwnSessionIds.has(row.sourceSessionId)

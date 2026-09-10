@@ -1,8 +1,8 @@
 import React, { useCallback } from "react";
 
 import { useImmediateCursorReset } from "@src/hooks/ui/useImmediateCursorReset";
+import { classNames } from "@src/util/ui/classNames";
 
-import { cn } from "./cn";
 import { BoldStableLabel } from "./tabContent";
 import type { TabPillItem } from "./types";
 
@@ -34,7 +34,7 @@ export const SidebarTabButton: React.FC<{
       data-action-id={tab.key}
       data-testid={tab.dataTestId}
       onMouseLeave={resetCursor}
-      className={cn(
+      className={classNames(
         "group relative flex flex-1 items-center justify-center select-none",
         cursorReset || isActive ? "cursor-default" : "cursor-pointer",
         "rounded-[100px] border-none",
@@ -51,7 +51,7 @@ export const SidebarTabButton: React.FC<{
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 px-[10px]">
         {iconOnly && tab.icon && (
           <div
-            className={cn(
+            className={classNames(
               "flex shrink-0 items-center justify-center transition-colors duration-150 group-hover:text-text-1",
               isActive
                 ? "text-primary-6 group-hover:text-primary-6"
@@ -63,7 +63,7 @@ export const SidebarTabButton: React.FC<{
         )}
         {!iconOnly && (
           <span
-            className={cn(
+            className={classNames(
               "text-xs transition-colors duration-150 group-hover:text-text-1",
               isActive ? "text-text-1" : "text-text-2"
             )}

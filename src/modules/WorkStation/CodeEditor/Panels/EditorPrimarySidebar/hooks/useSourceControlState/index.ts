@@ -12,7 +12,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DetachedHeadDialog } from "@src/components/GitDialogs";
-import { useGitStatus } from "@src/contexts/git";
+import { useGitStatus } from "@src/contexts/git/GitStatusContext/useGitStatus";
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
 import { useCommitForm } from "@src/modules/WorkStation/CodeEditor/hooks/sourceControl/useCommitForm";
 import { useFileSelection } from "@src/modules/WorkStation/CodeEditor/hooks/sourceControl/useFileSelection";
@@ -26,6 +26,7 @@ import {
   workstationPrCommitMessageAtomFamily,
   workstationRepoScopeKey,
 } from "@src/store/workstation/codeEditor/workstationPrAtom";
+import { retainWorkstationRepoScope } from "@src/store/workstation/codeEditor/workstationRepoScopeRetention";
 
 import { useStashState } from "../useStashState";
 import type {
@@ -259,6 +260,8 @@ export function useSourceControlState(
   // useSourceControlSetup). Mirror its published atoms here instead of mounting
   // a second copy — that previously caused duplicate GitHub lookups, duplicate
   // auto-create timers and last-writer-wins races on the global atom.
+  // Keep this repo's list atoms alive while Source Control is mounted.
+  useEffect(() => retainWorkstationRepoScope(scopeKey), [scopeKey]);
   const {
     prUrl,
     isCreating: prCreating,

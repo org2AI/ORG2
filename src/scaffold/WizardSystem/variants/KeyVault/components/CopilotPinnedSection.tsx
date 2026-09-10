@@ -6,8 +6,8 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
@@ -49,18 +49,19 @@ const CopilotPinnedSection: React.FC<CopilotPinnedSectionProps> = ({
     <div className="relative z-10 scrollbar-hide min-h-0 overflow-y-auto border-t border-solid border-border-2 px-4 pt-2">
       <div className={DETAIL_PANEL_TOKENS.contentWidth}>
         {browserOpen && !keyValidated && !instructionsDismissed && (
-          <InlineAlert
+          <PageNotice
             type="info"
             title={t("keyVault.copilotHowToCreate")}
             className="mb-2"
             onClose={() => setInstructionsDismissed(true)}
           >
             {t("keyVault.copilotHowToCreateCompact")}
-          </InlineAlert>
+          </PageNotice>
         )}
         <SectionContainer>
           <SectionRow
             label={t("keyVault.pasteToken")}
+            layout="vertical"
             description={t("keyVault.copilotTokenHint")}
             required
           >
@@ -88,17 +89,17 @@ const CopilotPinnedSection: React.FC<CopilotPinnedSectionProps> = ({
         </SectionContainer>
 
         {validationError && !browserOpen && !errorDismissed && (
-          <InlineAlert
+          <PageNotice
             type="danger"
             className="mt-2"
             onClose={() => setDismissedError(validationError)}
           >
             {validationError}
-          </InlineAlert>
+          </PageNotice>
         )}
 
         {keyValidated && !validationError && !successDismissed && (
-          <InlineAlert
+          <PageNotice
             type="success"
             className="mt-2"
             onClose={() => setSuccessDismissed(true)}
@@ -108,7 +109,7 @@ const CopilotPinnedSection: React.FC<CopilotPinnedSectionProps> = ({
                   count: detectedModelCount,
                 })
               : t("keyVault.validationSuccessNoModels")}
-          </InlineAlert>
+          </PageNotice>
         )}
       </div>
     </div>

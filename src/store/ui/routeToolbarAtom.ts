@@ -26,8 +26,6 @@ export interface ToolbarDropdownItem {
   label: string;
   icon: ToolbarDropdownIcon;
   onClick: () => void;
-  isDanger?: boolean;
-  show?: boolean;
 }
 
 export interface RouteToolbarButton {
@@ -54,14 +52,8 @@ export interface RouteToolbarButton {
 }
 
 export interface RouteToolbarConfig {
-  /** Custom ellipsis menu items for this route. When undefined, shows default repo items. */
-  ellipsisItems?: ToolbarDropdownItem[];
   /** Extra buttons to add to the toolbar button group (after ellipsis, before +). */
   extraButtons?: RouteToolbarButton[];
-  /** Custom handler for the + button. When omitted (and no plusDropdownItems), the + button is hidden. */
-  onPlusClick?: () => void;
-  /** Custom tooltip for + button when onPlusClick is provided. */
-  plusTitle?: string;
   /** Dropdown items for the + button. When set, + opens a dropdown instead of a single action. */
   plusDropdownItems?: ToolbarDropdownItem[];
 }

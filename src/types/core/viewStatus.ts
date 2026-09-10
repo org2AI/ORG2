@@ -25,15 +25,6 @@ export type GanttStatus =
   | "overdue"
   | "cancelled";
 
-/**
- * Calendar event status
- */
-export type CalendarStatus =
-  | "scheduled"
-  | "in_progress"
-  | "completed"
-  | "cancelled";
-
 // ============================================
 // Status Color Palette
 // ============================================
@@ -105,6 +96,7 @@ export const WORK_ITEM_STATUS_COLOR: Record<
   planned: "gray",
   in_progress: "blue",
   in_review: "amber",
+  blocked: "red",
   completed: "green",
   cancelled: "slate",
   duplicate: "slate",
@@ -134,68 +126,6 @@ export const GANTT_STATUS_COLOR: Record<
   cancelled: "slate",
 };
 
-/**
- * Maps CalendarStatus to color key
- */
-export const CALENDAR_STATUS_COLOR: Record<
-  CalendarStatus,
-  keyof typeof STATUS_COLORS
-> = {
-  scheduled: "gray",
-  in_progress: "blue",
-  completed: "green",
-  cancelled: "slate",
-};
-
-// ============================================
-// Status Conversion Utilities
-// ============================================
-
-/**
- * Convert WorkItemStatus to KanbanStatus
- */
-export const workItemToKanban: Record<WorkItemStatus, KanbanStatus> = {
-  backlog: "backlog",
-  planned: "planned",
-  in_progress: "in_progress",
-  in_review: "in_review",
-  completed: "completed",
-  cancelled: "cancelled",
-  duplicate: "duplicate",
-  open: "planned",
-  closed: "completed",
-};
-
-/**
- * Convert WorkItemStatus to GanttStatus
- */
-export const workItemToGantt: Record<WorkItemStatus, GanttStatus> = {
-  backlog: "not_started",
-  planned: "not_started",
-  in_progress: "in_progress",
-  in_review: "in_progress",
-  completed: "completed",
-  cancelled: "cancelled",
-  duplicate: "cancelled",
-  open: "not_started",
-  closed: "completed",
-};
-
-/**
- * Convert WorkItemStatus to CalendarStatus
- */
-export const workItemToCalendar: Record<WorkItemStatus, CalendarStatus> = {
-  backlog: "scheduled",
-  planned: "scheduled",
-  in_progress: "in_progress",
-  in_review: "in_progress",
-  completed: "completed",
-  cancelled: "cancelled",
-  duplicate: "cancelled",
-  open: "scheduled",
-  closed: "completed",
-};
-
 // ============================================
 // Helper Functions
 // ============================================
@@ -206,14 +136,6 @@ export const workItemToCalendar: Record<WorkItemStatus, CalendarStatus> = {
 export function getStatusColor(status: WorkItemStatus) {
   const colorKey = WORK_ITEM_STATUS_COLOR[status];
   return STATUS_COLORS[colorKey];
-}
-
-/**
- * Get Tailwind background class for status
- */
-export function getStatusBgClass(status: WorkItemStatus): string {
-  const colorKey = WORK_ITEM_STATUS_COLOR[status];
-  return `bg-${STATUS_COLORS[colorKey].tw}`;
 }
 
 /**

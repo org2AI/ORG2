@@ -11,7 +11,6 @@ import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
 import {
-  CHAT_PANEL_CONTENT_MODE,
   CHAT_PANEL_CREATE_TARGET,
   type ChatPanelCreateProjectContext,
   type ChatPanelSelectedCloudOrg,
@@ -22,7 +21,6 @@ import {
   DEFAULT_CHAT_PANEL_CREATE_TARGET,
   WORKSPACE_OVERVIEW_TAB,
   type WorkspaceOverviewTab,
-  chatPanelContentModeAtom,
   chatPanelCreateProjectContextAtom,
   chatPanelCreateTargetAtom,
   chatPanelExploreOpenAtom,
@@ -31,6 +29,7 @@ import {
   chatPanelSelectedProjectOrgAtom,
   chatPanelSelectedWorkItemAtom,
   chatPanelSelectedWorkspaceAtom,
+  chatPanelSelectionStateAtom,
   chatPanelStartPageOpenAtom,
   chatPanelWorkspaceOverviewTabAtom,
 } from "./selectionAtoms";
@@ -100,13 +99,7 @@ type SetAtom = <Value, Args extends unknown[], Result>(
   ...args: Args
 ) => Result;
 
-function resetChatPanelSurfaceState(set: SetAtom): void {
-  set(chatPanelSelectedWorkItemAtom, null);
-  set(chatPanelSelectedProjectAtom, null);
-  set(chatPanelSelectedProjectOrgAtom, null);
-  set(chatPanelSelectedWorkspaceAtom, null);
-  set(chatPanelSelectedCloudOrgAtom, null);
-  set(chatPanelExploreOpenAtom, false);
+function resetChatPanelNavigationOptions(set: SetAtom): void {
   set(chatPanelCreateProjectContextAtom, null);
   set(chatPanelCreateTargetAtom, DEFAULT_CHAT_PANEL_CREATE_TARGET);
   set(chatPanelWorkspaceOverviewTabAtom, WORKSPACE_OVERVIEW_TAB.OVERVIEW);
@@ -116,15 +109,15 @@ export const chatPanelNavigateAtom = atom(
   null,
   (get, set, command: ChatPanelNavigateCommand) => {
     const currentWorkspaceOverviewTab = get(chatPanelWorkspaceOverviewTabAtom);
-    resetChatPanelSurfaceState(set);
+    resetChatPanelNavigationOptions(set);
     set(chatPanelStartPageOpenAtom, false);
 
     switch (command.kind) {
       case CHAT_PANEL_SURFACE_KIND.SESSION:
-        set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.SESSION);
+        set(chatPanelSelectionStateAtom, { kind: "session" });
         return;
       case CHAT_PANEL_SURFACE_KIND.NEW_PROJECT:
-        set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.NON_SESSION);
+        set(chatPanelSelectionStateAtom, { kind: "creation" });
         set(chatPanelCreateTargetAtom, CHAT_PANEL_CREATE_TARGET.PROJECT);
         set(
           chatPanelCreateProjectContextAtom,
@@ -132,7 +125,7 @@ export const chatPanelNavigateAtom = atom(
         );
         return;
       case CHAT_PANEL_SURFACE_KIND.NEW_WORK_ITEM:
-        set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.NON_SESSION);
+        set(chatPanelSelectionStateAtom, { kind: "creation" });
         set(chatPanelCreateTargetAtom, CHAT_PANEL_CREATE_TARGET.WORK_ITEM);
         set(
           chatPanelCreateProjectContextAtom,
@@ -140,23 +133,18 @@ export const chatPanelNavigateAtom = atom(
         );
         return;
       case CHAT_PANEL_SURFACE_KIND.PROJECT:
-        set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.NON_SESSION);
         set(chatPanelSelectedProjectAtom, command.project);
         return;
       case CHAT_PANEL_SURFACE_KIND.PROJECT_ORG:
-        set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.NON_SESSION);
         set(chatPanelSelectedProjectOrgAtom, command.projectOrg);
         return;
       case CHAT_PANEL_SURFACE_KIND.WORK_ITEM:
-        set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.NON_SESSION);
         set(chatPanelSelectedWorkItemAtom, command.workItem);
         return;
       case CHAT_PANEL_SURFACE_KIND.WORKSPACE_EXPLORE:
-        set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.NON_SESSION);
         set(chatPanelExploreOpenAtom, true);
         return;
       case CHAT_PANEL_SURFACE_KIND.WORKSPACE_OVERVIEW:
-        set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.NON_SESSION);
         set(chatPanelSelectedWorkspaceAtom, command.workspace);
         set(
           chatPanelWorkspaceOverviewTabAtom,
@@ -164,7 +152,6 @@ export const chatPanelNavigateAtom = atom(
         );
         return;
       case CHAT_PANEL_SURFACE_KIND.CLOUD_ORG:
-        set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.NON_SESSION);
         set(chatPanelSelectedCloudOrgAtom, command.cloudOrg);
         return;
     }
@@ -173,63 +160,48 @@ export const chatPanelNavigateAtom = atom(
 chatPanelNavigateAtom.debugLabel = "chatPanelNavigateAtom";
 
 export const activeChatPanelSurfaceAtom = atom<ChatPanelSurfaceState>((get) => {
-  const selectedWorkItem = get(chatPanelSelectedWorkItemAtom);
-  if (selectedWorkItem) {
-    return {
-      kind: CHAT_PANEL_SURFACE_KIND.WORK_ITEM,
-      workItem: selectedWorkItem,
-    };
+  const selection = get(chatPanelSelectionStateAtom);
+  switch (selection.kind) {
+    case "project":
+      return {
+        kind: CHAT_PANEL_SURFACE_KIND.PROJECT,
+        project: selection.value,
+      };
+    case "projectOrg":
+      return {
+        kind: CHAT_PANEL_SURFACE_KIND.PROJECT_ORG,
+        projectOrg: selection.value,
+      };
+    case "workspace":
+      return {
+        kind: CHAT_PANEL_SURFACE_KIND.WORKSPACE_OVERVIEW,
+        workspace: selection.value,
+        tab: get(chatPanelWorkspaceOverviewTabAtom),
+      };
+    case "cloudOrg":
+      return {
+        kind: CHAT_PANEL_SURFACE_KIND.CLOUD_ORG,
+        cloudOrg: selection.value,
+      };
+    case "explore":
+      return { kind: CHAT_PANEL_SURFACE_KIND.WORKSPACE_EXPLORE };
+    case "workItem": {
+      const workItem = get(chatPanelSelectedWorkItemAtom);
+      return workItem
+        ? { kind: CHAT_PANEL_SURFACE_KIND.WORK_ITEM, workItem }
+        : { kind: CHAT_PANEL_SURFACE_KIND.SESSION };
+    }
+    case "creation": {
+      const target = get(chatPanelCreateTargetAtom);
+      if (target === CHAT_PANEL_CREATE_TARGET.PROJECT)
+        return { kind: CHAT_PANEL_SURFACE_KIND.NEW_PROJECT };
+      if (target === CHAT_PANEL_CREATE_TARGET.WORK_ITEM)
+        return { kind: CHAT_PANEL_SURFACE_KIND.NEW_WORK_ITEM };
+      return { kind: CHAT_PANEL_SURFACE_KIND.SESSION };
+    }
+    case "session":
+      return { kind: CHAT_PANEL_SURFACE_KIND.SESSION };
   }
-
-  const selectedProject = get(chatPanelSelectedProjectAtom);
-  if (selectedProject) {
-    return { kind: CHAT_PANEL_SURFACE_KIND.PROJECT, project: selectedProject };
-  }
-
-  const selectedProjectOrg = get(chatPanelSelectedProjectOrgAtom);
-  if (selectedProjectOrg) {
-    return {
-      kind: CHAT_PANEL_SURFACE_KIND.PROJECT_ORG,
-      projectOrg: selectedProjectOrg,
-    };
-  }
-
-  if (get(chatPanelExploreOpenAtom)) {
-    return { kind: CHAT_PANEL_SURFACE_KIND.WORKSPACE_EXPLORE };
-  }
-
-  const selectedWorkspace = get(chatPanelSelectedWorkspaceAtom);
-  if (selectedWorkspace) {
-    return {
-      kind: CHAT_PANEL_SURFACE_KIND.WORKSPACE_OVERVIEW,
-      workspace: selectedWorkspace,
-      tab: get(chatPanelWorkspaceOverviewTabAtom),
-    };
-  }
-
-  const selectedCloudOrg = get(chatPanelSelectedCloudOrgAtom);
-  if (selectedCloudOrg) {
-    return {
-      kind: CHAT_PANEL_SURFACE_KIND.CLOUD_ORG,
-      cloudOrg: selectedCloudOrg,
-    };
-  }
-
-  const contentMode = get(chatPanelContentModeAtom);
-  const createTarget = get(chatPanelCreateTargetAtom);
-  if (
-    contentMode === CHAT_PANEL_CONTENT_MODE.NON_SESSION &&
-    createTarget === CHAT_PANEL_CREATE_TARGET.PROJECT
-  ) {
-    return { kind: CHAT_PANEL_SURFACE_KIND.NEW_PROJECT };
-  }
-  if (
-    contentMode === CHAT_PANEL_CONTENT_MODE.NON_SESSION &&
-    createTarget === CHAT_PANEL_CREATE_TARGET.WORK_ITEM
-  ) {
-    return { kind: CHAT_PANEL_SURFACE_KIND.NEW_WORK_ITEM };
-  }
-  return { kind: CHAT_PANEL_SURFACE_KIND.SESSION };
 });
 activeChatPanelSurfaceAtom.debugLabel = "activeChatPanelSurfaceAtom";
 

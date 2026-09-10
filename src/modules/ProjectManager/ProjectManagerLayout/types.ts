@@ -51,6 +51,10 @@ export interface ProjectManagerContentRouterProps {
   tabs: WorkStationTab[];
   activeTab: WorkStationTab | null;
   projectQuickActions: QuickAction[];
+}
+
+/** Actions published to project renderers through the host context. */
+export interface ProjectHostActions {
   onSelectProject: SelectProjectHandler;
   onOpenProjects: () => void;
   onCreateProject: () => void;

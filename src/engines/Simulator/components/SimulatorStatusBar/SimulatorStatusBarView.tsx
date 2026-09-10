@@ -96,7 +96,7 @@ export const SimulatorStatusBarView: React.FC<SimulatorStatusBarViewProps> =
                 >
                   <button
                     type="button"
-                    data-testid="session-replay-enter-replay"
+                    data-testid="session-replay-free-browse"
                     onClick={onEnterReplay}
                     className="flex h-5 w-5 transform-gpu items-center justify-center rounded-full text-white hover:bg-white/15 hover:text-white"
                     aria-label={t("simulator.replay.freeBrowse")}

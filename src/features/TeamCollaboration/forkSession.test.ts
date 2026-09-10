@@ -17,10 +17,12 @@ import type {
 } from "@src/store/session/sessionAtom/types";
 import { createInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
-import { forkCheckoutRequestAtom } from "./components/ForkCheckoutPickerDialog";
-import { forkSessionSetupRequestAtom } from "./components/ForkSessionSetupDialog";
 import { forkSession } from "./engine/collabSyncEngineHelpers";
 import type { ForkSessionResult } from "./engine/collabSyncEngineHelpers";
+import {
+  forkCheckoutRequestAtom,
+  forkSessionSetupRequestAtom,
+} from "./forkDialogState";
 import {
   ForkCancelledError,
   __FORK_RELAY_INTERNALS,
@@ -31,6 +33,8 @@ import {
   markForkHandoffConsumed,
   resolveForkWorkspacePath,
 } from "./forkSession";
+import { clearForkSetupMemory, saveForkSetupMemory } from "./forkSetupMemory";
+import { ForkOperationError } from "./forkSnapshotIntegrity";
 import {
   resolveLocalCheckoutForScopeKey,
   resolveMatchingOrgRepoScope,
@@ -191,6 +195,47 @@ beforeEach(() => {
 });
 
 describe("resolveForkWorkspacePath", () => {
+  it("prefers the known source checkout over another clone of the same repo", async () => {
+    store.set(sessionsAtom, [
+      { session_id: "other", repoPath: "/repo/other-clone" } as Session,
+      { session_id: "source", repoPath: "/repo/shared" } as Session,
+    ]);
+    existsMock.mockResolvedValue(true);
+    resolveCheckoutMock.mockImplementation(
+      async (_scopeKey, candidates) => candidates[0] ?? null
+    );
+
+    await expect(
+      resolveForkWorkspacePath(
+        makeRemote({ repoScopeKey: "github.com/example/repo" })
+      )
+    ).resolves.toBe("/repo/shared");
+    expect(resolveCheckoutMock).toHaveBeenCalledWith(
+      "github.com/example/repo",
+      ["/repo/shared", "/repo/other-clone"]
+    );
+  });
+
+  it("still verifies the preferred checkout's repository identity", async () => {
+    store.set(sessionsAtom, [
+      { session_id: "other", repoPath: "/repo/other-clone" } as Session,
+      { session_id: "source", repoPath: "/repo/shared" } as Session,
+    ]);
+    existsMock.mockResolvedValue(true);
+    // The source path exists here but belongs to a different repository.
+    resolveCheckoutMock.mockImplementation(
+      async (_scopeKey, candidates) =>
+        candidates.find((candidate) => candidate === "/repo/other-clone") ??
+        null
+    );
+
+    await expect(
+      resolveForkWorkspacePath(
+        makeRemote({ repoScopeKey: "github.com/example/repo" })
+      )
+    ).resolves.toBe("/repo/other-clone");
+  });
+
   it("ignores stale imported paths and probes only checkouts that exist locally", async () => {
     store.set(sessionsAtom, [
       { session_id: "stale", repoPath: "/Users/owner/ORG2" } as Session,
@@ -248,6 +293,39 @@ describe("resolveForkWorkspacePath", () => {
 });
 
 describe("forkTeammateSession (design §16.11 relay completion)", () => {
+  it("reopens setup once when a remembered account is unavailable", async () => {
+    const options = makeForkOptions({ repoScopeKey: undefined });
+    saveForkSetupMemory(options.remoteSession.repoScopeKey, {
+      workspaceRepoPath: "/old/checkout",
+      execution: { ...options.execution, accountId: "removed-account" },
+    });
+    forkSessionMock.mockRejectedValueOnce(
+      new ForkOperationError("agent_unavailable", "remote-1", "Account removed")
+    );
+    const pending = forkTeammateSession({
+      ...options,
+      promptForExecution: true,
+    });
+    await vi.waitFor(() =>
+      expect(store.get(forkSessionSetupRequestAtom)).not.toBeNull()
+    );
+    expect(forkSessionMock).toHaveBeenCalledTimes(1);
+    store.get(forkSessionSetupRequestAtom)?.resolve({
+      workspaceRepoPath: "/new/checkout",
+      execution: options.execution,
+    });
+    await pending;
+    expect(forkSessionMock).toHaveBeenCalledTimes(2);
+    expect(forkSessionMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        workspaceRepoPath: "/new/checkout",
+        execution: options.execution,
+      })
+    );
+    expect(saveSessionMock).toHaveBeenCalledTimes(1);
+    clearForkSetupMemory(options.remoteSession.repoScopeKey);
+  });
+
   it("waits for one explicit workspace/account/model setup before fetching the fork", async () => {
     const forkPromise = forkTeammateSession({
       ...makeForkOptions({ repoScopeKey: undefined }),

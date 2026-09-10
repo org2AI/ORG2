@@ -81,6 +81,7 @@ export function createTauriMobileAuthClient(options: {
     // A Tauri webview does not own the Relay's browser cookie jar. Native
     // auth is the Supabase session plus the paired Desktop device credential.
     serverSessionUrl: null,
+    useCloudLogin: true,
   });
 }
 

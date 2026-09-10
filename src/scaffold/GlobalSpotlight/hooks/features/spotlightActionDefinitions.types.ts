@@ -15,6 +15,7 @@ import type { SpotlightItem } from "../../types";
 // ============================================
 
 export type SpotlightStaticActionId =
+  | "import-session"
   | "open-session-creator"
   | "create-project"
   | "create-work-item"
@@ -23,6 +24,7 @@ export type SpotlightStaticActionId =
   | "open-agent-control"
   | "switch-workspace"
   | "switch-branch"
+  | `switch-branch:${string}`
   | "add-workspace"
   | "create-multi-repo-workspace"
   | "create-organization"
@@ -54,6 +56,7 @@ export type SpotlightStaticActionId =
   | "detect-update";
 
 export type SpotlightStaticActionFallback =
+  | "import-session"
   | "open-session-creator"
   | "create-project"
   | "create-work-item"
@@ -90,6 +93,7 @@ export type SpotlightEditorActionId =
 export interface SpotlightStaticActionDefinition {
   id: SpotlightStaticActionId;
   labelKey: string;
+  labelValues?: Record<string, string>;
   icon: SpotlightItem["icon"];
   keywords: string[];
   shortcut?: string;

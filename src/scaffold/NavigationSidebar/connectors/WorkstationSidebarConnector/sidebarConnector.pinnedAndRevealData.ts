@@ -9,17 +9,17 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
-import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import type { SessionCreatorDraft } from "@src/store/session";
 import { toChatPanelTuiSessionId } from "@src/util/ui/terminal/chatPanelTuiSessionId";
 
 import { useRenameSessionModal } from "../useRenameSessionModal";
-import type { WorkstationSidebarViewKey } from "./WorkstationSidebarViewSwitcher";
 import { isCloudScopedLocalRow } from "./cloudScopedMenuItems";
 import {
   usePinnedMenuItems,
   useSessionSidebarMenuItems,
 } from "./sidebarMenuCollections";
+import type { SessionSidebarView } from "./types";
 import { buildWorkItemsSidebarMenuItems } from "./workItemsSidebarMenuItems";
 
 interface UseWorkstationSidebarPinnedAndRevealDataParams {
@@ -27,7 +27,7 @@ interface UseWorkstationSidebarPinnedAndRevealDataParams {
   cloudMenuItems: NavigationMenuItem[];
   menuItems: readonly NavigationMenuItem[];
   sessionCreatorDrafts: readonly SessionCreatorDraft[];
-  activeViewKey: WorkstationSidebarViewKey;
+  activeViewKey: SessionSidebarView;
   sessionSearchLabel: string;
   sessionRefreshLabel: string;
   sessionRefreshIconClassName?: string;

@@ -13,6 +13,7 @@
 mod create;
 mod failure_broadcast;
 mod launch_profile;
+mod history;
 mod resume_delete;
 mod run;
 mod status;
@@ -24,6 +25,7 @@ mod worktree;
 // `generate_handler!` (which references `commands::__cmd__<name>`).
 pub use create::*;
 pub use launch_profile::*;
+pub use history::*;
 pub use resume_delete::*;
 pub use run::*;
 pub use status::*;

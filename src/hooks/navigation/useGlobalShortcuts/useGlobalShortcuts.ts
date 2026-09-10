@@ -1,3 +1,6 @@
+import { useTraySessions } from "@src/hooks/platform/useTraySessions";
+
+import { useCustomizedShortcuts } from "./useCustomizedShortcuts";
 import { useInspectModeShortcuts } from "./useInspectModeShortcuts";
 import { useShortcutRegistration } from "./useShortcutRegistration";
 import { useTabShortcuts } from "./useTabShortcuts";
@@ -44,6 +47,8 @@ import { useZoomShortcuts } from "./useZoomShortcuts";
  * - Ctrl+Shift+Tab or Command+Option+←: Switch to previous tab
  */
 export const useGlobalShortcuts = () => {
+  useTraySessions();
+  useCustomizedShortcuts();
   const {
     inspectModeRef,
     handleToggleInspectMode,

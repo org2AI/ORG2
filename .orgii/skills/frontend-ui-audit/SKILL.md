@@ -120,9 +120,9 @@ date-stamped folder per batch, one file per audited component.
 ```markdown
 # <Component> UI audit
 
-| Line           | Element           | Verdict          | Reason                | Suggested change |
-| -------------- | ----------------- | ---------------- | --------------------- | ---------------- |
-| `File.tsx:294` | CLI version alert | keep with reason | Reuses `InlineAlert`… | None.            |
+| Line           | Element           | Verdict          | Reason               | Suggested change |
+| -------------- | ----------------- | ---------------- | -------------------- | ---------------- |
+| `File.tsx:294` | CLI version alert | keep with reason | Reuses `PageNotice`… | None.            |
 
 Verdict totals: **0 fix**, **4 keep with reason**, **0 abstract**.
 ```

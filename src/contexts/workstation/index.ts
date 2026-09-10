@@ -6,5 +6,3 @@
  */
 
 export { BrowserProvider, useBrowserContext } from "./BrowserContext";
-
-export { TerminalProvider } from "./TerminalContext";

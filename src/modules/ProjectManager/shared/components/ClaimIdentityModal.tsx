@@ -7,7 +7,7 @@ import type { TFunction } from "i18next";
 import React from "react";
 
 import type { MemberEntry } from "@src/api/http/project";
-import InlineAlert from "@src/components/InlineAlert";
+import PageNotice from "@src/components/PageNotice";
 import { HugeiconsIcon, Mail01Icon } from "@src/icons";
 import Modal from "@src/scaffold/ModalSystem";
 
@@ -67,9 +67,9 @@ const ClaimIdentityModal: React.FC<ClaimIdentityModalProps> = ({
           </ul>
         </div>
 
-        <InlineAlert type="warning">
+        <PageNotice type="warning">
           {t("settings.claimIdentityWarning")}
-        </InlineAlert>
+        </PageNotice>
       </div>
     </Modal>
   );

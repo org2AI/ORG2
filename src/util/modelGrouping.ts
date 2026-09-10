@@ -8,6 +8,11 @@
  * - "current" = latest generation
  * - "older"   = previous generation
  */
+import {
+  extractGptModelTier,
+  isModelVariantSuffixToken,
+  stripCursorHostedModelPrefix,
+} from "./modelNameGrammar";
 
 export interface ModelGroup {
   label: string;
@@ -36,11 +41,14 @@ function groupHasAnyEnabled(
 
 /** Minimum sortVersion to be considered "current" per family */
 const CURRENT_THRESHOLDS: Record<string, number> = {
-  claude: 406, // Claude 4.6+
-  gpt: 540, // GPT 5.4+
+  claude: 408, // Claude 4.8+
+  gpt: 550, // GPT 5.5+
   gemini: 200, // Gemini 2+
-  sonnet: 406, // Sonnet 4.6+
-  opus: 406, // Opus 4.6+
+  sonnet: 408, // Sonnet 4.8+
+  opus: 408, // Opus 4.8+
+  haiku: 408, // Haiku 4.8+
+  fable: 500, // Fable 5 / 5.1+
+  mythos: 500, // Mythos 5+
   composer: 150, // Composer 1.5+
   o: 540, // O-series: o5.4+ current; o5 / o4 / o3 / o1 older
   glm: 510, // Zhipu GLM 5.1+ current; GLM 5.0 / 4.x older
@@ -52,31 +60,6 @@ interface ParsedGroup {
   sortVersion: number;
 }
 
-/** Longest-first so codex-max wins over codex. */
-const GPT_TIER_PREFIXES = [
-  "codex-max",
-  "codex-mini",
-  "nano",
-  "mini",
-  "codex",
-  "sol",
-  "terra",
-  "luna",
-] as const;
-
-function extractGptTier(rest: string): string | undefined {
-  for (const tier of GPT_TIER_PREFIXES) {
-    if (rest === tier || rest.startsWith(`${tier}-`)) {
-      return tier;
-    }
-  }
-  return undefined;
-}
-
-export function extractGptModelTier(rest: string): string | undefined {
-  return extractGptTier(rest);
-}
-
 function formatGptTierLabel(tier: string): string {
   return tier
     .split("-")
@@ -85,32 +68,6 @@ function formatGptTierLabel(tier: string): string {
 }
 
 const CURSOR_TIER_MODELS = new Set(["default", "auto", "premium"]);
-
-export const CURSOR_HOSTED_MODEL_PREFIX = "cursor-";
-
-/** Strip KeyVault's `cursor-` hosted prefix before family/variant parsing. */
-export function stripCursorHostedModelPrefix(modelName: string): {
-  isCursorHosted: boolean;
-  coreModelName: string;
-} {
-  const lower = modelName.toLowerCase();
-  if (lower.startsWith(CURSOR_HOSTED_MODEL_PREFIX)) {
-    return {
-      isCursorHosted: true,
-      coreModelName: modelName.slice(CURSOR_HOSTED_MODEL_PREFIX.length),
-    };
-  }
-  return { isCursorHosted: false, coreModelName: modelName };
-}
-
-export function withCursorHostedModelPrefix(
-  coreModelName: string,
-  isCursorHosted: boolean
-): string {
-  return isCursorHosted
-    ? `${CURSOR_HOSTED_MODEL_PREFIX}${coreModelName}`
-    : coreModelName;
-}
 
 function formatCursorTierLabel(modelName: string): string {
   return modelName.charAt(0).toUpperCase() + modelName.slice(1);
@@ -243,8 +200,18 @@ function parseModelGroup(modelName: string): ParsedGroup {
             sortVersion: versionStringToSortVersion(versionMatch[1]),
           };
         }
-        const tier = extractGptTier(rest);
-        const subLabel = tier ? ` ${formatGptTierLabel(tier)}` : "";
+        const tier = extractGptModelTier(rest);
+        const distinctTokens = tier
+          ? rest
+              .slice(tier.length)
+              .split("-")
+              .filter(
+                (token) => token.length > 0 && !isModelVariantSuffixToken(token)
+              )
+          : [];
+        const subLabel = tier
+          ? ` ${formatGptTierLabel([tier, ...distinctTokens].join("-"))}`
+          : "";
         return {
           label: `${label} ${versionMatch[1]}${subLabel}`,
           sortVersion: versionStringToSortVersion(versionMatch[1]),

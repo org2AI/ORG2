@@ -13,7 +13,7 @@ import { useLocation } from "react-router-dom";
 import AnyIcon from "@src/components/AnyIcon";
 import { deriveBreadcrumbKeys, getPathIcon } from "@src/config/mainAppPaths";
 import { findRouteByPath, getLabelForPath } from "@src/config/routes";
-import { useRouteLabel } from "@src/hooks/i18n";
+import { useRouteLabel } from "@src/hooks/i18n/useRouteLabel";
 import { useSafeHover } from "@src/hooks/ui/useSafeHover";
 import {
   ArrowLeftRightIcon,
@@ -23,7 +23,7 @@ import {
 import { hoverSidebarOpenAtom } from "@src/store/ui/hoverSidebarAtom";
 import { sidebarCollapsedAtom } from "@src/store/ui/sidebarAtom";
 
-import { PANEL_HEADER_TOKENS } from "../PanelHeader";
+import { PANEL_HEADER_TOKENS } from "../PanelHeader/tokens";
 
 // ============================================
 // Component

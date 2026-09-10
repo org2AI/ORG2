@@ -1,4 +1,6 @@
-import React from "react";
+// @vitest-environment jsdom
+import React, { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -66,7 +68,24 @@ describe("SidebarOrgSelector", () => {
 
     expect(markup).toContain("select-bare");
     expect(markup).not.toContain("select-ghost");
-    expect(markup).toContain("hover:bg-sidebar-selected!");
+    expect(markup).not.toContain("hover:bg-sidebar-selected!");
+  });
+
+  it("keeps its chevron hidden until the sidebar or selector is active", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SidebarOrgSelector, {
+        ...baseProps,
+        value: "personal",
+        options: [{ value: "personal", label: "Local profile" }],
+        loading: false,
+      })
+    );
+
+    expect(markup).toContain("[&amp;_.select-arrow]:opacity-0");
+    expect(markup).toContain(
+      "group-hover/sidebar:[&amp;_.select-arrow]:opacity-100"
+    );
+    expect(markup).toContain("hover:[&amp;_.select-arrow]:opacity-100");
   });
 
   it("does not repeat the signed-in identity in the organization menu", () => {
@@ -84,4 +103,75 @@ describe("SidebarOrgSelector", () => {
     expect(markup).not.toContain("cloud.signedInAs");
     expect(markup).not.toContain("sidebar-cloud-sign-in");
   });
+});
+
+it("waits for pointer movement after remount while allowing keyboard activation", () => {
+  const env = globalThis as typeof globalThis & {
+    IS_REACT_ACT_ENVIRONMENT?: boolean;
+  };
+  const previous = env.IS_REACT_ACT_ENVIRONMENT;
+  env.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const render = () =>
+    act(() =>
+      root.render(
+        React.createElement(SidebarOrgSelector, {
+          ...baseProps,
+          value: "personal",
+          options: [{ value: "personal", label: "Local profile" }],
+          loading: false,
+        })
+      )
+    );
+  const selector = () =>
+    container.querySelector('[role="combobox"]') as HTMLElement;
+  try {
+    render();
+    expect(
+      selector()
+        .querySelector(".select-selector")!
+        .classList.contains("hover:bg-sidebar-selected!")
+    ).toBe(false);
+    act(() =>
+      selector().dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
+    );
+    expect(
+      selector()
+        .querySelector(".select-selector")!
+        .classList.contains("hover:bg-sidebar-selected!")
+    ).toBe(false);
+    act(() =>
+      selector().dispatchEvent(new MouseEvent("pointermove", { bubbles: true }))
+    );
+    expect(
+      selector()
+        .querySelector(".select-selector")!
+        .classList.contains("hover:bg-sidebar-selected!")
+    ).toBe(true);
+
+    act(() => root.render(null));
+    render();
+    expect(
+      selector()
+        .querySelector(".select-selector")!
+        .classList.contains("hover:bg-sidebar-selected!")
+    ).toBe(false);
+    act(() =>
+      selector().dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+      )
+    );
+    expect(selector().getAttribute("aria-expanded")).toBe("true");
+    expect(
+      selector()
+        .querySelector(".select-selector")!
+        .classList.contains("bg-sidebar-selected!")
+    ).toBe(true);
+  } finally {
+    act(() => root.unmount());
+    container.remove();
+    env.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
 });

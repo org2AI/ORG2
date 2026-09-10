@@ -1,5 +1,6 @@
 //! Bounded process inventory cache and process-tree traversal.
 
+#[cfg(not(target_os = "macos"))]
 use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -60,7 +61,6 @@ impl ProcessInventoryCache {
                 #[cfg(target_os = "macos")]
                 executable: process.exe().map(|path| path.to_string_lossy().to_string()),
                 rss_bytes: process.memory(),
-                virtual_memory_bytes: process.virtual_memory(),
                 #[cfg(unix)]
                 belongs_to_current_user: current_uid
                     .as_ref()
@@ -92,6 +92,7 @@ pub(super) fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
+#[cfg(not(target_os = "macos"))]
 pub(super) fn descendant_depth(
     pid: u32,
     root_pid: u32,

@@ -16,7 +16,7 @@ import {
   useDropdownEngine,
 } from "@src/hooks/dropdown";
 import { HugeiconsIcon, Refresh04Icon, Tick01Icon } from "@src/icons";
-import { useSelectorKernel } from "@src/scaffold/GlobalSpotlight/palettes/core";
+import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import {
   PaletteBody,
   SpotlightShell,

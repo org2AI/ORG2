@@ -17,7 +17,7 @@ import {
   CHAT_PANEL_CREATE_TARGET,
   type ChatPanelSelectedProject,
   type ChatPanelSelectedWorkItem,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 import { STORY_ORG_SCOPE } from "@src/store/workstation/tabs";
 
 import {
@@ -34,7 +34,7 @@ import {
   getProjectsProjectOverviewSlug,
   getProjectsWorkItemCreateOrgId,
   getProjectsWorkItemId,
-} from "../useProjectsWorkItemMenuItems";
+} from "../useProjectsWorkItemMenuItems/index";
 
 interface UseProjectsMenuItemClickParams<
   Project,

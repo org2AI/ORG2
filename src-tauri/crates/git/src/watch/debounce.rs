@@ -10,7 +10,6 @@
 //! - Added retry when a flush is deferred due to an in-progress git operation
 use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -29,10 +28,13 @@ const MIN_FLUSH_INTERVAL_MS: u64 = 5000;
 
 /// Maximum concurrent git status operations (prevents file descriptor exhaustion)
 /// Each operation spawns 4-6 git processes, so limit to 1 to prevent fd exhaustion
-const MAX_CONCURRENT_GIT_OPS: u32 = 1;
+const MAX_CONCURRENT_GIT_OPS: usize = 1;
 
-/// Global counter for active git operations (simple semaphore)
-static ACTIVE_GIT_OPS: AtomicU32 = AtomicU32::new(0);
+// Acquire before entering spawn_blocking: waiting repos retain one async task,
+// never a polling thread per attempt. Pending entries also remain owned until
+// their status computation completes, so repeated events coalesce in place.
+static GIT_OP_SLOTS: tokio::sync::Semaphore =
+    tokio::sync::Semaphore::const_new(MAX_CONCURRENT_GIT_OPS);
 
 pub(crate) fn truncate_preview(s: &str, max_bytes: usize) -> String {
     if s.len() <= max_bytes {
@@ -60,6 +62,36 @@ struct PendingEvent {
     total_affected: usize,
     flush_scheduled: bool,
     retry_count: u32,
+}
+
+fn begin_pending_flush(
+    pending: &mut HashMap<String, PendingEvent>,
+    repo_id: &str,
+) -> Option<(RepoChangeType, usize, Instant)> {
+    pending.get_mut(repo_id).map(|event| {
+        let count = std::mem::take(&mut event.total_affected);
+        (event.change_type.clone(), count, event.first_event_at)
+    })
+}
+
+fn finish_pending_flush(
+    pending: &mut HashMap<String, PendingEvent>,
+    repo_id: &str,
+    generation: Instant,
+) -> bool {
+    match pending.get_mut(repo_id) {
+        Some(event) if event.first_event_at == generation => {
+            if event.total_affected > 0 {
+                event.first_event_at = Instant::now();
+                event.retry_count = 0;
+                true
+            } else {
+                pending.remove(repo_id);
+                false
+            }
+        }
+        _ => false,
+    }
 }
 
 pub struct DebounceManager {
@@ -378,7 +410,9 @@ impl DebounceManager {
             if should_flush {
                 // Run the blocking git status refresh on the blocking thread pool
                 // so the tokio async worker threads are not stalled.
+                let permit = GIT_OP_SLOTS.acquire().await.expect("git slots never close");
                 tokio::task::spawn_blocking(move || {
+                    let _permit = permit;
                     Self::flush_event(
                         &repo_id,
                         pending_events,
@@ -508,57 +542,17 @@ impl DebounceManager {
             }
         }
 
-        // CONCURRENCY LIMIT: Wait for slot if too many git ops are running
-        // This prevents file descriptor exhaustion during rapid repo switching
-        let mut wait_attempts = 0;
-        const MAX_WAIT_ATTEMPTS: u32 = 20; // 2 seconds max wait (20 * 100ms)
-
-        loop {
-            let current = ACTIVE_GIT_OPS.load(Ordering::SeqCst);
-            if current < MAX_CONCURRENT_GIT_OPS {
-                // Try to acquire slot
-                if ACTIVE_GIT_OPS
-                    .compare_exchange(current, current + 1, Ordering::SeqCst, Ordering::SeqCst)
-                    .is_ok()
-                {
-                    break; // Got the slot
-                }
-                // CAS failed, another thread got it, retry
-            } else {
-                // Too many ops running, wait
-                wait_attempts += 1;
-                if wait_attempts > MAX_WAIT_ATTEMPTS {
-                    log::debug!("[Debounce] Timeout waiting for git op slot for {}", repo_id);
-                    return;
-                }
-                std::thread::sleep(Duration::from_millis(100));
-            }
-        }
-
-        // Ensure we release the slot when done
-        struct SlotGuard;
-        impl Drop for SlotGuard {
-            fn drop(&mut self) {
-                ACTIVE_GIT_OPS.fetch_sub(1, Ordering::SeqCst);
-            }
-        }
-        let _guard = SlotGuard;
-
         // Update last flush time
         {
             let mut flush_times = last_flush_times.write();
             flush_times.insert(repo_id.to_string(), Instant::now());
         }
 
-        // Remove from pending
-        let event_info = {
-            let mut pending = pending_events.write();
-            pending
-                .remove(repo_id)
-                .map(|e| (e.change_type, e.total_affected))
-        };
+        // Keep ownership in the pending map throughout the blocking work.
+        // New events merge here instead of scheduling another waiting task.
+        let event_info = begin_pending_flush(&mut pending_events.write(), repo_id);
 
-        if let Some((change_type, affected_count)) = event_info {
+        if let Some((change_type, affected_count, generation)) = event_info {
             // Emit repo changed event
             event_emitter.emit_repo_changed(
                 repo_id.to_string(),
@@ -653,6 +647,61 @@ impl DebounceManager {
                     }
                 }
             }
+            let rerun = finish_pending_flush(&mut pending_events.write(), repo_id, generation);
+            if rerun {
+                Self::schedule_flush(
+                    repo_id.to_string(),
+                    MIN_FLUSH_INTERVAL_MS,
+                    pending_events,
+                    last_flush_times,
+                    state_store,
+                    event_emitter,
+                    DebounceConfig::default(),
+                );
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod pending_flush_tests {
+    use super::*;
+    fn pending() -> HashMap<String, PendingEvent> {
+        let now = Instant::now();
+        HashMap::from([(
+            "repo".into(),
+            PendingEvent {
+                change_type: RepoChangeType::Files,
+                first_event_at: now,
+                last_event_at: now,
+                total_affected: 1,
+                flush_scheduled: true,
+                retry_count: 0,
+            },
+        )])
+    }
+    #[test]
+    fn retains_scheduled_ownership_and_coalesces_updates_during_flush() {
+        let mut pending = pending();
+        let (_, count, generation) = begin_pending_flush(&mut pending, "repo").unwrap();
+        assert_eq!(count, 1);
+        assert!(pending["repo"].flush_scheduled);
+        for _ in 0..100 {
+            pending.get_mut("repo").unwrap().total_affected += 1;
+        }
+        assert!(finish_pending_flush(&mut pending, "repo", generation));
+        assert_eq!(pending.len(), 1);
+        let (_, count, generation) = begin_pending_flush(&mut pending, "repo").unwrap();
+        assert_eq!(count, 100);
+        assert!(!finish_pending_flush(&mut pending, "repo", generation));
+        assert!(pending.is_empty());
+    }
+    #[test]
+    fn cancelled_completion_does_not_remove_a_replacement() {
+        let mut pending = pending();
+        let (_, _, generation) = begin_pending_flush(&mut pending, "repo").unwrap();
+        pending.get_mut("repo").unwrap().first_event_at = generation + Duration::from_secs(1);
+        assert!(!finish_pending_flush(&mut pending, "repo", generation));
+        assert_eq!(pending.len(), 1);
     }
 }

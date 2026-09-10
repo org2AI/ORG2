@@ -16,6 +16,7 @@ const { rpcMock, listenState } = vi.hoisted(() => ({
     sessionCore: {
       eventStore: {
         getSnapshot: vi.fn(),
+        evictSession: vi.fn().mockResolvedValue(undefined),
         switchSession: vi.fn().mockResolvedValue(true),
         setStreaming: vi.fn().mockResolvedValue(undefined),
       },
@@ -61,6 +62,32 @@ describe("EventStoreProxy snapshot coalescing", () => {
     eventStoreProxy.destroy();
     vi.useRealTimers();
     vi.clearAllMocks();
+  });
+
+  it("keeps mounted chat subscribers across native-history eviction and reload", async () => {
+    const sessionId = "native-reload";
+    const first = makeEvent("native-first-turn", sessionId);
+    const second = makeEvent("native-app-second-turn", sessionId);
+    const chat = vi.fn();
+    const dispose = eventStoreProxy.subscribeSession(sessionId, chat);
+    await deliver(makeDerivedEnvelope(sessionId, 10, [first]));
+    await advanceFrame();
+    expect(chat).toHaveBeenCalledTimes(1);
+
+    await eventStoreProxy.evictSession(sessionId);
+    expect(eventStoreProxy.getLatestSessionSnapshot(sessionId)).toBeNull();
+    // Rust starts a new cache generation after eviction. The mounted Chat
+    // must receive its reloaded history without having to remount.
+    await deliver(makeDerivedEnvelope(sessionId, 1, [first, second]));
+    await advanceFrame();
+    expect(chat).toHaveBeenCalledTimes(2);
+    expect(
+      chat.mock.lastCall?.[0].chatEvents.map((event: SessionEvent) => event.id)
+    ).toEqual([first.id, second.id]);
+    dispose();
+    await deliver(makeDerivedEnvelope(sessionId, 2, [first, second]));
+    await advanceFrame();
+    expect(chat).toHaveBeenCalledTimes(2);
   });
 
   it("reuses the previous eventIndex, unchanged arrays and preview objects on a single-event delta upsert", async () => {
@@ -248,6 +275,9 @@ describe("EventStoreProxy snapshot coalescing", () => {
     await deliver(
       makeDeltaEnvelope(sessionId, 3, 4, [{ ...e1, displayText: "abc" }], ids)
     );
+    expect(listener).not.toHaveBeenCalled();
+    // A diagnostic read must not defeat the pending frame's coalescing.
+    expect(eventStoreProxy.getMemoryStats().bytes).toBeGreaterThan(0);
     expect(listener).not.toHaveBeenCalled();
 
     await advanceFrame();

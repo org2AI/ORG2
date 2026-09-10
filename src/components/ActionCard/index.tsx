@@ -181,7 +181,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
         </span>
       </Tooltip>
     ) : (
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-1">
+      <span className="flex size-6 shrink-0 items-center justify-center">
         <HugeiconsIcon
           icon={Tick01Icon}
           data-icon="check"
@@ -254,14 +254,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
             </>
           )}
           {leadingIcon && (
-            <span
-              className={cn(
-                "flex size-9 shrink-0 items-center justify-center rounded-xl border",
-                isSelected
-                  ? "border-primary-6/25 bg-primary-1"
-                  : "border-border-1 bg-fill-2"
-              )}
-            >
+            <span className="flex size-9 shrink-0 items-center justify-center">
               {leadingIcon}
             </span>
           )}
@@ -333,4 +326,3 @@ const ActionCard: React.FC<ActionCardProps> = ({
 };
 
 export default ActionCard;
-export type { ActionCardLayout, ActionCardVariant } from "./types";

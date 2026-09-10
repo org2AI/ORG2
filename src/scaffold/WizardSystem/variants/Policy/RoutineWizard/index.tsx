@@ -13,7 +13,7 @@ import type { AgentSelection } from "@src/scaffold/GlobalSpotlight/palettes";
 import {
   DispatchCategoryPalette,
   UnifiedModelPalette,
-  WorkspacePalette,
+  WorkingDirectoryPalette,
 } from "@src/scaffold/GlobalSpotlight/palettes";
 import type { RepoItem } from "@src/scaffold/GlobalSpotlight/types";
 import {
@@ -70,7 +70,8 @@ const RoutineWizard: React.FC<RoutineWizardProps> = ({
   const [agentOrgs, setAgentOrgs] = useState<AgentOrgOption[]>([]);
   const [projects, setProjects] = useState<RoutineProjectOption[]>([]);
   const [isAgentPaletteOpen, setIsAgentPaletteOpen] = useState(false);
-  const [isWorkspacePaletteOpen, setIsWorkspacePaletteOpen] = useState(false);
+  const [isWorkingDirectoryPaletteOpen, setIsWorkingDirectoryPaletteOpen] =
+    useState(false);
   const [isModelPaletteOpen, setIsModelPaletteOpen] = useState(false);
 
   useEffect(() => {
@@ -278,9 +279,11 @@ const RoutineWizard: React.FC<RoutineWizardProps> = ({
           <RoutineExecutionSections
             draft={draft}
             updateDraft={updateDraft}
-            isWorkspacePaletteOpen={isWorkspacePaletteOpen}
+            isWorkingDirectoryPaletteOpen={isWorkingDirectoryPaletteOpen}
             isModelPaletteOpen={isModelPaletteOpen}
-            onOpenWorkspacePalette={() => setIsWorkspacePaletteOpen(true)}
+            onOpenWorkingDirectoryPalette={() =>
+              setIsWorkingDirectoryPaletteOpen(true)
+            }
             onOpenModelPalette={() => setIsModelPaletteOpen(true)}
           />
           <RoutineOutputSection
@@ -300,9 +303,9 @@ const RoutineWizard: React.FC<RoutineWizardProps> = ({
         currentAgentOrgId={currentAgentOrgId}
       />
 
-      <WorkspacePalette
-        isOpen={isWorkspacePaletteOpen}
-        onClose={() => setIsWorkspacePaletteOpen(false)}
+      <WorkingDirectoryPalette
+        isOpen={isWorkingDirectoryPaletteOpen}
+        onClose={() => setIsWorkingDirectoryPaletteOpen(false)}
         onSelect={handleWorkspaceSelect}
       />
 

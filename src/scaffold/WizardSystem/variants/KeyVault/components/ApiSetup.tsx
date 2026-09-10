@@ -12,8 +12,8 @@ import { useTranslation } from "react-i18next";
 import { testModelAvailability } from "@src/api/services/keyValidation";
 import type { QuotaSnapshot } from "@src/api/types/keyVault";
 import { LOCAL_MODEL_PROVIDER } from "@src/api/types/keys";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import Select from "@src/components/Select";
 import {
   SECTION_CONTROL_STYLE,
@@ -291,17 +291,20 @@ const ApiSetup: React.FC<ApiSetupProps> = ({
                     required
                   >
                     {errors.agent_type && (
-                      <InlineAlert type="danger">
-                        {errors.agent_type}
-                      </InlineAlert>
+                      <PageNotice type="danger">{errors.agent_type}</PageNotice>
                     )}
                     <div className="space-y-4">
                       {providerGridOptionGroups.map((group) => (
                         <div key={group.group} className="space-y-2">
                           <div className="text-[12px] font-medium text-text-2">
-                            {group.group === "cloud"
-                              ? t("keyVault.providerGroups.cloud", "Cloud")
-                              : t("keyVault.providerGroups.local", "Local")}
+                            {group.group === "mostUsed"
+                              ? t(
+                                  "keyVault.providerGroups.mostUsed",
+                                  "Most used"
+                                )
+                              : group.group === "cloud"
+                                ? t("keyVault.providerGroups.cloud", "Cloud")
+                                : t("keyVault.providerGroups.local", "Local")}
                           </div>
                           <SelectionGrid
                             options={group.options}

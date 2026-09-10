@@ -57,6 +57,13 @@ const RESULT_RENDER_KEYS = [
   "linesAdded",
   "linesRemoved",
   "status",
+  // These fields also determine the payload captured by Retry/Edit handlers.
+  "queueMessageId",
+  "deliveryOwnerRetired",
+  "deliveryStatus",
+  "deliveryError",
+  "turnIntentId",
+  "syntheticUserInput",
 ] as const;
 
 const ARG_RENDER_KEYS = [

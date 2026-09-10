@@ -17,7 +17,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Message from "@src/components/Message";
 import { ROUTES } from "@src/config/routes";
 import { useBrowserContext } from "@src/contexts/workstation";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {
   comparableBrowserUrl,

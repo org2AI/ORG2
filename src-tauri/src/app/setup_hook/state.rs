@@ -17,6 +17,27 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     app.manage(agent_sessions::event_pipeline::commands::EventStoreState::new());
     tracing::info!("[EventStore] Rust event store initialized");
 
+    let persistence_recovery = match crate::app::startup_recovery::run_persistence_startup_recovery(
+    ) {
+        Ok(report) => {
+            tracing::info!(
+                ordinary_turn_intents_reconciled = report.ordinary_turn_intents_reconciled,
+                agent_org_turn_intents_reconciled = report.agent_org_turn_intents_reconciled,
+                terminal_sessions_reconciled = report.terminal_sessions_reconciled,
+                sessions_abandoned = report.sessions_abandoned,
+                inspected_agent_org_runs = report.agent_org.inspected_runs,
+                recovered_agent_org_tasks = report.agent_org.recovered_task_count(),
+                recovery_failures = report.agent_org.failures.len(),
+                "[StartupRecovery] persistence reconciliation completed"
+            );
+            Some(report)
+        }
+        Err(error) => {
+            tracing::warn!(error = %error, "[StartupRecovery] persistence reconciliation failed");
+            None
+        }
+    };
+
     // Initialize PTY state for terminal sessions
     let pty_state = ::terminal::pty_commands::pty::PtyState::new();
     let pty_sessions_arc = pty_state.sessions_arc();
@@ -24,8 +45,7 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     tracing::info!("[PTY] Terminal PTY state initialized");
 
     // Initialize LSP Manager
-    let lsp_manager =
-        std::sync::Arc::new(tokio::sync::Mutex::new(lsp::LspManager::new()));
+    let lsp_manager = std::sync::Arc::new(tokio::sync::Mutex::new(lsp::LspManager::new()));
     app.manage(lsp_manager);
     tracing::info!("[LSP] LSP manager initialized");
 
@@ -70,8 +90,7 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     agent_core::interaction::plan_approval::install_app_handle(app.handle().clone());
     tauri::async_runtime::spawn(async {
         agent_core::interaction::plan_approval::gc_orphaned_pending_plans().await;
-        agent_core::interaction::plan_approval::repair_orphaned_create_plan_submissions()
-            .await;
+        agent_core::interaction::plan_approval::repair_orphaned_create_plan_submissions().await;
         tokio::task::spawn_blocking(
             crate::agent_sessions::event_pipeline::agent_core_bridge::repair_stranded_plan_events,
         );
@@ -103,8 +122,32 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     );
     tracing::info!("[MemberIdle] Member idle hook installed");
 
-    agent_core::coordination::agent_org_watchdog::spawn(app.handle().clone());
-    tracing::info!("[AgentOrgWatchdog] Agent Org watchdog started");
+    // Plan artifacts have their own one-shot startup owner. Keep this repair
+    // independent from the bounded Working-only watchdog so a global
+    // filesystem scan cannot consume its Team scan budget or run repeatedly.
+    tauri::async_runtime::spawn(async move {
+        match tokio::task::spawn_blocking(|| {
+            agent_core::coordination::agent_org_plan_approvals::AgentOrgPlanRevisionStore::repair_latest_plan_artifacts()
+        })
+        .await
+        {
+            Ok(Ok(report)) if report.repaired > 0 || report.failed > 0 => tracing::info!(
+                inspected = report.inspected,
+                repaired = report.repaired,
+                failed = report.failed,
+                "[AgentOrgPlanArtifacts] one-shot startup reconciliation finished"
+            ),
+            Ok(Ok(_)) => {}
+            Ok(Err(error)) => tracing::warn!(
+                error = %error,
+                "[AgentOrgPlanArtifacts] startup reconciliation failed"
+            ),
+            Err(error) => tracing::warn!(
+                error = %error,
+                "[AgentOrgPlanArtifacts] startup worker failed"
+            ),
+        }
+    });
 
     // Install the production `JobCompletionWakeHook` so a background
     // job — subagent worker or backgrounded shell — that finishes
@@ -120,13 +163,54 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     );
     tracing::info!("[JobWake] Job completion wake hook installed");
 
+    let agent_org_startup_state = unified_state.clone();
+    let agent_org_archive_reconcile_state = unified_state.clone();
+    let agent_org_handoff_reconcile_state = unified_state.clone();
     let housekeeper_compaction_state = unified_state.clone();
     app.manage(unified_state);
     tracing::info!("[UnifiedAgent] Unified agent state initialized");
 
+    if let Some(report) = persistence_recovery.as_ref() {
+        crate::app::startup_recovery::dispatch_agent_org_recovery_receipts(
+            app.handle().clone(),
+            &report.agent_org,
+        );
+        tracing::info!(
+            receipts = report
+                .agent_org
+                .recovered_tasks
+                .iter()
+                .filter(|recovery| recovery.receipt_id.is_some())
+                .count(),
+            "[AgentOrgStartup] exact recovery doorbells scheduled"
+        );
+    }
+
+    if agent_core::coordination::agent_org_runs::agent_org_redesign_enabled() {
+        agent_core::coordination::agent_org_watchdog::spawn(app.handle().clone());
+        tracing::info!("[AgentOrgWatchdog] Agent Org watchdog started");
+    } else {
+        tracing::info!("[AgentOrgWatchdog] Agent Org redesign is disabled");
+    }
+
+    agent_core::core::session::launch::spawn_agent_org_startup_recovery(agent_org_startup_state);
+    tracing::info!("[AgentOrgStartup] one-shot lifecycle recovery scheduled");
+
     // One event-driven outbound relay supervisor. It sleeps while the
     // feature is disabled and reacts to settings-file changes without polling.
     crate::api::mobile_bridge::relay::start();
+
+    if agent_core::coordination::agent_org_runs::agent_org_redesign_enabled() {
+        agent_core::state::commands::session::org_tasks::reconcile_pending_archive_teardowns(
+            agent_org_archive_reconcile_state,
+        );
+        agent_core::state::commands::session::org_tasks::reconcile_pending_task_handoff_resolutions(
+            agent_org_handoff_reconcile_state,
+        );
+        tracing::info!(
+            "[AgentOrgLifecycle] one-shot Archive and Task handoff reconciliation scheduled"
+        );
+    }
 
     agent_core::session::housekeeper_compaction::spawn(
         housekeeper_compaction_state,
@@ -174,17 +258,15 @@ pub(crate) fn init_settings_and_stores(app: &tauri::App) {
     // Initialize Settings state and file watcher
     let settings_state = settings::SettingsState::new();
     match settings::watcher::start_watching(app.handle().clone()) {
-        Ok(handle) => {
-            match settings_state.watcher_handle.lock() {
-                Ok(mut watcher_handle) => {
-                    *watcher_handle = Some(handle);
-                    tracing::info!("[Settings] File watcher started for ~/.orgii/settings.jsonc");
-                }
-                Err(err) => {
-                    tracing::error!(error = %err, "[Settings] Failed to lock watcher handle");
-                }
+        Ok(handle) => match settings_state.watcher_handle.lock() {
+            Ok(mut watcher_handle) => {
+                *watcher_handle = Some(handle);
+                tracing::info!("[Settings] File watcher started for ~/.orgii/settings.jsonc");
             }
-        }
+            Err(err) => {
+                tracing::error!(error = %err, "[Settings] Failed to lock watcher handle");
+            }
+        },
         Err(err) => {
             tracing::warn!(error = %err, "[Settings] Failed to start file watcher");
         }
@@ -202,14 +284,23 @@ pub(crate) fn init_settings_and_stores(app: &tauri::App) {
         if let Some(val) = settings.get("network.httpVersion").and_then(|v| v.as_str()) {
             let pref = agent_core::utils::HttpVersionPref::from_setting(val);
             agent_core::utils::set_global_http_version_pref(pref);
-            tracing::info!(http_version = val, "[Network] HTTP version preference applied");
+            tracing::info!(
+                http_version = val,
+                "[Network] HTTP version preference applied"
+            );
         }
     }
 
     if dev_startup_debug_enabled() {
         app.listen("orgii-startup-first-paint", |event| {
-            println!("[TauriStartup] frontend first paint ready {}", event.payload());
-            tracing::info!(payload = event.payload(), "[TauriStartup] frontend first paint ready");
+            println!(
+                "[TauriStartup] frontend first paint ready {}",
+                event.payload()
+            );
+            tracing::info!(
+                payload = event.payload(),
+                "[TauriStartup] frontend first paint ready"
+            );
         });
     }
 }

@@ -8,7 +8,6 @@ import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { DbClientIcon } from "@src/assets/databaseIcons";
-import { Placeholder } from "@src/components/Placeholder";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
   SETTINGS_TABLE_COL,
@@ -110,16 +109,9 @@ const DbClientsTable: React.FC<DbClientsTableProps> = ({
     [t]
   );
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-lg bg-fill-2">
-        <Placeholder variant="loading" />
-      </div>
-    );
-  }
-
   return (
     <SettingsTable<DependencyStatus>
+      loading={loading}
       hover
       columns={columns}
       rows={filteredClients}

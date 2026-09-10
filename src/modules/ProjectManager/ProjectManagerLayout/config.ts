@@ -69,7 +69,9 @@ export function createProjectQuickActions(
       label: sidebarCollapsed
         ? t("commands.showPrimarySidebar")
         : t("commands.hidePrimarySidebar"),
-      shortcut: getShortcutKeys("project_toggle_sidebar"),
+      get shortcut() {
+        return getShortcutKeys("project_toggle_sidebar");
+      },
       onAction: onToggleSidebar,
     },
   ];

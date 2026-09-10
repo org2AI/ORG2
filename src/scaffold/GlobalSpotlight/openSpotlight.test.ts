@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createBranchSpotlightRequest,
   createCollabOrgSpotlightRequest,
   createGitHubIssuesImportSpotlightRequest,
 } from "./openSpotlight";
@@ -39,6 +40,19 @@ describe("createGitHubIssuesImportSpotlightRequest", () => {
           repoUrl: "https://github.com/ORGII/ORGII.git",
         },
       },
+    });
+  });
+});
+
+describe("createBranchSpotlightRequest", () => {
+  it("carries an explicit repo through the branch route", () => {
+    expect(createBranchSpotlightRequest("repo-b")).toEqual({
+      query: "",
+      layer: { kind: "branch", repoId: "repo-b" },
+    });
+    expect(createBranchSpotlightRequest()).toEqual({
+      query: "",
+      layer: { kind: "branch" },
     });
   });
 });

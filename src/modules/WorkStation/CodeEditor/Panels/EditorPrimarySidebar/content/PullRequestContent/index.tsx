@@ -22,6 +22,7 @@ import { Placeholder } from "@src/components/Placeholder";
 import PrHoverCard from "@src/components/PrHoverCard";
 import { TreeRowBase, type TreeRowNode } from "@src/components/TreeRow";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
+import { TYPOGRAPHY } from "@src/config/workstation/tokens";
 import {
   GitMergeIcon,
   GitPullRequestClosedIcon,
@@ -37,10 +38,13 @@ import {
 } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/components/SectionStatusRow";
 import { TreeSectionHeader } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/components/TreeSectionHeader";
 import type { TabDragPillPayload } from "@src/modules/WorkStation/shared/TabBar/tabDragTypes";
-import { TYPOGRAPHY } from "@src/modules/WorkStation/shared/tokens";
 import { ReferenceDragGhost } from "@src/shared/dnd/ReferenceDragGhost";
 import { setPrDragStash } from "@src/shared/dnd/dragSideChannel";
 import { useReferencePillDrag } from "@src/shared/dnd/useReferencePillDrag";
+import {
+  getPrStatusIconName,
+  getPrStatusVariant,
+} from "@src/shared/pr/prStatus";
 import {
   workstationAllClosedPrsAtomFamily,
   workstationAllOpenPrsAtomFamily,
@@ -52,10 +56,10 @@ import {
   workstationPrCallbackAtomFamily,
   workstationRepoScopeKey,
 } from "@src/store/workstation/codeEditor/workstationPrAtom";
+import { retainWorkstationRepoScope } from "@src/store/workstation/codeEditor/workstationRepoScopeRetention";
 import type { SourceControlHistorySelection } from "@src/store/workstation/tabs";
 
 import { filterPullRequestsByQuery } from "../../hooks/workstationPrHelpers";
-import { getPrStatusIconName, getPrStatusVariant } from "./prCardHelpers";
 
 interface PullRequestContentProps {
   branchName?: string;
@@ -188,6 +192,8 @@ const PullRequestContent: React.FC<PullRequestContentProps> = ({
 }) => {
   const { t } = useTranslation("common");
   const scopeKey = workstationRepoScopeKey(repoId, repoPath);
+  // Keep this repo's list atoms alive while the panel is mounted.
+  useEffect(() => retainWorkstationRepoScope(scopeKey), [scopeKey]);
   const {
     prUrl,
     readyToCreate,

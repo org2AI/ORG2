@@ -2,6 +2,7 @@ use super::command::{
     build_command_with_launch_profile, codex_app_server_thread_model, map_claude_model,
     map_claude_model_variant, CliCommandBuildRequest,
 };
+use super::input_assembly::CliTurnEnvelope;
 use super::launch_profiles::{
     bare_command_for_agent, default_args_for_mode, default_env_for_mode, defaults_for_agent,
     CliPermissionMode, ResolvedCliLaunchProfile,
@@ -13,12 +14,15 @@ struct TestCommandBuildOptions<'a> {
     agent: &'a ModelType,
     model: Option<&'a str>,
     task: &'a str,
+    provider_context: Option<&'a str>,
     resume_id: Option<&'a str>,
     api_key: Option<&'a str>,
     endpoint: Option<&'a str>,
     mode: Option<&'a str>,
     repo_path: Option<&'a str>,
     additional_dirs: &'a [String],
+    mcp_config_path: Option<&'a str>,
+    codex_mcp_profile: Option<&'a str>,
 }
 
 impl<'a> TestCommandBuildOptions<'a> {
@@ -27,12 +31,15 @@ impl<'a> TestCommandBuildOptions<'a> {
             agent,
             model: None,
             task,
+            provider_context: None,
             resume_id: None,
             api_key: None,
             endpoint: None,
             mode: None,
             repo_path: None,
             additional_dirs: &[],
+            mcp_config_path: None,
+            codex_mcp_profile: None,
         }
     }
 }
@@ -73,19 +80,107 @@ fn build_command_from_options(options: TestCommandBuildOptions<'_>) -> Vec<Strin
         env: default_env_for_mode(defaults, CliPermissionMode::FullPermission),
         transport: None,
     };
+    let turn = options.provider_context.map_or_else(
+        || CliTurnEnvelope::new(options.task),
+        |context| CliTurnEnvelope::from_parts(options.task, context),
+    );
 
     build_command_with_launch_profile(CliCommandBuildRequest {
         agent: options.agent,
         launch_profile: &launch_profile,
         model: options.model,
-        task: options.task,
+        turn: &turn,
         resume_id: options.resume_id,
         api_key: options.api_key,
         endpoint: options.endpoint,
         mode: options.mode,
         repo_path: options.repo_path,
         additional_dirs: options.additional_dirs,
+        mcp_config_path: options.mcp_config_path,
+        codex_mcp_profile: options.codex_mcp_profile,
     })
+}
+
+#[test]
+fn build_claude_code_with_strict_mcp_config_preserves_resume() {
+    let cmd = build_command!(
+        ModelType::ClaudeCode,
+        task = "task",
+        mcp_config_path = Some("/tmp/mcp.json"),
+        resume_id = Some("claude-session-id"),
+    );
+    let flag_pos = cmd
+        .iter()
+        .position(|part| part == "--mcp-config")
+        .expect("--mcp-config flag");
+    assert_eq!(cmd[flag_pos + 1], "/tmp/mcp.json");
+    assert_eq!(cmd[flag_pos + 2], "--strict-mcp-config");
+    let resume_pos = cmd
+        .iter()
+        .position(|part| part == "--resume")
+        .expect("--resume flag");
+    assert_eq!(cmd[resume_pos + 1], "claude-session-id");
+    assert_eq!(cmd.last().unwrap(), "task", "task stays the trailing arg");
+}
+
+#[test]
+fn build_claude_code_without_mcp_config_omits_flag() {
+    let cmd = build_command!(ModelType::ClaudeCode, task = "task");
+    assert!(!cmd.contains(&"--mcp-config".to_string()));
+    assert!(!cmd.contains(&"--strict-mcp-config".to_string()));
+}
+
+#[test]
+fn build_claude_code_routes_context_to_system_prompt_and_keeps_user_text_literal() {
+    let user_text = "Inspect this exact user message.";
+    let provider_context = concat!(
+        "<orgii_cli_exec_mode_bridge>build</orgii_cli_exec_mode_bridge>\n\n",
+        "<ide_context>focused file</ide_context>"
+    );
+    let cmd = build_command!(
+        ModelType::ClaudeCode,
+        task = user_text,
+        provider_context = Some(provider_context),
+        resume_id = Some("native-claude-uuid"),
+    );
+
+    let prompt_index = cmd.iter().position(|part| part == "-p").expect("-p");
+    assert_eq!(cmd[prompt_index + 1], user_text);
+    assert!(!cmd[prompt_index + 1].contains("<orgii_"));
+    assert!(!cmd[prompt_index + 1].contains("<ide_context>"));
+
+    let system_index = cmd
+        .iter()
+        .position(|part| part == "--append-system-prompt")
+        .expect("native Claude system context flag");
+    assert_eq!(cmd[system_index + 1], provider_context);
+    assert!(cmd[system_index + 1].contains("<orgii_cli_exec_mode_bridge>"));
+    assert!(cmd[system_index + 1].contains("<ide_context>"));
+}
+
+#[test]
+fn build_codex_with_mcp_profile_before_task() {
+    let cmd = build_command!(
+        ModelType::Codex,
+        task = "task",
+        codex_mcp_profile = Some("orgii-mcp-random"),
+    );
+    let profile = cmd
+        .iter()
+        .position(|part| part == "--profile")
+        .expect("profile option");
+    assert_eq!(cmd[profile + 1], "orgii-mcp-random");
+    assert!(cmd.iter().all(|part| !part.contains("stdio-secret")));
+    assert_eq!(cmd.last().unwrap(), "task", "task stays the trailing arg");
+}
+
+#[test]
+fn build_codex_without_mcp_servers_has_no_mcp_overrides() {
+    let cmd = build_command!(ModelType::Codex, task = "task");
+    assert!(
+        cmd.iter().all(|part| !part.starts_with("mcp_servers.")),
+        "an empty resolved set must not materialize Codex MCP config"
+    );
 }
 
 #[test]
@@ -179,6 +274,57 @@ fn build_codex_basic() {
     assert!(cmd.contains(&"-m".to_string()));
     assert!(cmd.contains(&"o3".to_string()));
     assert_eq!(cmd.last().unwrap(), "write tests");
+}
+
+#[test]
+fn build_codex_astra_variants_split_model_and_overrides_for_both_transports() {
+    for effort in ["low", "medium", "high", "xhigh", "max", "ultra"] {
+        for fast in [false, true] {
+            let model = format!("gpt-6-astra-{effort}{}", if fast { "-fast" } else { "" });
+            let reasoning = format!("model_reasoning_effort=\"{effort}\"");
+            let priority = "service_tier=\"priority\"";
+
+            // Both fresh and resumed exec turns must send a real model slug.
+            for resume_id in [None, Some("thread-123")] {
+                let cmd = build_command!(
+                    ModelType::Codex,
+                    task = "write tests",
+                    model = Some(&model),
+                    resume_id = resume_id,
+                );
+                let model_idx = cmd.iter().position(|arg| arg == "-m").unwrap();
+                assert_eq!(cmd[model_idx + 1], "gpt-6-astra", "{model}");
+                assert!(cmd.windows(2).any(|args| args == ["-c", &reasoning]));
+                assert_eq!(cmd.windows(2).any(|args| args == ["-c", priority]), fast);
+                assert!(!cmd.contains(&model));
+            }
+
+            let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
+            let turn = CliTurnEnvelope::new("write tests");
+            let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
+                agent: &ModelType::Codex,
+                launch_profile: &profile,
+                model: Some(&model),
+                turn: &turn,
+                resume_id: None,
+                api_key: None,
+                endpoint: None,
+                mode: None,
+                repo_path: None,
+                additional_dirs: &[],
+                mcp_config_path: None,
+                codex_mcp_profile: None,
+            });
+            assert_eq!(cmd[1], "app-server");
+            assert!(cmd.windows(2).any(|args| args == ["-c", &reasoning]));
+            assert_eq!(cmd.windows(2).any(|args| args == ["-c", priority]), fast);
+            assert!(!cmd.iter().any(|arg| arg == "-m" || arg == &model));
+            assert_eq!(
+                codex_app_server_thread_model(Some(&model)).as_deref(),
+                Some("gpt-6-astra")
+            );
+        }
+    }
 }
 
 #[test]
@@ -288,13 +434,12 @@ fn build_antigravity_print_command() {
 }
 
 #[test]
-fn build_deepseek_harness_headless_command() {
+fn build_deepseek_harness_acp_command_keeps_the_task_off_the_argv() {
+    // The ACP transport delivers the task through `session/prompt`; a task
+    // argument here would boot the ACP app with an unexpected positional.
     let cmd = build_command!(ModelType::DeepseekHarness, task = "inspect the repository",);
 
-    assert_eq!(
-        cmd,
-        vec!["dsh", "--profile", "headless", "inspect the repository"]
-    );
+    assert_eq!(cmd, vec!["dsh", "--profile", "acp"]);
 }
 
 #[test]
@@ -488,7 +633,7 @@ fn app_server_profile(agent: &ModelType, transport: Option<&str>) -> ResolvedCli
 fn uses_codex_app_server_requires_codex_and_explicit_flag() {
     use super::launch_profiles::uses_codex_app_server;
 
-    // Default (no flag) stays on the shell-out path.
+    // Ordinary Codex turns retain the per-turn shell-out path.
     let default_profile = app_server_profile(&ModelType::Codex, None);
     assert!(!uses_codex_app_server(&ModelType::Codex, &default_profile));
 
@@ -496,7 +641,7 @@ fn uses_codex_app_server_requires_codex_and_explicit_flag() {
     let opted_in = app_server_profile(&ModelType::Codex, Some("app-server"));
     assert!(uses_codex_app_server(&ModelType::Codex, &opted_in));
 
-    // Unknown transport values are ignored.
+    // Unknown transport values stay off app-server.
     let unknown = app_server_profile(&ModelType::Codex, Some("websocket"));
     assert!(!uses_codex_app_server(&ModelType::Codex, &unknown));
 
@@ -508,17 +653,20 @@ fn uses_codex_app_server_requires_codex_and_explicit_flag() {
 #[test]
 fn build_codex_app_server_argv_is_bare_subcommand() {
     let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
+    let turn = CliTurnEnvelope::new("fix the bug");
     let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
         agent: &ModelType::Codex,
         launch_profile: &profile,
         model: None,
-        task: "fix the bug",
+        turn: &turn,
         resume_id: Some("thread-123"),
         api_key: None,
         endpoint: None,
         mode: None,
         repo_path: Some("/workspace"),
         additional_dirs: &[],
+        mcp_config_path: None,
+        codex_mcp_profile: None,
     });
     // Task, resume id, cwd, sandbox and approval flags all travel over
     // JSON-RPC — none of them may leak into the argv.
@@ -527,19 +675,48 @@ fn build_codex_app_server_argv_is_bare_subcommand() {
 }
 
 #[test]
+fn build_codex_default_profile_uses_exec_argv() {
+    let profile = app_server_profile(&ModelType::Codex, None);
+    let turn = CliTurnEnvelope::new("native task travels over JSON-RPC");
+    let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
+        agent: &ModelType::Codex,
+        launch_profile: &profile,
+        model: Some("gpt-5.5-high"),
+        turn: &turn,
+        resume_id: Some("thread-123"),
+        api_key: None,
+        endpoint: None,
+        mode: None,
+        repo_path: Some("/workspace"),
+        additional_dirs: &[],
+        mcp_config_path: None,
+        codex_mcp_profile: None,
+    });
+
+    assert_eq!(command_name(&cmd[0]), "codex");
+    assert_eq!(cmd[1], "exec");
+    assert!(cmd.contains(&"model_reasoning_effort=\"high\"".to_string()));
+    assert!(cmd.iter().any(|part| part.contains("native task")));
+    assert!(cmd.contains(&"thread-123".to_string()));
+}
+
+#[test]
 fn build_codex_app_server_argv_keeps_gpt_5_6_max_overrides() {
     let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
+    let turn = CliTurnEnvelope::new("write tests");
     let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
         agent: &ModelType::Codex,
         launch_profile: &profile,
         model: Some("gpt-5.6-sol-max-fast"),
-        task: "write tests",
+        turn: &turn,
         resume_id: None,
         api_key: None,
         endpoint: None,
         mode: None,
         repo_path: None,
         additional_dirs: &[],
+        mcp_config_path: None,
+        codex_mcp_profile: None,
     });
     assert_eq!(cmd[1], "app-server");
     assert!(cmd.contains(&"model_reasoning_effort=\"max\"".to_string()));
@@ -551,4 +728,54 @@ fn build_codex_app_server_argv_keeps_gpt_5_6_max_overrides() {
         codex_app_server_thread_model(Some("gpt-5.6-sol-max-fast")),
         Some("gpt-5.6-sol".to_string())
     );
+}
+
+#[test]
+fn build_codex_app_server_preserves_additional_workspace_roots() {
+    let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
+    let turn = CliTurnEnvelope::new("write tests");
+    let directories = vec!["/extra workspace".to_string(), String::new()];
+    let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
+        agent: &ModelType::Codex,
+        launch_profile: &profile,
+        model: None,
+        turn: &turn,
+        resume_id: None,
+        api_key: None,
+        endpoint: None,
+        mode: None,
+        repo_path: None,
+        additional_dirs: &directories,
+        mcp_config_path: None,
+        codex_mcp_profile: None,
+    });
+    assert!(cmd.windows(2).any(|args| args
+        == [
+            "-c",
+            "sandbox_workspace_write.writable_roots=[\"/extra workspace\"]"
+        ]));
+    assert!(!cmd.iter().any(|arg| arg == "--add-dir"));
+}
+
+#[test]
+fn build_codex_app_server_argv_never_exposes_mcp_profile() {
+    let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
+    let turn = CliTurnEnvelope::new("write tests");
+    let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
+        agent: &ModelType::Codex,
+        launch_profile: &profile,
+        model: None,
+        turn: &turn,
+        resume_id: Some("thread-123"),
+        api_key: None,
+        endpoint: None,
+        mode: None,
+        repo_path: Some("/workspace"),
+        additional_dirs: &[],
+        mcp_config_path: None,
+        codex_mcp_profile: Some("orgii-mcp-random"),
+    });
+
+    assert_eq!(cmd[1..], ["app-server"]);
+    assert!(!cmd.contains(&"orgii-mcp-random".to_string()));
 }

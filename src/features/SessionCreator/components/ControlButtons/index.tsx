@@ -16,12 +16,12 @@ import type { AgentExecMode } from "@src/features/SessionCreator/config";
 import { UnifiedModelPalette } from "@src/scaffold/GlobalSpotlight/palettes/UnifiedModelPalette";
 import { UnifiedModelDropdown } from "@src/scaffold/GlobalSpotlight/palettes/UnifiedModelPalette/UnifiedModelDropdown";
 import { dispatchCategoryAtom } from "@src/store/session/creatorStateAtom";
-import { modelPickerStyleAtom } from "@src/store/ui/chatPanelAtom";
+import { modelPickerStyleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 
 import type { ControlButtonsProps } from "./types";
 
-export type { ControlButtonsProps, DropdownDirection } from "./types";
+export type { DropdownDirection } from "./types";
 
 const ControlButtons: React.FC<ControlButtonsProps> = memo(
   ({

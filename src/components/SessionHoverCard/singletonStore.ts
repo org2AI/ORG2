@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-type HoverCardPosition = "bottom-start" | "right-start";
+import type { HoverCardPosition } from "./HoverCardBase";
 
 const DEFAULT_POSITION: HoverCardPosition = "bottom-start";
 
@@ -16,6 +16,7 @@ export interface HoverCardState {
   activeCardId: string | null;
   /** Anchor rect for the active trigger — drives the portal positioning. */
   triggerRect: DOMRect | null;
+  anchorElement: HTMLElement | null;
   /** Position style for the active trigger. */
   position: HoverCardPosition;
   /** Bumped whenever the state changes; used by `useSyncExternalStore`. */
@@ -26,6 +27,7 @@ const initialState: HoverCardState = {
   activeInstanceId: null,
   activeCardId: null,
   triggerRect: null,
+  anchorElement: null,
   position: DEFAULT_POSITION,
   revision: 0,
 };
@@ -71,6 +73,7 @@ export function dismissHoverCard(): void {
     activeInstanceId: null,
     activeCardId: null,
     triggerRect: null,
+    anchorElement: null,
     position: DEFAULT_POSITION,
     revision: state.revision + 1,
   };
@@ -81,13 +84,15 @@ export function openCard(
   instanceId: number,
   cardId: string,
   triggerRect: DOMRect,
-  position: HoverCardPosition
+  position: HoverCardPosition,
+  anchorElement: HTMLElement | null = null
 ): void {
   cancelPendingClose();
   state = {
     activeInstanceId: instanceId,
     activeCardId: cardId,
     triggerRect,
+    anchorElement,
     position,
     revision: state.revision + 1,
   };
@@ -104,6 +109,7 @@ export function scheduleClose(instanceId: number, delayMs: number): void {
       activeInstanceId: null,
       activeCardId: null,
       triggerRect: null,
+      anchorElement: null,
       position: DEFAULT_POSITION,
       revision: state.revision + 1,
     };

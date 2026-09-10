@@ -181,7 +181,7 @@ fn test_empty_thinking_filtered() {
 }
 
 #[test]
-fn test_dedup_assistant_messages() {
+fn test_distinct_adjacent_assistant_messages_with_equal_text_are_preserved() {
     let chunks = vec![
         RawActivityChunk {
             chunk_id: Some("msg1".to_string()),
@@ -216,7 +216,90 @@ fn test_dedup_assistant_messages() {
     ];
 
     let result = consolidate_activity_chunks(&chunks);
-    assert_eq!(result.len(), 1);
+    assert_eq!(result.len(), 2);
+    let replay = vec![chunks[0].clone(), chunks[0].clone()];
+    assert_eq!(consolidate_activity_chunks(&replay).len(), 1);
+
+    let mut different_scope = chunks[0].clone();
+    different_scope.session_id = Some("another-session".to_string());
+    assert_eq!(
+        consolidate_activity_chunks(&[chunks[0].clone(), different_scope]).len(),
+        2
+    );
+
+    let mut updated = chunks[0].clone();
+    updated.result = Some(serde_json::json!({"content": "Hello! ", "is_delta": false}));
+    assert_eq!(
+        consolidate_activity_chunks(&[chunks[0].clone(), updated]).len(),
+        2
+    );
+}
+
+#[test]
+fn test_repeated_assistant_answer_in_a_later_turn_is_kept() {
+    // The model may legitimately give the same answer to a repeated question.
+    // Only a consecutive streaming duplicate collapses; a user turn between
+    // two equal answers makes the second one a real assistant message.
+    let assistant = |id: &str, at: &str| RawActivityChunk {
+        chunk_id: Some(id.to_string()),
+        action_type: Some("assistant".to_string()),
+        function: Some("message".to_string()),
+        result: Some(serde_json::json!({
+            "content": "The interrupted review did not reach a final answer.",
+            "is_delta": false
+        })),
+        created_at: Some(at.to_string()),
+        session_id: Some("sess-1".to_string()),
+        args: None,
+        thread_id: None,
+        process_id: None,
+        call_id: None,
+    };
+    let chunks = vec![
+        assistant("asst-1", "2025-01-15T10:00:01.000Z"),
+        RawActivityChunk {
+            chunk_id: Some("user-2".to_string()),
+            action_type: Some("raw".to_string()),
+            function: Some("user_message".to_string()),
+            result: Some(serde_json::json!({ "content": "ask it again" })),
+            created_at: Some("2025-01-15T10:00:02.000Z".to_string()),
+            session_id: Some("sess-1".to_string()),
+            args: None,
+            thread_id: None,
+            process_id: None,
+            call_id: None,
+        },
+        assistant("asst-3", "2025-01-15T10:00:03.000Z"),
+    ];
+
+    let result = consolidate_activity_chunks(&chunks);
+    let ids: Vec<&str> = result
+        .iter()
+        .filter_map(|c| c.chunk_id.as_deref())
+        .collect();
+    assert_eq!(ids, vec!["asst-1", "user-2", "asst-3"]);
+}
+
+#[test]
+fn test_distinct_assistant_messages_a_b_a_are_preserved() {
+    let chunks: Vec<RawActivityChunk> = ["A", "B", "A"]
+        .iter()
+        .enumerate()
+        .map(|(index, text)| RawActivityChunk {
+            chunk_id: Some(format!("distinct-{index}")),
+            session_id: Some("same-turn".to_string()),
+            action_type: Some("assistant".to_string()),
+            function: Some("message".to_string()),
+            result: Some(serde_json::json!({"content": text, "is_delta": false})),
+            ..Default::default()
+        })
+        .collect();
+    let result = consolidate_activity_chunks(&chunks);
+    let ids: Vec<&str> = result
+        .iter()
+        .filter_map(|row| row.chunk_id.as_deref())
+        .collect();
+    assert_eq!(ids, vec!["distinct-0", "distinct-1", "distinct-2"]);
 }
 
 #[test]

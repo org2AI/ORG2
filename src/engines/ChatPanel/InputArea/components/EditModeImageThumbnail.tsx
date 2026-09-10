@@ -56,11 +56,7 @@ const EditModeImageThumbnail: React.FC<{
         )}
       </div>
       {showOverlay && (
-        <ImagePreviewOverlay
-          dataUrl={dataUrl}
-          onClose={handleClose}
-          showCopyButton={false}
-        />
+        <ImagePreviewOverlay dataUrl={dataUrl} onClose={handleClose} />
       )}
     </>
   );

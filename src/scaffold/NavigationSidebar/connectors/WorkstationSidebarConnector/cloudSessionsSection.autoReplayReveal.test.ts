@@ -234,6 +234,18 @@ describe("decideCloudAutoReplay", () => {
     ).toEqual({ kind: "reveal-local", requestId: 7, sessionId: SOURCE });
   });
 
+  it("keeps a canonical-root request on the Cloud replay even for the viewer's own local row", () => {
+    expect(
+      decideCloudAutoReplay(
+        input({
+          request: request({ sidebarItemId: undefined }),
+          selfUserId: OWNER,
+          localOwnSessionIds: new Set([SOURCE]),
+        })
+      )
+    ).toEqual({ kind: "replay", requestId: 7, row });
+  });
+
   it("still replays an own-owned row that has no local session here", () => {
     expect(
       decideCloudAutoReplay(
@@ -257,12 +269,35 @@ describe("decideCloudAutoReplay", () => {
     });
   });
 
-  it("ignores requests whose sidebar item is missing or foreign", () => {
+  it("resolves a canonical conversation root when no exact sidebar row is supplied", () => {
     expect(
       decideCloudAutoReplay(
         input({ request: request({ sidebarItemId: undefined }) })
       )
-    ).toBeNull();
+    ).toEqual({ kind: "replay", requestId: 7, row });
+
+    const survivingFork = {
+      ...row,
+      id: `${ORG}:fork-owner:fork-1`,
+      ownerUserId: "fork-owner",
+      sourceSessionId: "fork-1",
+      forkedFrom: {
+        sourceSessionId: SOURCE,
+        rootSessionId: SOURCE,
+        forkedAt: "2026-08-01T00:00:00.000Z",
+      },
+    } as RemoteTeammateSessionMetadata;
+    expect(
+      decideCloudAutoReplay(
+        input({
+          request: request({ sidebarItemId: undefined }),
+          rows: [survivingFork],
+        })
+      )
+    ).toEqual({ kind: "replay", requestId: 7, row: survivingFork });
+  });
+
+  it("ignores requests whose explicit sidebar item is malformed or foreign", () => {
     expect(
       decideCloudAutoReplay(
         input({

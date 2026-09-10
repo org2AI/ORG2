@@ -112,9 +112,6 @@ export type SessionProvenanceRecentSignal = z.output<
   typeof SessionProvenanceRecentSignalSchema
 >;
 export type AgentLiveStatus = z.output<typeof AgentLiveStatusSchema>;
-export type SessionProvenanceSignalAction = z.output<
-  typeof SessionProvenanceSignalActionSchema
->;
 
 export const CliConfigFileInput = z.object({
   agentName: z.string(),
@@ -125,7 +122,6 @@ export const CliConfigFileWriteInput = CliConfigFileInput.extend({
   content: z.string(),
 });
 
-export const HierarchyModeSchema = z.enum(["flat", "soft", "strict"]);
 export const PlanApprovalPolicySchema = z.enum([
   "coordinator",
   "user",
@@ -148,31 +144,36 @@ export type OrgMemberRuntimeConfig = z.infer<
   typeof OrgMemberRuntimeConfigSchema
 >;
 
-export type OrgMember = {
-  id: string;
-  name: string;
-  role: string;
-  agentId: string;
-  runtimeConfig?: OrgMemberRuntimeConfig;
-  description?: string;
-  hierarchyMode?: z.output<typeof HierarchyModeSchema>;
-  planApprovalPolicy?: z.output<typeof PlanApprovalPolicySchema>;
-  children: OrgMember[];
-};
-
-export const OrgMemberSchema: z.ZodType<OrgMember> = z.lazy(() =>
-  z.object({
-    id: z.string(),
+export const FlatOrgMemberSchema = z
+  .object({
+    memberId: z.string(),
     name: z.string(),
     role: z.string(),
     agentId: z.string(),
     runtimeConfig: OrgMemberRuntimeConfigSchema.optional(),
-    description: z.string().optional(),
-    hierarchyMode: HierarchyModeSchema.optional(),
-    planApprovalPolicy: PlanApprovalPolicySchema.optional(),
-    children: z.array(OrgMemberSchema),
   })
-);
+  .strict();
+
+export const MemberCommunicationLinkSchema = z
+  .object({
+    memberAId: z.string(),
+    memberBId: z.string(),
+  })
+  .strict();
+
+export const OrgDefinitionSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    role: z.string(),
+    agentId: z.string(),
+    description: z.string().optional(),
+    planApprovalPolicy: PlanApprovalPolicySchema,
+    members: z.array(FlatOrgMemberSchema),
+    additionalTaskGraphWriterMemberIds: z.array(z.string()),
+    memberCommunicationLinks: z.array(MemberCommunicationLinkSchema),
+  })
+  .strict();
 
 export const OrgJsonInput = z.object({
   orgJson: z.string(),
@@ -230,13 +231,18 @@ export const CliLaunchProfileViewSchema = z.object({
 export type CliPermissionMode = z.infer<typeof CliPermissionModeSchema>;
 export type CliLaunchProfileView = z.infer<typeof CliLaunchProfileViewSchema>;
 
-export const CliConfigModeSchema = z.enum(["default", "orgii_managed"]);
+export const CliConfigModeSchema = z.enum([
+  "default",
+  "orgii_managed",
+  "direct",
+]);
 
 export const CliConfigManagedStatusInput = z.object({
   agentName: z.string(),
 });
 
 export const CliConfigEnableOrgiiManagedInput = z.object({
+  expectedHashes: z.record(z.string(), z.string().nullable()).optional(),
   agentName: z.string(),
   keyId: z.string().nullable().optional(),
   model: z.string().nullable().optional(),
@@ -344,15 +350,11 @@ export const CursorPluginSkillSchema = z.object({
   skillPath: z.string(),
 });
 
-export type CursorPluginSkill = z.infer<typeof CursorPluginSkillSchema>;
-
 export const CursorPluginHookSchema = z.object({
   eventType: z.string(),
   label: z.string(),
   hookPath: z.string(),
 });
-
-export type CursorPluginHook = z.infer<typeof CursorPluginHookSchema>;
 
 export const CursorPluginInfoSchema = z.object({
   slug: z.string(),
@@ -366,3 +368,37 @@ export const CursorPluginInfoSchema = z.object({
 });
 
 export type CursorPluginInfo = z.infer<typeof CursorPluginInfoSchema>;
+
+export const HarnessConnectionInput = z.object({
+  agentName: z.enum(["claude_code", "codex"]),
+});
+export const HarnessConnectionSelectionInput = HarnessConnectionInput.extend({
+  keyId: z.string(),
+  model: z.string(),
+});
+export const HarnessConnectionTestInput =
+  HarnessConnectionSelectionInput.extend({ requestId: z.string() });
+export const HarnessConnectionApplyInput =
+  HarnessConnectionSelectionInput.extend({
+    expectedHashes: z.record(z.string(), z.string().nullable()),
+    routing: z.enum(["direct", "orgii_managed"]),
+    receipt: z.string().nullable().optional(),
+  });
+export const HarnessConnectionViewSchema = z.object({
+  installed: z.boolean(),
+  config: CliConfigManagedStatusSchema,
+  choices: z.array(
+    z.object({
+      keyId: z.string(),
+      name: z.string(),
+      models: z.array(z.string()),
+      endpoint: z.string().nullable(),
+      requiresTest: z.boolean(),
+      reason: z.string().nullable(),
+    })
+  ),
+});
+export type HarnessConnectionView = z.infer<typeof HarnessConnectionViewSchema>;
+export type ConnectionHarness = z.infer<
+  typeof HarnessConnectionInput
+>["agentName"];

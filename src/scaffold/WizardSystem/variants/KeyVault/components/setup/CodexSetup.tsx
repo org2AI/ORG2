@@ -2,8 +2,8 @@ import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import { CodexSessionSetup } from "@src/features/SessionSetup";
 import { KeyboardIcon, Login01Icon, SearchAreaIcon } from "@src/icons";
 import {
@@ -153,6 +153,7 @@ const CodexSetup: React.FC<CodexSetupProps> = ({
         <SectionContainer>
           <SectionRow
             label={t("keyVault.codexCredentialLabel")}
+            layout="vertical"
             description={t("keyVault.codexCredentialDesc")}
             required
           >
@@ -183,24 +184,20 @@ const CodexSetup: React.FC<CodexSetupProps> = ({
         </SectionContainer>
       )}
 
-      {(tokenDetected || data.validated) && selectedMethod !== "signin" && (
-        <InlineAlert type="success">{t("keyVault.codexConnected")}</InlineAlert>
-      )}
-
       {tokenError && selectedMethod !== "signin" && (
-        <InlineAlert
+        <PageNotice
           type="danger"
           title={tokenError}
           onClose={onClearTokenError}
         >
           {t("keyVault.codexDetectErrorHint")}
-        </InlineAlert>
+        </PageNotice>
       )}
 
       {validationError && selectedMethod === "enter_token" && (
-        <InlineAlert type="danger" title={validationError}>
+        <PageNotice type="danger" title={validationError}>
           {t("keyVault.codexValidationErrorHint")}
-        </InlineAlert>
+        </PageNotice>
       )}
     </div>
   );

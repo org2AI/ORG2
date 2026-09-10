@@ -11,7 +11,7 @@
  *   `SpotlightStaticActionFallback`, `SpotlightEditorActionId`,
  *   `SpotlightStaticActionDefinition`, `SpotlightEditorActionDefinition`.
  * - `spotlightActionDefinitions.navigation.ts` — `AGENT_SESSION_ACTIONS`,
- *   `WORKSPACE_ACTIONS`, `ORGANIZATION_ACTIONS`, `STATION_MODE_ACTIONS`, `APP_ACTIONS`,
+ *   `WORKING_DIRECTORY_ACTIONS`, `ORGANIZATION_ACTIONS`, `STATION_MODE_ACTIONS`, `APP_ACTIONS`,
  *   `EDITOR_ACTIONS`, `QUICK_NAVIGATION_ACTIONS`.
  * - `spotlightActionDefinitions.settings.ts`   — `buildChatPanelSettingsActions`.
  * - `spotlightActionDefinitions.view.ts`       — `buildViewActions`, the

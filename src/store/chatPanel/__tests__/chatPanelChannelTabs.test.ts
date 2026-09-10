@@ -1,18 +1,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { buildChannelTabKey } from "@src/store/chatPanel/chatPanelTabFactories";
+import {
+  closeChatPanelTabAtom,
+  openChannelInChatPanelTabAtom,
+  reconcileDiscussionChannelTabsAtom,
+} from "@src/store/chatPanel/chatPanelTabsAtom";
+import { normalizePersistedChatPanelTabsState } from "@src/store/chatPanel/chatPanelTabsModel";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import {
   createInstrumentedStore,
   resetInstrumentedStore,
 } from "@src/util/core/state/instrumentedStore";
-
-import {
-  buildChannelTabKey,
-  chatPanelTabsAtom,
-  closeChatPanelTabAtom,
-  normalizePersistedChatPanelTabsState,
-  openChannelInChatPanelTabAtom,
-  reconcileDiscussionChannelTabsAtom,
-} from "../chatPanelTabsAtom";
 
 function loadChannelTabAtoms() {
   return {

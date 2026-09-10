@@ -44,14 +44,14 @@ export const WorkManagementSearchInput = memo(
           onClear={clear}
           onClose={onClose}
           showClearButton
+          showSearchIcon
           hideChevron
           variant={placement === "list" ? "sidebar" : "panel"}
           surface="ghost"
-          className={
-            fillsAvailableWidth ? "w-full min-w-0" : "w-64 max-w-[28vw]"
-          }
+          className={fillsAvailableWidth ? "w-full min-w-0" : "w-180"}
           placeholder={resolvedPlaceholder}
           ariaLabel={resolvedPlaceholder}
+          inputClassName="placeholder:text-text-2"
           inputRef={inputRef}
         />
       </div>

@@ -2,7 +2,7 @@
  * App Navigation Actions
  *
  * App-level routing.
- * Uses React Router navigate() under the hood via the global Jotai store.
+ * Uses the shared non-hook adapter to reach React Router navigate().
  *
  * Category: "app"
  */
@@ -17,6 +17,7 @@ import {
   buildWizardPath,
 } from "@src/config/mainAppPaths";
 import { ROUTES } from "@src/config/routes";
+import { navigateApp as appNavigate } from "@src/router/navigateApp";
 import {
   activeSessionIdAtom,
   workstationActiveSessionIdAtom,
@@ -26,19 +27,6 @@ import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 // ============================================
 // Helpers
 // ============================================
-
-/**
- * Navigate using the app's router.
- * Since we can't use React hooks outside components, we dispatch
- * a custom event that the AppShell listens for.
- */
-function appNavigate(path: string, replace = false): void {
-  window.dispatchEvent(
-    new CustomEvent("action-system-navigate", {
-      detail: { path, replace },
-    })
-  );
-}
 
 function defineRouteNavigationAction(
   id: string,

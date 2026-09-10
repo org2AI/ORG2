@@ -4,7 +4,7 @@ import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ROUTES } from "@src/config/routes";
-import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { createInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 

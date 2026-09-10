@@ -20,12 +20,15 @@
     "confirmRemoveMessage": "Yerel kimlik bilgileri kaldırılacak. Bu işlem geri alınamaz.",
     "toasts": {
       "refreshed": "{{name}} başarıyla yenilendi",
+      "refreshPartial": "Modeller yenilendi: +{{added}} / -{{removed}}, ancak {{total}} hesaptan {{failed}} tanesi başarısız oldu",
+      "refreshedNoChange": "Modeller yenilendi: değişiklik yok",
+      "refreshedDelta": "Modeller yenilendi: {{added}} eklendi, {{removed}} kaldırıldı",
       "refreshError": "{{name}} yenilenemedi: {{error}}",
       "localRemoved": "{{name}} kaldırıldı",
       "deleteError": "{{name}} silinemedi"
     },
-    "configure": "{{provider}} Yapılandır",
     "providerGroups": {
+      "mostUsed": "En çok kullanılanlar",
       "cloud": "Cloud",
       "local": "Local"
     },
@@ -38,7 +41,6 @@
       "verifying": "Doğrulanıyor",
       "verifyingKeys": "Kimlik bilgileri doğrulanıyor...",
       "verificationFailedMismatch": "Doğrulama başarısız - kimlik bilgileri uyuşmuyor",
-      "failed": "Başarısız",
       "suspendedApiKey": "Askıya alındı - API Key doğrulaması başarısız",
       "suspended": "Askıya alındı",
       "validationFailed": "Doğrulama başarısız: {{error}}",
@@ -47,18 +49,14 @@
       "validating": "Doğrulanıyor"
     },
     "info": {
-      "title": "Hesap Bilgileri",
-      "enable": "Etkinleştir",
-      "authMethod": "Kimlik Doğrulama Yöntemi",
       "oauthLogin": "OAuth",
       "apiKey": "API Key",
       "configured": "✓ Yapılandırıldı",
       "cursorSessionAccess": "Cursor oturumu",
       "cursorSessionReady": "Cursor modelleri ve kota yenileme için bağlı",
       "cursorApiKeyAccess": "Cursor API Key",
-      "cursorApiKeyReady": "Cursor CLI/API çağrıları için sağlandı",
-      "cursorApiKeyNotProvided": "Sağlanmadı — Cursor CLI/API çağrıları kullanılamaz",
-      "sessionToken": "Session Token",
+      "cursorApiKeyReady": "Cursor API çağrıları için sağlandı",
+      "cursorApiKeyNotProvided": "Sağlanmadı — Cursor API çağrıları kullanılamaz",
       "baseUrl": "Base URL",
       "connectedAt": "Bağlandı",
       "availableModels": "Kullanılabilir Modeller",
@@ -67,24 +65,15 @@
       "supportOrgiiAgents": "ORGII Agents destekler",
       "supportCliAgents": "CLI Agents destekler",
       "noCliAgentSupport": "Bu sağlayıcı için CLI Agent desteği yok",
-      "accountEmail": "Hesap e-postası",
-      "organization": "Kuruluş"
-    },
-    "manualModels": {
-      "notice": "Bu proxy üzerinden kullanılabilir modeller otomatik olarak algılanamadı. Aşağıdan manuel olarak model ekleyebilir veya tekrar Validate'e tıklayabilirsiniz."
+      "accountEmail": "Hesap e-postası"
     },
     "customModels": {
-      "notice": "Model adı = LLM çağrısı için id. Görünen ad = seçicilerde gösterilen etiket.",
       "modelNamePlaceholder": "Model id girin...",
-      "displayName": "Görünen Ad",
       "displayNamePlaceholder": "İsteğe bağlı etiket",
-      "optional": "İsteğe bağlı",
       "emptyHint": "Henüz özel model eklenmedi.",
-      "addModel": "Model Ekle",
-      "icon": "Simge"
+      "addModel": "Model Ekle"
     },
     "quickActions": {
-      "title": "Hızlı İşlemler",
       "multipleKeysFound": "Birden Fazla Kimlik Bilgisi Bulundu",
       "useSelected": "Seçileni Kullan",
       "valid": "Geçerli",
@@ -100,8 +89,9 @@
       "saved": "Değişiklikler kaydedildi"
     },
     "quota": {
-      "title": "Kota Bilgileri",
       "plan": "Plan",
+      "balance": "Bakiye",
+      "payAsYouGo": "Kullandıkça öde",
       "includedRequests": "Dahil İstekler",
       "cursorIncludedRequests": "Auto/Composer kotası",
       "quotaUsage": "Kota Kullanımı",
@@ -110,10 +100,13 @@
       "sessionUsage": "5h kullanımı",
       "weeklyUsage": "Haftalık kullanım",
       "monthlyUsage": "Aylık kullanım",
+      "resetsAvailable": "{{count}} sıfırlama kullanılabilir",
+      "resetsAvailable_one": "{{count}} sıfırlama kullanılabilir",
+      "resetsAvailable_few": "{{count}} sıfırlama kullanılabilir",
+      "resetsAvailable_many": "{{count}} sıfırlama kullanılabilir",
+      "resetsAvailable_other": "{{count}} sıfırlama kullanılabilir",
       "percentLeft": "%{{percent}} kaldı",
       "refreshUsage": "Kullanımı yenile",
-      "used": "Kullanıldı",
-      "limit": "Limit",
       "resets": "{{date}} tarihinde sıfırlanır",
       "availableNow": "Şimdi kullanılabilir",
       "nextUsePlusFiveHours": "Sonraki kullanım +5 sa"
@@ -121,18 +114,18 @@
     "health": {
       "cloudListingInvalid": "Bulut listesi geçersiz",
       "cloudListingDegraded": "Bulut listesi bozulmuş",
-      "cloudInvalidMessage": "Yerel kimlik bilginiz çalışıyor, ancak pazar yeri listesinde sorunlar var.",
-      "cloudDegradedMessage": "Yerel kimlik bilginiz çalışıyor, ancak bulut listesinin bazı modelleri kullanılamıyor.",
-      "invalidListingMessage": "Bu listenin kimlik bilgisi geçersiz ve güncellenmesi gerekiyor.",
-      "invalidKeyMessage": "Bu API Key artık geçerli değil. Lütfen kimlik bilgilerinizi güncelleyin.",
+      "cloudInvalidMessage": "Yerel kimlik bilginiz çalışıyor, ancak pazar yeri listesinde sorunlar var",
+      "cloudDegradedMessage": "Yerel kimlik bilginiz çalışıyor, ancak bulut listesinin bazı modelleri kullanılamıyor",
+      "invalidListingMessage": "Bu listenin kimlik bilgisi geçersiz ve güncellenmesi gerekiyor",
+      "invalidKeyMessage": "Bu API Key artık geçerli değil. Lütfen kimlik bilgilerinizi güncelleyin",
       "failuresDetected_one": "{{count}} başarısızlık algılandı",
       "failuresDetected_other": "{{count}} başarısızlık algılandı",
       "errorWithMessage": "Hata: {{message}}",
       "degradedListing": "Bozulmuş Liste",
       "degradedKey": "Bozulmuş Kimlik Bilgisi",
-      "modelsUnavailable": "{{disabled}} model kullanılamıyor. Yalnızca {{available}} model çalışıyor.",
-      "someModelsFailures": "Bazı modeller arıza yaşıyor.",
-      "someModelsUnavailable": "Bazı modeller kullanılamıyor."
+      "modelsUnavailable": "{{disabled}} model kullanılamıyor. Yalnızca {{available}} model çalışıyor",
+      "someModelsFailures": "Bazı modeller arıza yaşıyor",
+      "someModelsUnavailable": "Bazı modeller kullanılamıyor"
     },
     "verification": {
       "pendingVerification": "Doğrulama Bekliyor",
@@ -258,7 +251,6 @@
     "sessionTokenLabel": "Session Token",
     "sessionTokenAutoHint": "Algılamak için tıklayın veya Agent oturumlar sırasında otomatik algılar",
     "sessionTokenManualHint": "Cursor oturum tokeninizi user_id::jwt_token formatında yapıştırın",
-    "baseUrl": "Base URL",
     "pasteConfiguration": "Yapılandırma yapıştır",
     "extractParseHint": "Anahtar ve ayarları ayrıştırmak için Extract'a tıklayın",
     "switchMethod": "Yöntem değiştir",
@@ -266,7 +258,6 @@
     "quotaUsageLabel": "Kota kullanımı",
     "quotaUsageDesc": "Mevcut plan kullanımı ve kalan limit",
     "providerRequired": "{{label}} (Sağlayıcı gerekli)",
-    "creating": "Tamamlanıyor...",
     "keysFoundForAgent": "Bu agent için {{count}} kimlik bilgisi bulundu. Hangisini kullanacağınızı seçin:",
     "fromCodexAuthLogin": "Codex auth girişinden",
     "openBrowser": "Dahili Tarayıcıyı Aç",
@@ -303,21 +294,16 @@
     "filterAllProviders": "Tüm sağlayıcılar",
     "filterAllKeyTypes": "Tüm anahtar türleri",
     "filterAllEnabled": "Tüm durumlar",
-    "regionWarning": {
-      "title": "Bölgesel Kullanılabilirlik Bildirimi",
-      "message": "{{provider}} algılanan bölgenizde resmi olarak kullanılamayabilir. Bazı modeller görüntülenmeyebilir; OpenAI, Anthropic veya Google modellerini kullanmak için bölgenizi değiştirin. Kuruluma devam edebilirsiniz."
-    },
-    "auth": "Auth",
     "cursorSessionTokenCapturedTitle": "Cursor bağlandı",
     "cursorSessionTokenCapturedDesc": "{{user}} olarak oturum açıldı…",
     "cursorLoginBrowserTitle": "Cursor girişi",
     "modelCount": "{{count}} model",
     "cursorLoginReadyTitle": "Cursor hesabı bağlandı",
-    "cursorLoginReadyDesc": "Aşağıda bir Cursor API Key oluşturup yapıştırın. Cursor CLI agent bu API Key olmadan çalışmaz.",
+    "cursorLoginReadyDesc": "Aşağıda bir Cursor API Key oluşturup yapıştırın. Cursor agent bu API Key olmadan çalışmaz.",
     "cursorApiKeyBrowserHint": "Giriş yaptıktan sonra ORGII Cursor dashboard'u açar. Orada bir User API Key oluşturun ve aşağıya yapıştırın",
     "cursorApiKeyRecommendedTitle": "Cursor API Key önerilir",
     "cursorApiKeyRecommendedDesc": "Cursor'u yalnızca ORGII'nin Rust agents ile kullanmak istiyorsanız Cursor API Key olmadan devam edebilirsiniz; sadece dahili tarayıcıyla oturum açın veya bir session token sağlayın",
-    "cursorApiKeyRecommendedAction": "ORGII içinde Cursor CLI de kullanmak istiyorsanız bir Cursor API Key sağlayın",
+    "cursorApiKeyRecommendedAction": "ORGII içinde Cursor de kullanmak istiyorsanız bir Cursor API Key sağlayın",
     "openCursorApiKeys": "Cursor API Keys'i aç",
     "codexSetupMethodDesc": "Codex'i ChatGPT oturumu, yerel algılama veya OpenAI API key ile bağlayın",
     "codexSignInTitle": "Codex oturum açma",
@@ -333,66 +319,37 @@
     "codexCredentialLabel": "Codex kimlik bilgisi",
     "codexCredentialDesc": "Codex OAuth access token veya OpenAI API key yapıştırın",
     "codexCredentialPlaceholder": "eyJ... veya sk-...",
-    "codexConnected": "Codex bağlandı",
     "codexDetectErrorHint": "Yerleşik tarayıcıyla oturum açın veya OpenAI API key'i elle yapıştırın",
     "codexValidationErrorHint": "Token veya API key'in geçerli olduğunu kontrol edip tekrar deneyin",
     "claudeCodeAutodetectTitle": "Claude Code oturumunu algıla",
     "claudeCodeAutodetectDesc": "Yerel Claude Code girişinizi macOS Keychain veya ~/.claude/.credentials.json üzerinden okur",
-    "claudeCodeConnected": "Claude Code bağlandı",
     "claudeCodeDetectErrorHint": "Yerleşik tarayıcıyla oturum açın veya claude auth login çalıştırıp algılamayı tekrar deneyin",
     "refreshModels": {
       "button": "Cursor model listesini yenile",
       "failed": "Cursor'dan yenileme başarısız: {{error}}"
     },
-    "revalidate": "Yeniden doğrula"
+    "revalidate": "Yeniden doğrula",
+    "confirmRemoveActiveSessions_one": "{{count}} etkin oturum hâlâ bu hesabı kullanıyor ve bir sonraki turunda başarısız olacak:",
+    "confirmRemoveActiveSessions_other": "{{count}} etkin oturum hâlâ bu hesabı kullanıyor ve bir sonraki turlarında başarısız olacak:"
   },
   "integrations": {
-    "title": "Entegrasyonlar",
-    "description": "Kanallar, mesajlaşma entegrasyonları ve düğüm kontrolü",
     "searchPlaceholder": "Bağlantıları ara...",
     "noConnections": "Henüz bağlantı yok",
-    "noConnectionsDesc": "Başlamak için bir entegrasyon ekleyin",
-    "active": "Aktif",
-    "available": "Kullanılabilir",
-    "enabled": "Etkin",
     "disabled": "Devre dışı",
-    "enableChannel": "Etkin",
-    "enableChannelDesc": "Bu kanalı aç veya kapat",
     "testConnection": "Bağlantıyı test et",
     "testConnectionDesc": "Oluşturmadan önce anahtarları doğrula",
     "addAccount": "Bağlantı Ekle",
-    "removeAccount": "Hesabı Kaldır",
     "removeAccountTitle": "\"{{name}}\" kaldırılsın mı?",
     "removeAccountConfirm": "Bağlantı ve yapılandırması kaldırılacak. Bu işlem geri alınamaz.",
-    "descriptionDesc": "Bu bağlantının amacı hakkında isteğe bağlı not",
-    "descriptionPlaceholder": "Müşteri desteği, takım bildirimleri vb.",
-    "selectChannelType": "Channel Type",
-    "selectChannelTypeDesc": "Bağlanacak sohbet platformu",
-    "selectServiceType": "Service",
-    "selectServiceTypeDesc": "Entegre edilecek üçüncü taraf hizmet",
-    "selectCategory": "Connection Type",
-    "selectGitProvider": "Git Provider",
-    "selectGitProviderDesc": "Deponuzun barındırıldığı yer",
-    "selectProjectAdapter": "Project senkronizasyon adaptörü",
-    "selectProjectAdapterDesc": "Project senkronizasyonu için bağlanacak harici izleyici",
-    "configured": "Yapılandırıldı",
     "connected": "Bağlandı",
     "connecting": "Bağlanıyor",
     "reconnecting": "Yeniden bağlanıyor",
     "connectionError": "Bağlantı hatası",
     "reconnect": "Yeniden bağlan",
-    "gitProviderRequired": "Lütfen bir Git sağlayıcı seçin",
-    "defaultAccount": "default",
-    "readyToCreate": "Oluşturmaya hazır",
     "accountNameDuplicate": "Bu isimde bir hesap zaten mevcut",
-    "channelTypeRequired": "Lütfen bir kanal türü seçin",
     "probeSuccess": "Bağlantı başarılı",
     "probeFailed": "Bağlantı başarısız",
-    "verified": "Doğrulandı",
-    "sanctionWarning": {
-      "title": "Hizmet Erişilebilirlik Uyarısı",
-      "message": "Ticari kısıtlamalar nedeniyle {{services}} bölgenizde kullanılamayabilir"
-    }
+    "verified": "Doğrulandı"
   },
   "channels": {
     "github": "GitHub",
@@ -622,25 +579,18 @@
       "modelPlaceholder": "Model seçin",
       "groupPerUser": "Grup sohbet oturumlarını kullanıcı başına izole et",
       "groupPerUserDesc": "Grup sohbetindeki her katılımcı kendi oturum bağlamına sahip olur."
-    }
-  },
-  "tabs": {
-    "current": "Mevcut",
-    "add": "Ekle",
-    "discover": "Keşfet"
+    },
+    "emailProtocol": "Protokol"
   },
   "modelsTabs": {
     "myAccounts": "Keys'im",
     "models": "Modeller",
-    "available": "Mevcut",
-    "preferred": "Tercih Edilen",
     "comingSoon": "Yakında",
     "installedClis": "CLI İstemcileri",
     "myRoles": "Rollerim"
   },
   "wizard": {
     "pickProvider": "Sağlayıcı",
-    "pickProviderDesc": "Bir sağlayıcı seçin",
     "selectVariant": "Bağlantı yöntemi",
     "variantSubscription": "Abonelik",
     "variantApiKey": "API Key",
@@ -654,7 +604,6 @@
     "groupView": "Grup görünümü",
     "showMoreOlder": "Daha fazla göster",
     "showLessOlder": "Daha az göster",
-    "includeOlder": "Eski modelleri dahil et",
     "scopeSelectCurrentModels": "Yalnızca en son",
     "scopeSelectIncludeOlder": "Tüm modeller",
     "filterAllProvider": "Tüm sağlayıcılar",
@@ -687,10 +636,7 @@
     "sortAlphabetical": "Sıralama: A–Z"
   },
   "modelPreview": {
-    "title": "Model Ayrıntıları",
-    "noSources": "Bu modele sahip hesap yok",
-    "specs": "Özellikler",
-    "capabilities": "Yetenekler"
+    "noSources": "Bu modele sahip hesap yok"
   },
   "cliPreview": {
     "clientSection": "İstemci",
@@ -724,20 +670,7 @@
     "filterReady": "Hazır",
     "filterNoSubscriptions": "Abonelik yok"
   },
-  "lspPreview": {
-    "enable": "Etkinleştir",
-    "status": "Durum",
-    "language": "Dil",
-    "command": "Komut",
-    "documentation": "Dokümantasyon",
-    "install": "Kur",
-    "uninstall": "Kaldır"
-  },
-  "lintPreview": {
-    "version": "Sürüm"
-  },
   "mcpPreview": {
-    "title": "Sunucu Bilgileri",
     "status": "Durum",
     "transport": "İletişim",
     "tools": "Araçlar",
@@ -748,20 +681,15 @@
     "toolsList": "Araçlar ({{count}})"
   },
   "skillPreview": {
-    "title": "Skill Bilgileri",
     "source": "Kaynak",
-    "path": "Yol",
     "status": "Durum",
     "issues": "Sorunlar",
-    "ready": "Hazır",
     "version": "Sürüm",
-    "dependencies": "Bağımlılıklar",
     "binaries": "İkili dosyalar",
     "envVars": "Ortam değişkenleri",
     "location": "Konum"
   },
   "gitPreview": {
-    "title": "Provider Bilgileri",
     "provider": "Provider",
     "connections": "Bağlantılar"
   },
@@ -771,41 +699,27 @@
     "discover": "Keşfet",
     "comingSoon": "Yakında"
   },
-  "mcpTabs": {
-    "installed": "Yüklü",
-    "discover": "Keşfet"
-  },
-  "skillsTabs": {
-    "installed": "Yüklü",
-    "discover": "Keşfet"
-  },
   "externalSkillsets": {
     "tabs": {
       "skills": "Skills",
       "mcp": "MCP",
-      "cursorPlugins": "Plugins",
-      "discoverMcp": "Keşfet MCP",
-      "discoverSkills": "Keşfet Skills"
+      "cursorPlugins": "Plugins"
     }
   },
   "rulesImport": {
-    "title": "Yüklenebilir kurallar",
-    "description": "Cursor, Claude Code, Copilot, Kiro, Codex ve Gemini kaynaklarından algılanan kuralları içe aktarın",
-    "scanning": "Harici kural kaynakları taranıyor…",
-    "empty": "Yüklenebilir kural bulunamadı.",
+    "title": "Diğer uygulamalardan kuralları içe aktar",
+    "empty": "İçe aktarılacak kural bulunamadı.",
     "allImported": "Algılanan tüm kurallar zaten içe aktarıldı"
   },
   "skillsImport": {
     "title": "Skills öğelerini diğer apps içinden içe aktar",
     "itemColumn": "Skill",
-    "scanning": "Harici Skill kaynakları taranıyor…",
     "empty": "İçe aktarılacak Skill bulunamadı.",
     "allImported": "Algılanan tüm Skills zaten içe aktarıldı"
   },
   "mcpImport": {
     "title": "MCP servers öğelerini diğer apps içinden içe aktar",
     "itemColumn": "MCP server",
-    "scanning": "Harici MCP config dosyaları taranıyor…",
     "empty": "İçe aktarılacak MCP server bulunamadı.",
     "allImported": "Algılanan tüm MCP servers zaten içe aktarıldı"
   },
@@ -818,7 +732,7 @@
     "servicesDesc": "Harici hizmet API Keys",
     "projects": "Projects",
     "projectsDesc": "Issue izleyicileri ve Project senkronizasyonu",
-    "models": "Modeller & Keys",
+    "models": "Modeller & anahtarlar",
     "myRoles": "Rollerim",
     "clis": "CLI",
     "connections": "Bağlantılar",
@@ -829,11 +743,11 @@
     "tools": "Yerleşik araçlar",
     "computerUse": "Computer Use",
     "rulesMemoryEvolution": "Kurallar, Bellek & Evrim",
-    "externalSkillsets": "Skills, MCPs & Plugins"
+    "externalSkillsets": "Skills, MCPs & Plugins",
+    "housekeeper": "MiniCPM Housekeeper"
   },
   "projectConnections": {
     "linear": "Linear",
-    "authMethod": "Kimlik doğrulama",
     "personalAccessToken": "Personal Access Token",
     "personalAccessTokenDesc": "Bu Project senkronizasyon bağlantısı için yerel olarak saklanır",
     "personalAccessTokenPlaceholder": "Token yapıştır...",
@@ -846,10 +760,24 @@
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "Otomatik algıla",
-    "methodOAuth": "GitHub ile oturum aç"
+    "methodOAuth": "GitHub ile oturum aç",
+    "methodPickerDesc": "GitHub'da nasıl kimlik doğrulamak istediğinizi seçin.",
+    "oauthDeviceDesc": "Doğrulama URL'sini açın ve GitHub'ı yetkilendirmek için bu kodu girin.",
+    "scanCredHelper": "Git kimlik yardımcısı ({{name}})",
+    "scanEmpty": "Hiçbir şey algılanmadı",
+    "scanEmptyDesc": "gh CLI token'ı, kimlik yardımcısı veya SSH anahtarı bulunamadı. Yukarıdan başka bir yöntem seçin.",
+    "scanGhCli": "GitHub CLI (gh)",
+    "scanResults": "Algılanan kimlik bilgileri",
+    "scanResultsDesc": "İçe aktarmak için birini seçin. Token'lar kaydedilmeden önce GitHub'da doğrulanır.",
+    "scanSshKey": "SSH anahtarı — {{name}}",
+    "scanning": "Taranıyor…",
+    "scanningDesc": "Bu makinede gh CLI token'ları, kimlik yardımcıları ve SSH anahtarları aranıyor.",
+    "sshKeyPath": "SSH anahtarı yolu",
+    "sshKeyPathDesc": "Özel anahtarın mutlak yolu (örn. ~/.ssh/id_ed25519). Eşleşen genel anahtar GitHub'da zaten kayıtlı olmalıdır.",
+    "scanSelectRequired": "İçe aktarmak için algılanan bir kimlik bilgisi seçin.",
+    "sshKeyPathRequired": "SSH anahtarı yolu gerekli."
   },
   "builtInTools": {
-    "title": "Yerleşik araçlar",
     "tabTools": "Yerleşik araçlar",
     "tabDesktopControl": "Computer Use",
     "computerUsePermissionsSectionTitle": "İzinler",
@@ -890,66 +818,18 @@
     "sidecarLastError": "Son hata"
   },
   "toolsArea": {
-    "builtin": "Yerleşik araçlar",
     "mcp": "MCP",
     "devtools": "Oyun Alanı"
   },
-  "toolsAddMenu": {
-    "title": "Ekle"
-  },
   "toolbarPlusMenu": {
-    "addProviderKey": "Sağlayıcı anahtarı ekle",
-    "addMcpServer": "MCP sunucusu ekle",
-    "createSkill": "Skills oluştur",
-    "addDatabaseConnection": "Veritabanı bağlantısı ekle",
-    "addChannelOrService": "Kanal veya servis ekle",
-    "addGitConnection": "Git bağlantısı ekle",
-    "addRoutine": "Routine ekle",
-    "createRule": "Politika oluştur",
-    "importSkill": "Diğer Apps'ten Skills içe aktar",
     "addAgent": "Agent Ekle"
   },
   "toolbarEllipsis": {},
-  "webharness": {
-    "title": "Web Apps",
-    "searchPlaceholder": "Komut ara…",
-    "installed": "Yüklü",
-    "notInstalled": "Yüklü değil",
-    "install": "Yükle",
-    "pipeline": "Çıktı sütunları",
-    "optional": "İsteğe bağlı",
-    "defaultValue": "Varsayılan: {{value}}",
-    "domain": "Alan adı",
-    "source": "Kaynak",
-    "strategy": "Strateji",
-    "desktopStatus": {
-      "not_installed": "Yüklenmedi",
-      "installed": "Yüklendi",
-      "running": "Çalışıyor",
-      "connected": "Bağlandı"
-    },
-    "desktopActions": {
-      "launch": "Başlat",
-      "connect": "Bağlan"
-    }
-  },
-  "webharnessWizard": {
-    "title": "Web App Komutu Oluştur",
-    "description": "Açıklama",
-    "domain": "Alan adı",
-    "strategy": "Strateji",
-    "columns": "Sütunlar",
-    "limit": "Sınır"
-  },
   "tableHeaders": {
-    "agentType": "Agent Türü",
-    "cli": "CLI",
     "type": "Tür",
     "transport": "Transport",
     "tools": "Araçlar",
-    "category": "Kategori",
-    "added": "Eklenme",
-    "enabledModels": "Etkin modeller"
+    "added": "Eklenme"
   },
   "status": {
     "ready": "Hazır",
@@ -975,14 +855,6 @@
   "routines": {
     "searchPlaceholder": "Search Routines...",
     "noRoutines": "No Routines defined"
-  },
-  "services": {
-    "smithery": "Smithery",
-    "apiKeySection": "API Key",
-    "currentKey": "Current key",
-    "smitheryApiKey": "Smithery API Key",
-    "smitheryApiKeyPlaceholder": "smi_...",
-    "smitheryApiKeyDesc": "Smithery'de MCP sunucularını taramak için API key. Get your key at smithery.ai/account/api-keys"
   },
   "git": {
     "searchPlaceholder": "Git sağlayıcılarını ara...",
@@ -1058,29 +930,13 @@
     "oauthDeviceCodeDesc": "Aşağıdaki URL'yi açın ve bu kodu girin",
     "oauthOpenGithub": "GitHub'ı aç",
     "oauthCancel": "İptal",
-    "oauthFailed": "Yetkilendirme başarısız"
+    "oauthFailed": "Yetkilendirme başarısız",
+    "autoCreatePr": "Pull request'leri otomatik oluştur",
+    "autoCreatePrDesc": "Bir özellik branch'i tamamen push edilip temiz olduğunda Workstation Kaynak Denetimi'nde otomatik olarak pull request oluştur"
   },
   "skillsHub": {
-    "title": "Skills Hub",
-    "tab": "Skills",
     "searchPlaceholder": "Skills ara...",
-    "install": "Yükle",
-    "installing": "Yükleniyor...",
-    "downloads": "İndirmeler",
-    "stars": "Yıldızlar",
-    "version": "Sürüm",
     "noInstalled": "Yüklü skill yok",
-    "marketplace": "Marketplace",
-    "author": "Yazar",
-    "createdAt": "Oluşturulma",
-    "updatedAt": "Güncelleme",
-    "source": "Kaynak",
-    "path": "Yol",
-    "available": "Kullanılabilir",
-    "notInstalled": "yüklü değil",
-    "sources": {
-      "github": "GitHub"
-    },
     "createSkill": "Skill Oluştur",
     "editSkill": "Skill Düzenle",
     "nameLabel": "Ad",
@@ -1095,7 +951,6 @@
     "previewEmpty": "Henüz önizlenecek bir şey yok",
     "tokenEstimate": "~{{count}} Token",
     "saveSkill": "Kaydet",
-    "nameTaken": "Bu isimde bir Skill zaten mevcut",
     "descriptionQualityGood": "Açıklama: İyi",
     "descriptionQualityShort": "Açıklama çok kısa",
     "descriptionQualityMissing": "Açıklama yok — Agent bu Skill'i keşfedemez",
@@ -1120,8 +975,6 @@
     "compatibilityDesc": "Ortam gereksinimleri (ör. Python 3.14+ ve uv gerekir)",
     "compatibilityPlaceholder": "ör. Python 3.14+ ve uv gerekir",
     "tokenWarning": "önerilen 5 000'i aşıyor",
-    "license": "Lisans",
-    "compatibility": "Uyumluluk",
     "bundledFilesLabel": "Paket dosyaları",
     "bundledFilesDesc": "Betik, referans veya varlık ekleyin. Betikler çalıştırılır ancak bağlam penceresine yüklenmez",
     "addFileButton": "Dosya ekle",
@@ -1136,7 +989,6 @@
   "mcp": {
     "tab": "MCP",
     "searchPlaceholder": "MCP sunucularını ara...",
-    "serversLabel": "Sunucular",
     "noServers": "Yapılandırılmış MCP sunucusu yok",
     "noServersDesc": "Agent yeteneklerini harici araçlarla genişletmek için bir MCP sunucusu ekleyin.",
     "addServer": "MCP Sunucusu Ekle",
@@ -1161,7 +1013,6 @@
     "enabled": "Etkin",
     "enabledDesc": "Bu MCP sunucusunu etkinleştir veya devre dışı bırak",
     "reconnect": "Yeniden Bağlan",
-    "connecting": "Bağlanıyor...",
     "connectingTitle": "{{count}} MCP sunucusu başlatılıyor… (birkaç saniye sürebilir)",
     "connectingSlow": "Hâlâ bağlanıyor…",
     "connectingSlowBody": "İlk başlatmada biraz sürebilir. Bir sunucu takılmış görünüyorsa, ayrıntı panelini açıp yeniden bağlayın",
@@ -1173,52 +1024,17 @@
     "toolsLabel": "Araçlar",
     "noTools": "Kullanılabilir araç yok",
     "infoSection": "Server Bilgisi",
-    "saved": "Sunucu kaydedildi",
-    "savedDesc": "MCP yapılandırmanıza eklendi.",
-    "testHint": "Sunucunun erişilebilir olduğunu doğrulamak için kaydetmeden önce bağlantıyı test edin.",
-    "discoverServers": "MCP Sunucularını Keşfet",
-    "hubSearchPlaceholder": "MCP sunucularını ara...",
-    "hubNoResults": "MCP sunucusu bulunamadı",
-    "hubNoResultsDesc": "Farklı bir arama terimi deneyin",
-    "addToConfig": "Yapılandırmaya Ekle",
-    "addingToConfig": "Ekleniyor...",
-    "addedToConfig": "Sunucu eklendi",
-    "addedToConfigDesc": "MCP yapılandırmanıza eklendi.",
-    "alreadyConfigured": "Yapılandırılmış",
-    "publishedAt": "Yayınlanma",
-    "website": "Web sitesi",
-    "source": "Kaynak kodu",
-    "viewOnGlama": "Glama'da görüntüle",
-    "remotes": "Uzak uç noktalar",
-    "packages": "Paketler",
-    "sourceOfficial": "MCP Registry",
-    "sourceSmithery": "Smithery",
-    "sourceMcpBar": "MCP.Bar",
-    "sourceGlama": "Glama",
-    "selectRegistry": "Registry",
-    "selectRegistryDesc": "Göz atmak için bir MCP sunucu Registry seçin",
-    "connections": "Bağlantılar",
-    "securityPassed": "Tarama başarılı",
-    "securityFailed": "Tarama başarısız",
-    "serverCommand": "Sunucu komutu",
-    "requiredInputs": "Gerekli girişler",
-    "smitheryApiKeyRequired": "Smithery API key gerekli. Integrations → Connections → Ekle → Hizmetler'den ekleyin.",
-    "smitheryGetKey": "Get your key at smithery.ai/account/api-keys",
     "envVars": "Ortam Değişkenleri",
     "envVarsHint": "ör. GITHUB_PERSONAL_ACCESS_TOKEN",
     "envKey": "KEY",
     "envValue": "değer",
     "addEnvVar": "Değişken ekle",
-    "envVarCount": "ortam değişkeni",
     "headers": "Headers",
     "headersHint": "ör. Authorization",
     "headerKey": "Header",
     "headerValue": "değer",
     "addHeader": "Header ekle",
-    "headerCount": "özel header",
     "restart": "Yeniden başlat",
-    "enable": "Etkinleştir",
-    "disable": "Devre dışı bırak",
     "uptime": "Çalışma süresi",
     "bulkSelected": "{{count}} seçildi",
     "bulkRestart": "Yeniden başlat",
@@ -1244,76 +1060,26 @@
     "scopeWorkspace": "Repo-specific",
     "userScopeLabel": "User",
     "workspaceScopeLabel": "Repo-specific",
-    "userServersLabel": "Kullanıcı MCP Sunucuları",
-    "workspaceServersLabel": "Repo-specific MCP sunucuları",
     "noUserServers": "Kullanıcı düzeyinde MCP sunucusu yapılandırılmamış",
     "noWorkspaceServers": "Yapılandırılmış Repo-specific MCP sunucusu yok",
     "deleteConfirmTitle": "«{{name}}» MCP sunucusunu kaldır?",
     "deleteConfirmMessage": "Bu işlem sunucuyu yapılandırma dosyasından kaldıracaktır. Aktif oturumlar kesilecektir."
   },
   "agentOrgs": {
-    "title": "Agent ekipleri",
-    "running": "Çalışıyor",
-    "fires": "tetikleme",
-    "addRoutine": "Routine ekle",
-    "trigger": "Tetikleyici",
-    "triggerDesc": "Which event starts this policy",
-    "scopeDesc": "Which repos this policy applies to",
-    "advancedDesc": "Cooldown and max fires per policy",
-    "action": "Eylem",
-    "interval": "Aralık",
-    "cooldown": "Bekleme süresi",
-    "cooldownDesc": "Ardışık tetiklemeler arasındaki minimum saniye",
-    "maxFires": "Maks. tetikleme",
-    "maxFiresDesc": "Bu kuralın tetiklenebileceği maksimum sayı (0 = sınırsız)",
-    "advanced": "Gelişmiş",
-    "advancedSettings": "Gelişmiş ayarlar",
-    "applicableAgent": "Atanmış Agent",
-    "applicableAgentDesc": "Bu rutini çalıştıracak Agent (boş bırakırsanız herhangi bir Agent)",
-    "selectAgent": "Agent seçin…",
     "scope": "Geçerli depolar",
     "allRepos": "Tüm depolar",
-    "allReposDesc": "Tüm depolara uygula",
-    "specificRepos": "Belirli depolar",
-    "specificReposDesc": "Yalnızca seçilen depolara uygula",
-    "selectRepos": "Depoları seçin...",
-    "includeRepos": "Dahil et",
-    "includeReposDesc": "Repos where this policy applies",
-    "excludeRepos": "Hariç tut",
-    "excludeReposDesc": "Repos to exclude from this policy",
-    "includeReposPlaceholder": "Depo seçin…",
-    "excludeReposPlaceholder": "Hariç tutulacak depoları seçin…",
-    "step1": "Adım 1 — Kurulum",
-    "step2": "Adım 2 — Eylem",
-    "promptPlaceholder": "Agent'a gönderilecek istemi girin...",
-    "sessionPrompt": "Session istemi",
-    "repoPath": "Depo yolu (isteğe bağlı)",
-    "sessionId": "Session ID",
-    "channel": "Kanal adı",
-    "messageContent": "Mesaj içeriği",
     "enabled": "Etkin",
     "enabledDesc": "Enable or disable this policy",
-    "disabled": "Devre dışı",
-    "noTemplates": "Henüz şablon yok",
     "addOrg": "Agent ekibi ekle",
     "addAgent": "Agent ekle",
-    "agentSections": {
-      "builtInAgents": "Yerleşik Agents",
-      "customAgents": "Özel Agents",
-      "cli": "CLI Agents",
-      "orgs": "Ekipler"
-    },
     "memorySections": {
       "personalMemory": "Kişisel",
-      "workspaceMemory": "Çalışma alanı",
-      "title": "Bellek"
+      "workspaceMemory": "Çalışma alanı"
     },
-    "importAgent": "Import",
     "agentDetail": {
       "type": "Tür",
       "builtIn": "Yerleşik",
-      "custom": "Özel",
-      "noModel": "(ayarlanmadı)"
+      "custom": "Özel"
     },
     "cliAgentDetail": {
       "installed": "Yüklü",
@@ -1322,19 +1088,12 @@
       "keyStatus": "Kimlik bilgisi durumu",
       "keysConfigured": "Yapılandırıldı",
       "noKeys": "Yapılandırılmadı",
-      "authMethod": "Kimlik doğrulama yöntemi",
-      "baseUrl": "Base URL",
-      "availableModels": "Kullanılabilir modeller",
-      "noModels": "Kullanılabilir model yok",
-      "editKeys": "Kimlik bilgilerini düzenle",
       "detectKeys": "Kimlik bilgilerini tespit et",
       "detectSuccess": "Kimlik bilgileri başarıyla tespit edildi",
       "keys": "Kimlik bilgileri",
       "docs": "Dokümantasyon",
       "tabCore": "Temel",
-      "tabConfig": "Yapılandırma",
       "addKey": "Kimlik bilgisi ekle",
-      "compatibility": "Uyumluluk",
       "bringYourOwnKeys": "Kendi anahtarlarınızı getirin",
       "supported": "Destekleniyor",
       "notSupported": "Desteklenmiyor",
@@ -1344,15 +1103,13 @@
       "keyType": "Tür",
       "typePlan": "Plan",
       "typeApiKey": "API Key",
-      "keyPreview": "Anahtar",
       "addedTime": "Eklendi",
       "secretBearingConfig": "API key veya Token içerebilir",
       "revealConfigFile": "Dosya yöneticisinde göster",
       "launchConfiguration": "Başlatma yapılandırması",
       "configFiles": "Yapılandırma dosyaları",
       "configFile": "Yapılandırma dosyası",
-      "tokenCount": "~{{count}} Token",
-      "emptyConfigPreview": "Yapılandırma içeriği yok"
+      "tokenCount": "~{{count}} Token"
     },
     "sessionProvenance": {
       "masterToggle": "Kaynak izleme hook'ları",
@@ -1362,10 +1119,8 @@
       "title": "Oturum kaynağı",
       "capture": "Dosya etkileşimlerini kaydet",
       "description": "Dosya okuma ve yazma işlemlerini meta veri olarak kaydeder. İstemler, araç çıktıları ve dosya içerikleri saklanmaz.",
-      "configPath": "Dosya okuma ve yazma işlemlerini meta veri olarak kaydeder. İstemler, araç çıktıları ve dosya içerikleri saklanmaz. Yapılandırma: {{path}}",
       "installDrift": "Kaydedilen tercih ile yüklü hook farklı. Yönetilen hook'u onarmak için kaydı değiştirin. Yapılandırma: {{path}}",
       "copyPath": "Kopyala",
-      "reveal": "Göster",
       "col": {
         "source": "Araç",
         "config": "Yapılandırma",
@@ -1413,227 +1168,8 @@
         }
       }
     },
-    "codexConfig": {
-      "sectionTitle": "Yapılandırma",
-      "model": "Model",
-      "modelDesc": "Codex CLI oturumları için varsayılan model",
-      "approvalPolicyLabel": "Onay politikası",
-      "approvalPolicyDesc": "Codex'in komut çalıştırmadan önce ne zaman onay isteyeceği",
-      "approvalPolicy": {
-        "untrusted": "Güvenilmez",
-        "on-request": "İstek üzerine",
-        "never": "Asla"
-      },
-      "sandboxModeLabel": "Sandbox modu",
-      "sandboxModeDesc": "Çalıştırılan komutlar için dosya sistemi ve ağ erişimi",
-      "sandboxMode": {
-        "read-only": "Salt okunur",
-        "workspace-write": "Workspace yazma",
-        "danger-full-access": "Tam erişim (tehlikeli)"
-      },
-      "webSearchLabel": "Web araması",
-      "webSearchDesc": "Codex'in web arama isteklerini nasıl işlediği",
-      "webSearch": {
-        "disabled": "Devre dışı",
-        "cached": "Önbellek",
-        "live": "Canlı"
-      },
-      "reasoningTitle": "Akıl yürütme ve stil",
-      "reasoningEffortLabel": "Akıl yürütme yoğunluğu",
-      "reasoningEffortDesc": "Modelin ne kadar akıl yürütme uyguladığı",
-      "reasoningEffort": {
-        "none": "Yok",
-        "minimal": "Minimum",
-        "low": "Düşük",
-        "medium": "Orta",
-        "high": "Yüksek",
-        "xhigh": "Çok yüksek"
-      },
-      "personalityLabel": "Kişilik",
-      "personalityDesc": "Yanıtların iletişim tarzı",
-      "personality": {
-        "friendly": "Dostane",
-        "pragmatic": "Pragmatik",
-        "none": "Yok"
-      },
-      "unset": "(ayarlanmamış)",
-      "featuresTitle": "Özellik bayrakları",
-      "features": {
-        "shell_snapshot": "Shell Snapshot",
-        "shell_snapshotDesc": "Tekrarlanan komutları hızlandırmak için Shell ortamını anlık görüntüle",
-        "multi_agent": "Çoklu Agent",
-        "multi_agentDesc": "Çoklu Agent işbirliği araçlarını etkinleştir",
-        "collaboration_modes": "İşbirliği modları",
-        "collaboration_modesDesc": "Plan modu gibi işbirliği modlarını etkinleştir",
-        "undo": "Geri al",
-        "undoDesc": "Tur başına git anlık görüntüleri ile geri almayı etkinleştir",
-        "shell_tool": "Shell aracı",
-        "shell_toolDesc": "Varsayılan Shell aracını etkinleştir",
-        "personality": "Kişilik kontrolleri",
-        "personalityDesc": "CLI'da kişilik seçimini etkinleştir"
-      }
-    },
-    "cursorConfig": {
-      "sectionTitle": "Yapılandırma",
-      "vimMode": "Vim Modu",
-      "vimModeDesc": "CLI düzenleyicisinde Vim tuş bağlamalarını etkinleştir",
-      "http1Fallback": "HTTP/1.1 Yedek",
-      "http1FallbackDesc": "Agent bağlantıları için HTTP/2 yerine HTTP/1.1 kullan (kurumsal proxy'ler için)",
-      "attributionTitle": "Atıf",
-      "attributeCommits": "Commit Atfı",
-      "attributeCommitsDesc": "Agent commit'lerine 'Made with Cursor' etiketi ekle",
-      "attributePRs": "PR Atfı",
-      "attributePRsDesc": "Agent Pull Request'lerine 'Made with Cursor' altbilgisi ekle",
-      "permissionsTitle": "İzinler",
-      "permissionsAllow": "İzin Ver",
-      "permissionsDeny": "Reddet",
-      "noPermissions": "Yapılandırılmış izin kuralı yok",
-      "sandboxTitle": "Sandbox",
-      "sandboxTypeLabel": "Sandbox Modu",
-      "sandboxTypeDesc": "Sandbox komutları için dosya sistemi erişimini kontrol eder",
-      "sandboxType": {
-        "workspace_readwrite": "Workspace okuma/yazma",
-        "workspace_readonly": "Workspace salt okunur",
-        "insecure_none": "Devre dışı (güvensiz)"
-      },
-      "disableTmpWrite": "/tmp Yazma Devre Dışı",
-      "disableTmpWriteDesc": "Geçici dizinlere varsayılan yazma erişimini kaldır",
-      "sharedBuildCache": "Paylaşılan Derleme Önbelleği",
-      "sharedBuildCacheDesc": "Sandbox ve sandbox olmayan komutlar arasında derleme önbelleklerini (npm, cargo, pip) paylaş",
-      "networkPolicyTitle": "Ağ Politikası",
-      "networkDefaultPolicy": "Varsayılan Politika",
-      "networkDefaultPolicyDesc": "İzin ver/reddet kuralı eşleşmediğinde yapılacak işlem",
-      "networkDefault": {
-        "allow": "İzin Ver",
-        "deny": "Reddet"
-      },
-      "networkAllow": "İzin Verilen Alan Adları",
-      "networkDeny": "Reddedilen Alan Adları"
-    },
-    "claudeCodeConfig": {
-      "sectionTitle": "Yapılandırma",
-      "noItems": "Yapılandırılmış öğe yok",
-      "model": "Varsayılan Model",
-      "modelDesc": "Claude Code oturumları için varsayılan modeli geçersiz kıl",
-      "thinkingMode": "Extended Thinking",
-      "thinkingModeDesc": "Tüm oturumlar için varsayılan olarak Extended Thinking (düşünme modu) etkinleştir",
-      "gitInstructions": "Git Talimatları",
-      "gitInstructionsDesc": "Sistem promptuna yerleşik commit ve PR iş akışı talimatlarını dahil et",
-      "cleanupPeriod": "Temizlik Süresi",
-      "cleanupPeriodDesc": "Bu süreden daha uzun süre etkin olmayan oturumlar başlangıçta silinir",
-      "days": "gün",
-      "language": "Yanıt Dili",
-      "languageDesc": "Claude'un tercih ettiği yanıt dilini yapılandır (ör. japanese, spanish)",
-      "attributionTitle": "Atıf",
-      "commitAttribution": "Commit Mesajı",
-      "commitAttributionDesc": "Claude Code tarafından yapılan git commit'lere eklenen özel mesaj",
-      "prAttribution": "PR Mesajı",
-      "prAttributionDesc": "Claude Code tarafından oluşturulan PR'lara eklenen özel mesaj",
-      "coAuthoredBy": "Co-authored-by",
-      "coAuthoredByDesc": "Git commit'lere ve PR'lara 'co-authored-by Claude' ekle",
-      "permissionsTitle": "İzinler",
-      "defaultMode": "Varsayılan İzin Modu",
-      "defaultModeDesc": "Claude Code açılırken varsayılan izin modu",
-      "permissionMode": {
-        "default": "Varsayılan",
-        "plan": "Plan",
-        "acceptEdits": "Düzenlemeleri Kabul Et",
-        "bypassPermissions": "İzinleri Atla"
-      },
-      "permAllow": "İzin Ver",
-      "permAsk": "Sor",
-      "permDeny": "Reddet",
-      "sandboxTitle": "Sandbox",
-      "sandboxEnabled": "Sandbox Etkinleştir",
-      "sandboxEnabledDesc": "Bash komutlarını dosya sistemi ve ağdan izole et",
-      "autoAllowBash": "Bash Otomatik Onayla",
-      "autoAllowBashDesc": "Sandbox etkinken Bash komutlarını otomatik olarak onayla",
-      "allowLocalBinding": "Localhost Bağlamaya İzin Ver",
-      "allowLocalBindingDesc": "Sandbox içinde localhost portlarına bağlamaya izin ver (yalnızca macOS)",
-      "excludedCommands": "Hariç Tutulan Komutlar",
-      "allowedDomains": "İzin Verilen Alan Adları",
-      "fsAllowWrite": "Dosya Sistemi Yazma İzni",
-      "fsDenyWrite": "Dosya Sistemi Yazma Reddi",
-      "fsDenyRead": "Dosya Sistemi Okuma Reddi"
-    },
-    "noMemory": "Henüz Memory yok",
-    "memoryDescription": "Memory, üyelerin oturumlar arasında başvurabileceği bilgi ve bağlamı saklar.",
-    "tabs": {
-      "org": "Ekip",
-      "agents": "Üyeler",
-      "integrations": "Entegrasyonlar",
-      "rules": "Kurallar",
-      "orgs": "Ekipler"
-    },
-    "searchPlaceholder": "Kurallarda ara…",
-    "searchOrgsPlaceholder": "Ekip ara...",
-    "searchAgentsPlaceholder": "Üye ara...",
-    "searchMemoryPlaceholder": "Memory ara...",
-    "searchIntegrationsPlaceholder": "Integrations ara...",
-    "integrationsSections": {
-      "core": "Çekirdek",
-      "tools": "Ajan Araçları",
-      "connections": "Bağlantılar",
-      "customization": "Özelleştirme"
-    },
-    "triggerNotConfigurable": "Bu tetikleyici için ek yapılandırma yok",
     "sections": {
-      "quickActions": "Hızlı İşlemler",
-      "trigger": "Tetikleyici Yapılandırması",
-      "actions": "Eylem Zinciri"
-    },
-    "quickActions": {
-      "editDesc": "Tetikleyici, eylem ve ayarları değiştir",
-      "delete": "Delete Policy",
-      "deleteDesc": "Permanently remove this policy"
-    },
-    "overview": {
-      "triggerConfig": "Tetikleyici Yapılandırması",
-      "fireCount": "Tetikleme Sayısı",
-      "lastFired": "Son Tetikleme",
-      "maxFires": "Maks. Tetikleme",
-      "actions": "Eylemler"
-    },
-    "cronExpression": "Cron ifadesi (ör. 0 9 * * *)",
-    "cronHint": "Standart 5 alanlı Cron: dakika saat gün ay haftanın_günü",
-    "patternRegex": "Regex deseni (isteğe bağlı)",
-    "filePathPlaceholder": "İzlenecek dosya veya dizin yolu",
-    "debounce": "Sıçrama önleme",
-    "webhookRoute": "Webhook rotası (ör. /automation/webhook/deploy)",
-    "webhookHint": "Bu rotaya yapılan POST istekleri tetikleyiciyi ateşler",
-    "scheduleTimezone": "Zaman dilimi",
-    "scheduleTimezoneDesc": "Varsayılan olarak mevcut zaman dilimin kullanılır. Ofsetler UTC formatında gösterilir.",
-    "triggerConfig": {
-      "timer": {
-        "label": "Aralık",
-        "desc": "How often the policy fires (in seconds)"
-      },
-      "scheduledTime": {
-        "label": "Planlanan Zaman",
-        "desc": "Sıklık, saat ve zaman dilimi içeren takvim tarzı zamanlama"
-      },
-      "cron": {
-        "label": "Zamanlama",
-        "desc": "Cron expression defining when the policy fires"
-      },
-      "gitActivity": {
-        "label": "Git Olayları",
-        "desc": "Which git operations trigger this policy"
-      },
-      "channelMessage": {
-        "label": "Kanal",
-        "desc": "Mesajları dinleyeceğiniz kanal adı",
-        "patternDesc": "Mesajları filtrelemek için isteğe bağlı regex"
-      },
-      "fileWatch": {
-        "label": "İzleme Yolları",
-        "desc": "Değişiklikleri izlenecek dosya ve dizinler",
-        "debounceDesc": "Son değişiklikten sonra bekleme süresi"
-      },
-      "webhook": {
-        "label": "Webhook Uç Noktası",
-        "desc": "Gelen POST isteklerini kabul eden HTTP rotası"
-      }
+      "quickActions": "Hızlı İşlemler"
     },
     "orgWizard": {
       "title": "Org Ekle",
@@ -1643,60 +1179,51 @@
       "orgDescription": "Açıklama",
       "orgDescriptionDesc": "Bu ekibin ne yaptığına dair isteğe bağlı özet",
       "orgDescriptionPlaceholder": "Bu ekip ne yapar?",
-      "members": "Üyeler",
       "addMember": "Üye Ekle",
-      "editMember": "Üye Düzenle",
       "noMembers": "Org hiyerarşinizi oluşturmak için üye ekleyin",
-      "previewEmpty": "Önizlemeyi görmek için agent ekleyin",
-      "hierarchyMode": {
-        "label": "Hiyerarşi modu",
-        "description": "Üyeler arasındaki Reports-to ilişkisinin runtime'da nasıl yorumlanacağı",
-        "flat": {
-          "label": "Düz",
-          "description": "Raporlama hiyerarşisi yok. Her üye doğrudan diğer her üyeye yazabilir. Reports-to sütunu gizlenir"
-        },
-        "soft": {
-          "label": "Yumuşak (önerilen)",
-          "description": "Reports-to LLM'e ekip ipucu olarak iletilir. Runtime yönlendirmesi serbesttir — gerektiğinde LLM bir akrana doğrudan yazabilir"
-        },
-        "strict": {
-          "label": "Katı",
-          "description": "Reports-to runtime'da zorlanır. Bir üye yalnızca yöneticisine, doğrudan raporlarına veya koordinatöre yazabilir. Akranlar arası gönderim reddedilir"
-        }
-      },
-      "strictBanner": "Katı mod: üyeler yalnızca yöneticisine, doğrudan raporlarına veya koordinatöre yazabilir. Akranlar arası mesajlar runtime'da engellenir.",
-      "missingParentWarn": "Katı modda, üst düzey üyeler doğrudan koordinatöre rapor verir ve yalnızca koordinatöre ulaşabilir.",
-      "reachability": {
-        "label": "Katı mod erişilebilirliği",
-        "description": "Mevcut zincir altında kimin kime doğrudan yazabileceğinin dry-run önizlemesi. Lansmandan önce izole üyeleri yakalamaya yarar",
-        "fromHeader": "kimden \\ kime",
-        "empty": "Katı mod yönlendirmesini görmek için en az bir üye ekleyin.",
-        "isolatedWarn": "Bu üyeler yalnızca koordinatöre ulaşabiliyor — katı modda akranlarıyla işbirliği yapamazlar: {{names}}",
-        "allowedTitle": "{{from}} doğrudan {{to}} kişisine yazabilir",
-        "blockedTitle": "Katı modda {{from}}, {{to}} kişisine doğrudan yazamaz — koordinatör üzerinden eskale edin"
-      },
       "membersLabel": "Takım Üyeleri",
-      "membersDesc": "Her satır bir yönlendirme takma adıdır. Koordinatör üyelere name ile hitap eder; name'ler benzersiz olmalıdır. Role, uzmanlık ipucu olarak LLM'e iletilir",
+      "membersDesc": "Her satır, bağımsız Writer izni ve iletişim ayarları olan bir üyedir. Adlar benzersiz olmalıdır; rol yalnızca uzmanlığı açıklar.",
       "memberName": "Ad",
       "memberNamePlaceholder": "Benzersiz yönlendirme adı (örn. SDE-1)",
       "memberNameDuplicate": "Başka bir üye bu name'i zaten kullanıyor. Name ekip içinde benzersiz olmalıdır.",
       "role": "Rol",
       "rolePlaceholder": "Uzmanlık (örn. backend dev)",
       "agent": "Agent",
-      "reportsTo": "Bağlı olduğu",
-      "reportsToCoordinator": "Koordinatör (üst düzey)",
-      "status": "Durum",
       "coordinator": "Koordinatör",
       "coordinatorDesc": "Bu ekip çalışması için koordinatör oturumunu yöneten lider ajan",
       "coordinatorPlaceholder": "Koordinatör ajanı seçin",
-      "tabs": {
-        "edit": "Düzenle",
-        "previewDiagram": "Diyagram Önizleme"
-      },
       "dangerZone": "Tehlikeli Bölge",
       "deleteOrg": "Bu Org'u sil",
       "deleteOrgDesc": "Bu Agent Ekibi’ni kalıcı olarak siler. Üye Agent’lar etkilenmez. Bu işlem geri alınamaz",
-      "deleteThisOrg": "Bu Org'u sil"
+      "deleteThisOrg": "Bu Org'u sil",
+      "planApprovalPolicy": {
+        "label": "Plan onayı",
+        "description": "Bir Planner'ın gönderdiği planın bağımlı görevlerin kilidini açmaya hazır olduğuna kimin karar vereceği",
+        "coordinator": {
+          "label": "Koordinatör (önerilen)",
+          "description": "Koordinatör planı çalıştırma içinde inceler, ardından onaylar veya Planner'dan değişiklik ister"
+        },
+        "user": {
+          "label": "Kullanıcı",
+          "description": "Grup sohbeti sessizce bekler ve planı Onayla, Düzenle ve Değişiklik iste eylemleriyle size gösterir"
+        },
+        "automatic": {
+          "label": "Otomatik",
+          "description": "Geçerli bir gönderilmiş plan hemen kabul edilir ve bağımlı görevlerinin kilidi açılır"
+        }
+      },
+      "writer": "Writer",
+      "connected": "Bağlı",
+      "connectedCount": "{{count}} kişiyle bağlı",
+      "manageCommunication": "İletişimi yönet",
+      "futureTeamsOnly": "Şablon değişiklikleri yalnızca gelecekte oluşturulan ekipleri etkiler. Çalışan ekip oturumlarını değiştirmez.",
+      "communicationPanel": {
+        "title": "{{name}} iletişimi",
+        "coordinatorAlwaysReachable": "Koordinatör her üyeyle her zaman çift yönlü erişime sahiptir ve burada listelenmez.",
+        "search": "Üyeleri ada veya role göre ara",
+        "noPeers": "Eşleşen üye yok",
+        "saveWithTeam": "Değişiklikler ekip taslağında kalır ve ana ekip ayarları sayfasından kaydedilir."
+      }
     },
     "agentWizard": {
       "title": "Agent Yapılandır",
@@ -1706,11 +1233,7 @@
       "namePlaceholder": "örn. İnceleme Bot",
       "descriptionLabel": "Açıklama",
       "descriptionPlaceholder": "Bu agent ne yapar? (isteğe bağlı)",
-      "defaultModelLabel": "Varsayılan Model",
-      "defaultModelDesc": "Bu Agent tarafından kullanılan AI modeli",
-      "defaultModelPlaceholder": "Model seçin...",
       "subAgentsTab": "Subagents",
-      "subAgentConcurrencyTitle": "Eşzamanlılık kontrolü",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
       "maxToolUseConcurrencyDesc": "Mesaj başına eşzamanlı Tool çağrısı sayısı. Varsayılan: 10.",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
@@ -1718,27 +1241,13 @@
       "addSubAgent": "Sub-Agent Ekle...",
       "noSubAgents": "Yapılandırılmış sub-agent yok."
     },
-    "ruleActions": {
-      "create": "Yeni Oluştur",
-      "import": "İçe Aktar"
-    },
-    "ruleActionsDesc": {
-      "create": "Yeni bir Markdown kuralı yaz",
-      "import": "Bu çalışma alanından .cursor/rules içe aktar"
-    },
-    "ruleActionLabel": "Yöntem",
-    "ruleActionDesc": "Sıfırdan yaz veya mevcut bir kaynaktan içe aktar",
     "markdownContent": "Policy Content",
     "markdownContentDesc": "Agent sistem prompt'una enjekte edilen Markdown talimatları",
-    "markdownContentPlaceholder": "Markdown politikalarını buraya yazın...",
     "noMarkdownContent": "İçerik yok",
     "importSelected": "İçe Aktar ({{count}})",
     "importRuleColumn": "Kural",
     "allImported": "Tüm {{item}} içe aktarıldı",
-    "importedItemRules": "kurallar",
     "externalImport": {
-      "noResults": "İçe aktarılabilir kural bulunamadı. .cursor/rules, CLAUDE.md, .github/copilot-instructions.md, .kiro/steering ve ev dizininiz tarandı.",
-      "globalScope": "(genel)",
       "applyFailed": "İçe aktarma başarısız: {{message}}",
       "partialFailure": "Bazı öğeler içe aktarılamadı:",
       "sources": {
@@ -1748,38 +1257,15 @@
         "kiro": "Kiro",
         "codex": "Codex"
       },
-      "noSkillsResults": "İçe aktarılabilir skill bulunamadı. ~/.claude/skills ve ~/.claude/commands incelendi.",
       "noAgentResults": "İçe aktarılacak agent henüz yok",
-      "addManually": "Agent'ı elle ekle",
       "readonlyDowngradedBadge": "Salt okunur — yazma araçları devre dışı",
-      "readonlyDowngradedTooltip": "Kaynak readonly:true bildirdi. Devre dışı: {{tools}}.",
-      "workspaceScope": "(çalışma alanı)"
+      "readonlyDowngradedTooltip": "Kaynak readonly:true bildirdi. Devre dışı: {{tools}}."
     },
-    "previewEmpty": "Henüz önizlenecek bir şey yok",
-    "editorTabs": {
-      "edit": "Düzenle",
-      "preview": "Önizleme"
-    },
-    "activeRules": "aktif",
     "addRule": "Politika ekle",
-    "editRoutine": "Edit Policy",
     "ruleName": "Policy name",
     "ruleNameDesc": "A unique name to identify this policy",
-    "routineNamePlaceholder": "örn. Commit'te otomatik dağıtım",
-    "ruleNameRequired": "Policy name is required",
-    "routineName": "Policy name",
-    "routineNameDesc": "A unique name to identify this policy",
-    "routineNameRequired": "Policy name is required",
-    "noRulesOrRoutines": "No policies yet",
-    "ruleKindLabel": "Policy Type",
-    "ruleKindDesc": "Bu politikanın tanımlanma şekli",
     "ruleKinds": {
-      "rule": "Rules",
-      "routine": "Routines"
-    },
-    "ruleKindsDesc": {
-      "rule": "Agent prompt'una enjekte edilen Markdown talimatları",
-      "routine": "Otomatik tetikleyici + eylem zincirleri"
+      "rule": "Rules"
     },
     "markdownRuleNamePlaceholder": "ör. Kod Stili Kılavuzu",
     "editRule": "Edit Policy",
@@ -1795,22 +1281,11 @@
     "ruleRepo": "Repo",
     "ruleRepoDesc": "Bu kılavuzun geçerli olduğu tek repo",
     "selectRepo": "Repo seç…",
-    "ruleSourceGlobal": "User",
-    "ruleSourceGlobalDesc": "~/.orgii/rules/ konumunda saklanır. Tüm repolara uygulanır.",
     "ruleSourcePersonal": "Kişisel",
     "ruleSourcePersonalDesc": "~/.orgii/personal/rules/ konumunda saklanır. Yalnızca OS Agent / channel oturumları.",
-    "importSkillTitle": "Başka bir agent'tan skill içe aktar",
-    "importSkillColumn": "Skill",
-    "importedItemSkills": "skill'ler",
     "findSkills": {
       "title": "Skills ara",
-      "description": "Search skills.sh and press Enter to show matching ORGII skills. Click a result to preview its SKILL.md in WorkStation.",
-      "openDirectory": "skills.sh'yi aç",
-      "hint": "Paste a skills.sh URL or id like vercel-labs/skills/find-skills. ORGII downloads the skill snapshot directly from skills.sh.",
       "placeholder": "Skills ara...",
-      "install": "Install skill",
-      "installing": "Installing...",
-      "installSuccess": "Installed {{name}}",
       "installs": "Installs",
       "emptyTitle": "Skills ara",
       "emptySubtitle": "Skills bulmak için en az 2 karakter girin ve Enter’a basın.",
@@ -1820,193 +1295,6 @@
     "importAgentTitle": "Agents öğelerini diğer apps içinden içe aktar",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agent'lar",
-    "importAgentButton": "Başka bir platformdan içe aktar",
-    "workflowActions": {
-      "categories": {
-        "all": "All",
-        "controls": "Controls",
-        "sessionWorkflow": "Session Workflow",
-        "actions": "Actions"
-      },
-      "inline": {
-        "runWith": "Şununla çalıştır",
-        "using": "kullanarak",
-        "retryMax": "maks. yeniden deneme",
-        "times": "kez",
-        "timeout": "zaman aşımı",
-        "transitionTo": "Şuraya geç",
-        "stage": "aşama",
-        "configureAutoApprove": "İş akışını yapılandır: otomatik onay",
-        "onFailure": "başarısız olunca",
-        "open": "Aç",
-        "inExternalEditor": "harici düzenleyicide",
-        "waitFor": "Bekle",
-        "ifOutput": "Çıktı",
-        "agentPlaceholder": "aracı",
-        "modelPlaceholder": "model",
-        "stagePlaceholder": "aşama",
-        "stagesPlaceholder": "aşamalar",
-        "actionPlaceholder": "eylem",
-        "repoPlaceholder": "depo",
-        "conditionPlaceholder": "koşul",
-        "valuePlaceholder": "değer",
-        "autoApproveNone": "Yok (manuel)",
-        "autoApproveIntake": "Yalnızca Intake",
-        "autoApproveIntakeSpec": "Intake + Spec",
-        "autoApproveExceptReview": "Review hariç tümü",
-        "autoApproveAll": "Tümü (otomatik)",
-        "failurePause": "Duraklat",
-        "failureRetry": "Yeniden dene",
-        "failureRollback": "Geri al",
-        "failureSkip": "Atla",
-        "condEquals": "eşittir",
-        "condNotEquals": "eşit değildir",
-        "condContains": "içerir",
-        "condIsEmpty": "boş",
-        "condIsNotEmpty": "boş değil",
-        "emptyTitle": "Henüz eylem yok",
-        "emptySubtitle": "Başlamak için panelden bir eylem seçin."
-      },
-      "fields": {
-        "session": "Session",
-        "model": "Model",
-        "agent": "Agent",
-        "timeout": "Timeout",
-        "maxRetries": "Max Retries",
-        "customPrompt": "Custom Prompt",
-        "prompt": "Prompt",
-        "sessionConfig": "Session Configuration",
-        "channel": "Channel",
-        "content": "Content",
-        "message": "Message",
-        "targetStage": "Target Stage",
-        "transitionType": "Transition Type",
-        "stageTimeout": "Stage timeout"
-      },
-      "placeholders": {
-        "selectSession": "Select a session",
-        "selectModel": "Select AI model",
-        "selectAgent": "Select agent",
-        "stageTimeout": "Stage timeout",
-        "maxRetries": "Maximum retry attempts",
-        "customPrompt": "Optional: Override default prompt...",
-        "compareValue": "Compare value",
-        "iterations": "Number of times to repeat",
-        "injectPrompt": "Enter prompt to inject...",
-        "selectSessionOptional": "Select target session (optional)",
-        "selectSessionToStop": "Select session to stop",
-        "channelName": "Channel name",
-        "messageContent": "Message content...",
-        "selectTargetSession": "Select target session",
-        "injectMessage": "Message to inject...",
-        "selectTargetStage": "Select target stage"
-      },
-      "units": {
-        "second": "second"
-      },
-      "stages": {
-        "intake": {
-          "title": "Intake Stage",
-          "description": "Gather initial requirements and clarifications"
-        },
-        "spec": {
-          "title": "Specification Stage",
-          "description": "Define detailed specifications and requirements"
-        },
-        "planning": {
-          "title": "Planning Stage",
-          "description": "Break down work into tasks and milestones"
-        },
-        "execution": {
-          "title": "Execution Stage",
-          "description": "Execute planned tasks with AI agents"
-        },
-        "review": {
-          "title": "Review Stage",
-          "description": "Review changes and validate results"
-        },
-        "merge": {
-          "title": "Merge Stage",
-          "description": "Merge approved changes to target branch"
-        }
-      },
-      "wait": {
-        "title": "Wait",
-        "description": "Pause execution for a specified time"
-      },
-      "if": {
-        "title": "If",
-        "description": "Conditional logic based on output",
-        "condition": "Condition"
-      },
-      "loop": {
-        "title": "Loop",
-        "description": "Repeat actions multiple times",
-        "loopType": "Loop Type",
-        "iterations": "Iterations",
-        "types": {
-          "count": "Fixed Count",
-          "foreach": "For Each Item",
-          "while": "While Condition"
-        }
-      },
-      "operators": {
-        "equals": "Equals",
-        "notEquals": "Not Equals",
-        "contains": "Contains",
-        "greaterThan": "Greater Than",
-        "lessThan": "Less Than",
-        "isEmpty": "Is Empty",
-        "isNotEmpty": "Is Not Empty"
-      },
-      "injectPrompt": {
-        "title": "Inject Prompt",
-        "description": "Send a prompt to the agent"
-      },
-      "startSession": {
-        "title": "Start Session",
-        "description": "Start a new coding agent session"
-      },
-      "killSession": {
-        "title": "Kill Session",
-        "description": "Stop an existing session"
-      },
-      "sendMessage": {
-        "title": "Send Message",
-        "description": "Send a message to a channel"
-      },
-      "injectToSession": {
-        "title": "Inject to Session",
-        "description": "Send a message into a specific session"
-      },
-      "stageTransition": {
-        "title": "Stage Transition",
-        "description": "Configure conditional or unconditional stage transitions"
-      },
-      "workflowConfig": {
-        "title": "Session Workflow Config",
-        "description": "Configure the full session workflow pipeline",
-        "autoApprove": "Auto-approve stages",
-        "onFailure": "On failure"
-      },
-      "transitionTypes": {
-        "unconditional": "Unconditional (always)",
-        "conditional": "Conditional (based on output)"
-      },
-      "autoApproveOptions": {
-        "none": "None (manual approval)",
-        "intake": "Intake only",
-        "intakeSpec": "Intake + Spec",
-        "allExceptReview": "All except Review",
-        "all": "All (fully automated)"
-      },
-      "onFailureOptions": {
-        "pause": "Pause and notify",
-        "retry": "Retry (max 3)",
-        "rollback": "Rollback to previous stage",
-        "skip": "Skip and continue"
-      }
-    },
     "emptySelectionTitle": "Bir üye veya Agent Ekibi seçin",
     "emptySelectionSubtitle": "Görüntülemek ve yapılandırmak için kenar çubuğundan bir Agent veya Agent Ekibi seçin.",
     "applicableWorkspace": "Uygulanacak Workspace",
@@ -2033,7 +1321,40 @@
     "orgSaveFailed": "Ekip kaydedilemedi",
     "orgDeleteFailed": "Ekip silinemedi",
     "deleteOrgTitle": "Ekip silinsin mi?",
-    "deleteOrgMessage": "\"{{name}}\" kalıcı olarak kaldırılacak. Bu işlem geri alınamaz."
+    "deleteOrgMessage": "\"{{name}}\" kalıcı olarak kaldırılacak. Bu işlem geri alınamaz.",
+    "cliUpdateAlerts": {
+      "label": "CLI güncellemelerini bildir",
+      "description": "CLI sürümlerini denetle ve güncelleme olduğunda bildir. Kapalı, denetimleri devre dışı bırakır"
+    },
+    "cliManagedConfig": {
+      "title": "CLI yapılandırma anahtarı",
+      "modeLabel": "Mod",
+      "modeDesc": "Varsayılan, CLI'ın kendi yapılandırmasını geri yükler. ORGII Yönetimli, yedeklenmiş bir proxy yapılandırması yazar.",
+      "modeDefault": "Varsayılan",
+      "modeOrgii": "ORGII Yönetimli",
+      "conflict": "Harici değişiklik",
+      "conflictTitle": "Çakışma",
+      "conflictDesc": "Etkin CLI yapılandırması ORGII yazdıktan sonra değişti.",
+      "proxyStatus": "Proxy",
+      "proxyDefault": "Varsayılan mod",
+      "proxyReady": "Proxy hazır",
+      "proxyNotReady": "Proxy hazır değil",
+      "keyLabel": "Anahtar",
+      "keyDesc": "Yalnızca bu CLI ve yönetimli proxy ile uyumlu API anahtarları gösterilir.",
+      "selectKey": "Anahtar seç",
+      "modelLabel": "Model",
+      "selectModel": "Model seç",
+      "configFile": "Yapılandırma dosyaları",
+      "actions": "Eylemler",
+      "addKey": "Anahtar ekle",
+      "apply": "Uygula",
+      "restore": "Varsayılanı Geri Yükle",
+      "forceApply": "Zorla Uygula",
+      "forceRestore": "Zorla Geri Yükle",
+      "applySuccess": "ORGII yönetimli yapılandırma uygulandı",
+      "restoreSuccess": "Varsayılan yapılandırma geri yüklendi",
+      "proxyLifecycleDesc": "Bu modu kullanırken ORGII'yi çalışır durumda tutun. Pencereyi kapatmak proxy'yi tepside tutar; ORGII'den çıkmak, yapılandırma harici olarak değişmediği sürece Varsayılanı güvenle geri yükler."
+    }
   },
   "databases": {
     "title": "Veritabanları",
@@ -2041,38 +1362,24 @@
     "searchPlaceholder": "Veritabanlarını ara...",
     "providers": {
       "sqlite": "SQLite",
-      "sqliteDesc": "Yerel SQLite veritabanı dosyası",
       "postgres": "PostgreSQL",
-      "postgresDesc": "Doğrudan PostgreSQL bağlantısı",
       "mysql": "MySQL",
-      "mysqlDesc": "MySQL / MariaDB veritabanı",
       "supabase": "Supabase",
-      "supabaseDesc": "Supabase PostgreSQL bulut veritabanı",
       "turso": "Turso",
-      "tursoDesc": "Turso dağıtılmış SQLite (libSQL)",
-      "neon": "Neon",
-      "neonDesc": "Neon sunucusuz PostgreSQL"
+      "neon": "Neon"
     },
     "detail": {
       "type": "Tür",
       "url": "URL",
       "status": "Durum",
-      "enabled": "Etkin",
-      "disabled": "Devre dışı",
-      "connectionInfo": "Bağlantı bilgisi",
-      "actions": "İşlemler",
       "testConnection": "Bağlantıyı test et",
       "probeSuccess": "Başarıyla bağlandı",
-      "probeFailed": "Bağlantı başarısız",
-      "disableAgent": "Agent erişimini devre dışı bırak",
-      "enableAgent": "Agent erişimini etkinleştir"
+      "probeFailed": "Bağlantı başarısız"
     },
     "wizard": {
       "title": "Veritabanı bağlantısı ekle",
       "providerType": "Veritabanı türü",
       "providerTypeDesc": "Bu bağlantı için veritabanı motorunu seçin",
-      "connectionDetails": "Bağlantı detayları",
-      "connectionNameDesc": "Kenar çubuğunda ve Agent araçlarında görünen bağlantı adı",
       "databaseFileDesc": "Yerel .sqlite, .sqlite3 veya .db dosyasının yolu",
       "projectUrlDesc": "Paneldeki Supabase proje URL'niz",
       "accessTokenDesc": "API erişimi için Service Role veya Anon Key",
@@ -2084,7 +1391,6 @@
       "mysqlHostDesc": "MySQL sunucusunun ana bilgisayar adı veya IP adresi",
       "testConnectionDesc": "Kaydetmeden önce bağlantıyı doğrulayın",
       "addConnection": "Ekle",
-      "testPassed": "Bağlantı testi başarılı",
       "saved": "Bağlantı eklendi",
       "savedDesc": "Veritabanı bağlantısı kaydedildi. Bu sihirbazı kapatabilirsiniz",
       "connectionNameOptional": "Bağlantı adı (isteğe bağlı)",
@@ -2093,7 +1399,6 @@
     }
   },
   "devTools": {
-    "mode": "Mod",
     "modeUi": "UI Önizleme",
     "modeTool": "Araçlar",
     "modeInput": "Giriş",
@@ -2105,12 +1410,9 @@
     "toolTypeFilterPlaceholder": "Araç ara…",
     "commands": "Komutlar",
     "status": "Durum",
-    "statusRunning": "Çalışıyor",
-    "variant": "Varyant",
     "variantChat": "Chat Panel",
     "variantSimulator": "Simulator",
     "reset": "Sıfırla",
-    "activityData": "ActivityData (JSON)",
     "activityDataPlaceholder": "ActivityData JSON girin...",
     "preview": "Önizleme",
     "jsonParseError": "JSON Ayrıştırma Hatası",
@@ -2119,10 +1421,7 @@
     "queuedMessages": "Kuyruktaki Mesajlar",
     "fileReview": "Dosya İncelemesi",
     "terminalProcesses": "Terminal İşlemleri",
-    "chatPreview": "Sohbet önizleme",
-    "scenario": "Senaryo",
-    "selectScenario": "Bir senaryo seçin",
-    "sessionSimulation": "Oturum simülasyonu"
+    "modeSessionLink": "Oturum Bağlantısı"
   },
   "rulesTabs": {
     "rules": "Kurallar",
@@ -2135,33 +1434,15 @@
     "noRules": "Tanımlı kural yok"
   },
   "agentTools": {
-    "enabled": "Etkin",
-    "systemPinned": "Sistem sabitlenmiş",
-    "searchPlaceholder": "Araçları ara...",
-    "toolColumn": "Araç",
-    "typeColumn": "Tür"
+    "enabled": "Etkin"
   },
   "dependencies": {
-    "installed": "Yüklendi",
-    "notFound": "Bulunamadı",
-    "noDbClientsFound": "Veritabanı istemcisi bulunamadı",
-    "tableClient": "İstemci",
-    "tableName": "Ad",
-    "tableStatus": "Durum",
-    "tableVersion": "Sürüm",
-    "tableBinary": "İkili",
-    "tableCategory": "Kategori",
     "categoryDatabase": "Veritabanı",
     "categoryPackageManager": "Paket Yöneticisi",
     "categoryRuntime": "Çalışma Zamanı",
     "categoryShellUtility": "Shell Yardımcı Programı",
     "categoryToolchain": "Araç Zinciri",
-    "categoryVersionControl": "Sürüm Kontrolü",
-    "installHintNote": "Bu özelliği etkinleştirmek için eksik bağımlılığı yükleyin",
-    "installSection": "Kurulum"
-  },
-  "creator": {
-    "assign": "Ata"
+    "categoryVersionControl": "Sürüm Kontrolü"
   },
   "routineFields": {
     "addRoutine": "Routine ekle",
@@ -2209,7 +1490,21 @@
     "fireHistory": "Run history",
     "noFires": "No runs yet",
     "openSession": "Open session",
-    "openWorkItem": "Open work item"
+    "openWorkItem": "Open work item",
+    "fireError": "Rutin başlatılamadı: {{detail}}",
+    "provider": "Sağlayıcı",
+    "eventKind": "Olay",
+    "extraActivations": "Ek etkinleştirmeler",
+    "activationSchedule": "Zamanlama",
+    "activationOneTime": "Tek seferlik",
+    "activationProviderEvent": "Sağlayıcı olayı",
+    "activationManual": "Manuel",
+    "providerPlaceholder": "github",
+    "eventKindPlaceholder": "pull_request",
+    "fireAccepted": "Çalıştırma {{status}}",
+    "openSessionError": "Oturum açılamadı",
+    "openWorkItemError": "İş öğesi açılamadı",
+    "fireStarted": "Routine çalıştırması başladı"
   },
   "cursorPlugins": {
     "noPlugins": "Cursor eklentisi yüklü değil",
@@ -2223,23 +1518,6 @@
     "searchPlaceholder": "Eklenti ara...",
     "mcpConfigured": "MCP yapılandırıldı"
   },
-  "localModels": {
-    "title": "On prem",
-    "description": "Bu cihazı algılar ve hafif bir donanım uyum puanıyla Ollama / llama.cpp dostu yerel modelleri sıralar.",
-    "searchPlaceholder": "Yerel modelleri ara...",
-    "hardware": {
-      "system": "Sistem",
-      "cpu": "CPU",
-      "memory": "Bellek",
-      "gpu": "GPU / Backend"
-    },
-    "fit": {
-      "good": "İyi"
-    },
-    "runMode": {
-      "gpu": "GPU"
-    }
-  },
   "housekeeper": {
     "addModel": "Model Ekle",
     "sections": {
@@ -2248,7 +1526,14 @@
       "diagnostics": "Tanılama"
     },
     "health": {
-      "status": "Kontrol edilmedi"
+      "status": "Kontrol edilmedi",
+      "title": "Sağlık denetimi",
+      "idle": "/v1/models uç noktasını denetler ve küçük bir sohbet isteği gönderir.",
+      "checking": "Yerel vLLM MiniCPM servisi denetleniyor...",
+      "checkButton": "Bağlantıyı denetle",
+      "configureFirst": "Önce bir vLLM MiniCPM hesabı yapılandırın.",
+      "connectedTo": "{{baseUrl}} adresine bağlandı",
+      "failed": "MiniCPM sağlık denetimi başarısız."
     },
     "benchmark": {
       "title": "MiniCPM çıktı hızı",
@@ -2260,11 +1545,54 @@
       "tokensPerSecond": "Çıktı hızı: {{value}} tokens/s",
       "completionTokens": "Çıktı tokens: {{value}}",
       "elapsed": "Toplam süre: {{value}}s"
+    },
+    "title": "Yerleşik Housekeeper",
+    "description": "Yerel MiniCPM istem düzeltme, kısa adım açıklamaları ve hafif UI denetimini üstlenir. Kodlama görevleri ve karmaşık ADE kurulumu yine ana agent modelini kullanır.",
+    "autoAccount": "MiniCPM vLLM hesabını otomatik seç",
+    "tiles": {
+      "model": "Model",
+      "endpoint": "Uç nokta",
+      "safeContext": "Güvenli Bağlam"
+    },
+    "settings": {
+      "enabled": {
+        "title": "Housekeeper'ı etkinleştir",
+        "description": "Devre dışı bırakıldığında istem düzeltme, adım açıklamaları ve hafif UI denetimi MiniCPM kullanmaz."
+      },
+      "account": {
+        "title": "vLLM MiniCPM hesabı",
+        "description": "Mevcut bir KeyVault vllm_api hesabını yeniden kullanır; ayrı bir kimlik bilgisi deposu oluşturulmaz."
+      },
+      "model": {
+        "title": "Model kimliği",
+        "description": "Docker vLLM MiniCPM5-1B varsayılan olarak openbmb/MiniCPM5-1B kullanır."
+      },
+      "context": {
+        "title": "Güvenli bağlam bütçesi",
+        "description": "4GB GPU'larda teorik 32k sınırına güvenmek yerine ihtiyatlı bir 10000 token bütçesi kullan."
+      }
+    },
+    "features": {
+      "promptPolish": {
+        "title": "İstem düzeltme",
+        "description": "Girdiyi daha güçlü kodlama modeline göndermeden önce manuel olarak düzeltin."
+      },
+      "stepExplain": {
+        "title": "Agent adım açıklamaları",
+        "description": "Oturum tekrarı adımları için bir veya iki kısa Çince açıklama oluştur."
+      },
+      "uiControl": {
+        "title": "Hafif ADE/UI denetimi",
+        "description": "MiniCPM istekleri yalnızca katı bir yerel eylem beyaz listesine göre sınıflandırabilir."
+      },
+      "contextCompact": {
+        "title": "Otomatik bağlam bakımı",
+        "description": "Etkin oturumlar boştayken MiniCPM'in eski bağlamın yalıtılmış, kayan bir özetini tutmasına izin ver."
+      }
     }
   },
   "cliLaunchProfiles": {
     "title": "Başlatma profili",
-    "plain": "Temel",
     "plan": "Plan",
     "fullPermission": "Tam izin",
     "autoEdit": "Otomatik düzenleme",
@@ -2276,5 +1604,67 @@
     "unavailable": "Başlatma profili kullanılamıyor",
     "saved": "Başlatma profili kaydedildi",
     "resetDone": "Başlatma profili sıfırlandı"
+  },
+  "gitProfiles": {
+    "tab": "Git profilleri",
+    "title": "Git profilleri",
+    "add": "Profil ekle",
+    "refresh": "Profilleri yenile",
+    "refreshed": "Genel Git profili yenilendi",
+    "loading": "Genel Git profiliniz yükleniyor…",
+    "defaultProfile": "Varsayılan profil",
+    "newProfile": "Yeni profil",
+    "copyName": "{{name}} kopyası",
+    "profileName": "Profil adı",
+    "authorName": "Yazar adı",
+    "email": "E-posta",
+    "selectEmail": "Bir e-posta seçin",
+    "signingKey": "İmzalama anahtarı",
+    "signingKeyPlaceholder": "GPG veya SSH imzalama anahtarı kimliği",
+    "signCommits": "Commit'leri imzala",
+    "active": "Etkin",
+    "activate": "Profili etkinleştir",
+    "activated": "{{name}} artık genel Git profili",
+    "editRaw": "Ham yapılandırmayı düzenle",
+    "hideRaw": "Ham yapılandırmayı gizle",
+    "rawTitle": "Ham Git profili",
+    "rawConfig": "Git yapılandırması",
+    "updateFromRaw": "Profili yapılandırmadan güncelle",
+    "rawUpdated": "Profil ham Git yapılandırmasından güncellendi",
+    "rawInvalid": "Ham Git profili geçersiz",
+    "nameEmailRequired": "Yazar adı ve e-posta gerekli",
+    "deleteTitle": "Git profilini sil",
+    "deleteMessage": "“{{name}}” profili silinsin mi? Bu, geçerli genel Git yapılandırmanızı değiştirmez.",
+    "loadFailed": "Genel Git profili yüklenemedi",
+    "applyFailed": "Git profili etkinleştirilemedi"
+  },
+  "credentialImport": {
+    "title": "Diğer uygulamalardan kimlik bilgilerini içe aktar",
+    "itemColumn": "Kimlik bilgisi",
+    "sourceColumn": "Bulunduğu yer",
+    "empty": "İçe aktarılacak kimlik bilgisi bulunamadı. Ortam değişkenleri, kabuk profilleri, Claude Code ayarları, cc-switch profilleri ve Claude Code, Codex, Cursor, GitHub CLI, Kiro ve OpenCode oturum açma depoları kontrol edildi.",
+    "allImported": "Algılanan tüm kimlik bilgileri zaten içe aktarılmış",
+    "authMethod": {
+      "api_key": "API anahtarı",
+      "oauth": "Oturum açma token'ı"
+    },
+    "sourceKind": {
+      "env": "Ortam değişkeni",
+      "shell_profile": "Kabuk profili",
+      "config_file": "Yapılandırma dosyası",
+      "oauth_store": "Oturum açma deposu",
+      "keychain": "Anahtar zinciri",
+      "state_db": "Uygulama durumu",
+      "cc_switch": "cc-switch"
+    },
+    "applyFailed": "İçe aktarma başarısız: {{message}}",
+    "partialFailure": "Bazı kimlik bilgileri içe aktarılamadı:"
+  },
+  "skills": {
+    "shareToOrg": "Organizasyonla paylaş",
+    "share": "Paylaş",
+    "sharedToOrg": "Skill organizasyonla paylaşıldı",
+    "shareToOrgHint": "Organizasyon üyeleri bu Skill'in geçerli anlık görüntüsünü alır; düzenledikten sonra güncelleme yayınlamak için yeniden paylaşın.",
+    "shareOrgPlaceholder": "Organizasyon"
   }
 }

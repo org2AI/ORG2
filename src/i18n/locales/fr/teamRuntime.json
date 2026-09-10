@@ -6,7 +6,6 @@
     "today": "Aujourd'hui",
     "everyone": "Tout le monde",
     "activeMembers": "Membres actifs",
-    "systemsCurrent": "{{current}} systèmes à jour sur {{total}}",
     "usageByAgent": "Utilisation par agent",
     "recentSessions": "Dernières sessions partagées",
     "recentLoading": "Chargement des sessions partagées…",
@@ -22,17 +21,17 @@
     "action": "Connexion"
   },
   "noOrgs": {
-    "title": "Aucune organisation cloud pour l'instant",
-    "subtitle": "Rejoignez ou créez une organisation et vos coéquipiers apparaîtront ici."
+    "title": "Aucun espace de travail cloud pour l'instant",
+    "subtitle": "Rejoignez ou créez un espace de travail et vos coéquipiers apparaîtront ici."
   },
   "unsupported": {
     "title": "Le backend doit être mis à niveau",
-    "subtitle": "Le backend cloud de cette organisation ne prend pas encore en charge le partage du runtime d'équipe."
+    "subtitle": "Le backend cloud de cet espace de travail ne prend pas encore en charge le partage du runtime d'équipe."
   },
   "disabled": {
     "title": "Le partage du runtime d'équipe est désactivé",
-    "subtitle": "Un administrateur peut l'activer dans les paramètres de l'organisation.",
-    "adminSubtitle": "Vous pouvez l'activer dans les paramètres de l'organisation."
+    "subtitle": "Un administrateur peut l'activer dans les paramètres de l'espace de travail.",
+    "adminSubtitle": "Vous pouvez l'activer dans les paramètres de l'espace de travail."
   },
   "empty": {
     "title": "Aucune donnée de membre pour l'instant",
@@ -72,13 +71,9 @@
     "totalSessions": "Sessions au total",
     "lastSynced": "Dernière synchro"
   },
-  "selfService": {
-    "hint": "Votre propre runtime est partagé avec cette organisation tant que le partage est activé.",
-    "action": "Arrêter le partage et supprimer mes données"
-  },
   "orgSettings": {
     "label": "Partage du runtime d'équipe",
-    "help": "La charge machine, les totaux d'utilisation et le profil de créateur des membres sont partagés avec l'organisation à cet intervalle. Uniquement des agrégats — jamais de transcriptions, de dépôts ni de titres.",
+    "help": "La charge machine, les totaux d'utilisation et le profil de créateur des membres sont partagés avec l'espace de travail à cet intervalle. Uniquement des agrégats — jamais de transcriptions, de dépôts ni de titres.",
     "memberNote": "Activé par un administrateur. Intervalle : {{interval}}.",
     "off": "Désactivé",
     "interval": {

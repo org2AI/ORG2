@@ -15,6 +15,7 @@ import Markdown from "@src/components/MarkDown";
 import TabPill from "@src/components/TabPill";
 
 import "./index.scss";
+import { useMarkdownEditorTabs } from "./useMarkdownEditorTabs";
 
 // Lazy: MarkdownEditor is mounted by the Settings/Integrations wizards and
 // the AgentOrgs configuration surfaces; loading CodeMirror only when the
@@ -66,20 +67,6 @@ function isImageFile(file: File): boolean {
 
 function editorHeight(value: number | string): string {
   return typeof value === "number" ? `${value}px` : value;
-}
-
-export function useMarkdownEditorTabs() {
-  const { t } = useTranslation();
-  return useMemo(
-    () => [
-      { key: "edit", label: t("common:actions.edit") },
-      {
-        key: "preview",
-        label: t("common:common.preview"),
-      },
-    ],
-    [t]
-  );
 }
 
 const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(

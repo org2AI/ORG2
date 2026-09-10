@@ -5,7 +5,7 @@ import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SESSION_CREATOR_LAUNCH_MODE } from "@src/features/SessionCreator/types";
-import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanelAtom";
+import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanel/selectionAtoms";
 
 import { StartPageAgentComposer } from "./StartPageAgentComposer";
 import type { ChatPanelProps } from "./types";

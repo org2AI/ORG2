@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { UsageSummary } from "@src/api/tauri/usageDashboard";
 import Tooltip from "@src/components/Tooltip";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import { STAT_GRID_TOKENS } from "@src/modules/shared/layouts/blocks";
 
 import UsagePricingHint from "./UsagePricingHint";
@@ -22,7 +23,7 @@ interface StatTileProps {
   tooltip?: ReactNode;
 }
 
-/** One KPI tile — mirrors the AIImpactContent StatItem card surface. */
+/** One KPI tile on the shared primary-container surface. */
 function StatTile({
   label,
   value,
@@ -45,7 +46,9 @@ function StatTile({
     <span className={valueClass}>{value}</span>
   );
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-border-1 bg-primary-container p-4">
+    <div
+      className={`flex flex-col gap-1.5 ${DETAIL_PANEL_TOKENS.primaryContainer}`}
+    >
       <span className="text-xs text-text-2">{label}</span>
       <div className="flex items-baseline gap-2">
         {valueNode}

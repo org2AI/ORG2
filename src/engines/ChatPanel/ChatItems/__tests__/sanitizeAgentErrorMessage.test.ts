@@ -81,6 +81,14 @@ describe("requiresCodexReauthentication", () => {
     expect(requiresCodexReauthentication(raw)).toBe(true);
   });
 
+  it("recognizes the human-readable reused-token response", () => {
+    expect(
+      requiresCodexReauthentication(
+        "Codex OAuth refresh failed: Your refresh token has already been used"
+      )
+    ).toBe(true);
+  });
+
   it("recognizes a Codex invalid_grant response", () => {
     expect(
       requiresCodexReauthentication(

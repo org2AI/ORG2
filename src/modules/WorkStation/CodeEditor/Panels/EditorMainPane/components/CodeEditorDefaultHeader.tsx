@@ -13,7 +13,7 @@ import {
   editorShowMinimapAtom,
   editorWordWrapAtom,
 } from "@src/store/ui/editorSettingsAtom";
-import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationAtom";
+import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 
 interface CodeEditorDefaultHeaderProps {
   enabled: boolean;

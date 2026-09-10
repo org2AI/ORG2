@@ -227,7 +227,7 @@ pub(crate) fn task_lifecycle_stop_feedback(
         return Ok(None);
     }
     Ok(Some(format!(
-        "Agent Org task lifecycle check: your turn is about to end, but your owned build task(s) [{}] are still in_progress. Do not redo the substantive work. If the work is finished, call task_update for the exact task id with status=completed and output={{summary, content?, artifact_ids?}}. If it is not finished or is blocked, send the coordinator one task-bound explanation with org_send_message and leave the task in_progress. This correction is offered once; do not end silently.",
+        "Agent Org task lifecycle check: your turn is about to end, but your owned build task(s) [{}] are still in_progress. Do not redo the substantive work. If the work is finished, call task_update for the exact task id with operation=complete and output={{summary, content?, artifact_ids?}}. If execution failed, use operation=fail with a bounded reason. If you cannot continue without Coordinator action, send exactly one plain org_send_message to the Coordinator with the exact related_task_id and purpose=blocker, then leave the task in_progress. Do not send routine progress or a problem you already resolved. This correction is offered once; do not end silently.",
         task_ids.join(", ")
     )))
 }
@@ -288,7 +288,9 @@ pub fn maybe_emit_member_idle_with_details(
 mod tests {
     use super::*;
     use crate::coordination::agent_org_runs::{AgentOrgContextMember, AgentOrgRunContext};
-    use crate::coordination::agent_org_tasks::{CreateTaskParams, TASK_METADATA_EXECUTION_MODE};
+    use crate::coordination::agent_org_tasks::{
+        CreateTaskParams, TASK_METADATA_EXECUTION_MODE, TASK_METADATA_OUTPUT,
+    };
     use std::sync::{Mutex, MutexGuard};
     use test_helpers::test_env;
 
@@ -374,11 +376,10 @@ mod tests {
                     name: name.into(),
                     role: "engineer".into(),
                     agent_id: agent_id.into(),
-                    parent_member_id: None,
                 })
                 .collect(),
-            hierarchy_mode: Default::default(),
             plan_approval_policy: crate::definitions::orgs::PlanApprovalPolicy::Coordinator,
+            capability_index: Default::default(),
             root_session_id: Some("root-1".into()),
         }
     }
@@ -389,23 +390,24 @@ mod tests {
                 org_id: "org-lifecycle-gate".to_string(),
                 coordinator_agent_id: "coordinator".to_string(),
                 root_session_id: None,
-                org_snapshot: crate::definitions::orgs::OrgDefinition {
+                org_snapshot: (&crate::definitions::orgs::OrgDefinition {
                     id: "org-lifecycle-gate".to_string(),
                     name: "Lifecycle Gate Test Org".to_string(),
                     role: "coordinator".to_string(),
                     agent_id: "coordinator".to_string(),
                     description: None,
-                    hierarchy_mode: Default::default(),
                     plan_approval_policy: crate::definitions::orgs::PlanApprovalPolicy::Coordinator,
-                    children: vec![crate::definitions::orgs::OrgMember {
-                        id: "member-worker".to_string(),
+                    members: vec![crate::definitions::orgs::FlatOrgMember {
+                        member_id: "member-worker".to_string(),
                         name: "Worker".to_string(),
                         role: "builder".to_string(),
                         agent_id: "worker-agent".to_string(),
                         runtime_config: None,
-                        children: Vec::new(),
                     }],
-                },
+                    additional_task_graph_writer_member_ids: Vec::new(),
+                    member_communication_links: Vec::new(),
+                })
+                    .into(),
                 entry_mode:
                     crate::coordination::agent_org_runs::AgentOrgRunEntryMode::StandaloneSession,
                 status: crate::coordination::agent_org_runs::AgentOrgRunStatus::Running,
@@ -419,6 +421,18 @@ mod tests {
     }
 
     fn seed_lifecycle_task(run_id: &str, id: &str, mode: TaskExecutionMode, status: TaskStatus) {
+        let mut metadata = serde_json::json!({
+            TASK_METADATA_EXECUTION_MODE: mode.as_wire(),
+        });
+        if status == TaskStatus::Completed {
+            metadata[TASK_METADATA_OUTPUT] = serde_json::json!({
+                "summary": "Lifecycle fixture completed",
+                "content": null,
+                "artifactIds": [],
+                "producedByMemberId": "member-worker",
+                "producedAt": chrono::Utc::now().to_rfc3339(),
+            });
+        }
         AgentOrgTaskStore::create(CreateTaskParams {
             id: id.to_string(),
             org_run_id: run_id.to_string(),
@@ -429,9 +443,7 @@ mod tests {
             status,
             blocks: Vec::new(),
             blocked_by: Vec::new(),
-            metadata: Some(serde_json::json!({
-                TASK_METADATA_EXECUTION_MODE: mode.as_wire(),
-            })),
+            metadata: Some(metadata),
         })
         .expect("seed lifecycle task");
     }
@@ -468,6 +480,8 @@ mod tests {
         assert!(feedback.contains("build-open"));
         assert!(!feedback.contains("build-done"));
         assert!(!feedback.contains("plan-awaiting-approval"));
+        assert!(feedback.contains("purpose=blocker"));
+        assert!(feedback.contains("Do not send routine progress"));
     }
 
     #[test]

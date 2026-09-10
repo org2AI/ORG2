@@ -218,12 +218,6 @@ export const activeEditorRepoAtom = atom(
 );
 activeEditorRepoAtom.debugLabel = "activeEditorRepoAtom";
 
-export const getRepoCacheAtom = atom((get) => {
-  const cache = get(editorCacheAtom);
-  return (repoPath: string): EditorRepoCache | undefined => cache[repoPath];
-});
-getRepoCacheAtom.debugLabel = "getRepoCacheAtom";
-
 export const activeRepoCacheAtom = atom((get) => {
   const cache = get(editorCacheAtom);
   const activeRepo = get(activeEditorRepoAtom);

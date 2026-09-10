@@ -18,7 +18,7 @@ import {
   DetailTabStrip,
   PersistentDetailTabPanel,
 } from "@src/modules/shared/layouts/blocks";
-import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanelAtom";
+import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanel/selectionAtoms";
 
 import type { ProjectPanelTab } from "./projectPanel/types";
 import { useProjectOverview } from "./projectPanel/useProjectOverview";

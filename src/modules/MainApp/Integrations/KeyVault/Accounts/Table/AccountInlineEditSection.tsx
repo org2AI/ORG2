@@ -3,7 +3,7 @@
  * AccountInlineExpandedCard "Edit" tab.
  *
  * Replaces the legacy standalone AccountEditForm page. Only name and
- * description are editable here; an InlineAlert directs users to delete and
+ * description are editable here; an PageNotice directs users to delete and
  * re-add the account if they need to change API keys / credentials.
  *
  * The form body and the Cancel/Save footer are rendered as separate
@@ -16,8 +16,8 @@ import { useTranslation } from "react-i18next";
 
 import type { ProviderEndpoint } from "@src/api/tauri/rpc/schemas/validation";
 import Button from "@src/components/Button";
-import InlineAlert from "@src/components/InlineAlert";
 import Input from "@src/components/Input";
+import PageNotice from "@src/components/PageNotice";
 import Textarea from "@src/components/Textarea";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import {
@@ -218,7 +218,7 @@ export const AccountInlineEditBody: React.FC<AccountInlineEditBodyProps> = ({
         ) : null}
       </InlineCardColumnStack>
 
-      <InlineAlert type="info">{t("keyVault.edit.apiChangeHint")}</InlineAlert>
+      <PageNotice type="info">{t("keyVault.edit.apiChangeHint")}</PageNotice>
     </div>
   );
 };

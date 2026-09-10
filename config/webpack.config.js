@@ -87,7 +87,7 @@ module.exports = (env, argv) => {
     },
   };
 
-  const isE2E = process.env.ORGII_E2E === "1";
+  const isE2E = process.env.ORGII_E2E === "1" || process.env.WEBDRIVER === "1";
   const devServerPort = Number.parseInt(
     process.env.WEBPACK_DEV_SERVER_PORT ?? process.env.PORT ?? "1998",
     10
@@ -689,6 +689,10 @@ module.exports = (env, argv) => {
         // Inline-compared in src/index.tsx so webpack constant-folds the
         // `webpackMode: "eager"` App import away on platforms that don't need it.
         "process.env.ORGII_DEV_EAGER_APP": JSON.stringify(String(eagerDevApp)),
+        // WebDriver builds are explicit test artifacts, even when their
+        // embedded frontend uses production optimization. Ordinary release
+        // builds receive "0", so E2E helpers remain tree-shaken away.
+        "process.env.ORGII_E2E": JSON.stringify(isE2E ? "1" : "0"),
         // Local Rust IDE-server port, baked into the bundle so a second app
         // instance (dual-instance collab testing) talks to its own backend.
         // Must match the ORGII_IDE_SERVER_PORT the Rust side is launched with.
@@ -697,6 +701,9 @@ module.exports = (env, argv) => {
         ),
         "process.env.ORGII_DEEP_LINK_SCHEME": JSON.stringify(
           process.env.ORGII_DEEP_LINK_SCHEME ?? "orgii"
+        ),
+        "process.env.ORGII_AGENT_ORG_REDESIGN": JSON.stringify(
+          isE2E ? "1" : (process.env.ORGII_AGENT_ORG_REDESIGN ?? "1")
         ),
         "process.env.E2E_BASE_URL": JSON.stringify(
           process.env.E2E_BASE_URL ??
@@ -760,18 +767,44 @@ module.exports = (env, argv) => {
     performance: {
       hints: false,
     },
-    stats: {
-      all: false,
-      errors: true,
-      warnings: true,
-      timings: true,
-      version: false, // Skip version check for faster startup
-      builtAt: false, // Skip timestamp for faster startup
-      modules: false, // Skip module list for faster startup
-      colors: true,
-      // Only show minimal info in dev mode
-      preset: isProduction ? "normal" : "minimal",
-    },
+    // webpack-cli hands `compiler.options.stats` straight to `stats.toJson()`
+    // when `--json` is passed, and `all: false` overrides `preset` — so the
+    // console block below would reduce a JSON dump to `{time, errors,
+    // warnings}`. `pnpm build:stats` feeds
+    // scripts/quality/check-bundle-budget.mjs, which needs entrypoints,
+    // assets, and per-chunk modules and origins. Widen those fields for JSON
+    // dumps only; module `source` stays excluded, so stats.json stays small.
+    stats: argv.json
+      ? {
+          all: false,
+          errors: true,
+          warnings: true,
+          assets: true,
+          entrypoints: true,
+          chunks: true,
+          chunkModules: true,
+          chunkOrigins: true,
+          nestedModules: true,
+          // `all: false` would otherwise collapse dependent modules into
+          // "N dependent modules" placeholders and drop every module the
+          // filesystem cache served, making the module count depend on
+          // whether the cache was warm.
+          dependentModules: true,
+          cachedModules: true,
+          ids: true,
+        }
+      : {
+          all: false,
+          errors: true,
+          warnings: true,
+          timings: true,
+          version: false, // Skip version check for faster startup
+          builtAt: false, // Skip timestamp for faster startup
+          modules: false, // Skip module list for faster startup
+          colors: true,
+          // Only show minimal info in dev mode
+          preset: isProduction ? "normal" : "minimal",
+        },
     // Linux (eagerDevApp): App is bundled into main.js via `webpackMode:
     // "eager"` (see src/index.tsx). With eval-cheap-module-source-map that
     // inlines every module's source into main.js, swelling it past 80MB — too

@@ -1,27 +1,8 @@
 {
-  "selectRepo": {
-    "title": "Orgii",
-    "subtitle": "リポジトリを選択して開始",
-    "recentRepos": "最近のリポジトリ",
-    "loadingProjects": "Repo を読み込み中...",
-    "noRepositories": "リポジトリがありません",
-    "getStartedHint": "Repo を作成またはクローンして開始",
-    "noPath": "パスなし",
-    "searchPlaceholder": "Repo を検索...",
-    "loadMore": "もっと読み込む",
-    "actions": {
-      "importLocal": "ローカルリポジトリをインポート",
-      "cloneUrl": "GitHub URL からクローン",
-      "cloneGithub": "自分の GitHub からクローン",
-      "createNew": "新規リポジトリを作成"
-    }
-  },
   "market": {
     "auth": {
       "noAuthCode": "認証コードを受信できませんでした",
-      "authSessionExpired": "認証Sessionが期限切れです。もう一度お試しください。",
-      "tokenExchangeFailed": "Token 交換に失敗しました",
-      "defaultUser": "ユーザー"
+      "tokenExchangeFailed": "Token 交換に失敗しました"
     }
   }
 }

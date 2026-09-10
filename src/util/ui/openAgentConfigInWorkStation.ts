@@ -10,7 +10,7 @@
  * Called from the Agent Teams page table rows (Agents / Teams / CLIs tabs)
  * and from the row "View" buttons.
  */
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {
   createAgentConfigTab,

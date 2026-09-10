@@ -14,7 +14,7 @@ import { ProjectOrgHubContent } from "@src/modules/ProjectManager/ProjectManager
 import { ProjectOrgSurfacePillSwitch } from "@src/modules/ProjectManager/ProjectManagerLayout/components/ProjectOrgSurfacePillSwitch";
 import {
   closeProjectOrgChatPanelTabsAtom,
-  openCreateTargetInChatPanelStartPageAtom,
+  openChatPanelCreateTargetAtom,
   openOrganizationInChatPanelTabAtom,
   openProjectInChatPanelTabAtom,
   openWorkItemInChatPanelTabAtom,
@@ -22,7 +22,7 @@ import {
 import {
   CHAT_PANEL_CREATE_TARGET,
   type ChatPanelSelectedProjectOrg,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 import {
   PROJECT_ORG_SURFACE_VIEW,
   type ProjectOrgSurfaceView,
@@ -42,9 +42,7 @@ export const ProjectOrgPanelView: React.FC<ProjectOrgPanelViewProps> = ({
   selectedProjectOrg,
 }) => {
   const { t } = useTranslation("projects");
-  const openCreateTargetInStartPage = useSetAtom(
-    openCreateTargetInChatPanelStartPageAtom
-  );
+  const openCreateTarget = useSetAtom(openChatPanelCreateTargetAtom);
   const openProjectTab = useSetAtom(openProjectInChatPanelTabAtom);
   const openWorkItemTab = useSetAtom(openWorkItemInChatPanelTabAtom);
   const closeProjectOrgTabs = useSetAtom(closeProjectOrgChatPanelTabsAtom);
@@ -84,32 +82,24 @@ export const ProjectOrgPanelView: React.FC<ProjectOrgPanelViewProps> = ({
   );
 
   const handleCreateProject = useCallback(() => {
-    openCreateTargetInStartPage({
+    openCreateTarget({
       target: CHAT_PANEL_CREATE_TARGET.PROJECT,
       createProjectContext: {
         orgId: selectedProjectOrg.orgId,
         scopeBreadcrumbLabel: selectedProjectOrg.orgName,
       },
     });
-  }, [
-    openCreateTargetInStartPage,
-    selectedProjectOrg.orgId,
-    selectedProjectOrg.orgName,
-  ]);
+  }, [openCreateTarget, selectedProjectOrg.orgId, selectedProjectOrg.orgName]);
 
   const handleCreateWorkItem = useCallback(() => {
-    openCreateTargetInStartPage({
+    openCreateTarget({
       target: CHAT_PANEL_CREATE_TARGET.WORK_ITEM,
       createProjectContext: {
         orgId: selectedProjectOrg.orgId,
         scopeBreadcrumbLabel: selectedProjectOrg.orgName,
       },
     });
-  }, [
-    openCreateTargetInStartPage,
-    selectedProjectOrg.orgId,
-    selectedProjectOrg.orgName,
-  ]);
+  }, [openCreateTarget, selectedProjectOrg.orgId, selectedProjectOrg.orgName]);
 
   const handleExpandWorkItemToTab = useCallback(
     async (

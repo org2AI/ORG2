@@ -8,7 +8,7 @@ import type {
   ChatPanelSelectedProject,
   ChatPanelSelectedProjectOrg,
   ChatPanelSelectedWorkItem,
-} from "@src/store/ui/chatPanelAtom";
+} from "@src/store/ui/chatPanel/selectionAtoms";
 
 export interface ChatPanelLaunchContextInput {
   activeCloudOrg: { orgId: string; name: string } | null;

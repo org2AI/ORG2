@@ -2,7 +2,7 @@
  * Tests for terminal session management atoms.
  *
  * These tests verify the core terminal state management logic including
- * session creation, deletion, switching, and special agent session handling.
+ * session creation, deletion, switching, and session metadata updates.
  */
 import { createStore } from "jotai/vanilla";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,15 +15,12 @@ import {
 import {
   activeTerminalIdAtom,
   closeTerminalSessionAtom,
-  createAgentSessionTerminalAtom,
   editorActiveTerminalSessionAtom,
   editorAddTerminalSessionAtom,
   initializedTerminalIdsAtom,
   markTerminalInitializedAtom,
-  removeAgentSessionTerminalAtom,
   renameTerminalSessionAtom,
   setActiveTerminalAtom,
-  terminalSessionCountAtom,
   terminalSessionsAtom,
   updateTerminalSessionInfoAtom,
 } from "../index";
@@ -160,6 +157,28 @@ describe("terminal atoms", () => {
   });
 
   describe("setActiveTerminalAtom", () => {
+    it("derives flags from the ID even for direct writes and stale metadata", () => {
+      store.set(terminalSessionsAtom, [
+        { id: "initial-1", name: "One", isActive: false },
+        { id: "two", name: "Two", isActive: true },
+      ]);
+      expect(
+        store.get(terminalSessionsAtom).map((session) => session.isActive)
+      ).toEqual([true, false]);
+      store.set(activeTerminalIdAtom, "two");
+      expect(
+        store.get(terminalSessionsAtom).map((session) => session.isActive)
+      ).toEqual([false, true]);
+      store.set(terminalSessionsAtom, (sessions) =>
+        sessions.map((session) => ({ ...session, isActive: !session.isActive }))
+      );
+      expect(
+        store.get(terminalSessionsAtom).map((session) => session.isActive)
+      ).toEqual([false, true]);
+      expect(store.get(editorActiveTerminalSessionAtom)?.id).toBe("two");
+      expect(createStore().get(activeTerminalIdAtom)).not.toBe("two");
+    });
+
     it("switches the active session", () => {
       const secondId = store.set(editorAddTerminalSessionAtom, undefined);
 
@@ -276,74 +295,6 @@ describe("terminal atoms", () => {
 
       const activeSession = store.get(editorActiveTerminalSessionAtom);
       expect(activeSession).toBeUndefined();
-    });
-  });
-
-  describe("terminalSessionCountAtom", () => {
-    it("returns correct count", () => {
-      expect(store.get(terminalSessionCountAtom)).toBe(1);
-
-      store.set(editorAddTerminalSessionAtom, undefined);
-      expect(store.get(terminalSessionCountAtom)).toBe(2);
-
-      store.set(editorAddTerminalSessionAtom, undefined);
-      expect(store.get(terminalSessionCountAtom)).toBe(3);
-    });
-  });
-
-  describe("createAgentSessionTerminalAtom", () => {
-    it("creates read-only agent session terminal", () => {
-      const agentSessionId = "agent-123";
-
-      store.set(createAgentSessionTerminalAtom, {
-        agentSessionId,
-        label: "Agent",
-      });
-
-      const sessions = store.get(terminalSessionsAtom);
-      const agentSession = sessions.find(
-        (s) => s.id === `agent-session-${agentSessionId}`
-      );
-
-      expect(agentSession).toBeDefined();
-      expect(agentSession?.readOnly).toBe(true);
-      expect(agentSession?.agentSessionId).toBe(agentSessionId);
-    });
-  });
-
-  describe("removeAgentSessionTerminalAtom", () => {
-    it("removes agent session terminal", () => {
-      const agentSessionId = "agent-to-remove";
-
-      // Create agent session
-      store.set(createAgentSessionTerminalAtom, { agentSessionId });
-
-      // Remove it
-      store.set(removeAgentSessionTerminalAtom, agentSessionId);
-
-      const sessions = store.get(terminalSessionsAtom);
-      const agentSession = sessions.find(
-        (s) => s.id === `agent-session-${agentSessionId}`
-      );
-
-      expect(agentSession).toBeUndefined();
-    });
-
-    it("creates default session when removing last session", () => {
-      // Close all existing sessions first
-      store.set(terminalSessionsAtom, []);
-      store.set(activeTerminalIdAtom, "");
-
-      // Create only an agent session
-      const agentSessionId = "only-agent";
-      store.set(createAgentSessionTerminalAtom, { agentSessionId });
-
-      // Remove it (should create default)
-      store.set(removeAgentSessionTerminalAtom, agentSessionId);
-
-      const sessions = store.get(terminalSessionsAtom);
-      expect(sessions).toHaveLength(1);
-      expect(sessions[0].isActive).toBe(true);
     });
   });
 });

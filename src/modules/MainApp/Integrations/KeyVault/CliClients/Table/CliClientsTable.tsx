@@ -19,7 +19,7 @@ import Tag from "@src/components/Tag";
 import type { AvailableAgent } from "@src/config/cliAgents";
 import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { useRefreshSpin } from "@src/hooks/ui";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { Add01Icon, HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import {
   cliAgentVisibilityOverridesAtom,
@@ -141,12 +141,6 @@ const CliClientsTable: React.FC<CliClientsTableProps> = ({
     ],
     [tIntegrations]
   );
-
-  const setSingleExpandedAgent = useCallback((agent: AvailableAgent) => {
-    setExpandedAgentKeys((currentKeys) =>
-      currentKeys.includes(agent.name) ? [] : [agent.name]
-    );
-  }, []);
 
   const handleViewAgent = useCallback((agent: AvailableAgent) => {
     openAgentConfigInWorkStation({
@@ -432,7 +426,6 @@ const CliClientsTable: React.FC<CliClientsTableProps> = ({
       rows={filtered}
       columns={columns}
       getRowKey={(agent) => agent.name}
-      onRowClick={setSingleExpandedAgent}
       expandable={expandable}
       headerHeight="tall"
       className="table-expanded-no-hover table-settings-expanded-compact"

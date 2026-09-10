@@ -18,6 +18,7 @@ import {
   CHART_MARGIN,
   CHART_TOOLTIP,
 } from "@src/components/Chart";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 
 import {
   formatCompactHour,
@@ -111,7 +112,7 @@ export default function UsageTrendChart({
   }, [points, hourly, startMs, endMs, dataEndMs, language]);
 
   return (
-    <div className="rounded-xl border border-border-1 bg-primary-container p-4">
+    <div className={DETAIL_PANEL_TOKENS.primaryContainer}>
       <div className="h-[300px] w-full [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none [&_svg:focus]:outline-none">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={CHART_MARGIN}>

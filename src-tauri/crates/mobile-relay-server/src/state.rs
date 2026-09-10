@@ -15,7 +15,7 @@ pub const MAX_PENDING_PAIRINGS: usize = 128;
 pub const MAX_DESKTOP_CONNECTIONS: usize = 32;
 pub const MAX_MOBILE_CONNECTIONS: usize = 256;
 pub const OUTBOUND_QUEUE_CAPACITY: usize = 64;
-pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
+pub use mobile_relay_protocol::MAX_FRAME_BYTES;
 
 #[derive(Debug, Clone)]
 pub enum SocketCommand {

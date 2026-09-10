@@ -17,11 +17,11 @@ export const SpotlightFooterAction: React.FC<SpotlightFooterActionProps> = ({
   onClick,
 }) => {
   return (
-    <div className="shrink-0 overflow-hidden rounded-full border border-border-2 bg-bg-2 shadow-lg">
+    <div className="h-9 shrink-0 overflow-hidden rounded-full border border-border-2 bg-bg-2 shadow-lg">
       <button
         type="button"
         onClick={onClick}
-        className="flex items-center gap-1.5 px-3 py-2 text-[11px] text-text-2 transition-colors hover:bg-fill-2 hover:text-text-1"
+        className="flex h-full items-center gap-1.5 px-3 text-[11px] text-text-2 transition-colors hover:bg-fill-2 hover:text-text-1"
       >
         <span>{label}</span>
         <HugeiconsIcon

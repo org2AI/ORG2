@@ -40,7 +40,7 @@ import {
   CHAT_FLAT_INDEX_ATTR,
   CHAT_ITEM_ID_ATTR,
   formatChatEventIdsAttribute,
-} from "../hooks/chatSearchDom";
+} from "../hooks/chatSearch";
 import { collectChatItemEventIds } from "../hooks/chatSearchProjection";
 import { getUnloadedTurnMeta, isTurnPreviewItem } from "../hooks/useChatGroups";
 import { ChatItemRenderer } from "./ChatItemRenderer";
@@ -83,6 +83,13 @@ const RESULT_RENDER_KEYS = [
   "linesAdded",
   "linesRemoved",
   "status",
+  // Keep retry actions current even when the visible message body is unchanged.
+  "queueMessageId",
+  "deliveryOwnerRetired",
+  "deliveryStatus",
+  "deliveryError",
+  "turnIntentId",
+  "syntheticUserInput",
 ] as const;
 
 const ARG_RENDER_KEYS = [
@@ -166,6 +173,9 @@ function sameChatItem(
     left.consolidatedParts === right.consolidatedParts &&
     left.actionSummaryClosedByBoundary ===
       right.actionSummaryClosedByBoundary &&
+    left.activityStackGroup?.category === right.activityStackGroup?.category &&
+    left.activityStackGroup?.closedByBoundary ===
+      right.activityStackGroup?.closedByBoundary &&
     sameEventSummary(left.event, right.event) &&
     sameEventList(left.readFileEvents, right.readFileEvents) &&
     sameEventList(
@@ -242,7 +252,7 @@ const InboxTranscriptCard: React.FC<{
       <EventBlockHeader
         isCollapsed={isCollapsed}
         withHover={false}
-        onClick={hasContent ? handleHeaderClick : undefined}
+        onToggleCollapse={hasContent ? handleHeaderClick : undefined}
         onMouseEnter={handleHeaderMouseEnter}
         onMouseLeave={handleHeaderMouseLeave}
       >

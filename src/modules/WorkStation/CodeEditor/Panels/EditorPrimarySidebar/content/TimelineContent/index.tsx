@@ -10,14 +10,14 @@ import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
 import { Placeholder } from "@src/components/Placeholder";
+import { HEADER_BUTTON } from "@src/config/workstation/tokens";
 import { buildCloudRemoteItemId } from "@src/features/Org2Cloud/cloudRemoteItemId";
 import { useFileHistory } from "@src/hooks/git/useFileHistory";
 import { useOrgtrackFileSessionHistory } from "@src/hooks/git/useOrgtrackFileSessionHistory";
 import { useOrgtrackFileTimeline } from "@src/hooks/git/useOrgtrackFileTimeline";
-import { useRefreshSpin } from "@src/hooks/ui";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { getBasename } from "@src/modules/WorkStation/CodeEditor/SessionReplay/CodePanel/pathUtils";
-import { HEADER_BUTTON } from "@src/modules/WorkStation/shared/tokens";
 import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { requestSessionSidebarRevealAtom } from "@src/store/ui/sidebarAtom";
 
@@ -218,7 +218,7 @@ export const TimelineContent: React.FC<TimelineContentProps> = memo(
             isGitTimeline
               ? `${getBasename(filePath)} is not tracked by Git`
               : t("placeholders.noSessionHistoryForFile", {
-                  defaultValue: `No session activity found for ${getBasename(filePath)}`,
+                  file: getBasename(filePath),
                 })
           }
           action={

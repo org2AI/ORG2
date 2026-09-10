@@ -1,141 +1,16 @@
-/**
- * Sidebar Types
- *
- * Centralized type definitions for the unified sidebar system.
- * All sidebar components should use these types for consistency.
- */
-import type { MouseEvent, ReactNode, Ref } from "react";
+import type { ReactNode, Ref } from "react";
 
 import type { IconSvgElement } from "@src/icons";
 
-// ============================================
-// Base Types
-// ============================================
-
-/**
- * Sidebar icon representation: hugeicons glyph data (e.g.
- * `ComputerTerminal01Icon`).
- *
- * The lucide→hugeicons migration briefly allowed string icon names here;
- * no config produces one anymore, so the alias is glyph-only.
- */
-export type SidebarIcon = IconSvgElement;
-
-/** Theme configuration for custom-styled sidebars */
-interface SidebarTheme {
-  background?: string;
-  foreground?: string;
-  border?: string;
-  accent?: string;
-}
-
-// ============================================
-// Item Types
-// ============================================
-
-/** Base sidebar item */
-export interface SidebarItemData {
-  id: string;
-  name: string;
-  icon?: SidebarIcon;
-  subtitle?: string;
-  shortcut?: string;
-  isActive?: boolean;
-  disabled?: boolean;
-  badge?: string | number;
-  metadata?: Record<string, unknown>;
-  actions?: ReactNode; // Custom action buttons (e.g., dropdown menu)
-}
-
-// ============================================
-// Group Types
-// ============================================
-
-/** Sidebar group/category */
-interface SidebarGroupData<T extends SidebarItemData = SidebarItemData> {
-  id: string;
-  title?: string;
-  icon?: SidebarIcon;
-  items: T[];
-  collapsible?: boolean;
-  defaultCollapsed?: boolean;
-  onAddNew?: () => void;
-  addButtonLabel?: string;
-}
-
-// ============================================
-// Tab Types
-// ============================================
-
-/** Tab configuration */
-export interface SidebarTab {
-  key: string;
-  label: string;
-  icon?: SidebarIcon;
-  iconName?: string;
-  disabled?: boolean;
-}
-
-/** Tab style */
-type SidebarTabStyle = "pill" | "text" | "underline";
-
-// ============================================
-// Action Types
-// ============================================
-
-/** Sidebar action button */
-interface SidebarAction {
-  id: string;
-  icon: SidebarIcon;
-  tooltip?: string;
-  disabled?: boolean;
-  loading?: boolean;
-  onClick: () => void;
-}
-
-// ============================================
-// Empty State Types
-// ============================================
-
-/** Empty state configuration */
-interface SidebarEmptyStateConfig {
-  icon?: SidebarIcon;
-  title?: string;
-  description?: string;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-}
-
-// ============================================
-// Component Props Types
-// ============================================
-
 /** SidebarBase props */
 export interface SidebarBaseProps {
+  solidSurface?: boolean;
+  includeTrafficLightSpace?: boolean;
+  showCollapseButton?: boolean;
   /** Children content */
-  children: ReactNode | ((width: number) => ReactNode);
-  /** Optional header component */
-  header?: ReactNode;
+  children: ReactNode;
   /** Additional class names */
   className?: string;
-  /** Inner container class names */
-  innerClassName?: string;
-  /** Include traffic light spacing (macOS) */
-  includeTrafficLightSpace?: boolean;
-  /** Show collapse button */
-  showCollapseButton?: boolean;
-  /** Wrap in the themed sidebar surface */
-  wrapInSurface?: boolean;
-  /** Paint an opaque themed surface instead of honoring sidebar transparency. */
-  solidSurface?: boolean;
-  /** Force sidebar to be visible even when collapsed (used for hover sidebar) */
-  forceVisible?: boolean;
-  /** Custom theme */
-  theme?: SidebarTheme;
-  /** Collapse callback */
-  onCollapse?: () => void;
   /** Add new item callback (shows plus button in traffic lights area) */
   onAddNew?: () => void;
   /** Icon for add button */
@@ -148,106 +23,8 @@ export interface SidebarBaseProps {
   beforeAddNewActions?: ReactNode;
   /** Extra controls to the right of the add button (e.g. session group-by filter) */
   headerActions?: ReactNode;
-  /** Leading content in the Windows/Linux sidebar chrome row. */
-  hostTopBarLeadingContent?: ReactNode;
-  /** Equivalent content rendered below the traffic-light row on macOS. */
-  macTopBarFollowingContent?: ReactNode;
-}
-
-/** SidebarHeader props */
-export interface SidebarHeaderProps {
-  /** Title text */
-  title?: string;
-  /** Title icon */
-  icon?: SidebarIcon;
-  /** Tab configuration */
-  items?: SidebarTab[];
-  /** Active tab key */
-  activeKey?: string;
-  /** Tab change handler */
-  onChange?: (key: string) => void;
-  /** Tab style */
-  tabStyle?: SidebarTabStyle;
-  /** Action buttons */
-  actions?: SidebarAction[];
-  /** Custom theme */
-  theme?: SidebarTheme;
-  /** Additional class names */
-  className?: string;
-}
-
-/** SidebarSearch props */
-export interface SidebarSearchProps {
-  /** Search value */
-  value: string;
-  /** Change handler */
-  onChange: (value: string) => void;
-  /** Placeholder text */
-  placeholder?: string;
-  /** Action buttons next to search */
-  actions?: SidebarAction[];
-  /** Custom theme */
-  theme?: SidebarTheme;
-  /** Additional class names */
-  className?: string;
-}
-
-/** SidebarGroup props */
-export interface SidebarGroupProps<
-  T extends SidebarItemData = SidebarItemData,
-> {
-  /** Group data */
-  group: SidebarGroupData<T>;
-  /** Whether group is collapsed */
-  isCollapsed?: boolean;
-  /** Toggle collapse handler */
-  onToggle?: () => void;
-  /** Item click handler */
-  onItemClick?: (item: T) => void;
-  /** Item close handler */
-  onItemClose?: (item: T, e: MouseEvent) => void;
-  /** Custom item renderer */
-  renderItem?: (item: T, isActive: boolean) => ReactNode;
-  /** Custom theme */
-  theme?: SidebarTheme;
-  /** Additional class names */
-  className?: string;
-}
-
-/** SidebarItem props */
-export interface SidebarItemProps {
-  /** Item data */
-  item: SidebarItemData;
-  /** Whether item is active */
-  isActive?: boolean;
-  /** Click handler */
-  onClick?: () => void;
-  /** Close handler (if closeable) */
-  onClose?: (e: MouseEvent) => void;
-  /** Pin handler (if pinnable) */
-  onPin?: () => void;
-  /** Whether item is pinned */
-  isPinned?: boolean;
-  /** Whether item can be closed */
-  canClose?: boolean;
-  /** Whether item can be pinned */
-  canPin?: boolean;
-  /** Custom theme */
-  theme?: SidebarTheme;
-  /** Additional class names */
-  className?: string;
-}
-
-/** SidebarEmptyState props */
-export interface SidebarEmptyStateProps {
-  /** Empty state config */
-  config?: SidebarEmptyStateConfig;
-  /** Search query (shows "no results" message) */
-  searchQuery?: string;
-  /** Custom theme */
-  theme?: SidebarTheme;
-  /** Additional class names */
-  className?: string;
+  /** Content rendered in its own row directly below the chrome row. */
+  topBarFollowingContent?: ReactNode;
 }
 
 /** SidebarList props */
@@ -260,26 +37,8 @@ export interface SidebarListProps {
   isLoading?: boolean;
   /** Optional loading UI for surfaces that can mirror their eventual rows. */
   loadingContent?: ReactNode;
-  /** Custom theme */
-  theme?: SidebarTheme;
   /** Additional class names */
   className?: string;
-  /** Preserve top padding for sidebars that still need vertical offset. */
-  topPadding?: boolean;
-}
-
-/** SidebarSection props */
-export interface SidebarSectionProps {
-  /** Section title */
-  title?: string;
-  /** Header variant: "text" (default), "icon" (with icon), or "back" (with back arrow) */
-  variant?: "text" | "icon" | "back";
-  /** Icon for "icon" variant */
-  icon?: SidebarIcon;
-  /** Back handler for "back" variant */
-  onBack?: () => void;
-  /** Children content */
-  children: ReactNode;
-  /** Additional class names */
-  className?: string;
+  /** Use "row" to match the menu's gap-1 spacing across the pinned boundary. */
+  topPadding?: boolean | "row";
 }

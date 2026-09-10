@@ -81,10 +81,12 @@ export interface PillGroupSegment {
   onClick?: (event: React.MouseEvent) => void;
   /** Stable selector for rendered UI tests */
   dataTestId?: string;
-  /** Open selector-style pills on press start for glass/driver hit-test parity */
+  /** Open selector-style pills on press start for driver hit-test parity */
   activateOnMouseDown?: boolean;
   /** Hard cap on the label width — applies overflow ellipsis */
   maxLabelWidth?: number;
+  /** Use remaining width in a non-wrapping row, retaining room for the icon. */
+  flexible?: boolean;
   /** Drop left padding so the icon lines up with composer editor text. */
   leadingFlush?: boolean;
   /** Forwarded ref for the underlying button — useful for dropdown positioning */
@@ -140,13 +142,14 @@ const PillGroupSegmentRow: React.FC<PillGroupSegmentRowProps> = ({
   const isActive = !!segment.active;
   const isPillStyled = isHovered || isActive;
   const usesFill3Surface = strongSurface;
-  const resolvedSegmentClassName = `${segmentClassName ?? ""} ${
-    usesFill3Surface
-      ? isActive
-        ? GHOST_PILL_ACTIVE_SURFACE_CLASS
-        : GHOST_PILL_HOVER_SURFACE_CLASS
-      : ""
-  }`.trim();
+  const resolvedSegmentClassName =
+    `${segmentClassName ?? ""} ${segment.flexible ? "min-w-12 flex-1" : ""} ${
+      usesFill3Surface
+        ? isActive
+          ? GHOST_PILL_ACTIVE_SURFACE_CLASS
+          : GHOST_PILL_HOVER_SURFACE_CLASS
+        : ""
+    }`.trim();
 
   let previousVisibleIndex = -1;
   for (let i = index - 1; i >= 0; i--) {

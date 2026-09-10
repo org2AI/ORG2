@@ -13,11 +13,21 @@ interface SessionVisibilityInput {
    * stripping it first.
    */
   readOnly?: boolean;
+  clientOrigin?: string;
+}
+
+/** Imported provider mirrors remain readable by ID, but their managed session
+ * owns listing and publication. Mirrors can be hydrated without a parent ID. */
+export function isManagedNativeHistoryMirror(session: {
+  clientOrigin?: string;
+}): boolean {
+  return session.clientOrigin === "org2";
 }
 
 export function isPrimarySessionListSession(
   session: SessionVisibilityInput
 ): boolean {
+  if (isManagedNativeHistoryMirror(session)) return false;
   const hasParentSessionId = Boolean(
     session.parentSessionId ?? session.parent_session_id
   );

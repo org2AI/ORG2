@@ -4,20 +4,22 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import Button from "@src/components/Button";
+import { Placeholder } from "@src/components/Placeholder";
+import SearchInput from "@src/components/SearchInput";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { HugeiconsIcon, Logout02Icon } from "@src/icons";
 import {
   type NavigationMenuItem,
   NavigationSidebar,
-  SidebarBottomBar,
-  SidebarMenuSearchInput,
-  SidebarOrgSelector,
 } from "@src/scaffold/NavigationSidebar";
+import SidebarBottomBar from "@src/scaffold/NavigationSidebar/blocks/SidebarBottomBar";
+import SidebarOrgSelector from "@src/scaffold/NavigationSidebar/connectors/SidebarOrgSelector";
 
 import { resolveWebActiveCloudOrgId } from "../features/sessions/WebCloudRealtimeScope";
 import { useWebSessions } from "../features/sessions/WebSessionsContext";
 import { webSessionPath } from "../features/sessions/webSessionLocation";
+import { filterWebSessionMenuItems } from "./filterWebSessionMenuItems";
 import {
   resolveWebCloudSessionMenuItemId,
   useWebCloudSessionsSection,
@@ -71,6 +73,12 @@ export function WebSessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
   useEffect(() => {
     resetTeamPagination();
   }, [resetTeamPagination, selectedOrgId]);
+
+  const filteredMenuItems = useMemo(
+    () =>
+      filterWebSessionMenuItems(cloudMenuItems, search.trim().toLowerCase()),
+    [cloudMenuItems, search]
+  );
 
   const selectedKey = resolveWebCloudSessionMenuItemId(selectedSession ?? null);
 
@@ -126,34 +134,32 @@ export function WebSessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <NavigationSidebar
-      items={[]}
-      activeKey="sessions"
-      onChange={() => undefined}
-      menuItems={cloudMenuItems}
+      menuItems={filteredMenuItems}
       selectedKey={selectedKey}
       onMenuItemClick={handleSidebarMenuItemClick}
-      preListContent={orgSelectorChrome}
-      search={{
-        value: search,
-        onChange: setSearch,
-        placeholder: searchPlaceholder,
-        noResultsTitle: noSearchResultsTitle,
-        showInput: false,
-      }}
+      preListContent={
+        <>
+          {orgSelectorChrome}
+          {search.trim() && filteredMenuItems.length === 0 ? (
+            <Placeholder variant="empty" title={noSearchResultsTitle} />
+          ) : null}
+        </>
+      }
       isLoading={status === "loading" && sessions.length === 0}
       solidSurface
       includeTrafficLightSpace={false}
       showCollapseButton={false}
-      collapsibleSections
+      collapsibleSections={!search.trim()}
       listTopPadding
       bottomContent={
         <SidebarBottomBar
           leftContent={
-            <SidebarMenuSearchInput
+            <SearchInput
               value={search}
               onChange={setSearch}
               placeholder={searchPlaceholder}
-              compact
+              variant="sidebar"
+              ariaLabel={searchPlaceholder}
             />
           }
           rightActions={

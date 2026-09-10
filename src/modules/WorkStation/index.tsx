@@ -2,9 +2,9 @@
  * WorkStationPage - Main page for Workstation
  *
  * Renders AppShell which handles:
- * - SimulatorFrame wrapper with panel controls
+ * - Station chrome and panel controls
  * - Repository path validation
- * - App mode switching (CodeEditor/Browser/DatabaseManager)
+ * - Tab-driven Code Editor, Browser, and Project Manager surfaces
  *
  * ChatPanel is rendered by AppLayout using the single Modern layout.
  */

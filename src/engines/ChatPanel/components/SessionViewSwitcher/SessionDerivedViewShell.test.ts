@@ -9,7 +9,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 describe("SessionDerivedViewShell", () => {
-  it("renders derived-view load failures as a shared danger InlineAlert", () => {
+  it("renders derived-view load failures as a shared danger PageNotice", () => {
     const props: ComponentProps<typeof SessionDerivedViewShell> = {
       testId: "session-timeline-view",
       loading: false,

@@ -1,6 +1,5 @@
 {
   "projects": {
-    "searchPlaceholder": "Szukaj historii...",
     "loading": "Ładowanie historii...",
     "emptyState": "Brak historii",
     "emptyStateSubtitle": "Utwórz pierwszą historię, aby rozpocząć",
@@ -8,14 +7,13 @@
     "noResults": "Nie znaleziono historii",
     "dashboardTitle": "Projects",
     "groupBy": {
-      "org": "Według Org",
       "project": "Według projektu",
       "status": "Według statusu",
       "priority": "Według priorytetu",
-      "person": "Według osoby",
       "assignedTo": "Przypisane do",
       "createdBy": "Utworzone przez",
-      "targetDate": "Według daty docelowej"
+      "targetDate": "Według daty docelowej",
+      "property": "Według właściwości"
     },
     "source": {
       "localOnly": "Tylko lokalne",
@@ -28,44 +26,17 @@
       "later": "Później",
       "noTargetDate": "Brak daty docelowej"
     },
-    "allProjects": "Wszystkie projekty",
-    "otherRepos": "Inne Repo",
-    "noOtherRepos": "Brak innych Repo z historiami",
-    "personalWorkspace": "Osobisty Workspace",
-    "personalEmpty": "Brak osobistych historii",
-    "addProject": "Dodaj historię",
-    "repoFallback": "Repo",
     "loadProjectsFailed": "Nie udało się załadować historii",
-    "deleteProject": "Usuń historię",
     "createProject": "Utwórz historię",
     "createMore": "Utwórz więcej",
     "newProject": "Nowa historia",
     "columns": {
-      "name": "Nazwa",
       "workItems": "Elementy pracy"
-    },
-    "viewModes": {
-      "list": "Lista",
-      "settings": "Ustawienia"
-    },
-    "syncMethod": {
-      "title": "Metoda synchronizacji",
-      "storage": "Pamięć",
-      "git": "Git (przez .orgii)"
-    },
-    "errors": {
-      "initFailed": "Nie udało się zainicjować pamięci historii: {{error}}"
     },
     "editor": {
       "titlePlaceholder": "Nazwa nowej historii",
       "summaryPlaceholder": "Dodaj krótkie podsumowanie...",
       "descriptionPlaceholder": "Napisz opis, brief historii lub zbierz pomysły..."
-    },
-    "tooltips": {
-      "dashboard": "Panel",
-      "filter": "Filtr",
-      "selectPeople": "Wybierz osoby",
-      "searchPeople": "Szukaj osób..."
     },
     "priorityGroups": {
       "unprioritized": "Bez ustalonego priorytetu"
@@ -75,9 +46,6 @@
   "githubIssuesImport": {
     "title": "Importuj GitHub Issues",
     "menuLabel": "Importuj GitHub Issues",
-    "createTarget": "GitHub Issues Project",
-    "heading": "Utwórz Project z GitHub Issues",
-    "description": "Wybierz repozytorium GitHub, utwórz ORGII Project i synchronizuj GitHub Issues jako work items.",
     "importButton": "Importuj GitHub Issues",
     "projectDescription": "GitHub Issues · {{owner}}/{{repo}}",
     "fields": {
@@ -96,67 +64,43 @@
     "linkedRepoHint": "Ten Project zostanie też połączony z bieżącym Workspace repo: {{repoName}}",
     "errors": {
       "invalidRepo": "Użyj owner/repo albo adresu URL repozytorium GitHub."
-    },
-    "importStatus": {
-      "title": "Status importu",
-      "state": {
-        "pending": "Oczekuje",
-        "running": "W toku",
-        "completed": "Ukończono",
-        "failed": "Niepowodzenie",
-        "cancelled": "Anulowano"
-      }
     }
   },
   "orgs": {
-    "yourOrgs": "Twoje organizacje",
-    "sectionTitle": "Organizacje",
+    "yourOrgs": "Twoje obszary robocze",
     "recentProjects": "Ostatnie projekty",
-    "personalOrg": "Moja organizacja osobista",
-    "linearOrg": "Organizacja Linear",
-    "noLinearOrgs": "Brak połączonych organizacji",
+    "personalOrg": "Mój obszar roboczy",
+    "linearOrg": "Obszar roboczy Linear",
+    "noLinearOrgs": "Brak połączonych obszarów roboczych",
     "sources": {
       "local": "Local",
-      "cloud": "Cloud",
-      "linear": "Linear"
+      "cloud": "Cloud"
     },
-    "addOrg": "Dodaj organizację",
-    "importOrgs": "Importuj organizacje",
-    "importLinearOrgs": "Importuj organizacje Linear",
-    "createOrg": "Utwórz organizację",
-    "createOrgHint": "Utwórz natywną organizację ORGII, aby grupować projekty i work items oddzielnie od Linear.",
-    "createOrgFailed": "Nie udało się utworzyć organizacji",
-    "orgName": "Nazwa organizacji",
-    "orgNamePlaceholder": "Zespół platformy",
+    "addOrg": "Dodaj obszar roboczy",
+    "importLinearOrgs": "Importuj obszary robocze Linear",
     "gitFolderPath": "Ścieżka folderu Git (opcjonalnie)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "Połącz tę organizację z istniejącym drzewem roboczym Git, aby synchronizować folder.",
+    "gitFolderPathHint": "Połącz ten obszar roboczy z istniejącym drzewem roboczym Git, aby synchronizować folder.",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Synchronizowane z folderem Git",
     "pendingSync": "Oczekuje na synchronizację",
     "management": {
-      "breadcrumb": "Ustawienia organizacji",
       "overview": "Przegląd",
-      "profile": "Profil",
       "syncMethods": "Metody synchronizacji",
-      "orgNameDescription": "Nazwa wyświetlana tej organizacji projektów",
-      "orgKey": "Klucz organizacji",
-      "orgKeyDescription": "Stabilny krótki klucz używany dla ID projektów w zakresie organizacji",
-      "projectCountDescription": "Natywne projekty obecnie przypisane do tej organizacji",
       "gitFolderSync": "Synchronizacja folderu Git",
-      "gitFolderSyncDescription": "Odzwierciedla projekty i work items tej organizacji przez Git worktree",
+      "gitFolderSyncDescription": "Odzwierciedla projekty i work items tego obszaru roboczego przez Git worktree",
       "notConfigured": "Nie skonfigurowano",
       "syncNowDescription": "Importuj zdalne zmiany plików i eksportuj lokalne zmiany bazy danych",
       "syncSummary": "{{projects}} projektów, {{workItems}} work items, {{conflicts}} konfliktów",
-      "syncHowItWorks": "Synchronizacja folderu Git łączy tę organizację z istniejącym repozytorium Git. ORGII zapisuje wyeksportowane projekty i work items organizacji w `.orgii/projects/...` wewnątrz tego repozytorium, importuje stamtąd zmiany plików, eksportuje lokalne zmiany bazy danych z powrotem do plików i zatrzymuje się przy konfliktach, aby można je było sprawdzić przed nadpisaniem czegokolwiek",
-      "noProjectsForCatalog": "Ta organizacja nie ma jeszcze projektów.",
-      "noProjectsForCatalogHint": "Utwórz projekt w tej organizacji przed zarządzaniem wspólnymi etykietami",
+      "syncHowItWorks": "Synchronizacja folderu Git łączy ten obszar roboczy z istniejącym repozytorium Git. ORGII zapisuje wyeksportowane projekty i work items obszaru roboczego w `.orgii/projects/...` wewnątrz tego repozytorium, importuje stamtąd zmiany plików, eksportuje lokalne zmiany bazy danych z powrotem do plików i zatrzymuje się przy konfliktach, aby można je było sprawdzić przed nadpisaniem czegokolwiek",
+      "noProjectsForCatalog": "Ten obszar roboczy nie ma jeszcze projektów.",
+      "noProjectsForCatalogHint": "Utwórz projekt w tym obszarze roboczym przed zarządzaniem wspólnymi etykietami",
       "dangerZone": "Strefa zagrożenia",
-      "deleteOrg": "Usuń tę organizację",
+      "deleteOrg": "Usuń ten obszar roboczy",
       "deleteOrgDescription": "Trwale usuń {{org}} oraz wszystkie lokalne projekty i elementy pracy. Tej operacji nie można cofnąć",
-      "personalOrgDeleteDisabled": "Domyślna organizacja osobista jest stała i nie można jej usunąć",
+      "personalOrgDeleteDisabled": "Domyślny osobisty obszar roboczy jest stały i nie można go usunąć",
       "deleteTypeToConfirm": "Wpisz {{org}}, aby potwierdzić",
-      "deleteOrgAction": "Usuń organizację",
+      "deleteOrgAction": "Usuń obszar roboczy",
       "deletedToast": "Usunięto {{org}}"
     }
   },
@@ -173,28 +117,20 @@
     "targetDate": "Data docelowa",
     "repos": "Repo",
     "completion": "Ukończenie",
-    "statusBreakdown": "Podział statusów",
     "addLead": "Dodaj lidera",
     "noLead": "Brak lidera",
     "addMembers": "Dodaj członków",
     "addTeams": "Dodaj zespoły",
     "addLabels": "Dodaj etykiety",
     "addRepos": "Połącz Repo",
-    "searchRepos": "Szukaj Repo...",
     "noReposHint": "Brak dostępnych Repo. Najpierw dodaj Repo do swojego Workspace.",
     "addDate": "Dodaj datę",
     "clearDate": "Wyczyść datę",
     "noStatus": "Brak statusu",
     "noUpdates": "Brak aktualizacji",
     "noPriority": "Brak priorytetu",
-    "searchMembers": "Szukaj członków...",
     "searchAssignee": "Szukaj przypisanego...",
-    "searchTeams": "Szukaj zespołów...",
     "noTeamsHint": "Brak zespołów. Dodaj członków do historii i zorganizuj ich w zespoły",
-    "searchLabels": "Szukaj etykiet...",
-    "searchStatus": "Szukaj statusu...",
-    "searchHealth": "Szukaj kondycji...",
-    "searchPriority": "Szukaj priorytetu...",
     "memberCount_one": "{{count}} członek",
     "memberCount_other": "{{count}} członków",
     "statusOptions": {
@@ -215,8 +151,7 @@
       "onTrack": "Zgodnie z planem",
       "atRisk": "Zagrożone",
       "offTrack": "Niezgodnie z planem"
-    },
-    "noProjectSelected": "Nie wybrano historii"
+    }
   },
   "workItems": {
     "label": "Work items",
@@ -232,22 +167,6 @@
     "newWorkItem": "Nowe zadanie",
     "newWorkItemName": "Nowe zadanie",
     "createWorkItem": "Utwórz zadanie",
-    "createModes": {
-      "generateWithAi": "Utwórz z AI",
-      "generateWithAgent": "Wygeneruj z Agent",
-      "manualCreation": "Tworzenie ręczne",
-      "sessionCreatorPrompt": {
-        "promptNameQuestion": "Najpierw zapytaj użytkownika, czy chce podać konkretną nazwę Work Item.",
-        "promptInstruction": "Utwórz Work Items dla tego projektu.",
-        "promptProject": "Projekt: {{project}}",
-        "promptDraftTitle": "Żądana nazwa Work Item: {{title}}",
-        "promptDraftDetails": "Szczegóły szkicu:\n{{details}}"
-      }
-    },
-    "linkExisting": {
-      "label": "Połącz istniejący Work Item",
-      "placeholder": "Wybierz Work Item do połączenia"
-    },
     "titlePlaceholder": "Tytuł zadania",
     "descriptionPlaceholder": "Opisz zadanie...",
     "deleteWorkItem": "Usuń zadanie",
@@ -256,8 +175,7 @@
     "showProperties": "Pokaż właściwości",
     "addStatusItem": "Dodaj element {{status}}",
     "deleteBin": {
-      "title": "Kosz",
-      "subtitle": "Można przywrócić przez 7 dni"
+      "title": "Kosz"
     },
     "tabs": {
       "overview": "Przegląd",
@@ -265,7 +183,8 @@
       "kanban": "Kanban",
       "gantt": "Gantt",
       "calendar": "Kalendarz",
-      "settings": "Ustawienia"
+      "settings": "Ustawienia",
+      "table": "Tabela"
     },
     "statusFilters": {
       "all": "Wszystkie",
@@ -297,21 +216,9 @@
       "medium": "Średni",
       "low": "Niski"
     },
-    "toolLabels": {
-      "edit": "edycja",
-      "new": "nowy",
-      "patch": "łatka"
-    },
     "overview": {
       "projectNamePlaceholder": "Nazwa historii",
-      "descriptionPlaceholder": "Napisz opis historii...",
-      "stats": "Statystyki",
-      "totalItems": "Łącznie elementów",
-      "completionRate": "Wskaźnik ukończenia",
-      "recentUpdates": "Ostatnie aktualizacje",
-      "name": "Nazwa",
-      "assignee": "Przypisany",
-      "lastUpdated": "Zaktualizowano"
+      "descriptionPlaceholder": "Napisz opis historii..."
     },
     "properties": {
       "title": "Właściwości zadania",
@@ -320,8 +227,6 @@
       "noAssignee": "Brak przypisanego",
       "noMembersHint": "Brak członków. Przejdź do Ustawienia > Członkowie, aby zsynchronizować z Git",
       "noProject": "Brak powiązanego Project",
-      "selectProject": "Wybierz historię",
-      "noProjectsHint": "Brak dostępnych historii.",
       "noMilestone": "Brak kamienia milowego",
       "noDueDate": "Brak terminu",
       "noDueDay": "Brak dnia terminu",
@@ -342,20 +247,31 @@
       "inHours_other": "Za {{count}} godzin",
       "inLessThanHour": "Za < 1 godzinę",
       "searchProjects": "Szukaj historii...",
-      "searchMilestones": "Szukaj kamieni milowych...",
       "delegations": "Delegacje",
       "delegationsCompleted": "ukończono",
       "daysAgo": "{{count}} dni temu",
       "hoursAgo": "{{count}} godzin temu",
       "inDays": "za {{count}} dni",
       "inHours": "za {{count}} godzin",
-      "membersGroup": "Członkowie"
-    },
-    "history": {
-      "noHistory": "Brak historii"
+      "membersGroup": "Członkowie",
+      "filter": "Filtr właściwości",
+      "filterValue": "Wartość filtra właściwości",
+      "noValue": "Brak wartości",
+      "archiveNamed": "Archiwizuj {{name}}",
+      "add": "Dodaj właściwość",
+      "archive": "Archiwizuj właściwość",
+      "datePlaceholder": "RRRR-MM-DD",
+      "empty": "Brak własnych właściwości.",
+      "loading": "Wczytywanie właściwości…",
+      "namePlaceholder": "Nazwa właściwości",
+      "no": "Nie",
+      "optionsPlaceholder": "Opcje, rozdzielone przecinkami",
+      "optionsRequired": "Właściwości typu wybór wymagają opcji rozdzielonych przecinkami.",
+      "type": "Typ właściwości",
+      "updateFailed": "Aktualizacja właściwości nie powiodła się",
+      "yes": "Tak"
     },
     "activity": {
-      "title": "Aktywność",
       "discussionTitle": "Dyskusja",
       "activityHistory": "Historia aktywności",
       "activityHistoryCount": "{{count}} zdarzeń",
@@ -363,17 +279,12 @@
       "subscribe": "Subskrybuj",
       "unsubscribe": "Anuluj subskrypcję",
       "commentPlaceholder": "Zostaw komentarz...",
-      "you": "Ty",
       "createdWorkItem": "utworzył zadanie",
       "deletedWorkItem": "usunął zadanie",
       "restoredWorkItem": "przywrócił zadanie",
       "movedFromTo": "przeniesiono z {{from}} do {{to}}",
       "commented": "skomentował",
       "system": "System",
-      "wasAssigned": "został przypisany",
-      "wasUnassigned": "został usunięty z przypisania",
-      "addedLabel": "dodał etykietę",
-      "removedLabel": "usunął etykietę",
       "madeChange": "wprowadził zmianę",
       "changedField": "zmienił {{field}} z {{from}} na {{to}}",
       "changedFieldShort": "zaktualizował {{field}}",
@@ -391,10 +302,6 @@
       "todoMarkedPending": "oznaczył „{{todo}}” jako oczekujące",
       "todoRenamed": "zmienił nazwę „{{from}}” na „{{to}}”",
       "todoUpdated": "zaktualizował „{{todo}}”",
-      "justNow": "przed chwilą",
-      "daysAgo": "{{count}}d temu",
-      "hoursAgo": "{{count}}g temu",
-      "minutesAgo": "{{count}}m temu",
       "agent": "Agent",
       "fields": {
         "title": "tytuł",
@@ -415,7 +322,27 @@
         "schedule": "harmonogram",
         "orchestratorConfig": "konfiguracja Orchestrator",
         "handoff": "przekazanie"
-      }
+      },
+      "mentionPeople": "Wspomnij osoby",
+      "mentionAll": "@all — wszyscy w tym elemencie",
+      "mentionAgentOption": "{{name}} (Agent)",
+      "mentionAgentOrgOption": "{{name}} (org Agentów)",
+      "appendedSession": "dołączył sesję",
+      "edited": "(edytowano)",
+      "commentDeleted": "Ten komentarz został usunięty.",
+      "deleteComment": "Usuń komentarz",
+      "deleteCommentConfirm": "Usunąć ten komentarz? Odpowiedzi zostaną, treść komentarza zostanie usunięta.",
+      "messageCount_one": "{{count}} wiadomość",
+      "messageCount_other": "{{count}} wiadomości",
+      "cancelReply": "Anuluj odpowiedź",
+      "conclusion": "Konkluzja",
+      "reopen": "Otwórz ponownie",
+      "reply": "Odpowiedz",
+      "replyingInThread": "Odpowiedź w wątku",
+      "resolve": "Rozwiąż",
+      "resolved": "Rozwiązano",
+      "submitComment": "Wyślij komentarz",
+      "openedWorkItem": "otworzył to zadanie"
     },
     "contextMenu": {
       "status": "Status",
@@ -428,8 +355,6 @@
       "milestone": "Kamień milowy",
       "setDueDate": "Ustaw termin",
       "rename": "Zmień nazwę...",
-      "addLink": "Dodaj link...",
-      "favorite": "Ulubione",
       "moreProperties": "Więcej właściwości"
     },
     "propertyFields": {
@@ -440,63 +365,10 @@
     },
     "addWorkItem": "Dodaj zadanie",
     "agentWorkflow": {
-      "title": "Workflow Agenta",
-      "running": "Uruchomiony...",
-      "completed": "Ukończone",
-      "failed": "Niepowodzenie",
-      "interrupted": "Przerwane",
-      "retry": "Ponów",
-      "resume": "Wznów",
-      "openSession": "Otwórz sesję",
-      "viewLiveChat": "Wyświetl czat na żywo",
-      "viewConversation": "Wyświetl rozmowę",
-      "noWorkflowRun": "Żaden workflow Agenta nie został jeszcze uruchomiony",
-      "confirmStart": "Uruchomić Agenta SDE dla tego zadania?",
-      "sdePhase": "Rozwój SDE",
-      "totalCost": "Łączny koszt",
-      "totalTokens": "Łącznie Token",
-      "proofOfWork": "Dowód pracy",
-      "branch": "Gałąź",
-      "pullRequest": "Pull Request",
-      "filesChanged": "Zmienione pliki",
-      "linesAdded": "Dodane linie",
-      "linesRemoved": "Usunięte linie",
-      "approved": "Zatwierdzone",
-      "changesRequested": "Wymagane zmiany",
-      "inconclusive": "Nierozstrzygnięte",
-      "failedError": "Sesja zakończona niepowodzeniem",
-      "retryWithContext": "Ponów z kontekstem z poprzedniego niepowodzenia",
-      "interruptedMessage": "Workflow został przerwany po zamknięciu aplikacji",
-      "selectAccount": "Wybierz konto kodu",
-      "noAccountsReady": "Brak dostępnych lokalnych kont",
-      "sessionOutput": "Wyjście sesji",
-      "noOutputYet": "Brak wyjścia",
-      "cycles": "{{count}} cykli",
-      "whatNext": "Co chcesz zrobić?",
-      "acceptAsIs": "Zaakceptuj bez zmian",
-      "fixAndRerun": "Napraw i uruchom ponownie",
-      "roleSde": "SDE",
-      "roleReview": "Recenzja",
-      "roleFollowUp": "Uzupełnienie",
-      "roleAssistant": "Asystent",
-      "roleUser": "Użytkownik",
       "statusRunning": "Uruchomiony",
       "statusCompleted": "Ukończone",
       "statusFailed": "Niepowodzenie",
-      "statusCancelled": "Anulowane",
-      "sessionFiles": "Pliki",
-      "noFilesModified": "Brak zmodyfikowanych plików",
-      "subAgents": "Pod-Agenci",
-      "subAgentSpawn": "Uruchamianie {{name}} #{{instance}}",
-      "subAgentComplete": "{{name}} #{{instance}} ukończono",
-      "subAgentFailed": "{{name}} #{{instance}} niepowodzenie",
-      "tokens": "Token",
-      "subAgentDefault": "Pod-Agent",
-      "toolResult": "Wynik {{tool}}",
-      "collabLockRunning": "{{name}} is running",
-      "collabLockHeld": "{{name}}'s agent is already working on this item",
-      "collabLockConflict": "Another member just started an agent on this item",
-      "collabLockUnresolved": "Could not verify this work item's collaboration status. Check your connection and try again."
+      "statusCancelled": "Anulowane"
     },
     "changedFiles": {
       "title": "Zmienione pliki",
@@ -509,15 +381,13 @@
       "notAuthenticated": "Nie uwierzytelniono. Zaloguj się do marketplace.",
       "noRepoPath": "Brak dostępnej ścieżki Repo",
       "noOriginRemote": "Nie znaleziono zdalnego origin w Repo",
-      "cannotParseRepoName": "Nie można sparsować nazwy Repo z: {{url}}",
-      "defaultPrTitle": "[{{shortId}}] Zmiany zadania"
+      "cannotParseRepoName": "Nie można sparsować nazwy Repo z: {{url}}"
     },
     "sessions": {
-      "linkedSessions": "Połączone Sessions",
-      "newSession": "Nowa sesja",
-      "starting": "Uruchamianie...",
       "emptyOverview": "Brak Sessions",
-      "emptyOverviewHint": "Uruchom Agent Session, aby śledzić tutaj wykonanie."
+      "originTitle": "Sesja tworząca",
+      "originStatus": "Utworzyła ten element",
+      "runsCount": "{{count}} uruchomień"
     },
     "outputTab": {
       "prSection": "Pull Request",
@@ -531,17 +401,120 @@
       "prMerged": "Scalony",
       "prClosed": "Zamknięty",
       "prDraft": "Szkic",
-      "openPr": "Otwórz PR",
       "changedFilesSection": "Zmienione pliki",
       "fileDiffClean": "Diff pliku jest czysty",
       "fileDiffCleanHint": "Nie wykryto zmian w plikach.",
       "costSummary": "Podsumowanie kosztów",
       "totalCost": "Łącznie",
       "tokens": "Token",
-      "cycles": "cykle"
+      "prBlocked": "Ukończenie jest zablokowane",
+      "prReady": "Gotowe do ukończenia"
     },
     "viewWorkItems": "Pokaż Work Items",
-    "fromRoutine": "From routine: {{name}}"
+    "fromRoutine": "From routine: {{name}}",
+    "batchField": {
+      "hint": "Dotyczy {{count}} wybranych elementów."
+    },
+    "batchStatus": {
+      "title": "Ustaw status"
+    },
+    "batchPriority": {
+      "title": "Ustaw priorytet"
+    },
+    "batchAssignee": {
+      "title": "Ustaw osobę przypisaną"
+    },
+    "discussion": {
+      "previewWillWake": "Obudzi Agenta, aby odpowiedział",
+      "previewNoteOnly": "Tylko notatka — Agent nie zostanie wywołany",
+      "previewNoSession": "Brak powiązanej sesji Agenta — nic nie zostanie wywołane",
+      "previewMentionResume": "Obudzi wspomnianego Agenta",
+      "previewMentionStart": "Uruchomi wspomnianego Agenta",
+      "previewMentionUnroutable": "Wspomniany Agent nie jest skonfigurowany w tym elemencie — nic nie zostanie wywołane",
+      "previewThread": "Obudzi Agenta z tego wątku",
+      "previewAssignee": "Obudzi przypisanego Agenta",
+      "previewAssigneeStart": "Uruchomi przypisanego Agenta",
+      "previewCoalesce": "dołącza do oczekującego wybudzenia",
+      "previewMemberThread": "Wątek członka — żaden Agent nie zostanie obudzony"
+    },
+    "subItems": {
+      "title": "Elementy podrzędne",
+      "parent": "Nadrzędny",
+      "progress": "Ukończono {{completed}} z {{total}}",
+      "add": "Dodaj element podrzędny",
+      "addFirst": "Dodaj pierwszy element podrzędny",
+      "titlePlaceholder": "Wpisz tytuł elementu podrzędnego",
+      "stagePicker": "Etap elementu podrzędnego",
+      "noStage": "Brak etapu",
+      "stage": "Etap {{stage}}",
+      "openStatus": "Otwarty",
+      "completedStatus": "Ukończony",
+      "cancelledStatus": "Anulowany",
+      "createError": "Nie udało się utworzyć elementu podrzędnego. Spróbuj ponownie."
+    },
+    "savedViews": {
+      "placeholder": "Widoki",
+      "save": "Zapisz bieżący widok",
+      "saveTitle": "Zapisz widok",
+      "namePlaceholder": "Nazwa widoku",
+      "saveHint": "Zapisuje bieżące filtry; układ jest używany przy pierwszym otwarciu.",
+      "delete": "Usuń widok"
+    },
+    "table": {
+      "columnsPicker": "Kolumny",
+      "groupByProperty": "Grupuj według właściwości",
+      "columns": {
+        "shortId": "ID",
+        "title": "Tytuł",
+        "status": "Status",
+        "priority": "Priorytet",
+        "assignee": "Przypisany",
+        "targetDate": "Termin",
+        "labels": "Etykiety"
+      }
+    },
+    "batchProperty": {
+      "title": "Ustaw właściwość",
+      "hint": "Stosuje jedną wartość właściwości do {{count}} wybranych elementów. Pozostaw wartość pustą, aby ją wyczyścić.",
+      "propertyPlaceholder": "Właściwość",
+      "valuePlaceholder": "Wartość",
+      "applied": "Zaktualizowano {{count}} elementów"
+    },
+    "revisionConflict": {
+      "title": "Rozwiąż konflikt edycji",
+      "description": "{{field}} zmieniło się po rewizji {{expected}}. Porównaj swoją edycję z rewizją {{actual}}, a następnie wybierz, którą wersję zachować.",
+      "mine": "Moja wersja",
+      "latest": "Najnowsza wersja",
+      "useLatest": "Użyj najnowszej",
+      "keepMine": "Zachowaj moją",
+      "titleField": "Tytuł",
+      "descriptionField": "Opis",
+      "commentField": "Komentarz",
+      "reloadNotice": "Ten element pracy został zmieniony gdzie indziej. Wczytano ponownie najnowszą wersję.",
+      "retryFailed": "Najnowsza wersja znów się zmieniła. Przejrzyj obie wersje przed ponowną próbą."
+    },
+    "quickActions": {
+      "title": "Szybkie akcje",
+      "empty": "Brak szybkich akcji. Zapisz prompt wielokrotnego użytku dla Agenta.",
+      "emptyManage": "Nic jeszcze nie zapisano.",
+      "manageTitle": "Zarządzaj szybkimi akcjami",
+      "namePlaceholder": "Nazwa akcji (np. Napraw CI)",
+      "targetPlaceholder": "Docelowy Agent",
+      "promptPlaceholder": "Co ma zrobić Agent?",
+      "archive": "Archiwizuj akcję",
+      "scopeChanged": "Szybka akcja nie należy już do zakresu tego elementu pracy",
+      "started": "Uruchomiono szybką akcję „{{name}}”"
+    },
+    "detailNavigation": "Nawigacja elementu pracy",
+    "linkedSessions": {
+      "title": "Sesje"
+    },
+    "detail": {
+      "conversation": "Rozmowa",
+      "linked": "Powiązane"
+    },
+    "detailSummary": "Podsumowanie elementu pracy",
+    "navigationTrail": "Nawigacja elementu pracy"
   },
   "settings": {
     "sidebarGeneral": "Ogólne",
@@ -561,35 +534,19 @@
     "githubUsernameDesc": "Dopasowuje Twoją tożsamość na listach członków po połączeniu",
     "profileNotFound": "Nie udało się dopasować Twojej tożsamości do żadnego członka zespołu",
     "profileNotFoundHint": "Twój e-mail Git ({{email}}) nie został znaleziony na liście członków. Zsynchronizuj członków, aby zaktualizować",
-    "teamMembers": "Członkowie zespołu",
-    "memberCount": "{{active}} z {{total}} aktywnych",
-    "activeBadge": "Aktywny",
-    "inactiveBadge": "Nieaktywny",
-    "activateMember": "Aktywuj członka",
-    "deactivateMember": "Dezaktywuj członka",
-    "syncFromGit": "Synchronizuj z Git",
-    "membersDescription": "Zarządzaj członkami zespołu. Nieaktywni członkowie nie pojawią się na listach przypisanych",
     "activeMembers": "Aktualni",
     "activeMembersDescription": "Członkowie pojawiający się na listach przypisanych i w raportach",
     "inactiveMembers": "Nieaktualni",
     "inactiveMembersDescription": "Ukryci z list rozwijanych. Aktywuj ponownie, aby ich uwzględnić",
     "noActiveMembers": "Brak aktywnych członków",
-    "repoTab": "Repo",
-    "projectTab": "Historia",
     "workItemIdTitle": "ID zadania",
     "workItemIdPrefix": "Prefiks ID",
     "workItemIdPrefixDescription": "1-3 litery lub cyfry. Nowe ID używają tego prefiksu (na przykład PRJ-0001)",
     "customPrefix": "Niestandardowy prefiks",
-    "customPrefixDescription": "Gdy wyłączone, prefiks jest automatycznie pobierany z pierwszych 3 znaków nazwy historii i aktualizuje się przy zmianie nazwy",
     "customPrefixCurrentValue": "Aktualna wartość to {{value}}",
-    "manageInRepoSettings": "Zarządzaj w Ustawieniach Repo",
-    "projectMemberList": "Członkowie historii",
     "projectMemberListDescription": "Wybierz, którzy członkowie Repo należą do tej historii",
     "labelsDescription": "Zarządzaj etykietami do kategoryzacji zadań",
-    "addLabel": "Dodaj etykietę",
     "noLabels": "Kliknij +, aby dodać etykietę",
-    "deleteLabel": "Usuń etykietę",
-    "changeColor": "Zmień kolor",
     "labelNamePlaceholder": "Nazwa etykiety...",
     "memberRecentlyActive": "Aktywny",
     "linkedIdentities": "Połączone tożsamości",
@@ -608,9 +565,7 @@
     "claimIdentityShowAsAuthor": "Pokazanie Cię jako autora w historii zadania",
     "claimIdentityWarning": "Zgłaszaj tylko tożsamości należące do Ciebie",
     "confirmClaim": "Potwierdź zgłoszenie",
-    "alreadyClaimed": "Już połączone z innym członkiem",
     "dangerZone": "Strefa niebezpieczeństwa",
-    "dangerZoneDescription": "Nieodwracalne działania dla tej historii",
     "deleteProject": "Usuń tę historię",
     "deleteProjectWarning": "Spowoduje to trwałe usunięcie folderu historii i wszystkich jej zadań z .orgii. Tej akcji nie można cofnąć",
     "deleteThisProject": "Usuń tę historię...",
@@ -624,47 +579,17 @@
         "notAttached": "Nie podłączony",
         "attach": "Podłącz",
         "detach": "Odłącz",
-        "changeWarning": "Odłącz bieżący adapter przed podłączeniem nowego."
+        "changeWarning": "Odłącz bieżący adapter przed podłączeniem nowego.",
+        "detachProjectMenuLabel": "Odłącz GitHub",
+        "detachProjectTitle": "Odłączyć GitHub od {{project}}?",
+        "detachProjectDescription": "Synchronizacja GitHub Issues zostanie zatrzymana. Lokalny projekt i zaimportowane elementy pracy pozostaną w ORGII.",
+        "detachProjectAction": "Odłącz GitHub od {{project}}",
+        "detachProjectSuccess": "Odłączono GitHub od {{project}}"
       },
       "accountPicker": {
         "title": "Konto",
         "empty": "Brak globalnych kont synchronizacji dla tego adaptera",
         "previewNote": "Wybierz globalne konto, którego ta Project użyje do synchronizacji."
-      },
-      "token": {
-        "title": "Token API",
-        "placeholder": "Wklej swój osobisty Token dostępu",
-        "save": "Zapisz Token",
-        "saved": "Token zapisany",
-        "tabs": {
-          "oauth": "OAuth",
-          "personalToken": "Token osobisty"
-        },
-        "bothMethodsNote": "Obie metody działają — wygrywa najnowsze logowanie.",
-        "oauth": {
-          "connectButton": "Połącz z {{adapter}}",
-          "instructions": "Wprowadź poniższy kod w karcie przeglądarki, którą właśnie otworzyliśmy, a następnie zatwierdź dostęp.",
-          "userCodeLabel": "Kod",
-          "openLinkButton": "Otwórz stronę weryfikacji",
-          "waitingForConfirmation": "Oczekiwanie na zatwierdzenie w przeglądarce…",
-          "cancel": "Anuluj",
-          "connected": "Połączono przez OAuth",
-          "reconnect": "Połącz ponownie",
-          "codeCopied": "Kod skopiowany do schowka",
-          "errors": {
-            "startFailed": "Nie udało się rozpocząć OAuth: {{error}}",
-            "accessDenied": "Logowanie zostało odrzucone.",
-            "expired": "Kod wygasł przed zatwierdzeniem. Spróbuj ponownie.",
-            "pollFailed": "Logowanie nie powiodło się: {{detail}}",
-            "unknown": "Nieoczekiwany błąd logowania: {{error}}"
-          },
-          "browserOpened": "Otwieranie {{adapter}} w Twojej przeglądarce…",
-          "redirect": {
-            "openButton": "Otwórz stronę autoryzacji {{adapter}}",
-            "instructions": "Zatwierdź żądanie w przeglądarce, aby zakończyć łączenie z {{adapter}}.",
-            "expiresAt": "Link wygasa o {{time}}"
-          }
-        }
       },
       "status": {
         "title": "Status",
@@ -741,7 +666,6 @@
       },
       "problems": {
         "title": "Nieudane wpisy",
-        "empty": "Brak nieudanych wpisów.",
         "op": {
           "create": "utworzenie",
           "update": "aktualizacja",
@@ -771,10 +695,6 @@
       },
       "conflicts": {
         "title": "Konflikty synchronizacji",
-        "loading": "Ładowanie konfliktów…",
-        "empty": "Brak konfliktów.",
-        "openCount_one": "{{count}} otwarty konflikt",
-        "openCount_other": "{{count}} otwartych konfliktów",
         "detectedAt": "wykryto {{time}}",
         "resolvedAt": "rozwiązano {{time}}",
         "fields_one": "{{count}} pole",
@@ -809,13 +729,21 @@
         },
         "errors": {
           "listFailed": "Nie udało się załadować konfliktów: {{error}}",
-          "countFailed": "Nie udało się załadować liczby konfliktów: {{error}}",
           "useLocalFailed": "Nie udało się zachować lokalnych wartości: {{error}}",
           "useRemoteFailed": "Nie udało się przyjąć zdalnych wartości: {{error}}",
           "dismissFailed": "Nie udało się odrzucić konfliktu: {{error}}"
         }
       }
-    }
+    },
+    "sidebarStatuses": "Statusy",
+    "statusesBuiltin": "Statusy wbudowane",
+    "statusesBuiltinDescription": "Standardowe grupy przepływu pracy. Zawsze dostępne.",
+    "statusesCustom": "Statusy własne",
+    "statusesCustomDescription": "Nazwane aliasy dla grupy wbudowanej. Filtry, liczniki i tablice traktują je jak ich grupę.",
+    "statusNamePlaceholder": "Nazwa statusu",
+    "noCustomStatuses": "Brak własnych statusów.",
+    "statusArchive": "Archiwizuj status",
+    "statusRestore": "Przywróć status"
   },
   "statusBar": {
     "workItemCount": "{{count}} elementów",
@@ -856,29 +784,13 @@
     "views": "Views",
     "more": "More"
   },
-  "teams": {
-    "title": "Twoje zespoły",
-    "localTeams": "Lokalne zespoły",
-    "linearTeams": "Zespoły Linear",
-    "personalOrg": "Personal Org",
-    "agentOrgs": "Zespoły Agent",
-    "emptyLinearTeams": "Nie znaleziono zespołów Linear",
-    "empty": "Nie znaleziono zespołów"
-  },
   "linearProjects": {
-    "title": "Linear Projects",
-    "open": "Open Linear Projects",
-    "subtitle": "Browse and edit Linear Projects in real time without importing them into ORGII.",
-    "refresh": "Refresh",
     "createProject": "Create Project",
-    "archive": "Archive",
-    "searchPlaceholder": "Search Linear Projects...",
     "loadingProjects": "Loading Linear Projects...",
     "loadingIssues": "Loading Linear Issues...",
     "emptyProjects": "No Linear Projects found",
     "emptyIssues": "No Linear Issues in this Project",
     "unknownState": "Unknown state",
-    "updated": "Updated {{date}}",
     "emptyConnections": {
       "title": "No Linear connections",
       "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
@@ -887,14 +799,9 @@
       "title": "Select a Linear Project",
       "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
     },
-    "issues": {
-      "title": "Linear Issues",
-      "subtitle": "Issues are read and mutated directly through the Linear API."
-    },
     "forms": {
       "createProjectTitle": "Create Linear Project",
       "projectName": "Project name",
-      "issueTitle": "Issue title",
       "description": "Description"
     },
     "statusPanel": {
@@ -945,6 +852,6 @@
     "noResultTitle": "No Git sync result",
     "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This org has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
   }
 }

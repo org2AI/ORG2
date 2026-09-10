@@ -4,7 +4,7 @@ import {
   type ChatPanelTabType,
   isChatPanelTabStationAvailable,
   resolveChatPanelMaximizedForLayout,
-} from "../chatPanelTabsAtom";
+} from "@src/store/chatPanel/chatPanelTabsModel";
 
 describe("Chat Panel tab Station access", () => {
   it.each<ChatPanelTabType>([

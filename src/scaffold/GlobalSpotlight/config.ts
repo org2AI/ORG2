@@ -202,8 +202,8 @@ export const ACTIONS: ActionDefinition[] = [
   },
 
   // Note: The legacy add-workspace action + sub-actions were removed. The
-  // add workspace flow (Create / Clone URL / Clone GitHub / Import) now lives
-  // entirely inside `WorkspacePalette` via `useAddWorkspaceFlow`, so GlobalSpotlight
+  // The add-working-directory flow (Create / Clone URL / Clone GitHub / Import)
+  // lives inside `WorkingDirectoryPalette` via `useAddWorkingDirectoryFlow`, so GlobalSpotlight
   // doesn't need a top-level action entry for it.
 ];
 

@@ -1,8 +1,6 @@
 /**
- * Shared draft state for the work item creator (chat panel + create modal).
- *
- * Both surfaces read/write the same jotai entry so in-progress form data
- * survives switching between the chat-panel creator and the modal.
+ * Keyed creator drafts. Agent and floating manual creators keep independent
+ * entries so both surfaces can remain mounted without overwriting each other.
  */
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
@@ -21,6 +19,7 @@ import type { WorkItem as WorkItemExtended } from "@src/types/core/workItem";
 export { WORK_ITEM_CREATOR_DRAFT_ID };
 
 export interface UseWorkItemCreatorDraftOptions {
+  draftId?: string;
   /** Seed project once when the draft has no project (modal launch context). */
   seedProjectId?: string;
   /** Seed project once when the draft has no project (e.g. first loaded project). */
@@ -95,7 +94,12 @@ export function mapWorkItemUpdatesToDraftPatch(
 export function useWorkItemCreatorDraft(
   options: UseWorkItemCreatorDraftOptions = {}
 ): UseWorkItemCreatorDraftReturn {
-  const { seedProjectId, defaultProjectId, onSetUnsaved } = options;
+  const {
+    draftId = WORK_ITEM_CREATOR_DRAFT_ID,
+    seedProjectId,
+    defaultProjectId,
+    onSetUnsaved,
+  } = options;
   const draftsMap = useAtomValue(workItemDraftsAtom);
   const setDraftAtom = useSetAtom(setWorkItemDraftAtom);
   const patchDraftAtom = useSetAtom(patchWorkItemDraftAtom);
@@ -105,80 +109,79 @@ export function useWorkItemCreatorDraft(
   const seedProjectAppliedRef = useRef(false);
   const defaultProjectAppliedRef = useRef(false);
 
-  const draft =
-    draftsMap.get(WORK_ITEM_CREATOR_DRAFT_ID) ?? createDefaultWorkItemDraft();
+  const draft = draftsMap.get(draftId) ?? createDefaultWorkItemDraft();
 
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
-    if (!draftsMap.has(WORK_ITEM_CREATOR_DRAFT_ID)) {
+    if (!draftsMap.has(draftId)) {
       setDraftAtom({
-        tabId: WORK_ITEM_CREATOR_DRAFT_ID,
+        tabId: draftId,
         draft: createDefaultWorkItemDraft(),
       });
     }
-  }, [draftsMap, setDraftAtom]);
+  }, [draftId, draftsMap, setDraftAtom]);
 
   useEffect(() => {
     if (seedProjectAppliedRef.current || !seedProjectId) return;
-    const existing = draftsMap.get(WORK_ITEM_CREATOR_DRAFT_ID);
+    const existing = draftsMap.get(draftId);
     if (existing?.projectId) {
       seedProjectAppliedRef.current = true;
       return;
     }
     patchDraftAtom({
-      tabId: WORK_ITEM_CREATOR_DRAFT_ID,
+      tabId: draftId,
       patch: { projectId: seedProjectId },
     });
     seedProjectAppliedRef.current = true;
-  }, [draftsMap, patchDraftAtom, seedProjectId]);
+  }, [draftId, draftsMap, patchDraftAtom, seedProjectId]);
 
   useEffect(() => {
     if (defaultProjectAppliedRef.current || !defaultProjectId) return;
-    const existing = draftsMap.get(WORK_ITEM_CREATOR_DRAFT_ID);
+    const existing = draftsMap.get(draftId);
     if (existing?.projectId) {
       defaultProjectAppliedRef.current = true;
       return;
     }
     patchDraftAtom({
-      tabId: WORK_ITEM_CREATOR_DRAFT_ID,
+      tabId: draftId,
       patch: { projectId: defaultProjectId },
     });
     defaultProjectAppliedRef.current = true;
-  }, [defaultProjectId, draftsMap, patchDraftAtom]);
+  }, [draftId, defaultProjectId, draftsMap, patchDraftAtom]);
 
   const updateDraft = useCallback(
     (patch: Partial<WorkItemDraft>) => {
-      patchDraftAtom({ tabId: WORK_ITEM_CREATOR_DRAFT_ID, patch });
+      patchDraftAtom({ tabId: draftId, patch });
       onSetUnsaved?.(true);
     },
-    [onSetUnsaved, patchDraftAtom]
+    [draftId, onSetUnsaved, patchDraftAtom]
   );
 
   const setDraft = useCallback(
     (nextDraft: WorkItemDraft) => {
-      setDraftAtom({ tabId: WORK_ITEM_CREATOR_DRAFT_ID, draft: nextDraft });
+      setDraftAtom({ tabId: draftId, draft: nextDraft });
     },
-    [setDraftAtom]
+    [draftId, setDraftAtom]
   );
 
   const resetDraft = useCallback(
     (projectId?: string) => {
       setDraftAtom({
-        tabId: WORK_ITEM_CREATOR_DRAFT_ID,
+        tabId: draftId,
         draft: createDefaultWorkItemDraft(projectId),
       });
       onSetUnsaved?.(false);
     },
-    [onSetUnsaved, setDraftAtom]
+    [draftId, onSetUnsaved, setDraftAtom]
   );
 
   const clearDraft = useCallback(() => {
-    removeDraftAtom(WORK_ITEM_CREATOR_DRAFT_ID);
+    removeDraftAtom(draftId);
     initializedRef.current = false;
     seedProjectAppliedRef.current = false;
     defaultProjectAppliedRef.current = false;
-  }, [removeDraftAtom]);
+  }, [draftId, removeDraftAtom]);
 
   return {
     draft,

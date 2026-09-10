@@ -27,11 +27,13 @@ export function buildSkillEntries(
 ): UseEntriesResult {
   const query = searchQuery.trim();
   const matches = (item: SlashItem) =>
-    item.category === "skill" &&
-    (!query ||
-      fuzzyMatch(query, item.name) ||
-      fuzzyMatch(query, item.description ?? ""));
-  const matchingSkills = items.filter(matches);
+    !query ||
+    fuzzyMatch(query, item.name) ||
+    fuzzyMatch(query, item.description ?? "");
+  const matchingItems = items.filter(matches);
+  const matchingSkills = matchingItems.filter(
+    (item) => item.category === "skill"
+  );
   const matchingSkillByKey = new Map(
     matchingSkills.map((item) => [getPinnedActionKey(item), item])
   );
@@ -59,7 +61,19 @@ export function buildSkillEntries(
   const entries: ListEntry[] = [];
   let flatIndex = 0;
 
+  const commands = matchingItems.filter((item) => item.category !== "skill");
+  if (commands.length > 0) {
+    entries.push({
+      kind: "header",
+      label: "Commands",
+      translationKey: "creator.slashMenu.commands",
+    });
+    for (const item of commands)
+      entries.push({ kind: "item", item, flatIndex: flatIndex++ });
+  }
+
   if (pinnedSkills.length > 0) {
+    if (entries.length > 0) entries.push({ kind: "divider" });
     entries.push({
       kind: "header",
       label: "Pinned",
@@ -97,7 +111,7 @@ export function buildSkillEntries(
   return { entries, totalFlat: flatIndex };
 }
 
-/** Build the skills-only list used by the `/` menu. */
+/** Build the commands and skills list used by the `/` menu. */
 export function useEntries({
   items,
   searchQuery,

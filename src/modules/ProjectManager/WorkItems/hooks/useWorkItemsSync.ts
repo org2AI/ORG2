@@ -6,7 +6,7 @@ import { type MemberEntry, projectApi } from "@src/api/http/project";
 import Message from "@src/components/Message";
 import { createLogger } from "@src/hooks/logger";
 import type { ProjectData } from "@src/modules/ProjectManager/shared";
-import { projectStatusBarStateAtom } from "@src/store/ui/workStationAtom";
+import { projectStatusBarStateAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 
 const log = createLogger("WorkItemsPage");
 

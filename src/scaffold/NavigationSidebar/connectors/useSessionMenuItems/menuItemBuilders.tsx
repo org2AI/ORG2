@@ -5,7 +5,6 @@ import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/compone
 import type { BranchPrSnapshot } from "@src/store/git";
 import type { Session } from "@src/store/session";
 import { isSessionInProgress } from "@src/util/session/sessionInProgress";
-import { getSessionSearchText } from "@src/util/session/sessionSearch";
 import {
   getSessionListDisplayName,
   resolveSessionRowIcon,
@@ -14,7 +13,7 @@ import {
   isSessionPendingAsking,
   resolveSessionStatusDotTone,
 } from "@src/util/session/sessionStatusDot";
-import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
+import { formatCompactAge } from "@src/util/time/formatRelativeTime";
 
 import { renderSessionGitIndicator } from "./gitIndicator";
 import { renderBreathingStatusDot, renderStatusDot } from "./statusIndicators";
@@ -126,7 +125,6 @@ export function buildSessionMenuItem({
     id: session.session_id,
     key: session.session_id,
     label: displayName,
-    searchText: getSessionSearchText(session, untitledSession),
     dataTestId: `sidebar-session-item-${session.session_id}`,
     pinned: session.pinned === true,
     icon: resolveSessionRowIcon(session),
@@ -139,7 +137,10 @@ export function buildSessionMenuItem({
           {gitIndicator}
         </span>
       ) : undefined,
-    shortcut: formatRelativeTime(timestampSrc, "nano"),
+    // Sidebar rows stay in bare compact form ("2m"/"2h"/"2d", no "ago")
+    // regardless of the app's display language — a localized sentence-style
+    // form (e.g. zh's "2分钟前") doesn't fit this row's fixed-width shortcut.
+    shortcut: formatCompactAge(timestampSrc),
     openContextMenuOnSelectedClick: true,
     opensChatPanelTab: true,
     dragPayload: {

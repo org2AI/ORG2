@@ -11,7 +11,6 @@
   "secondaryNote": "– die meisten Prüfungen hinterlassen keine Spur, daher geringe Konfidenz.",
   "byTool": "Nach Werkzeug",
   "byToolHint": "Überall dieselben Neutralpunkte, daher sind diese Zeilen vergleichbar. Ein Buchstabe, der nur in einem Werkzeug gilt, ist zweifelhaft.",
-  "sessionCount": "{{count}} Sitzungen",
   "overTime": "Im Zeitverlauf",
   "overTimeHint": "Gleitende Fenster, neueste zuerst.",
   "status": "Status",
@@ -47,7 +46,6 @@
   },
   "types": {
     "title": "Builder-Typen",
-    "subtitle": "Entdecke die 16 Arten, wie Menschen mit Coding-Agenten arbeiten.",
     "howTitle": "So liest du den Code",
     "howBody": "Vier beobachtete Präferenzen ergeben einen Builder-Typ. Die Buchstaben beschreiben ein Arbeitsmuster, keine feste Identität – sie können sich mit deinen Gewohnheiten und Werkzeugen verändern.",
     "galleryTitle": "Alle 16 Typen",

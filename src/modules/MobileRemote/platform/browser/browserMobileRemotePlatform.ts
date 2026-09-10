@@ -12,12 +12,14 @@ import {
   readMobileAuthSession,
   writeMobileAuthSession,
 } from "../../auth/mobileAuthStorage";
+import { buildMobileWsUrl } from "../../connection/buildMobileWsUrl";
 import {
   listScopedMobilePairedDesktops,
   loadScopedMobileConnectionConfig,
   saveScopedMobileConnectionConfig,
   selectScopedMobilePairedDesktop,
 } from "../../connection/mobileConnectionStorage";
+import { scanCameraQr } from "../scanCameraQr";
 import type { MobileRemotePlatform } from "../types";
 import { createBrowserMobileAuthClient } from "./browserMobileAuthClient";
 
@@ -40,6 +42,8 @@ export function createBrowserMobileRemotePlatform(): MobileRemotePlatform {
 
   return {
     kind: "browser",
+    scanQr: scanCameraQr,
+    openExternal: (url) => window.location.assign(url),
     clientInfo: {
       name: "orgii-mobile-pwa",
       version: "0.1.0",
@@ -69,7 +73,6 @@ export function createBrowserMobileRemotePlatform(): MobileRemotePlatform {
           "",
           MOBILE_AUTH_ROOT_PATH
         ),
-      navigate: (url) => window.location.assign(url),
       async beginOAuthAttempt(attemptId) {
         beginMobileOAuthAttempt(attemptId, sessionStorage, runtime.now());
       },
@@ -98,6 +101,9 @@ export function createBrowserMobileRemotePlatform(): MobileRemotePlatform {
       },
     },
     connection: {
+      async prepareSocketUrl(config) {
+        return buildMobileWsUrl(config);
+      },
       createSocket: (url) => new WebSocket(url),
       async load(userId) {
         return loadScopedMobileConnectionConfig(userId, localStorage);

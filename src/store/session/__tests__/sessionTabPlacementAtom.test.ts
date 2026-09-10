@@ -1,17 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { openSessionWindow } from "@src/api/tauri/sessionWindow";
-import {
-  type ChatPanelTabsState,
-  chatPanelTabsAtom,
-} from "@src/store/chatPanel/chatPanelTabsAtom";
+import { type ChatPanelTabsState } from "@src/store/chatPanel/chatPanelTabsModel";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { sessionsAtom } from "@src/store/session/sessionAtom";
 import type { Session } from "@src/store/session/sessionAtom/types";
 import {
   activeSessionIdAtom,
   workstationActiveSessionIdAtom,
 } from "@src/store/session/viewAtom";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanelAtom";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {
   createChatSessionTab,

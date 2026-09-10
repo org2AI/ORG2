@@ -64,6 +64,7 @@ export type SyncCoverageSession = Pick<
   | "orgMemberId"
   | "agentOrgId"
   | "importedFrom"
+  | "clientOrigin"
   | "repoPath"
   | "repoRemoteUrls"
   | "forkedFrom"

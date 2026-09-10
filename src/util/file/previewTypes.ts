@@ -4,8 +4,6 @@
  * Utilities for determining file preview types and capabilities.
  * Used by Orgii Editor to render appropriate previews for different file types.
  */
-import { isMacOS } from "@src/util/platform/tauri";
-
 import { isBinaryByExtension } from "./binaryDetection";
 import { getFileExtensionLower } from "./pathUtils";
 
@@ -23,7 +21,6 @@ export type PreviewType =
   | "docx" // Word documents (.docx)
   | "xlsx" // Excel spreadsheets (.xlsx, .xls)
   | "pptx" // PowerPoint presentations (.pptx, .ppt)
-  | "pages" // Apple Pages documents (.pages) — macOS only via textutil
   | "markdown" // Markdown files
   | "html" // HTML files
   | "database" // SQLite database files (table view)
@@ -132,11 +129,6 @@ export function getPreviewType(filePath: string): PreviewType {
     return STRUCTURED_DATA_EXTENSIONS[extension];
   }
 
-  // Apple Pages — macOS only (uses textutil for conversion)
-  if (extension === "pages") {
-    return isMacOS() ? "pages" : "binary";
-  }
-
   // Check office document extensions
   if (extension in OFFICE_EXTENSIONS) {
     return OFFICE_EXTENSIONS[extension];
@@ -198,13 +190,12 @@ export function isPreviewOnlyFile(filePath: string): boolean {
     type === "docx" ||
     type === "xlsx" ||
     type === "pptx" ||
-    type === "pages" ||
     type === "database"
   );
 }
 
 export function requiresFilePreviewRoute(filePath: string): boolean {
-  return isPreviewOnlyFile(filePath);
+  return isPreviewOnlyFile(filePath) || getPreviewType(filePath) === "binary";
 }
 
 export function supportsSourceControlWorkingCopyPreview(
@@ -216,7 +207,7 @@ export function supportsSourceControlWorkingCopyPreview(
 function isSourceControlWorkingCopyPreviewType(
   previewType: PreviewType
 ): boolean {
-  return ["image", "video", "pdf", "docx", "xlsx", "pptx", "pages"].includes(
+  return ["image", "video", "pdf", "docx", "xlsx", "pptx"].includes(
     previewType
   );
 }

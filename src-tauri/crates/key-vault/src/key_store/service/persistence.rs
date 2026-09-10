@@ -171,7 +171,11 @@ fn deserialize_key_store(contents: &str) -> Result<LoadedKeyStore, serde_json::E
         }
 
         match serde_json::from_value::<ModelKey>(raw.clone()) {
-            Ok(key) => {
+            Ok(mut key) => {
+                // Normalize legacy snapshots as they cross the persistence
+                // boundary. Any subsequent store mutation persists the
+                // repaired in-memory catalog atomically with that mutation.
+                key.normalize_model_catalog();
                 store.keys.insert(storage_id, key);
             }
             Err(error) => invalid_credentials.push(InvalidStoredCredential {

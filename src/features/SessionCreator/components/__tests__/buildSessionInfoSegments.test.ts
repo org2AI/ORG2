@@ -92,6 +92,16 @@ describe("buildSessionInfoSegments", () => {
     expect(segments.map((segment) => segment.tooltipMouseEnterDelay)).toEqual([
       2000, 2000, 2000,
     ]);
+    expect(segments.map((segment) => segment.maxLabelWidth)).toEqual([
+      180,
+      180,
+      undefined,
+    ]);
+    expect(
+      segments
+        .filter((segment) => segment.flexible)
+        .map((segment) => segment.id)
+    ).toEqual(["branch"]);
   });
 
   it("shows the worktree source on the branch segment", () => {

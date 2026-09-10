@@ -116,7 +116,7 @@ test("builds without --json keep the terse console stats", () => {
   assert.equal(config.stats.entrypoints, undefined);
 });
 
-test("WebDriver production bundles enable the E2E-only Agent Org gate", () => {
+test("WebDriver production bundles force-enable the Agent Org gate", () => {
   const config = withEnv(
     {
       ORGII_E2E: null,
@@ -133,11 +133,28 @@ test("WebDriver production bundles enable the E2E-only Agent Org gate", () => {
   );
 });
 
-test("ordinary production bundles keep the Agent Org rollout disabled", () => {
+test("ordinary production bundles enable the Agent Org rollout by default", () => {
   const config = withEnv(
     {
       ORGII_E2E: null,
       ORGII_AGENT_ORG_REDESIGN: null,
+      WEBDRIVER: null,
+    },
+    () => createWebpackConfig({}, { mode: "production" })
+  );
+
+  assert.equal(getDefinedValue(config, "process.env.ORGII_E2E"), '"0"');
+  assert.equal(
+    getDefinedValue(config, "process.env.ORGII_AGENT_ORG_REDESIGN"),
+    '"1"'
+  );
+});
+
+test("ordinary production bundles preserve an explicit Agent Org opt-out", () => {
+  const config = withEnv(
+    {
+      ORGII_E2E: null,
+      ORGII_AGENT_ORG_REDESIGN: "0",
       WEBDRIVER: null,
     },
     () => createWebpackConfig({}, { mode: "production" })

@@ -1957,6 +1957,7 @@
     "shortInputTitle": "Kurze Eingabe",
     "shortInputMessage": "Ihre Eingabe scheint sehr kurz zu sein. Möchten Sie wirklich eine Sitzung damit starten?",
     "selectModel": "Modell auswählen",
+    "selectAgentFirst": "Zuerst einen Agenten auswählen",
     "switchModel": "Modell wechseln",
     "switchMode": "Modus wechseln",
     "switchAgent": "Agent wechseln",

@@ -1957,6 +1957,7 @@
     "shortInputTitle": "Saisie courte",
     "shortInputMessage": "Votre saisie semble très courte. Êtes-vous sûr de vouloir démarrer une session avec ceci ?",
     "selectModel": "Sélectionner un modèle",
+    "selectAgentFirst": "Sélectionnez d’abord un agent",
     "switchModel": "Changer de modèle",
     "switchMode": "Changer de mode",
     "switchAgent": "Changer d'Agent",

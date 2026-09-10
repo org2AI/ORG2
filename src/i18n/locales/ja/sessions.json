@@ -1957,6 +1957,7 @@
     "shortInputTitle": "短い入力",
     "shortInputMessage": "入力内容が非常に短いようです。この内容でセッションを開始しますか？",
     "selectModel": "モデルを選択",
+    "selectAgentFirst": "先にエージェントを選択",
     "switchModel": "モデルを切り替え",
     "switchMode": "モードを切り替え",
     "switchAgent": "Agent を切り替え",

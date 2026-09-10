@@ -1957,6 +1957,7 @@
     "shortInputTitle": "Nội dung ngắn",
     "shortInputMessage": "Nội dung nhập vào có vẻ rất ngắn. Bạn có chắc chắn muốn bắt đầu phiên với nội dung này không?",
     "selectModel": "Chọn mô hình",
+    "selectAgentFirst": "Chọn agent trước",
     "switchModel": "Chuyển mô hình",
     "switchMode": "Chuyển chế độ",
     "switchAgent": "Chuyển Agent",

@@ -1957,6 +1957,7 @@
     "shortInputTitle": "Kısa Giriş",
     "shortInputMessage": "Girişiniz çok kısa görünüyor. Bu içerikle bir oturum başlatmak istediğinizden emin misiniz?",
     "selectModel": "Model seç",
+    "selectAgentFirst": "Önce bir ajan seçin",
     "switchModel": "Model değiştir",
     "switchMode": "Mod değiştir",
     "switchAgent": "Agent değiştir",

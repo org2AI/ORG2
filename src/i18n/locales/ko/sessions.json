@@ -1957,6 +1957,7 @@
     "shortInputTitle": "짧은 입력",
     "shortInputMessage": "입력 내용이 매우 짧습니다. 이 내용으로 세션을 시작하시겠습니까?",
     "selectModel": "모델 선택",
+    "selectAgentFirst": "먼저 에이전트를 선택하세요",
     "switchModel": "모델 전환",
     "switchMode": "모드 전환",
     "switchAgent": "Agent 전환",

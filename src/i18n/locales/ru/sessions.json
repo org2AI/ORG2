@@ -1957,6 +1957,7 @@
     "shortInputTitle": "Короткий ввод",
     "shortInputMessage": "Ваш ввод кажется очень коротким. Вы уверены, что хотите начать сессию с этим?",
     "selectModel": "Выбрать модель",
+    "selectAgentFirst": "Сначала выберите агента",
     "switchModel": "Сменить модель",
     "switchMode": "Сменить режим",
     "switchAgent": "Сменить Agent",

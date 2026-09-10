@@ -1976,6 +1976,7 @@
     "shortInputTitle": "Krótki tekst",
     "shortInputMessage": "Twój tekst wygląda na bardzo krótki. Czy na pewno chcesz z tym rozpocząć sesję?",
     "selectModel": "Wybierz model",
+    "selectAgentFirst": "Najpierw wybierz agenta",
     "switchModel": "Zmień model",
     "switchMode": "Zmień tryb",
     "switchAgent": "Zmień Agenta",

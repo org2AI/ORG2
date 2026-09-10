@@ -1976,6 +1976,7 @@
     "shortInputTitle": "Entrada curta",
     "shortInputMessage": "Sua entrada parece muito curta. Tem certeza de que quer iniciar uma sessão com isso?",
     "selectModel": "Selecionar modelo",
+    "selectAgentFirst": "Selecione primeiro um agente",
     "switchModel": "Alternar modelo",
     "switchMode": "Alternar modo",
     "switchAgent": "Alternar Agent",

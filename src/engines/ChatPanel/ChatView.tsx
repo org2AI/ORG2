@@ -455,7 +455,12 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         followUpSuggestions,
         onFollowUpSuggestionSent: clearFollowUpSuggestions,
         submitDisabled:
-          groupChatViewActive && agentOrgRunView?.runStatus === "paused",
+          (groupChatViewActive && agentOrgRunView?.runStatus === "paused") ||
+          (!groupChatViewActive &&
+            currentAgentOrgMember !== null &&
+            !currentAgentOrgMember.isCoordinator &&
+            (agentOrgRunView?.runStatus === "starting" ||
+              agentOrgRunView?.runStatus === "failed")),
       }),
       [
         sessionId,
@@ -486,6 +491,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         initialFileChanges,
         groupChatPendingMessage,
         groupChatViewActive,
+        currentAgentOrgMember,
         agentOrgRunView?.runStatus,
         hasAny,
         scrollNav,

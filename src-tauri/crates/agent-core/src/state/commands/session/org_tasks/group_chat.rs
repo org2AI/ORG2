@@ -551,17 +551,6 @@ pub(super) fn persist_group_chat_message(
             params![display_text, message_id, row.id],
         )
         .map_err(|err| err.to_string())?;
-        tx.execute(
-            "UPDATE agent_org_runtime_member_interventions
-             SET cleared_at=?3
-             WHERE org_run_id=?1 AND member_id=?2 AND cleared_at IS NULL",
-            params![
-                &context.run_id,
-                target_member_id,
-                chrono::Utc::now().to_rfc3339()
-            ],
-        )
-        .map_err(|err| err.to_string())?;
         tx.commit().map_err(|err| err.to_string())?;
         Ok(row)
     })

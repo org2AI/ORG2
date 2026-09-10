@@ -173,6 +173,8 @@ export interface AdapterSendInput {
   directUserIntent?: boolean;
   /** Permit guarded native recovery after canonical synchronization. */
   allowNativeContextRecovery?: boolean;
+  /** Exact persisted EventStore user event authorizing Member direct work. */
+  agentOrgDirectSourceEventId?: string;
   /**
    * When `true`, this is a user-initiated Resume after a failed turn.
    * The backend runs deletion-based orphan tool-use filter instead of

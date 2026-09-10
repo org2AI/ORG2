@@ -58,6 +58,15 @@ fn is_persisted_failed_user_delivery(event: &SessionEvent) -> bool {
             .is_some_and(|value| !value.is_empty())
 }
 
+fn is_agent_org_direct_source(event: &SessionEvent) -> bool {
+    is_synthetic_user_input(event)
+        && event
+            .result
+            .get("agentOrgDirectSource")
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false)
+}
+
 /// Set the active repository context on a session's store.
 #[tauri::command]
 pub async fn es_set_repo_context(
@@ -131,13 +140,16 @@ pub async fn es_append(
     // only resurface as duplicate user bubbles on the next replay merge.
     // Their edit path (`cli_agent_truncate_after_chunk`) truncates chunks by
     // timestamp and does not consult the `events` table.
+    let durable_direct_source = events.iter().any(is_agent_org_direct_source);
     let skips_event_cache_save = session_providers::skips_event_cache_save(&sid);
     let user_event_ids: Vec<_> = events
         .iter()
         .filter(|event| {
             event.source == EventSource::User
                 && !is_ts_placeholder_id(&event.id)
-                && (!skips_event_cache_save && !is_synthetic_user_input(event)
+                && (!skips_event_cache_save
+                    && (!is_synthetic_user_input(event)
+                        || is_agent_org_direct_source(event))
                     || is_persisted_failed_user_delivery(event))
         })
         .map(|event| event.id.clone())
@@ -173,11 +185,15 @@ pub async fn es_append(
 
         match persist_result {
             Ok(Ok(())) => {}
+            Ok(Err(err)) if durable_direct_source => {
+                return Err(format!("agent_org_direct_source_persistence_failed: {err}"));
+            }
             Ok(Err(err)) => {
                 tracing::warn!(
                     "[event-pipeline] best-effort es_append_user failed for {sid}: {err}"
                 );
             }
+            Err(err) if durable_direct_source => return Err(err),
             Err(err) => {
                 tracing::warn!("[event-pipeline] es_append_user join failed for {sid}: {err}");
             }

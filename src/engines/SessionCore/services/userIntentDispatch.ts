@@ -74,6 +74,8 @@ interface PrepareUserIntentParams {
   userEventId?: string;
   /** Runs after the synchronous lifecycle reserve and before EventStore I/O. */
   beforeAppend?: () => void | Promise<void>;
+  /** Marks this exact persisted user row as direct Agent Org member work. */
+  agentOrgDirectSource?: boolean;
 }
 
 export interface OptimisticUserDeliveryProjectionParams {
@@ -349,6 +351,7 @@ export async function prepareUserIntent(
       turnIntentId: params.turnIntentId,
       deliveryStatus: "pending",
       queueMessageId: params.queueMessageId,
+      agentOrgDirectSource: params.agentOrgDirectSource,
     });
     await eventStoreProxy.append([userEvent], params.sessionId);
     const preparation = {
@@ -472,6 +475,7 @@ async function resolveUserIntentPreparation(
       beforeAppend: params.beforeAppend,
       queueMessageId: params.queueMessageId,
       userEventId: params.userEventId,
+      agentOrgDirectSource: params.agentOrgDirectSource,
     });
   }
   const state = preparationStates.get(existing);
@@ -523,6 +527,9 @@ export async function dispatchUserIntent(
         return SessionService.sendMessage({
           sessionId: params.sessionId,
           ...params.send,
+          ...(params.agentOrgDirectSource
+            ? { agentOrgDirectSourceEventId: preparation.userEvent.id }
+            : {}),
           imageDataUrls: params.imageDataUrls,
         });
       },

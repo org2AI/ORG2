@@ -114,6 +114,8 @@ export interface SessionSendMessageParams {
    * adapters apply it immediately after their command accepts the rerun.
    */
   directUserIntent?: boolean;
+  /** Exact persisted EventStore user event authorizing Member direct work. */
+  agentOrgDirectSourceEventId?: string;
   /**
    * Permission for guarded provider-native context recovery. This never
    * triggers compaction by itself: the transport still requires an explicit

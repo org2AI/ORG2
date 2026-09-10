@@ -33,6 +33,8 @@ export interface MessageDispatchInput {
   displayText?: string;
   clientMessageId?: string;
   turnIntentId: string;
+  /** Persist and dispatch this exact user row as direct org-member work. */
+  agentOrgDirectSource?: boolean;
   runtimeStatusSource?: SessionRuntimeStatusSource;
   beforeAppend?: () => void | Promise<void>;
 }
@@ -48,6 +50,7 @@ export function useMessageDispatch() {
       displayText,
       clientMessageId,
       turnIntentId,
+      agentOrgDirectSource,
       runtimeStatusSource = "dispatch",
       beforeAppend,
     }: MessageDispatchInput): Promise<DispatchUserIntentResult> => {
@@ -77,6 +80,7 @@ export function useMessageDispatch() {
         imageDataUrls,
         runtimeStatusSource,
         beforeAppend,
+        agentOrgDirectSource,
         send: {
           content,
           displayText,

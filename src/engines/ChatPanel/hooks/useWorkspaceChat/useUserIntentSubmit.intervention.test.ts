@@ -4,10 +4,12 @@ import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { postStopDispatchSessionsAtom } from "@src/store/session/cliSessionStatusAtom";
+import { sessionsAtom } from "@src/store/session/sessionAtom";
 import { messageQueueAtom } from "@src/store/ui/messageQueueAtom";
 
 import {
   type SubmitUserIntentOptions,
+  isAgentOrgMemberDirectTarget,
   useUserIntentSubmit,
 } from "./useUserIntentSubmit";
 
@@ -21,7 +23,13 @@ const mocks = vi.hoisted(() => ({
   getTurnPhase: vi.fn(),
   mintTurnIntentId: vi.fn(),
   removeProjection: vi.fn(),
+  refreshAgentOrgRunView: vi.fn(),
 }));
+
+vi.mock(
+  "@src/engines/ChatPanel/InputArea/components/agentOrgRunViewStore",
+  () => ({ refreshAgentOrgRunView: mocks.refreshAgentOrgRunView })
+);
 
 vi.mock("@src/engines/SessionCore/control/optimisticTurnStatus", () => ({
   beginOptimisticTurn: mocks.beginOptimisticTurn,
@@ -85,6 +93,26 @@ describe("useUserIntentSubmit Agent Org intervention", () => {
     mocks.getTurnPhase.mockReset().mockReturnValue("idle");
     mocks.mintTurnIntentId.mockReset().mockReturnValue("turn-intent-1");
     mocks.removeProjection.mockReset().mockResolvedValue(undefined);
+    mocks.refreshAgentOrgRunView.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("recognizes only a materialized non-coordinator Member as direct", () => {
+    expect(
+      isAgentOrgMemberDirectTarget({
+        parentSessionId: "root-session",
+        orgMemberId: "member-direct",
+      })
+    ).toBe(true);
+    expect(
+      isAgentOrgMemberDirectTarget({
+        parentSessionId: "root-session",
+        orgMemberId: "coordinator",
+      })
+    ).toBe(false);
+    expect(isAgentOrgMemberDirectTarget({ orgMemberId: "member-direct" })).toBe(
+      false
+    );
+    expect(isAgentOrgMemberDirectTarget(undefined)).toBe(false);
   });
 
   it("routes the direct turn through the shared user-intent dispatcher", async () => {
@@ -137,6 +165,47 @@ describe("useUserIntentSubmit Agent Org intervention", () => {
       }),
     ]);
     expect(mocks.dispatchMessageBySessionType).not.toHaveBeenCalled();
+  });
+
+  it("sends busy canonical Member work directly with a durable source row", async () => {
+    const store = createStore();
+    store.set(sessionsAtom, [
+      {
+        session_id: SESSION_ID,
+        status: "running",
+        created_at: "2026-08-25T00:00:00Z",
+        updated_at: "2026-08-25T00:00:00Z",
+        orgMemberId: "member-direct",
+        parentSessionId: "root-session",
+      },
+    ]);
+    const submit = renderSubmitHook(store);
+    mocks.getTurnPhase.mockReturnValue("working");
+
+    await submit({
+      sessionId: SESSION_ID,
+      displayContent: "inspect the fixture",
+    });
+
+    expect(store.get(messageQueueAtom)).toEqual([]);
+    expect(mocks.dispatchMessageBySessionType).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        content: "inspect the fixture",
+        turnIntentId: "turn-intent-1",
+        agentOrgDirectSource: true,
+      })
+    );
+    expect(mocks.refreshAgentOrgRunView).toHaveBeenCalledWith(SESSION_ID);
+  });
+
+  it("does not read the Agent Org projection for an ordinary send", async () => {
+    const submit = renderSubmitHook(createStore());
+
+    await submit({ sessionId: SESSION_ID, displayContent: "ordinary send" });
+
+    expect(mocks.dispatchMessageBySessionType).toHaveBeenCalledOnce();
+    expect(mocks.refreshAgentOrgRunView).not.toHaveBeenCalled();
   });
 
   it("admits canonical continuation through the same queue owner and durability barrier", async () => {

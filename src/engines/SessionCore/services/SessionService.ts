@@ -300,6 +300,7 @@ export const SessionService = {
       turnIntentSource,
       directUserIntent,
       allowNativeContextRecovery,
+      agentOrgDirectSourceEventId,
     } = params;
     // Gate ADE context on the session row's persisted repo so a session
     // on repo A doesn't ship repo B's editor / git / LSP state when the
@@ -333,6 +334,7 @@ export const SessionService = {
         turnIntentSource,
         directUserIntent,
         allowNativeContextRecovery,
+        agentOrgDirectSourceEventId,
         adeContext,
         sessionRepoPath: sessionRow?.repoPath ?? null,
       });

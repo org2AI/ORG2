@@ -32,6 +32,7 @@ import {
   isNotificationAttentionRequired,
   isSuccessfulNotificationTurnStatus,
 } from "@src/api/services/notificationPolicy";
+import { refreshAgentOrgRunViewForChangedSession } from "@src/engines/ChatPanel/InputArea/components/agentOrgRunViewStore";
 import {
   markTurnRunning,
   markTurnTerminal,
@@ -165,6 +166,13 @@ export function useNativeSessionStatusMonitor(options?: {
           settingsRef.current,
           translationRef.current
         );
+        if (session?.orgMemberId) {
+          // The backend persists the direct FIFO terminal before emitting this
+          // native event. Reconcile once from that exact boundary so Idle and
+          // Paused Teams do not depend on polling or the optional IDE socket
+          // to replace Stop with Return. Ordinary SDE Sessions skip this path.
+          refreshAgentOrgRunViewForChangedSession(sessionId);
+        }
       }
       // `status` is the raw wire string off the Tauri event payload and is
       // written straight into the session-list row that drives sidebar

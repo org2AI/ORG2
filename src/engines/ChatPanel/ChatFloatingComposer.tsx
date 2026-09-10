@@ -116,6 +116,7 @@ interface ChatFloatingComposerProps {
   disableStopWhenEmpty?: boolean;
   followUpSuggestions: ReadonlyArray<SessionFollowUpSuggestion>;
   onFollowUpSuggestionSent: () => void;
+  submitDisabled?: boolean;
 }
 
 const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
@@ -170,6 +171,7 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
     disableStopWhenEmpty = false,
     followUpSuggestions,
     onFollowUpSuggestionSent,
+    submitDisabled = false,
   }) => {
     const { t } = useTranslation("sessions");
     const [fileChangeStats, setFileChangeStatsState] =
@@ -339,6 +341,7 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
             controlSessionId={controlSessionId}
             onSubmitOverride={onSubmitOverride}
             customMentionOptions={customMentionOptions}
+            submitDisabled={submitDisabled}
             topRowPills={
               showTopRowPills ? (
                 <CollapsedInlineRow

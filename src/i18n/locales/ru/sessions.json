@@ -2077,7 +2077,7 @@
       "unreadCount": "{{count}} непрочитано",
       "pauseRun": "Приостановить выполнение",
       "resumeRun": "Возобновить выполнение",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "viewCoordinatorHistory": "Показать историю чата координатора",
       "taskWindowTruncated": "Показаны первые {{visible}} из {{total}} задач. Откройте детали задачи для полных результатов.",
       "planApproval": {
         "title": "План готов к утверждению",
@@ -2104,7 +2104,8 @@
         "failed": "Ошибка",
         "starting": "Запуск",
         "idle": "Ожидание",
-        "archived": "В архиве"
+        "archived": "В архиве",
+        "draining": "Приостановлено · завершение"
       }
     },
     "agentOrgIntervention": {
@@ -2230,7 +2231,7 @@
     "userMessagePending": "{{member}} принимает ваше сообщение",
     "pausedBanner": {
       "title": "Новая работа приостановлена",
-      "body": "Пауза останавливает активные ответы, отправьте сообщение или нажмите Возобновить, чтобы продолжить",
+      "body": "Возобновите эту команду агентов перед отправкой сообщения",
       "resume": "Возобновить"
     },
     "toolUseSummary": {

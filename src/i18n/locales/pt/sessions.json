@@ -2096,7 +2096,7 @@
       "unreadCount": "{{count}} não lidos",
       "pauseRun": "Pausar execução",
       "resumeRun": "Retomar execução",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "viewCoordinatorHistory": "Ver histórico do chat do coordenador",
       "taskWindowTruncated": "Mostrando as primeiras {{visible}} de {{total}} tarefas. Abra os detalhes da tarefa para ver os resultados completos.",
       "planApproval": {
         "title": "Plano pronto para aprovação",
@@ -2123,7 +2123,8 @@
         "failed": "Falhou",
         "starting": "Iniciando",
         "idle": "Inativo",
-        "archived": "Arquivado"
+        "archived": "Arquivado",
+        "draining": "Pausado · finalizando"
       }
     },
     "agentOrgIntervention": {
@@ -2230,7 +2231,7 @@
     "userMessagePending": "{{member}} está assumindo sua mensagem",
     "pausedBanner": {
       "title": "Novo trabalho está pausado",
-      "body": "Pausar interrompe as respostas ativas, envie uma mensagem ou clique em Retomar para continuar",
+      "body": "Retome esta Equipe de Agents antes de enviar uma mensagem",
       "resume": "Retomar"
     },
     "toolUseSummary": {

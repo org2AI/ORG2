@@ -332,11 +332,13 @@ export interface E2EHelpers {
     messageId?: string
   ) => Promise<Result<{ result: Json }>>;
   agentOrgPauseRun: (
-    sessionId: string
-  ) => Promise<Result<{ transitioned: boolean }>>;
+    sessionId: string,
+    requestId?: string
+  ) => Promise<Result<{ outcome: Json }>>;
   agentOrgResumeRun: (
-    sessionId: string
-  ) => Promise<Result<{ transitioned: boolean }>>;
+    sessionId: string,
+    requestId?: string
+  ) => Promise<Result<{ outcome: Json }>>;
   agentOrgSimulateAppRestart: () => Promise<
     Result<{
       intentsReconciled: number;

@@ -2077,7 +2077,7 @@
       "unreadCount": "{{count}} chưa đọc",
       "pauseRun": "Tạm dừng thực thi",
       "resumeRun": "Tiếp tục thực thi",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "viewCoordinatorHistory": "Xem lịch sử trò chuyện của điều phối viên",
       "taskWindowTruncated": "Đang hiển thị {{visible}} nhiệm vụ đầu tiên trên {{total}}. Mở chi tiết nhiệm vụ để xem đầy đủ kết quả.",
       "planApproval": {
         "title": "Kế hoạch sẵn sàng để phê duyệt",
@@ -2095,16 +2095,17 @@
       },
       "phase": {
         "coordinating": "Đang điều phối",
-        "dispatching": "Đang phân phối",
+        "dispatching": "Đang phân công",
         "members_working": "Thành viên đang làm việc",
-        "waiting": "Đang chờ việc",
+        "waiting": "Đang chờ công việc",
         "awaiting_plan_approval": "Đang chờ phê duyệt kế hoạch",
-        "finalizing": "Đang hoàn thiện",
+        "finalizing": "Đang hoàn tất",
         "paused": "Đã tạm dừng",
         "failed": "Thất bại",
         "starting": "Đang bắt đầu",
         "idle": "Không hoạt động",
-        "archived": "Đã lưu trữ"
+        "archived": "Đã lưu trữ",
+        "draining": "Đã tạm dừng · đang kết thúc"
       }
     },
     "agentOrgIntervention": {
@@ -2230,7 +2231,7 @@
     "userMessagePending": "{{member}} đang tiếp nhận tin nhắn của bạn",
     "pausedBanner": {
       "title": "Công việc mới đang tạm dừng",
-      "body": "Tạm dừng sẽ dừng các phản hồi đang chạy, gửi tin nhắn hoặc nhấn Tiếp tục để tiếp tục",
+      "body": "Tiếp tục Nhóm Agent này trước khi gửi tin nhắn",
       "resume": "Tiếp tục"
     },
     "toolUseSummary": {

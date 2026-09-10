@@ -2077,7 +2077,7 @@
       "unreadCount": "{{count}} unread",
       "pauseRun": "実行を一時停止",
       "resumeRun": "実行を再開",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "viewCoordinatorHistory": "Coordinator のチャット履歴を表示",
       "taskWindowTruncated": "{{total}} 件中最初の {{visible}} 件のタスクを表示しています。完全な結果はタスクの詳細を開いてください。",
       "planApproval": {
         "title": "計画の承認待ち",
@@ -2096,15 +2096,16 @@
       "phase": {
         "coordinating": "調整中",
         "dispatching": "割り当て中",
-        "members_working": "メンバー作業中",
+        "members_working": "メンバーが作業中",
         "waiting": "作業待ち",
-        "awaiting_plan_approval": "計画の承認待ち",
-        "finalizing": "最終処理中",
+        "awaiting_plan_approval": "プラン承認待ち",
+        "finalizing": "終了処理中",
         "paused": "一時停止中",
         "failed": "失敗",
         "starting": "開始中",
         "idle": "待機中",
-        "archived": "アーカイブ済み"
+        "archived": "アーカイブ済み",
+        "draining": "一時停止中・終了処理中"
       }
     },
     "agentOrgIntervention": {
@@ -2230,7 +2231,7 @@
     "userMessagePending": "{{member}} があなたのメッセージを処理しています",
     "pausedBanner": {
       "title": "新しい作業は一時停止中です",
-      "body": "一時停止すると進行中の返信が停止します、メッセージを送信するか、再開を押すと続行します",
+      "body": "メッセージを送信する前に、この Agent Team を再開してください",
       "resume": "再開"
     },
     "toolUseSummary": {

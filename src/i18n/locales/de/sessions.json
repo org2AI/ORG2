@@ -2077,7 +2077,7 @@
       "unreadCount": "{{count}} ungelesen",
       "pauseRun": "Ausführung pausieren",
       "resumeRun": "Ausführung fortsetzen",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "viewCoordinatorHistory": "Coordinator-Chatverlauf anzeigen",
       "taskWindowTruncated": "Es werden die ersten {{visible}} von {{total}} Aufgaben angezeigt. Öffne die Aufgabendetails für vollständige Ergebnisse.",
       "planApproval": {
         "title": "Plan bereit zur Genehmigung",
@@ -2094,17 +2094,18 @@
         "submitFailed": "Die Antwort auf den Plan konnte nicht gespeichert werden. Bitte erneut versuchen"
       },
       "phase": {
-        "coordinating": "Koordiniert",
-        "dispatching": "Verteilt",
+        "coordinating": "Koordination",
+        "dispatching": "Wird verteilt",
         "members_working": "Mitglieder arbeiten",
         "waiting": "Wartet auf Arbeit",
-        "awaiting_plan_approval": "Wartet auf Plan-Genehmigung",
+        "awaiting_plan_approval": "Wartet auf Planfreigabe",
         "finalizing": "Wird abgeschlossen",
         "paused": "Pausiert",
         "failed": "Fehlgeschlagen",
         "starting": "Wird gestartet",
         "idle": "Inaktiv",
-        "archived": "Archiviert"
+        "archived": "Archiviert",
+        "draining": "Pausiert · wird beendet"
       }
     },
     "agentOrgIntervention": {
@@ -2230,7 +2231,7 @@
     "userMessagePending": "{{member}} nimmt deine Nachricht auf",
     "pausedBanner": {
       "title": "Neue Arbeit ist pausiert",
-      "body": "Pausieren stoppt aktive Antworten, sende eine Nachricht oder klicke auf Fortsetzen, um weiterzumachen",
+      "body": "Setze dieses Agent-Team fort, bevor du eine Nachricht sendest",
       "resume": "Fortsetzen"
     },
     "toolUseSummary": {

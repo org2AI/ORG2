@@ -2096,7 +2096,7 @@
       "unreadCount": "{{count}} nieprzeczytanych",
       "pauseRun": "Wstrzymaj wykonanie",
       "resumeRun": "Wznów wykonanie",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "viewCoordinatorHistory": "Pokaż historię czatu koordynatora",
       "taskWindowTruncated": "Wyświetlono pierwsze {{visible}} z {{total}} zadań. Otwórz szczegóły zadania, aby zobaczyć pełne wyniki.",
       "planApproval": {
         "title": "Plan gotowy do zatwierdzenia",
@@ -2114,7 +2114,7 @@
       },
       "phase": {
         "coordinating": "Koordynowanie",
-        "dispatching": "Rozdzielanie",
+        "dispatching": "Przydzielanie",
         "members_working": "Członkowie pracują",
         "waiting": "Oczekiwanie na pracę",
         "awaiting_plan_approval": "Oczekiwanie na zatwierdzenie planu",
@@ -2123,7 +2123,8 @@
         "failed": "Niepowodzenie",
         "starting": "Uruchamianie",
         "idle": "Bezczynny",
-        "archived": "Zarchiwizowano"
+        "archived": "Zarchiwizowano",
+        "draining": "Wstrzymano · kończenie"
       }
     },
     "agentOrgIntervention": {
@@ -2230,7 +2231,7 @@
     "userMessagePending": "{{member}} przejmuje Twoją wiadomość",
     "pausedBanner": {
       "title": "Nowa praca jest wstrzymana",
-      "body": "Pauza zatrzymuje aktywne odpowiedzi, wyślij wiadomość albo kliknij Wznów, aby kontynuować",
+      "body": "Wznów ten zespół agentów przed wysłaniem wiadomości",
       "resume": "Wznów"
     },
     "toolUseSummary": {

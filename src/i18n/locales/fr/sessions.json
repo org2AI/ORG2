@@ -2077,7 +2077,7 @@
       "unreadCount": "{{count}} non lus",
       "pauseRun": "Mettre en pause",
       "resumeRun": "Reprendre l'exécution",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "viewCoordinatorHistory": "Voir l’historique du coordinateur",
       "taskWindowTruncated": "Affichage des {{visible}} premières tâches sur {{total}}. Ouvrez le détail d’une tâche pour les résultats complets.",
       "planApproval": {
         "title": "Plan prêt pour approbation",
@@ -2101,10 +2101,11 @@
         "awaiting_plan_approval": "En attente d’approbation du plan",
         "finalizing": "Finalisation",
         "paused": "En pause",
-        "failed": "Échoué",
+        "failed": "Échec",
         "starting": "Démarrage",
         "idle": "Inactif",
-        "archived": "Archivé"
+        "archived": "Archivé",
+        "draining": "En pause · arrêt en cours"
       }
     },
     "agentOrgIntervention": {
@@ -2230,7 +2231,7 @@
     "userMessagePending": "{{member}} prend en charge votre message",
     "pausedBanner": {
       "title": "Le nouveau travail est en pause",
-      "body": "La pause arrête les réponses actives, envoyez un message ou cliquez sur Reprendre pour continuer",
+      "body": "Reprenez cette équipe d’agents avant d’envoyer un message",
       "resume": "Reprendre"
     },
     "toolUseSummary": {

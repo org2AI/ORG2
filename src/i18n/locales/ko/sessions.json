@@ -2077,7 +2077,7 @@
       "unreadCount": "{{count}} unread",
       "pauseRun": "실행 일시 중지",
       "resumeRun": "실행 재개",
-      "viewCoordinatorHistory": "View coordinator chat history",
+      "viewCoordinatorHistory": "Coordinator 채팅 기록 보기",
       "taskWindowTruncated": "전체 {{total}}개 작업 중 처음 {{visible}}개를 표시합니다. 전체 결과는 작업 세부 정보를 여세요.",
       "planApproval": {
         "title": "승인 대기 중인 계획",
@@ -2094,8 +2094,8 @@
         "submitFailed": "계획 응답을 저장할 수 없습니다. 다시 시도해 주세요"
       },
       "phase": {
-        "coordinating": "조율 중",
-        "dispatching": "배분 중",
+        "coordinating": "조정 중",
+        "dispatching": "배정 중",
         "members_working": "멤버 작업 중",
         "waiting": "작업 대기 중",
         "awaiting_plan_approval": "계획 승인 대기 중",
@@ -2104,7 +2104,8 @@
         "failed": "실패",
         "starting": "시작 중",
         "idle": "대기 중",
-        "archived": "보관됨"
+        "archived": "보관됨",
+        "draining": "일시 중지됨 · 종료 중"
       }
     },
     "agentOrgIntervention": {
@@ -2230,7 +2231,7 @@
     "userMessagePending": "{{member}} is picking up your message",
     "pausedBanner": {
       "title": "New work is paused",
-      "body": "Pause stops active replies, send a message or press Resume to continue",
+      "body": "메시지를 보내기 전에 이 Agent Team을 재개하세요",
       "resume": "Resume"
     },
     "toolUseSummary": {

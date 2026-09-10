@@ -79,4 +79,5 @@ export interface ChatViewComposerSectionProps {
   disableStopWhenEmpty?: boolean;
   followUpSuggestions: ReadonlyArray<SessionFollowUpSuggestion>;
   onFollowUpSuggestionSent: () => void;
+  submitDisabled?: boolean;
 }

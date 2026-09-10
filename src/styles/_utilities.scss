@@ -344,15 +344,15 @@
   --scroll-fade-bottom: var(--scroll-fade-height);
   -webkit-mask-image: linear-gradient(
     to bottom,
-    transparent 0,
-    black var(--scroll-fade-top),
+    transparent var(--scroll-fade-top-inset, 0px),
+    black calc(var(--scroll-fade-top-inset, 0px) + var(--scroll-fade-top)),
     black calc(100% - var(--scroll-fade-bottom)),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
-    transparent 0,
-    black var(--scroll-fade-top),
+    transparent var(--scroll-fade-top-inset, 0px),
+    black calc(var(--scroll-fade-top-inset, 0px) + var(--scroll-fade-top)),
     black calc(100% - var(--scroll-fade-bottom)),
     transparent 100%
   );

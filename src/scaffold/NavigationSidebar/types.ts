@@ -36,6 +36,6 @@ export interface SidebarListProps {
   loadingContent?: ReactNode;
   /** Additional class names */
   className?: string;
-  /** Preserve top padding for sidebars that still need vertical offset. */
-  topPadding?: boolean;
+  /** Use "row" to match the menu's gap-1 spacing across the pinned boundary. */
+  topPadding?: boolean | "row";
 }

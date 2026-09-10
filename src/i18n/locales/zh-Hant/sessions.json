@@ -2085,10 +2085,10 @@
         "awaiting_plan_approval": "等待計畫核准",
         "finalizing": "正在收尾",
         "paused": "已暫停",
-        "completed": "已完成",
         "failed": "失敗",
-        "cancelled": "已取消",
-        "abandoned": "已放棄"
+        "starting": "正在啟動",
+        "idle": "待命",
+        "archived": "已封存"
       }
     },
     "agentOrgIntervention": {
@@ -2109,7 +2109,8 @@
       "cancelled": "已取消",
       "userIntervention": "使用者聊天",
       "noTasks": "無任務"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
     "untitled": "未命名計劃",

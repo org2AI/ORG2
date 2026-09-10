@@ -2085,10 +2085,10 @@
         "awaiting_plan_approval": "Đang chờ phê duyệt kế hoạch",
         "finalizing": "Đang hoàn thiện",
         "paused": "Đã tạm dừng",
-        "completed": "Đã hoàn thành",
         "failed": "Thất bại",
-        "cancelled": "Đã hủy",
-        "abandoned": "Đã bỏ dở"
+        "starting": "Đang bắt đầu",
+        "idle": "Không hoạt động",
+        "archived": "Đã lưu trữ"
       }
     },
     "agentOrgIntervention": {
@@ -2109,7 +2109,8 @@
       "cancelled": "Đã hủy",
       "userIntervention": "Chat người dùng",
       "noTasks": "Không có nhiệm vụ"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
     "untitled": "Kế hoạch chưa đặt tên",

@@ -2085,10 +2085,10 @@
         "awaiting_plan_approval": "Ожидание утверждения плана",
         "finalizing": "Завершение",
         "paused": "Приостановлено",
-        "completed": "Завершено",
         "failed": "Ошибка",
-        "cancelled": "Отменено",
-        "abandoned": "Прервано"
+        "starting": "Запуск",
+        "idle": "Ожидание",
+        "archived": "В архиве"
       }
     },
     "agentOrgIntervention": {
@@ -2109,7 +2109,8 @@
       "cancelled": "Отменено",
       "userIntervention": "Чат с пользователем",
       "noTasks": "Нет задач"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
     "untitled": "План без названия",

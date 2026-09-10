@@ -15,8 +15,7 @@
   "welcome": {
     "title": "Mobile Remote",
     "subtitle": "Control Agents on your desktop",
-    "scanQr": "Scan or paste pairing code",
-    "tryDemo": "Try demo"
+    "scanQr": "Scan or paste pairing code"
   },
   "pairing": {
     "scanCamera": "Scan QR code",

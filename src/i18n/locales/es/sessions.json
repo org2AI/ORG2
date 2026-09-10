@@ -2085,10 +2085,10 @@
         "awaiting_plan_approval": "Esperando aprobación del plan",
         "finalizing": "Finalizando",
         "paused": "En pausa",
-        "completed": "Completado",
         "failed": "Fallido",
-        "cancelled": "Cancelado",
-        "abandoned": "Abandonado"
+        "starting": "Iniciando",
+        "idle": "Inactivo",
+        "archived": "Archivado"
       }
     },
     "agentOrgIntervention": {
@@ -2109,7 +2109,8 @@
       "cancelled": "Cancelado",
       "userIntervention": "Chat usuario",
       "noTasks": "Sin tareas"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
     "untitled": "Plan sin título",

@@ -2085,10 +2085,10 @@
         "awaiting_plan_approval": "計画の承認待ち",
         "finalizing": "最終処理中",
         "paused": "一時停止中",
-        "completed": "完了",
         "failed": "失敗",
-        "cancelled": "キャンセル済み",
-        "abandoned": "放棄"
+        "starting": "開始中",
+        "idle": "待機中",
+        "archived": "アーカイブ済み"
       }
     },
     "agentOrgIntervention": {
@@ -2109,7 +2109,8 @@
       "cancelled": "キャンセル済み",
       "userIntervention": "ユーザーチャット",
       "noTasks": "タスクなし"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
     "untitled": "無題のプラン",

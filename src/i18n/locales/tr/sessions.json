@@ -2085,10 +2085,10 @@
         "awaiting_plan_approval": "Plan onayı bekleniyor",
         "finalizing": "Sonlandırılıyor",
         "paused": "Duraklatıldı",
-        "completed": "Tamamlandı",
         "failed": "Başarısız",
-        "cancelled": "İptal edildi",
-        "abandoned": "Vazgeçildi"
+        "starting": "Başlatılıyor",
+        "idle": "Boşta",
+        "archived": "Arşivlendi"
       }
     },
     "agentOrgIntervention": {
@@ -2109,7 +2109,8 @@
       "cancelled": "İptal edildi",
       "userIntervention": "Kullanıcı sohbeti",
       "noTasks": "Görev yok"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
     "untitled": "Başlıksız plan",

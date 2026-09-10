@@ -2085,10 +2085,10 @@
         "awaiting_plan_approval": "계획 승인 대기 중",
         "finalizing": "마무리 중",
         "paused": "일시 중지됨",
-        "completed": "완료됨",
         "failed": "실패",
-        "cancelled": "취소됨",
-        "abandoned": "중단됨"
+        "starting": "시작 중",
+        "idle": "대기 중",
+        "archived": "보관됨"
       }
     },
     "agentOrgIntervention": {
@@ -2109,7 +2109,8 @@
       "cancelled": "Cancelled",
       "userIntervention": "User chat",
       "noTasks": "No tasks"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
     "untitled": "제목 없는 계획",

@@ -2104,10 +2104,10 @@
         "awaiting_plan_approval": "Oczekiwanie na zatwierdzenie planu",
         "finalizing": "Finalizowanie",
         "paused": "Wstrzymano",
-        "completed": "Ukończono",
         "failed": "Niepowodzenie",
-        "cancelled": "Anulowano",
-        "abandoned": "Porzucono"
+        "starting": "Uruchamianie",
+        "idle": "Bezczynny",
+        "archived": "Zarchiwizowano"
       }
     },
     "agentOrgIntervention": {
@@ -2128,7 +2128,8 @@
       "cancelled": "Anulowano",
       "userIntervention": "Czat użytkownika",
       "noTasks": "Brak zadań"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
     "untitled": "Plan bez tytułu",

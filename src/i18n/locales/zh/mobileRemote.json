@@ -15,8 +15,7 @@
   "welcome": {
     "title": "Mobile Remote",
     "subtitle": "遥控你电脑上的 Agent",
-    "scanQr": "扫描或粘贴配对码",
-    "tryDemo": "体验演示"
+    "scanQr": "扫描或粘贴配对码"
   },
   "pairing": {
     "scanCamera": "扫描二维码",
@@ -174,7 +173,7 @@
     "retry": "重试加载"
   },
   "rounds": {
-    "incomplete": "较早的轮次尚未加载",
+    "incomplete": "未加载更早的轮次",
     "truncated": "对话记录已截断",
     "navigationLabel": "轮次导航"
   }

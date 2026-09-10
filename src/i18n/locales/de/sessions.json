@@ -2085,10 +2085,10 @@
         "awaiting_plan_approval": "Wartet auf Plan-Genehmigung",
         "finalizing": "Wird abgeschlossen",
         "paused": "Pausiert",
-        "completed": "Abgeschlossen",
         "failed": "Fehlgeschlagen",
-        "cancelled": "Abgebrochen",
-        "abandoned": "Aufgegeben"
+        "starting": "Wird gestartet",
+        "idle": "Inaktiv",
+        "archived": "Archiviert"
       }
     },
     "agentOrgIntervention": {
@@ -2109,7 +2109,8 @@
       "cancelled": "Abgebrochen",
       "userIntervention": "Nutzerchat",
       "noTasks": "Keine Aufgaben"
-    }
+    },
+    "agentOrgInbox": {}
   },
   "planDoc": {
     "untitled": "Unbenannter Plan",

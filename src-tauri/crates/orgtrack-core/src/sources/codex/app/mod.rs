@@ -37,7 +37,8 @@ pub(crate) use normalize::normalize_codex_tool_calls;
 pub use transcript::{
     load_codex_app_from_path, load_codex_app_initial_window_from_path,
     load_codex_app_mobile_tail_window_from_path, load_codex_app_turn_from_path,
-    load_codex_app_window_turn_from_path, CodexAppInitialWindow, CodexAppTurnWindow,
+    load_codex_app_window_turn_from_path, visit_codex_app_from_path, CodexAppInitialWindow,
+    CodexAppTurnWindow,
 };
 
 // Internal re-exports so the sibling `app_tests.rs` (`use super::*`) resolves.

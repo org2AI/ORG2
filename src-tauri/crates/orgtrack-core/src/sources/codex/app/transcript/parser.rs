@@ -5,13 +5,13 @@ use std::path::Path;
 use core_types::activity::ActivityChunk;
 use serde_json::{json, Value};
 
-use crate::projectors::turn_metadata::ProjectedTurnMetadata;
 use crate::sources::imported_history::{self, ImportedToolCall};
 
 use super::super::desktop_exec::codex_tool_output_text;
 use super::super::CodexJsonlLine;
-use super::cache::CodexTurnOffset;
-use super::collector::{CodexTranscriptCollectionMode, CodexTranscriptCollector};
+use super::collector::{
+    CodexTranscriptCollectionMode, CodexTranscriptCollector, CodexTranscriptLoad,
+};
 use super::messages::{
     content_text_from_payload, injected_user_message_chunk_from_response_message,
     reasoning_text_from_payload, strip_ignored_embedded_images,
@@ -25,12 +25,6 @@ use super::tool_calls::{
     web_search_call_from_payload, PendingBackgroundToolCall,
 };
 use super::{CODEX_PROVIDER_SLUG, NATIVE_SOURCE_EVENT_ID_ARG, NATIVE_SOURCE_EVENT_ID_PREFIX};
-
-type CodexTranscriptLoad = (
-    Vec<ActivityChunk>,
-    Vec<ProjectedTurnMetadata>,
-    Vec<CodexTurnOffset>,
-);
 
 #[derive(Debug)]
 struct PendingCompactionMirror {
@@ -322,7 +316,7 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                     }
                     let user_sequence = sequence;
                     sequence += 1;
-                    if collector.start_turn(user_chunk) {
+                    if collector.start_turn(user_chunk)? {
                         break;
                     }
                     collector.record_turn_offset(
@@ -400,7 +394,7 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                         attach_native_source_event_id(&mut user_chunk, &parsed.payload);
                         let user_sequence = sequence;
                         sequence += 1;
-                        if collector.start_turn(user_chunk) {
+                        if collector.start_turn(user_chunk)? {
                             break;
                         }
                         collector.record_turn_offset(
@@ -633,7 +627,7 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
         }
     }
 
-    Ok(collector.finish())
+    collector.finish()
 }
 
 fn codex_context_compacted_chunk(

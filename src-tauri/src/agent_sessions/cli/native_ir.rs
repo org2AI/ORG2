@@ -271,8 +271,19 @@ fn agent_message_images(message: &Value) -> Vec<String> {
 /// portable role/tool IR accepted by the materializer. Native lifecycle,
 /// usage, reasoning, and compact markers deliberately stay outside this
 /// projection; compaction remains owned by the live target provider.
+#[cfg(test)]
 pub(super) fn native_items_from_chunks(chunks: &[ActivityChunk]) -> Vec<NativeConversationItem> {
     let mut items = Vec::new();
+    append_native_items_from_chunks(&mut items, chunks);
+    items
+}
+
+/// Preserve projection state across streamed turns, especially compact summaries
+/// which replace the accumulated model context from all preceding turns.
+pub(super) fn append_native_items_from_chunks(
+    items: &mut Vec<NativeConversationItem>,
+    chunks: &[ActivityChunk],
+) {
     for chunk in chunks {
         match chunk.function.as_str() {
             "context_compacted" => {
@@ -378,7 +389,6 @@ pub(super) fn native_items_from_chunks(chunks: &[ActivityChunk]) -> Vec<NativeCo
             _ => {}
         }
     }
-    items
 }
 
 pub(super) fn native_items_from_agent_history(history: &[Value]) -> Vec<NativeConversationItem> {

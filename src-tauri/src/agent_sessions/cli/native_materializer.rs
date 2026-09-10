@@ -24,13 +24,13 @@ use sha2::{Digest, Sha256};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-#[cfg(test)]
-use super::native_ir::native_item_semantically_equal;
 pub use super::native_ir::NativeConversationItem;
 use super::native_ir::{
-    native_items_from_agent_history, native_items_from_chunks, provider_portable_append_suffix,
-    validate_items, MAX_ITEMS,
+    append_native_items_from_chunks, native_items_from_agent_history,
+    provider_portable_append_suffix, validate_items, MAX_ITEMS,
 };
+#[cfg(test)]
+use super::native_ir::{native_item_semantically_equal, native_items_from_chunks};
 use super::native_store::{
     append_suffix_atomically, copy_file_atomically, lock_claude_transcript,
     native_transcript_revision, replace_file_link_atomically, write_file_atomically,
@@ -217,9 +217,9 @@ fn authoritative_native_items(session_id: &str) -> Result<Vec<NativeConversation
         let native_id = persistence::get_cli_session_id_for_account(session_id, account_id)
             .map_err(|error| format!("read native binding for {session_id}: {error}"))?
             .ok_or_else(|| format!("CLI session {session_id} has no native resume binding"))?;
-        let chunks = load_materialized_cli_transcript(&session, &native_id)?
+        let (provider, path) = materialized_cli_transcript_path(&session, &native_id)?
             .ok_or_else(|| format!("provider-native transcript {native_id} was not found"))?;
-        Ok(native_items_from_chunks(&chunks))
+        native_items_from_provider_path(session_id, &provider, &path)
     } else {
         let history = agent_core::session::persistence::load_llm_history(session_id)
             .map_err(|error| format!("load native Agent transcript {session_id}: {error}"))?;
@@ -760,6 +760,38 @@ pub(crate) fn native_app_transcript_path(
         return Ok(None);
     };
     Ok(paths.native_path.is_file().then_some(paths.native_path))
+}
+
+fn native_items_from_provider_path(
+    session_id: &str,
+    provider: &str,
+    path: &Path,
+) -> Result<Vec<NativeConversationItem>, String> {
+    let before = native_transcript_revision(path)?;
+    let mut items = Vec::new();
+    let mut append = |chunks: Vec<ActivityChunk>| {
+        append_native_items_from_chunks(&mut items, &chunks);
+        Ok(())
+    };
+    match provider {
+        "claude_code" => {
+            orgtrack_core::sources::claude_code::history::visit_claude_code_history_from_path(
+                session_id,
+                path,
+                &mut append,
+            )?
+        }
+        "codex" => orgtrack_core::sources::codex::app::visit_codex_app_from_path(
+            session_id,
+            path,
+            &mut append,
+        )?,
+        _ => return Err(format!("Unsupported native provider: {provider}")),
+    }
+    if native_transcript_revision(path)? != before {
+        return Err("Native transcript changed while reading; retry the operation".into());
+    }
+    Ok(items)
 }
 
 pub(super) fn load_materialized_cli_transcript(
@@ -2566,11 +2598,8 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
                 // Old Claude versions and profile repairs may not publish an
                 // index entry. This fallback stays outside the turn/identity
                 // boundary so a large JSONL cannot delay the footer.
-                let chunks = orgtrack_core::sources::claude_code::history::load_claude_code_history_from_path(
-                    &session_id,
-                    &native_path,
-                )?;
-                let items = native_items_from_chunks(&chunks);
+                let items =
+                    native_items_from_provider_path(&session_id, "claude_code", &native_path)?;
                 publish_claude_project_index(&cwd, &native_id, &items, branch.as_deref())?;
                 parsed_items = Some(items);
             }
@@ -2588,11 +2617,7 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
                 let items = match parsed_items {
                     Some(items) => items,
                     None => {
-                        let chunks = orgtrack_core::sources::claude_code::history::load_claude_code_history_from_path(
-                            &session_id,
-                            &native_path,
-                        )?;
-                        native_items_from_chunks(&chunks)
+                        native_items_from_provider_path(&session_id, "claude_code", &native_path)?
                     }
                 };
                 let session = persistence::get_session(&session_id)
@@ -2904,7 +2929,7 @@ fn synchronize_native_conversation_blocking(
             return materialize_cli(session_id, complete_items);
         }
         if let Some(native_id) = native_id.as_deref() {
-            if load_materialized_cli_transcript(&session, native_id)?.is_none() {
+            if materialized_cli_transcript_path(&session, native_id)?.is_none() {
                 // The resume row doubles as the materialization intent. A
                 // missing artifact means the process died before publication;
                 // clear that incomplete intent and replay through the ordinary
@@ -3358,7 +3383,16 @@ mod tests {
         after.chunk_id = "after".to_string();
         after.result = json!({"content": "continue"});
 
-        let items = native_items_from_chunks(&[before, compact, after]);
+        let chunks = [before, compact, after];
+        let items = native_items_from_chunks(&chunks);
+        let mut incremental = Vec::new();
+        for chunk in &chunks {
+            append_native_items_from_chunks(&mut incremental, std::slice::from_ref(chunk));
+        }
+        assert_eq!(
+            serde_json::to_value(&items).unwrap(),
+            serde_json::to_value(incremental).unwrap()
+        );
         assert_eq!(items.len(), 2);
         assert!(matches!(
             &items[0],

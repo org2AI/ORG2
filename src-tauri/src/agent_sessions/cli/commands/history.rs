@@ -19,10 +19,7 @@ pub enum CliHistoryRead {
     },
 }
 
-fn native_window_chunks(
-    session_id: &str,
-    read: &CliHistoryRead,
-) -> Result<Option<Vec<ActivityChunk>>, String> {
+fn native_history_path(session_id: &str) -> Result<Option<(String, std::path::PathBuf)>, String> {
     use super::super::{native_materializer, native_transcript, persistence};
     use orgtrack_core::sources::{claude_code::history as claude, codex::app as codex};
 
@@ -52,6 +49,17 @@ fn native_window_chunks(
                 (provider.to_string(), path)
             }
         };
+    Ok(Some((provider, path)))
+}
+
+fn native_window_chunks(
+    session_id: &str,
+    read: &CliHistoryRead,
+) -> Result<Option<Vec<ActivityChunk>>, String> {
+    use orgtrack_core::sources::{claude_code::history as claude, codex::app as codex};
+    let Some((provider, path)) = native_history_path(session_id)? else {
+        return Ok(None);
+    };
     let chunks = match (provider.as_str(), read) {
         ("claude_code", CliHistoryRead::Preview) => {
             claude::load_claude_code_initial_window_from_path(session_id, &path, 1)?.chunks
@@ -103,6 +111,14 @@ fn normalize_history(chunks: Vec<ActivityChunk>, session_id: &str) -> Vec<Sessio
 }
 
 fn read_history(session_id: &str, read: &CliHistoryRead) -> Result<Vec<SessionEvent>, String> {
+    if matches!(read, CliHistoryRead::Full) {
+        let mut output = Vec::new();
+        visit_cli_history(session_id, &mut |events| {
+            output.extend(events);
+            Ok(())
+        })?;
+        return Ok(output);
+    }
     let chunks = match read {
         CliHistoryRead::Full => super::transcript::load_session_chunks(session_id)?,
         _ => match native_window_chunks(session_id, read)? {
@@ -117,9 +133,34 @@ fn read_history(session_id: &str, read: &CliHistoryRead) -> Result<Vec<SessionEv
     Ok(normalize_history(chunks, session_id))
 }
 
-/// Canonical replay for non-Chat consumers. Never reads the mounted window.
-pub(crate) fn load_full_cli_history(session_id: &str) -> Result<Vec<SessionEvent>, String> {
-    read_history(session_id, &CliHistoryRead::Full)
+/// Visit complete canonical history without retaining completed native turns.
+/// The sink owns persistence/output; an error aborts parsing immediately.
+pub(crate) fn visit_cli_history(
+    session_id: &str,
+    visit: &mut dyn FnMut(Vec<SessionEvent>) -> Result<(), String>,
+) -> Result<(), String> {
+    use orgtrack_core::sources::{claude_code::history as claude, codex::app as codex};
+    // Preserve the canonical resolver's legacy/unbound fallback and missing-
+    // artifact errors. A failed window lookup is not evidence of empty history.
+    if let Ok(Some((provider, path))) = native_history_path(session_id) {
+        let mut normalize = |chunks| visit(normalize_history(chunks, session_id));
+        let before = super::super::native_store::native_transcript_revision(&path)?;
+        match provider.as_str() {
+            "codex" => codex::visit_codex_app_from_path(session_id, &path, &mut normalize)?,
+            "claude_code" => {
+                claude::visit_claude_code_history_from_path(session_id, &path, &mut normalize)?
+            }
+            _ => return Err("Unsupported native visitor".into()),
+        }
+        if super::super::native_store::native_transcript_revision(&path)? != before {
+            return Err("Native transcript changed while reading; retry the operation".into());
+        }
+        return Ok(());
+    }
+    visit(normalize_history(
+        super::transcript::load_session_chunks(session_id)?,
+        session_id,
+    ))
 }
 
 #[tauri::command]
@@ -150,7 +191,21 @@ mod tests {
         check_managed_native_history(4096);
     }
 
+    #[test]
+    #[ignore = "explicit streaming-only resource acceptance"]
+    fn managed_native_streaming_export_resource_acceptance() {
+        let turns = std::env::var("ORG2_EXPORT_TEST_TURNS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(4096);
+        check_managed_native_history_impl(turns, true);
+    }
+
     fn check_managed_native_history(turn_count: i64) {
+        check_managed_native_history_impl(turn_count, false);
+    }
+
+    fn check_managed_native_history_impl(turn_count: i64, streaming_only: bool) {
         let last_tail = format!("tail-{}", turn_count - 1);
         let sandbox = crate::test_utils::test_env::sandbox();
         let cwd = fs::canonicalize(sandbox.path()).unwrap();
@@ -194,6 +249,11 @@ mod tests {
                     .join(slug)
                     .join(format!("{native_id}.jsonl"))
             };
+            assert_eq!(
+                read_history(&sid, &CliHistoryRead::Full).is_err(),
+                super::super::transcript::load_session_chunks(&sid).is_err(),
+                "{provider}: missing-artifact behavior must remain unchanged"
+            );
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             let mut file = fs::File::create(&path).unwrap();
             if provider == "codex" {
@@ -228,12 +288,106 @@ mod tests {
                 }
             }
             drop(file);
+            if streaming_only {
+                let mode = std::env::var("ORG2_EXPORT_TEST_MODE").unwrap_or_default();
+                eprintln!("RESOURCE_MODE={mode:?} PROVIDER={provider} TURNS={turn_count}");
+                if mode == "full" || mode == "baseline" {
+                    let events = if mode == "baseline" {
+                        normalize_history(
+                            super::super::transcript::load_session_chunks(&sid).unwrap(),
+                            &sid,
+                        )
+                    } else {
+                        read_history(&sid, &CliHistoryRead::Full).unwrap()
+                    };
+                    assert_eq!(events.len() as i64, turn_count * 2);
+                    assert!(events.last().unwrap().display_text.ends_with(&last_tail));
+                    continue;
+                }
+                let destination = path.with_extension("md");
+                crate::agent_sessions::event_pipeline::commands::export_markdown_output(
+                    &sid,
+                    vec![],
+                    Some(destination.to_string_lossy().into_owned()),
+                )
+                .unwrap();
+                use std::io::BufRead;
+                let reader = std::io::BufReader::new(fs::File::open(&destination).unwrap());
+                let mut users = 0;
+                let mut assistants = 0;
+                for line in reader.lines() {
+                    let line = line.unwrap();
+                    if line.starts_with("question-") {
+                        assert_eq!(line, format!("question-{users}"));
+                        users += 1;
+                    } else if line.starts_with("answer-") {
+                        assert_eq!(
+                            line,
+                            format!(
+                                "answer-{assistants}:{}:tail-{assistants}",
+                                "x".repeat(16 * 1024)
+                            )
+                        );
+                        assistants += 1;
+                    }
+                }
+                assert_eq!(users, turn_count);
+                assert_eq!(assistants, turn_count);
+                continue;
+            }
             // Exercise the production managed binding, path resolver and IPC
             // result producer, without discovery/cache rows for the raw file.
             let preview = read_history(&sid, &CliHistoryRead::Preview).unwrap();
             let full = read_history(&sid, &CliHistoryRead::Full).unwrap();
+            let baseline = normalize_history(
+                super::super::transcript::load_session_chunks(&sid).unwrap(),
+                &sid,
+            );
+            assert_eq!(
+                serde_json::to_value(&full).unwrap(),
+                serde_json::to_value(&baseline).unwrap()
+            );
+            drop(baseline);
+
             let preview_json = serde_json::to_string(&preview).unwrap();
             let full_json = serde_json::to_string(&full).unwrap();
+            let mut streamed = Vec::new();
+            let mut largest_batch = 0;
+            visit_cli_history(&sid, &mut |events| {
+                largest_batch = largest_batch.max(events.len());
+                streamed.extend(events);
+                Ok(())
+            })
+            .unwrap();
+            assert!(
+                largest_batch <= 2,
+                "{provider}: parser retained completed turns"
+            );
+            assert_eq!(
+                serde_json::to_value(&streamed).unwrap(),
+                serde_json::to_value(&full).unwrap()
+            );
+            let mut calls = 0;
+            let error = visit_cli_history(&sid, &mut |_| {
+                calls += 1;
+                Err("export sink closed".into())
+            })
+            .unwrap_err();
+            assert_eq!(calls, 1);
+            assert_eq!(error, "export sink closed");
+            drop(streamed);
+            let mut changed = false;
+            let error = visit_cli_history(&sid, &mut |_| {
+                if !changed {
+                    let mut source = fs::OpenOptions::new().append(true).open(&path).unwrap();
+                    writeln!(source).unwrap();
+                    changed = true;
+                }
+                Ok(())
+            })
+            .unwrap_err();
+            assert!(error.contains("changed while reading"));
+
             assert!(
                 preview_json.len() < full_json.len() / 8,
                 "{provider}: preview must not ship every body"
@@ -259,9 +413,14 @@ mod tests {
             fs::rename(&path, &held).unwrap();
             fs::create_dir(&path).unwrap();
             let old_export = fs::read(&export_path).unwrap();
-            assert!(crate::agent_sessions::event_pipeline::commands::export_markdown_output(
-                &sid, Vec::new(), Some(export_path.to_string_lossy().into_owned()),
-            ).is_err());
+            assert!(
+                crate::agent_sessions::event_pipeline::commands::export_markdown_output(
+                    &sid,
+                    Vec::new(),
+                    Some(export_path.to_string_lossy().into_owned()),
+                )
+                .is_err()
+            );
             assert_eq!(fs::read(&export_path).unwrap(), old_export);
             fs::remove_dir(&path).unwrap();
             fs::rename(held, &path).unwrap();
@@ -280,7 +439,10 @@ mod tests {
                 );
                 assert!(markdown.contains(&last_tail));
                 assert_eq!(markdown.matches("**User**").count(), turn_count as usize);
-                assert_eq!(markdown.matches("**Assistant**").count(), turn_count as usize);
+                assert_eq!(
+                    markdown.matches("**Assistant**").count(),
+                    turn_count as usize
+                );
             }
 
             let turn_id = preview

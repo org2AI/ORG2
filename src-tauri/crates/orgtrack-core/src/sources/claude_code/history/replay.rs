@@ -37,6 +37,38 @@ pub(super) fn load_claude_code_history_from_reader<R: BufRead>(
     start_sequence: usize,
     forced_first_user_id: Option<&str>,
 ) -> Result<Vec<ActivityChunk>, String> {
+    let mut output = Vec::new();
+    visit_claude_code_history_from_reader(
+        session_id,
+        reader,
+        start_sequence,
+        forced_first_user_id,
+        &mut |chunks| {
+            output.extend(chunks);
+            Ok(())
+        },
+    )?;
+    Ok(output)
+}
+
+/// Visit canonical turns with only the current turn and pending calls resident.
+pub fn visit_claude_code_history_from_path(
+    session_id: &str,
+    path: &Path,
+    visit: &mut dyn FnMut(Vec<ActivityChunk>) -> Result<(), String>,
+) -> Result<(), String> {
+    let file = fs::File::open(path)
+        .map_err(|err| format!("Failed to open Claude history {}: {err}", path.display()))?;
+    visit_claude_code_history_from_reader(session_id, BufReader::new(file), 0, None, visit)
+}
+
+fn visit_claude_code_history_from_reader<R: BufRead>(
+    session_id: &str,
+    reader: R,
+    start_sequence: usize,
+    forced_first_user_id: Option<&str>,
+    visit: &mut dyn FnMut(Vec<ActivityChunk>) -> Result<(), String>,
+) -> Result<(), String> {
     let mut chunks = Vec::new();
     let mut pending_tool_calls: imported_history::PendingCallMap<ImportedToolCall> =
         imported_history::PendingCallMap::new();
@@ -154,6 +186,9 @@ pub(super) fn load_claude_code_history_from_reader<R: BufRead>(
                         .unwrap_or_default();
                     let images = claude_content_image_data_urls(&message.content);
                     if !harness_injected && (!text.trim().is_empty() || !images.is_empty()) {
+                        if !chunks.is_empty() {
+                            visit(std::mem::take(&mut chunks))?;
+                        }
                         let mut chunk = imported_history::user_message_chunk(
                             session_id,
                             CLAUDE_CODE_PROVIDER_SLUG,
@@ -233,7 +268,10 @@ pub(super) fn load_claude_code_history_from_reader<R: BufRead>(
         sequence += 1;
     }
 
-    Ok(chunks)
+    if !chunks.is_empty() {
+        visit(chunks)?;
+    }
+    Ok(())
 }
 
 fn claude_context_compacted_chunk(

@@ -44,6 +44,23 @@ pub struct CodexAppTurnWindow {
     pub loaded_event_count: usize,
 }
 
+/// Visit canonical turns without retaining the complete transcript body.
+/// Uses the same parser (including mirrors and tool pairing) as full replay.
+pub fn visit_codex_app_from_path(
+    session_id: &str,
+    path: &Path,
+    visit: &mut dyn FnMut(Vec<ActivityChunk>) -> Result<(), String>,
+) -> Result<(), String> {
+    parse_codex_app_from_path_with_mode(
+        session_id,
+        path,
+        CodexTranscriptCollectionMode::Visit(visit),
+        0,
+        0,
+    )?;
+    Ok(())
+}
+
 pub fn load_codex_app_from_path(
     session_id: &str,
     path: &Path,

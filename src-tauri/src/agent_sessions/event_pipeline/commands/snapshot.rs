@@ -94,12 +94,20 @@ pub(crate) fn export_session_markdown(
     cached: Vec<SessionEvent>,
     writer: &mut impl std::io::Write,
 ) -> Result<(), String> {
-    let events = if session_id.starts_with("cliagent-") {
-        crate::agent_sessions::cli::commands::load_full_cli_history(session_id)?
+    if session_id.starts_with("cliagent-") {
+        crate::agent_sessions::cli::commands::visit_cli_history(session_id, &mut |events| {
+            write_markdown_events(&events, writer)
+        })
     } else {
-        cached
-    };
-    for event in &events {
+        write_markdown_events(&cached, writer)
+    }
+}
+
+fn write_markdown_events(
+    events: &[SessionEvent],
+    writer: &mut impl std::io::Write,
+) -> Result<(), String> {
+    for event in events {
         let text = event.display_text.trim();
         if text.is_empty() {
             continue;

@@ -11,8 +11,15 @@ use super::cache::{
     CODEX_TURN_OFFSET_LIMIT_PER_SESSION,
 };
 
+pub(super) type CodexTranscriptLoad = (
+    Vec<ActivityChunk>,
+    Vec<ProjectedTurnMetadata>,
+    Vec<CodexTurnOffset>,
+);
+
 pub(super) enum CodexTranscriptCollectionMode<'a> {
     Full,
+    Visit(&'a mut dyn FnMut(Vec<ActivityChunk>) -> Result<(), String>),
     Initial { recent_turn_count: usize },
     Turn { turn_id: &'a str },
     FirstTurn,
@@ -67,29 +74,35 @@ impl<'a> CodexTranscriptCollector<'a> {
         });
     }
 
-    pub(super) fn start_turn(&mut self, user_chunk: ActivityChunk) -> bool {
+    pub(super) fn start_turn(&mut self, user_chunk: ActivityChunk) -> Result<bool, String> {
         if self.current.iter().any(is_codex_user_chunk) {
-            self.finish_current(Some(user_chunk.chunk_id.clone()));
+            self.finish_current(Some(user_chunk.chunk_id.clone()))?;
             if self.selected_turn_found {
-                return true;
+                return Ok(true);
             }
         }
         self.current.push(user_chunk);
-        false
+        Ok(false)
     }
 
-    fn finish_current(&mut self, next_turn_id: Option<String>) {
+    fn finish_current(&mut self, next_turn_id: Option<String>) -> Result<(), String> {
+        if let CodexTranscriptCollectionMode::Visit(visit) = &mut self.mode {
+            if !self.current.is_empty() {
+                visit(std::mem::take(&mut self.current))?;
+            }
+            return Ok(());
+        }
         let Some(user_chunk) = self.current.iter().find(|chunk| is_codex_user_chunk(chunk)) else {
             if matches!(self.mode, CodexTranscriptCollectionMode::Full) {
                 self.output.append(&mut self.current);
             }
-            return;
+            return Ok(());
         };
         let turn_id = user_chunk.chunk_id.clone();
         match &self.mode {
             CodexTranscriptCollectionMode::Full => {
                 self.output.append(&mut self.current);
-                return;
+                return Ok(());
             }
             CodexTranscriptCollectionMode::Turn {
                 turn_id: requested_turn_id,
@@ -100,13 +113,14 @@ impl<'a> CodexTranscriptCollector<'a> {
                 } else {
                     self.current.clear();
                 }
-                return;
+                return Ok(());
             }
             CodexTranscriptCollectionMode::FirstTurn => {
                 self.output.append(&mut self.current);
                 self.selected_turn_found = true;
-                return;
+                return Ok(());
             }
+            CodexTranscriptCollectionMode::Visit(_) => unreachable!("visitor returned above"),
             CodexTranscriptCollectionMode::Initial { .. } => {}
         }
 
@@ -148,6 +162,7 @@ impl<'a> CodexTranscriptCollector<'a> {
                 self.compact_completed_turn(completed);
             }
         }
+        Ok(())
     }
 
     fn compact_completed_turn(&mut self, completed: CompletedCodexTurn) {
@@ -178,25 +193,19 @@ impl<'a> CodexTranscriptCollector<'a> {
         }
     }
 
-    pub(super) fn finish(
-        mut self,
-    ) -> (
-        Vec<ActivityChunk>,
-        Vec<ProjectedTurnMetadata>,
-        Vec<CodexTurnOffset>,
-    ) {
-        self.finish_current(None);
+    pub(super) fn finish(mut self) -> Result<CodexTranscriptLoad, String> {
+        self.finish_current(None)?;
         while let Some(compacted) = self.compacted.pop_front() {
             self.output.extend(compacted);
         }
         while let Some(completed) = self.recent.pop_front() {
             self.output.extend(completed.chunks);
         }
-        (
+        Ok((
             self.output,
             self.turns.into_iter().collect(),
             self.turn_offsets.into_iter().collect(),
-        )
+        ))
     }
 }
 

@@ -1834,3 +1834,78 @@ fn transcript_without_entrypoint_has_no_client_origin() {
 
     std::fs::remove_dir_all(&temp_dir).expect("remove temp dir");
 }
+
+#[test]
+fn raw_new_uuid_continuation_preserves_ancestry_after_first_user_rewrite() {
+    use serde_json::json;
+    let directory =
+        std::env::temp_dir().join(format!("orgii-raw-continuation-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let mut conn = Connection::open_in_memory().unwrap();
+    crate::store::sqlite::SqliteRecordStore::init_tables(&conn).unwrap();
+    crate::store::sqlite::SqliteRecordStore::init_source_cache_tables(&conn).unwrap();
+    let old_id = "10000000-0000-4000-8000-000000000001";
+    let new_id = "10000000-0000-4000-8000-000000000002";
+    for (index, id, first) in [
+        (0, old_id, "old-first-user"),
+        (1, new_id, "rewritten-first-user"),
+    ] {
+        let path = directory.join(format!("{id}.jsonl"));
+        let timestamp = format!("2026-09-09T10:0{index}:00Z");
+        let rows = [
+            json!({"type":"user","uuid":first,"sessionId":id,"cwd":"/tmp/continuation-project","timestamp":timestamp,"message":{"role":"user","content":format!("question-{index}")}}),
+            json!({"type":"system","subtype":"compact_boundary","uuid":"preserved-compact-ancestry","sessionId":id,"timestamp":timestamp}),
+            json!({"type":"user","uuid":format!("summary-{index}"),"isCompactSummary":true,"sessionId":id,"timestamp":timestamp,"message":{"role":"user","content":"provider summary"}}),
+            json!({"type":"assistant","uuid":format!("answer-{index}"),"sessionId":id,"timestamp":timestamp,"message":{"role":"assistant","content":[{"type":"text","text":format!("continuation-answer-{index}")}]}}),
+        ];
+        std::fs::write(
+            &path,
+            rows.iter()
+                .map(|row| format!("{row}\n"))
+                .collect::<String>(),
+        )
+        .unwrap();
+        let (mtime, bytes) = imported_paths::file_metadata_signature(&path, "Claude").unwrap();
+        let record = ImportedHistoryDiscoveredRecord {
+            source_session_id: id.into(),
+            source_path: path.clone(),
+            source_record_key: id.into(),
+            source_mtime_ms: mtime,
+            source_size_bytes: bytes,
+            source_fingerprint: String::new(),
+            parser_version: CLAUDE_CODE_METADATA_PARSER_VERSION,
+        };
+        let meta = parse_claude_session_meta(&record).unwrap().unwrap();
+        let input = session_meta_to_cache_input(meta);
+        imported_cache::upsert_imported_session_cache_from_conn(&mut conn, &[input]).unwrap();
+        imported_cache::demote_superseded_continuations_from_conn(&conn, SOURCE_CLAUDE_CODE)
+            .unwrap();
+        let full = load_claude_code_history_from_path(id, &path).unwrap();
+        let mut visited = Vec::new();
+        visit_claude_code_history_from_path(id, &path, &mut |chunks| {
+            visited.extend(chunks);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            serde_json::to_value(full).unwrap(),
+            serde_json::to_value(visited).unwrap()
+        );
+    }
+    for _ in 0..2 {
+        imported_cache::demote_superseded_continuations_from_conn(&conn, SOURCE_CLAUDE_CODE)
+            .unwrap();
+        let listable: Vec<String> = conn.prepare("SELECT source_session_id FROM imported_history_session_cache WHERE listable = 1 ORDER BY source_session_id").unwrap()
+            .query_map([], |row| row.get(0)).unwrap().collect::<Result<_,_>>().unwrap();
+        assert_eq!(listable, vec![new_id]);
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM imported_history_session_cache",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 2, "superseded history must remain readable");
+    }
+    std::fs::remove_dir_all(directory).unwrap();
+}

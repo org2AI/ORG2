@@ -77,7 +77,7 @@ The frontend log independently records all 20 Reload pipelines. Latest user/assi
 
 ## Limits and rollback
 
-- Full canonical continuation, export and execution-child prefix validation still read complete history; this acceptance does not certify their resource ceiling.
+- The original pressure run did not certify full-history continuation/export resources. The streaming follow-up below supersedes this limitation for the managed native reader, file export and native item projection; complete-output compatibility APIs still retain their final result.
 - Windows retain a recent complete turn, so this is not a hard byte limit for an arbitrarily huge single turn. The existing 8000-event UI cap remains; native history is not deleted by it.
 - Initial discovery/indexing can scan provider files. Polling is eventual, not a push bridge from the native App.
 - macOS rendered verification does not establish Windows/Linux rendered behavior or physical dual-machine behavior. Authenticated native App generation was not repeated with these synthetic, signed-out performance fixtures.
@@ -114,9 +114,9 @@ Both changes directly protect the native window hydration introduced by this PR.
 
 The rebuilt signed isolated package exported unopened large sessions through the real Sidebar menu and native Save panel. Claude produced 70,792,246 bytes with 4160 user and 4160 assistant turns; Codex produced 69,679,021 bytes with 4097 user and 4097 assistant turns. Each complete Markdown file matched the expected formatting of **every** source user/assistant text, in order, byte for byte. This verifies full bodies rather than only first/last markers. The initial old-package Save-panel attempts did not produce files and are not counted as successful exports; the rebuilt-package native actions succeeded.
 
-The new optional export destination is an IPC addition, not a persistence migration. Frontend/backend must ship together to avoid an older backend ignoring the destination. Rollback remains a paired bundle revert. Canonical event decoding still allocates the complete history in Rust; this removes the large output IPC copies but is not a streaming parser or a hard byte ceiling.
+The new optional export destination is an IPC addition, not a persistence migration. Frontend/backend must ship together to avoid an older backend ignoring the destination. Rollback remains a paired bundle revert. At that earlier acceptance point canonical decoding still allocated the complete Rust history. The streaming follow-up below replaces that intermediate retention; this remains distinct from a hard byte ceiling.
 
-Physical dual-machine verification remains unavailable without a second connected machine. Same-path faithful native compaction/rewrite fixtures do not certify a real vendor-generated continuation sibling with a new native UUID, nor remote cloud delivery or revocation. No such coverage is inferred from the local tests.
+The requested topology is the normal primary plus Instance 2 on one Mac, with distinct homes, provider roots, accounts and ports. It does not require another physical computer. Same-path fixtures do not by themselves certify vendor-generated new UUID continuation or remote rendering; the streaming follow-up records those boundaries separately.
 
 ### Rendered raw-transition matrix and changed-catalog cost
 
@@ -141,3 +141,59 @@ The complete export observation phases sampled at most 1109.63 MiB across the fo
 Additional source ownership review covered the authoritative reader, EventStore boundary, background execution and IPC payload. No UI layout, domain schema, account identity format or cloud transport changes were made. Frontend targeted suite now passes 249 tests; the latest backend session suite passes 851 with 5 explicitly ignored tests, including the resource test run separately. The destination-preservation assertion was added after the first timed large-test sample and passed its targeted rerun; production code was unchanged by that test-only addition.
 
 The final cooldown plus quit-interaction phase lasted 134.58 seconds, averaged 1.59% CPU, and ended at 1077.90 MiB summed footprint (sampled peak 1234.30 MiB) across three opened Chat tabs. Normal UI quit released all four attributed processes. The independent user instance stayed running. Only the isolated 1 MiB raw fixtures were restored from their local backups after exit; real provider history and cloud data were untouched.
+
+## Streaming canonical-history follow-up
+
+The provider JSONL is authoritative. The remaining amplification originated in the full reader: complete raw chunks, normalized events and final output coexisted. Both canonical parsers now expose turn visitors. Managed file export normalizes and writes each emitted batch to the existing atomic temporary destination. Managed full-history RPC collects only the required final event array. Native context materialization and Claude catalog fallback also project batches into their required final item array, preserving accumulated compaction state. The existence-only synchronization precheck no longer parses the entire file before parsing it again for validation.
+
+No timer, subscription, cache, migration or credential format was added. Account-bound path resolution and legacy fallback errors remain unchanged. Sink errors abort immediately; a before/after source revision guard rejects a changing transcript before a partial export can replace the destination. Complete-result APIs necessarily retain their final array/string; legacy chunk-backed readers still use their established fallback. The parser retains the current turn and pending tool calls, so a giant single turn or arbitrarily many unresolved tools has no new hard byte limit.
+
+### Resource evidence
+
+The explicit test writes both providers' raw fixtures incrementally, exports through the production file-export boundary, and reads every exported user/assistant body back in order. Each assistant body is approximately 16 KiB. Measurements are a standalone debug test process, not GUI latency or the complete app footprint.
+
+|     Turns per provider |      Maximum RSS | Wall time | Evidence                                  |
+| ---------------------: | ---------------: | --------: | ----------------------------------------- |
+|                    128 | 35,618,816 bytes |    0.34 s | Streaming export and exact body read-back |
+|                   1024 | 35,848,192 bytes |    1.20 s | Same workload shape                       |
+|                   4096 | 35,979,264 bytes |    4.45 s | Same workload shape                       |
+| 4096, final code rerun | 36,225,024 bytes |    4.80 s | Both providers; exact full output passed  |
+
+The first scaling series preceded the source-revision guard and native-context peer changes; the final rerun includes them. A separate explicit 4096-turn comparison printed the selected mode for both providers: original full chunks plus normalization used 708,870,144 bytes maximum RSS (4.97 s); streamed full-result collection used 334,757,888 bytes (4.49 s). This comparison still returns the entire event array and is not the file-export ceiling. Two earlier files without mode markers were invalid A/B attempts and are excluded.
+
+Commands actually run:
+
+- `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_sessions::` with the shared Cargo target — final rerun: 851 passed, 6 ignored, 0 failed.
+- `cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core sources::claude_code::` — 41 passed, 1 ignored, including raw new-UUID ancestry/election coverage.
+- `cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core sources::codex::` — 83 passed, 1 ignored.
+- `cargo clippy --manifest-path src-tauri/Cargo.toml --lib -p org2 -p orgtrack_core -- -D warnings` — passed after replacing the duplicated complex return tuple with its existing type alias.
+- `/usr/bin/time -l env ORG2_EXPORT_TEST_TURNS=4096 <compiled-test-binary> managed_native_streaming_export_resource_acceptance --ignored --nocapture` — final code: passed, both providers, 4096 pairs each.
+- `pnpm run check:test-placement` and `git diff --check` — passed.
+
+### New UUID and two-instance boundaries
+
+Both actual signed bundles were rebuilt from the production changes above. The primary and Instance 2 use their established independent homes, rather than two processes sharing a test database. Claude credentials were imported through the authorized Auto Detect/account wizard. Opus successfully answered a minimal tool-free request on Instance 2; its native file and UI identify the ORGII repository. The cloud row contains the two actual events, `full_replay`, epoch 1 and no deletion.
+
+Claude Code's actual `--resume <original-jsonl> --fork-session --print --model opus --tools '' --strict-mcp-config` then created a new UUID, copied the original context and returned the previous assistant marker followed by the requested new marker. The original managed native ID and new provider-generated ID differ; the new raw JSONL retains the ORGII cwd and all four user/assistant records. This is a real provider request, not a normalized fixture. It establishes native context continuation, not remote rendered acceptance.
+
+| Provider    | Raw transition                                                           | App/UI state                                   | Topology/boundary                         | Expected invariant                                      | Observed evidence                                                                                           |
+| ----------- | ------------------------------------------------------------------------ | ---------------------------------------------- | ----------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Claude Code | Actual Opus request                                                      | Instance 2 Chat                                | Native source → local Chat → cloud        | Full reply, correct repository, full replay upload      | Passed; 2 events, epoch 1                                                                                   |
+| Claude Code | Actual fork-session, new UUID                                            | Original B row remains open                    | B raw source → native CLI default profile | New UUID retains old context and cwd                    | Passed; previous marker quoted, 4 raw message records                                                       |
+| Claude Code | Changed first-user UUID with preserved compact ancestry                  | Isolated raw-file test; two repeated elections | Raw parser → cache/listability            | New sibling listable, both histories retained           | Passed; ancestry derived from raw records                                                                   |
+| Both        | Append during streaming read; sink failure                               | Unit sandbox                                   | Canonical reader → destination            | Abort; never publish partial result                     | Passed; revision failure and first-callback abort                                                           |
+| Claude Code | New cloud row                                                            | Primary and B open                             | Cloud → receiver Chat                     | Receiver can open latest exact reply and continue       | Not passed: Team Sessions remains Loading; foreground controls return noWindowsAvailable and Dock times out |
+| Both        | Two-boot determinism / receiver reconnect / old pinned sibling lifecycle | Real dual homes                                | Local ingest and cloud receiver           | Stable election and cursor plus latest rendered content | Not completed in this follow-up; do not infer from unit or CLI success                                      |
+
+The same-head earlier receiver defect #1467 remains separate: an already-open imported replay can require reopening before it sees newly uploaded native events. The current Loading condition is not attributed to that issue without further evidence. Valid shared-auth records and the actual successful upload prove that the provider login problem is resolved; they do not prove frontend roster hydration. No cloud or historical cleanup was performed.
+
+| Area               | Verdict | Evidence                                                                 | Change or reason kept                                        | Verification                                                            |
+| ------------------ | ------- | ------------------------------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| Background work    | keep    | No new timers or scans; canonical operations remain blocking-worker work | Existing lifecycle ownership preserved                       | Unit suites; final bundled apps launched                                |
+| Memory             | fix     | Full-history intermediates amplified retained memory                     | Stream completed turns through export and context projection | Exact export read-back; final 34.5 MiB RSS export test; full-result A/B |
+| Scope/isolation    | keep    | Account-bound resolver and separate B history root                       | No credential copying or identity schema changes             | Actual B Opus request, raw cwd and cloud row read-back                  |
+| Rendering/hot path | keep    | This follow-up changes Rust full consumers only                          | Existing lazy Chat contract preserved                        | Local B reply rendered; receiver remains uncovered                      |
+
+Architecture review covered canonical source ownership, types, state/compaction continuity, IPC compatibility, failure propagation and init/account-path parity (layers 1, 2, 5, 6, 8, 9 and 10). UI design and unrelated provider adapters were intentionally outside this Rust change.
+
+Performance verdict: blocked for complete two-instance rendered lifecycle certification. The standalone streaming-memory and canonical-output checks pass; foreground control and receiver-list hydration still prevent a full green verdict. Rollback is a paired bundle revert, with no source-history or schema migration to undo.

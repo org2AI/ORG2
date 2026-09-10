@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "マイクへのアクセスが必要です"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "承認を求める",
+      "workspace": "ワークスペースへのアクセス",
+      "edit": "編集を許可",
+      "full": "フルアクセス",
+      "nextTurn": "権限は次のターンから適用されます"
+    },
     "planApprovedLabel": "承認された計画を実行中",
     "planApprovedEditedLabel": "承認された計画を実行中（編集済み）",
     "sessionStarted": "Session が開始されました",

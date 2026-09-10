@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Cần quyền truy cập micrô"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Yêu cầu phê duyệt",
+      "workspace": "Truy cập không gian làm việc",
+      "edit": "Cho phép chỉnh sửa",
+      "full": "Toàn quyền truy cập",
+      "nextTurn": "Quyền áp dụng từ lượt tiếp theo"
+    },
     "planApprovedLabel": "Đang thực hiện kế hoạch đã duyệt",
     "planApprovedEditedLabel": "Đang thực hiện kế hoạch đã duyệt (đã chỉnh sửa)",
     "sessionStarted": "Session đã bắt đầu",

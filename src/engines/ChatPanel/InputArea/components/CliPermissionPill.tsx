@@ -120,7 +120,9 @@ export default function CliPermissionPill() {
               <DropdownItem
                 key={choice.mode}
                 onClick={() => {
-                  void choose(choice.mode);
+                  choose(choice.mode).catch((error) => {
+                    Message.error(String(error));
+                  });
                 }}
                 disabled={saving}
               >

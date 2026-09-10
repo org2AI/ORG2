@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Mikrofon erişimi gerekli"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Onay iste",
+      "workspace": "Çalışma alanı erişimi",
+      "edit": "Düzenlemelere izin ver",
+      "full": "Tam erişim",
+      "nextTurn": "İzinler bir sonraki turdan itibaren geçerli olur"
+    },
     "planApprovedLabel": "Onaylanan plan uygulanıyor",
     "planApprovedEditedLabel": "Onaylanan plan uygulanıyor (düzenlendi)",
     "sessionStarted": "Session başlatıldı",

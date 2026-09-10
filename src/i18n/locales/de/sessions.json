@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Mikrofonzugriff erforderlich"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Genehmigung anfordern",
+      "workspace": "Zugriff auf den Arbeitsbereich",
+      "edit": "Bearbeitungen erlauben",
+      "full": "Vollzugriff",
+      "nextTurn": "Berechtigungen gelten ab der nächsten Runde"
+    },
     "planApprovedLabel": "Genehmigten Plan wird ausgeführt",
     "planApprovedEditedLabel": "Genehmigten Plan wird ausgeführt (bearbeitet)",
     "sessionStarted": "Session gestartet",

@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Требуется доступ к микрофону"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Запрашивать разрешение",
+      "workspace": "Доступ к рабочей области",
+      "edit": "Разрешить редактирование",
+      "full": "Полный доступ",
+      "nextTurn": "Разрешения применяются со следующего хода"
+    },
     "planApprovedLabel": "Выполняется утверждённый план",
     "planApprovedEditedLabel": "Выполняется утверждённый план (изменён)",
     "sessionStarted": "Session запущена",

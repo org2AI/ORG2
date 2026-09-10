@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Wymagany dostęp do mikrofonu"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Proś o zatwierdzenie",
+      "workspace": "Dostęp do obszaru roboczego",
+      "edit": "Zezwalaj na edycję",
+      "full": "Pełny dostęp",
+      "nextTurn": "Uprawnienia obowiązują od następnej tury"
+    },
     "planApprovedLabel": "Wykonywanie zatwierdzonego planu",
     "planApprovedEditedLabel": "Wykonywanie zatwierdzonego planu (edytowany)",
     "sessionStarted": "Sesja rozpoczęta",

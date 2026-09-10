@@ -150,6 +150,7 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     tracing::info!("[JobWake] Job completion wake hook installed");
 
     let agent_org_startup_state = unified_state.clone();
+    let agent_org_archive_reconcile_state = unified_state.clone();
     let housekeeper_compaction_state = unified_state.clone();
     app.manage(unified_state);
     tracing::info!("[UnifiedAgent] Unified agent state initialized");
@@ -160,6 +161,13 @@ pub(crate) fn init_core_state(app: &tauri::App) {
     // One event-driven outbound relay supervisor. It sleeps while the
     // feature is disabled and reacts to settings-file changes without polling.
     crate::api::mobile_bridge::relay::start();
+
+    if agent_core::coordination::agent_org_runs::agent_org_redesign_enabled() {
+        agent_core::state::commands::session::org_tasks::reconcile_pending_archive_teardowns(
+            agent_org_archive_reconcile_state,
+        );
+        tracing::info!("[AgentOrgArchive] one-shot teardown reconciliation scheduled");
+    }
 
     agent_core::session::housekeeper_compaction::spawn(
         housekeeper_compaction_state,

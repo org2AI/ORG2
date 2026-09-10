@@ -55,6 +55,7 @@ import {
   isImportedHistorySession,
 } from "@src/util/session/sessionDispatch";
 
+import AgentOrgArchivedComposer from "./AgentOrgArchivedComposer";
 import { ChatSessionContext } from "./ChatSessionContext";
 import { ChatViewComposerSection } from "./ChatViewComposerSection";
 import type { ChatViewComposerSectionProps } from "./ChatViewComposerSection.types";
@@ -595,14 +596,21 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                   externalScrollToBottomButton={externalScrollToBottomButton}
                   isImportedHistory={isImportedHistory}
                 />
-                <ConversationExecutionBindingContext.Provider
-                  value={conversationTargetBinding}
-                >
-                  <ChatViewComposerSection
-                    {...composerSectionProps}
-                    controlSessionId={runnerBindings.controlSessionId}
+                {showMainComposer &&
+                agentOrgRunView?.runStatus === "archived" ? (
+                  <AgentOrgArchivedComposer
+                    composerRef={setMeasuredFloatingComposerRef}
                   />
-                </ConversationExecutionBindingContext.Provider>
+                ) : (
+                  <ConversationExecutionBindingContext.Provider
+                    value={conversationTargetBinding}
+                  >
+                    <ChatViewComposerSection
+                      {...composerSectionProps}
+                      controlSessionId={runnerBindings.controlSessionId}
+                    />
+                  </ConversationExecutionBindingContext.Provider>
+                )}
               </>
             );
           }}

@@ -2674,6 +2674,8 @@
     "limit": "Showing up to 128 accounts"
   },
   "sharedFile": {
+    "downloaded": "Saved to Downloads",
+    "downloadError": "Unable to save to Downloads",
     "title": "Shared file",
     "error": "Unable to open this file. Check your account, server, and session access, then reopen the link.",
     "downloadPreview": "Download this file to view its contents",

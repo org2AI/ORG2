@@ -3,7 +3,7 @@
 | Line                                                                            | Element            | Verdict          | Reason                                                                           | Suggested change |
 | ------------------------------------------------------------------------------- | ------------------ | ---------------- | -------------------------------------------------------------------------------- | ---------------- |
 | `src/features/Org2Cloud/SharedSessionFileViewer.tsx:158`                        | Modal              | keep with reason | Existing ModalSystem owns focus trap, Escape and themed surface                  | None             |
-| `src/features/Org2Cloud/SharedSessionFileViewer.tsx:201`                        | Download           | keep with reason | Existing Button loading state and native save dialog                             | None             |
+| `src/features/Org2Cloud/SharedSessionFileViewer.tsx:201`                        | Download           | keep with reason | Existing Button loading state; direct Downloads save and localized toast         | None             |
 | `src/features/Org2Cloud/SharedSessionFileViewer.tsx:190`                        | Text preview       | keep with reason | Escaped preformatted text, semantic theme and spacing tokens                     | None             |
 | `src/features/Org2Cloud/SharedSessionFileViewer.tsx:166`                        | Error/loading      | keep with reason | Localized copy and alert/status semantics                                        | None             |
 | `src/features/Org2Cloud/SharedSessionFileViewer.tsx:176`                        | PDF/image preview  | keep with reason | Bounded standard height tokens; title/alt names; sandboxed PDF                   | None             |
@@ -18,4 +18,4 @@
 
 Verdict totals: **0 fix**, **13 keep with reason**, **0 abstract**.
 
-Scope includes the shared provider and EventFileHoverPreview's shared-context guard, neither of which adds visual styling. No unrelated component sweep identified. Native macOS light-theme text/user-file previews, denied state and second-boot previews are captured in the companion verification report. Dark/narrow/loading/PDF/native-save checks remain uncovered. JSDOM tests additionally establish lifecycle and safe text behavior.
+Scope includes the shared provider and EventFileHoverPreview's shared-context guard, neither of which adds visual styling. No unrelated component sweep identified. Native macOS light-theme text/user-file previews, denied state and second-boot previews are captured in the companion verification report. Dark/narrow/loading/PDF checks remain uncovered. JSDOM tests additionally establish lifecycle and safe text behavior.

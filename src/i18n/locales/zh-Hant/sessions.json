@@ -2675,6 +2675,8 @@
     "mentionGroup": "隊友"
   },
   "sharedFile": {
+    "downloaded": "已儲存至下載資料夾",
+    "downloadError": "無法儲存至下載資料夾",
     "title": "共享檔案",
     "error": "無法開啟檔案，請檢查帳號、伺服器及對話存取權限後重新開啟連結",
     "downloadPreview": "下載檔案以查看內容",

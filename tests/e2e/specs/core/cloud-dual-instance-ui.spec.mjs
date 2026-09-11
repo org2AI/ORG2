@@ -5035,6 +5035,206 @@ describe("Shared session files across two desktop accounts", function () {
       throw new Error(`${method}: ${response.status} ${JSON.stringify(value)}`);
     return value;
   }
+  it("opens a file from a real model answer on the other account and downloads without a save dialog", async function () {
+    if (process.env.E2E_SHARED_FILES_LIVE !== "1") this.skip();
+    this.timeout(420_000);
+    const account = await getApiAccount();
+    const model = selectPreferredModel(account);
+    const config = unwrapOn(
+      await invokeOn(browser, "configureWithExistingKey", {
+        accountName: account.name ?? account.id,
+        model,
+        agentType: account.agent_type,
+        category: "rust_agent",
+        agentDefinitionId: "builtin:sde",
+        repoPath: E2E_REPO_PATH,
+      }),
+      "configure real model"
+    );
+    const name = `real-agent-${RUN_ID}.md`;
+    const filePath = join(E2E_REPO_PATH, name);
+    const marker = `REAL_MODEL_FILE_${RUN_ID}`;
+    if (fs.existsSync(filePath))
+      throw new Error("Real agent output already exists");
+    const launched = unwrapOn(
+      await invokeOn(browser, "launchSession", {
+        category: "rust_agent",
+        content: `Use your file-writing tool to create ${filePath} containing exactly the following text followed by a newline: ${marker}. Then reply with the sentence Created the requested file, followed by a Markdown link to it using its filename as link text and its absolute path as the link target. Do not just describe the file: actually create it. No other work is needed.`,
+        workspacePath: E2E_REPO_PATH,
+        keySource: "own_key",
+        accountId: config.accountId,
+        model: config.modelId,
+        agentDefinitionId: "builtin:sde",
+        mode: "build",
+        background: false,
+      }),
+      "launch real file generation"
+    ).result;
+    const sessionId = launched?.sessionId ?? launched?.session_id;
+    if (!sessionId) throw new Error("Real launch returned no session");
+    let state;
+    await browser.waitUntil(
+      async () => {
+        state = unwrapOn(
+          await invokeOn(browser, "inspectChatState"),
+          "real model completion"
+        );
+        return (
+          state.activeSessionId === sessionId &&
+          state.turnPhase === "idle" &&
+          !state.isSessionActive &&
+          state.runtimeStatus !== "running" &&
+          (state.chatEvents ?? []).some(
+            (event) =>
+              event.source === "assistant" &&
+              event.displayText?.includes(`[${name}](${filePath})`)
+          )
+        );
+      },
+      {
+        timeout: 240_000,
+        interval: 500,
+        timeoutMsg: "Real model did not finish with an actual file link",
+      }
+    );
+    const content = fs.readFileSync(filePath, "utf8");
+    if (content.trim() !== marker)
+      throw new Error("Real model file bytes mismatch");
+    fs.writeFileSync(
+      join(artifacts, "real-provider-turn.json"),
+      JSON.stringify({
+        sessionId,
+        model,
+        fileName: name,
+        events: (state.chatEvents ?? []).map((event) => ({
+          source: event.source,
+          functionName: event.functionName,
+          displayText: event.displayText,
+          filePath: event.filePath,
+        })),
+      })
+    );
+    await capture(browser, join(artifacts, "real-agent-sender.png"));
+    unwrapOn(
+      await invokeOn(browser, "cloudTagSessionToOrg", {
+        sessionId,
+        orgId: fixture.orgId,
+      }),
+      "tag real session"
+    );
+    unwrapOn(
+      await invokeOn(browser, "cloudOpenSyncLevelDialog", { sessionId }),
+      "share real session"
+    );
+    await clickRenderedOn(
+      browser,
+      `[data-testid="session-sync-level-mode-${fixture.orgId}"]`,
+      "real share level"
+    );
+    await clickRenderedOn(
+      browser,
+      `[data-testid="session-sync-level-mode-option-${fixture.orgId}-full_replay"]`,
+      "share real replay"
+    );
+    await pressEscapeOn(browser);
+    unwrapOn(await invokeOn(browser, "cloudRunSyncPass"), "real sender sync");
+    let metadata;
+    await browser.waitUntil(
+      async () => {
+        metadata = await rpc(0, "cloud_find_session_file", {
+          p_org_id: fixture.orgId,
+          p_session_id: sessionId,
+          p_source_path: filePath,
+        });
+        return !!metadata;
+      },
+      {
+        timeout: 60_000,
+        interval: 1000,
+        timeoutMsg: "Real generated file was not uploaded",
+      }
+    );
+    const serverFile = await rpc(1, "cloud_get_session_file", {
+      p_file_id: metadata.id,
+    });
+    if (Buffer.from(serverFile.content, "base64").toString() !== content)
+      throw new Error("Real cloud bytes mismatch");
+    fs.renameSync(filePath, `${filePath}.source-offline`);
+    const { homedir } = await import("node:os");
+    const downloadPath = join(homedir(), "Downloads", name);
+    const duplicatePath = join(
+      homedir(),
+      "Downloads",
+      name.replace(/\.md$/, " (1).md")
+    );
+    if (fs.existsSync(downloadPath) || fs.existsSync(duplicatePath))
+      throw new Error("Download fixtures already exist");
+    try {
+      await clickRenderedOn(
+        peer.client,
+        '[data-testid="cloud-team-sessions-refresh"]',
+        "refresh real receiver"
+      );
+      const row = `[data-testid="sidebar-cloud-session-item-${sessionId}"]`;
+      await waitForRenderedOn(
+        peer.client,
+        row,
+        "real received session",
+        60_000
+      );
+      await clickRenderedOn(peer.client, row, "open real agent replay");
+      const link = `[class~="group/agent-message"] a[href="${filePath}"]`;
+      await waitForRenderedOn(peer.client, link, "real assistant link", 60_000);
+      await clickRenderedOn(peer.client, link, "preview real generated file");
+      await peer.client.waitUntil(
+        async () =>
+          executeOn(
+            peer.client,
+            "return [...document.querySelectorAll('pre')].some(n=>n.textContent===arguments[0]);",
+            [content]
+          ),
+        {
+          timeout: 30_000,
+          timeoutMsg: "Real agent file did not preview on receiver",
+        }
+      );
+      await capture(peer.client, join(artifacts, "real-agent-receiver.png"));
+      for (const path of [downloadPath, duplicatePath]) {
+        await clickRenderedOn(
+          peer.client,
+          '[data-testid="shared-file-download"]',
+          "download directly"
+        );
+        await peer.client.waitUntil(async () => fs.existsSync(path), {
+          timeout: 15_000,
+          timeoutMsg: "Direct download did not create file",
+        });
+        if (fs.readFileSync(path, "utf8") !== content)
+          throw new Error("Downloaded bytes mismatch");
+      }
+      if (fs.readFileSync(downloadPath, "utf8") !== content)
+        throw new Error("Existing download overwritten");
+      await capture(peer.client, join(artifacts, "real-agent-downloaded.png"));
+      fs.writeFileSync(
+        join(artifacts, "real-provider-verified.json"),
+        JSON.stringify({
+          sessionId,
+          model,
+          fileId: metadata.id,
+          sha256: metadata.sha256,
+          realProvider: true,
+          sourceRemovedDuringOpen: true,
+          directDownload: true,
+          duplicatePreserved: true,
+        })
+      );
+      await pressEscapeOn(peer.client);
+    } finally {
+      fs.renameSync(`${filePath}.source-offline`, filePath);
+      for (const path of [downloadPath, duplicatePath])
+        if (fs.existsSync(path)) fs.unlinkSync(path);
+    }
+  });
   for (const direction of [0, 1]) {
     it(`uploads and opens user/agent files ${direction === 0 ? "A to B" : "B to A"} with no receiver-local source`, async function () {
       this.timeout(180_000);

@@ -15,6 +15,9 @@ const mocks = vi.hoisted(() => ({
   token: vi.fn(),
   save: vi.fn(),
   write: vi.fn(),
+  exists: vi.fn(),
+  success: vi.fn(),
+  failure: vi.fn(),
 }));
 vi.mock("./config", () => ({
   getCloudEndpoint: () => ({
@@ -30,7 +33,14 @@ vi.mock("./org2CloudSessionCommentsAtom.freshToken", () => ({
   useCloudFreshAccessToken: () => mocks.token,
 }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: mocks.save }));
-vi.mock("@tauri-apps/plugin-fs", () => ({ writeFile: mocks.write }));
+vi.mock("@tauri-apps/plugin-fs", () => ({
+  writeFile: mocks.write,
+  exists: mocks.exists,
+  BaseDirectory: { Download: 6 },
+}));
+vi.mock("@src/components/Message", () => ({
+  default: { success: mocks.success, error: mocks.failure },
+}));
 vi.mock("@src/scaffold/ModalSystem", () => ({
   default: ({ children }: { children: unknown }) => children,
 }));
@@ -91,6 +101,39 @@ describe("shared file viewer lifecycle", () => {
       "<script>bad()</script>"
     );
     expect(document.querySelector("script")).toBeNull();
+  });
+  it("downloads without a save dialog and keeps the preview visible", async () => {
+    mocks.read.mockResolvedValue(file);
+    await render();
+    await act(async () => {
+      (
+        document.querySelector(
+          '[data-testid="shared-file-download"]'
+        ) as HTMLButtonElement
+      ).click();
+    });
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.write).toHaveBeenCalledWith("report.md", file.bytes, {
+      baseDir: 6,
+      createNew: true,
+    });
+    expect(mocks.success).toHaveBeenCalled();
+    expect(document.querySelector("pre")?.textContent).toBe("hello");
+  });
+  it("keeps the preview visible when saving fails", async () => {
+    mocks.read.mockResolvedValue(file);
+    mocks.write.mockRejectedValue(new Error("disk full"));
+    mocks.exists.mockResolvedValue(false);
+    await render();
+    await act(async () => {
+      (
+        document.querySelector(
+          '[data-testid="shared-file-download"]'
+        ) as HTMLButtonElement
+      ).click();
+    });
+    expect(mocks.failure).toHaveBeenCalled();
+    expect(document.querySelector("pre")?.textContent).toBe("hello");
   });
   it("resolves sender paths through the cloud index before reading bytes", async () => {
     mocks.find.mockResolvedValue(file);

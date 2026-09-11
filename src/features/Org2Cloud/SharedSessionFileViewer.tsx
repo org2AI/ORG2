@@ -1,13 +1,13 @@
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeFile } from "@tauri-apps/plugin-fs";
 import { useAtomValue, useStore } from "jotai";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import Message from "@src/components/Message";
 import Modal from "@src/scaffold/ModalSystem";
 
 import { getCloudEndpoint } from "./config";
+import { downloadSharedSessionFile } from "./downloadSharedSessionFile";
 import {
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
@@ -140,16 +140,20 @@ export default function SharedSessionFileViewer({
     if (!currentFile || saving) return;
     setSaving(true);
     try {
-      const path = await save({ defaultPath: currentFile.name });
-      const latest = store.get(org2CloudAuthAtom);
-      if (
-        path &&
-        latest &&
-        org2CloudAuthIdentityKey(latest) === currentFile.identity
-      )
-        await writeFile(path, currentFile.bytes);
+      const name = await downloadSharedSessionFile(currentFile, () => {
+        const latest = store.get(org2CloudAuthAtom);
+        return Boolean(
+          latest &&
+          org2CloudAuthIdentityKey(latest) === currentFile.identity &&
+          getCloudEndpoint().supabaseUrl === reference.endpoint
+        );
+      });
+      if (name)
+        Message.success(t("sharedFile.downloaded", "Saved to Downloads"));
     } catch {
-      setError(true);
+      Message.error(
+        t("sharedFile.downloadError", "Unable to save to Downloads")
+      );
     } finally {
       setSaving(false);
     }
@@ -198,7 +202,11 @@ export default function SharedSessionFileViewer({
                 )}
               </p>
             )}
-            <Button loading={saving} onClick={() => void download()}>
+            <Button
+              data-testid="shared-file-download"
+              loading={saving}
+              onClick={() => void download()}
+            >
               {t("sharedFile.download", "Download")}
             </Button>
           </>

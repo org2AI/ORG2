@@ -42,6 +42,11 @@
     "fs:scope-home-recursive",
     "fs:allow-read",
     "fs:allow-write-file",
+    "fs:scope-download",
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "$DOWNLOAD/*" }]
+    },
     {
       "identifier": "fs:allow-open",
       "allow": [{ "path": "**" }, { "path": "$TEMP/**" }]

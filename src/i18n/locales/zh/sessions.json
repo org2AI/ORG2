@@ -2674,6 +2674,8 @@
     "limit": "最多显示 128 个账户"
   },
   "sharedFile": {
+    "downloaded": "已保存到下载文件夹",
+    "downloadError": "无法保存到下载文件夹",
     "title": "共享文件",
     "error": "无法打开文件，请检查账号、服务器及会话访问权限后重新打开链接",
     "downloadPreview": "下载文件以查看其内容",

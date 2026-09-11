@@ -148,6 +148,7 @@ pub struct EventHandlerConfig {
 pub struct AgentOrgTaskLifecycleContext {
     pub run_id: String,
     pub member_id: String,
+    pub turn_kind: crate::coordination::agent_org_turn_contexts::AgentOrgTurnKind,
 }
 
 /// Unified event handler for agent turns.
@@ -1311,25 +1312,31 @@ impl TurnEventHandler for UnifiedEventHandler {
             .load(Ordering::SeqCst)
         {
             if let Some(context) = self.config.agent_org_task_lifecycle.clone() {
-                let feedback = tokio::task::spawn_blocking(move || {
-                    super::processor::member_idle::task_lifecycle_stop_feedback(
-                        &context.run_id,
-                        &context.member_id,
-                    )
-                })
-                .await
-                .ok()
-                .and_then(|result| match result {
-                    Ok(feedback) => feedback,
-                    Err(error) => {
-                        tracing::warn!(
-                            session_id = %session_id,
-                            error = %error,
-                            "failed to inspect Agent Org task lifecycle at turn stop"
-                        );
-                        None
-                    }
-                });
+                let feedback = if context.turn_kind
+                    == crate::coordination::agent_org_turn_contexts::AgentOrgTurnKind::TaskExecution
+                {
+                    tokio::task::spawn_blocking(move || {
+                        super::processor::member_idle::task_lifecycle_stop_feedback(
+                            &context.run_id,
+                            &context.member_id,
+                        )
+                    })
+                    .await
+                    .ok()
+                    .and_then(|result| match result {
+                        Ok(feedback) => feedback,
+                        Err(error) => {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                error = %error,
+                                "failed to inspect Agent Org task lifecycle at turn stop"
+                            );
+                            None
+                        }
+                    })
+                } else {
+                    None
+                };
                 if feedback.is_some()
                     && self
                         .agent_org_lifecycle_correction_emitted
@@ -1528,7 +1535,7 @@ mod tests {
     use test_helpers::test_env;
 
     #[tokio::test]
-    async fn agent_org_lifecycle_stop_gate_corrects_at_most_once_per_turn() {
+    async fn agent_org_lifecycle_stop_gate_only_corrects_task_execution_once() {
         let _sandbox = test_env::sandbox();
         let conn = database::db::get_connection().expect("db");
         crate::coordination::agent_org_runs::init_schema(&conn).expect("run schema");
@@ -1580,8 +1587,10 @@ mod tests {
         .expect("seed task");
         let handler = UnifiedEventHandler::new(EventHandlerConfig {
             agent_org_task_lifecycle: Some(AgentOrgTaskLifecycleContext {
-                run_id: run.id,
+                run_id: run.id.clone(),
                 member_id: "member-worker".to_string(),
+                turn_kind:
+                    crate::coordination::agent_org_turn_contexts::AgentOrgTurnKind::TaskExecution,
             }),
             ..Default::default()
         });
@@ -1591,6 +1600,22 @@ mod tests {
             .as_deref()
             .is_some_and(|feedback| feedback.contains("unfinished-build")));
         assert_eq!(handler.on_turn_stop_check("member-session").await, None);
+
+        let direct_handler = UnifiedEventHandler::new(EventHandlerConfig {
+            agent_org_task_lifecycle: Some(AgentOrgTaskLifecycleContext {
+                run_id: run.id,
+                member_id: "member-worker".to_string(),
+                turn_kind:
+                    crate::coordination::agent_org_turn_contexts::AgentOrgTurnKind::UserDirectedWork,
+            }),
+            ..Default::default()
+        });
+        assert_eq!(
+            direct_handler
+                .on_turn_stop_check("member-direct-session")
+                .await,
+            None
+        );
     }
 
     #[test]

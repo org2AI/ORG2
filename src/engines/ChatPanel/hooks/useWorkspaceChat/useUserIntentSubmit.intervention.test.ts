@@ -7,6 +7,7 @@ import { postStopDispatchSessionsAtom } from "@src/store/session/cliSessionStatu
 import { sessionsAtom } from "@src/store/session/sessionAtom";
 import { messageQueueAtom } from "@src/store/ui/messageQueueAtom";
 
+import { resolveAgentOrgComposerExecutionOwnership } from "../../agentOrgComposerOwnership";
 import {
   type SubmitUserIntentOptions,
   isAgentOrgMemberDirectTarget,
@@ -113,6 +114,34 @@ describe("useUserIntentSubmit Agent Org intervention", () => {
       false
     );
     expect(isAgentOrgMemberDirectTarget(undefined)).toBe(false);
+  });
+
+  it("removes only a direct Member's outer Root execution binding", () => {
+    const rootBinding = { id: "root-binding" };
+    expect(
+      resolveAgentOrgComposerExecutionOwnership(
+        {
+          parentSessionId: "root-session",
+          orgMemberId: "member-direct",
+        },
+        rootBinding
+      )
+    ).toEqual({
+      isDirectAgentOrgMember: true,
+      executionBinding: null,
+    });
+    expect(
+      resolveAgentOrgComposerExecutionOwnership(
+        {
+          parentSessionId: "root-session",
+          orgMemberId: "coordinator",
+        },
+        rootBinding
+      )
+    ).toEqual({
+      isDirectAgentOrgMember: false,
+      executionBinding: rootBinding,
+    });
   });
 
   it("routes the direct turn through the shared user-intent dispatcher", async () => {

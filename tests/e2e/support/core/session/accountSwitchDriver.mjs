@@ -184,6 +184,16 @@ const js = {
         modelId: node.getAttribute('data-spotlight-model-id'),
         groupModelIds: node.getAttribute('data-spotlight-group-model-ids'),
       })),
+      keyFirstAccountOptions: Array.from(document.querySelectorAll('[data-testid="unified-model-key-option"]')).map((node) => ({
+        text: node.textContent || "",
+        itemId: node.getAttribute('data-spotlight-item-id'),
+      })),
+      keyFirstModelOptions: Array.from(document.querySelectorAll('[data-testid="unified-model-key-model-option"]')).map((node) => ({
+        text: node.textContent || "",
+        modelId: node.getAttribute('data-spotlight-model-id'),
+        groupModelIds: node.getAttribute('data-spotlight-group-model-ids'),
+      })),
+      keyFirstPreference: localStorage.getItem('orgii-spotlight-model-key-first'),
       spotlightContainers: Array.from(document.querySelectorAll('[data-spotlight-container]')).map((node) => ({
         text: node.textContent || "",
         rect: (() => {
@@ -957,6 +967,11 @@ export async function switchAccountThroughRenderedPicker(
 
   const sourceSelector = `[data-testid="unified-model-source-option"][data-source-account-id="${followupAccount.id}"]`;
   const modelSelector = `[data-spotlight-model-section="all"][data-spotlight-model-id="${model}"], [data-spotlight-model-section="all"][data-spotlight-model-id^="${model}-"], [data-spotlight-model-section="all"][data-spotlight-group-model-ids~="${model}"]`;
+  const keyFirstAccountSelector = `[data-testid="unified-model-key-option"][data-spotlight-item-id="key:${followupAccount.id}"]`;
+  const keyFirstModelSelector = `[data-testid="unified-model-key-model-option"][data-spotlight-model-id="${model}"], [data-testid="unified-model-key-model-option"][data-spotlight-model-id^="${model}-"], [data-testid="unified-model-key-model-option"][data-spotlight-group-model-ids~="${model}"]`;
+  const compactSwitchModelSelector =
+    '[data-testid="model-settings-switch-model"]';
+  const advancedSwitchModelSelector = '[data-testid="model-settings-model"]';
 
   const clicked = await clickLastVisibleNative(
     '[data-testid="chat-model-pill-model"]'
@@ -970,11 +985,107 @@ export async function switchAccountThroughRenderedPicker(
     `[account-switch-evidence] label=${label} clickedModelPill=${JSON.stringify(clicked)}`
   );
 
-  await browser.waitUntil(async () => execJS(js.exists(modelSelector)), {
-    timeout: MOUNT_TIMEOUT_MS,
-    interval: 250,
-    timeoutMsg: `${label} model option never appeared for model=${model}; dump=${JSON.stringify(await execJS(js.pageDump))}`,
-  });
+  let settingsSwitchSelector = null;
+  await browser.waitUntil(
+    async () => {
+      if (
+        (await execJS(js.exists(modelSelector))) ||
+        (await execJS(js.exists(keyFirstAccountSelector)))
+      ) {
+        return true;
+      }
+      if (await execJS(js.exists(compactSwitchModelSelector))) {
+        settingsSwitchSelector = compactSwitchModelSelector;
+        return true;
+      }
+      if (await execJS(js.exists(advancedSwitchModelSelector))) {
+        settingsSwitchSelector = advancedSwitchModelSelector;
+        return true;
+      }
+      return false;
+    },
+    {
+      timeout: MOUNT_TIMEOUT_MS,
+      interval: 100,
+      timeoutMsg: `${label} model picker did not open; dump=${JSON.stringify(await execJS(js.pageDump))}`,
+    }
+  );
+  if (settingsSwitchSelector) {
+    const switchModelClicked = await clickLastVisibleNative(
+      settingsSwitchSelector
+    );
+    if (switchModelClicked?.status !== "clicked") {
+      throw new Error(
+        `${label} Switch model action was not clickable: ${JSON.stringify(switchModelClicked)} dump=${JSON.stringify(await execJS(js.pageDump))}`
+      );
+    }
+    console.log(
+      `[account-switch-evidence] label=${label} clickedSwitchModel=${JSON.stringify(switchModelClicked)}`
+    );
+  }
+
+  let pickerFlow = null;
+  await browser.waitUntil(
+    async () => {
+      if (await execJS(js.exists(modelSelector))) {
+        pickerFlow = "model-first";
+        return true;
+      }
+      if (await execJS(js.exists(keyFirstAccountSelector))) {
+        pickerFlow = "key-first";
+        return true;
+      }
+      return false;
+    },
+    {
+      timeout: MOUNT_TIMEOUT_MS,
+      interval: 250,
+      timeoutMsg: `${label} neither model-first nor key-first option appeared for model=${model} account=${followupAccount.id}; dump=${JSON.stringify(await execJS(js.pageDump))}`,
+    }
+  );
+
+  if (pickerFlow === "key-first") {
+    const keyClicked = await clickLastVisibleNative(keyFirstAccountSelector);
+    if (keyClicked?.status !== "clicked") {
+      throw new Error(
+        `${label} key-first account click failed for account=${followupAccount.id}: ${JSON.stringify(keyClicked)} dump=${JSON.stringify(await execJS(js.pageDump))}`
+      );
+    }
+    await browser.waitUntil(
+      async () => execJS(js.exists(keyFirstModelSelector)),
+      {
+        timeout: MOUNT_TIMEOUT_MS,
+        interval: 250,
+        timeoutMsg: `${label} key-first model option never appeared for model=${model}; dump=${JSON.stringify(await execJS(js.pageDump))}`,
+      }
+    );
+    const modelClicked = await clickLastVisibleNative(keyFirstModelSelector);
+    if (modelClicked?.status !== "clicked") {
+      throw new Error(
+        `${label} key-first model click failed for model=${model}: ${JSON.stringify(modelClicked)} dump=${JSON.stringify(await execJS(js.pageDump))}`
+      );
+    }
+    const modelGroupIds = parseModelIdList(modelClicked.groupModelIds);
+    const allowedSwitchModels = [
+      ...new Set([
+        ...getAllowedSwitchModels(followupAccount, model, modelGroupIds),
+        ...(modelClicked.modelId ? [String(modelClicked.modelId)] : []),
+      ]),
+    ];
+    await browser.waitUntil(
+      async () =>
+        isSessionPatchedTo(followupAccount.id, allowedSwitchModels, label),
+      {
+        timeout: 20_000,
+        interval: 250,
+        timeoutMsg: `${label} key-first selection did not patch the session; account=${followupAccount.id} allowedModels=${JSON.stringify(allowedSwitchModels)} state=${JSON.stringify(await invokeE2E("inspectChatState"))}`,
+      }
+    );
+    console.log(
+      `[account-switch-evidence] label=${label} keyFirst=true clickedKey=${JSON.stringify(keyClicked)} clickedModel=${JSON.stringify(modelClicked)} allowedModels=${JSON.stringify(allowedSwitchModels)}`
+    );
+    return allowedSwitchModels;
+  }
 
   const modelHovered = await hoverLastVisibleNative(modelSelector);
   if (modelHovered?.status !== "hovered") {

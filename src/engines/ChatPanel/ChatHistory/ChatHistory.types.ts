@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { AgentOrgRunMemberView } from "@src/api/tauri/agent";
-import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import type { QueuedConversationDispatchResolution } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 export interface FollowAgentNavState {
@@ -103,7 +103,7 @@ export interface ChatHistoryProps {
    * The canonical dispatch a retry of a held Agent row should carry: the
    * current root and the runtime the picker shows now.
    */
-  resolveFailedUserIntentDispatch?: () => QueuedConversationDispatch | null;
+  resolveFailedUserIntentDispatch?: () => QueuedConversationDispatchResolution;
   /**
    * Session-scoped source for the planning footer. Session-scoped surfaces
    * should set `isLive` to false while showing a replay slice.

@@ -146,6 +146,8 @@ export interface SpotlightItemRowProps {
   onHover: (index: number) => void;
   onHoverEnd?: () => void;
   searchQuery: string;
+  /** Optional card presentation; activation and item metadata stay shared. */
+  cardHeight?: number;
 }
 
 // ============ DESC LINE ============
@@ -253,6 +255,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
     onHover,
     onHoverEnd,
     searchQuery,
+    cardHeight,
   }) => {
     const { t } = useTranslation();
     const data = getItemData(item);
@@ -370,6 +373,22 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
 
     const row = (
       <div
+        role={cardHeight ? "button" : undefined}
+        tabIndex={cardHeight && !isDisabled ? 0 : undefined}
+        onKeyDown={
+          cardHeight
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (!isDisabled) onSelect(item);
+                }
+              }
+            : undefined
+        }
+        aria-disabled={cardHeight ? isDisabled : undefined}
+        aria-label={cardHeight ? item.label : undefined}
+        title={cardHeight ? item.label : undefined}
         data-testid={testId}
         data-spotlight-item-index={index}
         data-spotlight-item-id={item.id}
@@ -379,13 +398,13 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
         data-source-account-id={sourceAccountId}
         data-source-model-type={sourceModelType}
         data-source-type={sourceType}
-        className={`spotlight-item group relative mx-2 flex items-center gap-2.5 rounded-lg px-2 ${
+        className={`spotlight-item group relative rounded-lg ${cardHeight ? "spotlight-item-card grid grid-cols-[auto_1fr] content-between gap-1 border border-border-2 bg-bg-2 p-2 shadow-xs" : "mx-2 flex items-center gap-2.5 px-2"} ${
           isDisabled
             ? "cursor-not-allowed opacity-50"
             : `cursor-pointer ${isCurrentSelection ? "is-current-selection" : ""} ${isSelected ? "selected" : ""}`
         }`}
         style={{
-          height: getItemHeight(item),
+          height: cardHeight ?? getItemHeight(item),
           marginBottom: SPOTLIGHT_TOKENS.itemGap,
         }}
         onClick={handleClick}
@@ -440,7 +459,13 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
           </div>
         )}
 
-        <div className="min-w-0 flex-1 basis-0">
+        <div
+          className={
+            cardHeight
+              ? "order-last col-span-2 min-w-0"
+              : "min-w-0 flex-1 basis-0"
+          }
+        >
           <div className="flex min-w-0 items-center gap-2">
             {item.type === "hint" && data.prefix ? (
               <span
@@ -503,7 +528,9 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div
+          className={`flex shrink-0 items-center gap-2 ${cardHeight ? "justify-end" : ""}`}
+        >
           {data.rightContent
             ? data.rightContent
             : data.rightLabel &&

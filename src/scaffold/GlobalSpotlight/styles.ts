@@ -45,6 +45,12 @@ export const SPOTLIGHT_STYLES = `
     transition: width 120ms ease, opacity 120ms ease;
   }
 
+  /* Cards reserve disclosure space so navigation never reflows their header. */
+  .spotlight-item-card .spotlight-disclosure-chevron {
+    width: 1rem;
+    transition: opacity 120ms ease;
+  }
+
   .spotlight-item.selected .spotlight-disclosure-chevron,
   [data-keyboard-mode="false"] .spotlight-item:hover .spotlight-disclosure-chevron {
     width: 1rem;

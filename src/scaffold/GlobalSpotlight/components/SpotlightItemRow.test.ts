@@ -3,6 +3,7 @@ import { act, createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { SPOTLIGHT_STYLES } from "../styles";
 import {
   SpotlightItemRow,
   type SpotlightItemRowProps,
@@ -44,6 +45,35 @@ describe("SpotlightItemRow selectionState prop", () => {
     act(() => root.unmount());
     container.remove();
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
+  });
+
+  it("reserves card disclosure width across selection changes", () => {
+    const style = document.createElement("style");
+    style.textContent = SPOTLIGHT_STYLES;
+    document.head.append(style);
+    try {
+      render({
+        cardHeight: 80,
+        isSelected: false,
+        item: { ...props.item, data: { showDisclosureChevron: true } },
+      });
+      const disclosure = () =>
+        container.querySelector<HTMLElement>(".spotlight-disclosure-chevron")!;
+      expect(getComputedStyle(disclosure()).width).toBe("1rem");
+      expect(getComputedStyle(disclosure()).opacity).toBe("0");
+      expect(getComputedStyle(disclosure()).transition).toBe(
+        "opacity 120ms ease"
+      );
+      render({ isSelected: true });
+      expect(getComputedStyle(disclosure()).width).toBe("1rem");
+      expect(getComputedStyle(disclosure()).opacity).toBe("1");
+      render({ isSelected: false });
+      expect(getComputedStyle(disclosure()).width).toBe("1rem");
+      render({ cardHeight: undefined });
+      expect(getComputedStyle(disclosure()).width).toBe("0px");
+    } finally {
+      style.remove();
+    }
   });
 
   it("keeps ordinary rows checkbox-free when the prop is omitted", () => {

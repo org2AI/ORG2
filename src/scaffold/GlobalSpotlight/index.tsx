@@ -20,6 +20,7 @@ import {
 } from "@src/store/workspace";
 
 import { SPOTLIGHT_FOOTER_ACTIVE_CHIP } from "./components";
+import { SpotlightCommandView } from "./components/SpotlightCommandView";
 import CollabOrgForm from "./forms/CollabOrg/CollabOrgForm";
 import GitHubIssuesImportForm from "./forms/GitHubIssuesImport/GitHubIssuesImportForm";
 import { getEditorPaletteMode } from "./globalSpotlight.helpers";
@@ -41,7 +42,7 @@ import {
   WorkingDirectoryPalette,
   WorktreePalette,
 } from "./palettes";
-import { PaletteBody, SpotlightShell } from "./shell";
+import { SpotlightShell } from "./shell";
 import type { GlobalSpotlightProps } from "./types";
 import { SpotlightConfirmationView } from "./views";
 
@@ -505,7 +506,7 @@ const GlobalSpotlightInner: React.FC<
   ) : showConfirmation ? (
     <SpotlightConfirmationView confirmationPage={spotlight.confirmationPage} />
   ) : (
-    <PaletteBody
+    <SpotlightCommandView
       kernel={defaultKernel}
       items={spotlight.items}
       placeholder={getPlaceholder()}

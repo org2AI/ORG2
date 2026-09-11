@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { type ReactNode, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -130,8 +131,11 @@ describe("NavigationSidebar", () => {
     expect(markup).toContain('title="Search sessions"');
     expect(markup).toContain('data-testid="sidebar-sessions-refresh"');
     expect(markup).toContain('title="Refresh"');
-    expect(markup).toContain(
-      '<span class="hidden group-hover/section-title:inline-flex group-focus-visible/section-title:inline-flex group-has-[:focus-visible]/section-title:inline-flex"><button type="button" aria-label="More"'
+    const rendered = new DOMParser().parseFromString(markup, "text/html");
+    const moreAction = rendered.querySelector('[data-testid="section-more"]');
+    expect(moreAction?.getAttribute("aria-label")).toBe("More");
+    expect(moreAction?.parentElement?.className).toBe(
+      "hidden group-hover/section-title:inline-flex group-focus-visible/section-title:inline-flex group-has-[:focus-visible]/section-title:inline-flex"
     );
     expect(markup.indexOf('data-testid="section-more"')).toBeLessThan(
       markup.indexOf('data-testid="sidebar-sessions-search"')
@@ -161,10 +165,11 @@ describe("NavigationSidebar", () => {
         collapsibleSections: true,
       })
     );
+    const rendered = new DOMParser().parseFromString(markup, "text/html");
     for (const label of ["Search", "Refresh", "Filter"]) {
-      expect(markup).toContain(
-        `<span class="inline-flex"><button type="button" aria-label="${label}"`
-      );
+      const action = rendered.querySelector(`button[aria-label="${label}"]`);
+      expect(action).not.toBeNull();
+      expect(action?.parentElement?.className).toBe("inline-flex");
     }
     expect(markup).not.toContain("group-hover/sidebar:inline-flex");
   });

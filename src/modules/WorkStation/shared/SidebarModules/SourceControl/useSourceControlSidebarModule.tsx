@@ -199,7 +199,7 @@ export function useSourceControlSidebarModule({
         isOpen: showHistoryFilter,
         hasQuery: historyFilterQuery.length > 0,
         onToggle: handleToggleHistoryFilter,
-        tooltip: t("common:actions.filter", "Filter"),
+        tooltip: t("common:actions.search"),
       }),
       {
         key: "refresh-git-history",
@@ -302,7 +302,7 @@ export function useSourceControlSidebarModule({
         isOpen: showIssuesFilter,
         hasQuery: issuesFilterQuery.length > 0,
         onToggle: handleToggleIssuesFilter,
-        tooltip: t("common:actions.filter", "Filter"),
+        tooltip: t("common:actions.search"),
       }),
       {
         key: "refresh-issues",
@@ -358,7 +358,7 @@ export function useSourceControlSidebarModule({
         isOpen: showPrFilter,
         hasQuery: prFilterQuery.length > 0,
         onToggle: handleTogglePrFilter,
-        tooltip: t("common:actions.filter", "Filter"),
+        tooltip: t("common:actions.search"),
       }),
       {
         key: "refresh-prs",

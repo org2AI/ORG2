@@ -73,7 +73,7 @@ export function useExplorerActions({
           className={showFilterFiles ? "text-primary-6" : ""}
         />
       ),
-      tooltip: "Search",
+      tooltip: t("actions.search"),
       onClick: onToggleFilterFiles,
     });
 
@@ -148,6 +148,7 @@ export function useExplorerActions({
     filesRefreshSpinClass,
     handleFilesRefreshClick,
     onCollapseAll,
+    t,
   ]);
 
   const searchActions = useMemo<SectionHeaderAction[]>(() => {

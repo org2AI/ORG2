@@ -42,6 +42,32 @@ fn codex_turns_always_use_the_desktop_visible_native_transport() {
 }
 
 #[test]
+fn only_codex_native_input_carries_the_mobile_turn_identity() {
+    let correlated =
+        native_correlated_user_input(&ModelType::Codex, "Reply only OK", Some("intent-1"));
+    assert_eq!(
+        orgtrack_core::sources::imported_history::turn_correlation::turn_intent_from_input(
+            correlated.as_ref()
+        )
+        .as_deref(),
+        Some("intent-1")
+    );
+    assert_eq!(
+        orgtrack_core::sources::imported_history::extract_user_request_body(correlated.as_ref()),
+        "Reply only OK"
+    );
+
+    assert!(matches!(
+        native_correlated_user_input(&ModelType::ClaudeCode, "Reply only OK", Some("intent-1")),
+        std::borrow::Cow::Borrowed("Reply only OK")
+    ));
+    assert!(matches!(
+        native_correlated_user_input(&ModelType::Codex, "Reply only OK", None),
+        std::borrow::Cow::Borrowed("Reply only OK")
+    ));
+}
+
+#[test]
 fn command_logging_redacts_mcp_config_values() {
     let raw = vec![
         "codex".to_string(),

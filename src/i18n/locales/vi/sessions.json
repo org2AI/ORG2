@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Cần quyền truy cập micrô"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Yêu cầu phê duyệt",
+      "workspace": "Truy cập không gian làm việc",
+      "edit": "Cho phép chỉnh sửa",
+      "full": "Toàn quyền truy cập",
+      "nextTurn": "Quyền áp dụng từ lượt tiếp theo"
+    },
     "planApprovedLabel": "Đang thực hiện kế hoạch đã duyệt",
     "planApprovedEditedLabel": "Đang thực hiện kế hoạch đã duyệt (đã chỉnh sửa)",
     "sessionStarted": "Session đã bắt đầu",
@@ -2309,7 +2316,6 @@
       "agentFallback": "Agent"
     },
     "sidebar": {
-      "stopAgentProcess": "Dừng tiến trình Agent",
       "openInMyStation": "Mở trong My Station"
     }
   },
@@ -2673,5 +2679,14 @@
     "stale": "Lần quan sát gần nhất đã hơn hai giờ",
     "disabled": "Đã tạm dừng lấy mẫu cho tài khoản bị tắt này",
     "limit": "Hiển thị tối đa 128 tài khoản"
+  },
+  "sharedFile": {
+    "downloaded": "Đã lưu vào thư mục Tải xuống",
+    "downloadError": "Không thể lưu vào thư mục Tải xuống",
+    "title": "Tệp được chia sẻ",
+    "error": "Không thể mở tệp này. Hãy kiểm tra tài khoản, máy chủ và quyền truy cập phiên rồi mở lại liên kết.",
+    "downloadPreview": "Tải tệp này xuống để xem nội dung",
+    "download": "Tải xuống",
+    "loading": "Đang tải tệp được chia sẻ…"
   }
 }

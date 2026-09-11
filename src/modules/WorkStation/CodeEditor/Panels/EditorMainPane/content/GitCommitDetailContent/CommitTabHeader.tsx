@@ -14,7 +14,7 @@ interface CommitTabHeaderProps {
 
 /**
  * Renders the commit breadcrumb (shortSha › message [author + stats]) either
- * inline as a 40px file bar or in the global Workstation tab-header strip.
+ * inline as a 36px file bar or in the global Workstation tab-header strip.
  */
 export const CommitTabHeader: React.FC<CommitTabHeaderProps> = memo(
   function CommitTabHeader({

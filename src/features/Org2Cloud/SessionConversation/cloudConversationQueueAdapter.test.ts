@@ -1,5 +1,5 @@
 import { createStore } from "jotai";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   QueuedConversationBlockedError,
@@ -11,10 +11,17 @@ import { Org2CloudConversationError } from "@src/features/Org2Cloud/org2CloudCon
 import { org2CloudRemoteSessionsAtom } from "@src/features/Org2Cloud/org2CloudRemoteSessionsAtom";
 import { sessionsAtom } from "@src/store/session";
 
+import {
+  findSharedSessionFileRevisions,
+  uploadSharedSessionFile,
+} from "../sharedSessionFilesClient";
 import { dispatchQueuedCloudConversation } from "./cloudConversationQueueAdapter";
+
+afterEach(() => vi.unstubAllGlobals());
 
 const mocks = vi.hoisted(() => ({
   refreshAuth: vi.fn(),
+  syncFiles: vi.fn(),
   listOrgSessions: vi.fn(),
   capabilities: vi.fn(),
   pushEvents: vi.fn(),
@@ -45,6 +52,10 @@ vi.mock(
     listOrgSessions: mocks.listOrgSessions,
   })
 );
+
+vi.mock("../syncSessionSharedFiles", () => ({
+  syncSessionSharedFiles: mocks.syncFiles,
+}));
 
 vi.mock("@src/api/tauri/cloudDevice", () => ({
   cloudDeviceIdentity: mocks.cloudDeviceIdentity,
@@ -151,6 +162,8 @@ const MESSAGE = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.syncFiles.mockReset();
+  mocks.runConversationTurn.mockReset();
   mocks.refreshAuth.mockImplementation(async (auth) => ({
     status: "ready",
     auth,
@@ -437,6 +450,13 @@ describe("dispatchQueuedCloudConversation coordination", () => {
       expect.any(Object)
     );
     expect(mocks.pushEvents).not.toHaveBeenCalled();
+    expect(mocks.syncFiles).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orgId: "org-1",
+        sessionId: "shared-root",
+        events: [expect.objectContaining({ source: "user" })],
+      })
+    );
     expect(mocks.finishTurn).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ status: "completed" }),
@@ -615,9 +635,74 @@ describe("dispatchQueuedCloudConversation coordination", () => {
     expect(order).toEqual(["accepted", "provider"]);
   });
 
+  it.each([
+    ["user", "lookup"],
+    ["user", "upload"],
+    ["agent", "lookup"],
+    ["agent", "upload"],
+  ])(
+    "retains admitted recovery for %s file %s HTTP 503",
+    async (stage, operation) => {
+      enableTurnCoordination();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(new Response("unavailable", { status: 503 }))
+      );
+      mocks.syncFiles.mockImplementation(async ({ events }) => {
+        const isAgentTail = events.includes(ASSISTANT_TAIL_EVENT);
+        if ((stage === "agent") !== isAgentTail) return true;
+        const endpoint = {
+          supabaseUrl: AUTH.supabaseUrl,
+          anonKey: AUTH.supabaseAnonKey,
+          webOrigin: "",
+          isOfficial: false,
+        };
+        if (operation === "lookup")
+          await findSharedSessionFileRevisions(
+            AUTH.accessToken,
+            endpoint,
+            "org-1",
+            "root",
+            [{ path: "/report.md", revision: "r1" }]
+          );
+        else
+          await uploadSharedSessionFile(
+            AUTH.accessToken,
+            endpoint,
+            "org-1",
+            "root",
+            "report.md",
+            new Uint8Array([1])
+          );
+        return true;
+      });
+      mocks.runConversationTurn.mockImplementationOnce(async (params) => {
+        await params.onBeforeTurnDispatch?.("runner");
+        await params.onTurnAccepted?.("runner");
+        await params.publishTail("turn-1", [ASSISTANT_TAIL_EVENT]);
+        return { runnerSessionId: "runner", terminalStatus: "completed" };
+      });
+      await expect(
+        dispatchQueuedCloudConversation(readyStore(), MESSAGE, ROOT, {
+          onAccepted: vi.fn(),
+        })
+      ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
+      expect(mocks.admitTurn).toHaveBeenCalledOnce();
+      expect(mocks.finishTurn).not.toHaveBeenCalled();
+      expect(mocks.runConversationTurn).toHaveBeenCalledTimes(
+        stage === "agent" ? 1 : 0
+      );
+      // No synthetic permanent-failure tail is published for an ambiguous write.
+      expect(mocks.pushEvents).toHaveBeenCalledTimes(stage === "agent" ? 1 : 0);
+    }
+  );
+
   it("publishes the provider tail before finishing the Cloud ledger row", async () => {
     enableTurnCoordination();
     const order: string[] = [];
+    mocks.syncFiles.mockImplementation(async ({ events }) => {
+      if (events.includes(ASSISTANT_TAIL_EVENT)) order.push("files");
+    });
     mocks.pushEvents.mockImplementation(async () => {
       order.push("publish");
       return { firstSeq: 2, lastSeq: 2 };
@@ -641,7 +726,7 @@ describe("dispatchQueuedCloudConversation coordination", () => {
       onAccepted: vi.fn(),
     });
 
-    expect(order).toEqual(["publish", "finish"]);
+    expect(order).toEqual(["publish", "files", "finish"]);
   });
 
   it("owns one bounded renewal timer and clears it when the turn finishes", async () => {

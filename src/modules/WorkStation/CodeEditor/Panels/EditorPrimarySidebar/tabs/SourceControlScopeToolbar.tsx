@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { GitWorktreeDiffSummary } from "@src/api/http/git/types";
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import DiffStatsBadge from "@src/components/DiffStatsBadge";
 import Dropdown from "@src/components/Dropdown";
 import DropdownItem from "@src/components/Dropdown/DropdownItem";
@@ -13,7 +14,6 @@ import {
   DROPDOWN_ITEM,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import IconButton from "@src/components/IconButton";
 import SelectGhostTrigger from "@src/components/Select/SelectGhostTrigger";
 import {
   ArrowRight01Icon,
@@ -170,9 +170,9 @@ function ScopePickerItem({
         <span title={title}>{label}</span>
       </DropdownItem>
       {onRemove ? (
-        <IconButton
-          type="button"
-          size="sm"
+        <Button
+          htmlType="button"
+          size="sidebar"
           variant="danger"
           className={SCOPE_PICKER_REMOVE_BUTTON}
           title={removeLabel}
@@ -182,13 +182,16 @@ function ScopePickerItem({
             event.stopPropagation();
             onRemove();
           }}
-        >
-          <HugeiconsIcon
-            icon={Delete02Icon}
-            data-icon="trash-2"
-            size={DROPDOWN_ITEM.iconSize}
-          />
-        </IconButton>
+          appearance="soft"
+          iconOnly
+          icon={
+            <HugeiconsIcon
+              icon={Delete02Icon}
+              data-icon="trash-2"
+              size={DROPDOWN_ITEM.iconSize}
+            />
+          }
+        />
       ) : null}
     </div>
   );
@@ -284,8 +287,8 @@ export function SourceControlScopeToolbar({
           type="search"
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder={t("sourceControl.scope.searchPlaceholder")}
-          ariaLabel={t("sourceControl.scope.searchPlaceholder")}
+          placeholder={t("common.searchPlaceholder")}
+          ariaLabel={t("common.searchPlaceholder")}
         />
       ) : null}
       <div className={DROPDOWN_CLASSES.optionsContainerScrollbar}>

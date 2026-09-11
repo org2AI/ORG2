@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import { SESSION_ROW_PRESENTATION } from "@src/components/SessionRowPresentation";
 import { useImmediateCursorReset } from "@src/hooks/ui/useImmediateCursorReset";
 import {
@@ -474,26 +475,30 @@ function renderLeadingIcon({
           <span className="inline-flex items-center justify-center leading-none transition-opacity duration-150 group-focus-within:pointer-events-none group-focus-within:opacity-0 group-hover:pointer-events-none group-hover:opacity-0">
             {icon}
           </span>
-          <button
-            type="button"
+          <Button
+            htmlType="button"
             aria-label={action.label}
             title={action.label}
-            className={`pointer-events-none absolute top-1/2 left-1/2 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded opacity-0 transition-[background-color,color,opacity] duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-sidebar-selected hover:text-text-1 focus:pointer-events-auto focus:opacity-100 focus:outline-none ${
-              action.active ? "text-text-1" : "text-text-3"
-            }`}
+            className={`pointer-events-none absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 opacity-0 duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 focus:outline-none`}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
               action.onClick(event);
             }}
-          >
-            <AnyIcon
-              icon={ActionIcon}
-              size={14}
-              strokeWidth={2}
-              className={action.iconClassName}
-            />
-          </button>
+            aria-pressed={action.active}
+            size="sidebar"
+            variant="tertiary"
+            appearance="soft"
+            iconOnly
+            icon={
+              <AnyIcon
+                icon={ActionIcon}
+                size={14}
+                strokeWidth={2}
+                className={action.iconClassName}
+              />
+            }
+          />
         </>
       ) : (
         icon

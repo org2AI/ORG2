@@ -153,9 +153,17 @@ describe("docked terminal controls", () => {
     expect(container.querySelector('[data-icon="plus"]')).toBeNull();
     expect(container.querySelector("[aria-haspopup]")).toBeNull();
     for (const button of header.querySelectorAll("button")) {
-      expect(button.classList.contains("h-5")).toBe(true);
-      if (button.getAttribute("role") !== "tab")
+      if (button.getAttribute("role") === "tab") {
+        expect(button.classList.contains("h-5")).toBe(true);
+      } else if (button.querySelector('[data-icon="stop"]')) {
+        // ProcessStopButton still owns its compact geometry through tokens.
+        expect(button.classList.contains("h-5")).toBe(true);
         expect(button.classList.contains("w-5")).toBe(true);
+      } else {
+        expect(button.style.height).toBe("20px");
+        expect(button.style.width).toBe("20px");
+        expect(button.style.borderRadius).toBe("8px");
+      }
     }
     expect(
       header.querySelector('[role="tablist"]')!.classList.contains("gap-px")

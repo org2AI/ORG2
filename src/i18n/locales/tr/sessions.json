@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Mikrofon erişimi gerekli"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Onay iste",
+      "workspace": "Çalışma alanı erişimi",
+      "edit": "Düzenlemelere izin ver",
+      "full": "Tam erişim",
+      "nextTurn": "İzinler bir sonraki turdan itibaren geçerli olur"
+    },
     "planApprovedLabel": "Onaylanan plan uygulanıyor",
     "planApprovedEditedLabel": "Onaylanan plan uygulanıyor (düzenlendi)",
     "sessionStarted": "Session başlatıldı",
@@ -2309,7 +2316,6 @@
       "agentFallback": "Agent"
     },
     "sidebar": {
-      "stopAgentProcess": "Agent sürecini durdur",
       "openInMyStation": "My Station'da aç"
     }
   },
@@ -2673,5 +2679,14 @@
     "stale": "Son gözlem iki saatten eski",
     "disabled": "Bu devre dışı hesap için örnekleme duraklatıldı",
     "limit": "En fazla 128 hesap gösteriliyor"
+  },
+  "sharedFile": {
+    "downloaded": "İndirilenler klasörüne kaydedildi",
+    "downloadError": "İndirilenler klasörüne kaydedilemedi",
+    "title": "Paylaşılan dosya",
+    "error": "Bu dosya açılamıyor. Hesabınızı, sunucuyu ve oturum erişiminizi kontrol edip bağlantıyı yeniden açın.",
+    "downloadPreview": "İçeriğini görmek için bu dosyayı indirin",
+    "download": "İndir",
+    "loading": "Paylaşılan dosya yükleniyor…"
   }
 }

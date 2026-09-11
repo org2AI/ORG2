@@ -21,6 +21,20 @@ pub(crate) fn run() {
     // secondary data root from the same identity that owns its WebView profile
     // and service ports.
     let context = tauri::generate_context!();
+    #[cfg(all(debug_assertions, feature = "webdriver", target_os = "macos"))]
+    let context = {
+        let mut context = context;
+        // Tauri 2.10 does not forward WindowConfig.data_store_identifier.
+        // Build the isolated test WebView explicitly in the setup hook.
+        if std::env::var_os("ORGII_HOME").is_some() {
+            for window in &mut context.config_mut().app.windows {
+                if window.label == "main" {
+                    window.create = false;
+                }
+            }
+        }
+        context
+    };
 
     bootstrap::bootstrap(&context.config().identifier);
 
@@ -40,7 +54,7 @@ pub(crate) fn run() {
         .unwrap_or_else(|err| {
             tracing::error!(error = %err, "error while building tauri application");
             std::process::exit(1);
-    });
+        });
     initial_webview_observation.commit();
     application.run(lifecycle::handle_run_event);
 }

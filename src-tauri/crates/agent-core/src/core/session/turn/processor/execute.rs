@@ -64,6 +64,7 @@ impl UnifiedMessageProcessor {
                 let escalated = crate::providers::thinking_mode::escalate_model_reasoning(
                     &self.runtime.model,
                     level,
+                    self.runtime.provider.provider_name(),
                 );
                 if escalated != self.runtime.model {
                     tracing::info!(

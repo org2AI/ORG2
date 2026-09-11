@@ -223,11 +223,6 @@
     }
   },
   "toasts": {
-    "replyEmpty": "Odpowiedź nie może być pusta",
-    "sessionNotFound": "Nie znaleziono sesji",
-    "answerSubmitted": "Odpowiedź wysłana pomyślnie",
-    "replyError": "Wystąpił błąd podczas wysyłania odpowiedzi",
-    "questionIgnored": "Pytanie zignorowane",
     "addedAsContext": "Dodano {{name}} jako kontekst",
     "addedFilesAsContext": "Dodano {{count}} plik(ów) jako kontekst",
     "chooseExecutionAgentAi": "Wybierz odpowiedzialnego agenta przed utworzeniem z użyciem AI.",
@@ -688,42 +683,9 @@
     "technicalDetails": "Szczegóły techniczne",
     "failedToCopy": "Nie udało się skopiować",
     "api": {
-      "titles": {
-        "githubConnections": "Nie udało się załadować połączeń GitHub",
-        "githubConnect": "Nie udało się połączyć z GitHubem",
-        "workflows": "Nie udało się załadować przepływów pracy",
-        "config": "Nie udało się załadować ustawień",
-        "agent": "Nie można połączyć się z Agentem",
-        "repository": "Nie udało się załadować repo",
-        "file": "Nie udało się załadować pliku",
-        "mcp": "Błąd serwera MCP",
-        "extension": "Błąd rozszerzenia edytora kodu",
-        "workspace": "Nie udało się załadować Workspace",
-        "slackConnections": "Nie udało się załadować połączeń Slack",
-        "wallet": "Nie udało się załadować portfela",
-        "billing": "Nie udało się wykonać operacji rozliczeniowej",
-        "default": "Nie udało się załadować danych",
-        "timeout": "Żądanie trwało zbyt długo",
-        "external": "Nie udało się załadować danych zewnętrznych"
-      },
       "messages": {
-        "network": "Sprawdź połączenie i spróbuj ponownie.",
-        "timeout": "Żądanie trwało zbyt długo. Spróbuj ponownie.",
-        "server": "Coś poszło nie tak po naszej stronie. Spróbuj ponownie za kilka minut.",
-        "notFound": "Nie znaleziono tego elementu.",
-        "signIn": "Zaloguj się ponownie.",
-        "forbidden": "Nie masz uprawnień do tej akcji.",
-        "tooManyRequests": "Zbyt wiele żądań. Poczekaj chwilę i spróbuj ponownie.",
-        "validation": "Nieprawidłowe dane. Sprawdź wprowadzone wartości.",
-        "conflict": "Wykryto konflikt. Zasób mógł zostać zmodyfikowany.",
-        "badGateway": "Serwer jest nieosiągalny. Spróbuj ponownie później.",
-        "serviceUnavailable": "Usługa chwilowo niedostępna. Spróbuj ponownie później.",
-        "gatewayTimeout": "Serwer nie odpowiada. Spróbuj ponownie później.",
-        "invalidRequest": "Nieprawidłowe żądanie. Spróbuj ponownie.",
-        "default": "Spróbuj ponownie.",
-        "externalHint": "Sprawdź URL i ustawienia, a następnie spróbuj ponownie."
-      },
-      "workflow": "Usługa workflow jest chwilowo niedostępna. Spróbuj ponownie później."
+        "signIn": "Zaloguj się ponownie."
+      }
     },
     "unknownError": "Wystąpił nieznany błąd",
     "componentLoadingFailed": "Nie udało się wczytać komponentu",
@@ -900,8 +862,6 @@
     "failedToLoadCommitDiff": "Nie udało się załadować diffa commita",
     "loadingHistory": "Ładowanie historii...",
     "commitMessage": "Wiadomość commita",
-    "filterChanges": "Filtruj zmiany...",
-    "searchFiles": "Szukaj plików...",
     "searchInRepository": "Szukaj w Repo...",
     "enterUrlOrSearch": "Wprowadź URL lub wyszukaj...",
     "filterByUrl": "Filtruj według URL...",
@@ -913,7 +873,6 @@
     "connectionError": "Błąd połączenia",
     "noConnections": "Dodaj połączenie, aby rozpocząć",
     "selectRowsToDelete": "Wybierz wiersze do usunięcia",
-    "filterFiles": "Filtruj pliki...",
     "filterSearch": "Filtruj wyszukiwanie...",
     "noChanges": "Brak zmian",
     "noMatchingFiles": "Brak pasujących plików",
@@ -958,7 +917,8 @@
     "noData": "Brak danych",
     "noResults": "Brak wyników",
     "noSessionHistoryForFile": "Nie znaleziono aktywności sesji dla {{file}}",
-    "noSessionHistory": "Brak historii sesji"
+    "noSessionHistory": "Brak historii sesji",
+    "selectSidebarFileToViewChanges": "Wybierz plik na pasku bocznym"
   },
   "inbox": {
     "scrollToBottom": "Przewiń na dół",
@@ -1023,8 +983,6 @@
     "linesSelected": "Zaznaczono {{count}} linii",
     "charsSelected": "Zaznaczono {{count}}",
     "nLines": "{{count}} linii",
-    "hideFilter": "Ukryj filtr",
-    "filterFilesAction": "Filtruj pliki",
     "switchToTreeView": "Przełącz na widok drzewa",
     "switchToListView": "Przełącz na widok listy",
     "discardChanges": "Odrzuć zmiany",
@@ -1073,7 +1031,9 @@
         "skipped": "Pominięte",
         "passed": "Zaliczone"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Przełącz na ujednolicony diff",
+    "switchToSplitDiff": "Przełącz na podzielony diff"
   },
   "git": {
     "loading": "Ładowanie statusu Git...",
@@ -1975,7 +1935,6 @@
     "scope": {
       "main": "Główny checkout",
       "worktrees": "Worktree",
-      "searchPlaceholder": "Filtruj Worktree…",
       "switchScopeActive": "Zmień zakres kontroli źródła: {{repo}}, {{branch}}"
     }
   },
@@ -2078,22 +2037,7 @@
     "database": "Baza danych",
     "user": "Użytkownik",
     "password": "Hasło",
-    "ssl": "Wymagaj SSL",
-    "spotlight": {
-      "scanFolder": "Skanuj folder",
-      "scanFolderDesc": "Znajdź wszystkie pliki .sqlite, .db w folderze",
-      "openFile": "Otwórz plik",
-      "openFileDesc": "Wybierz konkretny plik bazy danych",
-      "enterPath": "Wprowadź ścieżkę",
-      "enterPathDesc": "Wpisz ścieżkę pliku lub folderu bezpośrednio",
-      "placeholderSelect": "Dodaj bazę danych przez...",
-      "placeholderPath": "~/data lub /path/to/database.db",
-      "pickerFolderTitle": "Wybierz folder do skanowania",
-      "pickerFileTitle": "Wybierz plik bazy danych",
-      "pickerSqliteName": "Baza danych SQLite",
-      "pickerAllFiles": "Wszystkie pliki",
-      "pickerError": "Nie udało się otworzyć selektora"
-    }
+    "ssl": "Wymagaj SSL"
   },
   "dragDrop": {
     "couldNotExtractPathFromItem": "Nie udało się wyodrębnić ścieżki pliku z upuszczonego elementu"
@@ -2151,8 +2095,7 @@
     "sidebar": {
       "newTab": "Nowa karta",
       "newPrivateTab": "Nowa karta prywatna",
-      "newTerminal": "Nowy terminal",
-      "untitled": "Bez tytułu"
+      "newTerminal": "Nowy terminal"
     },
     "statusBar": {}
   },

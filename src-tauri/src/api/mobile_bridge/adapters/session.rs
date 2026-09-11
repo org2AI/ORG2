@@ -1795,6 +1795,55 @@ pub fn session_unsubscribe(conn_id: u64, params: &Value) -> Result<Value, RpcErr
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn managed_codex_native_reply_keeps_submit_identity_after_append() {
+        use orgtrack_core::sources::{codex::app, imported_history::turn_correlation};
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        let sid = "codexapp-correlation-fixture";
+        let header = json!({"type":"session_meta","payload":{"id":"00000000-0000-4000-8000-000000000001","history_mode":"paginated"}});
+        writeln!(file, "{header}").unwrap();
+        for (index, intent) in ["intent-old", "intent-new"].iter().enumerate() {
+            let user = turn_correlation::with_turn_intent("Reply only OK", intent);
+            let timestamp = format!("2026-09-10T09:45:0{index}.000Z");
+            for row in [
+                json!({"timestamp":timestamp,"type":"event_msg","payload":{"type":"task_started","turn_id":intent}}),
+                json!({"timestamp":timestamp,"type":"event_msg","payload":{"type":"item_completed","turn_id":intent,"item":{"type":"UserMessage","id":format!("u-{index}"),"content":[{"type":"text","text":user}]}}}),
+                json!({"timestamp":timestamp,"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"OK"}],"phase":"final_answer"}}),
+                json!({"timestamp":timestamp,"type":"event_msg","payload":{"type":"task_complete","turn_id":intent}}),
+            ] {
+                writeln!(file, "{row}").unwrap();
+            }
+            file.flush().unwrap();
+            // Exercise append with a warm provider catalog, not seeded final cache rows.
+            let window = app::load_codex_app_initial_window_from_path(sid, file.path(), 1).unwrap();
+            let latest = window.turns.last().unwrap().turn_id.clone();
+            let events = events_from_chunks(
+                latest_round_chunks(window.chunks, Some(&latest)),
+                "cliagent-owner".into(),
+            )
+            .await
+            .unwrap();
+            let snapshot = build_subscription_snapshot(
+                "cliagent-owner",
+                Some(&latest),
+                &events.events,
+                false,
+                0,
+            );
+            let rows = snapshot["upserts"].as_array().unwrap();
+            assert!(
+                rows.iter().any(|r| r["turnIntentId"] == *intent),
+                "missing submit identity: {snapshot}"
+            );
+            assert!(
+                rows.iter().any(|r| r["displayText"] == "OK"),
+                "missing reply: {snapshot}"
+            );
+            assert!(!snapshot.to_string().contains("orgii-turn-intent"));
+        }
+    }
+
     #[test]
     fn parse_session_send_params_requires_session_id() {
         let err = parse_session_send_params(&json!({ "content": "hi" })).unwrap_err();

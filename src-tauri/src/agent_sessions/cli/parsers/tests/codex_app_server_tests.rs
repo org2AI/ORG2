@@ -1231,3 +1231,80 @@ done
         assert!(saw_catalog);
     }
 }
+
+/// Explicit live protocol acceptance. Requires an isolated CODEX_HOME with valid auth.
+/// Unlike a mocked wire test, this fails if the real model cannot request or consume an answer.
+#[tokio::test]
+#[ignore = "requires isolated Codex auth and spends model tokens"]
+async fn live_native_question_round_trip_in_plan_mode() {
+    use std::process::Stdio;
+    let home =
+        std::env::var("ORGII_INTERACTION_TEST_CODEX_HOME").expect("set isolated test Codex home");
+    let binary =
+        std::env::var("ORGII_INTERACTION_TEST_CODEX_BINARY").unwrap_or_else(|_| "codex".into());
+    let work = tempfile::tempdir().unwrap();
+    let session = format!("cliagent-live-question-{}", uuid::Uuid::new_v4());
+    let mut child = tokio::process::Command::new(binary)
+        .arg("app-server")
+        .env("CODEX_HOME", home)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .expect("start native Codex");
+    let (tx, mut rx) = tokio::sync::mpsc::channel(256);
+    let turn = CodexAppServerTurn {
+        session_id: session.clone(),
+        user_input: "Use request_user_input to ask me to choose Alpha or Beta. Wait for the tool answer, then reply with only the chosen label. Do not use other tools or propose a plan.".into(),
+        developer_instructions: None,
+        working_dir: work.path().to_string_lossy().into_owned(),
+        project_id: None, resume_thread_id: None,
+        model: Some("gpt-6-astra".into()),
+        permission_mode: CliPermissionMode::Plan,
+        config: Some(json!({"model_reasoning_effort":"medium"})),
+        image_paths: vec![], allow_native_context_recovery: false,
+    };
+    let stdin = child.stdin.take().unwrap();
+    let stdout = child.stdout.take().unwrap();
+    let protocol = tokio::spawn(super::run_app_server_turn(stdin, stdout, turn, tx));
+    let mut answered = false;
+    let mut text = String::new();
+    let drain = tokio::time::timeout(std::time::Duration::from_secs(180), async {
+        while let Some(chunk) = rx.recv().await {
+            if chunk.function == "ask_user_questions" {
+                assert!(!answered, "expected exactly one native question");
+                let questions = chunk.args["questions"].as_array().unwrap();
+                let answers = questions.iter().map(|_| vec!["Beta".to_string()]).collect();
+                crate::agent_sessions::cli::interactions::respond(
+                    &session,
+                    chunk.result["native_request_id"].as_str().unwrap(),
+                    Some(answers),
+                    true,
+                )
+                .await
+                .unwrap();
+                answered = true;
+            }
+            if chunk.action_type == "assistant" {
+                if let Some(content) = chunk.result["content"].as_str() {
+                    text.push_str(content);
+                }
+            }
+        }
+    })
+    .await;
+    if drain.is_err() {
+        protocol.abort();
+    }
+    child.kill().await.ok();
+    child.wait().await.ok();
+    assert!(drain.is_ok(), "native question timed out");
+    let result = protocol.await.unwrap().unwrap();
+    assert_eq!(result.turn_status, "completed");
+    assert!(answered, "native model never requested user input: {text}");
+    assert!(
+        text.contains("Beta"),
+        "model did not consume selected answer: {text}"
+    );
+}

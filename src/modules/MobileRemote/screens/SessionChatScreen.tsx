@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { IconButton } from "@src/components/IconButton";
+import Button from "@src/components/Button";
 import { PermissionSheet } from "@src/components/PermissionPrompt";
 import { HugeiconsIcon, StopCircleIcon } from "@src/icons";
 
@@ -156,16 +156,21 @@ export function SessionChatScreen({
         title={sessionName}
         onBack={onBack}
         trailing={
-          <IconButton
-            type="button"
-            size="sm"
+          <Button
+            htmlType="button"
+            size="mini"
             variant="danger"
+            style={{
+              width: "var(--mobile-touch-size)",
+              height: "var(--mobile-touch-size)",
+            }}
             aria-label={t("stopConfirm.confirm")}
             onClick={onOpenStopModal}
             disabled={!writable || !sendSupported}
-          >
-            <HugeiconsIcon icon={StopCircleIcon} size={16} />
-          </IconButton>
+            appearance="soft"
+            iconOnly
+            icon={<HugeiconsIcon icon={StopCircleIcon} size={16} />}
+          />
         }
       />
       <div className="relative flex min-h-0 flex-1 flex-col bg-chat-container">

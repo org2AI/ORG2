@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Mikrofonzugriff erforderlich"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Genehmigung anfordern",
+      "workspace": "Zugriff auf den Arbeitsbereich",
+      "edit": "Bearbeitungen erlauben",
+      "full": "Vollzugriff",
+      "nextTurn": "Berechtigungen gelten ab der nächsten Runde"
+    },
     "planApprovedLabel": "Genehmigten Plan wird ausgeführt",
     "planApprovedEditedLabel": "Genehmigten Plan wird ausgeführt (bearbeitet)",
     "sessionStarted": "Session gestartet",
@@ -2309,7 +2316,6 @@
       "agentFallback": "Agent"
     },
     "sidebar": {
-      "stopAgentProcess": "Agent-Prozess stoppen",
       "openInMyStation": "In My Station öffnen"
     }
   },
@@ -2673,5 +2679,14 @@
     "stale": "Letzte Beobachtung ist über zwei Stunden alt",
     "disabled": "Erfassung für dieses deaktivierte Konto pausiert",
     "limit": "Es werden bis zu 128 Konten angezeigt"
+  },
+  "sharedFile": {
+    "downloaded": "Im Download-Ordner gespeichert",
+    "downloadError": "Speichern im Download-Ordner nicht möglich",
+    "title": "Geteilte Datei",
+    "error": "Diese Datei kann nicht geöffnet werden. Prüfe dein Konto, den Server und den Sitzungszugriff und öffne den Link erneut.",
+    "downloadPreview": "Lade diese Datei herunter, um ihren Inhalt anzuzeigen",
+    "download": "Herunterladen",
+    "loading": "Geteilte Datei wird geladen…"
   }
 }

@@ -194,6 +194,10 @@ const ModelTable: React.FC<ModelTableProps> = ({
     onEnabledModelsChange: commitEnabledModelsChange,
     onTestModel: unifiedMode ? onTestModel : undefined,
     visibleFlatRows,
+    modelIdMessages: {
+      invalid: t("keyVault.customModels.invalidModelId"),
+      duplicate: t("keyVault.customModels.duplicateModelId"),
+    },
   });
 
   const {

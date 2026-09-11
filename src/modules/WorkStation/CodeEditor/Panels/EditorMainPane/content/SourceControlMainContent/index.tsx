@@ -2,11 +2,11 @@
  * SourceControlMainContent
  *
  * Main-pane renderer for the unified Source Control tab. The Focus / All
- * Changes pill lives in the global 40px workstation tab-header strip as the
+ * Changes pill lives in the global 36px workstation tab-header strip as the
  * primary mode selector for the tab.
  *
  * In Focus mode with a loaded file, the file breadcrumb renders in its own
- * 40px header inside the main pane directly above the diff editor.
+ * 36px header inside the main pane directly above the diff editor.
  */
 import React, { Suspense, memo, useMemo } from "react";
 

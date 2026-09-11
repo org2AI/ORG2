@@ -3,8 +3,8 @@ import React, { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import BasePill from "@src/components/ComposerInput/BasePill";
-import IconButton from "@src/components/IconButton";
 import { PILL_SIZE } from "@src/config/pillTokens";
 import InputArea from "@src/engines/ChatPanel/InputArea";
 import CanvasPreviewSurface from "@src/engines/ChatPanel/blocks/CanvasInlineCard/CanvasPreviewSurface";
@@ -413,9 +413,9 @@ const CanvasDesignSurface: React.FC<CanvasDesignSurfaceProps> = ({
                 </div>
               )}
               {inspector.selected && (
-                <IconButton
+                <Button
                   data-canvas-design-close
-                  className="pointer-events-auto absolute rounded-full bg-text-1 text-bg-1 shadow-lg hover:bg-text-2"
+                  className="pointer-events-auto absolute bg-text-1 text-bg-1 shadow-lg hover:bg-text-2"
                   style={{
                     left: clamp(
                       visibleSelection.rect.x +
@@ -434,14 +434,19 @@ const CanvasDesignSurface: React.FC<CanvasDesignSurfaceProps> = ({
                     "Clear Canvas selection"
                   )}
                   onClick={inspector.clearSelection}
-                >
-                  <HugeiconsIcon
-                    icon={Cancel01Icon}
-                    data-icon="x"
-                    size={15}
-                    aria-hidden
-                  />
-                </IconButton>
+                  size="mini"
+                  variant="tertiary"
+                  appearance="soft"
+                  iconOnly
+                  icon={
+                    <HugeiconsIcon
+                      icon={Cancel01Icon}
+                      data-icon="x"
+                      size={15}
+                      aria-hidden
+                    />
+                  }
+                />
               )}
             </>
           )}

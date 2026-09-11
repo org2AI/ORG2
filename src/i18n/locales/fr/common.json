@@ -223,11 +223,6 @@
     }
   },
   "toasts": {
-    "replyEmpty": "La réponse ne peut pas être vide",
-    "sessionNotFound": "Session introuvable",
-    "answerSubmitted": "Réponse envoyée avec succès",
-    "replyError": "Une erreur s'est produite lors de l'envoi de la réponse",
-    "questionIgnored": "Question ignorée",
     "addedAsContext": "{{name}} ajouté au contexte",
     "addedFilesAsContext": "{{count}} fichier(s) ajouté(s) au contexte",
     "chooseExecutionAgentAi": "Choisissez un agent responsable avant de créer avec l'IA.",
@@ -687,42 +682,9 @@
     "technicalDetails": "Détails techniques",
     "failedToCopy": "Échec de la copie",
     "api": {
-      "titles": {
-        "githubConnections": "Impossible de charger les connexions GitHub",
-        "githubConnect": "Impossible de se connecter à GitHub",
-        "workflows": "Impossible de charger les flux de travail",
-        "config": "Impossible de charger les paramètres",
-        "agent": "Impossible de joindre Agent",
-        "repository": "Impossible de charger le dépôt",
-        "file": "Impossible de charger le fichier",
-        "mcp": "Erreur serveur MCP",
-        "extension": "Erreur extension éditeur",
-        "workspace": "Impossible de charger l'espace de travail",
-        "slackConnections": "Impossible de charger les connexions Slack",
-        "wallet": "Impossible de charger le portefeuille",
-        "billing": "Impossible de terminer l'opération de facturation",
-        "default": "Impossible de charger les données",
-        "timeout": "La requête a pris trop de temps",
-        "external": "Impossible de charger les données externes"
-      },
       "messages": {
-        "network": "Vérifiez votre connexion et réessayez.",
-        "timeout": "La requête a pris trop de temps. Réessayez.",
-        "server": "Une erreur s'est produite. Réessayez dans quelques minutes.",
-        "notFound": "Cet élément est introuvable.",
-        "signIn": "Veuillez vous reconnecter.",
-        "forbidden": "Vous n'avez pas la permission pour cette action.",
-        "tooManyRequests": "Trop de requêtes. Attendez un moment et réessayez.",
-        "validation": "Données invalides. Vérifiez votre saisie.",
-        "conflict": "Conflit détecté. La ressource a peut-être été modifiée.",
-        "badGateway": "Serveur inaccessible. Réessayez plus tard.",
-        "serviceUnavailable": "Service temporairement indisponible. Réessayez plus tard.",
-        "gatewayTimeout": "Le serveur ne répond pas. Réessayez plus tard.",
-        "invalidRequest": "Requête invalide. Réessayez.",
-        "default": "Veuillez réessayer.",
-        "externalHint": "Vérifiez l'URL et les paramètres, puis réessayez."
-      },
-      "workflow": "Le service de flux de travail est temporairement indisponible. Réessayez plus tard."
+        "signIn": "Veuillez vous reconnecter."
+      }
     },
     "failedToLoad": "Échec du chargement",
     "unknownError": "Une erreur inconnue s'est produite",
@@ -900,8 +862,6 @@
     "failedToLoadCommitDiff": "Échec du chargement du diff de commit",
     "loadingHistory": "Chargement de l'historique...",
     "commitMessage": "Message de commit",
-    "filterChanges": "Filtrer les modifications...",
-    "searchFiles": "Rechercher des fichiers...",
     "searchInRepository": "Rechercher dans le dépôt...",
     "enterUrlOrSearch": "Entrez l'URL ou recherchez...",
     "filterByUrl": "Filtrer par URL...",
@@ -913,7 +873,6 @@
     "connectionError": "Erreur de connexion",
     "noConnections": "Ajoutez une connexion pour commencer",
     "selectRowsToDelete": "Sélectionnez les lignes à supprimer",
-    "filterFiles": "Filtrer les fichiers...",
     "filterSearch": "Filtrer la recherche...",
     "noChanges": "Aucune modification",
     "noMatchingFiles": "Aucun fichier correspondant",
@@ -958,7 +917,8 @@
     "noData": "Aucune donnée",
     "noResults": "Aucun résultat",
     "noSessionHistoryForFile": "Aucune activité de session trouvée pour {{file}}",
-    "noSessionHistory": "Aucun historique de session"
+    "noSessionHistory": "Aucun historique de session",
+    "selectSidebarFileToViewChanges": "Sélectionnez un fichier dans la barre latérale"
   },
   "inbox": {
     "scrollToBottom": "Aller en bas",
@@ -1023,8 +983,6 @@
     "linesSelected": "{{count}} lines selected",
     "charsSelected": "{{count}} selected",
     "nLines": "{{count}} lines",
-    "hideFilter": "Hide filter",
-    "filterFilesAction": "Filter files",
     "switchToTreeView": "Switch to tree view",
     "switchToListView": "Switch to list view",
     "discardChanges": "Discard Changes",
@@ -1073,7 +1031,9 @@
         "skipped": "Ignorés",
         "passed": "Réussis"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Passer au diff unifié",
+    "switchToSplitDiff": "Passer au diff côte à côte"
   },
   "git": {
     "loading": "Chargement du statut Git...",
@@ -1975,7 +1935,6 @@
     "scope": {
       "main": "Checkout principal",
       "worktrees": "Worktrees",
-      "searchPlaceholder": "Filtrer les worktrees…",
       "switchScopeActive": "Changer la portée du source control : {{repo}}, {{branch}}"
     }
   },
@@ -2078,22 +2037,7 @@
     "database": "Base de données",
     "user": "Utilisateur",
     "password": "Mot de passe",
-    "ssl": "Exiger SSL",
-    "spotlight": {
-      "scanFolder": "Analyser le dossier",
-      "scanFolderDesc": "Trouver tous les fichiers .sqlite, .db dans un dossier",
-      "openFile": "Ouvrir un fichier",
-      "openFileDesc": "Sélectionner un fichier de base de données spécifique",
-      "enterPath": "Saisir un chemin",
-      "enterPathDesc": "Saisir directement un chemin de fichier ou de dossier",
-      "placeholderSelect": "Ajouter une base de données par…",
-      "placeholderPath": "~/data ou /chemin/vers/base.db",
-      "pickerFolderTitle": "Sélectionner le dossier à analyser",
-      "pickerFileTitle": "Sélectionner un fichier de base de données",
-      "pickerSqliteName": "Base SQLite",
-      "pickerAllFiles": "Tous les fichiers",
-      "pickerError": "Échec de l'ouverture du sélecteur"
-    }
+    "ssl": "Exiger SSL"
   },
   "dragDrop": {
     "couldNotExtractPathFromItem": "Could not extract file path from dropped item"
@@ -2151,8 +2095,7 @@
     "sidebar": {
       "newTab": "Nouvel onglet",
       "newPrivateTab": "Nouvel onglet privé",
-      "newTerminal": "Nouveau terminal",
-      "untitled": "Sans titre"
+      "newTerminal": "Nouveau terminal"
     },
     "statusBar": {}
   },

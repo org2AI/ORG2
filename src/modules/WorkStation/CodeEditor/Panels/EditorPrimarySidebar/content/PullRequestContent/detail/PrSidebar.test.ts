@@ -142,12 +142,12 @@ describe("PrSidebar", () => {
     ).toBeNull();
     // The reviewer trigger reuses the trail icon button, exactly like the
     // trail's own collapse control.
-    const reviewerTrigger = surface?.querySelector(
+    const reviewerTrigger = surface?.querySelector<HTMLButtonElement>(
       "[data-testid='pr-reviewer-action']"
     );
-    expect(reviewerTrigger?.className).toContain("h-5");
-    expect(reviewerTrigger?.className).toContain("w-5");
-    expect(reviewerTrigger?.className).toContain("rounded-lg");
+    expect(reviewerTrigger?.style.height).toBe("20px");
+    expect(reviewerTrigger?.style.width).toBe("20px");
+    expect(reviewerTrigger?.style.borderRadius).toBe("8px");
     const reviewers = container.querySelector(
       "[data-testid='pr-sidebar-reviewers']"
     );

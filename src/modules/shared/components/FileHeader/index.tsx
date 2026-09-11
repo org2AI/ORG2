@@ -3,8 +3,7 @@
  *
  * VS Code-like breadcrumb file header with dropdown navigation.
  * Click on any path segment to see files/folders in that directory.
- * Uses TabPill for view mode, custom, and preview toggles (matches source
- * control / preview style).
+ * Uses an icon button for diff layout and TabPill for custom / preview toggles.
  *
  * Shared across WorkStation CodeEditor, DatabaseManager, and Simulator.
  * When `repoPath` is omitted, breadcrumbs render as static path display
@@ -31,6 +30,7 @@ import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHea
 import type { DiffViewMode } from "@src/types/git/types";
 import { copyText } from "@src/util/data/clipboard";
 
+import { DiffViewModeToggle } from "../DiffViewModeToggle";
 import BreadcrumbFileHeader from "./BreadcrumbFileHeader";
 import { FileHeaderMoreMenu } from "./FileHeaderMoreMenu";
 import { FileHeaderShell } from "./FileHeaderShell";
@@ -158,7 +158,7 @@ export interface FileHeaderProps {
    * strip for that host instead of rendering inline. Used by both My Station
    * panes (`code` / `data` / `browser` / `project`) and Agent Station's
    * simulator replay views (`simulator`) so the breadcrumb / toolbar always
-   * lives in the 40px shell header rather than as a duplicate strip below
+   * lives in the 36px shell header rather than as a duplicate strip below
    * the tab bar.
    */
   publishToHost?: WorkstationTabHeaderHost;
@@ -166,7 +166,7 @@ export interface FileHeaderProps {
    * Whether this header is the one that should claim the global slot.
    * Single-pane layouts pass `true`; reserved for cases where multiple
    * `FileHeader` instances render concurrently (e.g. a preview) and only
-   * one should publish to the global 40px strip.
+   * one should publish to the global 36px strip.
    */
   publishEnabled?: boolean;
 }
@@ -443,28 +443,13 @@ export const FileHeader: React.FC<FileHeaderProps> = memo(
                   aria-hidden
                 />
               )}
-            {/* View Mode Toggle (for diffs) — TabPill pill (matches source control / preview) */}
+            {/* View Mode Toggle (for diffs) */}
             {showViewModeToggle && (
-              <div className="flex h-7 shrink-0 items-center">
-                <TabPill
-                  activeTab={viewMode}
-                  tabs={[
-                    {
-                      key: "unified",
-                      label: t("workstation.unified"),
-                    },
-                    {
-                      key: "split",
-                      label: t("workstation.split"),
-                    },
-                  ]}
-                  onChange={(key) => onViewModeChange(key as DiffViewMode)}
-                  variant="pill"
-                  color="fill"
-                  fillWidth={false}
-                  size="small"
-                />
-              </div>
+              <DiffViewModeToggle
+                viewMode={viewMode}
+                onChange={onViewModeChange}
+                t={t}
+              />
             )}
 
             {/* Custom Toggle — TabPill pill (matches source control / preview) */}

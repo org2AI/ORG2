@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import IconButton from "@src/components/IconButton";
+import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
 import CanvasPreviewSurface, {
   type CanvasPreviewSurfaceHandle,
@@ -203,20 +203,24 @@ function CanvasApp(props: SimulatorAppProps) {
         </div>
         <div className="flex items-center gap-1">
           {state.mode === "url" && state.url && (
-            <IconButton
+            <Button
               onClick={() => window.open(state.url!, "_blank")}
               title={t("simulator.replay.canvas.tooltipOpenInBrowser")}
               aria-label={t("simulator.replay.canvas.tooltipOpenInBrowser")}
-              size="sm"
-            >
-              <HugeiconsIcon
-                icon={SquareArrowUpRight02Icon}
-                data-icon="square-arrow-out-up-right"
-                className="h-3.5 w-3.5"
-              />
-            </IconButton>
+              size="mini"
+              variant="tertiary"
+              appearance="soft"
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={SquareArrowUpRight02Icon}
+                  data-icon="square-arrow-out-up-right"
+                  className="h-3.5 w-3.5"
+                />
+              }
+            />
           )}
-          <IconButton
+          <Button
             onClick={handleToggleFullscreen}
             title={
               isFullscreen
@@ -228,34 +232,42 @@ function CanvasApp(props: SimulatorAppProps) {
                 ? t("simulator.replay.canvas.tooltipExitFullscreen")
                 : t("simulator.replay.canvas.tooltipFullscreen")
             }
-            size="sm"
-          >
-            {isFullscreen ? (
-              <HugeiconsIcon
-                icon={ArrowShrink01Icon}
-                data-icon="minimize-2"
-                className="h-3.5 w-3.5"
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={ArrowExpand01Icon}
-                data-icon="maximize-2"
-                className="h-3.5 w-3.5"
-              />
-            )}
-          </IconButton>
-          <IconButton
+            size="mini"
+            variant="tertiary"
+            appearance="soft"
+            iconOnly
+            icon={
+              isFullscreen ? (
+                <HugeiconsIcon
+                  icon={ArrowShrink01Icon}
+                  data-icon="minimize-2"
+                  className="h-3.5 w-3.5"
+                />
+              ) : (
+                <HugeiconsIcon
+                  icon={ArrowExpand01Icon}
+                  data-icon="maximize-2"
+                  className="h-3.5 w-3.5"
+                />
+              )
+            }
+          />
+          <Button
             onClick={handleClose}
             title={t("simulator.replay.canvas.tooltipCloseCanvas")}
             aria-label={t("simulator.replay.canvas.tooltipCloseCanvas")}
-            size="sm"
-          >
-            <HugeiconsIcon
-              icon={Cancel01Icon}
-              data-icon="x"
-              className="h-3.5 w-3.5"
-            />
-          </IconButton>
+            size="mini"
+            variant="tertiary"
+            appearance="soft"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                data-icon="x"
+                className="h-3.5 w-3.5"
+              />
+            }
+          />
         </div>
       </div>
 

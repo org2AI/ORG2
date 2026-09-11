@@ -11,11 +11,12 @@
  */
 import { ACTION_ID } from "@src/ActionSystem";
 import {
+  ArrowBigLeftDashIcon,
+  ArrowBigRightDashIcon,
   ArrowLeftBigIcon,
   ArrowRightBigIcon,
   LayoutTopIcon,
   Menu01Icon,
-  PanelLeftIcon,
   SparklesIcon,
 } from "@src/icons";
 
@@ -102,7 +103,10 @@ export function buildChatPanelSettingsActions({
       workstationSidebarPosition === "left"
         ? "common:spotlightActions.moveWorkstationSidebarRight"
         : "common:spotlightActions.moveWorkstationSidebarLeft",
-    icon: PanelLeftIcon,
+    icon:
+      workstationSidebarPosition === "left"
+        ? ArrowBigRightDashIcon
+        : ArrowBigLeftDashIcon,
     keywords: [
       "workstation sidebar",
       "sidebar position",

@@ -1,9 +1,16 @@
 //! Shared Settings/CLI-detail connection commands. No work starts on an idle timer.
+mod desktop;
 mod probe;
+mod profiles;
+use agent_cli::managed_config::provider_profiles::ClaudeProviderProfile;
+pub use profiles::*;
 
 use agent_cli::managed_config::{CliConfigManagedStatus, DirectConnection};
 use key_vault::{
-    harness_connections::{resolve, ResolvedHarnessConnection},
+    harness_connections::{
+        resolve, resolve_with_options, validate_connection_key, ConnectionTarget,
+        DesktopConnectionOptions, ResolvedHarnessConnection,
+    },
     key_store::KEY_SERVICE,
 };
 use serde::Serialize;
@@ -35,6 +42,11 @@ pub struct ConnectionChoice {
 pub struct HarnessConnectionView {
     pub config: CliConfigManagedStatus,
     installed: bool,
+    version: Option<String>,
+    configuration_issue: Option<String>,
+    desktop_options: Option<DesktopConnectionOptions>,
+    profiles: Vec<ClaudeProviderProfile>,
+    applied_profile: Option<ClaudeProviderProfile>,
     choices: Vec<ConnectionChoice>,
 }
 
@@ -42,55 +54,114 @@ fn selected(
     agent: &str,
     key_id: &str,
     model: Option<&str>,
+    options: Option<&DesktopConnectionOptions>,
 ) -> Result<ResolvedHarnessConnection, String> {
     let key = KEY_SERVICE
         .get_key_by_id(key_id)
         .ok_or("Selected connection no longer exists")?;
-    resolve(agent, &key, model)
+    if ConnectionTarget::try_from(agent)? == ConnectionTarget::ClaudeDesktop {
+        agent_cli::managed_config::desktop::validate_model(model.ok_or("Select a Desktop model")?)?;
+    }
+    resolve_with_options(agent, &key, model, options)
 }
 
 #[tauri::command(rename_all = "camelCase")]
 pub async fn harness_connection_status(
     agent_name: String,
 ) -> Result<HarnessConnectionView, String> {
-    if !matches!(agent_name.as_str(), "claude_code" | "codex") {
-        return Err("Unsupported harness".into());
-    }
+    let target = ConnectionTarget::try_from(agent_name.as_str())?;
     let config = agent_cli::managed_config::cli_config_get_status(agent_name.clone()).await?;
-    let (installed, choices) = tokio::task::spawn_blocking(move || {
-        let installed =
-            integrations::cli_binary_resolver::resolve_cli_binary_for_registry_name(&agent_name)
-                .is_some_and(|binary| binary.installed());
-        let choices = KEY_SERVICE
-            .list_keys()
-            .iter()
-            .map(|key| {
-                let result = resolve(&agent_name, key, None);
-                ConnectionChoice {
-                    key_id: key.id.clone(),
-                    name: key
-                        .name
-                        .clone()
-                        .unwrap_or_else(|| key.model_type.as_str().into()),
-                    models: if key.enabled_models.is_empty() {
-                        key.available_models.clone()
-                    } else {
-                        key.enabled_models.clone()
-                    },
-                    endpoint: result.as_ref().ok().map(|value| value.base_url.clone()),
-                    requires_test: result.as_ref().is_ok_and(|value| value.requires_test),
-                    reason: result.err(),
+    let mut configuration_issue = None;
+    let version = if target == ConnectionTarget::ClaudeDesktop {
+        match desktop::installation().await {
+            Ok(version) => {
+                if let Some(value) = &version {
+                    configuration_issue = desktop::validate_version(value).err();
                 }
-            })
-            .collect();
-        (installed, choices)
+                version
+            }
+            Err(error) => {
+                configuration_issue = Some(error);
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let desktop_installed = version.is_some();
+    let (installed, choices, desktop_options, policy_issue) = tokio::task::spawn_blocking({
+        let config = config.clone();
+        move || {
+            let installed = if target == ConnectionTarget::ClaudeDesktop {
+                desktop_installed
+            } else {
+                integrations::cli_binary_resolver::resolve_cli_binary_for_registry_name(&agent_name)
+                    .is_some_and(|binary| binary.installed())
+            };
+            let choices = KEY_SERVICE
+                .list_keys()
+                .iter()
+                .map(|key| {
+                    let result = resolve(&agent_name, key, None);
+                    ConnectionChoice {
+                        key_id: key.id.clone(),
+                        name: key
+                            .name
+                            .clone()
+                            .unwrap_or_else(|| key.model_type.as_str().into()),
+                        models: if key.enabled_models.is_empty() {
+                            key.available_models.clone()
+                        } else {
+                            key.enabled_models.clone()
+                        },
+                        endpoint: result.as_ref().ok().map(|value| value.base_url.clone()),
+                        requires_test: target == ConnectionTarget::ClaudeDesktop
+                            || result.as_ref().is_ok_and(|value| value.requires_test),
+                        reason: if target != ConnectionTarget::Codex {
+                            validate_connection_key(&agent_name, key).err()
+                        } else {
+                            result.err()
+                        },
+                    }
+                })
+                .collect();
+            let (desktop_options, policy_issue) = if target == ConnectionTarget::ClaudeDesktop {
+                match agent_cli::managed_config::desktop::ensure_unmanaged()
+                    .and_then(|()| desktop::applied_options(&config))
+                {
+                    Ok(options) => (options, None),
+                    Err(error) => (None, Some(error)),
+                }
+            } else {
+                (None, None)
+            };
+            (installed, choices, desktop_options, policy_issue)
+        }
     })
     .await
     .map_err(|_| "Connection lookup failed")?;
+    let (profiles, applied_profile) = if target != ConnectionTarget::Codex {
+        let target = config.agent_name.clone();
+        tokio::task::spawn_blocking(move || {
+            Ok::<_, String>((
+                agent_cli::managed_config::provider_profiles::list(&target)?,
+                agent_cli::managed_config::provider_profiles::applied(&target)?,
+            ))
+        })
+        .await
+        .map_err(|_| "Profile lookup failed")??
+    } else {
+        (vec![], None)
+    };
     Ok(HarnessConnectionView {
+        profiles,
+        applied_profile,
         config,
         choices,
         installed,
+        version,
+        configuration_issue: configuration_issue.or(policy_issue),
+        desktop_options,
     })
 }
 
@@ -100,6 +171,8 @@ pub async fn harness_connection_test(
     key_id: String,
     model: String,
     request_id: String,
+    desktop_options: Option<DesktopConnectionOptions>,
+    profile: Option<ClaudeProviderProfile>,
 ) -> Result<String, String> {
     let (cancel, cancelled) = tokio::sync::oneshot::channel();
     {
@@ -114,10 +187,14 @@ pub async fn harness_connection_test(
     }
     let result = tokio::select! {
         _ = cancelled => Err("Connection test cancelled".to_string()),
-        result = tokio::time::timeout(Duration::from_secs(45), async {
+        result = tokio::time::timeout(Duration::from_secs(if profile.is_some() { 225 } else { 45 }), async {
             verify_installed_version(&agent_name).await?;
-            let connection = selected(&agent_name, &key_id, Some(&model))?;
-            probe::test(&connection).await?;
+            let mut connection = profiles::selection(&agent_name, &key_id, &model, desktop_options.as_ref(), profile.as_ref())?;
+            let models = profile.as_ref().map(|p| p.models.request_models().into_iter().map(str::to_string).collect::<Vec<_>>()).unwrap_or_else(|| vec![model.clone()]);
+            for model in models {
+                connection.model = model;
+                probe::test(&connection).await.map_err(|error| format!("Model {}: {error}", connection.model))?;
+            }
             Ok::<_, String>(connection)
         }) => result.unwrap_or_else(|_| Err("Connection test timed out".into())),
     };
@@ -175,20 +252,33 @@ fn require_receipt(
     Err("Test this third-party endpoint and model before applying; previous evidence is missing, expired, or belongs to a different connection".into())
 }
 
+// Keep existing named IPC arguments compatible; the optional profile adds mapping metadata.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command(rename_all = "camelCase")]
 pub async fn harness_connection_apply(
     agent_name: String,
     key_id: String,
     model: String,
     routing: String,
+    desktop_options: Option<DesktopConnectionOptions>,
     receipt: Option<String>,
+    profile: Option<ClaudeProviderProfile>,
     expected_hashes: std::collections::BTreeMap<String, Option<String>>,
 ) -> Result<CliConfigManagedStatus, String> {
     if !matches!(routing.as_str(), "direct" | "orgii_managed") {
         return Err("Unsupported routing mode".into());
     }
+    if (agent_name == "claude_desktop" || profile.is_some()) && routing != "direct" {
+        return Err("Claude profiles support native direct connections only".into());
+    }
     verify_installed_version(&agent_name).await?;
-    let connection = selected(&agent_name, &key_id, Some(&model))?;
+    let connection = profiles::selection(
+        &agent_name,
+        &key_id,
+        &model,
+        desktop_options.as_ref(),
+        profile.as_ref(),
+    )?;
     require_receipt(&connection, receipt.as_deref())?;
     if routing == "orgii_managed" {
         return crate::cli_managed_proxy::cli_config_enable_orgii_managed(
@@ -202,16 +292,25 @@ pub async fn harness_connection_apply(
     }
     tokio::task::spawn_blocking(move || {
         // Resolve again at the write boundary; key changes invalidate the receipt.
-        let connection = selected(&agent_name, &key_id, Some(&model))?;
+        let connection = profiles::selection(
+            &agent_name,
+            &key_id,
+            &model,
+            desktop_options.as_ref(),
+            profile.as_ref(),
+        )?;
         require_receipt(&connection, receipt.as_deref())?;
         agent_cli::managed_config::enable_direct(
             &agent_name,
             DirectConnection {
+                profile,
                 key_id: connection.key_id,
                 provider: connection.provider,
                 model: connection.model,
                 base_url: connection.base_url,
                 api_key: connection.api_key,
+                desktop_auth_scheme: (agent_name == "claude_desktop")
+                    .then(|| connection.auth_scheme.as_str().to_string()),
             },
             Some(&expected_hashes),
         )
@@ -227,10 +326,13 @@ pub(crate) fn authorize_managed(
     key_id: Option<&str>,
     model: Option<&str>,
 ) -> Result<(), String> {
+    if agent == agent_cli::managed_config::desktop::TARGET {
+        return Err("Claude Desktop currently supports direct connections only".into());
+    }
     if !matches!(agent, "claude_code" | "codex") {
         return Ok(());
     }
-    let connection = selected(agent, key_id.ok_or("Select a connection")?, model)?;
+    let connection = selected(agent, key_id.ok_or("Select a connection")?, model, None)?;
     if !connection.requires_test {
         return Ok(());
     }
@@ -248,6 +350,15 @@ pub(crate) fn authorize_managed(
 }
 
 async fn verify_installed_version(agent: &str) -> Result<(), String> {
+    if ConnectionTarget::try_from(agent)? == ConnectionTarget::ClaudeDesktop {
+        let version = desktop::installation()
+            .await?
+            .ok_or("Install Claude Desktop before configuring a connection")?;
+        desktop::validate_version(&version)?;
+        return tokio::task::spawn_blocking(agent_cli::managed_config::desktop::ensure_unmanaged)
+            .await
+            .map_err(|_| "Desktop policy lookup failed")?;
+    }
     use integrations::cli_binary_resolver::{
         probe_cli_binary_version, resolve_cli_binary_for_registry_name,
     };

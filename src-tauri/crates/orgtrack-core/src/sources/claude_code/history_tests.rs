@@ -1985,3 +1985,67 @@ fn sdk_compact_user_stdout_is_a_command_result_but_unrelated_user_text_is_preser
     );
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn claude_question_receipt_survives_native_replay() {
+    let path = std::env::temp_dir().join(format!(
+        "claude-question-{}.jsonl",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let lines = [
+        serde_json::json!({"type":"assistant","timestamp":"2026-09-10T00:00:00Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"question-tool","name":"AskUserQuestion","input":{"questions":[{"question":"Choice?","options":[{"label":"Beta"}]}]}}]}}),
+        serde_json::json!({"type":"user","timestamp":"2026-09-10T00:00:01Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"question-tool","content":"Provider-specific answer prose"}]},"toolUseResult":{"answers":{"Choice?":"Beta"}}}),
+    ];
+    std::fs::write(
+        &path,
+        lines
+            .iter()
+            .map(Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n"),
+    )
+    .unwrap();
+    let chunks = load_claude_code_history_from_path("claudecodeapp-question", &path).unwrap();
+    std::fs::remove_file(&path).unwrap();
+    let question = chunks
+        .iter()
+        .find(|c| c.function == "ask_user_questions")
+        .unwrap();
+    assert_eq!(question.result["status"], "answered");
+    assert_eq!(question.result["answers"], serde_json::json!([["Beta"]]));
+}
+
+#[test]
+fn claude_question_error_receipt_does_not_become_answered() {
+    let path = std::env::temp_dir().join(format!(
+        "claude-question-{}.jsonl",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let lines = [
+        serde_json::json!({"type":"assistant","timestamp":"2026-09-10T00:00:00Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"question-tool","name":"AskUserQuestion","input":{"questions":[{"question":"Choice?","options":[{"label":"Beta"}]}]}}]}}),
+        serde_json::json!({"type":"user","timestamp":"2026-09-10T00:00:01Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"question-tool","content":"Permission denied","is_error":true}]},"toolUseResult":{"answers":{"Choice?":"Beta"}}}),
+    ];
+    std::fs::write(
+        &path,
+        lines
+            .iter()
+            .map(Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n"),
+    )
+    .unwrap();
+    let chunks = load_claude_code_history_from_path("claudecodeapp-question", &path).unwrap();
+    std::fs::remove_file(&path).unwrap();
+    let question = chunks
+        .iter()
+        .find(|c| c.function == "ask_user_questions")
+        .unwrap();
+    assert_ne!(question.result["status"], "answered");
+    assert!(question.result.get("answers").is_none());
+}

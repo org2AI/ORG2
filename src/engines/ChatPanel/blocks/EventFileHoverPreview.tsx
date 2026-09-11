@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { FileTreeHoverPreview } from "@src/components/FileTreePreview/exports";
+import { useIsSessionFileShared } from "@src/features/Org2Cloud/SharedSessionFilesContext";
 
 interface EventFileHoverPreviewProps {
   path?: string | null;
@@ -13,7 +14,8 @@ const EventFileHoverPreview: React.FC<EventFileHoverPreviewProps> = ({
   repoPath,
   children,
 }) => {
-  if (!path) return children;
+  const shared = useIsSessionFileShared();
+  if (!path || shared) return children;
 
   return (
     <FileTreeHoverPreview

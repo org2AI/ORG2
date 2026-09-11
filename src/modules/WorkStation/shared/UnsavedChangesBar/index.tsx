@@ -9,13 +9,13 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { IconButton } from "@src/components/IconButton";
+import Button from "@src/components/Button";
 import { HEADER_ICON_SIZE, TYPOGRAPHY } from "@src/config/workstation/tokens";
 import {
   HugeiconsIcon,
   Loading03Icon,
   Tick01Icon,
-  Undo02Icon,
+  Undo03Icon,
 } from "@src/icons";
 import { HUMANTOOLS_TEXT_KEYS } from "@src/modules/WorkStation/shared/textTokens";
 
@@ -61,51 +61,57 @@ const FloatingBarUnsaved: React.FC<UnsavedChangesBarProps> = memo(
           {message ?? defaultMessage}
         </span>
         {onDiscard && (
-          <IconButton
-            size="sm"
-            type="button"
-            variant="default"
+          <Button
+            size="mini"
+            htmlType="button"
+            variant="tertiary"
             onClick={onDiscard}
             disabled={saving}
-            className="shrink-0 rounded-full text-text-2 hover:text-text-1"
+            className="shrink-0 text-text-2 hover:text-text-1"
             title={t("actions.discard")}
             aria-label={t("actions.discard")}
-          >
-            <HugeiconsIcon
-              icon={Undo02Icon}
-              data-icon="undo-2"
-              size={HEADER_ICON_SIZE.sm}
-              strokeWidth={1.75}
-            />
-          </IconButton>
+            appearance="soft"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={Undo03Icon}
+                data-icon="undo-3"
+                size={HEADER_ICON_SIZE.sm}
+                strokeWidth={1.75}
+              />
+            }
+          />
         )}
-        <IconButton
-          size="sm"
-          type="button"
-          variant="default"
+        <Button
+          size="mini"
+          htmlType="button"
+          variant="tertiary"
           onClick={onSave}
           disabled={saving}
-          className="shrink-0 rounded-full bg-primary-6 text-white hover:bg-primary-7!"
+          className="shrink-0 bg-primary-6 text-white hover:bg-primary-7!"
           title={saving ? t("status.saving") : t("actions.save")}
           aria-label={saving ? t("status.saving") : t("actions.save")}
-        >
-          {saving ? (
-            <HugeiconsIcon
-              icon={Loading03Icon}
-              data-icon="loader-2"
-              size={HEADER_ICON_SIZE.sm}
-              strokeWidth={1.75}
-              className="animate-spin"
-            />
-          ) : (
-            <HugeiconsIcon
-              icon={Tick01Icon}
-              data-icon="check"
-              size={HEADER_ICON_SIZE.sm}
-              strokeWidth={1.75}
-            />
-          )}
-        </IconButton>
+          appearance="soft"
+          iconOnly
+          icon={
+            saving ? (
+              <HugeiconsIcon
+                icon={Loading03Icon}
+                data-icon="loader-2"
+                size={HEADER_ICON_SIZE.sm}
+                strokeWidth={1.75}
+                className="animate-spin"
+              />
+            ) : (
+              <HugeiconsIcon
+                icon={Tick01Icon}
+                data-icon="check"
+                size={HEADER_ICON_SIZE.sm}
+                strokeWidth={1.75}
+              />
+            )
+          }
+        />
       </FloatingBarPill>
     );
   }

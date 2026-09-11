@@ -43,8 +43,8 @@ vi.mock("../components/transcript/RoundNavigator", () => ({
   RoundNavigator: () => null,
 }));
 
-vi.mock("@src/components/IconButton", () => ({
-  IconButton: () => null,
+vi.mock("@src/components/Button", () => ({
+  default: () => null,
 }));
 
 vi.mock("@src/components/PermissionPrompt", () => ({

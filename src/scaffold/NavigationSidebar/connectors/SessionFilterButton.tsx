@@ -10,6 +10,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { DropdownItem, DropdownPanel } from "@src/components/Dropdown/exports";
 import {
   type SubmenuAnchor,
@@ -22,7 +23,6 @@ import {
   DROPDOWN_PANEL,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import IconButton from "@src/components/IconButton";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import Switch from "@src/components/Switch";
 import { useDropdownEngine } from "@src/hooks/dropdown";
@@ -304,11 +304,11 @@ export const SessionFilterButton: FC<SessionFilterButtonProps> = React.memo(
           disabled={isOpen}
         >
           <div ref={triggerRef} className="inline-flex">
-            <IconButton
+            <Button
               aria-label={t("sidebar.groupBy.title")}
               data-testid="sidebar-session-filter-button"
-              size="lg"
-              variant="default"
+              size="small"
+              variant="tertiary"
               className={`rounded-lg! ${
                 isOpen
                   ? "bg-sidebar-selected! text-text-1! hover:bg-sidebar-selected!"
@@ -318,15 +318,18 @@ export const SessionFilterButton: FC<SessionFilterButtonProps> = React.memo(
               onMouseEnter={(event) =>
                 triggerIconAnimation(event.currentTarget)
               }
-            >
-              <HoverAnimatedIcon
-                icon={FilterMailIcon}
-                iconName="list-filter"
-                size={16}
-                strokeWidth={2}
-                className={isOpen ? "text-text-1" : "text-text-2"}
-              />
-            </IconButton>
+              appearance="soft"
+              iconOnly
+              icon={
+                <HoverAnimatedIcon
+                  icon={FilterMailIcon}
+                  iconName="list-filter"
+                  size={16}
+                  strokeWidth={2}
+                  className={isOpen ? "text-text-1" : "text-text-2"}
+                />
+              }
+            />
           </div>
         </ToolbarTooltip>
 

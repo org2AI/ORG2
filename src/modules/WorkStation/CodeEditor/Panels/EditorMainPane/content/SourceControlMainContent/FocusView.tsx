@@ -52,7 +52,7 @@ const FocusView: React.FC<FocusViewProps> = ({
   const emptyPlaceholder = (
     <NoTabsPlaceholder
       icon="source-control"
-      caption={t("placeholders.selectFileToViewChanges")}
+      caption={t("placeholders.selectSidebarFileToViewChanges")}
     />
   );
 

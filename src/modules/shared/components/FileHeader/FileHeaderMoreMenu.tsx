@@ -48,7 +48,7 @@ import {
   Refresh04Icon,
   Search01Icon,
   Settings01Icon,
-  Undo02Icon,
+  Undo03Icon,
 } from "@src/icons";
 import { getFileManagerRevealLabelKey } from "@src/util/platform/fileManagerLabels";
 
@@ -318,8 +318,8 @@ export const FileHeaderMoreMenu: React.FC<FileHeaderMoreMenuProps> = ({
                 tabIndex={0}
                 icon={
                   <HugeiconsIcon
-                    icon={Undo02Icon}
-                    data-icon="undo-2"
+                    icon={Undo03Icon}
+                    data-icon="undo-3"
                     size={HEADER_ICON_SIZE.sm}
                   />
                 }

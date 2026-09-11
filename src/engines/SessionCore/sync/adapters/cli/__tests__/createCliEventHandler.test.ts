@@ -2271,6 +2271,31 @@ describe("createCliEventHandler ingestion boundary", () => {
       });
     });
 
+    it("routes native approvals and their resolution to the current session", () => {
+      handler.handleEvent({
+        type: "permission:request",
+        session_id: SESSION_ID,
+        origin: "native_cli",
+        requestId: "native-interaction-1",
+        toolName: "Write",
+        toolArgs: { file_path: "test.txt" },
+      });
+      expect(requests()).toHaveLength(1);
+      expect(requests()[0].origin).toBe("native_cli");
+      handler.handleEvent({
+        type: "native_interaction:resolved",
+        session_id: "other",
+        requestId: "native-interaction-1",
+      });
+      expect(requests()).toHaveLength(1);
+      handler.handleEvent({
+        type: "native_interaction:resolved",
+        session_id: SESSION_ID,
+        requestId: "native-interaction-1",
+      });
+      expect(requests()).toHaveLength(0);
+    });
+
     it("defaults the tool name and args when the frame omits them", () => {
       handler.handleEvent({
         type: "permission:request",

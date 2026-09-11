@@ -10,7 +10,7 @@ import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { PrFile } from "@src/api/tauri/github";
-import { IconButton } from "@src/components/IconButton";
+import Button from "@src/components/Button";
 import Message from "@src/components/Message";
 import PrStatusBadge from "@src/components/PrStatusBadge";
 import { Copy01Icon, HugeiconsIcon } from "@src/icons";
@@ -121,22 +121,26 @@ export function PrFlowHeader({
       <BranchPill name={baseBranch} />
       <span>{t("git.pr.flow.from", "from")}</span>
       <BranchPill name={identity.headBranch} />
-      <IconButton
-        size="sm"
+      <Button
+        size="sidebar"
         aria-label={t("git.pr.flow.copyHeadBranch", "Copy head branch name")}
         title={t("git.pr.flow.copyHeadBranch", "Copy head branch name")}
         className="text-text-3 hover:text-text-1"
         onClick={() => void copyHeadBranch()}
         data-testid="pr-flow-copy-branch"
-      >
-        <HugeiconsIcon
-          icon={Copy01Icon}
-          data-icon="copy"
-          size={12}
-          strokeWidth={1.75}
-          aria-hidden
-        />
-      </IconButton>
+        variant="tertiary"
+        appearance="soft"
+        iconOnly
+        icon={
+          <HugeiconsIcon
+            icon={Copy01Icon}
+            data-icon="copy"
+            size={12}
+            strokeWidth={1.75}
+            aria-hidden
+          />
+        }
+      />
       <span className="inline-flex items-center gap-1 tabular-nums">
         <span className="text-success-6">
           +{additions.toLocaleString("en-US")}

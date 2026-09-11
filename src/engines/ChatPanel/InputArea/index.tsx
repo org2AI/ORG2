@@ -29,6 +29,7 @@ import { pinnedActionsVisibleAtom } from "@src/store/session";
 import type { SlashItemCategory } from "@src/types/extensions";
 import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 
+import CliPermissionPill from "./components/CliPermissionPill";
 import EditModeHeader from "./components/EditModeHeader";
 import FollowUpSuggestionBar from "./components/FollowUpSuggestionBar";
 import {
@@ -426,7 +427,12 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
       !showAgentControls || (isCursorIde && sessionId) ? null : (
         <>
           <ConversationModePill sessionId={sessionId ?? null} />
-          {!teamChatActive && <ModePill resetToDefaultOnClick />}
+          {!teamChatActive && (
+            <>
+              <ModePill resetToDefaultOnClick />
+              <CliPermissionPill />
+            </>
+          )}
         </>
       );
     const clearReplyInfo = useCallback(

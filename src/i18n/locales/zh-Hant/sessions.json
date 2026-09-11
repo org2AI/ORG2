@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "需要麥克風存取權限"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "操作前審批",
+      "workspace": "工作區權限",
+      "edit": "允許編輯",
+      "full": "完全存取",
+      "nextTurn": "權限設定從下一輪開始生效"
+    },
     "planApprovedLabel": "執行已核准的計畫",
     "planApprovedEditedLabel": "執行已核准的計畫（已編輯）",
     "sessionStarted": "Session 已開始",
@@ -2309,7 +2316,6 @@
       "agentFallback": "Agent"
     },
     "sidebar": {
-      "stopAgentProcess": "停止 Agent 進程",
       "openInMyStation": "在 My Station 打開"
     }
   },
@@ -2673,5 +2679,14 @@
     "imagesUnsupported": "團隊聊天訊息不能包含圖片",
     "participantsTooltip": "對話參與者與討論訊息",
     "mentionGroup": "隊友"
+  },
+  "sharedFile": {
+    "downloaded": "已儲存至下載資料夾",
+    "downloadError": "無法儲存至下載資料夾",
+    "title": "共享檔案",
+    "error": "無法開啟檔案，請檢查帳號、伺服器及對話存取權限後重新開啟連結",
+    "downloadPreview": "下載檔案以查看內容",
+    "download": "下載",
+    "loading": "正在載入共享檔案…"
   }
 }

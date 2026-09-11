@@ -44,11 +44,6 @@
     }
   },
   "toasts": {
-    "replyEmpty": "回复不能为空",
-    "sessionNotFound": "未找到会话",
-    "answerSubmitted": "回答提交成功",
-    "replyError": "发送回复时出错",
-    "questionIgnored": "已忽略该问题",
     "addedAsContext": "已将 {{name}} 添加为上下文",
     "addedFilesAsContext": "已添加 {{count}} 个文件作为上下文",
     "chooseExecutionAgentAi": "使用 AI 创建前请先选择一个 Agent 负责人。",
@@ -519,42 +514,9 @@
     "technicalDetails": "技术详情",
     "failedToCopy": "复制失败",
     "api": {
-      "titles": {
-        "githubConnections": "无法加载 GitHub 连接",
-        "githubConnect": "无法连接 GitHub",
-        "workflows": "无法加载工作流",
-        "config": "无法加载设置",
-        "agent": "无法连接 Agent",
-        "repository": "无法加载仓库",
-        "file": "无法加载文件",
-        "mcp": "MCP 服务器错误",
-        "extension": "代码编辑器扩展错误",
-        "workspace": "无法加载工作区",
-        "slackConnections": "无法加载 Slack 连接",
-        "wallet": "无法加载钱包",
-        "billing": "无法完成计费操作",
-        "default": "无法加载数据",
-        "timeout": "请求超时",
-        "external": "无法加载外部数据"
-      },
       "messages": {
-        "network": "请检查网络连接后重试。",
-        "timeout": "请求超时，请重试。",
-        "server": "服务器出错，请稍后再试。",
-        "notFound": "未找到该项目。",
-        "signIn": "请重新登录。",
-        "forbidden": "您没有执行此操作的权限。",
-        "tooManyRequests": "请求过多，请稍后再试。",
-        "validation": "数据无效，请检查输入。",
-        "conflict": "检测到冲突，资源可能已被修改。",
-        "badGateway": "服务器不可达，请稍后重试。",
-        "serviceUnavailable": "服务暂时不可用，请稍后重试。",
-        "gatewayTimeout": "服务器无响应，请稍后重试。",
-        "invalidRequest": "请求无效，请重试。",
-        "default": "请重试。",
-        "externalHint": "请检查 URL 和设置后重试。"
-      },
-      "workflow": "工作流服务暂时不可用，请稍后重试。"
+        "signIn": "请重新登录。"
+      }
     },
     "unknownError": "发生未知错误",
     "componentLoadingFailed": "组件加载失败",
@@ -732,8 +694,6 @@
     "failedToLoadCommitDiff": "加载提交差异失败",
     "loadingHistory": "加载历史记录中...",
     "commitMessage": "提交消息",
-    "filterChanges": "筛选变更...",
-    "searchFiles": "搜索文件...",
     "searchInRepository": "在仓库中搜索...",
     "enterUrlOrSearch": "输入 URL 或搜索...",
     "filterByUrl": "按 URL 筛选...",
@@ -745,7 +705,6 @@
     "connectionError": "连接错误",
     "noConnections": "添加连接以开始",
     "selectRowsToDelete": "选择要删除的行",
-    "filterFiles": "筛选文件...",
     "filterSearch": "筛选搜索...",
     "noChanges": "无变更",
     "noMatchingFiles": "没有匹配的文件",
@@ -789,7 +748,8 @@
     "selectRepositoryFromWorkspace": "选择工作区仓库",
     "noData": "无数据",
     "noSessionHistoryForFile": "未找到 {{file}} 的会话活动",
-    "noSessionHistory": "暂无会话历史"
+    "noSessionHistory": "暂无会话历史",
+    "selectSidebarFileToViewChanges": "在侧边栏选择文件"
   },
   "inbox": {
     "scrollToBottom": "滚动到底部",
@@ -868,8 +828,6 @@
     "linesSelected": "已选择 {{count}} 行",
     "charsSelected": "已选择 {{count}} 个字符",
     "nLines": "{{count}} 行",
-    "hideFilter": "隐藏筛选",
-    "filterFilesAction": "筛选文件",
     "switchToTreeView": "切换到树形视图",
     "switchToListView": "切换到列表视图",
     "discardChanges": "丢弃更改",
@@ -904,7 +862,9 @@
       "webviewHiddenTitle": "网页视图已临时隐藏",
       "webviewHiddenBody": "关闭菜单或弹窗即可重新显示。"
     },
-    "unsavedChangesTitle": "未保存的更改"
+    "unsavedChangesTitle": "未保存的更改",
+    "switchToUnifiedDiff": "切换为统一差异视图",
+    "switchToSplitDiff": "切换为并排差异视图"
   },
   "git": {
     "loading": "正在加载 Git 状态...",
@@ -1806,7 +1766,6 @@
     "scope": {
       "main": "主工作区",
       "worktrees": "Worktree",
-      "searchPlaceholder": "筛选 worktree…",
       "switchScopeActive": "切换源代码管理范围：{{repo}}，{{branch}}"
     }
   },
@@ -1909,22 +1868,7 @@
     "database": "数据库",
     "user": "用户名",
     "password": "密码",
-    "ssl": "要求 SSL",
-    "spotlight": {
-      "scanFolder": "扫描文件夹",
-      "scanFolderDesc": "在文件夹中查找所有 .sqlite、.db 文件",
-      "openFile": "打开文件",
-      "openFileDesc": "选择一个数据库文件",
-      "enterPath": "输入路径",
-      "enterPathDesc": "直接输入文件或文件夹路径",
-      "placeholderSelect": "添加数据库的方式…",
-      "placeholderPath": "~/data 或 /path/to/database.db",
-      "pickerFolderTitle": "选择要扫描的文件夹",
-      "pickerFileTitle": "选择数据库文件",
-      "pickerSqliteName": "SQLite 数据库",
-      "pickerAllFiles": "所有文件",
-      "pickerError": "无法打开选择器"
-    }
+    "ssl": "要求 SSL"
   },
   "dragDrop": {
     "couldNotExtractPathFromItem": "无法从拖放项中提取文件路径"
@@ -1982,8 +1926,7 @@
     "sidebar": {
       "newTab": "新标签页",
       "newPrivateTab": "新隐私标签页",
-      "newTerminal": "新建终端",
-      "untitled": "未命名"
+      "newTerminal": "新建终端"
     },
     "statusBar": {}
   },

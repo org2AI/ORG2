@@ -1,8 +1,10 @@
+// @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import React from "react";
+import React, { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import Button from ".";
 
@@ -105,4 +107,78 @@ describe("Button", () => {
       }
     }
   );
+});
+
+describe("compact shared actions", () => {
+  beforeAll(() => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  });
+  afterAll(() => {
+    Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
+  });
+  it("renders the sidebar icon at 20px with the standard 8px radius", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(Button, {
+        size: "sidebar",
+        variant: "tertiary",
+        appearance: "soft",
+        iconOnly: true,
+        icon: React.createElement("svg", { "data-testid": "action-icon" }),
+        "aria-label": "Stage file",
+      })
+    );
+    expect(markup).toContain("height:20px");
+    expect(markup).toContain("width:20px");
+    expect(markup).toContain("border-radius:8px");
+    expect(markup).toContain("action-icon");
+    expect(markup).toContain("enabled:hover:bg-button-hover");
+    expect(markup).not.toContain("enabled:hover:bg-primary-3");
+  });
+
+  it("keeps compact non-sidebar actions at 24px", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(Button, {
+        size: "mini",
+        iconOnly: true,
+        icon: React.createElement("svg"),
+      })
+    );
+    expect(markup).toContain("width:24px");
+    expect(markup).toContain("border-radius:8px");
+  });
+
+  it("keeps danger actions light and respects native disabled behavior", async () => {
+    let clicks = 0;
+    const props = {
+      size: "sidebar" as const,
+      variant: "danger" as const,
+      appearance: "soft" as const,
+      iconOnly: true,
+      "aria-label": "Discard file",
+      icon: React.createElement("svg"),
+      onClick: () => {
+        clicks += 1;
+      },
+    };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    try {
+      await act(async () => root.render(React.createElement(Button, props)));
+      const button = container.querySelector("button")!;
+      expect(button.getAttribute("aria-label")).toBe("Discard file");
+      expect(button.className).toContain("enabled:hover:bg-danger-1");
+      expect(button.className).not.toContain("bg-danger-3");
+      await act(async () => button.click());
+      expect(clicks).toBe(1);
+      await act(async () =>
+        root.render(React.createElement(Button, { ...props, disabled: true }))
+      );
+      await act(async () => button.click());
+      expect(clicks).toBe(1);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
 });

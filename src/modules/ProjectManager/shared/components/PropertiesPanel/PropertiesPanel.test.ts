@@ -42,7 +42,9 @@ describe("PropertiesPanel", () => {
     expect(markup).toContain("shadow-dropdown");
     expect(markup).toContain("mb-1");
     expect(markup).toContain("h-6");
-    expect(markup).toContain("h-5 w-5");
+    expect(markup).toContain("height:20px");
+    expect(markup).toContain("width:20px");
+    expect(markup).toContain("border-radius:8px");
     expect(markup).toContain("justify-between pr-[3px] pl-1");
     expect(markup).toContain("px-1 text-[11px]");
     expect(markup).toContain("max-h-full");

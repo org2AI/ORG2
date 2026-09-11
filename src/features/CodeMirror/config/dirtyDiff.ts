@@ -13,11 +13,13 @@ import {
   StateField,
 } from "@codemirror/state";
 import {
+  Decoration,
   EditorView,
   GutterMarker,
   ViewPlugin,
   ViewUpdate,
   gutter,
+  gutterLineClass,
 } from "@codemirror/view";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -59,21 +61,16 @@ async function computeDirtyDiffRust(
   original: string,
   current: string
 ): Promise<Map<number, DiffLineType>> {
-  try {
-    const result = await invoke<DirtyDiffResult>("compute_dirty_diff_markers", {
-      original,
-      current,
-    });
+  const result = await invoke<DirtyDiffResult>("compute_dirty_diff_markers", {
+    original,
+    current,
+  });
 
-    const changes = new Map<number, DiffLineType>();
-    for (const marker of result.markers) {
-      changes.set(marker.line, marker.type);
-    }
-    return changes;
-  } catch (error) {
-    log.warn("[DirtyDiff] Rust computation failed, returning empty:", error);
-    return new Map();
+  const changes = new Map<number, DiffLineType>();
+  for (const marker of result.markers) {
+    changes.set(marker.line, marker.type);
   }
+  return changes;
 }
 
 // ============================================
@@ -120,6 +117,18 @@ class DiffGutterMarker extends GutterMarker {
 const addedMarker = new DiffGutterMarker("added");
 const modifiedMarker = new DiffGutterMarker("modified");
 const deletedMarker = new DiffGutterMarker("deleted");
+
+class DiffRowMarker extends GutterMarker {
+  constructor(type: DiffLineType) {
+    super();
+    this.elementClass = `cm-dirty-diff-row-${type}`;
+  }
+}
+const rowMarkers = {
+  added: new DiffRowMarker("added"),
+  modified: new DiffRowMarker("modified"),
+  deleted: new DiffRowMarker("deleted"),
+};
 
 // ============================================
 // Configuration
@@ -266,7 +275,8 @@ export function dirtyDiffGutter(
           }
 
           const original = originalRef.current;
-          const current = this.view.state.doc.toString();
+          const document = this.view.state.doc;
+          const current = document.toString();
 
           let markers: RangeSet<GutterMarker>;
 
@@ -296,7 +306,17 @@ export function dirtyDiffGutter(
               return;
             }
 
-            markers = buildMarkerRangeSet(changes, this.view.state.doc);
+            // A result belongs to the exact document/baseline that produced
+            // it. Never apply old line numbers to a newer editor snapshot.
+            if (
+              this.view.state.doc !== document ||
+              originalRef.current !== original
+            ) {
+              this.pendingUpdate = true;
+              return;
+            }
+
+            markers = buildMarkerRangeSet(changes, document);
           }
 
           // Apply markers (check view still valid after async)
@@ -339,6 +359,8 @@ export function dirtyDiffGutter(
   // Theme for gutter styling
   const gutterTheme = EditorView.baseTheme({
     ".cm-dirty-diff-gutter": {
+      order: "-1",
+      overflow: "visible",
       width: "var(--diff-gutter-width, 4px)",
       minWidth: "var(--diff-gutter-width, 4px)",
       maxWidth: "var(--diff-gutter-width, 4px)",
@@ -349,5 +371,41 @@ export function dirtyDiffGutter(
     },
   });
 
-  return [dirtyDiffField, dirtyDiffPlugin, diffGutter, gutterTheme];
+  const rowClasses = gutterLineClass.from(dirtyDiffField, (markers) => {
+    const builder = new RangeSetBuilder<GutterMarker>();
+    for (const cursor = markers.iter(); cursor.value; cursor.next()) {
+      if (cursor.value instanceof DiffGutterMarker) {
+        builder.add(cursor.from, cursor.from, rowMarkers[cursor.value.type]);
+      }
+    }
+    return builder.finish();
+  });
+  const rowBackgrounds = EditorView.decorations.from(
+    dirtyDiffField,
+    (markers) => {
+      const decorations = [];
+      for (const cursor = markers.iter(); cursor.value; cursor.next()) {
+        if (
+          cursor.value instanceof DiffGutterMarker &&
+          (cursor.value.type !== "deleted" || isDeletedFile)
+        ) {
+          decorations.push(
+            Decoration.line({
+              class: `cm-dirty-diff-row-${cursor.value.type}`,
+            }).range(cursor.from)
+          );
+        }
+      }
+      return Decoration.set(decorations);
+    }
+  );
+
+  return [
+    dirtyDiffField,
+    dirtyDiffPlugin,
+    diffGutter,
+    gutterTheme,
+    rowClasses,
+    rowBackgrounds,
+  ];
 }

@@ -104,6 +104,10 @@ async fn dispatch_method(
 ) -> Result<Value, RpcError> {
     match method {
         "initialize" => handle_initialize(ctx, params).await,
+        "session/resolve" => {
+            require_initialized(ctx)?;
+            super::adapters::session_identity::resolve(params).await
+        }
         "session/list" => {
             require_initialized(ctx)?;
             session::session_list(params).await
@@ -232,6 +236,7 @@ async fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value
             "roundHistory": true,
             "openSessionFile": true,
             "modelSelection": true,
+            "sessionIdentity": true,
             "sessionSearch": true,
         }
     }))
@@ -282,6 +287,8 @@ mod tests {
         });
         let response = dispatch(&mut ctx, &request).await.expect("response");
         assert!(response.get("result").is_some());
+        assert_eq!(response["result"]["capabilities"]["sessionIdentity"], true);
+        assert_eq!(response["result"]["capabilities"]["sessionSearch"], true);
         let expected_identity = super::super::desktop_identity::collect();
         assert_eq!(
             response["result"]["desktopIdentity"],

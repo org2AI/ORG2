@@ -8,7 +8,6 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
-import IconButton from "@src/components/IconButton";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import TabPill from "@src/components/TabPill";
 import { NoDragRegion } from "@src/components/WindowChrome";
@@ -114,17 +113,22 @@ const CanvasTabHeader: React.FC<CanvasTabHeaderProps> = ({
         />
         <HeaderSectionSeparator className="mx-0.5" />
         {tab === "canvas" && !isStreaming && (
-          <IconButton
+          <Button
             onClick={onReload}
             className="text-text-4 hover:bg-fill-3 hover:text-text-2"
             title={t("canvasCard.reload", "Reload")}
-          >
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={12}
-            />
-          </IconButton>
+            size="mini"
+            variant="tertiary"
+            appearance="soft"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={Refresh04Icon}
+                data-icon="refresh-cw"
+                size={12}
+              />
+            }
+          />
         )}
         <ToolbarTooltip label={shareHint}>
           <Button

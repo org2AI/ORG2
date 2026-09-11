@@ -105,6 +105,7 @@ function view(conflict = false, requiresTest = true) {
   return {
     installed: true,
     config: {
+      supported: true,
       agentName: "codex",
       mode: "direct",
       selectedKeyId: "gateway",

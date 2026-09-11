@@ -12,7 +12,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use tracing::{error, info, warn};
 
@@ -75,92 +75,125 @@ fn watcher_loop(
     settings_path: PathBuf,
     stop_signal: Arc<AtomicBool>,
 ) -> Result<(), String> {
-    let (tx, rx) = mpsc::channel::<notify::Result<Event>>();
+    let (_watcher, rx) = watch_changes(&watch_dir, &settings_path)?;
 
+    info!(path = %settings_path.display(), "settings watcher started");
+
+    consume_changes(&rx, &stop_signal, Duration::from_millis(500), || {
+        // Remove + create/rename is an atomic replacement, not a settings reset.
+        // Decide from the final filesystem state, never from an intermediate event.
+        if !settings_path.exists() {
+            super::hooks::on_settings_changed(&serde_json::json!({}));
+            if let Err(err) = app_handle.emit(SETTINGS_DELETED_EVENT, ()) {
+                error!(error = %err, "failed to emit settings delete event");
+            }
+            return;
+        }
+        match file_io::read_settings() {
+            Ok(settings) => {
+                super::hooks::on_settings_changed(&settings);
+                if let Err(err) = app_handle.emit(SETTINGS_CHANGED_EVENT, &settings) {
+                    error!(error = %err, "failed to emit settings change event");
+                }
+            }
+            Err(err) => warn!(error = %err, "failed to read settings after change"),
+        }
+    });
+    Ok(())
+}
+
+fn watch_changes(
+    watch_dir: &std::path::Path,
+    settings_path: &std::path::Path,
+) -> Result<(RecommendedWatcher, mpsc::Receiver<()>), String> {
+    // One dirty marker is sufficient: read the file, not intermediate payloads.
+    let (tx, rx) = mpsc::sync_channel(1);
+    let watched_paths = watched_path_candidates(watch_dir, settings_path);
     let mut watcher = RecommendedWatcher::new(
-        move |result| {
-            let _ = tx.send(result);
+        move |result: notify::Result<Event>| match result {
+            Ok(event) if affects_settings(&event, &watched_paths) => {
+                let _ = tx.try_send(());
+            }
+            Err(err) => warn!(error = %err, "settings watcher event error"),
+            _ => {}
         },
         Config::default().with_poll_interval(Duration::from_secs(2)),
     )
     .map_err(|err| format!("Failed to create file watcher: {err}"))?;
-
     watcher
-        .watch(&watch_dir, RecursiveMode::NonRecursive)
+        .watch(watch_dir, RecursiveMode::NonRecursive)
         .map_err(|err| format!("Failed to watch settings directory: {err}"))?;
+    Ok((watcher, rx))
+}
 
-    info!(path = %settings_path.display(), "settings watcher started");
-
-    // Simple debounce: skip events within 500ms of the last processed event
-    let mut last_event_time = std::time::Instant::now() - Duration::from_secs(10);
-
-    loop {
-        if stop_signal.load(Ordering::Relaxed) {
-            info!("settings watcher stopped");
-            break;
-        }
-
-        // Wait for events with a timeout so we can check the stop signal
-        match rx.recv_timeout(Duration::from_secs(2)) {
-            Ok(Ok(event)) => {
-                // Only process events for our settings file
-                let affects_settings = event.paths.iter().any(|path| {
-                    path.file_name()
-                        .map(|name| name == "settings.jsonc")
-                        .unwrap_or(false)
-                });
-
-                if !affects_settings {
-                    continue;
-                }
-
-                // Debounce: ignore events within 500ms of the last one
-                let now = std::time::Instant::now();
-                if now.duration_since(last_event_time) < Duration::from_millis(500) {
-                    continue;
-                }
-                last_event_time = now;
-
-                match event.kind {
-                    EventKind::Remove(_) => {
-                        info!("settings file deleted");
-                        if let Err(err) = app_handle.emit(SETTINGS_DELETED_EVENT, ()) {
-                            error!(error = %err, "failed to emit settings delete event");
-                        }
-                    }
-                    EventKind::Create(_) | EventKind::Modify(_) => {
-                        info!("settings file changed");
-                        match file_io::read_settings() {
-                            Ok(settings) => {
-                                super::hooks::on_settings_changed(&settings);
-
-                                if let Err(err) = app_handle.emit(SETTINGS_CHANGED_EVENT, &settings)
-                                {
-                                    error!(error = %err, "failed to emit settings change event");
-                                }
-                            }
-                            Err(err) => {
-                                warn!(error = %err, "failed to read settings after change");
-                            }
-                        }
-                    }
-                    _ => {
-                        // Access, other events — ignore
-                    }
-                }
-            }
-            Ok(Err(err)) => {
-                warn!(error = %err, "settings watcher event error");
-            }
-            Err(mpsc::RecvTimeoutError::Timeout) => {
-                // Normal timeout, loop back and check stop_signal
-            }
-            Err(mpsc::RecvTimeoutError::Disconnected) => {
-                info!("settings watcher channel disconnected");
-                break;
-            }
+/// Spellings under which the backend may report the settings file.
+///
+/// `notify` canonicalizes the watched directory and reports events with that
+/// canonical prefix, while `settings_path` keeps the configured spelling. The
+/// two differ whenever the settings home sits behind a symlink (`~/.orgii`
+/// managed by a dotfile tool, or `ORGII_HOME` under `/tmp` on macOS, which
+/// resolves to `/private/tmp`); an exact compare against the configured path
+/// alone would then silently drop every change.
+fn watched_path_candidates(
+    watch_dir: &std::path::Path,
+    settings_path: &std::path::Path,
+) -> Vec<PathBuf> {
+    let mut candidates = vec![settings_path.to_path_buf()];
+    if let (Ok(canonical_dir), Some(name)) = (watch_dir.canonicalize(), settings_path.file_name()) {
+        let canonical = canonical_dir.join(name);
+        if !candidates.contains(&canonical) {
+            candidates.push(canonical);
         }
     }
-
-    Ok(())
+    candidates
 }
+
+fn affects_settings(event: &Event, watched: &[PathBuf]) -> bool {
+    matches!(
+        event.kind,
+        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
+    ) && event
+        .paths
+        .iter()
+        .any(|candidate| watched.iter().any(|path| path == candidate))
+}
+
+fn consume_changes(
+    rx: &mpsc::Receiver<()>,
+    stop_signal: &AtomicBool,
+    debounce: Duration,
+    mut publish: impl FnMut(),
+) {
+    let mut deadline: Option<Instant> = None;
+    loop {
+        if stop_signal.load(Ordering::Relaxed) {
+            break;
+        }
+        let now = Instant::now();
+        if deadline.is_some_and(|at| now >= at) {
+            deadline = None;
+            publish();
+            continue;
+        }
+        let wait = deadline
+            .map(|at| at.saturating_duration_since(now))
+            .unwrap_or(Duration::from_secs(2));
+        match rx.recv_timeout(wait) {
+            Ok(()) => {
+                // Fixed window: retain the final write without starving delivery
+                // when writes are continuous. No file reads while idle.
+                deadline.get_or_insert_with(|| Instant::now() + debounce);
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "tests/watcher_tests.rs"]
+mod tests;
+
+#[cfg(test)]
+#[path = "tests/watcher_native_tests.rs"]
+mod native_tests;

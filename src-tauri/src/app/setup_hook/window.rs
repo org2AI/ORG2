@@ -44,6 +44,25 @@ pub(crate) fn init_runtime_profile_and_window(
             let _ = main_window.set_focus();
             tracing::info!("[WebDriver] Ensured main window is visible for E2E automation");
         } else {
+            #[cfg(target_os = "macos")]
+            if let Some(home) = std::env::var_os("ORGII_HOME") {
+                let config = app
+                    .config()
+                    .app
+                    .windows
+                    .iter()
+                    .find(|window| window.label == "main")
+                    .ok_or("Main window configuration not found")?;
+                let identifier =
+                    *uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_URL, home.as_encoded_bytes())
+                        .as_bytes();
+                tauri::WebviewWindowBuilder::from_config(app, config)?
+                    .data_store_identifier(identifier)
+                    .build()?;
+            } else {
+                app_window::recreate_main_window(app.handle())?;
+            }
+            #[cfg(not(target_os = "macos"))]
             app_window::recreate_main_window(app.handle())?;
             tracing::info!("[WebDriver] Recreated main window for E2E automation");
         }

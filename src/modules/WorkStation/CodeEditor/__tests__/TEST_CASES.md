@@ -26,7 +26,7 @@ resolver it now delegates to (`resolveGitDiffSelection`).
 | 3   | Null/undefined active tab | Resolve with no active tab                               | `isAllChangesView` is `false` (routes to focus select)                                         |
 | 4   | Rapid navigation          | Switch tabs many times quickly                           | Callback identity unchanged each render (refs hold latest `activeTab` / `handleGitFileSelect`) |
 | 5   | Rapid file selection      | Click multiple All Changes files, then switch to Focus   | The most recently clicked file opens                                                           |
-| 6   | No previous selection     | Enter Focus before clicking any changed file             | Shows “Select a file to view changes”; no Issues / history / PR shortcuts                      |
+| 6   | No previous selection     | Enter Focus before clicking any changed file             | Shows “Select a file in the sidebar”; no Issues / history / PR shortcuts                       |
 
 ## Error / Degraded States
 

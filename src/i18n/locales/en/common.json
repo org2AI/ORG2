@@ -44,11 +44,6 @@
     }
   },
   "toasts": {
-    "replyEmpty": "Reply cannot be empty",
-    "sessionNotFound": "Session not found",
-    "answerSubmitted": "Answer submitted successfully",
-    "replyError": "An error occurred while sending the reply",
-    "questionIgnored": "Question ignored",
     "addedAsContext": "Added {{name}} as context",
     "addedFilesAsContext": "Added {{count}} file(s) as context",
     "chooseExecutionAgentAi": "Choose an execution agent before creating with AI.",
@@ -519,42 +514,9 @@
     "technicalDetails": "Technical details",
     "failedToCopy": "Failed to copy",
     "api": {
-      "titles": {
-        "githubConnections": "Couldn't load GitHub connections",
-        "githubConnect": "Couldn't connect to GitHub",
-        "workflows": "Couldn't load workflows",
-        "config": "Couldn't load settings",
-        "agent": "Couldn't reach Agent",
-        "repository": "Couldn't load repo",
-        "file": "Couldn't load file",
-        "mcp": "MCP server error",
-        "extension": "Code editor extension error",
-        "workspace": "Couldn't load workspace",
-        "slackConnections": "Couldn't load Slack connections",
-        "wallet": "Couldn't load wallet",
-        "billing": "Couldn't complete billing operation",
-        "default": "Couldn't load data",
-        "timeout": "Request took too long",
-        "external": "Couldn't load external data"
-      },
       "messages": {
-        "network": "Check your connection and try again.",
-        "timeout": "Request took too long. Try again.",
-        "server": "Something went wrong on our end. Try again in a few minutes.",
-        "notFound": "This item wasn't found.",
-        "signIn": "Please sign in again.",
-        "forbidden": "You don't have permission for this action.",
-        "tooManyRequests": "Too many requests. Wait a moment and try again.",
-        "validation": "Invalid data. Please check your input.",
-        "conflict": "Conflict detected. The resource may have been modified.",
-        "badGateway": "Server is unreachable. Try again later.",
-        "serviceUnavailable": "Service temporarily unavailable. Try again later.",
-        "gatewayTimeout": "Server is not responding. Try again later.",
-        "invalidRequest": "Invalid request. Please try again.",
-        "default": "Please try again.",
-        "externalHint": "Check the URL and settings, then try again."
-      },
-      "workflow": "Workflow service is temporarily unavailable. Try again later."
+        "signIn": "Please sign in again."
+      }
     },
     "unknownError": "Unknown error occurred",
     "componentLoadingFailed": "Component failed to load",
@@ -732,8 +694,6 @@
     "failedToLoadCommitDiff": "Failed to load commit diff",
     "loadingHistory": "Loading history...",
     "commitMessage": "Commit Message",
-    "filterChanges": "Filter changes...",
-    "searchFiles": "Search files...",
     "searchInRepository": "Search in repo...",
     "enterUrlOrSearch": "Enter URL or search...",
     "filterByUrl": "Filter by URL...",
@@ -745,7 +705,6 @@
     "connectionError": "Connection error",
     "noConnections": "Add a connection to get started",
     "selectRowsToDelete": "Select rows to delete",
-    "filterFiles": "Filter files...",
     "filterSearch": "Filter search...",
     "noChanges": "No changes",
     "noMatchingFiles": "No matching files",
@@ -789,7 +748,8 @@
     "selectRepositoryFromWorkspace": "Choose a workspace repository",
     "noData": "No data",
     "noSessionHistoryForFile": "No session activity found for {{file}}",
-    "noSessionHistory": "No session history"
+    "noSessionHistory": "No session history",
+    "selectSidebarFileToViewChanges": "Select a file in the sidebar"
   },
   "inbox": {
     "scrollToBottom": "Scroll to bottom",
@@ -868,8 +828,6 @@
     "linesSelected": "{{count}} lines selected",
     "charsSelected": "{{count}} selected",
     "nLines": "{{count}} lines",
-    "hideFilter": "Hide filter",
-    "filterFilesAction": "Filter files",
     "switchToTreeView": "Switch to tree view",
     "switchToListView": "Switch to list view",
     "discardChanges": "Discard Changes",
@@ -904,7 +862,9 @@
       "webviewHiddenTitle": "Webview temporarily hidden",
       "webviewHiddenBody": "Close the menu or dialog to show it again."
     },
-    "unsavedChangesTitle": "Unsaved Changes"
+    "unsavedChangesTitle": "Unsaved Changes",
+    "switchToUnifiedDiff": "Switch to unified diff",
+    "switchToSplitDiff": "Switch to split diff"
   },
   "git": {
     "loading": "Loading git status...",
@@ -1806,7 +1766,6 @@
     "scope": {
       "main": "Main checkout",
       "worktrees": "Worktrees",
-      "searchPlaceholder": "Filter worktrees…",
       "switchScopeActive": "Switch source control scope: {{repo}}, {{branch}}"
     }
   },
@@ -1909,22 +1868,7 @@
     "database": "Database",
     "user": "User",
     "password": "Password",
-    "ssl": "Require SSL",
-    "spotlight": {
-      "scanFolder": "Scan folder",
-      "scanFolderDesc": "Find all .sqlite, .db files in a folder",
-      "openFile": "Open file",
-      "openFileDesc": "Select a specific database file",
-      "enterPath": "Enter path",
-      "enterPathDesc": "Type a file or folder path directly",
-      "placeholderSelect": "Add database by...",
-      "placeholderPath": "~/data or /path/to/database.db",
-      "pickerFolderTitle": "Select folder to scan",
-      "pickerFileTitle": "Select database file",
-      "pickerSqliteName": "SQLite Database",
-      "pickerAllFiles": "All Files",
-      "pickerError": "Failed to open picker"
-    }
+    "ssl": "Require SSL"
   },
   "sqlEditor": {
     "placeholder": "Enter SQL query...",
@@ -2005,7 +1949,6 @@
     "sidebar": {
       "newTab": "New Tab",
       "newTerminal": "New Terminal",
-      "untitled": "Untitled",
       "newPrivateTab": "New Private Tab"
     },
     "statusBar": {}

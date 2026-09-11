@@ -17,8 +17,6 @@ export interface SessionTranscriptPlatformState {
   isRolledBack: boolean;
   isHydrating: boolean;
   onReload: () => void;
-  onReplyQuestion: (input: { reply: string; chunk_id: string }) => void;
-  onIgnoreQuestion: (eventId: string) => void;
   capabilities: {
     canvasInline: boolean;
     turnMetadata: boolean;

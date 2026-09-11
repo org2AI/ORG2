@@ -114,6 +114,8 @@
     transition: opacity 120ms ease-out;
   }
 
+  &:hover &__stages,
+  &:focus-within &__stages,
   &:has(input:active) &__stages {
     opacity: 1;
   }

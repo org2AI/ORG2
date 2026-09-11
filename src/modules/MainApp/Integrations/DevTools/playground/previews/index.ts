@@ -1,6 +1,5 @@
 export * from "./ApprovalPreview";
 export * from "./AskQuestionPreview";
-export * from "./EventRenderer";
 export * from "./InputBoxPreview";
 export * from "./PinnedActionsBarPreview";
 export * from "./SessionLinkCardPreview";

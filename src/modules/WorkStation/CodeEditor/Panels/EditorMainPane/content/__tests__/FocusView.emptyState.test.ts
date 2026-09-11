@@ -37,7 +37,7 @@ describe("FocusView empty state", () => {
     );
 
     expect(markup).toContain(
-      'data-caption="placeholders.selectFileToViewChanges"'
+      'data-caption="placeholders.selectSidebarFileToViewChanges"'
     );
     expect(markup).toContain('data-action-count="0"');
   });

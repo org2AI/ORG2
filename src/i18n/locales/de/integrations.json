@@ -20,17 +20,17 @@
     "confirmRemoveMessage": "Die lokalen Anmeldedaten werden entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
     "toasts": {
       "refreshed": "{{name}} erfolgreich aktualisiert",
-      "refreshPartial": "Modelle aktualisiert: +{{added}} / -{{removed}}, aber bei {{failed}} von {{total}} Konten ist ein Fehler aufgetreten",
-      "refreshedNoChange": "Modelle aktualisiert: keine Änderungen",
-      "refreshedDelta": "Modelle aktualisiert: {{added}} hinzugefügt, {{removed}} entfernt",
       "refreshError": "{{name}} konnte nicht aktualisiert werden: {{error}}",
       "localRemoved": "{{name}} entfernt",
-      "deleteError": "{{name}} konnte nicht gelöscht werden"
+      "deleteError": "{{name}} konnte nicht gelöscht werden",
+      "refreshPartial": "Modelle aktualisiert: +{{added}} / -{{removed}}, aber bei {{failed}} von {{total}} Konten ist ein Fehler aufgetreten",
+      "refreshedNoChange": "Modelle aktualisiert: keine Änderungen",
+      "refreshedDelta": "Modelle aktualisiert: {{added}} hinzugefügt, {{removed}} entfernt"
     },
     "providerGroups": {
-      "mostUsed": "Am häufigsten verwendet",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "Am häufigsten verwendet"
     },
     "status": {
       "readyToUse": "Einsatzbereit",
@@ -68,10 +68,14 @@
       "accountEmail": "Konto-E-Mail"
     },
     "customModels": {
+      "manualSetupHint": "Gib die exakte Modell-ID deines Endpunkts und optional einen Anzeigenamen ein. Die Modellsuche ist optional; Aktivieren prüft keine Kompatibilität.",
       "modelNamePlaceholder": "Modell-id eingeben...",
       "displayNamePlaceholder": "Optionale Bezeichnung",
       "emptyHint": "Noch keine benutzerdefinierten Modelle hinzugefügt.",
-      "addModel": "Modell hinzufügen"
+      "addModel": "Modell hinzufügen",
+      "testRequiresEndpoint": "Gib einen Endpunkt und einen API-Schlüssel ein, um dieses Modell zu testen",
+      "invalidModelId": "Modell-IDs müssen 1–256 Byte lang sein und dürfen keine Leer- oder Steuerzeichen enthalten.",
+      "duplicateModelId": "Diese Modell-ID ist bereits in dieser Liste."
     },
     "quickActions": {
       "multipleKeysFound": "Mehrere Anmeldedaten gefunden",
@@ -100,16 +104,16 @@
       "sessionUsage": "5h-Nutzung",
       "weeklyUsage": "Wöchentliche Nutzung",
       "monthlyUsage": "Monatliche Nutzung",
-      "resetsAvailable": "{{count}} Zurücksetzungen verfügbar",
-      "resetsAvailable_one": "{{count}} Zurücksetzung verfügbar",
-      "resetsAvailable_few": "{{count}} Zurücksetzungen verfügbar",
-      "resetsAvailable_many": "{{count}} Zurücksetzungen verfügbar",
-      "resetsAvailable_other": "{{count}} Zurücksetzungen verfügbar",
       "percentLeft": "{{percent}}% übrig",
       "refreshUsage": "Nutzung aktualisieren",
       "resets": "Zurücksetzung am {{date}}",
       "availableNow": "Jetzt verfügbar",
-      "nextUsePlusFiveHours": "Nächste Nutzung +5 h"
+      "nextUsePlusFiveHours": "Nächste Nutzung +5 h",
+      "resetsAvailable": "{{count}} Zurücksetzungen verfügbar",
+      "resetsAvailable_one": "{{count}} Zurücksetzung verfügbar",
+      "resetsAvailable_few": "{{count}} Zurücksetzungen verfügbar",
+      "resetsAvailable_many": "{{count}} Zurücksetzungen verfügbar",
+      "resetsAvailable_other": "{{count}} Zurücksetzungen verfügbar"
     },
     "health": {
       "cloudListingInvalid": "Cloud-Angebot ungültig",
@@ -345,7 +349,6 @@
     "connecting": "Verbindung wird hergestellt",
     "reconnecting": "Erneut verbinden",
     "connectionError": "Verbindungsfehler",
-    "reconnect": "Erneut verbinden",
     "accountNameDuplicate": "Ein Konto mit diesem Namen existiert bereits",
     "probeSuccess": "Verbindung erfolgreich",
     "probeFailed": "Verbindung fehlgeschlagen",

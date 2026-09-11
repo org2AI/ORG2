@@ -18,7 +18,6 @@ import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { resolveAgentIcon } from "@src/config/agentIcons";
 import { ROUTES } from "@src/config/routes";
-import { BUTTON_SIZE } from "@src/config/workstation/tokens";
 import {
   FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS,
   isSameFocusedChatGitEnvironment,
@@ -85,7 +84,6 @@ import { isChatPanelTerminalId } from "@src/util/ui/terminal/chatPanelSessionId"
 import { isAgentPtySessionId } from "@src/util/ui/terminal/ptySessionId";
 
 import {
-  WORKSTATION_TRAIL_ICON_BUTTON_CLASS,
   WORKSTATION_TRAIL_WIDTH,
   WorkstationTrailBody,
   WorkstationTrailHeader,
@@ -984,10 +982,9 @@ export function FocusedChatWorkstationRail({
                     </WorkstationTrailIconButton>
                   ) : null}
                   <WorkstationTrailIconButton
+                    size={collapsed ? "small" : "sidebar"}
                     className={
-                      collapsed
-                        ? BUTTON_SIZE.lg
-                        : WORKSTATION_TRAIL_ACTION_REVEAL_CLASS
+                      collapsed ? "" : WORKSTATION_TRAIL_ACTION_REVEAL_CLASS
                     }
                     onClick={toggleCollapsed}
                     aria-label={t(
@@ -1028,26 +1025,33 @@ export function FocusedChatWorkstationRail({
                       shortcutId={item.shortcutId}
                       position="left"
                     >
-                      <button
-                        type="button"
-                        className={`${WORKSTATION_TRAIL_ICON_BUTTON_CLASS} ${BUTTON_SIZE.lg} relative`}
+                      <Button
+                        htmlType="button"
+                        size="small"
+                        variant="tertiary"
+                        appearance="soft"
+                        iconOnly
+                        className="relative"
                         onClick={item.onClick}
                         aria-label={
                           item.status
                             ? `${item.label}, ${item.status.label}`
                             : item.label
                         }
-                      >
-                        <AnyIcon icon={icon} size={16} strokeWidth={1.75} />
-                        {item.status ? (
-                          <span
-                            aria-hidden
-                            className={`absolute right-1 bottom-1 h-1.5 w-1.5 rounded-full ring-1 ring-bg-1 ${resolveRailStatusDotClass(
-                              item.status.state
-                            )}`}
-                          />
-                        ) : null}
-                      </button>
+                        icon={
+                          <>
+                            <AnyIcon icon={icon} size={16} strokeWidth={1.75} />
+                            {item.status ? (
+                              <span
+                                aria-hidden
+                                className={`absolute right-1 bottom-1 h-1.5 w-1.5 rounded-full ring-1 ring-bg-1 ${resolveRailStatusDotClass(
+                                  item.status.state
+                                )}`}
+                              />
+                            ) : null}
+                          </>
+                        }
+                      />
                     </ToolbarTooltip>
                   );
                 })}

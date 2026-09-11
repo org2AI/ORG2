@@ -223,11 +223,6 @@
     }
   },
   "toasts": {
-    "replyEmpty": "Ответ не может быть пустым",
-    "sessionNotFound": "Сессия не найдена",
-    "answerSubmitted": "Ответ успешно отправлен",
-    "replyError": "Произошла ошибка при отправке ответа",
-    "questionIgnored": "Вопрос пропущен",
     "addedAsContext": "{{name}} добавлен в контекст",
     "addedFilesAsContext": "Добавлено файлов в контекст: {{count}}",
     "chooseExecutionAgentAi": "Выберите ответственного агента перед созданием с помощью ИИ.",
@@ -687,42 +682,9 @@
     "technicalDetails": "Технические сведения",
     "failedToCopy": "Не удалось скопировать",
     "api": {
-      "titles": {
-        "githubConnections": "Не удалось загрузить подключения GitHub",
-        "githubConnect": "Не удалось подключиться к GitHub",
-        "workflows": "Не удалось загрузить рабочие процессы",
-        "config": "Не удалось загрузить настройки",
-        "agent": "Не удалось подключиться к Agent",
-        "repository": "Не удалось загрузить репо",
-        "file": "Не удалось загрузить файл",
-        "mcp": "Ошибка сервера MCP",
-        "extension": "Ошибка расширения редактора",
-        "workspace": "Не удалось загрузить рабочее пространство",
-        "slackConnections": "Не удалось загрузить подключения Slack",
-        "wallet": "Не удалось загрузить кошелёк",
-        "billing": "Не удалось завершить платёжную операцию",
-        "default": "Не удалось загрузить данные",
-        "timeout": "Превышено время ожидания",
-        "external": "Не удалось загрузить внешние данные"
-      },
       "messages": {
-        "network": "Проверьте подключение и попробуйте снова.",
-        "timeout": "Превышено время ожидания. Попробуйте снова.",
-        "server": "Произошла ошибка. Попробуйте через несколько минут.",
-        "notFound": "Элемент не найден.",
-        "signIn": "Войдите снова.",
-        "forbidden": "У вас нет прав для этого действия.",
-        "tooManyRequests": "Слишком много запросов. Подождите и попробуйте снова.",
-        "validation": "Неверные данные. Проверьте ввод.",
-        "conflict": "Обнаружен конфликт. Ресурс мог быть изменён.",
-        "badGateway": "Сервер недоступен. Попробуйте позже.",
-        "serviceUnavailable": "Сервис временно недоступен. Попробуйте позже.",
-        "gatewayTimeout": "Сервер не отвечает. Попробуйте позже.",
-        "invalidRequest": "Неверный запрос. Попробуйте снова.",
-        "default": "Попробуйте снова.",
-        "externalHint": "Проверьте URL и настройки, затем попробуйте снова."
-      },
-      "workflow": "Сервис рабочих процессов временно недоступен. Попробуйте позже."
+        "signIn": "Войдите снова."
+      }
     },
     "failedToLoad": "Не удалось загрузить",
     "unknownError": "Произошла неизвестная ошибка",
@@ -900,8 +862,6 @@
     "failedToLoadCommitDiff": "Не удалось загрузить diff коммита",
     "loadingHistory": "Загрузка истории...",
     "commitMessage": "Сообщение коммита",
-    "filterChanges": "Фильтровать изменения...",
-    "searchFiles": "Поиск файлов...",
     "searchInRepository": "Поиск в репо...",
     "enterUrlOrSearch": "Введите URL или поиск...",
     "filterByUrl": "Фильтровать по URL...",
@@ -913,7 +873,6 @@
     "connectionError": "Ошибка подключения",
     "noConnections": "Добавьте подключение, чтобы начать",
     "selectRowsToDelete": "Выберите строки для удаления",
-    "filterFiles": "Фильтр файлов...",
     "filterSearch": "Фильтр поиска...",
     "noChanges": "Нет изменений",
     "noMatchingFiles": "Нет совпадающих файлов",
@@ -958,7 +917,8 @@
     "noData": "Нет данных",
     "noResults": "Нет результатов",
     "noSessionHistoryForFile": "Активность сессий для {{file}} не найдена",
-    "noSessionHistory": "Нет истории сессий"
+    "noSessionHistory": "Нет истории сессий",
+    "selectSidebarFileToViewChanges": "Выберите файл на боковой панели"
   },
   "inbox": {
     "scrollToBottom": "Вниз",
@@ -1023,8 +983,6 @@
     "linesSelected": "{{count}} lines selected",
     "charsSelected": "{{count}} selected",
     "nLines": "{{count}} lines",
-    "hideFilter": "Hide filter",
-    "filterFilesAction": "Filter files",
     "switchToTreeView": "Switch to tree view",
     "switchToListView": "Switch to list view",
     "discardChanges": "Discard Changes",
@@ -1073,7 +1031,9 @@
         "skipped": "Пропущено",
         "passed": "Пройдено"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Переключить на единый diff",
+    "switchToSplitDiff": "Переключить на разделённый diff"
   },
   "git": {
     "loading": "Загрузка статуса Git...",
@@ -1975,7 +1935,6 @@
     "scope": {
       "main": "Основной checkout",
       "worktrees": "Worktree",
-      "searchPlaceholder": "Фильтр worktree…",
       "switchScopeActive": "Сменить область Source Control: {{repo}}, {{branch}}"
     }
   },
@@ -2078,22 +2037,7 @@
     "database": "База данных",
     "user": "Пользователь",
     "password": "Пароль",
-    "ssl": "Требовать SSL",
-    "spotlight": {
-      "scanFolder": "Сканировать папку",
-      "scanFolderDesc": "Найти все файлы .sqlite, .db в папке",
-      "openFile": "Открыть файл",
-      "openFileDesc": "Выберите конкретный файл базы данных",
-      "enterPath": "Ввести путь",
-      "enterPathDesc": "Введите путь к файлу или папке напрямую",
-      "placeholderSelect": "Добавить базу данных через…",
-      "placeholderPath": "~/data или /path/to/database.db",
-      "pickerFolderTitle": "Выберите папку для сканирования",
-      "pickerFileTitle": "Выберите файл базы данных",
-      "pickerSqliteName": "База данных SQLite",
-      "pickerAllFiles": "Все файлы",
-      "pickerError": "Не удалось открыть диалог выбора"
-    }
+    "ssl": "Требовать SSL"
   },
   "dragDrop": {
     "couldNotExtractPathFromItem": "Could not extract file path from dropped item"
@@ -2151,8 +2095,7 @@
     "sidebar": {
       "newTab": "Новая вкладка",
       "newPrivateTab": "Новая приватная вкладка",
-      "newTerminal": "Новый терминал",
-      "untitled": "Без названия"
+      "newTerminal": "Новый терминал"
     },
     "statusBar": {}
   },

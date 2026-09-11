@@ -1,5 +1,7 @@
 import type { Store } from "jotai/vanilla/store";
 
+import type { AgentExecMode } from "@src/config/sessionCreatorConfig";
+
 import {
   ConversationRootLocator,
   LocalConversationTarget,
@@ -25,6 +27,8 @@ export interface QueuedConversationMessage {
   content: string;
   displayContent: string;
   imageDataUrls?: string[];
+  /** Execution mode frozen when this message was enqueued. */
+  agentExecMode?: AgentExecMode;
   conversationDispatch?: QueuedConversationDispatch;
 }
 

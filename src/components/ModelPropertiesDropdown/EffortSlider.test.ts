@@ -104,6 +104,56 @@ describe("EffortSlider", () => {
     act(() => range().dispatchEvent(event));
   }
 
+  it("shows each hovered level without changing the selection and clears on exit", () => {
+    const onChange = vi.fn();
+    const onPreviewChange = vi.fn();
+    render({ onChange, onPreviewChange });
+    const stages = container.querySelectorAll<HTMLElement>(
+      "[data-effort-stage]"
+    );
+    stages.forEach((stage, index) => {
+      vi.spyOn(stage, "getBoundingClientRect").mockReturnValue({
+        left: 10 + index * 100,
+        top: 10,
+        width: 4,
+        height: 4,
+        right: 14 + index * 100,
+        bottom: 14,
+        x: 10 + index * 100,
+        y: 10,
+        toJSON: () => ({}),
+      });
+    });
+    const move = (clientX: number) => {
+      act(() => {
+        range().dispatchEvent(
+          new MouseEvent("pointermove", {
+            bubbles: true,
+            clientX,
+            clientY: 12,
+          })
+        );
+      });
+    };
+    ["Light", "High", "Extra High"].forEach((label, index) => {
+      move(12 + index * 100);
+      expect(document.querySelector(".native-tooltip")?.textContent).toBe(
+        label
+      );
+    });
+    move(62);
+    expect(document.querySelector(".native-tooltip")).toBeNull();
+    move(12);
+    pointer("pointerout");
+    expect(document.querySelector(".native-tooltip")).toBeNull();
+    expect(range().value).toBe("1");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onPreviewChange).not.toHaveBeenCalled();
+    move(212);
+    act(() => root.render(null));
+    expect(document.querySelector(".native-tooltip")).toBeNull();
+  });
+
   it("leaves capture to the native thumb and commits the final preview once", () => {
     const onChange = vi.fn();
     render({ onChange });

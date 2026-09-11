@@ -22,7 +22,6 @@ import { cursorIdeTurnSummariesAtomFamily } from "@src/store/session/cursorIdeTu
 import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 
 import { useSessionTranscriptRuntime } from "../SessionTranscriptRuntimeContext";
-import { useReplyQuestion } from "../hooks/useReplyQuestion";
 import type { SessionTranscriptPlatformState } from "./sessionTranscriptPlatform.types";
 
 const log = createLogger("SessionTranscriptPlatform");
@@ -45,7 +44,6 @@ export function useSessionTranscriptPlatform(
   const isPendingCancel = useAtomValue(isPendingCancelAtom);
   const isRolledBack = useAtomValue(sessionRolledBackAtom);
   const hydration = useAtomValue(sessionHydrationByIdAtom(sessionId ?? ""));
-  const { handleReplyQuestion, handleIgnoreQuestion } = useReplyQuestion();
 
   const clearSessionLoadError = useSetAtom(clearSessionLoadErrorAtom);
   const setLoadStatus = useSetAtom(loadStatusAtom);
@@ -93,8 +91,6 @@ export function useSessionTranscriptPlatform(
     isRolledBack: runtime ? false : isRolledBack,
     isHydrating: runtime ? false : (hydration?.count ?? 0) > 0,
     onReload: runtime?.onReload ?? desktopReload,
-    onReplyQuestion: runtime?.onReplyQuestion ?? handleReplyQuestion,
-    onIgnoreQuestion: runtime?.onIgnoreQuestion ?? handleIgnoreQuestion,
     capabilities: {
       canvasInline: runtime?.capabilities?.canvasInline !== false,
       turnMetadata: runtime?.capabilities?.turnMetadata !== false,

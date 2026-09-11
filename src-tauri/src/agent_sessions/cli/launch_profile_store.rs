@@ -256,7 +256,7 @@ mod tests {
         );
         assert_eq!(
             default_args_for_mode(defaults, CliPermissionMode::Manual),
-            vec!["--permission-mode".to_string(), "manual".to_string()]
+            vec!["--permission-mode".to_string(), "default".to_string()]
         );
         assert_eq!(
             default_args_for_mode(defaults, CliPermissionMode::AutoEdit),

@@ -135,7 +135,7 @@ describe("FileHeaderMoreMenu", () => {
       showReloadButton: false,
     });
     const menu = element("file-header-more-menu");
-    expect(menu.textContent).toContain("common:actions.uiSettings");
+    expect(menu.textContent).toContain("sessions:chat.pageSettings");
     expect(
       [...menu.children].filter(
         (child) => child.className === DROPDOWN_CLASSES.menuGroupSeparator

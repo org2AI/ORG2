@@ -16,7 +16,7 @@ import {
   TreeRowBase,
 } from "@src/components/TreeRow";
 import type { GitStatusInfo, TreeRowNode } from "@src/components/TreeRow";
-import { Add01Icon, MinusSignIcon, Tick01Icon, Undo02Icon } from "@src/icons";
+import { Add01Icon, MinusSignIcon, Tick01Icon, Undo03Icon } from "@src/icons";
 import type { GitFile } from "@src/types/git/types";
 
 export interface GitFileTreeNode {
@@ -147,7 +147,7 @@ const GitFileTreeItem: React.FC<GitFileTreeItemProps> = React.memo(
             {/* Discard action button */}
             {onDiscard && (
               <TreeRowAction
-                icon={Undo02Icon}
+                icon={Undo03Icon}
                 variant="danger"
                 onClick={handleDiscard}
                 title={t("workstation.discardChanges")}

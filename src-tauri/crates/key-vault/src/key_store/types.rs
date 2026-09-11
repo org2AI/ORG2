@@ -548,6 +548,35 @@ impl ModelKey {
         }
     }
 
+    /// Drop unfinished custom-row placeholders that older wizards persisted.
+    ///
+    /// Before explicit draft tracking, an unnamed table row was saved under
+    /// its generated `new-xxxxxxxx` name with no label. Such a record is never
+    /// a real request ID, so it is removed from the alias catalog and from the
+    /// available/enabled lists as the key crosses the persistence boundary.
+    /// Only API-key accounts are touched; OAuth catalogs never held drafts.
+    pub(crate) fn repair_legacy_placeholder_rows(&mut self) {
+        if self.auth_method == AuthMethod::Oauth {
+            return;
+        }
+        let is_placeholder = |id: &str| {
+            id.strip_prefix("new-")
+                .is_some_and(|rest| rest.len() == 8 && rest.bytes().all(|b| b.is_ascii_hexdigit()))
+        };
+        let stale: Vec<String> = self
+            .model_aliases
+            .iter()
+            .filter(|alias| alias.display_name.trim().is_empty() && is_placeholder(&alias.alias))
+            .map(|alias| alias.alias.clone())
+            .collect();
+        if stale.is_empty() {
+            return;
+        }
+        self.model_aliases.retain(|alias| !stale.contains(&alias.alias));
+        self.available_models.retain(|model| !stale.contains(model));
+        self.enabled_models.retain(|model| !stale.contains(model));
+    }
+
     /// Restore catalog invariants owned by this account type.
     pub(crate) fn normalize_model_catalog(&mut self) {
         if self.is_native_oauth_for(&ModelType::Codex) {

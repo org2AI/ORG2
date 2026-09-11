@@ -11,6 +11,7 @@ mod discovery;
 mod metadata;
 mod replay;
 mod tools;
+pub use tools::apply_claude_question_result;
 mod types;
 mod windows;
 

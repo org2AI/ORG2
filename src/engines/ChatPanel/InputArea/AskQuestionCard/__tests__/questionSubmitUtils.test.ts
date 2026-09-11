@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
-import { markQuestionAnswered } from "../questionSubmitUtils";
+import {
+  buildAnswerIds,
+  markQuestionAnswered,
+  validateAnswers,
+} from "../questionSubmitUtils";
 
 const { getEventsSpy, upsertSpy } = vi.hoisted(() => ({
   getEventsSpy: vi.fn(),
@@ -74,4 +78,23 @@ describe("markQuestionAnswered", () => {
     ).resolves.toBe(false);
     expect(upsertSpy).not.toHaveBeenCalled();
   });
+});
+
+it("requires and submits actual text for native free-text questions", () => {
+  const questions = [
+    {
+      text: "Describe the change",
+      options: [],
+      multiSelect: false,
+      freeText: true,
+    },
+  ];
+  const empty = buildAnswerIds(questions, new Map(), new Map());
+  expect(empty).toEqual([[]]);
+  expect(validateAnswers(questions, empty, new Map(), new Map()).valid).toBe(
+    false
+  );
+  expect(
+    buildAnswerIds(questions, new Map(), new Map([[0, "  exact answer  "]]))
+  ).toEqual([["exact answer"]]);
 });

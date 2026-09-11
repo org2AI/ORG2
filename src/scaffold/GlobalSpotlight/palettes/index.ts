@@ -16,8 +16,6 @@ export { BranchPalette, WorktreePalette } from "./BranchPalette";
 
 export { BranchDropdown } from "./BranchPalette/BranchDropdown";
 
-export { DatabasePalette } from "./DatabasePalette";
-
 export { UnifiedModelPalette } from "./UnifiedModelPalette";
 
 export { UnifiedModelDropdown } from "./UnifiedModelPalette/UnifiedModelDropdown";

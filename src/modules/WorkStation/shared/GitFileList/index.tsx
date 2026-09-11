@@ -37,7 +37,6 @@ import { HEADER_BUTTON } from "@src/config/workstation/tokens";
 import {
   ArrowDown01Icon,
   ArrowRight01Icon,
-  FilterIcon,
   HierarchyFilesIcon,
   HugeiconsIcon,
   ListIcon,
@@ -452,15 +451,13 @@ const GitFileList: React.FC<GitFileListProps> = ({
           <button
             className={`${HEADER_BUTTON.actionTreeRow} ${showFilter ? "text-primary-6" : ""}`}
             onClick={handleFilterToggle}
-            title={
-              showFilter
-                ? t("workstation.hideFilter")
-                : t("workstation.filterFilesAction")
-            }
+            title={t("actions.search")}
+            aria-label={t("actions.search")}
+            aria-expanded={showFilter}
           >
             <HugeiconsIcon
-              icon={FilterIcon}
-              data-icon="filter"
+              icon={Search01Icon}
+              data-icon="search-icon"
               size={14}
               strokeWidth={1.75}
               className={showFilter ? "text-primary-6" : "text-text-3"}
@@ -519,7 +516,7 @@ const GitFileList: React.FC<GitFileListProps> = ({
         isCollapsed={isCollapsed}
         onToggle={() => setIsCollapsed((prev) => !prev)}
         actions={sectionActions}
-        heightClassName="h-[40px]"
+        heightClassName="h-9"
       />
 
       {!isCollapsed && (
@@ -536,7 +533,7 @@ const GitFileList: React.FC<GitFileListProps> = ({
                     strokeWidth={1.75}
                   />
                 }
-                placeholder={t("placeholders.filterChanges")}
+                placeholder={t("common.searchPlaceholder")}
                 value={filterQuery}
                 onChange={setFilterQuery}
                 size="small"

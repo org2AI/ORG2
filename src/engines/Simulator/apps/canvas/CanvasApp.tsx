@@ -15,12 +15,11 @@
  * - Diff uses a simple line-level diffLines utility (no external library)
  * - Source tab shows raw JSONL/HTML in a <pre> block
  */
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import React, { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Placeholder } from "@src/components/Placeholder";
-import { SIMULATOR_PRIMARY_SIDEBAR } from "@src/config/simulatorPrimarySidebar";
 import CanvasRevisionProgress from "@src/engines/ChatPanel/blocks/CanvasInlineCard/CanvasRevisionProgress";
 import { isCanvasRevisionDraftRelevant } from "@src/engines/ChatPanel/blocks/CanvasInlineCard/canvasRevisionProgressState";
 import { useCanvasRevisionDraftForSession } from "@src/engines/SessionCore";
@@ -35,13 +34,8 @@ import {
   WorkStationShell,
   buildPrimarySidebarConfig,
 } from "@src/modules/WorkStation/shared";
+import { useSimulatorReplaySidebar } from "@src/modules/WorkStation/shared/SessionReplay/useSimulatorReplaySidebar";
 import { canvasPreviewAtom } from "@src/store/session/canvasPreviewAtom";
-import {
-  simulatorPrimarySidebarCollapsedAtom,
-  simulatorPrimarySidebarPositionAtom,
-  simulatorPrimarySidebarWidthAtom,
-  simulatorPrimarySidebarWidthPersistAtom,
-} from "@src/store/ui/simulatorAtom";
 
 import type { SimulatorAppProps } from "../core/types";
 import { useSimulatorAppState } from "../core/useSimulatorAppState";
@@ -93,23 +87,8 @@ const CanvasApp: React.FC<SimulatorAppProps> = () => {
   const canvasPreviewEntry = useAtomValue(canvasPreviewAtom);
 
   // ── sidebar atoms ────────────────────────────────────────────────────────
-  const primarySidebarCollapsed = useAtomValue(
-    simulatorPrimarySidebarCollapsedAtom
-  );
-  const primarySidebarPosition = useAtomValue(
-    simulatorPrimarySidebarPositionAtom
-  );
-  const primarySidebarWidth = useAtomValue(simulatorPrimarySidebarWidthAtom);
-  const setPrimarySidebarWidthPersist = useSetAtom(
-    simulatorPrimarySidebarWidthPersistAtom
-  );
-
-  const handlePrimarySidebarWidthChange = useCallback(
-    (width: number) => {
-      setPrimarySidebarWidthPersist(width);
-    },
-    [setPrimarySidebarWidthPersist]
-  );
+  const { layoutMode: primarySidebarPosition, sidebar } =
+    useSimulatorReplaySidebar();
 
   // ── selection state ──────────────────────────────────────────────────────
 
@@ -322,20 +301,13 @@ const CanvasApp: React.FC<SimulatorAppProps> = () => {
             t={t}
           />
         ),
-        collapsed: primarySidebarCollapsed,
-        size: primarySidebarWidth,
-        onSizeChange: handlePrimarySidebarWidthChange,
-        minSize: SIMULATOR_PRIMARY_SIDEBAR.minWidth,
-        maxSize: SIMULATOR_PRIMARY_SIDEBAR.maxWidth,
-        resetSize: SIMULATOR_PRIMARY_SIDEBAR.defaultWidth,
+        ...sidebar,
       }),
     [
       appEvents,
       selectedEventId,
       compareEventIds,
-      primarySidebarCollapsed,
-      primarySidebarWidth,
-      handlePrimarySidebarWidthChange,
+      sidebar,
       handleSelect,
       handleCompareToggle,
       t,
@@ -420,7 +392,7 @@ const CanvasApp: React.FC<SimulatorAppProps> = () => {
             primarySidebarConfig={primarySidebarConfig}
             content={mainContent}
             statusBar={null}
-            layoutMode={primarySidebarPosition === "right" ? "right" : "left"}
+            layoutMode={primarySidebarPosition}
             appClassName="canvas-app"
           />
         </div>

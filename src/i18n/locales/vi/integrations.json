@@ -20,17 +20,17 @@
     "confirmRemoveMessage": "Thông tin xác thực cục bộ sẽ bị xóa. Hành động này không thể hoàn tác.",
     "toasts": {
       "refreshed": "{{name}} đã làm mới thành công",
-      "refreshPartial": "Đã làm mới mô hình: +{{added}} / -{{removed}}, nhưng {{failed}} trên {{total}} tài khoản bị lỗi",
-      "refreshedNoChange": "Đã làm mới mô hình: không có thay đổi",
-      "refreshedDelta": "Đã làm mới mô hình: thêm {{added}}, xóa {{removed}}",
       "refreshError": "Không thể làm mới {{name}}: {{error}}",
       "localRemoved": "{{name}} đã xóa",
-      "deleteError": "Không thể xóa {{name}}"
+      "deleteError": "Không thể xóa {{name}}",
+      "refreshPartial": "Đã làm mới mô hình: +{{added}} / -{{removed}}, nhưng {{failed}} trên {{total}} tài khoản bị lỗi",
+      "refreshedNoChange": "Đã làm mới mô hình: không có thay đổi",
+      "refreshedDelta": "Đã làm mới mô hình: thêm {{added}}, xóa {{removed}}"
     },
     "providerGroups": {
-      "mostUsed": "Dùng nhiều nhất",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "Dùng nhiều nhất"
     },
     "status": {
       "readyToUse": "Sẵn sàng sử dụng",
@@ -68,10 +68,14 @@
       "accountEmail": "Email tài khoản"
     },
     "customModels": {
+      "manualSetupHint": "Nhập ID mô hình chính xác mà điểm cuối chấp nhận và tên hiển thị tùy chọn. Không bắt buộc khám phá mô hình; bật mô hình không xác minh tính tương thích.",
       "modelNamePlaceholder": "Nhập id mô hình...",
       "displayNamePlaceholder": "Nhãn tùy chọn",
       "emptyHint": "Chưa thêm mô hình tùy chỉnh nào.",
-      "addModel": "Thêm mô hình"
+      "addModel": "Thêm mô hình",
+      "testRequiresEndpoint": "Nhập điểm cuối và khóa API để kiểm tra mô hình này",
+      "invalidModelId": "ID mô hình phải dài 1–256 byte, không chứa khoảng trắng hoặc ký tự điều khiển.",
+      "duplicateModelId": "ID mô hình đó đã có trong danh sách này."
     },
     "quickActions": {
       "multipleKeysFound": "Tìm thấy nhiều thông tin xác thực",
@@ -100,16 +104,16 @@
       "sessionUsage": "Mức dùng 5h",
       "weeklyUsage": "Mức dùng hằng tuần",
       "monthlyUsage": "Mức dùng hằng tháng",
-      "resetsAvailable": "Có {{count}} lượt đặt lại",
-      "resetsAvailable_one": "Có {{count}} lượt đặt lại",
-      "resetsAvailable_few": "Có {{count}} lượt đặt lại",
-      "resetsAvailable_many": "Có {{count}} lượt đặt lại",
-      "resetsAvailable_other": "Có {{count}} lượt đặt lại",
       "percentLeft": "Còn {{percent}}%",
       "refreshUsage": "Làm mới mức dùng",
       "resets": "Đặt lại vào {{date}}",
       "availableNow": "Có sẵn ngay",
-      "nextUsePlusFiveHours": "Lần dùng tiếp theo +5 giờ"
+      "nextUsePlusFiveHours": "Lần dùng tiếp theo +5 giờ",
+      "resetsAvailable": "Có {{count}} lượt đặt lại",
+      "resetsAvailable_one": "Có {{count}} lượt đặt lại",
+      "resetsAvailable_few": "Có {{count}} lượt đặt lại",
+      "resetsAvailable_many": "Có {{count}} lượt đặt lại",
+      "resetsAvailable_other": "Có {{count}} lượt đặt lại"
     },
     "health": {
       "cloudListingInvalid": "Danh sách đám mây không hợp lệ",
@@ -345,7 +349,6 @@
     "connecting": "Đang kết nối",
     "reconnecting": "Đang kết nối lại",
     "connectionError": "Lỗi kết nối",
-    "reconnect": "Kết nối lại",
     "accountNameDuplicate": "Tài khoản với tên này đã tồn tại",
     "probeSuccess": "Kết nối thành công",
     "probeFailed": "Kết nối thất bại",

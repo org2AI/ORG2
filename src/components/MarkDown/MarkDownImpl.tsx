@@ -21,7 +21,13 @@ import { isInternalComposerReferenceHref } from "@src/components/ComposerInput/p
 import { isThemeCssPathDark } from "@src/config/appearance/globalThemes";
 import CanvasInlineCard from "@src/engines/ChatPanel/blocks/CanvasInlineCard";
 import ChatCodeBlock from "@src/engines/ChatPanel/blocks/CodeBlock";
+import SharedSessionFileLink from "@src/features/Org2Cloud/SharedSessionFileLink";
+import {
+  useIsSessionFileShared,
+  useOpenSessionSharedFile,
+} from "@src/features/Org2Cloud/SharedSessionFilesContext";
 import { parseCloudSessionReference } from "@src/features/Org2Cloud/cloudSessionReference";
+import { parseSharedSessionFileReference } from "@src/features/Org2Cloud/sharedSessionFileReference";
 import { useOpenCloudSessionReference } from "@src/features/Org2Cloud/useOpenCloudSessionReference";
 import { themesAtom } from "@src/store/ui/uiAtom";
 import { activeWorkspaceRootAtom } from "@src/store/workspace";
@@ -200,12 +206,15 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
     [sessionReferencesAsCards, textContent]
   );
 
+  const openSharedFile = useOpenSessionSharedFile();
+  const sharedSessionFiles = useIsSessionFileShared();
   const handleLinkClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
       event.preventDefault();
       event.stopPropagation();
       const linkTarget = classifyMarkdownLinkTarget(href, fileRootPath);
       if (linkTarget.kind === "local") {
+        if (openSharedFile(linkTarget.path)) return;
         void openLocalMarkdownRef(
           linkTarget.path,
           linkTarget.homeRelative === true
@@ -214,7 +223,7 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
       }
       openMarkdownLinkInBrowserApp(linkTarget.url);
     },
-    [fileRootPath]
+    [fileRootPath, openSharedFile]
   );
 
   // Memoize dark mode calculation
@@ -375,7 +384,7 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  openFileInEditor(text, false);
+                  if (!openSharedFile(text)) openFileInEditor(text, false);
                 }}
               >
                 {children}
@@ -415,6 +424,13 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
       },
       a({ children, href, ...props }) {
         const url = href ?? "";
+        const sharedFile = parseSharedSessionFileReference(url);
+        if (sharedFile)
+          return (
+            <SharedSessionFileLink href={url} reference={sharedFile}>
+              {children}
+            </SharedSessionFileLink>
+          );
         const cloudReference = parseCloudSessionReference(url);
         if (cloudReference) {
           return (
@@ -464,6 +480,7 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
         // A workspace path is not an HTTP URL, so `LinkHoverCard` renders
         // nothing for it. Route local targets to the file-tree card instead so
         // both kinds of link carry a hover preview.
+        if (linkTarget.kind === "local" && sharedSessionFiles) return anchor;
         if (linkTarget.kind === "local") {
           return (
             <MarkdownFilePathHoverCard
@@ -513,6 +530,8 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
     codeBlockContainerWidth,
     enableFileNavigation,
     handleLinkClick,
+    openSharedFile,
+    sharedSessionFiles,
     activeWorkspaceRoot,
     activeWorkspaceRootPath,
     fileRootPath,

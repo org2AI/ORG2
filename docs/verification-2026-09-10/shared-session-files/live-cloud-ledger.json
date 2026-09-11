@@ -1,0 +1,214 @@
+{
+  "samples": 45,
+  "initialRows": 13,
+  "finalRows": 16,
+  "added": [
+    "sdeagent-f8c06b80-0625-4d1d-bea4-3a2bfbeccf6b",
+    "sdeagent-shared-files-1789092807574-0",
+    "sdeagent-shared-files-1789092807574-1"
+  ],
+  "preexistingChanged": [],
+  "violations": [],
+  "changes": [
+    {
+      "time": 1789092898.115987,
+      "sessionId": "sdeagent-f8c06b80-0625-4d1d-bea4-3a2bfbeccf6b",
+      "delta": {
+        "org_id": {
+          "before": null,
+          "after": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        },
+        "session_id": {
+          "before": null,
+          "after": "sdeagent-f8c06b80-0625-4d1d-bea4-3a2bfbeccf6b"
+        },
+        "deleted_at": {
+          "before": null,
+          "after": null
+        },
+        "access_mode": {
+          "before": null,
+          "after": "full_replay"
+        },
+        "events_count": {
+          "before": null,
+          "after": 4
+        },
+        "events_frozen_seq": {
+          "before": null,
+          "after": 0
+        },
+        "events_epoch": {
+          "before": null,
+          "after": 1
+        },
+        "stored_bytes": {
+          "before": null,
+          "after": 1840
+        },
+        "updated_at": {
+          "before": null,
+          "after": "2026-09-10T19:14:57.727397-07:00"
+        }
+      }
+    },
+    {
+      "time": 1789092908.284221,
+      "sessionId": "sdeagent-shared-files-1789092807574-0",
+      "delta": {
+        "org_id": {
+          "before": null,
+          "after": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        },
+        "session_id": {
+          "before": null,
+          "after": "sdeagent-shared-files-1789092807574-0"
+        },
+        "deleted_at": {
+          "before": null,
+          "after": null
+        },
+        "access_mode": {
+          "before": null,
+          "after": "full_replay"
+        },
+        "events_count": {
+          "before": null,
+          "after": 3
+        },
+        "events_frozen_seq": {
+          "before": null,
+          "after": 0
+        },
+        "events_epoch": {
+          "before": null,
+          "after": 1
+        },
+        "stored_bytes": {
+          "before": null,
+          "after": 788
+        },
+        "updated_at": {
+          "before": null,
+          "after": "2026-09-10T19:15:06.440367-07:00"
+        }
+      }
+    },
+    {
+      "time": 1789092918.429132,
+      "sessionId": "sdeagent-shared-files-1789092807574-1",
+      "delta": {
+        "org_id": {
+          "before": null,
+          "after": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        },
+        "session_id": {
+          "before": null,
+          "after": "sdeagent-shared-files-1789092807574-1"
+        },
+        "deleted_at": {
+          "before": null,
+          "after": null
+        },
+        "access_mode": {
+          "before": null,
+          "after": "full_replay"
+        },
+        "events_count": {
+          "before": null,
+          "after": 3
+        },
+        "events_frozen_seq": {
+          "before": null,
+          "after": 0
+        },
+        "events_epoch": {
+          "before": null,
+          "after": 1
+        },
+        "stored_bytes": {
+          "before": null,
+          "after": 788
+        },
+        "updated_at": {
+          "before": null,
+          "after": "2026-09-10T19:15:14.636821-07:00"
+        }
+      }
+    },
+    {
+      "time": 1789092923.488422,
+      "sessionId": "sdeagent-shared-files-1789092807574-0",
+      "delta": {
+        "updated_at": {
+          "before": "2026-09-10T19:15:06.440367-07:00",
+          "after": "2026-09-10T19:15:20.044904-07:00"
+        }
+      }
+    },
+    {
+      "time": 1789092933.663321,
+      "sessionId": "sdeagent-f8c06b80-0625-4d1d-bea4-3a2bfbeccf6b",
+      "delta": {
+        "stored_bytes": {
+          "before": 1840,
+          "after": 2076
+        },
+        "updated_at": {
+          "before": "2026-09-10T19:14:57.727397-07:00",
+          "after": "2026-09-10T19:15:28.785975-07:00"
+        }
+      }
+    },
+    {
+      "time": 1789092933.663321,
+      "sessionId": "sdeagent-shared-files-1789092807574-0",
+      "delta": {
+        "updated_at": {
+          "before": "2026-09-10T19:15:20.044904-07:00",
+          "after": "2026-09-10T19:15:28.654053-07:00"
+        }
+      }
+    },
+    {
+      "time": 1789092933.663321,
+      "sessionId": "sdeagent-shared-files-1789092807574-1",
+      "delta": {
+        "updated_at": {
+          "before": "2026-09-10T19:15:14.636821-07:00",
+          "after": "2026-09-10T19:15:32.454112-07:00"
+        }
+      }
+    },
+    {
+      "time": 1789092938.7342012,
+      "sessionId": "sdeagent-f8c06b80-0625-4d1d-bea4-3a2bfbeccf6b",
+      "delta": {
+        "updated_at": {
+          "before": "2026-09-10T19:15:28.785975-07:00",
+          "after": "2026-09-10T19:15:36.694455-07:00"
+        }
+      }
+    },
+    {
+      "time": 1789092938.7342012,
+      "sessionId": "sdeagent-shared-files-1789092807574-0",
+      "delta": {
+        "updated_at": {
+          "before": "2026-09-10T19:15:28.654053-07:00",
+          "after": "2026-09-10T19:15:36.636311-07:00"
+        }
+      }
+    },
+    {
+      "time": 1789092943.7950258,
+      "sessionId": "sdeagent-shared-files-1789092807574-1",
+      "delta": {
+        "updated_at": {
+          "before": "2026-09-10T19:15:32.454112-07:00",
+          "after": "2026-09-10T19:15:41.166539-07:00"
+        }
+      }
+    }
+  ]
+}

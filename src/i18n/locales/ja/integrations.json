@@ -20,17 +20,17 @@
     "confirmRemoveMessage": "ローカル認証情報が削除されます。この操作は元に戻せません。",
     "toasts": {
       "refreshed": "{{name}} の更新が完了しました",
-      "refreshPartial": "モデルを更新しました：{{added}} 件追加、{{removed}} 件削除。ただし {{total}} アカウント中 {{failed}} 件で失敗しました",
-      "refreshedNoChange": "モデルを更新しました：変更なし",
-      "refreshedDelta": "モデルを更新しました：{{added}} 件追加、{{removed}} 件削除",
       "refreshError": "{{name}} の更新に失敗しました: {{error}}",
       "localRemoved": "{{name}} を削除しました",
-      "deleteError": "{{name}} の削除に失敗しました"
+      "deleteError": "{{name}} の削除に失敗しました",
+      "refreshPartial": "モデルを更新しました：{{added}} 件追加、{{removed}} 件削除。ただし {{total}} アカウント中 {{failed}} 件で失敗しました",
+      "refreshedNoChange": "モデルを更新しました：変更なし",
+      "refreshedDelta": "モデルを更新しました：{{added}} 件追加、{{removed}} 件削除"
     },
     "providerGroups": {
-      "mostUsed": "よく使う",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "よく使う"
     },
     "status": {
       "readyToUse": "使用可能",
@@ -68,10 +68,14 @@
       "accountEmail": "アカウントメール"
     },
     "customModels": {
+      "manualSetupHint": "エンドポイントが受け付けるモデル ID と任意の表示名を入力します。モデル検出は任意です。有効化しても互換性は検証されません。",
       "modelNamePlaceholder": "モデル id を入力...",
       "displayNamePlaceholder": "任意のラベル",
       "emptyHint": "カスタムモデルはまだ追加されていません。",
-      "addModel": "モデルを追加"
+      "addModel": "モデルを追加",
+      "testRequiresEndpoint": "このモデルをテストするにはエンドポイントと API キーを入力してください",
+      "invalidModelId": "モデル ID は空白や制御文字を含まない 1〜256 バイトである必要があります。",
+      "duplicateModelId": "そのモデル ID はすでにこのリストにあります。"
     },
     "quickActions": {
       "multipleKeysFound": "複数の認証情報が見つかりました",
@@ -100,16 +104,16 @@
       "sessionUsage": "5h 使用量",
       "weeklyUsage": "週次使用量",
       "monthlyUsage": "月次使用量",
-      "resetsAvailable": "リセット可能回数：{{count}}回",
-      "resetsAvailable_one": "リセット可能回数：{{count}}回",
-      "resetsAvailable_few": "リセット可能回数：{{count}}回",
-      "resetsAvailable_many": "リセット可能回数：{{count}}回",
-      "resetsAvailable_other": "リセット可能回数：{{count}}回",
       "percentLeft": "{{percent}}% 残り",
       "refreshUsage": "使用量を更新",
       "resets": "{{date}} にリセット",
       "availableNow": "今すぐ利用可",
-      "nextUsePlusFiveHours": "次回使用 +5時間"
+      "nextUsePlusFiveHours": "次回使用 +5時間",
+      "resetsAvailable": "リセット可能回数：{{count}}回",
+      "resetsAvailable_one": "リセット可能回数：{{count}}回",
+      "resetsAvailable_few": "リセット可能回数：{{count}}回",
+      "resetsAvailable_many": "リセット可能回数：{{count}}回",
+      "resetsAvailable_other": "リセット可能回数：{{count}}回"
     },
     "health": {
       "cloudListingInvalid": "クラウドリスティング無効",
@@ -345,7 +349,6 @@
     "connecting": "接続中",
     "reconnecting": "再接続中",
     "connectionError": "接続エラー",
-    "reconnect": "再接続",
     "accountNameDuplicate": "同じ名前のアカウントが既に存在します",
     "probeSuccess": "接続成功",
     "probeFailed": "接続失敗",

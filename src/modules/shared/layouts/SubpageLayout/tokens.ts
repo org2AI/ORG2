@@ -1,13 +1,10 @@
 /**
  * Subpage layout spacing tokens.
  *
- * Shared by SubpageLayout and Settings main content to keep
+ * Shared by Settings main content and Project Manager subpages to keep
  * visual rhythm consistent (padding, max-width, section gaps, bottom breathing room).
  */
 import { DETAIL_PANEL_TOKENS } from "../blocks";
-
-export const SUBPAGE_SCROLL_CONTAINER_CLASSES =
-  "h-full min-h-0 overflow-y-auto px-4 scrollbar-overlay";
 
 export const SUBPAGE_CONTENT_WRAPPER_CLASSES = `${DETAIL_PANEL_TOKENS.contentWidth} flex flex-col gap-10 py-6 pb-[50vh]`;
 

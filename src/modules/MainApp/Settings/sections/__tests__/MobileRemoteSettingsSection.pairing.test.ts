@@ -16,6 +16,15 @@ import type { PairingInitOutput } from "@src/api/tauri/mobileRemote";
 
 import MobileRemoteSettingsSection from "../MobileRemoteSettingsSection";
 
+vi.mock("../useMobileRelayStatus", () => ({
+  useMobileRelayStatus: () => ({
+    data: null,
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  }),
+}));
+
 const reactActEnvironment = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean;
 };

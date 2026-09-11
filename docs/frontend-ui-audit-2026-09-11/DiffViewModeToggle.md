@@ -1,0 +1,14 @@
+# DiffViewModeToggle UI audit
+
+Scope: shared diff layout button and its two header integrations. Reviewed D1–D5; no arbitrary values, colors, or new background work introduced.
+
+| Line                                                                                                     | Element                    | Verdict          | Reason                                                                                                                                                                                                                                                          | Suggested change |
+| -------------------------------------------------------------------------------------------------------- | -------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `src/modules/shared/components/DiffViewModeToggle.tsx:98`                                                | Icon button                | keep with reason | Reuses the design-system Button with native keyboard behavior, a destination-specific translated ToolbarTooltip without a shortcut prop and an accessible name; the native title is omitted to prevent duplicate tooltips.                                      | None.            |
+| `src/modules/shared/components/DiffViewModeToggle.tsx:107`                                               | Layout icon                | keep with reason | Keeps the thinner Hugeicons outline in the inherited toolbar color, with muted deletion/addition fills using DIFF_STATS theme tokens; glyph geometry shows the current layout. Uses the header size token. Decorative icon is hidden from assistive technology. | None.            |
+| `src/modules/shared/components/FileHeader/index.tsx:448`                                                 | File diff layout control   | keep with reason | Uses the shared toggle and retains the existing visibility gate and mode callback.                                                                                                                                                                              | None.            |
+| `src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/components/SourceControlHeaderContent.tsx:232` | All Changes layout control | keep with reason | Uses the same shared toggle while preserving Focus / All Changes pills and existing aggregate-control visibility.                                                                                                                                               | None.            |
+
+Verdict totals: **0 fix**, **4 keep with reason**, **0 abstract**.
+
+Visual verification: source inspection only; desktop UI control was not authorized.

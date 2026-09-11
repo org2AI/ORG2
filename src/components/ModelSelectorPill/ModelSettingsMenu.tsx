@@ -14,7 +14,6 @@ import {
   DROPDOWN_PANEL,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import IconButton from "@src/components/IconButton";
 import EffortSlider from "@src/components/ModelPropertiesDropdown/EffortSlider";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import {
@@ -343,13 +342,10 @@ export default function ModelSettingsMenu({
                     {t("sessions:creator.switchModel")}
                   </Button>
                   {variantOptions.fastAvailableAnywhere && (
-                    <IconButton
-                      type="button"
-                      variant={selection.fast ? "active" : "default"}
-                      size="lg"
-                      // IconButton's base `rounded` is 4px; Button renders 8px
-                      // from an inline style. Both controls are 28px tall and
-                      // sit side by side here, so match the Button's corner.
+                    <Button
+                      htmlType="button"
+                      variant="tertiary"
+                      size="small"
                       className="rounded-lg"
                       aria-label={text("fast")}
                       aria-pressed={selection.fast}
@@ -358,19 +354,22 @@ export default function ModelSettingsMenu({
                       onClick={() =>
                         change({ ...selection, fast: !selection.fast })
                       }
-                    >
-                      <HugeiconsIcon
-                        icon={FlashIcon}
-                        data-icon="fast"
-                        size={COMPACT_ACTION_ICON_SIZE}
-                        // Solid bolt while Fast is on. FlashIcon's path is an
-                        // outline with no fill of its own, so it inherits the
-                        // svg fill; dropping the stroke keeps the silhouette
-                        // clean instead of a filled shape with a heavy edge.
-                        fill={selection.fast ? "currentColor" : "none"}
-                        strokeWidth={selection.fast ? 0 : undefined}
-                      />
-                    </IconButton>
+                      appearance="soft"
+                      iconOnly
+                      icon={
+                        <HugeiconsIcon
+                          icon={FlashIcon}
+                          data-icon="fast"
+                          size={COMPACT_ACTION_ICON_SIZE}
+                          // Solid bolt while Fast is on. FlashIcon's path is an
+                          // outline with no fill of its own, so it inherits the
+                          // svg fill; dropping the stroke keeps the silhouette
+                          // clean instead of a filled shape with a heavy edge.
+                          fill={selection.fast ? "currentColor" : "none"}
+                          strokeWidth={selection.fast ? 0 : undefined}
+                        />
+                      }
+                    />
                   )}
                 </div>
                 <EffortSlider

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import Input from "@src/components/Input";
 import type { SectionHeaderAction } from "@src/components/TreePanelSidebar/types";
-import { FunnelIcon, HugeiconsIcon } from "@src/icons";
+import { HugeiconsIcon, Search01Icon } from "@src/icons";
 import { PANEL_CONSTANTS } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/config";
 
 // ─── Filter Input Row ─────────────────────────────────────────────────────────
@@ -28,13 +28,13 @@ export const SectionFilterInput: React.FC<SectionFilterInputProps> = ({
       <Input
         prefix={
           <HugeiconsIcon
-            icon={FunnelIcon}
-            data-icon="funnel"
+            icon={Search01Icon}
+            data-icon="search-icon"
             size={14}
             strokeWidth={1.75}
           />
         }
-        placeholder={placeholder ?? t("actions.filter", "Filter")}
+        placeholder={placeholder ?? t("common.searchPlaceholder")}
         value={query}
         onChange={(value) => onChange(value)}
         size="small"
@@ -67,14 +67,14 @@ export function makeSectionFilterAction({
   isOpen,
   hasQuery,
   onToggle,
-  tooltip = "Filter",
+  tooltip = "Search",
 }: MakeSectionFilterActionOptions): SectionHeaderAction {
   return {
     key,
     icon: (
       <HugeiconsIcon
-        icon={FunnelIcon}
-        data-icon="funnel"
+        icon={Search01Icon}
+        data-icon="search-icon"
         size={PANEL_CONSTANTS.ACTION_ICON_SIZE}
         strokeWidth={PANEL_CONSTANTS.ACTION_ICON_STROKE}
         className={isOpen ? "text-primary-6" : ""}

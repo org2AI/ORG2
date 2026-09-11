@@ -15,6 +15,7 @@ export interface SingleQuestion {
   text: string;
   options: QuestionOption[];
   multiSelect: boolean;
+  freeText?: boolean;
 }
 
 export interface QuestionBatch {

@@ -2,6 +2,7 @@ import type { Store } from "jotai/vanilla/store";
 
 import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHistory";
 import { rpc } from "@src/api/tauri/rpc";
+import { resolveSessionAgentExecMode } from "@src/config/sessionCreatorConfig";
 import type { ConversationRootLocator } from "@src/engines/SessionCore/conversations/conversationTypes";
 import {
   type ContinueLocalConversationResult,
@@ -93,6 +94,9 @@ async function dispatchQueuedLocalConversation(
     agentContent: message.content,
     imageDataUrls: message.imageDataUrls,
     target,
+    mode:
+      message.agentExecMode ??
+      resolveSessionAgentExecMode(sourceSession?.agentExecMode),
     turnIntentId: message.turnIntentId,
     queueMessageId: message.id,
     onSessionPreparing: (sessionId: string) =>

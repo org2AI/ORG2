@@ -1,6 +1,5 @@
-import { type MutableRefObject, useEffect } from "react";
+import { type MutableRefObject, useEffect, useRef } from "react";
 
-import { LOCAL_MODEL_PROVIDER } from "@src/api/types/keys";
 import { useKeyValidation } from "@src/hooks/keyVault/useKeyValidation";
 import { getDefaultEnabledModels } from "@src/util/modelGrouping";
 
@@ -18,6 +17,25 @@ interface UseApiSetupValidationOptions {
   agentModelsRef: MutableRefObject<string[]>;
 }
 
+/**
+ * Keep the user's enabled choices across a re-validation, but only for models
+ * that still exist: manual rows always do, discovered ones only while the
+ * new catalog still lists them. Re-validating with a different key must not
+ * carry the previous key's defaults into a catalog that never had them.
+ */
+function retainEnabledModels(
+  current: WizardData,
+  effectiveModels: string[]
+): string[] {
+  const retained = current.enabled_models.filter(
+    (model) =>
+      current.custom_models.includes(model) || effectiveModels.includes(model)
+  );
+  return retained.length > 0
+    ? retained
+    : getDefaultEnabledModels(effectiveModels);
+}
+
 export function useApiSetupValidation({
   data,
   onChange,
@@ -28,6 +46,10 @@ export function useApiSetupValidation({
   resolvedCursorSessionToken,
   agentModelsRef,
 }: UseApiSetupValidationOptions) {
+  const latestData = useRef(data);
+  useEffect(() => {
+    latestData.current = data;
+  }, [data]);
   const validation = useKeyValidation({
     agentType: data.agent_type,
     rawKeyInput: data.raw_key_input,
@@ -47,19 +69,19 @@ export function useApiSetupValidation({
       extractedConfig: config,
       oauthCatalog,
     }) => {
-      const effectiveModels = (() => {
-        const validationModels = getEffectiveValidationModels(
-          models,
-          data.agent_type,
-          agentModelsRef.current
-        );
-        if (data.agent_type !== LOCAL_MODEL_PROVIDER) return validationModels;
-        const mergedModels = [...validationModels];
-        for (const model of data.custom_models ?? []) {
-          if (!mergedModels.includes(model)) mergedModels.push(model);
-        }
-        return mergedModels;
-      })();
+      const current = latestData.current;
+      if (
+        current.agent_type !== data.agent_type ||
+        current.raw_key_input !== data.raw_key_input ||
+        current.extracted_base_url !== data.extracted_base_url ||
+        current.protocol !== data.protocol
+      )
+        return;
+      const effectiveModels = getEffectiveValidationModels(
+        models,
+        data.agent_type,
+        agentModelsRef.current
+      );
       const catalogDefaults = oauthCatalog?.defaultEnabledModels.filter(
         (model) => effectiveModels.includes(model)
       );
@@ -84,16 +106,16 @@ export function useApiSetupValidation({
         enabled_models:
           isClaudeCode || isCodex
             ? oauthEnabledModels
-            : getDefaultEnabledModels(effectiveModels),
+            : retainEnabledModels(current, effectiveModels),
         model_aliases:
-          data.agent_type === LOCAL_MODEL_PROVIDER ? data.model_aliases : [],
+          data.auth_method !== "oauth" ? current.model_aliases : [],
         custom_models:
-          data.agent_type === LOCAL_MODEL_PROVIDER ? data.custom_models : [],
+          data.auth_method !== "oauth" ? current.custom_models : [],
         env_vars: envVars,
         validated: true,
         quota_info: config?.quotaInfo as WizardData["quota_info"],
-        extracted_api_key: config?.actualApiKey,
-        extracted_base_url: config?.baseUrl,
+        extracted_api_key: config?.actualApiKey ?? data.extracted_api_key,
+        extracted_base_url: config?.baseUrl ?? data.extracted_base_url,
       });
     },
   });

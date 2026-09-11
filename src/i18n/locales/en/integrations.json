@@ -31,9 +31,9 @@
       "deleteError": "Failed to delete {{name}}"
     },
     "providerGroups": {
-      "mostUsed": "Most used",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "Most used"
     },
     "status": {
       "readyToUse": "Ready to use",
@@ -71,10 +71,14 @@
       "noCliAgentSupport": "No CLI agent support for this provider"
     },
     "customModels": {
+      "manualSetupHint": "Add the exact model ID your endpoint accepts and an optional display name. Model discovery is optional; enabling a model does not verify endpoint compatibility.",
       "modelNamePlaceholder": "Enter model id...",
       "displayNamePlaceholder": "Optional label",
       "emptyHint": "No custom models added yet.",
-      "addModel": "Add Model"
+      "addModel": "Add Model",
+      "testRequiresEndpoint": "Enter an endpoint and API key to test this model",
+      "invalidModelId": "Model IDs must be 1–256 bytes without spaces or control characters.",
+      "duplicateModelId": "That model ID is already in this list."
     },
     "quickActions": {
       "multipleKeysFound": "Multiple keys found",
@@ -103,16 +107,16 @@
       "sessionUsage": "5h usage",
       "weeklyUsage": "Weekly usage",
       "monthlyUsage": "Monthly usage",
-      "resetsAvailable": "{{count}} resets available",
-      "resetsAvailable_one": "{{count}} reset available",
-      "resetsAvailable_few": "{{count}} resets available",
-      "resetsAvailable_many": "{{count}} resets available",
-      "resetsAvailable_other": "{{count}} resets available",
       "percentLeft": "{{percent}}% left",
       "refreshUsage": "Refresh usage",
       "resets": "Resets {{date}}",
       "availableNow": "Available now",
-      "nextUsePlusFiveHours": "Next use +5h"
+      "nextUsePlusFiveHours": "Next use +5h",
+      "resetsAvailable": "{{count}} resets available",
+      "resetsAvailable_one": "{{count}} reset available",
+      "resetsAvailable_few": "{{count}} resets available",
+      "resetsAvailable_many": "{{count}} resets available",
+      "resetsAvailable_other": "{{count}} resets available"
     },
     "health": {
       "cloudListingInvalid": "Cloud listing invalid",
@@ -345,7 +349,6 @@
     "connecting": "Connecting",
     "reconnecting": "Reconnecting",
     "connectionError": "Connection Error",
-    "reconnect": "Reconnect",
     "accountNameDuplicate": "An account with this name already exists",
     "probeSuccess": "Connection successful",
     "probeFailed": "Connection failed",

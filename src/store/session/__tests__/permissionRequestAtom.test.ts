@@ -12,6 +12,7 @@ import {
   clearFinalizedPermissionRequest,
   clearPendingPermissionRequest,
   getPendingPermissionRequests,
+  reconcileNativePermissionSnapshot,
   upsertPendingPermissionRequest,
 } from "../permissionRequestAtom";
 
@@ -45,6 +46,32 @@ describe("permissionRequestAtom helpers", () => {
     expect(getPendingPermissionRequests(state, "session-2")[0]?.requestId).toBe(
       "other"
     );
+  });
+
+  it("expires stale native requests without deleting later arrivals or other origins", () => {
+    const native = (id: string): PermissionRequestEvent => ({
+      ...request(id),
+      origin: "native_cli",
+    });
+    let state = upsertPendingPermissionRequest(new Map(), native("expired"));
+    state = upsertPendingPermissionRequest(state, native("live"));
+    const baseline = new Set(["expired", "live"]);
+    state = upsertPendingPermissionRequest(state, native("arrived-later"));
+    state = upsertPendingPermissionRequest(state, request("ordinary"));
+    state = upsertPendingPermissionRequest(
+      state,
+      request("other", "session-2")
+    );
+    const next = reconcileNativePermissionSnapshot(
+      state,
+      "session-1",
+      baseline,
+      [native("live")]
+    );
+    expect(
+      getPendingPermissionRequests(next, "session-1").map((r) => r.requestId)
+    ).toEqual(["live", "arrived-later", "ordinary"]);
+    expect(next.get("session-2")).toBe(state.get("session-2"));
   });
 
   it("clears only the matching session and request", () => {

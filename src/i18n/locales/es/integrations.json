@@ -20,17 +20,17 @@
     "confirmRemoveMessage": "Esto eliminará la credencial local. Esta acción no se puede deshacer.",
     "toasts": {
       "refreshed": "{{name}} actualizado correctamente",
-      "refreshPartial": "Modelos actualizados: +{{added}} / -{{removed}}, pero fallaron {{failed}} de {{total}} cuentas",
-      "refreshedNoChange": "Modelos actualizados: sin cambios",
-      "refreshedDelta": "Modelos actualizados: {{added}} añadidos, {{removed}} eliminados",
       "refreshError": "Error al actualizar {{name}}: {{error}}",
       "localRemoved": "{{name}} eliminado",
-      "deleteError": "Error al eliminar {{name}}"
+      "deleteError": "Error al eliminar {{name}}",
+      "refreshPartial": "Modelos actualizados: +{{added}} / -{{removed}}, pero fallaron {{failed}} de {{total}} cuentas",
+      "refreshedNoChange": "Modelos actualizados: sin cambios",
+      "refreshedDelta": "Modelos actualizados: {{added}} añadidos, {{removed}} eliminados"
     },
     "providerGroups": {
-      "mostUsed": "Más usados",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "Más usados"
     },
     "status": {
       "readyToUse": "Listo para usar",
@@ -68,10 +68,14 @@
       "accountEmail": "Correo de la cuenta"
     },
     "customModels": {
+      "manualSetupHint": "Añade el ID exacto que acepta tu endpoint y un nombre opcional. La detección es opcional; activar un modelo no verifica su compatibilidad.",
       "modelNamePlaceholder": "Ingrese el id del modelo...",
       "displayNamePlaceholder": "Etiqueta opcional",
       "emptyHint": "No se han agregado modelos personalizados.",
-      "addModel": "Agregar modelo"
+      "addModel": "Agregar modelo",
+      "testRequiresEndpoint": "Introduce un endpoint y una clave de API para probar este modelo",
+      "invalidModelId": "Los ID de modelo deben tener entre 1 y 256 bytes, sin espacios ni caracteres de control.",
+      "duplicateModelId": "Ese ID de modelo ya está en esta lista."
     },
     "quickActions": {
       "multipleKeysFound": "Se encontraron múltiples credenciales",
@@ -100,16 +104,16 @@
       "sessionUsage": "Uso de 5h",
       "weeklyUsage": "Uso semanal",
       "monthlyUsage": "Uso mensual",
-      "resetsAvailable": "{{count}} restablecimientos disponibles",
-      "resetsAvailable_one": "{{count}} restablecimiento disponible",
-      "resetsAvailable_few": "{{count}} restablecimientos disponibles",
-      "resetsAvailable_many": "{{count}} restablecimientos disponibles",
-      "resetsAvailable_other": "{{count}} restablecimientos disponibles",
       "percentLeft": "{{percent}}% restante",
       "refreshUsage": "Actualizar uso",
       "resets": "Se reinicia el {{date}}",
       "availableNow": "Disponible ahora",
-      "nextUsePlusFiveHours": "Próximo uso +5 h"
+      "nextUsePlusFiveHours": "Próximo uso +5 h",
+      "resetsAvailable": "{{count}} restablecimientos disponibles",
+      "resetsAvailable_one": "{{count}} restablecimiento disponible",
+      "resetsAvailable_few": "{{count}} restablecimientos disponibles",
+      "resetsAvailable_many": "{{count}} restablecimientos disponibles",
+      "resetsAvailable_other": "{{count}} restablecimientos disponibles"
     },
     "health": {
       "cloudListingInvalid": "Listado en la nube inválido",
@@ -345,7 +349,6 @@
     "connecting": "Conectando",
     "reconnecting": "Reconectando",
     "connectionError": "Error de conexión",
-    "reconnect": "Reconectar",
     "accountNameDuplicate": "Ya existe una cuenta con este nombre",
     "probeSuccess": "Conexión exitosa",
     "probeFailed": "Conexión fallida",

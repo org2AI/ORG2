@@ -880,7 +880,7 @@ describe("local native conversation continuation", () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
 
-  it("materializes native history, then sends only the new request", async () => {
+  it("materializes native history and preserves Plan in creation and dispatch", async () => {
     mocks.storeGet.mockReturnValue("agentsession-child");
     const history = [
       event("u1", "user", "original question"),
@@ -901,6 +901,7 @@ describe("local native conversation continuation", () => {
     const result = await continueLocalConversation({
       root,
       title: "Shared",
+      mode: "plan",
       timeline,
       displayText: "new request",
       agentContent,
@@ -911,6 +912,7 @@ describe("local native conversation continuation", () => {
     expect(mocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
         task: "",
+        mode: "plan",
         parentSessionId: conversationExecutionParentId(root),
       })
     );
@@ -922,6 +924,7 @@ describe("local native conversation continuation", () => {
     expect(mocks.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         content: agentContent,
+        mode: "plan",
         displayText: "new request",
       })
     );

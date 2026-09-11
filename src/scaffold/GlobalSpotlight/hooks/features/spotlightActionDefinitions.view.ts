@@ -15,6 +15,7 @@ import {
   PanelLeftIcon,
   RotateLeft01Icon,
   SidebarBottomIcon,
+  SidebarLeftIcon,
   ZoomInAreaIcon,
   ZoomOutAreaIcon,
 } from "@src/icons";
@@ -41,7 +42,7 @@ export function buildViewActions(
       labelKey: isSidebarCollapsed
         ? "selectors.spotlight.actions.showAppSidebar.label"
         : "selectors.spotlight.actions.hideAppSidebar.label",
-      icon: PanelLeftIcon,
+      icon: isSidebarCollapsed ? PanelLeftIcon : SidebarLeftIcon,
       keywords: [
         "show app sidebar",
         "hide app sidebar",

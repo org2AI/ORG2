@@ -9,12 +9,10 @@ import SearchInput from "@src/components/SearchInput";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { HugeiconsIcon, Logout02Icon } from "@src/icons";
-import {
-  type NavigationMenuItem,
-  NavigationSidebar,
-} from "@src/scaffold/NavigationSidebar";
 import SidebarBottomBar from "@src/scaffold/NavigationSidebar/blocks/SidebarBottomBar";
+import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import SidebarOrgSelector from "@src/scaffold/NavigationSidebar/connectors/SidebarOrgSelector";
+import NavigationSidebar from "@src/scaffold/NavigationSidebar/variants/NavigationSidebar";
 
 import { resolveWebActiveCloudOrgId } from "../features/sessions/WebCloudRealtimeScope";
 import { useWebSessions } from "../features/sessions/WebSessionsContext";

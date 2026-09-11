@@ -18,7 +18,7 @@
     "storage": "Storage",
     "agentOrg": "Agent Team",
     "mobileRemote": "Mobile Remote",
-    "harnessConnections": "CLI Routing"
+    "harnessConnections": "App connections"
   },
   "coreSidebar": {
     "groups": {
@@ -283,17 +283,17 @@
       "colorful": "Colorful",
       "monochrome": "Monochrome"
     },
+    "translucentSidebar": "Translucent sidebar",
+    "skin": "Skin",
+    "accent": "Accent",
+    "linkSkinVariants": "Link light and dark",
+    "linkSkinVariantsDesc": "Use one skin and accent for both modes. Only skins that ship a light and a dark variant can be linked",
     "appIcon": "App icon",
     "appIconOptions": {
       "rainbow": "Rainbow",
       "dark": "Dark tile",
       "light": "Light tile"
-    },
-    "translucentSidebar": "Translucent sidebar",
-    "skin": "Skin",
-    "accent": "Accent",
-    "linkSkinVariants": "Link light and dark",
-    "linkSkinVariantsDesc": "Use one skin and accent for both modes. Only skins that ship a light and a dark variant can be linked"
+    }
   },
   "background": {
     "title": "Background",
@@ -945,7 +945,6 @@
     "original": "Original setup",
     "missingKey": "Selected key is missing",
     "connection": "Connection",
-    "choose": "Choose a saved connection",
     "add": "Add connection",
     "empty": "Add an API key or import a connection from another tool",
     "model": "Model",
@@ -971,6 +970,43 @@
     "loading": "Reading harness configuration…",
     "conflict": "Configuration changed outside ORGII. Review those edits before applying or restoring; they will not be overwritten",
     "credentialsNote": "Direct mode writes credentials to native CLI configuration with restricted file access; removing a vault key does not revoke that exported credential",
-    "notInstalled": "Install this harness before testing or applying a connection"
+    "notInstalled": "Install this harness before testing or applying a connection",
+    "appSelector": "App",
+    "endpoint": "API endpoint",
+    "authentication": "Authentication",
+    "desktopScope": "Configures Claude Desktop separately from Claude Code CLI; fully quit and reopen Desktop after applying",
+    "desktopApplied": "Desktop configuration saved — fully quit and reopen Claude Desktop",
+    "desktopRestored": "Previous Desktop configuration restored — fully quit and reopen Claude Desktop"
+  },
+  "claudeProfiles": {
+    "new": "New profile",
+    "newName": "New provider",
+    "copy": "Copy current connection",
+    "copyName": "Copy of current connection",
+    "empty": "Save a provider profile to customize this app’s endpoint and models",
+    "name": "Profile name",
+    "credential": "API key",
+    "defaultRole": "Default model role",
+    "mapping": "Model mapping",
+    "useOne": "Use default model for all roles",
+    "fetchModels": "Fetch models",
+    "displayName": "Display name",
+    "requestModel": "Request model ID",
+    "noLabel": "Not shown in model picker",
+    "inherit": "Inherit the main model",
+    "active": "Active",
+    "updatePending": "Saved changes pending",
+    "unsaved": "Unsaved changes — save or discard before switching profiles",
+    "save": "Save profile",
+    "test": "Test all models",
+    "discard": "Discard changes",
+    "delete": "Delete profile",
+    "mappingHelp": "Labels only affect the model picker. Request IDs go to your endpoint. Enable 1M only when your provider supports it; this does not increase its context limit",
+    "activationHelp": "Save first, then test every distinct model and apply. Tests send synthetic tool and streaming requests and may incur charges. Keys are written to native app configuration when applied; restart the app afterward",
+    "saveDone": "Profile saved",
+    "deleteDone": "Profile deleted",
+    "fetchDone": "Model list loaded; choose or enter an ID",
+    "testDone": "Tool round trip and streaming passed; test evidence expires after 15 minutes",
+    "role": "Role"
   }
 }

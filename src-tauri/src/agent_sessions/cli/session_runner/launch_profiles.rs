@@ -182,7 +182,7 @@ pub const CLI_LAUNCH_PROFILE_DEFAULTS: &[CliLaunchProfileDefaults] = &[
         command_args: &[],
         mode_defaults: mode_defaults![
             Plan => (&["--permission-mode", "plan"], &[]),
-            Manual => (&["--permission-mode", "manual"], &[]),
+            Manual => (&["--permission-mode", "default"], &[]),
             AutoEdit => (&["--permission-mode", "acceptEdits"], &[]),
             FullPermission => (&["--dangerously-skip-permissions"], &[]),
         ],

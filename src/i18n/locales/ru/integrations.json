@@ -20,17 +20,17 @@
     "confirmRemoveMessage": "Локальные учётные данные будут удалены. Это действие нельзя отменить.",
     "toasts": {
       "refreshed": "{{name}} успешно обновлён",
-      "refreshPartial": "Модели обновлены: +{{added}} / -{{removed}}, но произошла ошибка для {{failed}} из {{total}} аккаунтов",
-      "refreshedNoChange": "Модели обновлены: без изменений",
-      "refreshedDelta": "Модели обновлены: добавлено {{added}}, удалено {{removed}}",
       "refreshError": "Не удалось обновить {{name}}: {{error}}",
       "localRemoved": "{{name}} удалён",
-      "deleteError": "Не удалось удалить {{name}}"
+      "deleteError": "Не удалось удалить {{name}}",
+      "refreshPartial": "Модели обновлены: +{{added}} / -{{removed}}, но произошла ошибка для {{failed}} из {{total}} аккаунтов",
+      "refreshedNoChange": "Модели обновлены: без изменений",
+      "refreshedDelta": "Модели обновлены: добавлено {{added}}, удалено {{removed}}"
     },
     "providerGroups": {
-      "mostUsed": "Часто используемые",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "Часто используемые"
     },
     "status": {
       "readyToUse": "Готов к использованию",
@@ -68,10 +68,14 @@
       "accountEmail": "Email аккаунта"
     },
     "customModels": {
+      "manualSetupHint": "Укажите точный ID модели для вашей конечной точки и необязательное имя. Обнаружение моделей необязательно; включение не проверяет совместимость.",
       "modelNamePlaceholder": "Введите id модели...",
       "displayNamePlaceholder": "Необязательная метка",
       "emptyHint": "Пользовательские модели ещё не добавлены.",
-      "addModel": "Добавить модель"
+      "addModel": "Добавить модель",
+      "testRequiresEndpoint": "Укажите конечную точку и ключ API, чтобы протестировать эту модель",
+      "invalidModelId": "Идентификатор модели должен быть длиной от 1 до 256 байт без пробелов и управляющих символов.",
+      "duplicateModelId": "Этот идентификатор модели уже есть в списке."
     },
     "quickActions": {
       "multipleKeysFound": "Найдено несколько учётных данных",
@@ -100,16 +104,16 @@
       "sessionUsage": "Использование за 5h",
       "weeklyUsage": "Недельное использование",
       "monthlyUsage": "Ежемесячное использование",
-      "resetsAvailable": "Доступно {{count}} сброса",
-      "resetsAvailable_one": "Доступен {{count}} сброс",
-      "resetsAvailable_few": "Доступно {{count}} сброса",
-      "resetsAvailable_many": "Доступно {{count}} сбросов",
-      "resetsAvailable_other": "Доступно {{count}} сброса",
       "percentLeft": "Осталось {{percent}}%",
       "refreshUsage": "Обновить использование",
       "resets": "Сброс {{date}}",
       "availableNow": "Доступно сейчас",
-      "nextUsePlusFiveHours": "Следующее использование +5 ч"
+      "nextUsePlusFiveHours": "Следующее использование +5 ч",
+      "resetsAvailable": "Доступно {{count}} сброса",
+      "resetsAvailable_one": "Доступен {{count}} сброс",
+      "resetsAvailable_few": "Доступно {{count}} сброса",
+      "resetsAvailable_many": "Доступно {{count}} сбросов",
+      "resetsAvailable_other": "Доступно {{count}} сброса"
     },
     "health": {
       "cloudListingInvalid": "Облачное предложение недействительно",
@@ -345,7 +349,6 @@
     "connecting": "Подключение",
     "reconnecting": "Переподключение",
     "connectionError": "Ошибка подключения",
-    "reconnect": "Переподключить",
     "accountNameDuplicate": "Аккаунт с таким именем уже существует",
     "probeSuccess": "Подключение успешно",
     "probeFailed": "Подключение не удалось",

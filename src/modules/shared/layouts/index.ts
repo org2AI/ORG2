@@ -18,4 +18,3 @@ export { default as SplitListFullscreenButton } from "./SplitListFullscreenButto
 export { default as SplitListHeader } from "./SplitListHeader";
 export { default as InboxListDetailLayout } from "./InboxListDetailLayout";
 export { default as Section } from "./Section";
-export { default as SubpageLayout } from "./SubpageLayout";

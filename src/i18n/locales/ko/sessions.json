@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "마이크 접근 권한 필요"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "승인 요청",
+      "workspace": "작업 공간 접근",
+      "edit": "편집 허용",
+      "full": "전체 접근",
+      "nextTurn": "권한은 다음 턴부터 적용됩니다"
+    },
     "planApprovedLabel": "승인된 계획 실행 중",
     "planApprovedEditedLabel": "승인된 계획 실행 중 (편집됨)",
     "sessionStarted": "Session이 시작되었습니다",
@@ -2309,7 +2316,6 @@
       "agentFallback": "Agent"
     },
     "sidebar": {
-      "stopAgentProcess": "Agent 프로세스 중지",
       "openInMyStation": "My Station 에서 열기"
     }
   },
@@ -2673,5 +2679,14 @@
     "stale": "마지막 관측이 2시간 넘게 지났습니다",
     "disabled": "비활성화된 계정이라 샘플링이 일시 중지됨",
     "limit": "최대 128개 계정 표시"
+  },
+  "sharedFile": {
+    "downloaded": "다운로드 폴더에 저장됨",
+    "downloadError": "다운로드 폴더에 저장할 수 없습니다",
+    "title": "공유 파일",
+    "error": "이 파일을 열 수 없습니다. 계정, 서버 및 세션 접근 권한을 확인한 후 링크를 다시 여세요.",
+    "downloadPreview": "내용을 보려면 이 파일을 다운로드하세요",
+    "download": "다운로드",
+    "loading": "공유 파일 로드 중…"
   }
 }

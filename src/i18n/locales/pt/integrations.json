@@ -21,17 +21,17 @@
     "confirmRemoveMessage": "Isso removerá a chave salva localmente. Esta ação não pode ser desfeita.",
     "toasts": {
       "refreshed": "{{name}} atualizado com sucesso",
-      "refreshPartial": "Modelos atualizados: +{{added}} / -{{removed}}, mas {{failed}} de {{total}} contas falharam",
-      "refreshedNoChange": "Modelos atualizados: sem alterações",
-      "refreshedDelta": "Modelos atualizados: {{added}} adicionados, {{removed}} removidos",
       "refreshError": "Falha ao atualizar {{name}}: {{error}}",
       "localRemoved": "{{name}} removido",
-      "deleteError": "Falha ao excluir {{name}}"
+      "deleteError": "Falha ao excluir {{name}}",
+      "refreshPartial": "Modelos atualizados: +{{added}} / -{{removed}}, mas {{failed}} de {{total}} contas falharam",
+      "refreshedNoChange": "Modelos atualizados: sem alterações",
+      "refreshedDelta": "Modelos atualizados: {{added}} adicionados, {{removed}} removidos"
     },
     "providerGroups": {
-      "mostUsed": "Mais usados",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "Mais usados"
     },
     "status": {
       "readyToUse": "Pronto para uso",
@@ -69,10 +69,14 @@
       "accountEmail": "Email da conta"
     },
     "customModels": {
+      "manualSetupHint": "Adicione o ID exato aceito pelo endpoint e um nome opcional. A descoberta é opcional; ativar um modelo não verifica sua compatibilidade.",
       "modelNamePlaceholder": "Digite o id do modelo...",
       "displayNamePlaceholder": "Rótulo opcional",
       "emptyHint": "Nenhum modelo personalizado adicionado ainda.",
-      "addModel": "Adicionar modelo"
+      "addModel": "Adicionar modelo",
+      "testRequiresEndpoint": "Informe um endpoint e uma chave de API para testar este modelo",
+      "invalidModelId": "IDs de modelo devem ter de 1 a 256 bytes, sem espaços nem caracteres de controle.",
+      "duplicateModelId": "Esse ID de modelo já está nesta lista."
     },
     "quickActions": {
       "multipleKeysFound": "Várias chaves encontradas",
@@ -101,16 +105,16 @@
       "sessionUsage": "Uso de 5h",
       "weeklyUsage": "Uso semanal",
       "monthlyUsage": "Uso mensal",
-      "resetsAvailable": "{{count}} redefinições disponíveis",
-      "resetsAvailable_one": "{{count}} redefinição disponível",
-      "resetsAvailable_few": "{{count}} redefinições disponíveis",
-      "resetsAvailable_many": "{{count}} redefinições disponíveis",
-      "resetsAvailable_other": "{{count}} redefinições disponíveis",
       "percentLeft": "{{percent}}% restante",
       "refreshUsage": "Atualizar uso",
       "resets": "Reseta em {{date}}",
       "availableNow": "Disponível agora",
-      "nextUsePlusFiveHours": "Próximo uso +5 h"
+      "nextUsePlusFiveHours": "Próximo uso +5 h",
+      "resetsAvailable": "{{count}} redefinições disponíveis",
+      "resetsAvailable_one": "{{count}} redefinição disponível",
+      "resetsAvailable_few": "{{count}} redefinições disponíveis",
+      "resetsAvailable_many": "{{count}} redefinições disponíveis",
+      "resetsAvailable_other": "{{count}} redefinições disponíveis"
     },
     "health": {
       "cloudListingInvalid": "Anúncio na nuvem inválido",
@@ -345,7 +349,6 @@
     "connecting": "Conectando",
     "reconnecting": "Reconectando",
     "connectionError": "Erro de conexão",
-    "reconnect": "Reconectar",
     "accountNameDuplicate": "Já existe uma conta com este nome",
     "probeSuccess": "Conexão bem-sucedida",
     "probeFailed": "Falha na conexão",

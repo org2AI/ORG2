@@ -15,6 +15,7 @@ use super::tool_args::{
 pub(crate) fn normalize_codex_tool_calls(raw_name: &str, args: Value) -> Vec<(String, Value)> {
     let key = normalize_tool_name_key(raw_name);
     match key.as_str() {
+        "request_user_input" => vec![("ask_user_questions".to_string(), args)],
         key if is_codex_shell_tool_key(key) => {
             let shell_args = normalize_shell_args(args);
             if let Some(read_args) = read_file_arg_values_from_shell_args(&shell_args) {

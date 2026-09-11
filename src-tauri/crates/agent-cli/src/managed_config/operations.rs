@@ -148,6 +148,18 @@ pub(super) fn apply_connection_unlocked(
     force: bool,
     direct: Option<&super::direct::DirectConnection>,
 ) -> Result<CliConfigManagedStatus, String> {
+    if agent_name == super::desktop::TARGET {
+        if direct.is_none() {
+            return Err("Claude Desktop currently supports direct connections only".into());
+        }
+        super::desktop::ensure_unmanaged()?;
+    }
+    if let Some(profile) = direct.and_then(|d| d.profile.as_ref()) {
+        if profile.target != agent_name {
+            return Err("Profile belongs to a different app".into());
+        }
+        super::provider_profiles::require_saved_unlocked(profile)?;
+    }
     let fallback_targets = agent_manifest_targets(agent_name)?;
     let existing_manifest = read_manifest(agent_name)?;
     if let Some(manifest) = &existing_manifest {
@@ -219,6 +231,7 @@ pub(super) fn apply_connection_unlocked(
         .as_ref()
         .is_none_or(|manifest| manifest.mode == CliConfigMode::Default);
     let mut manifest = existing_manifest.unwrap_or_else(|| CliConfigProfileManifest {
+        provider_profile: None,
         agent: agent_name.to_string(),
         mode: CliConfigMode::Default,
         target_files: fallback_targets.clone(),
@@ -264,6 +277,7 @@ pub(super) fn apply_connection_unlocked(
     } else {
         CliConfigMode::OrgiiManaged
     };
+    manifest.provider_profile = direct.and_then(|d| d.profile.clone());
     manifest.target_files = managed_targets;
     manifest.selected_key_id = key_id;
     manifest.selected_provider = provider;
@@ -279,6 +293,9 @@ pub(super) fn restore_agent_default_unlocked(
     agent_name: &str,
     force: bool,
 ) -> Result<CliConfigManagedStatus, String> {
+    if agent_name == super::desktop::TARGET {
+        super::desktop::ensure_unmanaged()?;
+    }
     let mut manifest = read_manifest(agent_name)?
         .ok_or_else(|| format!("No Default backup exists for {agent_name} yet"))?;
     if manifest.mode == CliConfigMode::Default {

@@ -1,0 +1,1978 @@
+{
+  "snapshots": [
+    {
+      "time": 1789080797.501075,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080802.5746582,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080807.638612,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080812.708095,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080817.8351202,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080822.915267,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080827.977484,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080833.045814,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080838.111213,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080843.183127,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080848.245916,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080853.318769,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080858.383716,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080863.472976,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080868.556792,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:25.460894-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080873.639423,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:25.460894-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080878.917229,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:25.460894-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:33.980708-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080884.0171368,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:39.943282-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:33.980708-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080889.083585,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:39.943282-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:33.980708-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080894.196922,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:49.436084-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:53.186635-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080899.259147,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:57.347394-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:53.186635-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080904.3306088,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:57.347394-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:55:01.109994-07:00"
+        }
+      ]
+    },
+    {
+      "time": 1789080909.406257,
+      "rows": [
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:38:18.586186-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789079801955-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 660,
+          "updated_at": "2026-09-10T15:39:25.355319-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:45:59.889826-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080267525-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:46:02.474457-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:12.515011-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080488174-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 756,
+          "updated_at": "2026-09-10T15:50:09.593636-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-0",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:54:57.347394-07:00"
+        },
+        {
+          "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "session_id": "sdeagent-shared-files-1789080799194-1",
+          "deleted_at": null,
+          "access_mode": "full_replay",
+          "events_count": 3,
+          "events_frozen_seq": 0,
+          "events_epoch": 1,
+          "stored_bytes": 788,
+          "updated_at": "2026-09-10T15:55:01.109994-07:00"
+        }
+      ]
+    }
+  ],
+  "changes": [
+    {
+      "time": 1789080868.556792,
+      "sessionId": "sdeagent-shared-files-1789080799194-0",
+      "before": null,
+      "after": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-0",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:25.460894-07:00"
+      }
+    },
+    {
+      "time": 1789080878.917229,
+      "sessionId": "sdeagent-shared-files-1789080799194-1",
+      "before": null,
+      "after": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-1",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:33.980708-07:00"
+      }
+    },
+    {
+      "time": 1789080884.0171368,
+      "sessionId": "sdeagent-shared-files-1789080799194-0",
+      "before": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-0",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:25.460894-07:00"
+      },
+      "after": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-0",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:39.943282-07:00"
+      }
+    },
+    {
+      "time": 1789080894.196922,
+      "sessionId": "sdeagent-shared-files-1789080799194-0",
+      "before": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-0",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:39.943282-07:00"
+      },
+      "after": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-0",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:49.436084-07:00"
+      }
+    },
+    {
+      "time": 1789080894.196922,
+      "sessionId": "sdeagent-shared-files-1789080799194-1",
+      "before": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-1",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:33.980708-07:00"
+      },
+      "after": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-1",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:53.186635-07:00"
+      }
+    },
+    {
+      "time": 1789080899.259147,
+      "sessionId": "sdeagent-shared-files-1789080799194-0",
+      "before": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-0",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:49.436084-07:00"
+      },
+      "after": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-0",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:57.347394-07:00"
+      }
+    },
+    {
+      "time": 1789080904.3306088,
+      "sessionId": "sdeagent-shared-files-1789080799194-1",
+      "before": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-1",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:54:53.186635-07:00"
+      },
+      "after": {
+        "org_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "session_id": "sdeagent-shared-files-1789080799194-1",
+        "deleted_at": null,
+        "access_mode": "full_replay",
+        "events_count": 3,
+        "events_frozen_seq": 0,
+        "events_epoch": 1,
+        "stored_bytes": 788,
+        "updated_at": "2026-09-10T15:55:01.109994-07:00"
+      }
+    }
+  ],
+  "violations": []
+}

@@ -4,11 +4,13 @@ use std::{collections::BTreeMap, sync::Mutex};
 
 fn connection(key: &str) -> DirectConnection {
     DirectConnection {
+        profile: None,
         key_id: "test-key".into(),
         provider: "custom_api".into(),
         model: "fixture-model".into(),
         base_url: "http://127.0.0.1:9999/v1".into(),
         api_key: key.into(),
+        desktop_auth_scheme: None,
     }
 }
 

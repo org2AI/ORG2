@@ -29,6 +29,7 @@ const CloudCapabilitiesWireSchema = z.object({
   orgChannelMessagesIdempotency: z.boolean().nullish().catch(undefined),
   conversationEvents: z.boolean().nullish().catch(undefined),
   conversationEventsIdempotency: z.boolean().nullish().catch(undefined),
+  sharedSessionFiles: z.boolean().nullish().catch(undefined),
   conversationTurnCoordination: z.boolean().nullish().catch(undefined),
 });
 
@@ -55,6 +56,7 @@ export interface CloudCapabilities {
   conversationEventsIdempotency: boolean;
   /** 0028 per-root FIFO admission and renewable device leases. */
   conversationTurnCoordination: boolean;
+  sharedSessionFiles?: boolean;
 }
 
 const LEGACY_CAPABILITIES: CloudCapabilities = {
@@ -126,6 +128,7 @@ async function probeCloudCapabilities(
       conversationEvents: parsed.data.conversationEvents ?? false,
       conversationEventsIdempotency:
         parsed.data.conversationEventsIdempotency ?? false,
+      ...(parsed.data.sharedSessionFiles ? { sharedSessionFiles: true } : {}),
       conversationTurnCoordination:
         parsed.data.conversationTurnCoordination ?? false,
     };

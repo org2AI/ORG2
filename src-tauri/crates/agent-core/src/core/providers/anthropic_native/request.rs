@@ -50,7 +50,11 @@ pub(super) fn prepare_request(
     // Strip the reasoning-level suffix ORG2 encodes into variant ids (e.g.
     // `claude-opus-4-8-thinking-xhigh`) — providers reject the suffixed
     // alias, and the decoded level drives thinking-mode parameter selection.
-    let parsed = crate::providers::thinking_mode::parse_model_variant(model);
+    let parsed = if client.provider_spec.name == crate::providers::registry::provider_id::CUSTOM {
+        crate::providers::thinking_mode::ParsedVariant::bare(model)
+    } else {
+        crate::providers::thinking_mode::parse_model_variant(model)
+    };
     let resolved_model =
         crate::providers::model_hints::wire_model_name(client.provider_spec, &parsed.base_model);
     let fable_51 = is_claude_fable_5_1(&resolved_model);
@@ -165,9 +169,14 @@ fn claude_output_config(effort: Option<&str>) -> Option<Value> {
 /// Anthropic-protocol gateways and non-effort models must not see it.
 fn model_uses_effort_beta(model: &str, provider_name: &str) -> bool {
     use crate::providers::thinking_mode::{
-        parse_model_variant, resolve_thinking_mode, ThinkingMode,
+        parse_model_variant, resolve_thinking_mode, ParsedVariant, ThinkingMode,
     };
-    let parsed = parse_model_variant(model);
+    // Custom API ids are literals: never peel a variant suffix off them.
+    let parsed = if provider_name == crate::providers::registry::provider_id::CUSTOM {
+        ParsedVariant::bare(model)
+    } else {
+        parse_model_variant(model)
+    };
     matches!(
         resolve_thinking_mode(&parsed.base_model, provider_name),
         ThinkingMode::AnthropicAdaptive | ThinkingMode::Anthropic46

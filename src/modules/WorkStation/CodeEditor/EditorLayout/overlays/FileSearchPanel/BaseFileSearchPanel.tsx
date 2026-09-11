@@ -203,7 +203,7 @@ export const BaseFileSearchPanel: React.FC<BaseFileSearchPanelProps> = memo(
                   variant={searchInputVariant}
                   value={searchQuery}
                   onChange={onSearchChange}
-                  placeholder={t("placeholders.searchFiles")}
+                  placeholder={t("common.searchPlaceholder")}
                   inputRef={inputRef}
                 />
               </div>
@@ -233,7 +233,7 @@ export const BaseFileSearchPanel: React.FC<BaseFileSearchPanelProps> = memo(
                 variant={searchInputVariant}
                 value={searchQuery}
                 onChange={onSearchChange}
-                placeholder={t("placeholders.searchFiles")}
+                placeholder={t("common.searchPlaceholder")}
                 inputRef={inputRef}
                 onClose={onClose}
               />

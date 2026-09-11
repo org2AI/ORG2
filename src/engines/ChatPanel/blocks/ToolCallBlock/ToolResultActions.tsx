@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useOpenSessionSharedFile } from "@src/features/Org2Cloud/SharedSessionFilesContext";
 import { FileSymlinkIcon, HugeiconsIcon } from "@src/icons";
 import { openFileInEditor } from "@src/util/ui/openFileInEditor";
 
@@ -17,10 +18,12 @@ export interface ToolResultActionsProps {
 const ToolResultActions: React.FC<ToolResultActionsProps> = ({ source }) => {
   const { t } = useTranslation("sessions");
 
+  const openSharedFile = useOpenSessionSharedFile();
   const handleOpenSource = useCallback(() => {
     if (!source) return;
+    if (openSharedFile(source.path)) return;
     openFileInEditor(source.path, { line: source.line });
-  }, [source]);
+  }, [source, openSharedFile]);
 
   if (!source) return null;
 

@@ -11,6 +11,7 @@ import { requireAgentOrgRedesign } from "@src/config/agentOrgRedesign";
 import type { OrgMemberLaunchOverride } from "@src/modules/MainApp/AgentOrgs/types";
 import type { WorkspaceSnapshot } from "@src/services/context/workspaceSnapshot";
 import type { SessionStatus } from "@src/types/session/session";
+import { isCliSession } from "@src/util/session/sessionDispatch";
 
 import type {
   AgentStatusInfo,
@@ -205,6 +206,14 @@ export async function respondQuestion(
   requestId: string,
   answers: string[][]
 ): Promise<void> {
+  if (isCliSession(sessionId) || requestId.startsWith("native-interaction-")) {
+    const handled = await invoke<boolean>("cli_native_question_response", {
+      sessionId,
+      requestId,
+      answers,
+    });
+    if (handled) return;
+  }
   return rpc.agentSession.respondQuestion({
     sessionId,
     requestId,
@@ -216,6 +225,14 @@ export async function rejectQuestion(
   sessionId: string,
   requestId: string
 ): Promise<void> {
+  if (isCliSession(sessionId) || requestId.startsWith("native-interaction-")) {
+    const handled = await invoke<boolean>("cli_native_question_response", {
+      sessionId,
+      requestId,
+      answers: null,
+    });
+    if (handled) return;
+  }
   return rpc.agentSession.rejectQuestion({ sessionId, requestId });
 }
 

@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 
+import { BUTTON_VARIANT } from "@src/config/workstation/tokens";
 import { HugeiconsIcon, Loading03Icon } from "@src/icons";
 
 export type ButtonVariant =
@@ -11,11 +12,17 @@ export type ButtonVariant =
   | "success"
   | "merged";
 
-export type ButtonAppearance = "solid" | "outline" | "dashed" | "ghost";
-export type ButtonSize = "mini" | "small" | "default" | "large";
+export type ButtonAppearance =
+  | "solid"
+  | "outline"
+  | "dashed"
+  | "ghost"
+  | "soft";
+export type ButtonSize = "sidebar" | "mini" | "small" | "default" | "large";
 export type ButtonShape = "square" | "round" | "circle";
 
 const BUTTON_SIZE_CONFIG = {
+  sidebar: { height: 20, padding: "0 4px", fontSize: 12, iconSize: 14 },
   mini: { height: 24, padding: "0 8px", fontSize: 12, iconSize: 12 },
   small: { height: 28, padding: "0 12px", fontSize: 13, iconSize: 14 },
   default: { height: 32, padding: "0 14px", fontSize: 13, iconSize: 14 },
@@ -46,6 +53,17 @@ function getButtonStyleClasses(
   variant: ButtonVariant,
   appearance: ButtonAppearance
 ) {
+  if (appearance === "soft") {
+    const colors =
+      variant === "tertiary" || variant === "secondary"
+        ? BUTTON_VARIANT.default
+        : variant === "warning"
+          ? "text-warning-6 enabled:hover:bg-warning-3 focus-visible:bg-warning-3"
+          : variant === "merged"
+            ? "text-purple-6 enabled:hover:bg-purple-3 focus-visible:bg-purple-3"
+            : BUTTON_VARIANT[variant];
+    return `border-0 bg-transparent ${colors} aria-pressed:bg-surface-selected aria-pressed:text-primary-6`;
+  }
   const base = (() => {
     switch (variant) {
       case "primary":

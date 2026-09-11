@@ -20,7 +20,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import IconButton from "@src/components/IconButton";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
@@ -258,26 +257,32 @@ const KiroSessionSetup: React.FC<KiroSessionSetupProps> = ({
             <div className="flex-1 overflow-hidden text-[12px] text-ellipsis whitespace-nowrap text-text-1">
               {currentUrl || verificationUrl || "Loading..."}
             </div>
-            <IconButton
+            <Button
               onClick={() => verificationUrl && openWebview(verificationUrl)}
               title={t("common:actions.refresh")}
-              size="sm"
-              variant="default"
-            >
-              <HugeiconsIcon
-                icon={Refresh04Icon}
-                data-icon="refresh-cw"
-                size={12}
-              />
-            </IconButton>
-            <IconButton
+              size="mini"
+              variant="tertiary"
+              appearance="soft"
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={Refresh04Icon}
+                  data-icon="refresh-cw"
+                  size={12}
+                />
+              }
+            />
+            <Button
               onClick={handleCloseBrowser}
               title={t("keyVault.kiroCloseBrowser")}
-              size="sm"
-              variant="default"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
-            </IconButton>
+              size="mini"
+              variant="tertiary"
+              appearance="soft"
+              iconOnly
+              icon={
+                <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
+              }
+            />
           </div>
 
           {/* Device Code Display - While waiting for webview */}
@@ -290,14 +295,21 @@ const KiroSessionSetup: React.FC<KiroSessionSetupProps> = ({
                 <code className="rounded-lg bg-bg-1 px-3 py-1.5 text-[18px] font-bold tracking-wider text-primary-6">
                   {deviceCode}
                 </code>
-                <IconButton
+                <Button
                   onClick={handleCopyCode}
                   title={t("keyVault.kiroCopyCode")}
-                  size="sm"
-                  variant="default"
-                >
-                  <HugeiconsIcon icon={Copy01Icon} data-icon="copy" size={14} />
-                </IconButton>
+                  size="mini"
+                  variant="tertiary"
+                  appearance="soft"
+                  iconOnly
+                  icon={
+                    <HugeiconsIcon
+                      icon={Copy01Icon}
+                      data-icon="copy"
+                      size={14}
+                    />
+                  }
+                />
               </div>
             </div>
           )}

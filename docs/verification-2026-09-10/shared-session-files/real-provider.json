@@ -1,0 +1,15 @@
+{
+  "sessionId": "sdeagent-f8c06b80-0625-4d1d-bea4-3a2bfbeccf6b",
+  "model": "deepseek-v4-pro",
+  "fileId": "e812bded-aa0c-4412-8ee2-4463440a4240",
+  "sha256": "d3ffb4dd8c22c3fb8823325170ebb541bae3c097724a1e91ee68d3709753ebda",
+  "realProvider": true,
+  "sourceRemovedDuringOpen": true,
+  "directDownload": true,
+  "duplicatePreserved": true,
+  "assistantReply": [
+    "Created the requested file.\n\n[real-agent-1789092807574.md](/tmp/orgii-e2e-workspace-repo/real-agent-1789092807574.md)"
+  ],
+  "toolNames": ["edit_file"],
+  "clickSelector": "[class~=\"group/agent-message\"] a[href=\"<generated absolute path>\"]"
+}

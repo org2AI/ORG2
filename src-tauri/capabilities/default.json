@@ -40,6 +40,21 @@
     },
     "fs:default",
     "fs:scope-home-recursive",
+    "fs:allow-read",
+    "fs:allow-write-file",
+    "fs:scope-download",
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "$DOWNLOAD/*" }]
+    },
+    {
+      "identifier": "fs:allow-open",
+      "allow": [{ "path": "**" }, { "path": "$TEMP/**" }]
+    },
+    {
+      "identifier": "fs:allow-stat",
+      "allow": [{ "path": "**" }, { "path": "$TEMP/**" }]
+    },
     "deep-link:default",
     "auth-session:allow-start",
     "oauth:allow-start",

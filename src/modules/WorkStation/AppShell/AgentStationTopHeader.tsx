@@ -5,8 +5,8 @@
  * Contains: station mode chip, chat panel toggle, caption toggle,
  * layout settings dropdown, and a separate caption row below the top bar.
  */
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React, { memo, startTransition, useCallback, useEffect } from "react";
+import { useAtom, useAtomValue } from "jotai";
+import React, { memo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
@@ -15,9 +15,8 @@ import { NoDragRegion } from "@src/components/WindowChrome";
 import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
 import { CHROME_TOOLTIP_HOVER_DELAY } from "@src/config/tooltip";
 import { TAB_BAR_CONTROLS_ROW_TRAILING_PADDING_PX } from "@src/config/workstation/tokens";
-import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import CaptionBar from "@src/engines/Simulator/components/CaptionBar";
-import { useCurrentTurnLastAgentMessage } from "@src/engines/Simulator/hooks/useCurrentTurnLastAgentMessage";
+import type { CurrentTurnLastAgentMessage } from "@src/engines/Simulator/hooks/useCurrentTurnLastAgentMessage";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
 import {
   useCollapsedSidebarChromeOffset,
@@ -27,23 +26,13 @@ import {
   usePinnedWorkbenchChromeVisible,
   useWorkbenchRightEdgeReservation,
 } from "@src/hooks/ui/workbench/usePinnedWorkbenchChrome";
-import {
-  ArrowExpand01Icon,
-  ArrowShrink01Icon,
-  BubbleChatIcon,
-  Cancel01Icon,
-  CaptionsIcon,
-  HugeiconsIcon,
-  PanelRightIcon,
-} from "@src/icons";
+import { CaptionsIcon, HugeiconsIcon } from "@src/icons";
 import { CHROME_INSET_TRANSITION_CLASSES } from "@src/modules/shared/layouts/viewContainerTokens";
 import { CollapsedSidebarButton } from "@src/scaffold/NavigationSidebar/CollapsedSidebarButton";
-import { WorkStationViewService } from "@src/services/workStation/WorkStationViewService";
 import {
   sessionMapAtom,
   workstationActiveSessionIdAtom,
 } from "@src/store/session";
-import { toggleChatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import {
@@ -54,8 +43,21 @@ import { chatPanelPositionAtom } from "@src/store/ui/workStationLayout/chatPosit
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
 import { SimulatorAgentChip, StationModeChip } from "../shared";
+import {
+  StationChatVisibilityButton,
+  StationMaximizeChatButton,
+  useStationPaneActions,
+} from "../shared/StationPaneControls";
 
-const AgentStationTopHeader: React.FC = memo(() => {
+interface AgentStationTopHeaderProps {
+  captionMessage: CurrentTurnLastAgentMessage | null;
+  captionVisible: boolean;
+}
+
+const AgentStationTopHeaderComponent = ({
+  captionMessage,
+  captionVisible,
+}: AgentStationTopHeaderProps) => {
   const { t } = useTranslation("sessions");
   const shouldOffsetLeftChrome = useShouldOffsetWorkStationTopBar();
   const collapsedSidebarChromeOffset = useCollapsedSidebarChromeOffset();
@@ -64,7 +66,6 @@ const AgentStationTopHeader: React.FC = memo(() => {
   const getStationChatVisible = useAtomValue(activeStationChatVisibleAtom);
   const chatWidth = useAtomValue(chatWidthAtom);
   const chatPanelPosition = useAtomValue(chatPanelPositionAtom);
-  const toggleChatPanelMaximized = useSetAtom(toggleChatPanelMaximizedAtom);
   const isChatPanelVisible =
     getStationChatVisible("agent-station") && chatWidth > 0;
   const location = useLocation();
@@ -77,7 +78,6 @@ const AgentStationTopHeader: React.FC = memo(() => {
   const [captionEnabled, setCaptionEnabled] = useAtom(
     simulatorCaptionBarEnabledAtom
   );
-  const captionMessage = useCurrentTurnLastAgentMessage();
   const workstationActiveSessionId = useAtomValue(
     workstationActiveSessionIdAtom
   );
@@ -101,13 +101,6 @@ const AgentStationTopHeader: React.FC = memo(() => {
         )
     : captionMessage?.text;
   const captionToggleLabel = t("simulator.captionBarToggleTooltip");
-  const chatPanelLabel = isChatPanelVisible
-    ? t("chat.maximizeWorkStation")
-    : t("chat.restoreChatPanel");
-  const hideWorkstationLabel = t("chat.hideWorkstation");
-
-  const showCaptionBar =
-    captionEnabled && !!captionMessage && !!workstationActiveSessionId;
 
   const handleToggleCaption = useCallback(() => {
     setCaptionEnabled((prev) => !prev);
@@ -133,15 +126,8 @@ const AgentStationTopHeader: React.FC = memo(() => {
     };
   }, []);
 
-  const handleToggleChatPanel = useCallback(() => {
-    startTransition(() => {
-      void WorkStationViewService.showWorkStation();
-    });
-  }, []);
-
-  const handleToggleChatPanelMaximized = useCallback(() => {
-    toggleChatPanelMaximized();
-  }, [toggleChatPanelMaximized]);
+  const { handleToggleChatPanel, handleToggleChatPanelMaximized } =
+    useStationPaneActions();
 
   return (
     <div className="flex shrink-0 flex-col">
@@ -191,74 +177,28 @@ const AgentStationTopHeader: React.FC = memo(() => {
             />
           </TabBarTrailingIconButton>
           {showPaneControls && !isChatPanelVisible && (
-            <TabBarTrailingIconButton
-              title={chatPanelLabel}
-              shortcutId="maximize_work_station"
-              tooltipMouseEnterDelay={CHROME_TOOLTIP_HOVER_DELAY}
+            <StationChatVisibilityButton
+              visible={false}
+              restoreIcon="shrink"
               onClick={handleToggleChatPanel}
-            >
-              <HugeiconsIcon
-                icon={ArrowShrink01Icon}
-                data-icon="minimize-2"
-                size={14}
-                strokeWidth={2}
-              />
-            </TabBarTrailingIconButton>
+            />
           )}
-          {/* Empty macOS stations leave these actions to the pinned window
-              chrome. Once a session populates Agent Station, this header
-              owns them so the controls do not disappear with that chrome. */}
           {showPaneControls && (
-            <TabBarTrailingIconButton
-              title={chatPanelLabel}
-              shortcutId="maximize_work_station"
-              tooltipMouseEnterDelay={CHROME_TOOLTIP_HOVER_DELAY}
+            <StationChatVisibilityButton
+              visible={isChatPanelVisible}
               onClick={handleToggleChatPanel}
-            >
-              {isChatPanelVisible ? (
-                <HugeiconsIcon
-                  icon={ArrowExpand01Icon}
-                  data-icon="maximize-2"
-                  size={14}
-                  strokeWidth={2}
-                />
-              ) : (
-                <HugeiconsIcon
-                  icon={BubbleChatIcon}
-                  data-icon="message-circle"
-                  size={14}
-                  strokeWidth={2}
-                />
-              )}
-            </TabBarTrailingIconButton>
+            />
           )}
           {showPaneControls && isChatPanelVisible && (
-            <TabBarTrailingIconButton
-              title={hideWorkstationLabel}
-              shortcutId="maximize_chat"
-              tooltipMouseEnterDelay={CHROME_TOOLTIP_HOVER_DELAY}
+            <StationMaximizeChatButton
+              chatPanelPosition={chatPanelPosition}
+              directionalHover={false}
               onClick={handleToggleChatPanelMaximized}
-            >
-              {chatPanelPosition === "left" ? (
-                <HugeiconsIcon
-                  icon={PanelRightIcon}
-                  data-icon="panel-right"
-                  size={HEADER_ICON_SIZE.md}
-                  strokeWidth={2}
-                />
-              ) : (
-                <HugeiconsIcon
-                  icon={Cancel01Icon}
-                  data-icon="x"
-                  size={HEADER_ICON_SIZE.md}
-                  strokeWidth={1.75}
-                />
-              )}
-            </TabBarTrailingIconButton>
+            />
           )}
         </NoDragRegion>
       </div>
-      {showCaptionBar && captionMessage ? (
+      {captionVisible && captionMessage ? (
         <NoDragRegion className="flex h-10 min-h-10 shrink-0 items-center justify-start px-3">
           <div className="w-full min-w-0">
             <CaptionBar
@@ -271,7 +211,9 @@ const AgentStationTopHeader: React.FC = memo(() => {
       ) : null}
     </div>
   );
-});
+};
+
+const AgentStationTopHeader = memo(AgentStationTopHeaderComponent);
 
 AgentStationTopHeader.displayName = "AgentStationTopHeader";
 

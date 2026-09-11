@@ -120,6 +120,7 @@ pub(crate) fn legacy_user_message_text_from_payload(payload: &Value) -> Option<S
 pub(super) struct CodexUserMessage {
     pub(super) text: String,
     pub(super) image_refs: Vec<String>,
+    turn_intent_id: Option<String>,
 }
 
 pub(super) fn user_message_from_line(parsed: &CodexJsonlLine) -> Option<CodexUserMessage> {
@@ -130,7 +131,16 @@ pub(super) fn user_message_from_line(parsed: &CodexJsonlLine) -> Option<CodexUse
             if text.is_empty() && image_refs.is_empty() {
                 return None;
             }
-            Some(CodexUserMessage { text, image_refs })
+            let turn_intent_id = parsed
+                .payload
+                .get("message")
+                .and_then(Value::as_str)
+                .and_then(imported_history::turn_correlation::turn_intent_from_input);
+            Some(CodexUserMessage {
+                text,
+                image_refs,
+                turn_intent_id,
+            })
         }
         Some("item_completed") => paginated_user_message_from_payload(&parsed.payload),
         _ => None,
@@ -259,7 +269,12 @@ fn paginated_user_message_from_payload(payload: &Value) -> Option<CodexUserMessa
     if text.trim().is_empty() && image_refs.is_empty() {
         return None;
     }
-    Some(CodexUserMessage { text, image_refs })
+    let turn_intent_id = imported_history::turn_correlation::turn_intent_from_input(&raw_text);
+    Some(CodexUserMessage {
+        text,
+        image_refs,
+        turn_intent_id,
+    })
 }
 
 fn push_unique_string_field(values: &mut Vec<String>, object: &Value, field: &str) {
@@ -310,6 +325,9 @@ pub(super) fn user_message_chunk_from_line(
     );
     if !message.image_refs.is_empty() {
         chunk.result["images"] = json!(message.image_refs);
+    }
+    if let Some(intent) = message.turn_intent_id {
+        chunk.result["turnIntentId"] = json!(intent);
     }
     Some(chunk)
 }

@@ -686,6 +686,12 @@ impl CodexAppServerEventParser {
             // Deltas stream the text; `plan` item text is the experimental
             // proposed-plan prose (turn/plan/updated carries the todo list).
             "plan" | "reasoning" if !completed => vec![],
+            "plan" => {
+                let mut chunk = ActivityChunk::new(&self.session_id, "native_plan", "native_plan");
+                chunk.args = serde_json::json!({"content":item["text"], "call_id":item["id"]});
+                chunk.result = serde_json::json!({"success":true});
+                vec![chunk]
+            }
             "agent_message" => {
                 if !completed {
                     return vec![]; // deltas stream the text
@@ -882,15 +888,15 @@ async fn write_line(stdin: &mut ChildStdin, msg: &Value) -> Result<(), String> {
 
 async fn read_message(
     reader: &mut BufReader<ChildStdout>,
-    buf: &mut String,
+    buf: &mut Vec<u8>,
 ) -> Result<Value, String> {
     loop {
-        buf.clear();
-        match reader.read_line(buf).await {
+        match reader.read_until(b'\n', buf).await {
             Ok(0) => return Err("app-server: unexpected EOF".into()),
             Ok(_) => {
-                let trimmed = buf.trim();
+                let trimmed = std::str::from_utf8(buf).map_err(|e| e.to_string())?.trim();
                 if trimmed.is_empty() {
+                    buf.clear();
                     continue;
                 }
                 let val: Value = serde_json::from_str(trimmed)
@@ -901,6 +907,7 @@ async fn read_message(
                     let preview: String = trimmed.chars().take(300).collect();
                     tracing::debug!("[CodexAppServer] ← {}", preview);
                 }
+                buf.clear();
                 return Ok(val);
             }
             Err(err) => return Err(format!("app-server read error: {}", err)),
@@ -915,7 +922,7 @@ pub(crate) struct CodexAppServerRpcClient {
     _child: Child,
     stdin: ChildStdin,
     reader: BufReader<ChildStdout>,
-    buffer: String,
+    buffer: Vec<u8>,
     next_id: u64,
 }
 
@@ -963,7 +970,7 @@ impl CodexAppServerRpcClient {
             _child: child,
             stdin,
             reader: BufReader::new(stdout),
-            buffer: String::new(),
+            buffer: Vec::new(),
             next_id: 0,
         };
         client
@@ -1024,7 +1031,7 @@ impl CodexAppServerRpcClient {
 async fn await_response(
     reader: &mut BufReader<ChildStdout>,
     stdin: &mut ChildStdin,
-    buf: &mut String,
+    buf: &mut Vec<u8>,
     request_id: u64,
     parser: &mut CodexAppServerEventParser,
     chunk_tx: &mpsc::Sender<ActivityChunk>,
@@ -1137,7 +1144,7 @@ async fn emit_approval_chunk(
 struct ContextRecovery<'a> {
     stdin: &'a mut ChildStdin,
     reader: &'a mut BufReader<ChildStdout>,
-    buf: &'a mut String,
+    buf: &'a mut Vec<u8>,
     request_id: &'a mut u64,
     parser: &'a mut CodexAppServerEventParser,
     chunk_tx: &'a mpsc::Sender<ActivityChunk>,
@@ -1274,6 +1281,7 @@ async fn start_turn(
     request_id: &mut u64,
     thread_id: &str,
     input: &[Value],
+    collaboration_mode: &Value,
 ) -> Result<u64, String> {
     *request_id += 1;
     let turn_request_id = *request_id;
@@ -1281,7 +1289,7 @@ async fn start_turn(
         stdin,
         turn_request_id,
         "turn/start",
-        serde_json::json!({"threadId": thread_id, "input": input}),
+        serde_json::json!({"threadId": thread_id, "input": input, "collaborationMode": collaboration_mode}),
     )
     .await?;
     Ok(turn_request_id)
@@ -1303,11 +1311,13 @@ pub async fn run_app_server_turn(
     turn: CodexAppServerTurn,
     chunk_tx: mpsc::Sender<ActivityChunk>,
 ) -> Result<CodexAppServerResult, String> {
+    let mut interactions =
+        crate::agent_sessions::cli::interactions::InteractionRun::new(&turn.session_id);
     let native_command = slash::parse(&turn.user_input, !turn.image_paths.is_empty())?;
     let (_registration, mut interrupt_rx) = InterruptRegistration::register(&turn.session_id);
     let mut reader = BufReader::new(stdout);
     let mut parser = CodexAppServerEventParser::new(&turn.session_id);
-    let mut buf = String::new();
+    let mut buf = Vec::new();
     let mut request_id: u64 = 0;
     let mode = turn.permission_mode;
 
@@ -1444,6 +1454,8 @@ pub async fn run_app_server_turn(
             }
         }
     }
+    let collaboration_mode = serde_json::json!({"mode": if mode == CliPermissionMode::Plan { "plan" } else { "default" },
+        "settings": {"model":response_model.as_ref().or(turn.model.as_ref()), "reasoning_effort":turn.config.as_ref().and_then(|c| c.get("model_reasoning_effort")).or_else(|| thread_result.get("reasoningEffort")), "developer_instructions":null}});
     let mut turn_req_id = if native_command == Some(slash::NativeCommand::Compact) {
         request_id += 1;
         rpc_send(
@@ -1465,7 +1477,14 @@ pub async fn run_app_server_turn(
         .await?;
         request_id
     } else {
-        start_turn(&mut stdin, &mut request_id, &thread_id, &input).await?
+        start_turn(
+            &mut stdin,
+            &mut request_id,
+            &thread_id,
+            &input,
+            &collaboration_mode,
+        )
+        .await?
     };
 
     // ── Step 4: notification loop until turn/completed ──
@@ -1490,6 +1509,17 @@ pub async fn run_app_server_turn(
             }
         } else {
             tokio::select! {
+                reply = interactions.receiver.recv() => {
+                    if let Some(reply) = reply {
+                        let response = crate::agent_sessions::cli::interactions_protocol::codex_response(&reply);
+                        let wire = serde_json::json!({"id":reply.wire_id.get("id").unwrap_or(&reply.wire_id),"result":response});
+                        let result = stdin.write_all(format!("{wire}\n").as_bytes()).await.map_err(|e| e.to_string());
+                        crate::agent_sessions::cli::interactions::finalize_reply(&turn.session_id, &reply, result.is_ok());
+                        let _ = reply.acknowledgement.send(result.clone());
+                        result?;
+                    }
+                    continue;
+                }
                 msg = read_message(&mut reader, &mut buf) => msg?,
                 _ = interrupt_rx.recv(), if !interrupt_sent => {
                     interrupt_sent = true;
@@ -1515,6 +1545,35 @@ pub async fn run_app_server_turn(
                 }
             }
         };
+
+        if msg["method"] == "serverRequest/resolved" {
+            interactions.expire(&msg["params"]["requestId"]);
+            continue;
+        }
+        if msg.get("id").is_some()
+            && matches!(
+                msg["method"].as_str(),
+                Some(
+                    "item/tool/requestUserInput"
+                        | "item/commandExecution/requestApproval"
+                        | "item/fileChange/requestApproval"
+                        | "item/permissions/requestApproval"
+                )
+            )
+        {
+            match crate::agent_sessions::cli::interactions_protocol::codex_request(
+                &interactions,
+                &turn.session_id,
+                &msg,
+            ) {
+                Ok(Some(chunk)) => {
+                    let _ = chunk_tx.send(chunk).await;
+                }
+                Ok(None) => {}
+                Err(error) => rpc_respond_error(&mut stdin, &msg["id"], &error).await,
+            }
+            continue;
+        }
 
         // turn/start response: contains the turn id (turn/started also carries it).
         if msg.get("id").and_then(|v| v.as_u64()) == Some(turn_req_id)
@@ -1562,8 +1621,14 @@ pub async fn run_app_server_turn(
                 match recovery {
                     Ok(Ok(forked_thread_id)) => {
                         thread_id = forked_thread_id;
-                        turn_req_id =
-                            start_turn(&mut stdin, &mut request_id, &thread_id, &input).await?;
+                        turn_req_id = start_turn(
+                            &mut stdin,
+                            &mut request_id,
+                            &thread_id,
+                            &input,
+                            &collaboration_mode,
+                        )
+                        .await?;
                         turn_started = false;
                         interrupt_deadline = None;
                         tracing::info!(

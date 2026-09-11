@@ -21,17 +21,17 @@
     "confirmRemoveMessage": "To usunie lokalnie zapisany klucz. Tej operacji nie można cofnąć.",
     "toasts": {
       "refreshed": "{{name}} odświeżono pomyślnie",
-      "refreshPartial": "Modele odświeżone: +{{added}} / -{{removed}}, ale wystąpił błąd dla {{failed}} z {{total}} kont",
-      "refreshedNoChange": "Modele odświeżone: bez zmian",
-      "refreshedDelta": "Modele odświeżone: dodano {{added}}, usunięto {{removed}}",
       "refreshError": "Nie udało się odświeżyć {{name}}: {{error}}",
       "localRemoved": "{{name}} usunięto",
-      "deleteError": "Nie udało się usunąć {{name}}"
+      "deleteError": "Nie udało się usunąć {{name}}",
+      "refreshPartial": "Modele odświeżone: +{{added}} / -{{removed}}, ale wystąpił błąd dla {{failed}} z {{total}} kont",
+      "refreshedNoChange": "Modele odświeżone: bez zmian",
+      "refreshedDelta": "Modele odświeżone: dodano {{added}}, usunięto {{removed}}"
     },
     "providerGroups": {
-      "mostUsed": "Najczęściej używane",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "Najczęściej używane"
     },
     "status": {
       "readyToUse": "Gotowe do użycia",
@@ -69,10 +69,14 @@
       "accountEmail": "E-mail konta"
     },
     "customModels": {
+      "manualSetupHint": "Dodaj dokładny identyfikator modelu akceptowany przez endpoint i opcjonalną nazwę. Wykrywanie modeli jest opcjonalne; włączenie nie sprawdza zgodności.",
       "modelNamePlaceholder": "Wprowadź id modelu...",
       "displayNamePlaceholder": "Opcjonalna etykieta",
       "emptyHint": "Nie dodano jeszcze niestandardowych modeli.",
-      "addModel": "Dodaj model"
+      "addModel": "Dodaj model",
+      "testRequiresEndpoint": "Wprowadź punkt końcowy i klucz API, aby przetestować ten model",
+      "invalidModelId": "Identyfikatory modeli muszą mieć od 1 do 256 bajtów, bez spacji i znaków sterujących.",
+      "duplicateModelId": "Ten identyfikator modelu jest już na tej liście."
     },
     "quickActions": {
       "multipleKeysFound": "Znaleziono wiele kluczy",
@@ -101,16 +105,16 @@
       "sessionUsage": "Użycie 5h",
       "weeklyUsage": "Użycie tygodniowe",
       "monthlyUsage": "Użycie miesięczne",
-      "resetsAvailable": "Dostępnych {{count}} resetów",
-      "resetsAvailable_one": "Dostępny {{count}} reset",
-      "resetsAvailable_few": "Dostępne {{count}} resety",
-      "resetsAvailable_many": "Dostępnych {{count}} resetów",
-      "resetsAvailable_other": "Dostępnych {{count}} resetów",
       "percentLeft": "Pozostało {{percent}}%",
       "refreshUsage": "Odśwież użycie",
       "resets": "Reset {{date}}",
       "availableNow": "Dostępne teraz",
-      "nextUsePlusFiveHours": "Następne użycie +5 godz."
+      "nextUsePlusFiveHours": "Następne użycie +5 godz.",
+      "resetsAvailable": "Dostępnych {{count}} resetów",
+      "resetsAvailable_one": "Dostępny {{count}} reset",
+      "resetsAvailable_few": "Dostępne {{count}} resety",
+      "resetsAvailable_many": "Dostępnych {{count}} resetów",
+      "resetsAvailable_other": "Dostępnych {{count}} resetów"
     },
     "health": {
       "cloudListingInvalid": "Oferta w chmurze nieprawidłowa",
@@ -345,7 +349,6 @@
     "connecting": "Łączenie",
     "reconnecting": "Ponowne łączenie",
     "connectionError": "Błąd połączenia",
-    "reconnect": "Połącz ponownie",
     "accountNameDuplicate": "Konto o tej nazwie już istnieje",
     "probeSuccess": "Połączenie udane",
     "probeFailed": "Połączenie nieudane",

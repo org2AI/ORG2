@@ -13,14 +13,13 @@
  * `TurnMetadataFooter` "Review"/file click still scrolls the cumulative list to
  * the clicked file, but never filters it down to a single round.
  */
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
 import TabPill from "@src/components/TabPill";
-import { SIMULATOR_PRIMARY_SIDEBAR } from "@src/config/simulatorPrimarySidebar";
 import { simulatorEventsAtom } from "@src/engines/SessionCore/derived/simulatorEvents";
 import type { SimulatorAppProps } from "@src/engines/Simulator/apps/core/types";
 import { useFileReviewBatchActions } from "@src/hooks/fileReview/useFileReview";
@@ -42,16 +41,13 @@ import {
 } from "@src/modules/WorkStation/shared";
 import { PrimarySidebarLayoutWithSections } from "@src/modules/WorkStation/shared/PrimarySidebarLayout";
 import type { ReplayTab } from "@src/modules/WorkStation/shared/SessionReplay/ReplayTabBar";
+import { useSimulatorReplaySidebar } from "@src/modules/WorkStation/shared/SessionReplay/useSimulatorReplaySidebar";
 import { reposAtom } from "@src/store/repo/atoms";
 import { sessionByIdAtom } from "@src/store/session";
 import {
   simulatorDiffCommitNavigationRequestAtom,
   simulatorDiffRefreshNonceAtom,
   simulatorDiffScopeRequestAtom,
-  simulatorPrimarySidebarCollapsedAtom,
-  simulatorPrimarySidebarPositionAtom,
-  simulatorPrimarySidebarWidthAtom,
-  simulatorPrimarySidebarWidthPersistAtom,
 } from "@src/store/ui/simulatorAtom";
 import { diffViewModeAtom } from "@src/store/workstation/codeEditor";
 import type { SourceControlHistorySelection } from "@src/store/workstation/tabs";
@@ -155,22 +151,8 @@ const SessionReplayDiff: React.FC<SimulatorAppProps> = ({
 
   const consolidatedSections = sidebarItems;
 
-  const primarySidebarCollapsed = useAtomValue(
-    simulatorPrimarySidebarCollapsedAtom
-  );
-  const primarySidebarPosition = useAtomValue(
-    simulatorPrimarySidebarPositionAtom
-  );
-  const primarySidebarWidth = useAtomValue(simulatorPrimarySidebarWidthAtom);
-  const setPrimarySidebarWidthPersist = useSetAtom(
-    simulatorPrimarySidebarWidthPersistAtom
-  );
-  const handlePrimarySidebarWidthChange = useCallback(
-    (width: number) => {
-      setPrimarySidebarWidthPersist(width);
-    },
-    [setPrimarySidebarWidthPersist]
-  );
+  const { layoutMode: primarySidebarPosition, sidebar } =
+    useSimulatorReplaySidebar();
 
   const simulatorPlaceholderActions = useSimulatorPlaceholderActions(mode);
   const simulatorAwaitingAgentCaption = useSimulatorAwaitingAgentCaption();
@@ -400,20 +382,9 @@ const SessionReplayDiff: React.FC<SimulatorAppProps> = ({
             hideTabs
           />
         ),
-        collapsed: primarySidebarCollapsed,
-        size: primarySidebarWidth,
-        onSizeChange: handlePrimarySidebarWidthChange,
-        minSize: SIMULATOR_PRIMARY_SIDEBAR.minWidth,
-        maxSize: SIMULATOR_PRIMARY_SIDEBAR.maxWidth,
-        resetSize: SIMULATOR_PRIMARY_SIDEBAR.defaultWidth,
+        ...sidebar,
       }),
-    [
-      sidebarTab,
-      noopTabChange,
-      primarySidebarCollapsed,
-      primarySidebarWidth,
-      handlePrimarySidebarWidthChange,
-    ]
+    [sidebarTab, noopTabChange, sidebar]
   );
 
   const detailContent = useDiffDetailContent({
@@ -476,7 +447,7 @@ const SessionReplayDiff: React.FC<SimulatorAppProps> = ({
       onTabClick={handleTabClick}
       workstation={{
         primarySidebarConfig,
-        layoutMode: primarySidebarPosition === "right" ? "right" : "left",
+        layoutMode: primarySidebarPosition,
         appClassName: "session-replay-diff",
       }}
     >

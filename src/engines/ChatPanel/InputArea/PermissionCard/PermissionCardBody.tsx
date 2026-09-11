@@ -40,6 +40,7 @@ export interface PermissionCardBodyProps {
   onAllow?: () => void;
   /** Disable all buttons (e.g. during submission) */
   disabled?: boolean;
+  showAlwaysAllow?: boolean;
   /** When true, renders nothing — pill shown in row instead. */
   collapsed?: boolean;
   /** Called when the user collapses the card. */
@@ -56,6 +57,7 @@ export function PermissionCardBody({
   onAlwaysAllow,
   onAllow,
   disabled = false,
+  showAlwaysAllow = true,
   collapsed = false,
   onCollapse,
 }: PermissionCardBodyProps) {
@@ -144,14 +146,16 @@ export function PermissionCardBody({
             >
               {t("chat.deny", "Deny")}
             </Button>
-            <Button
-              variant="secondary"
-              size="mini"
-              onClick={onAlwaysAllow ?? noop}
-              disabled={disabled}
-            >
-              {t("chat.alwaysAllow", "Always Allow")}
-            </Button>
+            {showAlwaysAllow && (
+              <Button
+                variant="secondary"
+                size="mini"
+                onClick={onAlwaysAllow ?? noop}
+                disabled={disabled}
+              >
+                {t("chat.alwaysAllow", "Always Allow")}
+              </Button>
+            )}
             <Button
               variant="primary"
               size="mini"

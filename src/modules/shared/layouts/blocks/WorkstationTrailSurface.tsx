@@ -6,23 +6,20 @@ import {
   createElement,
 } from "react";
 
+import Button, { type ButtonProps } from "@src/components/Button";
 import {
   TAB_BAR_TRAILING_CLUSTER_CLASS,
   WORKSTATION_TRAIL_CONTENT,
 } from "@src/config/workstation/tokens";
 import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 
-import {
-  WORKSTATION_TRAIL_ICON_BUTTON_CLASS,
-  WORKSTATION_TRAIL_SURFACE_CLASS,
-} from "./workstationTrailTokens";
+import { WORKSTATION_TRAIL_SURFACE_CLASS } from "./workstationTrailTokens";
 
 export {
   WORKSTATION_TRAIL_SURFACE_CLASS,
   WORKSTATION_TRAIL_WIDTH,
   WORKSTATION_TRAIL_RAIL_PADDING_CLASS,
   FOCUSED_CHAT_WORKSTATION_TRAIL_RAIL_PADDING_CLASS,
-  WORKSTATION_TRAIL_ICON_BUTTON_CLASS,
 } from "./workstationTrailTokens";
 
 export interface WorkstationTrailSurfaceProps extends HTMLAttributes<HTMLElement> {
@@ -137,15 +134,24 @@ export const WorkstationTrailHeader: FC<WorkstationTrailHeaderProps> = ({
 );
 
 export const WorkstationTrailIconButton: FC<
-  ButtonHTMLAttributes<HTMLButtonElement>
-> = ({ children, className = "", type = "button", ...buttonProps }) => (
-  <button
+  ButtonHTMLAttributes<HTMLButtonElement> & { size?: ButtonProps["size"] }
+> = ({
+  children,
+  className = "",
+  type = "button",
+  size = "sidebar",
+  ...buttonProps
+}) => (
+  <Button
     {...buttonProps}
-    type={type}
-    className={`${WORKSTATION_TRAIL_ICON_BUTTON_CLASS} ${className}`.trim()}
-  >
-    {children}
-  </button>
+    htmlType={type}
+    size={size}
+    variant="tertiary"
+    appearance="soft"
+    iconOnly
+    icon={children}
+    className={className}
+  />
 );
 
 export interface WorkstationTrailSectionProps {

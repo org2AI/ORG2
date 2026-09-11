@@ -70,8 +70,8 @@ export const PANEL_CONSTANTS = {
   ACTION_ICON_STROKE: 1.75,
 
   // Heights
-  TAB_ROW_HEIGHT: 40,
-  HEADER_HEIGHT: 40,
+  TAB_ROW_HEIGHT: 36,
+  HEADER_HEIGHT: 36,
 
   // Virtualization threshold
   VIRTUALIZATION_THRESHOLD: 100,

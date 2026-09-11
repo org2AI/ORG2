@@ -55,16 +55,28 @@ const SNAPSHOT_CACHE_EVENT_BUDGET = 15_000;
 const SNAPSHOT_RELEASE_GRACE_MS = 3 * 60 * 1000;
 
 /**
- * Schedule a callback for the next animation frame; falls back to a 16ms
- * timeout in non-DOM environments (tests). Returns a canceller.
+ * Coalesce onto the next frame, but do not make IPC delivery depend on the
+ * WebView producing frames (occluded macOS windows can suspend rAF). The
+ * one-shot deadline exists only while a snapshot is pending; the first winner
+ * cancels both schedules, including on explicit flush, eviction and teardown.
  */
 function scheduleFrameCallback(callback: () => void): () => void {
-  if (typeof requestAnimationFrame === "function") {
-    const handle = requestAnimationFrame(() => callback());
-    return () => cancelAnimationFrame(handle);
-  }
-  const timer = setTimeout(callback, 16);
-  return () => clearTimeout(timer);
+  let pending = true;
+  let frame: number | undefined;
+  const cancel = () => {
+    pending = false;
+    clearTimeout(timer);
+    if (frame !== undefined) cancelAnimationFrame(frame);
+  };
+  const run = () => {
+    if (!pending) return;
+    cancel();
+    callback();
+  };
+  const hasFrames = typeof requestAnimationFrame === "function";
+  const timer = setTimeout(run, hasFrames ? 100 : 16);
+  if (hasFrames) frame = requestAnimationFrame(run);
+  return cancel;
 }
 
 interface PendingSessionFlush {

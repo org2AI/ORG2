@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
   cloudSignIn: vi.fn(),
   settings: new Map<string, unknown>(),
   setRelayUrl: vi.fn(),
+  saveSettings: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -54,6 +55,7 @@ vi.mock("jotai", async (importOriginal) => {
   return {
     ...actual,
     useAtomValue: () => mocks.cloudAuth,
+    useSetAtom: () => mocks.saveSettings,
   };
 });
 
@@ -91,6 +93,15 @@ vi.mock("@src/hooks/async/useAsyncData", () => ({
     data: initialData,
     error: null,
     loading: false,
+    refresh: vi.fn(),
+  }),
+}));
+
+vi.mock("../useMobileRelayStatus", () => ({
+  useMobileRelayStatus: () => ({
+    data: null,
+    loading: false,
+    error: null,
     refresh: vi.fn(),
   }),
 }));
@@ -136,6 +147,10 @@ describe("MobileRemoteSettingsSection relay preset switcher", () => {
     mocks.settings.set("mobileRemote.lanToken", "lan-token");
     mocks.settings.set("mobileRemote.lanPort", 13847);
     mocks.setRelayUrl.mockReset();
+    mocks.saveSettings.mockReset().mockImplementation(async (updates) => {
+      for (const [key, value] of Object.entries(updates))
+        mocks.settings.set(key, value);
+    });
     vi.mocked(mobileRemoteApi.notifyCloudAuthChanged).mockReset();
     vi.mocked(mobileRemoteApi.pairInit).mockReset();
     vi.mocked(mobileRemoteApi.pairComplete).mockReset();
@@ -212,6 +227,93 @@ describe("MobileRemoteSettingsSection relay preset switcher", () => {
         );
     }
   );
+
+  it("initializes the address when re-enabling mobile remote with relay already enabled", async () => {
+    mocks.settings.set("mobileRemote.enabled", false);
+    mocks.settings.set("mobileRemote.relayUrl", "");
+    await renderSection();
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[role="switch"]')?.click()
+    );
+    expect(mocks.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "mobileRemote.enabled": true,
+        "mobileRemote.relayEnabled": true,
+        "mobileRemote.relayUrl": MOBILE_REMOTE_RELAY_PRODUCTION_URL,
+      })
+    );
+  });
+
+  it("enables relay and its default endpoint in one persisted activation", async () => {
+    mocks.settings.set("mobileRemote.enabled", false);
+    mocks.settings.set("mobileRemote.relayEnabled", false);
+    mocks.settings.set("mobileRemote.relayUrl", "");
+    await renderSection();
+    await act(async () =>
+      (container.querySelector('[role="switch"]') as HTMLButtonElement).click()
+    );
+    expect(mocks.saveSettings).toHaveBeenCalledTimes(1);
+    expect(mocks.saveSettings).toHaveBeenCalledWith({
+      "mobileRemote.enabled": true,
+      "mobileRemote.relayEnabled": true,
+      "mobileRemote.relayUrl": MOBILE_REMOTE_RELAY_PRODUCTION_URL,
+      "mobileRemote.lanToken": "lan-token",
+    });
+    expect(
+      container.querySelector('[role="switch"]')?.getAttribute("aria-checked")
+    ).toBe("true");
+  });
+
+  it("preserves a custom relay and does not revoke pairing on disable", async () => {
+    mocks.settings.set("mobileRemote.enabled", false);
+    mocks.settings.set(
+      "mobileRemote.relayUrl",
+      "wss://custom.example/v1/mobile/ws"
+    );
+    await renderSection();
+    await act(async () =>
+      (container.querySelector('[role="switch"]') as HTMLButtonElement).click()
+    );
+    expect(mocks.saveSettings.mock.calls[0][0]["mobileRemote.relayUrl"]).toBe(
+      "wss://custom.example/v1/mobile/ws"
+    );
+    await act(async () =>
+      (container.querySelector('[role="switch"]') as HTMLButtonElement).click()
+    );
+    expect(mocks.saveSettings).toHaveBeenLastCalledWith({
+      "mobileRemote.enabled": false,
+    });
+  });
+
+  it("blocks duplicate activation while saving and allows retry after failure", async () => {
+    mocks.settings.set("mobileRemote.enabled", false);
+    let reject!: (error: Error) => void;
+    mocks.saveSettings.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail;
+        })
+    );
+    await renderSection();
+    const toggle = container.querySelector(
+      '[role="switch"]'
+    ) as HTMLButtonElement;
+    act(() => {
+      toggle.click();
+      toggle.click();
+    });
+    expect(mocks.saveSettings).toHaveBeenCalledTimes(1);
+    expect(toggle.disabled).toBe(true);
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    await act(async () => reject(new Error("disk write failed")));
+    expect(Message.error).toHaveBeenCalledWith({
+      content: "Error: disk write failed",
+    });
+    expect(toggle.disabled).toBe(false);
+    await act(async () => toggle.click());
+    expect(mocks.saveSettings).toHaveBeenCalledTimes(2);
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+  });
 
   it("collapses advanced settings on remount without changing the saved address", async () => {
     await renderSection();

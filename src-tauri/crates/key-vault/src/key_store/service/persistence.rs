@@ -132,7 +132,7 @@ impl KeyService {
 
     /// Update store atomically with a closure.
     /// Uses checked load to avoid overwriting a corrupted file.
-    pub(super) fn update_store<F, T>(&self, updater: F) -> Result<T, String>
+    pub(crate) fn update_store<F, T>(&self, updater: F) -> Result<T, String>
     where
         F: FnOnce(&mut KeyStore) -> T,
     {
@@ -176,6 +176,7 @@ fn deserialize_key_store(contents: &str) -> Result<LoadedKeyStore, serde_json::E
                 // boundary. Any subsequent store mutation persists the
                 // repaired in-memory catalog atomically with that mutation.
                 key.normalize_model_catalog();
+                key.repair_legacy_placeholder_rows();
                 store.keys.insert(storage_id, key);
             }
             Err(error) => invalid_credentials.push(InvalidStoredCredential {

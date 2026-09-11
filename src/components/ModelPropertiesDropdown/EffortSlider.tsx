@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Tooltip from "@src/components/Tooltip";
 import {
   MODEL_REASONING_LEVEL,
   type ModelReasoningLevel,
@@ -48,6 +49,7 @@ export const EffortSlider: React.FC<EffortSliderProps> = ({
 }) => {
   const { t } = useTranslation();
   const sliderRef = useRef<HTMLDivElement>(null);
+  const [hoveredLevel, setHoveredLevel] = useState<ModelReasoningLevel>();
   const [preview, setPreview] = useState<{
     level: ModelReasoningLevel;
     sourceValue: ModelReasoningLevel | undefined;
@@ -145,10 +147,16 @@ export const EffortSlider: React.FC<EffortSliderProps> = ({
             </div>
             <div className="effort-slider__stages">
               {levels.map((level, index) => (
-                <span
+                <Tooltip
                   key={level}
-                  className={`h-1 w-1 rounded-full ${index < selectedIndex ? "bg-white/80" : "bg-text-3"}`}
-                />
+                  content={formatReasoningLevel(level)}
+                  open={hoveredLevel === level}
+                >
+                  <span
+                    data-effort-stage={level}
+                    className={`h-1 w-1 rounded-full ${index < selectedIndex ? "bg-white/80" : "bg-text-3"}`}
+                  />
+                </Tooltip>
               ))}
             </div>
           </div>
@@ -161,6 +169,28 @@ export const EffortSlider: React.FC<EffortSliderProps> = ({
             value={selectedIndex}
             aria-label={effortLabel}
             aria-valuetext={levelLabel}
+            onPointerMove={(event) => {
+              if (event.pointerType === "touch") return;
+              // Hit-test the painted dots through the native input so neither
+              // tooltips nor extra targets interfere with thumb dragging.
+              const stages = sliderRef.current?.querySelectorAll<HTMLElement>(
+                "[data-effort-stage]"
+              );
+              const index = stages
+                ? Array.from(stages).findIndex((stage) => {
+                    const rect = stage.getBoundingClientRect();
+                    return (
+                      Math.abs(event.clientX - (rect.left + rect.width / 2)) <=
+                        8 &&
+                      Math.abs(event.clientY - (rect.top + rect.height / 2)) <=
+                        8
+                    );
+                  })
+                : -1;
+              const nextLevel = levels[index];
+              if (nextLevel !== hoveredLevel) setHoveredLevel(nextLevel);
+            }}
+            onPointerLeave={() => setHoveredLevel(undefined)}
             onChange={(event) => {
               const nextLevel = levels[event.currentTarget.valueAsNumber];
               if (!nextLevel || nextLevel === selectedLevel) return;
@@ -180,6 +210,7 @@ export const EffortSlider: React.FC<EffortSliderProps> = ({
             // Let the native thumb own capture, including outside releases.
             // Capturing on the input prevents WebKit from dragging its thumb.
             onPointerDown={(event) => {
+              setHoveredLevel(undefined);
               if (event.button !== 0 || interactionRef.current) return;
               interactionRef.current = {
                 kind: "pointer",

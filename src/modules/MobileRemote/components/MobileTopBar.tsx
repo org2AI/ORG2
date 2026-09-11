@@ -1,6 +1,6 @@
 import React from "react";
 
-import { IconButton } from "@src/components/IconButton";
+import Button from "@src/components/Button";
 import { ArrowLeft01Icon, HugeiconsIcon } from "@src/icons";
 
 export interface MobileTopBarProps {
@@ -23,16 +23,21 @@ export function MobileTopBar({
       className={`mobile-top-bar ${onBack ? "mobile-top-bar--detail" : "mobile-top-bar--root"}`}
     >
       {onBack ? (
-        <IconButton
-          type="button"
-          size="sm"
-          variant="default"
+        <Button
+          htmlType="button"
+          size="mini"
+          variant="tertiary"
           className="mobile-chrome-icon-button"
           aria-label={backAriaLabel}
           onClick={onBack}
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={22} />
-        </IconButton>
+          style={{
+            width: "var(--mobile-touch-size)",
+            height: "var(--mobile-touch-size)",
+          }}
+          appearance="soft"
+          iconOnly
+          icon={<HugeiconsIcon icon={ArrowLeft01Icon} size={22} />}
+        />
       ) : leading ? (
         <div className="mobile-top-bar__leading">{leading}</div>
       ) : null}

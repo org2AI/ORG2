@@ -20,17 +20,17 @@
     "confirmRemoveMessage": "Cela supprimera les identifiants locaux. Cette action est irréversible.",
     "toasts": {
       "refreshed": "{{name}} actualisé avec succès",
-      "refreshPartial": "Modèles actualisés : +{{added}} / -{{removed}}, mais {{failed}} comptes sur {{total}} ont échoué",
-      "refreshedNoChange": "Modèles actualisés : aucun changement",
-      "refreshedDelta": "Modèles actualisés : {{added}} ajoutés, {{removed}} supprimés",
       "refreshError": "Échec de l’actualisation de {{name}} : {{error}}",
       "localRemoved": "{{name}} supprimé",
-      "deleteError": "Échec de la suppression de {{name}}"
+      "deleteError": "Échec de la suppression de {{name}}",
+      "refreshPartial": "Modèles actualisés : +{{added}} / -{{removed}}, mais {{failed}} comptes sur {{total}} ont échoué",
+      "refreshedNoChange": "Modèles actualisés : aucun changement",
+      "refreshedDelta": "Modèles actualisés : {{added}} ajoutés, {{removed}} supprimés"
     },
     "providerGroups": {
-      "mostUsed": "Les plus utilisés",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "Les plus utilisés"
     },
     "status": {
       "readyToUse": "Prêt à utiliser",
@@ -68,10 +68,14 @@
       "accountEmail": "E-mail du compte"
     },
     "customModels": {
+      "manualSetupHint": "Ajoutez l’identifiant exact accepté par votre endpoint et un nom facultatif. La découverte est facultative ; activer un modèle ne vérifie pas sa compatibilité.",
       "modelNamePlaceholder": "Entrez l'id du modèle...",
       "displayNamePlaceholder": "Libellé optionnel",
       "emptyHint": "Aucun modèle personnalisé ajouté.",
-      "addModel": "Ajouter un modèle"
+      "addModel": "Ajouter un modèle",
+      "testRequiresEndpoint": "Saisissez un point de terminaison et une clé API pour tester ce modèle",
+      "invalidModelId": "Les ID de modèle doivent faire de 1 à 256 octets, sans espaces ni caractères de contrôle.",
+      "duplicateModelId": "Cet ID de modèle figure déjà dans cette liste."
     },
     "quickActions": {
       "multipleKeysFound": "Plusieurs identifiants trouvés",
@@ -100,16 +104,16 @@
       "sessionUsage": "Utilisation 5h",
       "weeklyUsage": "Utilisation hebdomadaire",
       "monthlyUsage": "Utilisation mensuelle",
-      "resetsAvailable": "{{count}} réinitialisations disponibles",
-      "resetsAvailable_one": "{{count}} réinitialisation disponible",
-      "resetsAvailable_few": "{{count}} réinitialisations disponibles",
-      "resetsAvailable_many": "{{count}} réinitialisations disponibles",
-      "resetsAvailable_other": "{{count}} réinitialisations disponibles",
       "percentLeft": "{{percent}}% restant",
       "refreshUsage": "Actualiser l’utilisation",
       "resets": "Réinitialisation le {{date}}",
       "availableNow": "Disponible maintenant",
-      "nextUsePlusFiveHours": "Prochaine utilisation +5 h"
+      "nextUsePlusFiveHours": "Prochaine utilisation +5 h",
+      "resetsAvailable": "{{count}} réinitialisations disponibles",
+      "resetsAvailable_one": "{{count}} réinitialisation disponible",
+      "resetsAvailable_few": "{{count}} réinitialisations disponibles",
+      "resetsAvailable_many": "{{count}} réinitialisations disponibles",
+      "resetsAvailable_other": "{{count}} réinitialisations disponibles"
     },
     "health": {
       "cloudListingInvalid": "Annonce cloud invalide",
@@ -345,7 +349,6 @@
     "connecting": "Connexion…",
     "reconnecting": "Reconnexion en cours",
     "connectionError": "Erreur de connexion",
-    "reconnect": "Reconnecter",
     "accountNameDuplicate": "Un compte avec ce nom existe déjà",
     "probeSuccess": "Connexion réussie",
     "probeFailed": "Connexion échouée",

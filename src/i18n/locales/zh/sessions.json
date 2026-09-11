@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "需要麦克风权限"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "操作前审批",
+      "workspace": "工作区权限",
+      "edit": "允许编辑",
+      "full": "完全访问",
+      "nextTurn": "权限设置从下一轮开始生效"
+    },
     "planApprovedLabel": "执行已批准的计划",
     "planApprovedEditedLabel": "执行已批准的计划（已编辑）",
     "restoreCheckpoint": "恢复到此检查点",
@@ -2308,7 +2315,6 @@
       "agentFallback": "Agent"
     },
     "sidebar": {
-      "stopAgentProcess": "停止 Agent 进程",
       "openInMyStation": "在 My Station 打开"
     }
   },
@@ -2672,5 +2678,14 @@
     "stale": "最近一次采样已超过两小时",
     "disabled": "此账户已停用，采样已暂停",
     "limit": "最多显示 128 个账户"
+  },
+  "sharedFile": {
+    "downloaded": "已保存到下载文件夹",
+    "downloadError": "无法保存到下载文件夹",
+    "title": "共享文件",
+    "error": "无法打开文件，请检查账号、服务器及会话访问权限后重新打开链接",
+    "downloadPreview": "下载文件以查看其内容",
+    "download": "下载",
+    "loading": "正在加载共享文件…"
   }
 }

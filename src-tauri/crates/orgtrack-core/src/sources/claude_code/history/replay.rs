@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use crate::sources::imported_history::{self, ImportedToolCall};
 
 use super::discovery::{claude_file_stem_from_session_id, resolve_claude_session_path};
-use super::tools::{apply_claude_edit_diff, claude_tool_call_from_item};
+use super::tools::{apply_claude_edit_diff, apply_claude_question_result, claude_tool_call_from_item};
 use super::types::{is_claude_compact_summary, is_harness_injected_user_line, ClaudeJsonlLine};
 use super::CLAUDE_CODE_PROVIDER_SLUG;
 
@@ -221,6 +221,7 @@ fn visit_claude_code_history_from_reader<R: BufRead>(
                             // `structuredPatch`; attach it as the exact diff so
                             // the edit card renders the real change.
                             apply_claude_edit_diff(&mut chunk, parsed.tool_use_result.as_ref());
+                            apply_claude_question_result(&mut chunk, parsed.tool_use_result.as_ref(), is_error);
                             chunks.push(chunk);
                             sequence += 1;
                         }

@@ -16,8 +16,8 @@ import {
   browserStatusBarStateAtom,
 } from "@src/store/ui/workStationLayout/statusBarAtoms";
 
+import { sendSelectedElementToChat } from "../shared/sendSelectedElementToChat";
 import { buildSelectedElementLabel } from "./browserLayoutUtils";
-import { buildDomComponentJsonFromElementInfo } from "./buildDomComponentJson";
 
 interface BrowserStatusBarSyncOptions {
   isActive: boolean;
@@ -101,13 +101,12 @@ export function useBrowserStatusBar({
   useEffect(() => {
     if (!isActive) return;
     const handleSendSelectedElementToChat = () => {
-      if (!selectedElement) return;
-      const { jsonText, fileName } = buildDomComponentJsonFromElementInfo(
+      sendSelectedElementToChat({
         selectedElement,
-        currentUrl
-      );
-      setAddToAgent({ type: "dom-component", fileName, jsonText });
-      toastSuccess(chatSentToastMessage);
+        currentUrl,
+        setAddToAgent,
+        onSent: () => toastSuccess(chatSentToastMessage),
+      });
     };
 
     setStatusBarCallbacks((prev) => ({

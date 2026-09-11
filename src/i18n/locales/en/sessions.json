@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Microphone access needed"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Ask for approval",
+      "workspace": "Workspace access",
+      "edit": "Allow edits",
+      "full": "Full access",
+      "nextTurn": "Permissions apply to the next turn"
+    },
     "planApprovedLabel": "Implementing approved plan",
     "planApprovedEditedLabel": "Implementing approved plan (edited)",
     "restoreCheckpoint": "Restore checkpoint",
@@ -2308,7 +2315,6 @@
       "agentFallback": "Agent"
     },
     "sidebar": {
-      "stopAgentProcess": "Stop agent process",
       "openInMyStation": "Open in My Station"
     }
   },
@@ -2672,5 +2678,14 @@
     "stale": "Last observation is over two hours old",
     "disabled": "Sampling paused for this disabled account",
     "limit": "Showing up to 128 accounts"
+  },
+  "sharedFile": {
+    "downloaded": "Saved to Downloads",
+    "downloadError": "Unable to save to Downloads",
+    "title": "Shared file",
+    "error": "Unable to open this file. Check your account, server, and session access, then reopen the link.",
+    "downloadPreview": "Download this file to view its contents",
+    "download": "Download",
+    "loading": "Loading shared file…"
   }
 }

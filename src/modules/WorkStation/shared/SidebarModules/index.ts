@@ -18,8 +18,6 @@ export {
   type SourceControlFilterMode,
 } from "./SourceControl";
 
-export { TerminalTabSidebar } from "./Terminal";
-
 export {
   registerTabSidebar,
   getTabSidebarDescriptor,

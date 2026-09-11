@@ -32,8 +32,6 @@ export function useSessionTranscriptPlatform(
     isRolledBack: false,
     isHydrating: false,
     onReload: runtime.onReload,
-    onReplyQuestion: runtime.onReplyQuestion ?? (() => undefined),
-    onIgnoreQuestion: runtime.onIgnoreQuestion ?? (() => undefined),
     capabilities: {
       canvasInline: runtime.capabilities?.canvasInline !== false,
       turnMetadata: runtime.capabilities?.turnMetadata !== false,

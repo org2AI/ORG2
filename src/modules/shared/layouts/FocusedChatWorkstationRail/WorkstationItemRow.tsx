@@ -5,10 +5,10 @@
 import type React from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import DiffStatsBadge from "@src/components/DiffStatsBadge";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import FileTypeIcon from "@src/components/FileTypeIcon";
-import { IconButton } from "@src/components/IconButton";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import { ProcessStopButton } from "@src/components/ProcessStopButton";
 import Tooltip from "@src/components/Tooltip";
@@ -150,9 +150,9 @@ export function WorkstationItemRow({
           role={compact ? "menuitem" : undefined}
         />
       ) : item.onClose ? (
-        <IconButton
-          size="sm"
-          variant="defaultTreeRow"
+        <Button
+          size="sidebar"
+          variant="tertiary"
           className={`shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 ${
             compact ? "ml-0.5" : "mr-1"
           }`}
@@ -162,9 +162,10 @@ export function WorkstationItemRow({
           }}
           aria-label={item.closeLabel}
           role={compact ? "menuitem" : undefined}
-        >
-          <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />
-        </IconButton>
+          appearance="soft"
+          iconOnly
+          icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />}
+        />
       ) : null}
     </div>
   );

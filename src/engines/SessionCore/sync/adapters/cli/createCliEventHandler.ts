@@ -583,7 +583,8 @@ export function createCliEventHandler(
 
   function handleCliPermissionRequest(raw: RawSessionEvent): void {
     const origin = raw.origin;
-    if (origin !== "cli_hook" && origin !== "acp") return;
+    if (origin !== "cli_hook" && origin !== "acp" && origin !== "native_cli")
+      return;
     const requestId = rawString(raw, "requestId");
     if (!requestId) return;
     const permissionEvent: PermissionRequestEvent = {
@@ -609,7 +610,22 @@ export function createCliEventHandler(
         (raw.session_id as string) || (raw.sessionId as string);
       if (msgSessionId !== sessionId) return;
 
-      if (raw.type === "agent:interaction_finalized") {
+      if (raw.type === "native_interaction:resolved") {
+        if (typeof raw.requestId === "string" && raw.requestId) {
+          getStore()?.set(pendingPermissionRequestsAtom, (prev) =>
+            clearPendingPermissionRequest(
+              prev,
+              sessionId,
+              raw.requestId as string
+            )
+          );
+        }
+        window.dispatchEvent(
+          new CustomEvent("native-interaction-resolved", {
+            detail: { sessionId, requestId: raw.requestId },
+          })
+        );
+      } else if (raw.type === "agent:interaction_finalized") {
         handleInteractionFinalized(raw as unknown as AgentWSEvent, sessionId);
       } else if (raw.type === "permission:resolved") {
         if (typeof raw.requestId === "string" && raw.requestId) {

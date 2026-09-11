@@ -117,12 +117,10 @@ describe("useWorkstationTrailingSlot pane controls", () => {
 
   function expectPaneControls(): void {
     expect(
-      container.querySelector(
-        'button[title="sessions:chat.maximizeWorkStation"]'
-      )
+      container.querySelector('button[title="chat.maximizeWorkStation"]')
     ).not.toBeNull();
     expect(
-      container.querySelector('button[title="sessions:chat.hideWorkstation"]')
+      container.querySelector('button[title="chat.hideWorkstation"]')
     ).not.toBeNull();
   }
 
@@ -143,12 +141,10 @@ describe("useWorkstationTrailingSlot pane controls", () => {
     renderHost("code");
 
     expect(
-      container.querySelector(
-        'button[title="sessions:chat.maximizeWorkStation"]'
-      )
+      container.querySelector('button[title="chat.maximizeWorkStation"]')
     ).toBeNull();
     expect(
-      container.querySelector('button[title="sessions:chat.hideWorkstation"]')
+      container.querySelector('button[title="chat.hideWorkstation"]')
     ).toBeNull();
   });
 

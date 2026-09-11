@@ -5,14 +5,6 @@ export interface BinaryCheckResult {
   processing_time_us: number;
 }
 
-/** Hash result */
-export interface HashResult {
-  hash: string;
-  algorithm: string;
-  input_size: number;
-  processing_time_ms: number;
-}
-
 /** Process metrics snapshot */
 export interface ProcessMetrics {
   memory_rss_mb: number;

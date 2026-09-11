@@ -13,7 +13,7 @@ import { GitStatusBadge, TreeRowAction } from "@src/components/TreeRow";
 import { TREE_PADDING_X } from "@src/components/TreeRow/config";
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 import { PRIMARY_SIDEBAR_HOVER } from "@src/config/workstation/tokens";
-import { Add01Icon, MinusSignIcon, Tick01Icon, Undo02Icon } from "@src/icons";
+import { Add01Icon, MinusSignIcon, Tick01Icon, Undo03Icon } from "@src/icons";
 import type { GitFile } from "@src/types/git/types";
 
 export interface GitFileListItemProps {
@@ -107,7 +107,7 @@ const GitFileListItem: React.FC<GitFileListItemProps> = React.memo(
         {/* Discard action button - show on hover */}
         {onDiscard && (
           <TreeRowAction
-            icon={Undo02Icon}
+            icon={Undo03Icon}
             variant="danger"
             onClick={handleDiscard}
             title={t("workstation.discardChanges")}

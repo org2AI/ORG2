@@ -8,17 +8,7 @@ Last edit: 0402
 ```
 src/api/
 ├── http/                          # Transport: REST via Axios
-│   ├── client/                    # HTTP infrastructure
-│   │   ├── index.ts               # Barrel
-│   │   ├── types.ts               # DataField, RequestOptions, etc.
-│   │   ├── config.ts              # API_BASE_URLS, timeouts
-│   │   ├── requestHandler.ts      # makeRequest, makeDeleteRequest
-│   │   ├── errorHandling.ts       # Error notifications
-│   │   ├── tokenRefresh.ts        # Marketplace token refresh
-│   │   ├── mainApi.ts             # getApi, postApi, etc.
-│   │   └── marketplaceApi.ts      # getMarketplaceApi, postMarketplaceApi
-│   │
-│   ├── auth/                      # Auth endpoints (login, secure storage, token)
+│   ├── auth/                      # Shared auth storage for Org2 Cloud
 │   ├── billing.ts                 # Billing endpoints (flat file)
 │   ├── config.ts                  # Config endpoints (flat file)
 │   ├── git/                       # Git REST endpoints → local Rust HTTP :13847

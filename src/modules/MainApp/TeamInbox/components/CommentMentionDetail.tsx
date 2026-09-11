@@ -2,6 +2,9 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import PersonAvatar from "@src/components/PersonAvatar";
+import UserMessageContent from "@src/engines/ChatPanel/ChatHistory/components/UserMessageContent";
+import { SharedSessionFilesProvider } from "@src/features/Org2Cloud/SharedSessionFilesContext";
+import { getCloudEndpoint } from "@src/features/Org2Cloud/config";
 import {
   ArchiveArrowUpIcon,
   ArchiveIcon,
@@ -180,10 +183,28 @@ const CommentMentionDetail: React.FC<CommentMentionDetailProps> = ({
                       {item.payload.context}
                     </p>
                   ) : null}
-                  <MarkdownContent
-                    body={item.payload.commentBody}
-                    fadeFrom="from-chat-pane"
-                  />
+                  <SharedSessionFilesProvider
+                    scope={
+                      item.target.kind === "session_comment" &&
+                      item.target.orgId
+                        ? {
+                            orgId: item.target.orgId,
+                            sessionId: item.target.sessionId,
+                            endpoint: getCloudEndpoint().supabaseUrl,
+                          }
+                        : null
+                    }
+                  >
+                    {item.target.kind === "session_comment" &&
+                    item.payload.commentBody.includes("[file:") ? (
+                      <UserMessageContent text={item.payload.commentBody} />
+                    ) : (
+                      <MarkdownContent
+                        body={item.payload.commentBody}
+                        fadeFrom="from-chat-pane"
+                      />
+                    )}
+                  </SharedSessionFilesProvider>
                 </TimelineCard>
               </ConnectedTimelineItem>
             </TimelineStack>

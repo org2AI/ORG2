@@ -49,7 +49,11 @@ export function extractQuestionBatch(
 
   const sessionId = event.sessionId || "";
   const questionId =
-    (result?.call_id as string) || event.callId || event.id || "";
+    (result?.native_request_id as string) ||
+    (result?.call_id as string) ||
+    event.callId ||
+    event.id ||
+    "";
 
   // Format A: structured questions array (askuserquestion / AskQuestion / question tool)
   const structuredQuestions = args?.questions as
@@ -98,7 +102,15 @@ export function extractQuestionBatch(
         }
       }
 
-      return { text: questionText, options, multiSelect };
+      return {
+        text: questionText,
+        options,
+        multiSelect,
+        freeText:
+          (questionId.startsWith("native-interaction-") ||
+            result?.raw_tool_name === "request_user_input") &&
+          options.length === 0,
+      };
     });
 
     if (questions.every((q) => !q.text)) {
@@ -114,7 +126,7 @@ export function extractQuestionBatch(
       sessionId,
       questionId,
       questions,
-      blocking: true,
+      blocking: result?.blocking !== false,
       autoResolveAt:
         typeof result?.autoResolveAt === "number"
           ? (result.autoResolveAt as number)

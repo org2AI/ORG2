@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Se necesita acceso al micrófono"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Solicitar aprobación",
+      "workspace": "Acceso al espacio de trabajo",
+      "edit": "Permitir ediciones",
+      "full": "Acceso completo",
+      "nextTurn": "Los permisos se aplican a partir del siguiente turno"
+    },
     "planApprovedLabel": "Ejecutando plan aprobado",
     "planApprovedEditedLabel": "Ejecutando plan aprobado (editado)",
     "sessionStarted": "Session iniciada",
@@ -2309,7 +2316,6 @@
       "agentFallback": "Agent"
     },
     "sidebar": {
-      "stopAgentProcess": "Detener proceso del Agent",
       "openInMyStation": "Abrir en My Station"
     }
   },
@@ -2673,5 +2679,14 @@
     "stale": "La última observación tiene más de dos horas",
     "disabled": "Muestreo en pausa para esta cuenta desactivada",
     "limit": "Mostrando hasta 128 cuentas"
+  },
+  "sharedFile": {
+    "downloaded": "Guardado en Descargas",
+    "downloadError": "No se pudo guardar en Descargas",
+    "title": "Archivo compartido",
+    "error": "No se puede abrir este archivo. Comprueba tu cuenta, el servidor y el acceso a la sesión, y vuelve a abrir el enlace.",
+    "downloadPreview": "Descarga este archivo para ver su contenido",
+    "download": "Descargar",
+    "loading": "Cargando archivo compartido…"
   }
 }

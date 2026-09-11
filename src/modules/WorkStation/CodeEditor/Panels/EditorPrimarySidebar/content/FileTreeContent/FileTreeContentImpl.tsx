@@ -82,7 +82,7 @@ import {
 } from "./useFileTreeMutationState";
 import { flattenTree } from "./utils/treeUtils";
 
-const DEFAULT_FILTER_PLACEHOLDER = "Search files";
+const DEFAULT_FILTER_PLACEHOLDER = "Search...";
 const DEFAULT_EMPTY_MESSAGE = "No files found";
 const DEFAULT_NO_RESULTS_MESSAGE = "No files matching filter";
 
@@ -124,7 +124,7 @@ export const FileTreeContent = memo(
       const { t } = useTranslation();
       const resolvedFilterPlaceholder =
         filterPlaceholder ??
-        t("placeholders.searchFiles", {
+        t("common.searchPlaceholder", {
           defaultValue: DEFAULT_FILTER_PLACEHOLDER,
         });
       const resolvedEmptyMessage =

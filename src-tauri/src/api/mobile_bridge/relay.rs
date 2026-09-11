@@ -13,6 +13,7 @@ use futures_util::{SinkExt, StreamExt};
 use mobile_relay_protocol::{PermissionTier, RelayWireFrame, DESKTOP_WS_PATH};
 use serde::Serialize;
 use serde_json::Value;
+use tauri::Emitter;
 use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -20,11 +21,10 @@ use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::http::StatusCode;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_util::sync::CancellationToken;
-use tauri::Emitter;
 
 use super::auth::{self, MobileRemoteSettings};
-use super::org2_cloud_auth::{self, SESSION_EXPIRED_MESSAGE};
 use super::fanout;
+use super::org2_cloud_auth::{self, SESSION_EXPIRED_MESSAGE};
 use super::rpc::{self, MobileTier, RpcContext};
 
 const ACTOR_QUEUE_CAPACITY: usize = 32;
@@ -107,7 +107,7 @@ pub enum RelayPhase {
     Stopped,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RelayStatus {
     pub phase: RelayPhase,
@@ -516,13 +516,24 @@ fn set_status(
     reconnect_attempt: u32,
     connected_at_ms: Option<i64>,
 ) {
-    if let Ok(mut current) = status.write() {
-        *current = RelayStatus {
+    let changed = if let Ok(mut current) = status.write() {
+        let next = RelayStatus {
             phase,
             message,
             reconnect_attempt,
             connected_at_ms,
         };
+        let changed = *current != next;
+        *current = next;
+        changed
+    } else {
+        false
+    };
+    // Invalidate after releasing the lock: readers fetch the canonical status.
+    if changed {
+        if let Some(handle) = crate::api::get_app_handle() {
+            let _ = handle.emit("mobile-relay-status-changed", ());
+        }
     }
 }
 

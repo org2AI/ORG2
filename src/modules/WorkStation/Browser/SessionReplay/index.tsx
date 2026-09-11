@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import Message from "@src/components/Message";
 import { Placeholder } from "@src/components/Placeholder";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
-import { SIMULATOR_PRIMARY_SIDEBAR } from "@src/config/simulatorPrimarySidebar";
 import { useBrowserAutomation } from "@src/engines/BrowserCore/hooks/useBrowserAutomation";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
@@ -16,7 +15,6 @@ import {
   Shield01Icon,
 } from "@src/icons";
 import { buildSelectedElementLabel } from "@src/modules/WorkStation/Browser/BrowserLayout/browserLayoutUtils";
-import { buildDomComponentJsonFromElementInfo } from "@src/modules/WorkStation/Browser/BrowserLayout/buildDomComponentJson";
 import { useBrowserSessions } from "@src/modules/WorkStation/Browser/hooks/useBrowserSessions";
 import {
   NoTabsPlaceholder,
@@ -26,15 +24,10 @@ import {
   useSimulatorAwaitingAgentCaption,
   useSimulatorPlaceholderActions,
 } from "@src/modules/WorkStation/shared";
+import { useSimulatorReplaySidebar } from "@src/modules/WorkStation/shared/SessionReplay/useSimulatorReplaySidebar";
 import { BrowserStatusBar } from "@src/modules/WorkStation/shared/StatusBar";
 import { addToAgentAtom } from "@src/store/ui/addToAgentAtom";
-import {
-  simulatorEffectiveDockAppAtom,
-  simulatorPrimarySidebarCollapsedAtom,
-  simulatorPrimarySidebarPositionAtom,
-  simulatorPrimarySidebarWidthAtom,
-  simulatorPrimarySidebarWidthPersistAtom,
-} from "@src/store/ui/simulatorAtom";
+import { simulatorEffectiveDockAppAtom } from "@src/store/ui/simulatorAtom";
 import {
   clearScreenshotCacheAtom,
   insertScreenshotCacheAtom,
@@ -49,6 +42,7 @@ import {
   SharedBrowserDevToolsPanel,
   SharedBrowserWorkspace,
 } from "../shared";
+import { sendSelectedElementToChat } from "../shared/sendSelectedElementToChat";
 import BrowserSidebar from "./BrowserSidebar";
 import {
   TAB_ID_BY_ENTRY_CATEGORY,
@@ -83,16 +77,8 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
   const myTabsBrowserState = myTabsBrowser.browserState;
   const setMyTabsDevToolsCollapsed = myTabsBrowser.setDevToolsCollapsed;
   const setMyTabsDevToolsPosition = myTabsBrowser.setDevToolsPosition;
-  const primarySidebarCollapsed = useAtomValue(
-    simulatorPrimarySidebarCollapsedAtom
-  );
-  const primarySidebarPosition = useAtomValue(
-    simulatorPrimarySidebarPositionAtom
-  );
-  const primarySidebarWidth = useAtomValue(simulatorPrimarySidebarWidthAtom);
-  const setPrimarySidebarWidthPersist = useSetAtom(
-    simulatorPrimarySidebarWidthPersistAtom
-  );
+  const { layoutMode: primarySidebarPosition, sidebar } =
+    useSimulatorReplaySidebar();
   const setAddToAgent = useSetAtom(addToAgentAtom);
   const automation = useBrowserAutomation({ enabled: isBrowserReplayActive });
   const isAutomationActive = automation.isRunning;
@@ -113,13 +99,6 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
   const simulatorAwaitingAgentCaption = useSimulatorAwaitingAgentCaption();
 
   const [devToolsPanelHeight, setDevToolsPanelHeight] = useState(240);
-
-  const handlePrimarySidebarWidthChange = useCallback(
-    (width: number) => {
-      setPrimarySidebarWidthPersist(width);
-    },
-    [setPrimarySidebarWidthPersist]
-  );
 
   const handleCloseDevTools = useCallback(() => {
     setMyTabsDevToolsCollapsed(true);
@@ -292,12 +271,7 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
             </div>
           </div>
         ),
-        collapsed: primarySidebarCollapsed,
-        size: primarySidebarWidth,
-        onSizeChange: handlePrimarySidebarWidthChange,
-        minSize: SIMULATOR_PRIMARY_SIDEBAR.minWidth,
-        maxSize: SIMULATOR_PRIMARY_SIDEBAR.maxWidth,
-        resetSize: SIMULATOR_PRIMARY_SIDEBAR.defaultWidth,
+        ...sidebar,
       }),
     [
       browserEntries,
@@ -313,9 +287,7 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
       handleNewMyTabsSession,
       handleNewPrivateMyTabsSession,
       handleSelectAgentEntry,
-      primarySidebarCollapsed,
-      primarySidebarWidth,
-      handlePrimarySidebarWidthChange,
+      sidebar,
     ]
   );
 
@@ -396,20 +368,14 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
   const clearSelection = myTabsBrowser.clearSelection;
 
   const handleSendSelectedElementToChat = useCallback(() => {
-    if (!selectedElement) return;
-
-    const { jsonText, fileName } = buildDomComponentJsonFromElementInfo(
+    sendSelectedElementToChat({
       selectedElement,
-      currentUrl
-    );
-
-    setAddToAgent({
-      type: "dom-component",
-      fileName,
-      jsonText,
+      currentUrl,
+      setAddToAgent,
+      clearSelection,
+      onSent: () =>
+        Message.success(tCommon("browser.selectedElement.sentToChat")),
     });
-    clearSelection();
-    Message.success(tCommon("browser.selectedElement.sentToChat"));
   }, [selectedElement, currentUrl, clearSelection, setAddToAgent, tCommon]);
 
   const myTabsStatusBar = useMemo(() => {
@@ -582,7 +548,7 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
         primarySidebarConfig,
         secondaryPanelConfig,
         statusBar: myTabsStatusBar,
-        layoutMode: primarySidebarPosition === "right" ? "right" : "left",
+        layoutMode: primarySidebarPosition,
         appClassName: "session-replay-browser",
       }}
     >

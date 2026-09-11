@@ -8,7 +8,7 @@
 import React, { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
-import IconButton from "@src/components/IconButton";
+import Button from "@src/components/Button";
 import CanvasPreviewSurface from "@src/engines/ChatPanel/blocks/CanvasInlineCard/CanvasPreviewSurface";
 import {
   buildHtmlDocument,
@@ -102,26 +102,34 @@ const CanvasPreviewTabRenderer: React.FC<UnifiedTabContentProps> = memo(
             )}
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
-            <IconButton
+            <Button
               onClick={handleOpenExternal}
               title={t("previews.openInBrowser")}
               aria-label={t("previews.openInBrowser")}
-              size="sm"
-            >
-              <HugeiconsIcon
-                icon={SquareArrowUpRight02Icon}
-                data-icon="square-arrow-out-up-right"
-                size={12}
-              />
-            </IconButton>
-            <IconButton
+              size="mini"
+              variant="tertiary"
+              appearance="soft"
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={SquareArrowUpRight02Icon}
+                  data-icon="square-arrow-out-up-right"
+                  size={12}
+                />
+              }
+            />
+            <Button
               onClick={handleDismiss}
               title={t("previews.closeCanvas")}
               aria-label={t("previews.closeCanvas")}
-              size="sm"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />
-            </IconButton>
+              size="mini"
+              variant="tertiary"
+              appearance="soft"
+              iconOnly
+              icon={
+                <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />
+              }
+            />
           </div>
         </div>
 

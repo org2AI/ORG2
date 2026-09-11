@@ -85,7 +85,71 @@ impl KeyService {
     }
 
     /// Save or update a key after enforcing persisted catalog invariants.
-    pub fn save_key(&self, key: ModelKey) -> Result<ModelKey, String> {
+    pub fn save_key(&self, mut key: ModelKey) -> Result<ModelKey, String> {
+        // Explicit aliases are user-owned request IDs, including IDs absent
+        // from discovery. Validate before touching the persisted credential.
+        //
+        // Only aliases the caller actually wrote are validated: partial saves
+        // (rename, description, endpoint edits) carry the stored aliases along
+        // unchanged, and a historical record that predates these rules must
+        // not block every later write to the account.
+        let retained: HashMap<String, Vec<String>> = self
+            .load_store()
+            .get_by_id(&key.id)
+            .map(|existing| {
+                let mut retained: HashMap<String, Vec<String>> = HashMap::new();
+                for alias in &existing.model_aliases {
+                    retained
+                        .entry(alias.alias.clone())
+                        .or_default()
+                        .push(alias.display_name.clone());
+                }
+                retained
+            })
+            .unwrap_or_default();
+        let mut seen: HashMap<&str, usize> = HashMap::new();
+        for alias in &mut key.model_aliases {
+            let unchanged = retained
+                .get(&alias.alias)
+                .is_some_and(|labels| labels.contains(&alias.display_name));
+            if unchanged {
+                continue;
+            }
+            if alias.alias.is_empty()
+                || alias.alias.len() > 256
+                || alias
+                    .alias
+                    .chars()
+                    .any(|c| c.is_whitespace() || c.is_control())
+            {
+                return Err(
+                    "Model ID must contain 1–256 bytes without whitespace or control characters"
+                        .into(),
+                );
+            }
+            alias.display_name = alias.display_name.trim().to_string();
+            if alias.display_name.len() > 256 || alias.display_name.chars().any(char::is_control) {
+                return Err(
+                    "Model display name must contain at most 256 bytes without control characters"
+                        .into(),
+                );
+            }
+        }
+        for alias in &key.model_aliases {
+            let count = seen.entry(alias.alias.as_str()).or_insert(0);
+            *count += 1;
+            // A duplicate is new when the write carries more copies of an id
+            // than the stored record already had.
+            let stored = retained.get(&alias.alias).map_or(0, Vec::len).max(1);
+            if *count > stored {
+                return Err("Duplicate custom model ID".into());
+            }
+        }
+        for alias in &key.model_aliases {
+            if !key.available_models.contains(&alias.alias) {
+                key.available_models.push(alias.alias.clone());
+            }
+        }
         let key_id = key.id.clone();
         self.update_store(|store| {
             store.set(key);
@@ -196,6 +260,11 @@ impl KeyService {
                     .map(|models| models.iter().cloned().collect());
                 if let Some(models) = available_models {
                     entry.available_models = models;
+                    for alias in &entry.model_aliases {
+                        if !entry.available_models.contains(&alias.alias) {
+                            entry.available_models.push(alias.alias.clone());
+                        }
+                    }
                 }
                 if let Some(contexts) = model_context_lengths {
                     // Treat the validation/refresh result as authoritative for
@@ -237,7 +306,22 @@ impl KeyService {
                     }
                 }
                 if let Some(enabled) = enabled_models {
-                    entry.enabled_models = enabled;
+                    // Discovery defaults must not change explicit alias choices.
+                    let explicit: HashSet<&str> = entry
+                        .model_aliases
+                        .iter()
+                        .map(|a| a.alias.as_str())
+                        .collect();
+                    let mut merged: Vec<String> = enabled
+                        .into_iter()
+                        .filter(|m| !explicit.contains(m.as_str()))
+                        .collect();
+                    for model in &entry.enabled_models {
+                        if explicit.contains(model.as_str()) && !merged.contains(model) {
+                            merged.push(model.clone());
+                        }
+                    }
+                    entry.enabled_models = merged;
                 }
                 entry.normalize_model_catalog();
                 if let Some(quota) = quota_info {

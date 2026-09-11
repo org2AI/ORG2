@@ -17,6 +17,13 @@ import {
   eventStoreMock,
 } from "./org2CloudSyncEngine.testUtils";
 
+vi.mock("./org2CloudCapabilities", () => ({
+  getCloudCapabilitiesConfirmed: vi.fn(async () => ({
+    confirmed: true,
+    capabilities: {},
+  })),
+}));
+
 const ORG_ID = "corg-1";
 
 const ACCESS: CloudPushAccess = {

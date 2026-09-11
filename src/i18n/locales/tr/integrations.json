@@ -20,17 +20,17 @@
     "confirmRemoveMessage": "Yerel kimlik bilgileri kaldırılacak. Bu işlem geri alınamaz.",
     "toasts": {
       "refreshed": "{{name}} başarıyla yenilendi",
-      "refreshPartial": "Modeller yenilendi: +{{added}} / -{{removed}}, ancak {{total}} hesaptan {{failed}} tanesi başarısız oldu",
-      "refreshedNoChange": "Modeller yenilendi: değişiklik yok",
-      "refreshedDelta": "Modeller yenilendi: {{added}} eklendi, {{removed}} kaldırıldı",
       "refreshError": "{{name}} yenilenemedi: {{error}}",
       "localRemoved": "{{name}} kaldırıldı",
-      "deleteError": "{{name}} silinemedi"
+      "deleteError": "{{name}} silinemedi",
+      "refreshPartial": "Modeller yenilendi: +{{added}} / -{{removed}}, ancak {{total}} hesaptan {{failed}} tanesi başarısız oldu",
+      "refreshedNoChange": "Modeller yenilendi: değişiklik yok",
+      "refreshedDelta": "Modeller yenilendi: {{added}} eklendi, {{removed}} kaldırıldı"
     },
     "providerGroups": {
-      "mostUsed": "En çok kullanılanlar",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "En çok kullanılanlar"
     },
     "status": {
       "readyToUse": "Kullanıma hazır",
@@ -68,10 +68,14 @@
       "accountEmail": "Hesap e-postası"
     },
     "customModels": {
+      "manualSetupHint": "Uç noktanızın kabul ettiği tam model kimliğini ve isteğe bağlı görünen adı ekleyin. Model keşfi isteğe bağlıdır; etkinleştirmek uyumluluğu doğrulamaz.",
       "modelNamePlaceholder": "Model id girin...",
       "displayNamePlaceholder": "İsteğe bağlı etiket",
       "emptyHint": "Henüz özel model eklenmedi.",
-      "addModel": "Model Ekle"
+      "addModel": "Model Ekle",
+      "testRequiresEndpoint": "Bu modeli test etmek için bir uç nokta ve API anahtarı girin",
+      "invalidModelId": "Model kimlikleri boşluk veya denetim karakteri içermeden 1–256 bayt olmalıdır.",
+      "duplicateModelId": "Bu model kimliği zaten bu listede."
     },
     "quickActions": {
       "multipleKeysFound": "Birden Fazla Kimlik Bilgisi Bulundu",
@@ -100,16 +104,16 @@
       "sessionUsage": "5h kullanımı",
       "weeklyUsage": "Haftalık kullanım",
       "monthlyUsage": "Aylık kullanım",
-      "resetsAvailable": "{{count}} sıfırlama kullanılabilir",
-      "resetsAvailable_one": "{{count}} sıfırlama kullanılabilir",
-      "resetsAvailable_few": "{{count}} sıfırlama kullanılabilir",
-      "resetsAvailable_many": "{{count}} sıfırlama kullanılabilir",
-      "resetsAvailable_other": "{{count}} sıfırlama kullanılabilir",
       "percentLeft": "%{{percent}} kaldı",
       "refreshUsage": "Kullanımı yenile",
       "resets": "{{date}} tarihinde sıfırlanır",
       "availableNow": "Şimdi kullanılabilir",
-      "nextUsePlusFiveHours": "Sonraki kullanım +5 sa"
+      "nextUsePlusFiveHours": "Sonraki kullanım +5 sa",
+      "resetsAvailable": "{{count}} sıfırlama kullanılabilir",
+      "resetsAvailable_one": "{{count}} sıfırlama kullanılabilir",
+      "resetsAvailable_few": "{{count}} sıfırlama kullanılabilir",
+      "resetsAvailable_many": "{{count}} sıfırlama kullanılabilir",
+      "resetsAvailable_other": "{{count}} sıfırlama kullanılabilir"
     },
     "health": {
       "cloudListingInvalid": "Bulut listesi geçersiz",
@@ -345,7 +349,6 @@
     "connecting": "Bağlanıyor",
     "reconnecting": "Yeniden bağlanıyor",
     "connectionError": "Bağlantı hatası",
-    "reconnect": "Yeniden bağlan",
     "accountNameDuplicate": "Bu isimde bir hesap zaten mevcut",
     "probeSuccess": "Bağlantı başarılı",
     "probeFailed": "Bağlantı başarısız",

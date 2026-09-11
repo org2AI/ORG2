@@ -82,6 +82,16 @@ export function QuestionCardBody({
                 )}
               </QuestionRow>
 
+              {question.freeText && (
+                <Textarea
+                  size="small"
+                  autoSize={{ minRows: 1, maxRows: 4 }}
+                  resize="none"
+                  placeholder={t("chat.typeYourAnswer")}
+                  value={customTexts.get(qIdx) ?? ""}
+                  onChange={(value) => onCustomTextChange(qIdx, value)}
+                />
+              )}
               {question.options.length > 0 && (
                 <div className={ASK_QUESTION_CARD_OPTIONS}>
                   {question.options.map((option, optIdx) => {

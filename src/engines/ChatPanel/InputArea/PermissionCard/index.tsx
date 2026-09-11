@@ -8,7 +8,8 @@
  *
  * Delegates all rendering to PermissionCardBody (shared with ApprovalPreview).
  */
-import { useAtomValue, useSetAtom } from "jotai";
+import { invoke } from "@tauri-apps/api/core";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -20,22 +21,26 @@ import Message from "@src/components/Message";
 import { createLogger } from "@src/hooks/logger";
 import {
   clearPendingPermissionRequest,
+  getPendingPermissionRequests,
   pendingPermissionRequestsAtom,
   permissionRequestsForSessionAtomFamily,
+  reconcileNativePermissionSnapshot,
 } from "@src/store/session/permissionRequestAtom";
 
 import { PermissionCardBody } from "./PermissionCardBody";
 
 const log = createLogger("PermissionCard");
 
-function buildArgsPreview(args: Record<string, unknown>) {
+function buildArgsPreview(args: Record<string, unknown>, full = false) {
   return Object.entries(args)
-    .slice(0, 5)
+    .slice(0, full ? undefined : 5)
     .map(([key, value]) => {
       const strValue =
         typeof value === "string" ? value : JSON.stringify(value);
       const truncated =
-        strValue.length > 120 ? `${strValue.slice(0, 120)}...` : strValue;
+        !full && strValue.length > 120
+          ? `${strValue.slice(0, 120)}...`
+          : strValue;
       return { key, value: truncated };
     });
 }
@@ -59,8 +64,72 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
   );
   const setPermissionMap = useSetAtom(pendingPermissionRequestsAtom);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const store = useStore();
 
   const pending = queue.length > 0 ? queue[0] : null;
+
+  useEffect(() => {
+    setIsSubmitting(false);
+    if (!sessionId) return;
+    const baselineIds = new Set(
+      getPendingPermissionRequests(
+        store.get(pendingPermissionRequestsAtom),
+        sessionId
+      )
+        .filter((request) => request.origin === "native_cli")
+        .map((request) => request.requestId)
+    );
+    let disposed = false;
+    const resolvedIds = new Set<string>();
+    let snapshotPending = true;
+    const resolved = (evt: Event) => {
+      const detail = (
+        evt as CustomEvent<{ sessionId: string; requestId: string }>
+      ).detail;
+      if (detail.sessionId === sessionId && snapshotPending) {
+        resolvedIds.add(detail.requestId);
+      }
+    };
+    window.addEventListener("native-interaction-resolved", resolved);
+    void invoke<
+      Array<{
+        requestId: string;
+        toolName?: string;
+        toolArgs?: Record<string, unknown>;
+        origin?: string;
+      }>
+    >("cli_native_pending_interactions", { sessionId })
+      .then((rows) => {
+        if (disposed) return;
+        const pendingRows = rows.filter(
+          (row) =>
+            row.origin === "native_cli" && !resolvedIds.has(row.requestId)
+        );
+        setPermissionMap((previous) =>
+          reconcileNativePermissionSnapshot(
+            previous,
+            sessionId,
+            baselineIds,
+            pendingRows.map((row) => ({
+              requestId: row.requestId,
+              sessionId,
+              tool: row.toolName ?? "",
+              args: row.toolArgs ?? {},
+              origin: "native_cli" as const,
+            }))
+          )
+        );
+      })
+      .catch((error) => log.error("Failed to load native approvals", error))
+      .finally(() => {
+        snapshotPending = false;
+        resolvedIds.clear();
+      });
+    return () => {
+      disposed = true;
+      window.removeEventListener("native-interaction-resolved", resolved);
+    };
+  }, [sessionId, setPermissionMap, store]);
 
   const respond = useCallback(
     async (response: "allow" | "deny" | "always_allow") => {
@@ -68,7 +137,11 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
       setIsSubmitting(true);
       const respondingId = pending.requestId;
       try {
-        if (pending.origin === "cli_hook" || pending.origin === "acp") {
+        if (
+          pending.origin === "cli_hook" ||
+          pending.origin === "acp" ||
+          pending.origin === "native_cli"
+        ) {
           // Managed CLI session: the approval is parked in a CLI-side
           // registry (Claude PermissionRequest hook long-poll or an ACP
           // agent's session/request_permission), not the Rust-agent
@@ -132,8 +205,13 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
           ? pending.args.reason
           : null
       }
-      argsPreview={isCommandConfirm ? [] : buildArgsPreview(pending.args)}
+      argsPreview={
+        isCommandConfirm
+          ? []
+          : buildArgsPreview(pending.args, pending.origin === "native_cli")
+      }
       onDeny={() => respond("deny")}
+      showAlwaysAllow={pending.origin !== "native_cli"}
       onAlwaysAllow={() => respond("always_allow")}
       onAllow={() => respond("allow")}
       disabled={isSubmitting}

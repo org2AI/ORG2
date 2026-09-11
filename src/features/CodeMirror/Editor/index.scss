@@ -20,6 +20,51 @@
   overflow: hidden;
 }
 
+// Match the diff viewer: a far-left rail with a continuous row/number fill.
+.codemirror-editor .cm-editor .cm-gutters {
+  overflow: hidden;
+
+  .cm-gutter.cm-dirty-diff-gutter {
+    order: -1;
+    overflow: visible;
+  }
+}
+
+@each $kind in added, modified, deleted {
+  .codemirror-editor .cm-editor .cm-dirty-diff-row-#{$kind} {
+    --dirty-diff-row-bg: var(--diff-#{$kind}-bg);
+  }
+
+  .codemirror-editor .cm-editor .cm-line.cm-dirty-diff-row-#{$kind} {
+    background-color: var(--dirty-diff-row-bg);
+  }
+
+  .codemirror-editor .cm-lineNumbers .cm-dirty-diff-row-#{$kind} {
+    color: var(--diff-#{$kind}-color);
+  }
+}
+
+.codemirror-editor .cm-dirty-diff-gutter .cm-gutterElement {
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 100vw;
+    background: var(--dirty-diff-row-bg, transparent);
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+
+.codemirror-editor .cm-dirty-diff-marker.cm-dirty-diff-deleted {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--diff-deleted-color) 0 1px,
+    transparent 1px 3px
+  ) !important;
+}
+
 // Flex container for editor + minimap (sibling layout)
 .codemirror-editor-shell {
   display: flex;

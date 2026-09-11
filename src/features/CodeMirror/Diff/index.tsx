@@ -21,7 +21,6 @@ import { EditorState, Extension, StateEffect } from "@codemirror/state";
 import {
   highlightActiveLine,
   highlightActiveLineGutter,
-  lineNumbers,
 } from "@codemirror/view";
 import { EditorView } from "codemirror";
 import React, { useEffect, useRef, useState } from "react";
@@ -48,6 +47,8 @@ import {
 } from "../config";
 import { createCopyFileRefExtension } from "../shared/createCopyFileRefExtension";
 import { getLanguageExtension } from "../shared/languageExtensions";
+import { collapsedGutterBackground } from "./collapsedGutter";
+import { diffLineNumbers } from "./diffLineNumbers";
 import "./index.scss";
 
 const log = createLogger("CodeMirrorDiff");
@@ -116,23 +117,27 @@ const MERGE_THEME_OVERRIDE = EditorView.baseTheme({
     backgroundColor: "var(--diff-deleted-bg) !important",
   },
   ".cm-collapsedLines": {
+    position: "relative",
+    boxSizing: "border-box",
     display: "flex",
     alignItems: "center",
     gap: "var(--cm-gutter-padding, 4px)",
-    width: "100%",
-    background: "var(--color-fill-1)",
+    width: "calc(100% - 8px)",
+    background: "transparent",
     border: "none",
-    borderRadius: "0",
+    isolation: "isolate",
+    borderRadius: "0 10px 10px 0",
     outline: "none",
     boxShadow: "none",
     color: "var(--color-text-3)",
-    padding: "var(--cm-gutter-padding, 4px) var(--cm-line-padding-left, 12px)",
-    margin: "0",
+    padding:
+      "calc(var(--cm-gutter-padding, 4px) + 2px) var(--cm-line-padding-left, 12px)",
+    margin: "0 8px 0 0",
     cursor: "var(--interactive-cursor, default)",
     fontSize: "var(--cm-font-size-small, 12px)",
     "&::before": {
       content: '""',
-      display: "inline-block",
+      display: "none",
       width: "var(--cm-icon-size, 14px)",
       height: "var(--cm-icon-size, 14px)",
       marginInlineEnd: "0",
@@ -149,11 +154,20 @@ const MERGE_THEME_OVERRIDE = EditorView.baseTheme({
     },
     "&::after": {
       content: '""',
-      display: "none",
+      display: "block",
+      position: "absolute",
+      inset: "2px 0",
+      borderRadius: "0 10px 10px 0",
+      background: "var(--cm-collapsed-fill, var(--color-fill-1))",
+      pointerEvents: "none",
+      zIndex: "-1",
     },
     "&:hover": {
-      background: "var(--color-fill-3)",
+      "--cm-collapsed-fill": "var(--color-fill-3)",
       color: "var(--color-text-2)",
+    },
+    "&:not(:first-child):not(:last-child)": {
+      minHeight: "calc(2lh + 2 * var(--cm-gutter-padding, 4px))",
     },
   },
 });
@@ -254,17 +268,20 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
     const lineNumberOffset = Math.max(1, lineNumberStart) - 1;
     const formatAbsoluteLineNumber = (lineNo: number) =>
       String(lineNo + lineNumberOffset);
-    const exts: Extension[] = [codeMirrorCspNonceExtension];
+    const exts: Extension[] = [
+      codeMirrorCspNonceExtension,
+      collapsedGutterBackground,
+    ];
 
     exts.push(getCodeMirrorTheme());
     exts.push(CODEMIRROR_BASE_LAYOUT_THEME);
 
     if (showLineNumbers) {
       if (appearanceSettings.lineNumbers === "on") {
-        exts.push(lineNumbers({ formatNumber: formatAbsoluteLineNumber }));
+        exts.push(diffLineNumbers({ formatNumber: formatAbsoluteLineNumber }));
       } else if (appearanceSettings.lineNumbers === "relative") {
         exts.push(
-          lineNumbers({
+          diffLineNumbers({
             formatNumber: (lineNo: number, state: EditorState) => {
               const cursorLine = state.doc.lineAt(
                 state.selection.main.head
@@ -277,7 +294,7 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
         );
       } else if (appearanceSettings.lineNumbers === "interval") {
         exts.push(
-          lineNumbers({
+          diffLineNumbers({
             formatNumber: (lineNo: number) => {
               const absoluteLineNo = lineNo + lineNumberOffset;
               return absoluteLineNo === 1 || absoluteLineNo % 10 === 0

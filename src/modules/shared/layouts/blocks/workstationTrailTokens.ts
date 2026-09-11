@@ -1,8 +1,5 @@
 import { DROPDOWN_PANEL } from "@src/components/Dropdown/tokens";
-import {
-  BUTTON_SIZE,
-  EDITOR_TAB_CANVAS_BG_CLASS,
-} from "@src/config/workstation/tokens";
+import { EDITOR_TAB_CANVAS_BG_CLASS } from "@src/config/workstation/tokens";
 
 export const WORKSTATION_TRAIL_SURFACE_CLASS = `max-h-full w-full flex-col overflow-hidden rounded-xl border border-border-1 p-1 ${DROPDOWN_PANEL.shadowSoftClass} ${EDITOR_TAB_CANVAS_BG_CLASS}`;
 export const WORKSTATION_TRAIL_WIDTH = {
@@ -24,4 +21,3 @@ export const WORKSTATION_TRAIL_WIDTH = {
 export const WORKSTATION_TRAIL_RAIL_PADDING_CLASS = "px-1 pb-1 pt-2";
 export const FOCUSED_CHAT_WORKSTATION_TRAIL_RAIL_PADDING_CLASS =
   "@[1100px]/focusedchat:px-1 @[1100px]/focusedchat:pb-1 @[1100px]/focusedchat:pt-2";
-export const WORKSTATION_TRAIL_ICON_BUTTON_CLASS = `flex ${BUTTON_SIZE.sm} shrink-0 items-center justify-center rounded-lg text-text-1 transition-colors hover:bg-fill-2`;

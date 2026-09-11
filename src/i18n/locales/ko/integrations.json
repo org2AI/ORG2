@@ -20,17 +20,17 @@
     "confirmRemoveMessage": "로컬 자격 증명이 제거됩니다. 이 작업은 되돌릴 수 없습니다.",
     "toasts": {
       "refreshed": "{{name}} 새로고침 완료",
-      "refreshPartial": "모델 새로고침 완료: {{added}}개 추가, {{removed}}개 제거. 단, {{total}}개 계정 중 {{failed}}개 실패",
-      "refreshedNoChange": "모델 새로고침 완료: 변경 사항 없음",
-      "refreshedDelta": "모델 새로고침 완료: {{added}}개 추가, {{removed}}개 제거",
       "refreshError": "{{name}} 새로고침 실패: {{error}}",
       "localRemoved": "{{name}} 제거됨",
-      "deleteError": "{{name}} 삭제 실패"
+      "deleteError": "{{name}} 삭제 실패",
+      "refreshPartial": "모델 새로고침 완료: {{added}}개 추가, {{removed}}개 제거. 단, {{total}}개 계정 중 {{failed}}개 실패",
+      "refreshedNoChange": "모델 새로고침 완료: 변경 사항 없음",
+      "refreshedDelta": "모델 새로고침 완료: {{added}}개 추가, {{removed}}개 제거"
     },
     "providerGroups": {
-      "mostUsed": "자주 사용",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "mostUsed": "자주 사용"
     },
     "status": {
       "readyToUse": "사용 가능",
@@ -68,10 +68,14 @@
       "accountEmail": "계정 이메일"
     },
     "customModels": {
+      "manualSetupHint": "엔드포인트에서 허용하는 모델 ID와 선택적 표시 이름을 입력하세요. 모델 검색은 선택 사항이며 활성화만으로 호환성이 검증되지는 않습니다.",
       "modelNamePlaceholder": "모델 id 입력...",
       "displayNamePlaceholder": "선택적 라벨",
       "emptyHint": "아직 사용자 정의 모델이 추가되지 않았습니다.",
-      "addModel": "모델 추가"
+      "addModel": "모델 추가",
+      "testRequiresEndpoint": "이 모델을 테스트하려면 엔드포인트와 API 키를 입력하세요",
+      "invalidModelId": "모델 ID는 공백이나 제어 문자 없이 1~256바이트여야 합니다.",
+      "duplicateModelId": "해당 모델 ID는 이미 이 목록에 있습니다."
     },
     "quickActions": {
       "multipleKeysFound": "여러 자격 증명 발견",
@@ -100,16 +104,16 @@
       "sessionUsage": "5h 사용량",
       "weeklyUsage": "주간 사용량",
       "monthlyUsage": "월간 사용량",
-      "resetsAvailable": "초기화 {{count}}회 사용 가능",
-      "resetsAvailable_one": "초기화 {{count}}회 사용 가능",
-      "resetsAvailable_few": "초기화 {{count}}회 사용 가능",
-      "resetsAvailable_many": "초기화 {{count}}회 사용 가능",
-      "resetsAvailable_other": "초기화 {{count}}회 사용 가능",
       "percentLeft": "{{percent}}% 남음",
       "refreshUsage": "사용량 새로고침",
       "resets": "{{date}} 리셋",
       "availableNow": "지금 사용 가능",
-      "nextUsePlusFiveHours": "다음 사용 +5시간"
+      "nextUsePlusFiveHours": "다음 사용 +5시간",
+      "resetsAvailable": "초기화 {{count}}회 사용 가능",
+      "resetsAvailable_one": "초기화 {{count}}회 사용 가능",
+      "resetsAvailable_few": "초기화 {{count}}회 사용 가능",
+      "resetsAvailable_many": "초기화 {{count}}회 사용 가능",
+      "resetsAvailable_other": "초기화 {{count}}회 사용 가능"
     },
     "health": {
       "cloudListingInvalid": "클라우드 목록 무효",
@@ -345,7 +349,6 @@
     "connecting": "연결 중",
     "reconnecting": "재연결 중",
     "connectionError": "연결 오류",
-    "reconnect": "재연결",
     "accountNameDuplicate": "같은 이름의 계정이 이미 존재합니다",
     "probeSuccess": "연결 성공",
     "probeFailed": "연결 실패",

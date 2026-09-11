@@ -258,3 +258,41 @@ fn claude_unified_diff_from_patch(result: &Value) -> Option<(String, i64, i64)> 
     }
     Some((diff, added, removed))
 }
+
+/// Preserve Claude's structured answer receipt for live and replayed questions.
+/// Tool completion alone does not prove the user answered.
+pub fn apply_claude_question_result(
+    chunk: &mut ActivityChunk,
+    sidecar: Option<&Value>,
+    is_error: bool,
+) {
+    if is_error || chunk.function != "ask_user_questions" {
+        return;
+    }
+    let Some(answers) = sidecar
+        .and_then(|v| v.get("answers"))
+        .and_then(Value::as_object)
+    else {
+        return;
+    };
+    let Some(questions) = chunk.args.get("questions").and_then(Value::as_array) else {
+        return;
+    };
+    let answers: Vec<Vec<String>> = questions
+        .iter()
+        .map(|q| {
+            q.get("question")
+                .and_then(Value::as_str)
+                .and_then(|q| answers.get(q))
+                .and_then(Value::as_str)
+                .filter(|answer| !answer.is_empty())
+                .map(|answer| vec![answer.to_string()])
+                .unwrap_or_default()
+        })
+        .collect();
+    if answers.iter().all(Vec::is_empty) {
+        return;
+    }
+    chunk.result["status"] = json!("answered");
+    chunk.result["answers"] = json!(answers);
+}

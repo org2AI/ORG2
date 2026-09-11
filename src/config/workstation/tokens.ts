@@ -5,7 +5,7 @@
  * Follows the same pattern as DROPDOWN_CLASSES in @src/components/Dropdown/tokens.
  *
  * Used by: FileHeader, WebUrlBar, SearchBar,
- *          CollapsibleSection, PanelSectionHeader, ActionBar, IconButton, etc.
+ *          CollapsibleSection, PanelSectionHeader, ActionBar, Button, etc.
  */
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 
@@ -63,9 +63,10 @@ export const HEADER_ICON_SIZE = {
 // Button Tokens
 // ============================================
 
-/** Base class shared by all icon-only header buttons */
-const BUTTON_BASE =
-  "flex items-center justify-center rounded transition-colors";
+/** Shared icon-button geometry; callers own display/hover-reveal behavior. */
+export const ICON_BUTTON_BASE =
+  "shrink-0 items-center justify-center rounded-lg transition-colors";
+const BUTTON_BASE = `flex ${ICON_BUTTON_BASE}`;
 
 /** Size classes for icon-only buttons */
 export const BUTTON_SIZE = {
@@ -77,18 +78,31 @@ export const BUTTON_SIZE = {
   lg: "h-7 w-7",
 } as const;
 
-/** Variant classes for icon-only buttons */
+/** One palette for compact row, terminal, and header actions. */
+const DEFAULT_BUTTON_VARIANT =
+  "text-text-2 enabled:hover:bg-button-hover enabled:hover:text-text-1 focus-visible:bg-button-hover focus-visible:text-text-1";
+
 export const BUTTON_VARIANT = {
-  /** Default: muted text, hover shows fill background (use outside tree rows) */
-  default: `text-text-3 ${SURFACE_TOKENS.hover} hover:text-text-1`,
-  /** Default for tree rows / section headers — parent row uses shared hover, so the button steps up to the button-hover surface. */
-  defaultTreeRow: "text-text-3 hover:bg-button-hover hover:text-text-1",
-  /** Danger: muted text, hover shows danger background */
-  danger: "text-text-3 hover:bg-danger-1 hover:text-danger-6",
-  /** Success: muted text, hover shows success background */
-  success: "text-text-3 hover:bg-success-1 hover:text-success-6",
-  /** Active/toggled: primary highlight with selected surface; hover steps up over selected rows. */
-  active: `${SURFACE_TOKENS.selected} text-primary-6 hover:bg-button-hover`,
+  default: DEFAULT_BUTTON_VARIANT,
+  defaultTreeRow: DEFAULT_BUTTON_VARIANT,
+  danger:
+    "text-text-2 enabled:hover:bg-danger-1 enabled:hover:text-danger-6 focus-visible:bg-danger-1 focus-visible:text-danger-6",
+  primary:
+    "text-text-2 enabled:hover:bg-primary-3 enabled:hover:text-primary-6 focus-visible:bg-primary-3 focus-visible:text-primary-6",
+  success:
+    "text-success-6 enabled:hover:bg-success-3 focus-visible:bg-success-3",
+  active:
+    "bg-surface-selected text-primary-6 enabled:hover:bg-button-hover focus-visible:bg-button-hover",
+} as const;
+
+/** Standard 20px row controls. Add flex or the row's hover-reveal classes. */
+const ROW_BUTTON_BASE = `${ICON_BUTTON_BASE} ${BUTTON_SIZE.sm}`;
+export const ROW_BUTTON = {
+  default: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.default}`,
+  danger: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.danger}`,
+  primary: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.primary}`,
+  success: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.success}`,
+  active: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.active}`,
 } as const;
 
 /**
@@ -105,24 +119,22 @@ export const BUTTON_VARIANT = {
  * </button>
  * ```
  */
-const HEADER_BUTTON_SM_TREEROW = `${BUTTON_BASE} ${BUTTON_SIZE.sm} ${BUTTON_VARIANT.defaultTreeRow}`;
-
 export const HEADER_BUTTON = {
   /** Standard action button (20×20, default variant) */
-  action: `${BUTTON_BASE} ${BUTTON_SIZE.sm} ${BUTTON_VARIANT.default}`,
-  /** Standard for tree rows & section headers — hover fill-3 over shared row hover */
-  actionTreeRow: HEADER_BUTTON_SM_TREEROW,
+  action: `flex ${ROW_BUTTON.default}`,
+  /** Compact row / section action with the shared neutral hover fill. */
+  actionTreeRow: `flex ${ROW_BUTTON.default}`,
   /** Standard action button with disabled support */
-  actionDisabled: `${BUTTON_BASE} ${BUTTON_SIZE.sm} ${BUTTON_VARIANT.default} disabled:cursor-not-allowed disabled:opacity-30`,
+  actionDisabled: `flex ${ROW_BUTTON.default} disabled:cursor-not-allowed disabled:opacity-30`,
   /** Danger action button (20×20) */
-  danger: `${BUTTON_BASE} ${BUTTON_SIZE.sm} ${BUTTON_VARIANT.danger}`,
+  danger: `flex ${ROW_BUTTON.danger}`,
   /** Success action button (20×20) — merge, accept, run test */
-  success: `${BUTTON_BASE} ${BUTTON_SIZE.sm} ${BUTTON_VARIANT.success}`,
+  success: `flex ${ROW_BUTTON.success}`,
   /** Active/toggled button (20×20) */
-  active: `${BUTTON_BASE} ${BUTTON_SIZE.sm} ${BUTTON_VARIANT.active}`,
+  active: `flex ${ROW_BUTTON.active}`,
   /** Medium (24×24) — modal close, etc. */
   actionMd: `${BUTTON_BASE} ${BUTTON_SIZE.md} ${BUTTON_VARIANT.default}`,
-  /** Md for tree rows — hover fill-3 over shared row hover */
+  /** Medium row action — uses the same default palette. */
   actionMdTreeRow: `${BUTTON_BASE} ${BUTTON_SIZE.md} ${BUTTON_VARIANT.defaultTreeRow}`,
   /** Large (28×28) — collapse toggles, panel headers */
   actionLg: `${BUTTON_BASE} ${BUTTON_SIZE.lg} ${BUTTON_VARIANT.default}`,
@@ -130,7 +142,7 @@ export const HEADER_BUTTON = {
    * Workstation tab bar trailing slot — regular header action styling.
    * Prefer this name in tab-strip code for clarity.
    */
-  tabBarTrailing: `${BUTTON_BASE} ${BUTTON_SIZE.sm} ${BUTTON_VARIANT.default}`,
+  tabBarTrailing: `flex ${ROW_BUTTON.default}`,
   /** Tab bar trailing — toggled on (e.g. split view, properties panel) */
   tabBarTrailingActive: `${BUTTON_BASE} ${BUTTON_SIZE.sm} ${SURFACE_TOKENS.selected} text-primary-6 ${SURFACE_TOKENS.selectedHover}`,
 } as const;
@@ -203,12 +215,13 @@ export const TAB_BAR_TRAILING_EDGE_CLASS =
  */
 export const SPLIT_BUTTON = {
   /** Outer wrapper — shared surface hover covers both halves */
-  container: `group/split flex items-center rounded transition-colors ${SURFACE_TOKENS.hover}`,
+  container:
+    "group/split flex items-center rounded transition-colors hover:bg-button-hover focus-within:bg-button-hover",
   /** Left (primary action) — inherits the shared hover surface from container */
   left: "flex h-5 w-5 items-center justify-center rounded-l text-text-3 transition-colors group-hover/split:text-text-1",
   /** Right (chevron) — button hover surface stacks on top of container hover */
   right:
-    "flex h-5 items-center justify-center rounded-r px-0.5 text-text-3 transition-colors group-hover/split:text-text-1 hover:bg-button-hover",
+    "flex h-5 items-center justify-center rounded-r px-0.5 text-text-3 transition-colors group-hover/split:text-text-1 hover:bg-fill-3",
 } as const;
 
 // ============================================
@@ -222,15 +235,15 @@ export const HEADER_CONTENT_RIGHT_PADDING_CLASS = "pr-2";
 /** Shared tab-aligned left and compact right insets for header bars. */
 export const HEADER_CONTENT_HORIZONTAL_PADDING_CLASS = `${HEADER_CONTENT_LEFT_PADDING_CLASS} ${HEADER_CONTENT_RIGHT_PADDING_CLASS}`;
 
-/** Shared 40px file-bar row geometry (used by FileHeader + search rows). */
-export const FILE_BAR_ROW_CLASSES = `work-station-file-bar flex h-[40px] shrink-0 items-center gap-1.5 ${HEADER_CONTENT_HORIZONTAL_PADDING_CLASS}`;
+/** Shared 36px file-bar row geometry (used by FileHeader + search rows). */
+export const FILE_BAR_ROW_CLASSES = `work-station-file-bar flex h-9 shrink-0 items-center gap-1.5 ${HEADER_CONTENT_HORIZONTAL_PADDING_CLASS}`;
 
 export const HEADER_CLASSES = {
   /**
    * File bar header (top bar showing file path / URL / preview info).
    * Used by: FileHeader, WebUrlBar
    *
-   * Height: 40px, horizontal layout, shrink-proof, tab-aligned left inset.
+   * Height: 36px, horizontal layout, shrink-proof, tab-aligned left inset.
    */
   fileBar: FILE_BAR_ROW_CLASSES,
 

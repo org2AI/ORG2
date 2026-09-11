@@ -36,3 +36,7 @@ The separate typed-lint gate found thirteen unhandled promise sites introduced b
 ## Subsequent develop integration
 
 Develop advanced through `1efdb932c` during CI. The single conflict in `useChatHistoryState` retains develop's removal of unused renderer props and callback refs, while preserving the injected platform's working ref and load status/error. Browser code therefore does not regain a desktop EventStore subscription. The affected browser/chat-history tests passed (70 files, 549 tests), and the final resolved hook passed ESLint and full frontend typechecking.
+
+## Current develop module-removal integration
+
+Integrating develop through `b61d670271` removes the obsolete reply-question hook and its unconsumed callback fields from both transcript adapters and their shared context/type. Repository-wide reference inspection found no remaining consumers. The browser sidebar imports its retained component directly after develop removed the variants barrel; the public sidebar barrel remains free of desktop-only connector exports. This preserves browser/desktop boundary symmetry without restoring deleted modules. The FileHeader divider regression's expected page-settings key is already corrected in develop and is retained. No new timer, subscription, cache, or wire contract is introduced.

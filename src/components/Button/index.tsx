@@ -16,6 +16,7 @@
  *                 "solid"   = filled background
  *                 "outline" = bordered, transparent fill
  *                 "dashed"  = dashed border (typically for add/upload)
+ *                 "soft"    = neutral or semantic hover fill for compact actions
  *                 "ghost"   = no border, no background — hover changes
  *                            only the text color
  *
@@ -61,7 +62,7 @@ export interface ButtonProps extends Omit<
   appearance?: ButtonAppearance;
 
   /**
-   * Button size
+   * Button size; sidebar is 20px, reserved for compact sidebar/rail rows and headers
    * @default "default"
    */
   size?: ButtonSize;

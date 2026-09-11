@@ -1,4 +1,4 @@
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import React, {
   useCallback,
   useEffect,
@@ -12,7 +12,6 @@ import {
   PERMISSION_TIER,
   type PairedDeviceInfo,
   type PairingInitOutput,
-  type RelayStatus,
   mobileRemoteApi,
 } from "@src/api/tauri/mobileRemote";
 import Button from "@src/components/Button";
@@ -35,6 +34,7 @@ import {
   SectionContainer,
   SectionRow,
 } from "@src/modules/shared/layouts/SectionLayout";
+import { saveSettingsBatchAtom } from "@src/store/settings/settingsAtom";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 
 import MobileRemoteOutdoorPairingDetails from "./MobileRemoteOutdoorPairingDetails";
@@ -45,6 +45,7 @@ import {
   isMobileRemoteRelayReady,
 } from "./mobileRemoteSettingsHelpers";
 import { suggestOutdoorPairingPhoneLabel } from "./pairedDeviceDisplay";
+import { useMobileRelayStatus } from "./useMobileRelayStatus";
 
 function formatDeviceTimestamp(ms: number | null): string {
   if (ms == null || ms <= 0) return "—";
@@ -55,17 +56,21 @@ const MobileRemoteSettingsSection: React.FC = () => {
   const { t } = useTranslation(["settings", "navigation", "common"]);
   const cloudAuth = useAtomValue(org2CloudAuthAtom);
   const handleCloudSignIn = useOrg2CloudSignIn();
-  const [enabled, setEnabled] = useSetting("mobileRemote.enabled");
+  const [enabled] = useSetting("mobileRemote.enabled");
+  const saveSettings = useSetAtom(saveSettingsBatchAtom);
+  const [savingEnabled, setSavingEnabled] = useState(false);
+  const savingEnabledRef = useRef(false);
   const [relayEnabled, setRelayEnabled] = useSetting(
     "mobileRemote.relayEnabled"
   );
   const [relayUrl, setRelayUrl] = useSetting("mobileRemote.relayUrl");
-  const [lanToken, setLanToken] = useSetting("mobileRemote.lanToken");
+  const [lanToken] = useSetting("mobileRemote.lanToken");
 
   const [advanced, setAdvanced] = useState(false);
   const [developerOptions, setDeveloperOptions] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const reconnectingRef = useRef(false);
+
   const [fullAccess, setFullAccess] = useState(true);
   const [pairing, setPairing] = useState<PairingInitOutput | null>(null);
   const [pairingLoading, setPairingLoading] = useState(false);
@@ -73,13 +78,33 @@ const MobileRemoteSettingsSection: React.FC = () => {
   const pairingRequestIdRef = useRef(0);
 
   const handleEnabledChange = useCallback(
-    (next: boolean) => {
-      setEnabled(next);
-      if (next && lanToken.trim().length === 0) {
-        setLanToken(generateMobileRemoteLanToken());
+    async (next: boolean) => {
+      if (savingEnabledRef.current) return;
+      savingEnabledRef.current = true;
+      setSavingEnabled(true);
+      try {
+        await saveSettings(
+          next
+            ? {
+                "mobileRemote.enabled": true,
+                "mobileRemote.relayEnabled": true,
+                "mobileRemote.relayUrl": relayUrl.trim()
+                  ? relayUrl
+                  : MOBILE_REMOTE_RELAY_PRODUCTION_URL,
+                "mobileRemote.lanToken": lanToken.trim()
+                  ? lanToken
+                  : generateMobileRemoteLanToken(),
+              }
+            : { "mobileRemote.enabled": false }
+        );
+      } catch (error) {
+        Message.error({ content: String(error) });
+      } finally {
+        savingEnabledRef.current = false;
+        setSavingEnabled(false);
       }
     },
-    [lanToken, setEnabled, setLanToken]
+    [lanToken, relayUrl, saveSettings]
   );
 
   const handleRelayEnabledChange = (next: boolean) => {
@@ -110,12 +135,7 @@ const MobileRemoteSettingsSection: React.FC = () => {
     loading: relayStatusLoading,
     error: relayStatusError,
     refresh: refreshRelayStatus,
-  } = useAsyncData<RelayStatus | null, string>({
-    key: relayQueryKey,
-    initialData: null,
-    enabled,
-    query: async () => mobileRemoteApi.getRelayStatus(),
-  });
+  } = useMobileRelayStatus(relayQueryKey, enabled);
 
   const handleReconnect = async () => {
     if (reconnectingRef.current) return;
@@ -241,7 +261,15 @@ const MobileRemoteSettingsSection: React.FC = () => {
         label={t("mobileRemote.enabled")}
         description={t("mobileRemote.enabledDesc")}
       >
-        <Switch checked={enabled} onCheckedChange={handleEnabledChange} />
+        <Switch
+          checked={enabled}
+          disabled={savingEnabled}
+          onCheckedChange={(next) => {
+            void handleEnabledChange(next).catch((error: unknown) => {
+              Message.error({ content: String(error) });
+            });
+          }}
+        />
       </SectionRow>
 
       {enabled ? (

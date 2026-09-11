@@ -2,7 +2,7 @@
  * SourceControlFilterHeader
  *
  * Filter-mode select (Uncommitted / Unstaged / Staged / Branch) + optional
- * refresh button, designed for the Source Control 40px workstation header.
+ * refresh button, designed for the Source Control 36px workstation header.
  * Shared Source Control filter header for Diff and Source Control tabs so their
  * tab-specific sidebar gets the same filter UX across every host.
  *

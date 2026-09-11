@@ -784,6 +784,12 @@ pub async fn cli_agent_approval_response(
     always_allow: Option<bool>,
     request_id: Option<String>,
 ) -> Result<(), String> {
+    if let Some(id) = request_id
+        .as_deref()
+        .filter(|id| id.starts_with("native-interaction-"))
+    {
+        return super::super::interactions::respond(&session_id, id, None, approved).await;
+    }
     if crate::agent_sessions::cli::hook_approvals::has_pending_hook_approval(
         &session_id,
         request_id.as_deref(),

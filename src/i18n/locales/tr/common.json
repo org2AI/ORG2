@@ -223,11 +223,6 @@
     }
   },
   "toasts": {
-    "replyEmpty": "Yanıt boş olamaz",
-    "sessionNotFound": "Oturum bulunamadı",
-    "answerSubmitted": "Yanıt başarıyla gönderildi",
-    "replyError": "Yanıt gönderilirken bir hata oluştu",
-    "questionIgnored": "Soru yoksayıldı",
     "addedAsContext": "{{name}} bağlam olarak eklendi",
     "addedFilesAsContext": "{{count}} dosya bağlam olarak eklendi",
     "chooseExecutionAgentAi": "Yapay zeka ile oluşturmadan önce sorumlu bir aracı seçin.",
@@ -687,42 +682,9 @@
     "technicalDetails": "Teknik ayrıntılar",
     "failedToCopy": "Kopyalanamadı",
     "api": {
-      "titles": {
-        "githubConnections": "GitHub bağlantıları yüklenemedi",
-        "githubConnect": "GitHub'a bağlanılamadı",
-        "workflows": "İş akışları yüklenemedi",
-        "config": "Ayarlar yüklenemedi",
-        "agent": "Agent'a ulaşılamadı",
-        "repository": "Depo yüklenemedi",
-        "file": "Dosya yüklenemedi",
-        "mcp": "MCP sunucu hatası",
-        "extension": "Kod düzenleyici uzantı hatası",
-        "workspace": "Çalışma alanı yüklenemedi",
-        "slackConnections": "Slack bağlantıları yüklenemedi",
-        "wallet": "Cüzdan yüklenemedi",
-        "billing": "Faturalandırma işlemi tamamlanamadı",
-        "default": "Veri yüklenemedi",
-        "timeout": "İstek zaman aşımına uğradı",
-        "external": "Harici veri yüklenemedi"
-      },
       "messages": {
-        "network": "Bağlantınızı kontrol edip tekrar deneyin.",
-        "timeout": "İstek zaman aşımına uğradı. Tekrar deneyin.",
-        "server": "Bir hata oluştu. Birkaç dakika sonra tekrar deneyin.",
-        "notFound": "Bu öğe bulunamadı.",
-        "signIn": "Lütfen tekrar giriş yapın.",
-        "forbidden": "Bu işlem için yetkiniz yok.",
-        "tooManyRequests": "Çok fazla istek. Biraz bekleyip tekrar deneyin.",
-        "validation": "Geçersiz veri. Girişinizi kontrol edin.",
-        "conflict": "Çakışma tespit edildi. Kaynak değiştirilmiş olabilir.",
-        "badGateway": "Sunucuya ulaşılamıyor. Daha sonra tekrar deneyin.",
-        "serviceUnavailable": "Hizmet geçici olarak kullanılamıyor. Daha sonra tekrar deneyin.",
-        "gatewayTimeout": "Sunucu yanıt vermiyor. Daha sonra tekrar deneyin.",
-        "invalidRequest": "Geçersiz istek. Tekrar deneyin.",
-        "default": "Lütfen tekrar deneyin.",
-        "externalHint": "URL ve ayarları kontrol edip tekrar deneyin."
-      },
-      "workflow": "İş akışı hizmeti geçici olarak kullanılamıyor. Daha sonra tekrar deneyin."
+        "signIn": "Lütfen tekrar giriş yapın."
+      }
     },
     "failedToLoad": "Yükleme başarısız",
     "unknownError": "Bilinmeyen bir hata oluştu",
@@ -900,8 +862,6 @@
     "failedToLoadCommitDiff": "Commit diff yüklenemedi",
     "loadingHistory": "Geçmiş yükleniyor...",
     "commitMessage": "Commit mesajı",
-    "filterChanges": "Değişiklikleri filtrele...",
-    "searchFiles": "Dosyaları ara...",
     "searchInRepository": "Depoda ara...",
     "enterUrlOrSearch": "URL girin veya arayın...",
     "filterByUrl": "URL'ye göre filtrele...",
@@ -913,7 +873,6 @@
     "connectionError": "Bağlantı hatası",
     "noConnections": "Başlamak için bir bağlantı ekleyin",
     "selectRowsToDelete": "Silinecek satırları seçin",
-    "filterFiles": "Dosyaları filtrele...",
     "filterSearch": "Aramayı filtrele...",
     "noChanges": "Değişiklik yok",
     "noMatchingFiles": "Eşleşen dosya yok",
@@ -958,7 +917,8 @@
     "noData": "Veri yok",
     "noResults": "Sonuç yok",
     "noSessionHistoryForFile": "{{file}} için oturum etkinliği bulunamadı",
-    "noSessionHistory": "Oturum geçmişi yok"
+    "noSessionHistory": "Oturum geçmişi yok",
+    "selectSidebarFileToViewChanges": "Kenar çubuğundan dosya seçin"
   },
   "inbox": {
     "scrollToBottom": "Alta kaydır",
@@ -1023,8 +983,6 @@
     "linesSelected": "{{count}} lines selected",
     "charsSelected": "{{count}} selected",
     "nLines": "{{count}} lines",
-    "hideFilter": "Hide filter",
-    "filterFilesAction": "Filter files",
     "switchToTreeView": "Switch to tree view",
     "switchToListView": "Switch to list view",
     "discardChanges": "Discard Changes",
@@ -1073,7 +1031,9 @@
         "skipped": "Atlandı",
         "passed": "Geçti"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Birleşik fark görünümüne geç",
+    "switchToSplitDiff": "Bölünmüş fark görünümüne geç"
   },
   "git": {
     "loading": "Git durumu yükleniyor...",
@@ -1975,7 +1935,6 @@
     "scope": {
       "main": "Ana checkout",
       "worktrees": "Worktree'ler",
-      "searchPlaceholder": "Worktree'leri filtrele…",
       "switchScopeActive": "Kaynak denetimi kapsamını değiştir: {{repo}}, {{branch}}"
     }
   },
@@ -2078,22 +2037,7 @@
     "database": "Veritabanı",
     "user": "Kullanıcı",
     "password": "Şifre",
-    "ssl": "SSL Gerekli",
-    "spotlight": {
-      "scanFolder": "Klasörü tara",
-      "scanFolderDesc": "Bir klasördeki tüm .sqlite, .db dosyalarını bul",
-      "openFile": "Dosya aç",
-      "openFileDesc": "Belirli bir veritabanı dosyası seç",
-      "enterPath": "Yol gir",
-      "enterPathDesc": "Bir dosya veya klasör yolunu doğrudan yaz",
-      "placeholderSelect": "Veritabanı ekleme yöntemi…",
-      "placeholderPath": "~/data veya /yol/veritabani.db",
-      "pickerFolderTitle": "Taranacak klasörü seç",
-      "pickerFileTitle": "Veritabanı dosyasını seç",
-      "pickerSqliteName": "SQLite Veritabanı",
-      "pickerAllFiles": "Tüm Dosyalar",
-      "pickerError": "Seçici açılamadı"
-    }
+    "ssl": "SSL Gerekli"
   },
   "dragDrop": {
     "couldNotExtractPathFromItem": "Could not extract file path from dropped item"
@@ -2151,8 +2095,7 @@
     "sidebar": {
       "newTab": "Yeni sekme",
       "newPrivateTab": "Yeni gizli sekme",
-      "newTerminal": "Yeni terminal",
-      "untitled": "Başlıksız"
+      "newTerminal": "Yeni terminal"
     },
     "statusBar": {}
   },

@@ -210,10 +210,20 @@ pub fn detect_reasoning_trigger(text: &str) -> Option<ReasoningLevel> {
 /// Parses the ORG2 variant suffix, takes the max of the encoded level and
 /// `min_level`, and rebuilds the id. Returns the original id unchanged when
 /// the encoded level already meets or exceeds `min_level`, so per-turn
-/// escalation never *lowers* an explicit user selection. Provider-agnostic:
-/// the returned id goes through the same `parse_model_variant` path every
-/// provider already uses.
-pub fn escalate_model_reasoning(model: &str, min_level: ReasoningLevel) -> String {
+/// escalation never *lowers* an explicit user selection. The returned id
+/// goes through the same `parse_model_variant` path every provider already
+/// uses — except the `custom` provider, whose ids are user-owned literals
+/// sent verbatim: rewriting `my-deployment` into `my-deployment-high` would
+/// fabricate an id the endpoint has never heard of, so those are returned
+/// unchanged.
+pub fn escalate_model_reasoning(
+    model: &str,
+    min_level: ReasoningLevel,
+    provider_name: &str,
+) -> String {
+    if provider_name == crate::providers::registry::provider_id::CUSTOM {
+        return model.to_string();
+    }
     let parsed = parse_model_variant(model);
     let current_rank = parsed.level.map(|l| l.rank()).unwrap_or(0);
     if current_rank >= min_level.rank() {
@@ -280,7 +290,7 @@ mod reasoning_trigger_tests {
     #[test]
     fn escalate_appends_suffix_to_bare_model() {
         assert_eq!(
-            escalate_model_reasoning("claude-opus-4-6", ReasoningLevel::High),
+            escalate_model_reasoning("claude-opus-4-6", ReasoningLevel::High, "anthropic"),
             "claude-opus-4-6-high"
         );
     }
@@ -288,7 +298,7 @@ mod reasoning_trigger_tests {
     #[test]
     fn escalate_never_lowers_explicit_level() {
         assert_eq!(
-            escalate_model_reasoning("claude-opus-4-6-max", ReasoningLevel::Medium),
+            escalate_model_reasoning("claude-opus-4-6-max", ReasoningLevel::Medium, "anthropic"),
             "claude-opus-4-6-max"
         );
     }
@@ -296,19 +306,34 @@ mod reasoning_trigger_tests {
     #[test]
     fn escalate_raises_lower_level() {
         assert_eq!(
-            escalate_model_reasoning("claude-opus-4-6-low", ReasoningLevel::Max),
+            escalate_model_reasoning("claude-opus-4-6-low", ReasoningLevel::Max, "anthropic"),
             "claude-opus-4-6-max"
+        );
+    }
+
+    #[test]
+    fn escalate_leaves_custom_provider_ids_literal() {
+        use crate::providers::registry::provider_id;
+        for model in ["my-deployment", "deployment-high", "new-provider/model-2026-09-01"] {
+            assert_eq!(
+                escalate_model_reasoning(model, ReasoningLevel::Max, provider_id::CUSTOM),
+                model
+            );
+        }
+        assert_eq!(
+            escalate_model_reasoning("my-deployment", ReasoningLevel::Max, provider_id::OPENAI),
+            "my-deployment-max"
         );
     }
 
     #[test]
     fn escalate_preserves_thinking_and_fast_flags() {
         assert_eq!(
-            escalate_model_reasoning("glm-4.7-thinking", ReasoningLevel::High),
+            escalate_model_reasoning("glm-4.7-thinking", ReasoningLevel::High, "anthropic"),
             "glm-4.7-thinking-high"
         );
         assert_eq!(
-            escalate_model_reasoning("claude-opus-4-6-fast", ReasoningLevel::High),
+            escalate_model_reasoning("claude-opus-4-6-fast", ReasoningLevel::High, "anthropic"),
             "claude-opus-4-6-high-fast"
         );
     }
@@ -541,7 +566,11 @@ pub fn resolve_openai_compat_thinking(
     resolved_model: &str,
     provider_name: &str,
 ) -> OpenAiCompatThinking {
-    let parsed = parse_model_variant(resolved_model);
+    let parsed = if provider_name == crate::providers::registry::provider_id::CUSTOM {
+        ParsedVariant::bare(resolved_model)
+    } else {
+        parse_model_variant(resolved_model)
+    };
     let mode = resolve_thinking_mode(&parsed.base_model, provider_name);
     let reasoning_effort = if mode == ThinkingMode::OpenAiEffort {
         openai_effort(parsed.level).map(str::to_string)
@@ -620,7 +649,7 @@ mod tests {
         assert_eq!(p.level, Some(ReasoningLevel::Ultra));
         assert!(p.fast);
         assert_eq!(
-            escalate_model_reasoning("gpt-5.6-sol-ultra-fast", ReasoningLevel::Max),
+            escalate_model_reasoning("gpt-5.6-sol-ultra-fast", ReasoningLevel::Max, "anthropic"),
             "gpt-5.6-sol-ultra-fast"
         );
     }

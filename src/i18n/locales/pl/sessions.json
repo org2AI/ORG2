@@ -608,6 +608,13 @@
     "voicePermissionSheetTitle": "Wymagany dostęp do mikrofonu"
   },
   "chat": {
+    "cliPermissions": {
+      "ask": "Proś o zatwierdzenie",
+      "workspace": "Dostęp do obszaru roboczego",
+      "edit": "Zezwalaj na edycję",
+      "full": "Pełny dostęp",
+      "nextTurn": "Uprawnienia obowiązują od następnej tury"
+    },
     "planApprovedLabel": "Wykonywanie zatwierdzonego planu",
     "planApprovedEditedLabel": "Wykonywanie zatwierdzonego planu (edytowany)",
     "sessionStarted": "Sesja rozpoczęta",
@@ -2309,7 +2316,6 @@
       "agentFallback": "Agent"
     },
     "sidebar": {
-      "stopAgentProcess": "Zatrzymaj proces Agenta",
       "openInMyStation": "Otwórz w My Station"
     }
   },
@@ -2673,5 +2679,14 @@
     "stale": "Ostatnia obserwacja ma ponad dwie godziny",
     "disabled": "Próbkowanie wstrzymane dla tego wyłączonego konta",
     "limit": "Wyświetlanie do 128 kont"
+  },
+  "sharedFile": {
+    "downloaded": "Zapisano w folderze Pobrane",
+    "downloadError": "Nie można zapisać w folderze Pobrane",
+    "title": "Udostępniony plik",
+    "error": "Nie można otworzyć tego pliku. Sprawdź konto, serwer i dostęp do sesji, a następnie ponownie otwórz link.",
+    "downloadPreview": "Pobierz ten plik, aby wyświetlić jego zawartość",
+    "download": "Pobierz",
+    "loading": "Ładowanie udostępnionego pliku…"
   }
 }

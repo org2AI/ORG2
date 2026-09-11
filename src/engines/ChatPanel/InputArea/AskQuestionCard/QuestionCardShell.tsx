@@ -11,7 +11,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import IconButton from "@src/components/IconButton";
+import Button from "@src/components/Button";
 import { COMPOSER_CARD_SHELL_CLASSES } from "@src/config/composerStackTokens";
 import {
   ArrowDown01Icon,
@@ -146,34 +146,44 @@ export function QuestionCardShell({
         actions={
           expanded && questions.length > 1 ? (
             <div className="flex items-center gap-0.5">
-              <IconButton
-                type="button"
+              <Button
+                htmlType="button"
                 onClick={handlePrevQuestion}
                 disabled={focusedQuestion === 0}
-              >
-                <HugeiconsIcon
-                  icon={ArrowUp01Icon}
-                  data-icon="chevron-up"
-                  size={12}
-                />
-              </IconButton>
+                size="mini"
+                variant="tertiary"
+                appearance="soft"
+                iconOnly
+                icon={
+                  <HugeiconsIcon
+                    icon={ArrowUp01Icon}
+                    data-icon="chevron-up"
+                    size={12}
+                  />
+                }
+              />
               <span className="min-w-[44px] text-center text-[10px] text-text-1">
                 {t("chat.xOfY", {
                   current: focusedQuestion + 1,
                   total: questions.length,
                 })}
               </span>
-              <IconButton
-                type="button"
+              <Button
+                htmlType="button"
                 onClick={handleNextQuestion}
                 disabled={focusedQuestion >= questions.length - 1}
-              >
-                <HugeiconsIcon
-                  icon={ArrowDown01Icon}
-                  data-icon="chevron-down"
-                  size={12}
-                />
-              </IconButton>
+                size="mini"
+                variant="tertiary"
+                appearance="soft"
+                iconOnly
+                icon={
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    data-icon="chevron-down"
+                    size={12}
+                  />
+                }
+              />
             </div>
           ) : undefined
         }

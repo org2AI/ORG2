@@ -15,7 +15,7 @@ import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { ICON_CONFIG, PANEL_CONSTANTS } from "../config";
 
 const {
-  filter: FilterIcon,
+  search: SearchIcon,
   refresh: RefreshIcon,
   listTree: ListTreeIcon,
   list: ListIcon,
@@ -49,13 +49,13 @@ export function useSourceControlActions({
         key: "filter-git",
         icon: (
           <AnyIcon
-            icon={FilterIcon}
+            icon={SearchIcon}
             size={PANEL_CONSTANTS.ACTION_ICON_SIZE}
             strokeWidth={PANEL_CONSTANTS.ACTION_ICON_STROKE}
             className={showFilter ? "text-primary-6" : ""}
           />
         ),
-        tooltip: t("actions.filter", "Filter"),
+        tooltip: t("actions.search"),
         onClick: onToggleFilter,
       },
       {

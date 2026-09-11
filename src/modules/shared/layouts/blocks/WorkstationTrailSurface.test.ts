@@ -69,9 +69,10 @@ describe("WorkstationTrailSurface", () => {
     expect(markup).toContain("uppercase tracking-wide");
     expect(markup).toContain("Collapse groups");
     expect(markup).toContain("flex min-w-0 flex-1 items-center");
-    expect(markup).toContain("h-5 w-5");
+    expect(markup).toContain("height:20px");
+    expect(markup).toContain("width:20px");
     expect(markup).toContain("items-center gap-px");
-    expect(markup).toContain("rounded-lg");
+    expect(markup).toContain("border-radius:8px");
   });
 
   it("shares the labelled trail section used by property and detail rails", () => {

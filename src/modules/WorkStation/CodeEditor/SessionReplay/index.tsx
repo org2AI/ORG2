@@ -8,7 +8,7 @@
  * Uses WorkStationShell for consistent layout with the interactive CodeEditor.
  * Integrated with SimulatorApps framework for replay-aware state management.
  */
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import React, {
   memo,
   useCallback,
@@ -18,15 +18,9 @@ import React, {
   useState,
 } from "react";
 
-import { SIMULATOR_PRIMARY_SIDEBAR } from "@src/config/simulatorPrimarySidebar";
 import { getIDEEventType } from "@src/engines/SessionCore/rendering/registry/toolRegistryDomain";
-import {
-  simulatorIdeTerminalRevealRequestAtom,
-  simulatorPrimarySidebarCollapsedAtom,
-  simulatorPrimarySidebarPositionAtom,
-  simulatorPrimarySidebarWidthAtom,
-  simulatorPrimarySidebarWidthPersistAtom,
-} from "@src/store/ui/simulatorAtom";
+import { useSimulatorReplaySidebar } from "@src/modules/WorkStation/shared/SessionReplay/useSimulatorReplaySidebar";
+import { simulatorIdeTerminalRevealRequestAtom } from "@src/store/ui/simulatorAtom";
 import type { BackendEvent } from "@src/types/session/steps";
 
 import {
@@ -82,23 +76,8 @@ const SessionReplayIDEComponent: React.FC<SimulatorIDEProps> = ({
   const terminalRevealRequest = useAtomValue(
     simulatorIdeTerminalRevealRequestAtom
   );
-  const primarySidebarCollapsed = useAtomValue(
-    simulatorPrimarySidebarCollapsedAtom
-  );
-  const primarySidebarPosition = useAtomValue(
-    simulatorPrimarySidebarPositionAtom
-  );
-  const primarySidebarWidth = useAtomValue(simulatorPrimarySidebarWidthAtom);
-  const setPrimarySidebarWidthPersist = useSetAtom(
-    simulatorPrimarySidebarWidthPersistAtom
-  );
-
-  const handlePrimarySidebarWidthChange = useCallback(
-    (width: number) => {
-      setPrimarySidebarWidthPersist(width);
-    },
-    [setPrimarySidebarWidthPersist]
-  );
+  const { layoutMode: primarySidebarPosition, sidebar } =
+    useSimulatorReplaySidebar();
 
   const {
     fileViewMode,
@@ -307,12 +286,7 @@ const SessionReplayIDEComponent: React.FC<SimulatorIDEProps> = ({
           currentEventId={eventId}
         />
       ),
-      collapsed: primarySidebarCollapsed,
-      size: primarySidebarWidth,
-      onSizeChange: handlePrimarySidebarWidthChange,
-      minSize: SIMULATOR_PRIMARY_SIDEBAR.minWidth,
-      maxSize: SIMULATOR_PRIMARY_SIDEBAR.maxWidth,
-      resetSize: SIMULATOR_PRIMARY_SIDEBAR.defaultWidth,
+      ...sidebar,
     });
   }, [
     fileViewMode,
@@ -331,9 +305,7 @@ const SessionReplayIDEComponent: React.FC<SimulatorIDEProps> = ({
     handleShellSelect,
     handleToolSelect,
     eventId,
-    primarySidebarCollapsed,
-    primarySidebarWidth,
-    handlePrimarySidebarWidthChange,
+    sidebar,
   ]);
 
   // Build a UNIFIED newest-first timeline across every op kind. Each kind
@@ -489,7 +461,7 @@ const SessionReplayIDEComponent: React.FC<SimulatorIDEProps> = ({
       eventWrapper={{ event: currentEvent as unknown as BackendEvent, mode }}
       workstation={{
         primarySidebarConfig,
-        layoutMode: primarySidebarPosition === "right" ? "right" : "left",
+        layoutMode: primarySidebarPosition,
         appClassName: "session-replay-ide",
       }}
     >

@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { rpc } from "@src/api/tauri/rpc";
-import type { ConnectionHarness } from "@src/api/tauri/rpc/schemas/agentOrgs";
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
 import Select from "@src/components/Select";
@@ -18,6 +17,7 @@ import {
 } from "@src/modules/shared/layouts/SectionLayout";
 import { HintWithInfo } from "@src/modules/shared/layouts/blocks/HintWithInfo";
 
+import ConnectionCards from "./ConnectionCards";
 import {
   refreshHarnessConnections,
   useHarnessConnection,
@@ -27,7 +27,7 @@ export default function HarnessConnectionEditor({
   agentName,
   onAdd,
 }: {
-  agentName: ConnectionHarness;
+  agentName: "claude_code" | "codex";
   onAdd: () => void;
 }) {
   const { t } = useTranslation("settings");
@@ -151,6 +151,8 @@ export default function HarnessConnectionEditor({
   };
   const blocked =
     !view?.installed ||
+    !view.config.supported ||
+    Boolean(view.configurationIssue) ||
     loading ||
     busy !== null ||
     !choice ||
@@ -200,9 +202,16 @@ export default function HarnessConnectionEditor({
       : null);
   return (
     <SectionContainer
-      title={agentName === "codex" ? "Codex" : "Claude Code"}
+      title={agentName === "codex" ? "Codex" : "Claude Code CLI"}
       dataTestId={`harness-connection-${agentName}`}
     >
+      {(view?.configurationIssue || view?.config.message) && (
+        <SectionRow showHeader={false}>
+          <p role="alert" className={SECTION_DESCRIPTION_CLASSES}>
+            {view?.configurationIssue ?? view?.config.message}
+          </p>
+        </SectionRow>
+      )}
       <SectionRow label={currentLabel}>
         <span className={SECTION_VALUE_TEXT_CLASSES}>
           {!view
@@ -240,28 +249,23 @@ export default function HarnessConnectionEditor({
         </SectionRow>
       )}
       <SectionRow label={connectionLabel}>
-        <div className={`${SECTION_ACTION_GAP_CLASSES} flex-wrap`}>
-          <Select
-            ariaLabel={t("harnessConnections.connection")}
-            value={selectedKey || undefined}
-            disabled={loading || busy !== null}
-            placeholder={t("harnessConnections.choose")}
-            style={SECTION_CONTROL_STYLE}
-            options={(view?.choices ?? []).map((choice) => ({
-              value: choice.keyId,
-              label: choice.name,
-            }))}
-            onChange={(value) => {
-              setKeyId(String(value));
-              setModel(null);
-              setReceipt(null);
-              setMessage(null);
-            }}
-          />
-          <Button variant="secondary" onClick={onAdd} disabled={busy !== null}>
-            {t("harnessConnections.add")}
-          </Button>
-        </div>
+        <ConnectionCards
+          choices={view?.choices ?? []}
+          selected={selectedKey}
+          active={
+            view?.config.mode !== "default"
+              ? (view?.config.selectedKeyId ?? null)
+              : null
+          }
+          disabled={loading || busy !== null}
+          onAdd={onAdd}
+          onSelect={(value) => {
+            setKeyId(value);
+            setModel(null);
+            setReceipt(null);
+            setMessage(null);
+          }}
+        />
       </SectionRow>
       {choice?.reason && (
         <SectionRow showHeader={false} className="py-2">
@@ -359,6 +363,7 @@ export default function HarnessConnectionEditor({
               loading ||
               busy !== null ||
               !view ||
+              Boolean(view.configurationIssue) ||
               view.config.mode === "default" ||
               view.config.conflict
             }

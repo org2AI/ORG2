@@ -9,6 +9,7 @@ import { useAtomValue } from "jotai";
 import React, { memo, useCallback, useMemo, useRef, useState } from "react";
 
 import { useActionSystemOptional } from "@src/ActionSystem";
+import Button from "@src/components/Button";
 import {
   GitStatusBadge,
   TREE_INDENT_PX,
@@ -22,7 +23,6 @@ import {
 import type { GitStatusInfo, TreeRowNode } from "@src/components/TreeRow";
 import {
   COUNT_BADGE,
-  HEADER_BUTTON,
   PRIMARY_SIDEBAR_HOVER,
   getCountBadgeSizeClass,
 } from "@src/config/workstation/tokens";
@@ -32,14 +32,14 @@ import {
 } from "@src/hooks/files/useNativeDrag";
 import {
   Add01Icon,
-  ArchiveIcon,
+  Archive03Icon,
   ArrowDown01Icon,
   ArrowRight01Icon,
   FileDiffIcon,
   HugeiconsIcon,
   MinusSignIcon,
   Tick01Icon,
-  Undo02Icon,
+  Undo03Icon,
 } from "@src/icons";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 import type { GitFile } from "@src/types/git/types";
@@ -144,89 +144,114 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
     if (node.section === "unstaged") {
       actions = (
         <>
-          <button
-            className={`group/discard ${HEADER_BUTTON.danger} opacity-0 group-hover/header:opacity-100`}
+          <Button
+            className={`group/discard opacity-0 group-hover/header:opacity-100`}
             onClick={(event) => {
               event.stopPropagation();
               onDiscardAll?.();
             }}
             title={GIT_LABELS.discardAllChanges}
-          >
-            <HugeiconsIcon
-              icon={Undo02Icon}
-              data-icon="undo-2"
-              size={14}
-              strokeWidth={1.75}
-            />
-          </button>
+            size="sidebar"
+            variant="danger"
+            appearance="soft"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={Undo03Icon}
+                data-icon="undo-3"
+                size={14}
+                strokeWidth={1.75}
+              />
+            }
+          />
           {onStashPush && hasChangesToStash && (
-            <button
-              className={`${HEADER_BUTTON.actionTreeRow} hidden shrink-0 group-hover/header:flex disabled:opacity-50`}
+            <Button
+              className={`hidden! shrink-0 group-hover/header:flex! disabled:opacity-50`}
               onClick={(event) => {
                 event.stopPropagation();
                 onStashPush();
               }}
               disabled={stashOperationLoading}
               title={GIT_LABELS.stashAllChanges}
-            >
-              <HugeiconsIcon
-                icon={ArchiveIcon}
-                data-icon="archive"
-                size={14}
-                strokeWidth={1.75}
-              />
-            </button>
+              size="sidebar"
+              variant="tertiary"
+              appearance="soft"
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={Archive03Icon}
+                  data-icon="archive-03"
+                  size={14}
+                  strokeWidth={1.75}
+                />
+              }
+            />
           )}
-          <button
-            className={`${HEADER_BUTTON.actionTreeRow} hidden shrink-0 group-hover/header:flex`}
+          <Button
+            className={`hidden! shrink-0 group-hover/header:flex!`}
             onClick={(event) => {
               event.stopPropagation();
               onStageAll?.();
             }}
             title={GIT_LABELS.stageChanges}
-          >
-            <HugeiconsIcon
-              icon={Add01Icon}
-              data-icon="plus"
-              size={14}
-              strokeWidth={1.75}
-            />
-          </button>
+            size="sidebar"
+            variant="tertiary"
+            appearance="soft"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={Add01Icon}
+                data-icon="plus"
+                size={14}
+                strokeWidth={1.75}
+              />
+            }
+          />
         </>
       );
     } else if (node.section === "staged") {
       actions = (
         <>
-          <button
-            className={`${HEADER_BUTTON.actionTreeRow} opacity-0 group-hover/header:opacity-100`}
+          <Button
+            className={`opacity-0 group-hover/header:opacity-100`}
             onClick={(event) => {
               event.stopPropagation();
               onUnstageAll?.();
             }}
             title={`Unstage All Changes\n\nShortcut: ${SHORTCUTS.unstageAll}`}
-          >
-            <HugeiconsIcon
-              icon={MinusSignIcon}
-              data-icon="minus"
-              size={14}
-              strokeWidth={1.75}
-            />
-          </button>
-          <button
-            className={`${HEADER_BUTTON.actionTreeRow} opacity-0 group-hover/header:opacity-100`}
+            size="sidebar"
+            variant="tertiary"
+            appearance="soft"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={MinusSignIcon}
+                data-icon="minus"
+                size={14}
+                strokeWidth={1.75}
+              />
+            }
+          />
+          <Button
+            className={`opacity-0 group-hover/header:opacity-100`}
             onClick={(event) => {
               event.stopPropagation();
               onOpenStagedChanges?.();
             }}
             title={GIT_LABELS.openStagedChanges}
-          >
-            <HugeiconsIcon
-              icon={FileDiffIcon}
-              data-icon="file-diff"
-              size={14}
-              strokeWidth={1.75}
-            />
-          </button>
+            size="sidebar"
+            variant="tertiary"
+            appearance="soft"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={FileDiffIcon}
+                data-icon="file-diff"
+                size={14}
+                strokeWidth={1.75}
+              />
+            }
+          />
         </>
       );
     }
@@ -491,7 +516,7 @@ const FileDirectoryRow: React.FC<FileDirectoryRowProps> = memo(
               {/* Discard action button */}
               {onDiscard && (
                 <TreeRowAction
-                  icon={Undo02Icon}
+                  icon={Undo03Icon}
                   variant="danger"
                   onClick={handleDiscard}
                   title={GIT_LABELS.discardChanges}

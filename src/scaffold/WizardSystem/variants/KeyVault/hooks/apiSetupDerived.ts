@@ -4,6 +4,7 @@ import {
 } from "@src/api/tauri/rpc/schemas/validation";
 import { LOCAL_MODEL_PROVIDER } from "@src/api/types/keys";
 import { getMyKeyFallbackNativeModels } from "@src/hooks/models/nativeHarnessAccountModels";
+import { isValidCustomModelId } from "@src/util/customModelIdentity";
 
 import type { WizardData } from "../types";
 
@@ -59,13 +60,47 @@ export function getApiSetupProceedState({
           envVar.value.trim() !== ""
       ));
   const isOAuthConfigured = data.auth_method === "oauth" && data.validated;
+  let hasEndpoint = false;
+  try {
+    const endpoint = new URL(data.extracted_base_url ?? "");
+    hasEndpoint =
+      ["http:", "https:"].includes(endpoint.protocol) &&
+      !endpoint.username &&
+      !endpoint.password;
+  } catch {
+    /* Manual setup needs an absolute HTTP endpoint */
+  }
+  // Local endpoints keep their pre-existing, looser gate: any non-empty base
+  // URL plus at least one known model.
   const hasLocalModelEndpoint =
     data.agent_type === LOCAL_MODEL_PROVIDER &&
     Boolean(data.extracted_base_url?.trim()) &&
     hasApiKeyInput &&
-    ((data.enabled_models?.length ?? 0) > 0 ||
-      (data.custom_models?.length ?? 0) > 0 ||
-      (data.available_models?.length ?? 0) > 0);
+    (data.enabled_models.length > 0 ||
+      data.custom_models.length > 0 ||
+      data.available_models.length > 0);
+  // Custom API saves carry literal request IDs, so every saved alias — not
+  // only the enabled ones — has to satisfy the backend's ID rule and be
+  // unique, or the save fails after the fact with a generic error.
+  const savedAliases = data.model_aliases.filter((alias) => !alias.isDraft);
+  const savedAliasIds = savedAliases.map((alias) => alias.alias);
+  const savedAliasesValid =
+    savedAliasIds.every(isValidCustomModelId) &&
+    new Set(savedAliasIds).size === savedAliasIds.length;
+  const draftIds = new Set(
+    data.model_aliases
+      .filter((alias) => alias.isDraft)
+      .map((alias) => alias.alias)
+  );
+  const hasManualModelEndpoint =
+    data.agent_type === "custom_api" &&
+    hasEndpoint &&
+    data.auth_method !== "oauth" &&
+    hasApiKeyInput &&
+    savedAliasesValid &&
+    data.enabled_models.some(
+      (model) => isValidCustomModelId(model) && !draftIds.has(model)
+    );
   const canProceed = isClaudeCode
     ? hasClaudeCodeOAuthToken
     : isCodex
@@ -77,6 +112,7 @@ export function getApiSetupProceedState({
         : isCursor
           ? hasSessionToken
           : hasLocalModelEndpoint ||
+            hasManualModelEndpoint ||
             isOAuthConfigured ||
             (keyValidated && hasApiKeyInput) ||
             (data.validated && hasApiKeyInput);

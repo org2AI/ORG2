@@ -1,20 +1,23 @@
 import { useSetAtom } from "jotai";
 import { useEffect } from "react";
 
-import { useWorkStationPanels } from "@src/hooks/tabHost/useWorkStationPanels";
 import { simulatorPrimarySidebarPositionAtom } from "@src/store/ui/simulatorAtom";
+import type { LayoutMode } from "@src/store/ui/workStationLayout/splitLayoutAtoms";
 
 export function useAppShellSimulatorPanelSync({
   isAgentStation,
-  workStationPanels,
+  layoutMode,
 }: {
   isAgentStation: boolean;
-  workStationPanels: ReturnType<typeof useWorkStationPanels>;
+  layoutMode: LayoutMode;
 }): void {
   const setSimSidebarPosition = useSetAtom(simulatorPrimarySidebarPositionAtom);
 
+  // This is intentionally a gated mirror, not an always-live derivation:
+  // native browser webviews observe this atom to schedule position updates.
+  // My Station layout edits must not invalidate their simulator geometry.
   useEffect(() => {
     if (!isAgentStation) return;
-    setSimSidebarPosition(workStationPanels.layoutMode);
-  }, [isAgentStation, workStationPanels.layoutMode, setSimSidebarPosition]);
+    setSimSidebarPosition(layoutMode);
+  }, [isAgentStation, layoutMode, setSimSidebarPosition]);
 }

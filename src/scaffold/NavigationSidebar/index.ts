@@ -13,7 +13,3 @@ export {
 } from "./contexts/ForceVisibleContext";
 
 export { SIDEBAR_STYLE, SIDEBAR_PADDING } from "./config";
-
-export { NavigationSidebar } from "./variants";
-
-// =====================================

@@ -102,7 +102,9 @@ vi.mock("@src/components/Button", () => ({
   default: ({
     children,
     htmlType,
-    icon: _icon,
+    icon,
+    iconOnly: _iconOnly,
+    appearance: _appearance,
     variant: _variant,
     size: _size,
     ...props
@@ -110,15 +112,14 @@ vi.mock("@src/components/Button", () => ({
     children?: ReactNode;
     htmlType?: "button";
     icon?: ReactNode;
+    iconOnly?: boolean;
+    appearance?: string;
     variant?: string;
     size?: string;
   } & React.ComponentProps<"button">) =>
-    createElement("button", { type: htmlType, ...props }, children),
+    createElement("button", { type: htmlType, ...props }, icon, children),
 }));
-vi.mock("@src/components/IconButton", () => ({
-  default: ({ children, ...props }: React.ComponentProps<"button">) =>
-    createElement("button", props, children),
-}));
+
 vi.mock("@src/components/TabPill", () => ({
   default: () => createElement("div", { "data-testid": "canvas-tabs" }),
 }));

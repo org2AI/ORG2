@@ -223,11 +223,6 @@
     }
   },
   "toasts": {
-    "replyEmpty": "Antwort darf nicht leer sein",
-    "sessionNotFound": "Sitzung nicht gefunden",
-    "answerSubmitted": "Antwort erfolgreich übermittelt",
-    "replyError": "Beim Senden der Antwort ist ein Fehler aufgetreten",
-    "questionIgnored": "Frage ignoriert",
     "addedAsContext": "{{name}} als Kontext hinzugefügt",
     "addedFilesAsContext": "{{count}} Datei(en) als Kontext hinzugefügt",
     "chooseExecutionAgentAi": "Wählen Sie einen zuständigen Agenten, bevor Sie mit KI erstellen.",
@@ -687,42 +682,9 @@
     "technicalDetails": "Technische Details",
     "failedToCopy": "Kopieren fehlgeschlagen",
     "api": {
-      "titles": {
-        "githubConnections": "GitHub-Verbindungen konnten nicht geladen werden",
-        "githubConnect": "Verbindung zu GitHub fehlgeschlagen",
-        "workflows": "Workflows konnten nicht geladen werden",
-        "config": "Einstellungen konnten nicht geladen werden",
-        "agent": "Agent nicht erreichbar",
-        "repository": "Repo konnte nicht geladen werden",
-        "file": "Datei konnte nicht geladen werden",
-        "mcp": "MCP-Serverfehler",
-        "extension": "Code-Editor-Erweiterungsfehler",
-        "workspace": "Arbeitsbereich konnte nicht geladen werden",
-        "slackConnections": "Slack-Verbindungen konnten nicht geladen werden",
-        "wallet": "Wallet konnte nicht geladen werden",
-        "billing": "Abrechnungsvorgang konnte nicht abgeschlossen werden",
-        "default": "Daten konnten nicht geladen werden",
-        "timeout": "Anfrage hat zu lange gedauert",
-        "external": "Externe Daten konnten nicht geladen werden"
-      },
       "messages": {
-        "network": "Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
-        "timeout": "Anfrage hat zu lange gedauert. Versuchen Sie es erneut.",
-        "server": "Ein Fehler ist aufgetreten. Versuchen Sie es in ein paar Minuten erneut.",
-        "notFound": "Dieser Eintrag wurde nicht gefunden.",
-        "signIn": "Bitte melden Sie sich erneut an.",
-        "forbidden": "Sie haben keine Berechtigung für diese Aktion.",
-        "tooManyRequests": "Zu viele Anfragen. Warten Sie kurz und versuchen Sie es erneut.",
-        "validation": "Ungültige Daten. Überprüfen Sie Ihre Eingabe.",
-        "conflict": "Konflikt erkannt. Die Ressource wurde möglicherweise geändert.",
-        "badGateway": "Server nicht erreichbar. Versuchen Sie es später erneut.",
-        "serviceUnavailable": "Dienst vorübergehend nicht verfügbar. Versuchen Sie es später erneut.",
-        "gatewayTimeout": "Server antwortet nicht. Versuchen Sie es später erneut.",
-        "invalidRequest": "Ungültige Anfrage. Versuchen Sie es erneut.",
-        "default": "Bitte versuchen Sie es erneut.",
-        "externalHint": "Überprüfen Sie die URL und Einstellungen, dann versuchen Sie es erneut."
-      },
-      "workflow": "Workflow-Dienst vorübergehend nicht verfügbar. Versuchen Sie es später erneut."
+        "signIn": "Bitte melden Sie sich erneut an."
+      }
     },
     "failedToLoad": "Laden fehlgeschlagen",
     "unknownError": "Unbekannter Fehler aufgetreten",
@@ -900,8 +862,6 @@
     "failedToLoadCommitDiff": "Commit-Diff konnte nicht geladen werden",
     "loadingHistory": "Verlauf wird geladen...",
     "commitMessage": "Commit-Nachricht",
-    "filterChanges": "Änderungen filtern...",
-    "searchFiles": "Dateien suchen...",
     "searchInRepository": "Im Repo suchen...",
     "enterUrlOrSearch": "URL eingeben oder suchen...",
     "filterByUrl": "Nach URL filtern...",
@@ -913,7 +873,6 @@
     "connectionError": "Verbindungsfehler",
     "noConnections": "Verbindung hinzufügen, um zu beginnen",
     "selectRowsToDelete": "Zeilen zum Löschen auswählen",
-    "filterFiles": "Dateien filtern...",
     "filterSearch": "Suche filtern...",
     "noChanges": "Keine Änderungen",
     "noMatchingFiles": "Keine passenden Dateien",
@@ -958,7 +917,8 @@
     "noData": "Keine Daten",
     "noResults": "Keine Ergebnisse",
     "noSessionHistoryForFile": "Keine Sitzungsaktivität für {{file}} gefunden",
-    "noSessionHistory": "Kein Sitzungsverlauf"
+    "noSessionHistory": "Kein Sitzungsverlauf",
+    "selectSidebarFileToViewChanges": "Datei in der Seitenleiste auswählen"
   },
   "inbox": {
     "scrollToBottom": "Nach unten scrollen",
@@ -1023,8 +983,6 @@
     "linesSelected": "{{count}} lines selected",
     "charsSelected": "{{count}} selected",
     "nLines": "{{count}} lines",
-    "hideFilter": "Hide filter",
-    "filterFilesAction": "Filter files",
     "switchToTreeView": "Switch to tree view",
     "switchToListView": "Switch to list view",
     "discardChanges": "Discard Changes",
@@ -1073,7 +1031,9 @@
         "skipped": "Übersprungen",
         "passed": "Bestanden"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Zur einheitlichen Diff-Ansicht wechseln",
+    "switchToSplitDiff": "Zur geteilten Diff-Ansicht wechseln"
   },
   "git": {
     "loading": "Git-Status wird geladen...",
@@ -1975,7 +1935,6 @@
     "scope": {
       "main": "Haupt-Checkout",
       "worktrees": "Worktrees",
-      "searchPlaceholder": "Worktrees filtern…",
       "switchScopeActive": "Bereich der Quellcodeverwaltung wechseln: {{repo}}, {{branch}}"
     }
   },
@@ -2078,22 +2037,7 @@
     "database": "Datenbank",
     "user": "Benutzer",
     "password": "Passwort",
-    "ssl": "SSL erforderlich",
-    "spotlight": {
-      "scanFolder": "Ordner durchsuchen",
-      "scanFolderDesc": "Alle .sqlite-, .db-Dateien in einem Ordner finden",
-      "openFile": "Datei öffnen",
-      "openFileDesc": "Eine bestimmte Datenbankdatei auswählen",
-      "enterPath": "Pfad eingeben",
-      "enterPathDesc": "Datei- oder Ordnerpfad direkt eingeben",
-      "placeholderSelect": "Datenbank hinzufügen über…",
-      "placeholderPath": "~/data oder /pfad/zur/datenbank.db",
-      "pickerFolderTitle": "Zu durchsuchenden Ordner auswählen",
-      "pickerFileTitle": "Datenbankdatei auswählen",
-      "pickerSqliteName": "SQLite-Datenbank",
-      "pickerAllFiles": "Alle Dateien",
-      "pickerError": "Auswahldialog konnte nicht geöffnet werden"
-    }
+    "ssl": "SSL erforderlich"
   },
   "dragDrop": {
     "couldNotExtractPathFromItem": "Could not extract file path from dropped item"
@@ -2151,8 +2095,7 @@
     "sidebar": {
       "newTab": "Neuer Tab",
       "newPrivateTab": "Neuer privater Tab",
-      "newTerminal": "Neues Terminal",
-      "untitled": "Unbenannt"
+      "newTerminal": "Neues Terminal"
     },
     "statusBar": {}
   },

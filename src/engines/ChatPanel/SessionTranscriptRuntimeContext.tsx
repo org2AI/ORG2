@@ -18,8 +18,6 @@ export interface SessionTranscriptRuntime {
   onReload: () => void;
   /** Remote surfaces wire chat block locate to their replay controller. */
   onNavigateToEvent?: (eventId: string) => void;
-  onReplyQuestion?: (input: { reply: string; chunk_id: string }) => void;
-  onIgnoreQuestion?: (eventId: string) => void;
   capabilities?: {
     canvasInline?: boolean;
     turnMetadata?: boolean;

@@ -16,8 +16,8 @@ import Button from "@src/components/Button";
 import TabPill from "@src/components/TabPill";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import {
-  ArrowLeft02Icon,
-  ArrowRight02Icon,
+  ArrowDown01Icon,
+  ArrowUp01Icon,
   CircleDotIcon,
   HugeiconsIcon,
   LinkSquare02Icon,
@@ -26,6 +26,7 @@ import {
 } from "@src/icons";
 import { ExternalBrowserButton } from "@src/modules/WorkStation/shared/ExternalBrowserButton";
 import type { SourceControlFilterMode } from "@src/modules/WorkStation/shared/SidebarModules";
+import { DiffViewModeToggle } from "@src/modules/shared/components/DiffViewModeToggle";
 import type {
   SourceControlHistorySelection,
   WorkStationTab,
@@ -198,8 +199,8 @@ export const SourceControlHeaderContent: React.FC<
               className="shrink-0"
               icon={
                 <HugeiconsIcon
-                  icon={ArrowLeft02Icon}
-                  data-icon="arrow-left"
+                  icon={ArrowUp01Icon}
+                  data-icon="chevron-up"
                   size={HEADER_ICON_SIZE.sm}
                   strokeWidth={1.75}
                 />
@@ -216,8 +217,8 @@ export const SourceControlHeaderContent: React.FC<
               className="shrink-0"
               icon={
                 <HugeiconsIcon
-                  icon={ArrowRight02Icon}
-                  data-icon="arrow-right"
+                  icon={ArrowDown01Icon}
+                  data-icon="chevron-down"
                   size={HEADER_ICON_SIZE.sm}
                   strokeWidth={1.75}
                 />
@@ -228,17 +229,10 @@ export const SourceControlHeaderContent: React.FC<
 
         {showCollapseAll && (
           <>
-            <TabPill
-              activeTab={diffViewMode}
-              tabs={[
-                { key: "unified", label: t("workstation.unified") },
-                { key: "split", label: t("workstation.split") },
-              ]}
-              onChange={(key) => onDiffViewModeChange(key as DiffViewMode)}
-              variant="pill"
-              color="fill"
-              fillWidth={false}
-              size="small"
+            <DiffViewModeToggle
+              viewMode={diffViewMode}
+              onChange={onDiffViewModeChange}
+              t={t}
             />
             <span
               className="mx-1.5 h-4 w-px shrink-0 bg-border-2"

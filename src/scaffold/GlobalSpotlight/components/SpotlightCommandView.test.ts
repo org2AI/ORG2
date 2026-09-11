@@ -8,7 +8,7 @@ import { spotlightCommandViewAtom } from "@src/store/ui/spotlightCommandViewAtom
 
 import type { UseSelectorReturn } from "../hooks/selectors/useSelector";
 import { installVirtualListTestLayout } from "../palettes/BranchPalette/__tests__/virtualListTestLayout";
-import type { SpotlightItem } from "../types";
+import type { PathSegment, SpotlightItem } from "../types";
 import { groupSpotlightCards } from "./SpotlightCardList";
 import { SpotlightCommandView } from "./SpotlightCommandView";
 
@@ -35,7 +35,7 @@ describe("Spotlight command presentation", () => {
   const environment = globalThis as typeof globalThis & {
     IS_REACT_ACT_ENVIRONMENT?: boolean;
   };
-  const render = (items: SpotlightItem[]) =>
+  const render = (items: SpotlightItem[], path: PathSegment[] = []) =>
     act(() =>
       root.render(
         createElement(
@@ -44,6 +44,7 @@ describe("Spotlight command presentation", () => {
           createElement(SpotlightCommandView, {
             kernel,
             items,
+            path,
             placeholder: "Search",
             containerHeight: 400,
           })
@@ -119,7 +120,7 @@ describe("Spotlight command presentation", () => {
       ".spotlight-item.selected"
     )!;
     expect(selected.dataset.spotlightItemIndex).toBe("1");
-    expect(selected.style.height).toBe("80px");
+    expect(selected.style.height).toBe("56px");
     act(() => selected.click());
     expect(kernel.handleItemClick).toHaveBeenCalledWith(items[1]);
     act(() =>
@@ -136,6 +137,24 @@ describe("Spotlight command presentation", () => {
         ?.getAttribute("data-spotlight-item-index")
     ).toBe("1");
     expect(kernel.inputRef.current?.value).toBe("session");
+  });
+
+  it("hides breadcrumbs only in card mode without clearing the navigation path", () => {
+    const path: PathSegment[] = [
+      {
+        id: "workspace",
+        type: "action",
+        label: "Workspace breadcrumb",
+        color: "",
+        icon: "",
+      },
+    ];
+    render([item("New session")], path);
+    expect(container.textContent).toContain("Workspace breadcrumb");
+    toggle("GUI");
+    expect(container.textContent).not.toContain("Workspace breadcrumb");
+    toggle("TUI");
+    expect(container.textContent).toContain("Workspace breadcrumb");
   });
 
   it("bounds rendered cards and scrolls distant keyboard selections into view", async () => {

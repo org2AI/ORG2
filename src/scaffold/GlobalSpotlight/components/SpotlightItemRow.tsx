@@ -398,7 +398,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
         data-source-account-id={sourceAccountId}
         data-source-model-type={sourceModelType}
         data-source-type={sourceType}
-        className={`spotlight-item group relative rounded-lg ${cardHeight ? "spotlight-item-card grid grid-cols-[auto_1fr] content-between gap-1 border border-border-2 bg-bg-2 p-2 shadow-xs" : "mx-2 flex items-center gap-2.5 px-2"} ${
+        className={`spotlight-item group relative rounded-lg ${cardHeight ? "spotlight-item-card flex min-w-0 items-center gap-1.5 border border-border-2 bg-bg-2 px-2 py-1 shadow-xs" : "mx-2 flex items-center gap-2.5 px-2"} ${
           isDisabled
             ? "cursor-not-allowed opacity-50"
             : `cursor-pointer ${isCurrentSelection ? "is-current-selection" : ""} ${isSelected ? "selected" : ""}`
@@ -459,13 +459,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
           </div>
         )}
 
-        <div
-          className={
-            cardHeight
-              ? "order-last col-span-2 min-w-0"
-              : "min-w-0 flex-1 basis-0"
-          }
-        >
+        <div className="min-w-0 flex-1 basis-0">
           <div className="flex min-w-0 items-center gap-2">
             {item.type === "hint" && data.prefix ? (
               <span
@@ -529,7 +523,9 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
         </div>
 
         <div
-          className={`flex shrink-0 items-center gap-2 ${cardHeight ? "justify-end" : ""}`}
+          className={
+            cardHeight ? "contents" : "flex shrink-0 items-center gap-2"
+          }
         >
           {data.rightContent
             ? data.rightContent

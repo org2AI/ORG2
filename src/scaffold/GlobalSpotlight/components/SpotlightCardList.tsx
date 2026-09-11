@@ -8,8 +8,8 @@ import type { SpotlightItem } from "../types";
 import { SpotlightItemList } from "./SpotlightItemList";
 import { SpotlightItemRow } from "./SpotlightItemRow";
 
-const CARD_HEIGHT = 80;
-const CARD_GAP = 6;
+const CARD_HEIGHT = 56;
+const CARD_GAP = 4;
 
 /** Keep section headings full-width and never group cards across sections. */
 export function groupSpotlightCards(items: SpotlightItem[]): number[][] {
@@ -100,7 +100,7 @@ export function SpotlightCardList(props: SpotlightCardListProps) {
           return (
             <div
               key={row.key}
-              className={isHeader ? "z-10 bg-bg-2" : "grid grid-cols-3 gap-1.5"}
+              className={isHeader ? "z-10 bg-bg-2" : "grid grid-cols-3 gap-1"}
               style={{
                 position: row.index === stickyIndex ? "sticky" : "absolute",
                 top: row.index === stickyIndex ? 0 : row.start,

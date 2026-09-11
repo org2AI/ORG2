@@ -11,7 +11,7 @@ Production path: `GlobalSpotlightInner` → `SpotlightCommandView` → `Spotligh
 
 Lifecycle matrix: active view mounts listeners/observers; view switches and close unmount them; hidden/idle creates no polling; focus return requires no data refresh. Network, auth, provider, transport and multi-machine data transitions are unaffected. Preference survives close/restart through local storage; deleting the key restores TUI. No schema or dependency changes.
 
-Automated verification: 8 tests passed; full frontend typecheck, scoped lint, and diff whitespace check passed. Verified on the isolated PR branch from the latest develop: three cards per row, 80px height, single-line labels, 8px padding, 6px spacing, and a fixed-width disclosure slot during selection changes.
+Automated verification: 9 tests passed; full frontend typecheck, scoped lint, and diff whitespace check passed. Verified on the isolated PR branch from the latest develop: three cards per row, 56px height, single-line labels, compact horizontal content, 4px spacing, hidden GUI breadcrumbs, and hover-only disclosure overlays that consume no layout space.
 
 Verification commands:
 

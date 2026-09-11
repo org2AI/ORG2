@@ -47,28 +47,28 @@ describe("SpotlightItemRow selectionState prop", () => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
   });
 
-  it("reserves card disclosure width across selection changes", () => {
+  it("keeps card disclosures out of layout and hidden during keyboard selection", () => {
     const style = document.createElement("style");
     style.textContent = SPOTLIGHT_STYLES;
     document.head.append(style);
     try {
       render({
-        cardHeight: 80,
+        cardHeight: 56,
         isSelected: false,
         item: { ...props.item, data: { showDisclosureChevron: true } },
       });
       const disclosure = () =>
         container.querySelector<HTMLElement>(".spotlight-disclosure-chevron")!;
-      expect(getComputedStyle(disclosure()).width).toBe("1rem");
+      expect(getComputedStyle(disclosure()).position).toBe("absolute");
       expect(getComputedStyle(disclosure()).opacity).toBe("0");
       expect(getComputedStyle(disclosure()).transition).toBe(
         "opacity 120ms ease"
       );
       render({ isSelected: true });
-      expect(getComputedStyle(disclosure()).width).toBe("1rem");
-      expect(getComputedStyle(disclosure()).opacity).toBe("1");
+      expect(getComputedStyle(disclosure()).position).toBe("absolute");
+      expect(getComputedStyle(disclosure()).opacity).toBe("0");
       render({ isSelected: false });
-      expect(getComputedStyle(disclosure()).width).toBe("1rem");
+      expect(getComputedStyle(disclosure()).position).toBe("absolute");
       render({ cardHeight: undefined });
       expect(getComputedStyle(disclosure()).width).toBe("0px");
     } finally {

@@ -18,6 +18,7 @@ export function SpotlightCommandView(props: PaletteBodyProps) {
     <>
       <PaletteBody
         {...props}
+        path={view === "gui" ? [] : props.path}
         contentOverride={
           view === "gui" ? (
             <SpotlightCardList

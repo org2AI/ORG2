@@ -45,15 +45,23 @@ export const SPOTLIGHT_STYLES = `
     transition: width 120ms ease, opacity 120ms ease;
   }
 
-  /* Cards reserve disclosure space so navigation never reflows their header. */
-  .spotlight-item-card .spotlight-disclosure-chevron {
+  .spotlight-item.selected:not(.spotlight-item-card) .spotlight-disclosure-chevron,
+  [data-keyboard-mode="false"] .spotlight-item:not(.spotlight-item-card):hover .spotlight-disclosure-chevron {
     width: 1rem;
+    opacity: 1;
+  }
+
+  /* Card disclosures overlay content only on hover; never consume layout space. */
+  .spotlight-item.spotlight-item-card .spotlight-disclosure-chevron {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 1rem;
+    opacity: 0;
     transition: opacity 120ms ease;
   }
 
-  .spotlight-item.selected .spotlight-disclosure-chevron,
-  [data-keyboard-mode="false"] .spotlight-item:hover .spotlight-disclosure-chevron {
-    width: 1rem;
+  .spotlight-item.spotlight-item-card:hover .spotlight-disclosure-chevron {
     opacity: 1;
   }
 `;

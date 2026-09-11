@@ -772,15 +772,18 @@ export const SessionCommentsProvider: React.FC<
 
   return (
     <SessionCommentsContext.Provider value={value}>
+      {/* File origin survives logout and loss of comment access. Local and writable-fork transcripts keep local navigation. */}
       <SharedSessionFilesProvider
         scope={
-          target && retryAuth
+          session?.importedFrom
             ? {
-                ...target,
+                orgId: session.importedFrom.orgId,
+                sessionId: session.importedFrom.sourceSessionId,
                 endpoint:
-                  session?.importedFrom?.sourceEndpointUrl ??
-                  retryAuth.supabaseUrl,
-                repoPath: session?.repoPath,
+                  session.importedFrom.sourceEndpointUrl ??
+                  session.importedFrom.shareEndpointUrl ??
+                  "",
+                repoPath: session.repoPath,
               }
             : null
         }

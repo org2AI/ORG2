@@ -4,9 +4,15 @@ import { act, createElement, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ComposerSnapshot } from "@src/components/ComposerInput";
+import MarkdownLocalImage from "@src/components/MarkDown/MarkdownLocalImage";
+import type { Session } from "@src/store/session";
 import type { SmokeRoot } from "@src/test/reactSmokeHarness";
 import { createSmokeRoot } from "@src/test/reactSmokeHarness";
 
+import {
+  useIsSessionFileShared,
+  useOpenSessionSharedFile,
+} from "../SharedSessionFilesContext";
 import type { Org2CloudAuthState } from "../org2CloudAuthAtom";
 import { org2CloudAuthAtom } from "../org2CloudAuthAtom";
 import type { CloudOrgMember } from "../org2CloudClient";
@@ -26,6 +32,7 @@ import {
 } from "./SessionCommentsContext";
 
 const mocks = vi.hoisted(() => ({
+  readFile: vi.fn(),
   addComment: vi.fn(),
   getCloudCapabilities: vi.fn(),
   loadCloudOrgMembers: vi.fn(),
@@ -59,6 +66,11 @@ vi.mock("../useOwnedCloudCommentAgentRun", () => ({
     available: false,
     run: mocks.ownerRun,
   }),
+}));
+
+vi.mock("@tauri-apps/plugin-fs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tauri-apps/plugin-fs")>()),
+  readFile: mocks.readFile,
 }));
 
 const LIVE_MESSAGE_ID = "70c0418c-eb0c-4a84-8a52-1bca10e605b7";
@@ -416,5 +428,169 @@ describe("SessionCommentsProvider failed Team Chat retry", () => {
         authIdentityKey: "https://cloud-a.test|other-user",
       })
     );
+  });
+});
+
+vi.mock("../SharedSessionFileViewer", () => ({
+  default: ({
+    reference,
+  }: {
+    reference: { endpoint: string; source: { sessionId: string } };
+  }) =>
+    createElement("output", {
+      "data-file-endpoint": reference.endpoint,
+      "data-file-session": reference.source.sessionId,
+    }),
+}));
+
+describe("shared-file navigation origin", () => {
+  let root: SmokeRoot;
+  const auth = {
+    kind: "org2_cloud" as const,
+    supabaseUrl: "https://cloud.example",
+    supabaseAnonKey: "anon",
+    userId: "u1",
+    accessToken: "token",
+    refreshToken: "refresh",
+    expiresAt: 9999999999,
+  };
+  const local = {
+    session_id: "local",
+    category: "rust_agent",
+    repoPath: "/workspace",
+    orgId: "cloud:org-1",
+  } as Session;
+  const imported = {
+    ...local,
+    importedFrom: {
+      orgId: "org-1",
+      sourceSessionId: "remote",
+      sourceEndpointUrl: "https://source.example",
+      ownerMemberId: "owner",
+      epoch: 1,
+      seq: 0,
+      count: 1,
+    },
+  } as Session;
+  const localOpen = vi.fn();
+  function FileAction() {
+    const shared = useIsSessionFileShared();
+    const open = useOpenSessionSharedFile();
+    return createElement(
+      "button",
+      {
+        "data-shared": String(shared),
+        onClick: () => {
+          if (!open("report.md")) localOpen();
+        },
+      },
+      "Open file"
+    );
+  }
+  beforeEach(() => {
+    localOpen.mockClear();
+    mocks.readFile.mockReset();
+    root = createSmokeRoot();
+    mocks.useSessionComments.mockReturnValue({
+      comments: [],
+      state: "ready",
+      refresh: vi.fn(),
+      addComment: vi.fn(),
+      editComment: vi.fn(),
+      deleteComment: vi.fn(),
+      resolveComment: vi.fn(),
+    });
+    mocks.loadCloudOrgMembers.mockResolvedValue({ auth, members: [] });
+    mocks.getCloudCapabilities.mockResolvedValue({});
+  });
+  afterEach(async () => root.unmount());
+  async function render(
+    store: ReturnType<typeof createStore>,
+    session: Session,
+    target: { orgId: string; sessionId: string } | null
+  ) {
+    await root.render(
+      createElement(
+        Provider,
+        { store },
+        createElement(
+          SessionCommentsProvider,
+          { session, targetOverride: target, events: null },
+          createElement(FileAction),
+          session.importedFrom
+            ? createElement(MarkdownLocalImage, {
+                src: "/workspace/report.png",
+                alt: "remote image",
+              })
+            : null
+        )
+      )
+    );
+  }
+  async function click() {
+    await act(async () => {
+      (root.container.querySelector("button") as HTMLButtonElement).click();
+    });
+  }
+  it("keeps remote paths remote after logout and comment-target loss", async () => {
+    const store = createStore();
+    store.set(org2CloudAuthAtom, auth);
+    await render(store, imported, { orgId: "org-1", sessionId: "remote" });
+    await act(async () => {
+      store.set(org2CloudAuthAtom, null);
+    });
+    await render(store, imported, null);
+    expect(
+      root.container.querySelector("button")?.getAttribute("data-shared")
+    ).toBe("true");
+    await click();
+    expect(localOpen).not.toHaveBeenCalled();
+    expect(mocks.readFile).not.toHaveBeenCalled();
+    expect(
+      root.container.querySelector("output")?.getAttribute("data-file-endpoint")
+    ).toBe("https://source.example");
+    expect(
+      root.container.querySelector("output")?.getAttribute("data-file-session")
+    ).toBe("remote");
+  });
+  it.each([
+    local,
+    {
+      ...local,
+      forkedFrom: { orgId: "org-1", sourceSessionId: "parent" },
+    } as Session,
+  ])(
+    "keeps local and writable-fork files local despite a comment target",
+    async (session) => {
+      const store = createStore();
+      store.set(org2CloudAuthAtom, auth);
+      await render(store, session, { orgId: "org-1", sessionId: "parent" });
+      expect(
+        root.container.querySelector("button")?.getAttribute("data-shared")
+      ).toBe("false");
+      await click();
+      expect(localOpen).toHaveBeenCalledOnce();
+      expect(root.container.querySelector("output")).toBeNull();
+    }
+  );
+  it("does not resolve legacy remote origins against a newly selected endpoint", async () => {
+    const store = createStore();
+    store.set(org2CloudAuthAtom, auth);
+    await render(
+      store,
+      {
+        ...imported,
+        importedFrom: {
+          ...imported.importedFrom!,
+          sourceEndpointUrl: undefined,
+        },
+      },
+      null
+    );
+    await click();
+    expect(localOpen).not.toHaveBeenCalled();
+    expect(
+      root.container.querySelector("output")?.getAttribute("data-file-endpoint")
+    ).toBe("");
   });
 });

@@ -3,6 +3,17 @@ import { z } from "zod/v4";
 import { type CloudEndpoint } from "./config";
 import { fetchWithTransportRetry } from "./org2CloudFetchRetry";
 
+export class SharedSessionFileRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number | null,
+    readonly recoveryPending = false
+  ) {
+    super(message);
+    this.name = "SharedSessionFileRequestError";
+  }
+}
+
 export const SHARED_FILE_MAX_BYTES = 32 * 1024 * 1024;
 const FileSchema = z.object({
   id: z.string().uuid(),
@@ -63,8 +74,9 @@ async function rpc(
       }
     );
     if (!response.ok)
-      throw new Error(
-        `Shared file request failed (${response.status}). Check session access, file quota, and server support.`
+      throw new SharedSessionFileRequestError(
+        `Shared file request failed (${response.status}). Check session access, file quota, and server support.`,
+        response.status
       );
     return await response.json();
   } finally {

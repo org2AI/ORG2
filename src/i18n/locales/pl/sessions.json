@@ -2673,5 +2673,14 @@
     "stale": "Ostatnia obserwacja ma ponad dwie godziny",
     "disabled": "Próbkowanie wstrzymane dla tego wyłączonego konta",
     "limit": "Wyświetlanie do 128 kont"
+  },
+  "sharedFile": {
+    "downloaded": "Zapisano w folderze Pobrane",
+    "downloadError": "Nie można zapisać w folderze Pobrane",
+    "title": "Udostępniony plik",
+    "error": "Nie można otworzyć tego pliku. Sprawdź konto, serwer i dostęp do sesji, a następnie ponownie otwórz link.",
+    "downloadPreview": "Pobierz ten plik, aby wyświetlić jego zawartość",
+    "download": "Pobierz",
+    "loading": "Ładowanie udostępnionego pliku…"
   }
 }

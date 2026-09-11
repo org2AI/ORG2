@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { isRetryableCloudRequestError } from "./org2CloudFetchRetry";
 import {
   SHARED_FILE_MAX_BYTES,
+  SharedSessionFileRequestError,
   encodeFileBytes,
   fileSha256,
+  findSharedSessionFileRevisions,
   readSharedSessionFile,
   uploadSharedSessionFile,
 } from "./sharedSessionFilesClient";
@@ -17,6 +20,35 @@ const endpoint = {
 const id = "11111111-1111-4111-8111-111111111111";
 afterEach(() => vi.unstubAllGlobals());
 describe("shared file wire boundary", () => {
+  it.each([503, 500, 403])(
+    "preserves HTTP %s at lookup and upload boundaries",
+    async (status) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(new Response("error", { status }))
+      );
+      for (const operation of [
+        () =>
+          findSharedSessionFileRevisions("jwt", endpoint, "org", "session", [
+            { path: "/report.md", revision: "r1" },
+          ]),
+        () =>
+          uploadSharedSessionFile(
+            "jwt",
+            endpoint,
+            "org",
+            "session",
+            "report.md",
+            new Uint8Array([1])
+          ),
+      ]) {
+        const error = await operation().catch((error) => error);
+        expect(error).toBeInstanceOf(SharedSessionFileRequestError);
+        expect(error.status).toBe(status);
+        expect(isRetryableCloudRequestError(error)).toBe(status >= 500);
+      }
+    }
+  );
   it("uploads binary bytes without local paths and verifies server digest", async () => {
     const bytes = new Uint8Array([0, 255, 128, 42]);
     const fetch = vi.fn().mockResolvedValue(

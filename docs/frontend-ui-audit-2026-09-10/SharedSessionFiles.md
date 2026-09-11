@@ -18,4 +18,6 @@
 
 Verdict totals: **0 fix**, **13 keep with reason**, **0 abstract**.
 
-Scope includes the shared provider and EventFileHoverPreview's shared-context guard, neither of which adds visual styling. No unrelated component sweep identified. Native macOS light-theme text/user-file previews, denied state and second-boot previews are captured in the companion verification report. Dark/narrow/loading/PDF checks remain uncovered. JSDOM tests additionally establish lifecycle and safe text behavior.
+Scope includes the shared provider and EventFileHoverPreview's shared-context guard, neither of which adds visual styling. No unrelated component sweep identified. Native macOS light-theme text/user-file previews, denied state and second-boot previews were checked in the native run; screenshots were removed at the author’s request. Dark/narrow/loading/PDF checks remain uncovered. JSDOM tests additionally establish lifecycle and safe text behavior.
+
+Review follow-up: the file provider uses persisted remote-replay provenance, independently of comment admission and authentication. This changes navigation ownership only; the existing UI verdicts remain applicable.

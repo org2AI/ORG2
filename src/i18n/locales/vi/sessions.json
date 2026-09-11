@@ -2673,5 +2673,14 @@
     "stale": "Lần quan sát gần nhất đã hơn hai giờ",
     "disabled": "Đã tạm dừng lấy mẫu cho tài khoản bị tắt này",
     "limit": "Hiển thị tối đa 128 tài khoản"
+  },
+  "sharedFile": {
+    "downloaded": "Đã lưu vào thư mục Tải xuống",
+    "downloadError": "Không thể lưu vào thư mục Tải xuống",
+    "title": "Tệp được chia sẻ",
+    "error": "Không thể mở tệp này. Hãy kiểm tra tài khoản, máy chủ và quyền truy cập phiên rồi mở lại liên kết.",
+    "downloadPreview": "Tải tệp này xuống để xem nội dung",
+    "download": "Tải xuống",
+    "loading": "Đang tải tệp được chia sẻ…"
   }
 }

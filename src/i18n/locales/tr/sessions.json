@@ -2673,5 +2673,14 @@
     "stale": "Son gözlem iki saatten eski",
     "disabled": "Bu devre dışı hesap için örnekleme duraklatıldı",
     "limit": "En fazla 128 hesap gösteriliyor"
+  },
+  "sharedFile": {
+    "downloaded": "İndirilenler klasörüne kaydedildi",
+    "downloadError": "İndirilenler klasörüne kaydedilemedi",
+    "title": "Paylaşılan dosya",
+    "error": "Bu dosya açılamıyor. Hesabınızı, sunucuyu ve oturum erişiminizi kontrol edip bağlantıyı yeniden açın.",
+    "downloadPreview": "İçeriğini görmek için bu dosyayı indirin",
+    "download": "İndir",
+    "loading": "Paylaşılan dosya yükleniyor…"
   }
 }

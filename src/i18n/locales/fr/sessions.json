@@ -2673,5 +2673,14 @@
     "stale": "La dernière observation date de plus de deux heures",
     "disabled": "Échantillonnage en pause pour ce compte désactivé",
     "limit": "Affichage de 128 comptes au maximum"
+  },
+  "sharedFile": {
+    "downloaded": "Enregistré dans Téléchargements",
+    "downloadError": "Impossible d’enregistrer dans Téléchargements",
+    "title": "Fichier partagé",
+    "error": "Impossible d’ouvrir ce fichier. Vérifiez votre compte, le serveur et l’accès à la session, puis rouvrez le lien.",
+    "downloadPreview": "Téléchargez ce fichier pour voir son contenu",
+    "download": "Télécharger",
+    "loading": "Chargement du fichier partagé…"
   }
 }

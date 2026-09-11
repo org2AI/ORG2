@@ -14,7 +14,8 @@ vi.mock("./org2CloudCapabilities", () => ({
   getCloudCapabilitiesConfirmed: mocks.capabilities,
 }));
 vi.mock("./prepareSharedCommentFiles", () => ({ readBoundedFile: mocks.read }));
-vi.mock("./sharedSessionFilesClient", () => ({
+vi.mock("./sharedSessionFilesClient", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./sharedSessionFilesClient")>()),
   findSharedSessionFileRevisions: mocks.find,
   uploadSharedSessionFile: mocks.upload,
 }));

@@ -6,6 +6,7 @@ import { getCloudCapabilitiesConfirmed } from "./org2CloudCapabilities";
 import { readBoundedFile } from "./prepareSharedCommentFiles";
 import { collectSessionSharedFiles } from "./sessionSharedFileCandidates";
 import {
+  SharedSessionFileRequestError,
   findSharedSessionFileRevisions,
   uploadSharedSessionFile,
 } from "./sharedSessionFilesClient";
@@ -29,7 +30,11 @@ export async function syncSessionSharedFiles(input: {
     input.endpoint
   );
   if (!probe.confirmed)
-    throw new Error("File sharing capability probe is temporarily unavailable");
+    throw new SharedSessionFileRequestError(
+      "File sharing capability probe is temporarily unavailable",
+      null,
+      true
+    );
   if (!probe.capabilities.sharedSessionFiles) return false;
   for (let offset = 0; offset < candidates.length; offset += 64) {
     const batch = candidates.slice(offset, offset + 64);

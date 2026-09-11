@@ -2673,5 +2673,14 @@
     "stale": "A última observação tem mais de duas horas",
     "disabled": "Amostragem pausada para esta conta desativada",
     "limit": "Mostrando até 128 contas"
+  },
+  "sharedFile": {
+    "downloaded": "Salvo em Downloads",
+    "downloadError": "Não foi possível salvar em Downloads",
+    "title": "Arquivo compartilhado",
+    "error": "Não foi possível abrir este arquivo. Verifique sua conta, o servidor e o acesso à sessão e abra o link novamente.",
+    "downloadPreview": "Baixe este arquivo para visualizar seu conteúdo",
+    "download": "Baixar",
+    "loading": "Carregando arquivo compartilhado…"
   }
 }

@@ -3,6 +3,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -43,6 +44,7 @@ export interface OAuthSessionSetupCopy {
   loading: string;
   failedToLoadBrowser: string;
   retry: string;
+  close: string;
   errorHint: string;
 }
 
@@ -94,6 +96,10 @@ export interface OAuthSessionSetupShellProps {
  * retry, X-button close, and the wizard's external `closeSignal`. Token
  * capture, callback handling and provider metadata stay in the provider
  * component and its capture hook.
+ *
+ * Retry and close are guarded: a retry while a `startLogin` is still in
+ * flight is ignored, and a close (X button or `closeSignal`) while the
+ * browser is already closed does not issue a second native close.
  */
 export function OAuthSessionSetupShell({
   providerId,
@@ -121,6 +127,16 @@ export function OAuthSessionSetupShell({
     reset,
   } = capture;
   const [showBrowser, setShowBrowser] = useState(initiallyOpen);
+  // Mirrors `showBrowser` synchronously so two closes inside one event loop
+  // turn (double click, X click racing a closeSignal) collapse to one native
+  // close before React re-renders.
+  const showBrowserRef = useRef(initiallyOpen);
+  const retryInFlightRef = useRef(false);
+
+  const setBrowserVisibility = useCallback((isOpen: boolean) => {
+    showBrowserRef.current = isOpen;
+    setShowBrowser(isOpen);
+  }, []);
 
   useEffect(() => {
     onBrowserStateChange?.(showBrowser);
@@ -128,16 +144,17 @@ export function OAuthSessionSetupShell({
 
   useEffect(() => {
     if (!isWebviewOpen && isSignedIn) {
-      queueMicrotask(() => setShowBrowser(false));
+      queueMicrotask(() => setBrowserVisibility(false));
     }
-  }, [isSignedIn, isWebviewOpen]);
+  }, [isSignedIn, isWebviewOpen, setBrowserVisibility]);
 
   useOAuthBrowserAutoStart(showBrowser, startLogin);
 
   const handleCloseBrowser = useCallback(() => {
+    if (!showBrowserRef.current) return;
+    setBrowserVisibility(false);
     void closeWebview().catch(() => undefined);
-    setShowBrowser(false);
-  }, [closeWebview]);
+  }, [closeWebview, setBrowserVisibility]);
 
   useEffect(() => {
     if (closeSignal <= 0 || !showBrowser) return;
@@ -145,10 +162,16 @@ export function OAuthSessionSetupShell({
   }, [closeSignal, handleCloseBrowser, showBrowser]);
 
   const handleRetry = useCallback(() => {
+    if (retryInFlightRef.current) return;
+    retryInFlightRef.current = true;
     reset();
-    setShowBrowser(true);
-    void startLogin().catch(() => undefined);
-  }, [reset, startLogin]);
+    setBrowserVisibility(true);
+    void startLogin()
+      .finally(() => {
+        retryInFlightRef.current = false;
+      })
+      .catch(() => undefined);
+  }, [reset, setBrowserVisibility, startLogin]);
 
   const displayError = error ?? tokenError;
   const currentStep = hasToken ? 2 : 1;
@@ -173,7 +196,7 @@ export function OAuthSessionSetupShell({
               size="default"
               loading={isSigningIn || isWebviewLoading}
               disabled={isSigningIn || isWebviewLoading}
-              onClick={() => setShowBrowser(true)}
+              onClick={() => setBrowserVisibility(true)}
               className="h-8 min-h-8"
               data-testid={`${providerId}-oauth-signin`}
             >
@@ -204,6 +227,8 @@ export function OAuthSessionSetupShell({
                 />
               }
               iconOnly
+              aria-label={copy.retry}
+              title={copy.retry}
               onClick={handleRetry}
             />
             <Button
@@ -213,6 +238,8 @@ export function OAuthSessionSetupShell({
                 <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
               }
               iconOnly
+              aria-label={copy.close}
+              title={copy.close}
               onClick={handleCloseBrowser}
               data-testid={`${providerId}-oauth-browser-close`}
             />
@@ -252,7 +279,10 @@ export function OAuthSessionSetupShell({
             data-testid={`${providerId}-oauth-webview-container`}
           >
             {(isSigningIn || isWebviewLoading) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-bg-1">
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-bg-1"
+                role="status"
+              >
                 <HugeiconsIcon
                   icon={Loading03Icon}
                   data-icon="loader-2"
@@ -263,7 +293,10 @@ export function OAuthSessionSetupShell({
               </div>
             )}
             {displayError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-bg-1 p-6 text-center">
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center bg-bg-1 p-6 text-center"
+                role="alert"
+              >
                 <HugeiconsIcon
                   icon={AlertCircleIcon}
                   data-icon="alert-circle"

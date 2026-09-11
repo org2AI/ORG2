@@ -36,6 +36,7 @@ const copy: OAuthSessionSetupCopy = {
   loading: "Loading",
   failedToLoadBrowser: "Browser failed",
   retry: "Retry",
+  close: "Close",
   errorHint: "Try signing in again",
 };
 
@@ -314,5 +315,198 @@ describe("OAuthSessionSetupShell idle notices", () => {
     });
 
     expect(container.textContent).toContain("Id Token: null");
+  });
+});
+
+describe("OAuthSessionSetupShell retry coalescing and close idempotency", () => {
+  it("ignores a second retry while the first startLogin is still in flight", async () => {
+    let resolveStart: () => void = () => {};
+    const startLogin = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveStart = resolve;
+        })
+    );
+    const capture = makeCapture({ error: "network unavailable", startLogin });
+    renderShell({ capture, initiallyOpen: true });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    expect(startLogin).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveStart();
+    });
+
+    const retry = query<HTMLButtonElement>('button[aria-label="Retry"]');
+    expect(retry).not.toBeNull();
+    act(() => {
+      retry?.click();
+      retry?.click();
+    });
+    expect(capture.reset).toHaveBeenCalledTimes(1);
+    expect(startLogin).toHaveBeenCalledTimes(2);
+
+    // Still in flight: a later click is coalesced too.
+    act(() => query<HTMLButtonElement>('button[aria-label="Retry"]')?.click());
+    expect(startLogin).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveStart();
+      await Promise.resolve();
+    });
+    act(() => query<HTMLButtonElement>('button[aria-label="Retry"]')?.click());
+    expect(startLogin).toHaveBeenCalledTimes(3);
+    expect(capture.reset).toHaveBeenCalledTimes(2);
+  });
+
+  it("releases the retry guard when startLogin rejects", async () => {
+    const startLogin = vi.fn(() => Promise.resolve());
+    startLogin
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("boom"));
+    const capture = makeCapture({ startLogin });
+    renderShell({ capture, initiallyOpen: true });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    expect(startLogin).toHaveBeenCalledTimes(1);
+
+    const retry = () => query<HTMLButtonElement>('button[aria-label="Retry"]');
+    await act(async () => {
+      retry()?.click();
+      await Promise.resolve();
+    });
+    expect(startLogin).toHaveBeenCalledTimes(2);
+
+    await flushMicrotasks();
+    act(() => retry()?.click());
+    expect(startLogin).toHaveBeenCalledTimes(3);
+  });
+
+  it("issues one native close for a double X click", () => {
+    const capture = makeCapture({ isWebviewOpen: true });
+    const onBrowserStateChange = vi.fn();
+    renderShell({ capture, initiallyOpen: true, onBrowserStateChange });
+
+    const close = closeButton();
+    expect(close).not.toBeNull();
+    act(() => {
+      close?.click();
+      close?.click();
+    });
+
+    expect(capture.closeWebview).toHaveBeenCalledTimes(1);
+    expect(browserShell()).toBeNull();
+    expect(onBrowserStateChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("does not close natively again when a closeSignal follows an X close", async () => {
+    const capture = makeCapture({ isWebviewOpen: true });
+    renderShell({ capture, initiallyOpen: true, closeSignal: 0 });
+
+    act(() => closeButton()?.click());
+    expect(capture.closeWebview).toHaveBeenCalledTimes(1);
+
+    renderShell({ capture, initiallyOpen: true, closeSignal: 1 });
+    await flushMicrotasks();
+    expect(capture.closeWebview).toHaveBeenCalledTimes(1);
+    expect(browserShell()).toBeNull();
+  });
+
+  it("closes once when a closeSignal and an X click land in the same turn", async () => {
+    const capture = makeCapture({ isWebviewOpen: true });
+    renderShell({ capture, initiallyOpen: true, closeSignal: 0 });
+
+    const close = closeButton();
+    act(() => {
+      root.render(
+        createElement(OAuthSessionSetupShell, {
+          providerId: "provider",
+          containerRef: createRef<HTMLDivElement>(),
+          hasToken: false,
+          copy,
+          capture,
+          initiallyOpen: true,
+          closeSignal: 1,
+        })
+      );
+      close?.click();
+    });
+    await flushMicrotasks();
+
+    expect(capture.closeWebview).toHaveBeenCalledTimes(1);
+    expect(browserShell()).toBeNull();
+  });
+
+  it("clears timers on unmount after a retry reopened the browser", async () => {
+    const capture = makeCapture({ isWebviewOpen: true });
+    renderShell({ capture, initiallyOpen: true });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    expect(capture.startLogin).toHaveBeenCalledTimes(1);
+
+    act(() => closeButton()?.click());
+    expect(browserShell()).toBeNull();
+    act(() => signInButton()?.click());
+    expect(vi.getTimerCount()).toBe(1);
+
+    act(() => root.unmount());
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(capture.startLogin).toHaveBeenCalledTimes(1);
+
+    root = createRoot(container);
+  });
+});
+
+describe("OAuthSessionSetupShell accessibility semantics", () => {
+  it("labels the icon-only refresh and close controls", () => {
+    renderShell({ capture: makeCapture(), initiallyOpen: true });
+
+    const retry = query<HTMLButtonElement>('button[aria-label="Retry"]');
+    const close = closeButton();
+    expect(retry?.getAttribute("title")).toBe("Retry");
+    expect(close?.getAttribute("aria-label")).toBe("Close");
+    expect(close?.getAttribute("title")).toBe("Close");
+  });
+
+  it("exposes the loading overlay as a status region", () => {
+    renderShell({
+      capture: makeCapture({ isSigningIn: true }),
+      initiallyOpen: true,
+    });
+
+    const status = query('[role="status"]');
+    expect(status?.textContent).toContain("Loading");
+    expect(query('[role="alert"]')).toBeNull();
+  });
+
+  it("exposes the error overlay as an alert", () => {
+    renderShell({
+      capture: makeCapture({ error: "network unavailable" }),
+      initiallyOpen: true,
+    });
+
+    const alert = query('[role="alert"]');
+    expect(alert?.textContent).toContain("Browser failed");
+    expect(alert?.textContent).toContain("network unavailable");
+    expect(query('[role="status"]')).toBeNull();
+  });
+
+  it("marks the active step with aria-current", () => {
+    renderShell({ capture: makeCapture(), initiallyOpen: true });
+    let current = container.querySelectorAll('[aria-current="step"]');
+    expect(current).toHaveLength(1);
+    expect(current[0].textContent).toBe("1");
+
+    renderShell({
+      capture: makeCapture(),
+      initiallyOpen: true,
+      hasToken: true,
+    });
+    current = container.querySelectorAll('[aria-current="step"]');
+    expect(current).toHaveLength(1);
+    expect(current[0].parentElement?.textContent).toContain("Signed in");
   });
 });

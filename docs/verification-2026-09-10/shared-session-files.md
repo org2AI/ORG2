@@ -102,14 +102,6 @@ Log triage: missing-source warnings are the intentional reader fault. Realtime/p
 
 **Open defect outside this feature:** an empty imported cache (`eventCount: 0`) returns `timeRangeStart/timeRangeEnd: null`, while the existing RPC schema accepts optional strings, producing an output-validation error during import. The authoritative boundary is native cache metadata serialization versus `src/api/tauri/rpc/schemas/sessionCore.ts`; these paths are unchanged by this PR. Import subsequently loads the three real events and every file assertion passes, but this is a defect, not an error-free/full-protocol acceptance claim. It requires a separate cache-contract fix.
 
-### Native evidence
-
-![A to B agent file](shared-session-files/received-0.png)
-![B to A agent file](shared-session-files/received-1.png)
-![Received user file](shared-session-files/received-user-0.png)
-![Revoked file](shared-session-files/revoked-file.png)
-![Second cold boot](shared-session-files/cold-boot-0-2.png)
-
 ### Exact final desktop command
 
 ```sh
@@ -132,9 +124,6 @@ The original missing-source, bidirectional deterministic upload, revocation and 
 
 Earlier attempts exposed local test setup issues (database restart port and excluded temporary credential seed), and one existing relay account could not connect. A completed live-file attempt also used an ambiguous link selector; it is not counted as proof of clicking the assistant answer. The final run removes that ambiguity. The provider title side-query initially rejects `thinking:disabled` with HTTP 400 and succeeds through its existing padded-token retry; the main file-generation turn completes. The previously documented empty-cache metadata contract defect remains open.
 
-![Other account opens the actual assistant answer](shared-session-files/real-agent-receiver.png)
-![Direct native download success](shared-session-files/real-agent-downloaded.png)
-
 [Provider/file evidence](shared-session-files/real-provider.json)
 
 Final strict native run: **5/5 passed**, 2m9.1s scenario time (2m16s harness time, excluding builds). The two existing isolated native binaries were rebuilt from the changed worktree. All pre-existing fleet rows remained unchanged; three new scenario rows (one live, two deterministic) retain epoch 1 with nondecreasing event counts. Explicit sync passes and cold-boot metadata writes establish liveness. No watchdog, forced-idle, forced-splash, retry-exhaustion or epoch rewrite was found in either instance's logs. INFO retract-reconcile lines enumerate the organization; no tombstones or access downgrades occurred. See [live cloud ledger](shared-session-files/live-cloud-ledger.json).
@@ -144,3 +133,5 @@ E2E_PROVIDER_MODE=api-key E2E_OPENAI_ACCOUNT=ds1 E2E_API_AGENT_TYPE=deepseek_api
 ```
 
 Follow-up checks: `pnpm exec tsgo --noEmit`; `pnpm exec eslint src/features/Org2Cloud/downloadSharedSessionFile.ts src/features/Org2Cloud/downloadSharedSessionFile.test.ts src/features/Org2Cloud/SharedSessionFileViewer.tsx src/features/Org2Cloud/SharedSessionFileViewer.test.ts`; focused Vitest suite including the new direct-download tests (**162/162 across 19 files**); `node --check tests/e2e/specs/core/cloud-dual-instance-ui.spec.mjs`; `git diff --check`. All passed.
+
+Screenshots are omitted at the author’s request: the native execution results, exact-byte assertions and ledger records provide the requested verification evidence.

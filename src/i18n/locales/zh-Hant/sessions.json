@@ -1050,7 +1050,8 @@
     "sending": "正在傳送…",
     "typeMessage": "輸入訊息…",
     "session": "工作階段",
-    "history": "工作階段"
+    "history": "工作階段",
+    "agentFallback": "Agent"
   },
   "tools": {
     "noResultsFound": "未找到結果",

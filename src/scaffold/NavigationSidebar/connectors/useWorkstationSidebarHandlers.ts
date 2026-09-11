@@ -36,10 +36,8 @@ import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/compone
 import { closeSessionChatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import {
   type Session,
-  type SessionListCategory,
   loadMoreCategory,
   removeSession,
-  sessionPaginationAtom,
   syncSidebarSessionRoster,
   upsertSession,
 } from "@src/store/session";
@@ -71,8 +69,10 @@ import {
 import type { SidebarTabDisposition } from "./sidebarTabNavigation";
 import type { GroupByMode, SessionGroupVisibleCount } from "./types";
 import {
-  isUnifiedLoadMoreId,
-  loadUnifiedReadyCategories,
+  executeSessionPaginationPlan,
+  getLoadMoreGroupId,
+  hasSessionPaginationPlan,
+  isBackendSessionPaginationId,
 } from "./useSessionMenuItems/paginationHelpers";
 
 const log = createLogger("WorkstationSidebar");
@@ -80,8 +80,6 @@ const log = createLogger("WorkstationSidebar");
 interface UseWorkstationSidebarHandlersParams {
   activeSessionId: string;
   sessionMap: Map<string, Session>;
-  isLoadMoreId: (id: string) => SessionListCategory | null;
-  getLoadMoreGroupId: (id: string) => string | null;
   sessionRouteLabel: string;
   goToNewSession: (options?: GoToNewSessionOptions) => void;
   navigateTo: (path: string) => void;
@@ -126,8 +124,6 @@ interface UseWorkstationSidebarHandlersResult {
 export function useWorkstationSidebarHandlers({
   activeSessionId,
   sessionMap,
-  isLoadMoreId,
-  getLoadMoreGroupId,
   sessionRouteLabel,
   goToNewSession,
   navigateTo,
@@ -160,7 +156,6 @@ export function useWorkstationSidebarHandlers({
     [disposeWorkstationTabsWorkspace, disposeEditorCacheForSession]
   );
   const closeSessionChatPanelTabs = useSetAtom(closeSessionChatPanelTabsAtom);
-  const pagination = useAtomValue(sessionPaginationAtom);
   const cloudAuth = useAtomValue(org2CloudAuthAtom);
   const setCloudAuth = useSetAtom(org2CloudAuthAtom);
   const cloudOrgs = useAtomValue(org2CloudOrgsAtom);
@@ -340,15 +335,15 @@ export function useWorkstationSidebarHandlers({
         return;
       }
 
-      if (isUnifiedLoadMoreId(item.id)) {
-        void loadUnifiedReadyCategories({
-          disabled: item.disabled,
-          pagination,
+      if (isBackendSessionPaginationId(item.id)) {
+        if (!hasSessionPaginationPlan(item)) return;
+        void executeSessionPaginationPlan({
+          plan: item.sessionPaginationPlan,
           loadCategory: async (category) => {
             const result = await loadMoreCategory(category);
             revealLoadedSessions(result.sessions);
           },
-        });
+        })?.catch((error) => log.error("Session pagination failed", error));
         return;
       }
 
@@ -360,14 +355,6 @@ export function useWorkstationSidebarHandlers({
             nextCounts.get(loadMoreGroupId) ?? defaultGroupVisibleCount;
           nextCounts.set(loadMoreGroupId, current + defaultGroupVisibleCount);
           return nextCounts;
-        });
-        return;
-      }
-
-      const requestedCategory = isLoadMoreId(item.id);
-      if (requestedCategory) {
-        void loadMoreCategoryAction(requestedCategory).then((result) => {
-          revealLoadedSessions(result.sessions);
         });
         return;
       }
@@ -403,10 +390,7 @@ export function useWorkstationSidebarHandlers({
       openSession(item.id, sessionName, originalSession.repoPath);
     },
     [
-      getLoadMoreGroupId,
       defaultGroupVisibleCount,
-      isLoadMoreId,
-      pagination,
       revealLoadedSessions,
       sessionMap,
       openSession,
@@ -455,10 +439,4 @@ export function useWorkstationSidebarHandlers({
     handleMenuItemClick,
     handleTogglePin,
   };
-}
-
-function loadMoreCategoryAction(
-  sessionListCategory: SessionListCategory
-): ReturnType<typeof loadMoreCategory> {
-  return loadMoreCategory(sessionListCategory);
 }

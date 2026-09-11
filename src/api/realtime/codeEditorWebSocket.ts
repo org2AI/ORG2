@@ -186,14 +186,21 @@ export function getCodeEditorWebSocket(): CodeEditorWebSocketClient | null {
   return wsClientInstance;
 }
 
-// Initialize on module load in the app. Unit tests import broad UI graphs in
-// jsdom; opening a real socket there leaks asynchronous undici events across
-// test files and can fail after the owning test has already completed.
-if (
-  typeof window !== "undefined" &&
-  (process.env.NODE_ENV !== "test" || process.env.ORGII_E2E === "1")
-) {
-  // Auto-connect when app loads
+/**
+ * Desktop-owned startup boundary. Keeping connection creation out of module
+ * evaluation prevents browser-only entry points from opening and retrying a
+ * socket to the local Rust IDE server merely because they import a shared UI
+ * graph. Safe to call repeatedly for secondary mounts/HMR.
+ */
+export function initializeCodeEditorWebSocket(): CodeEditorWebSocketClient | null {
+  if (
+    typeof window === "undefined" ||
+    (process.env.NODE_ENV === "test" && process.env.ORGII_E2E !== "1")
+  ) {
+    return null;
+  }
+  if (wsClientInstance) return wsClientInstance;
+
   wsClientInstance = new CodeEditorWebSocketClient();
   wsClientInstance.connect().catch((err) => {
     log.error("[CodeEditorWS] Failed to connect on init:", err);
@@ -203,4 +210,19 @@ if (
   (
     window as unknown as { __codeEditorWebSocket__: CodeEditorWebSocketClient }
   ).__codeEditorWebSocket__ = wsClientInstance;
+
+  return wsClientInstance;
+}
+
+export function disposeCodeEditorWebSocket(): void {
+  wsClientInstance?.disconnect();
+  wsClientInstance = null;
+  if (typeof window !== "undefined") {
+    Reflect.deleteProperty(
+      window as unknown as {
+        __codeEditorWebSocket__?: CodeEditorWebSocketClient;
+      },
+      "__codeEditorWebSocket__"
+    );
+  }
 }

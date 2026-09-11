@@ -1050,7 +1050,8 @@
     "sending": "Sending…",
     "typeMessage": "Type a message…",
     "session": "Session",
-    "history": "Sessions"
+    "history": "Sessions",
+    "agentFallback": "Agent"
   },
   "planning": {
     "agentTyping": "Agent is typing...",

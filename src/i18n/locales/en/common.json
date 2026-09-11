@@ -687,7 +687,6 @@
     "noSessionsFound": "No sessions found",
     "typeToSearchFiles": "Type to search files...",
     "selectFileToViewChanges": "Select a file to view changes",
-    "selectSidebarFileToViewChanges": "Select a file in the sidebar",
     "failedToLoadHistory": "Failed to load history",
     "noGitHistory": "No Git history available",
     "noCommitHistory": "No commits found",
@@ -749,7 +748,8 @@
     "selectRepositoryFromWorkspace": "Choose a workspace repository",
     "noData": "No data",
     "noSessionHistoryForFile": "No session activity found for {{file}}",
-    "noSessionHistory": "No session history"
+    "noSessionHistory": "No session history",
+    "selectSidebarFileToViewChanges": "Select a file in the sidebar"
   },
   "inbox": {
     "scrollToBottom": "Scroll to bottom",
@@ -771,8 +771,6 @@
     "chromeWindowOpen": "Chrome window is open — interact directly, then return to agent",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
-    "switchToUnifiedDiff": "Switch to unified diff",
-    "switchToSplitDiff": "Switch to split diff",
     "split": "Split",
     "publishingBranch": "Publishing...",
     "notGitInitialized": "Not git initialized",
@@ -864,7 +862,9 @@
       "webviewHiddenTitle": "Webview temporarily hidden",
       "webviewHiddenBody": "Close the menu or dialog to show it again."
     },
-    "unsavedChangesTitle": "Unsaved Changes"
+    "unsavedChangesTitle": "Unsaved Changes",
+    "switchToUnifiedDiff": "Switch to unified diff",
+    "switchToSplitDiff": "Switch to split diff"
   },
   "git": {
     "loading": "Loading git status...",

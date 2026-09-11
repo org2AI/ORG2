@@ -687,7 +687,6 @@
     "noSessionsFound": "未找到 Session",
     "typeToSearchFiles": "输入以搜索文件...",
     "selectFileToViewChanges": "选择文件以查看变更",
-    "selectSidebarFileToViewChanges": "在侧边栏选择文件",
     "failedToLoadHistory": "加载历史记录失败",
     "noGitHistory": "暂无 Git 历史记录",
     "noCommitHistory": "未找到提交记录",
@@ -749,7 +748,8 @@
     "selectRepositoryFromWorkspace": "选择工作区仓库",
     "noData": "无数据",
     "noSessionHistoryForFile": "未找到 {{file}} 的会话活动",
-    "noSessionHistory": "暂无会话历史"
+    "noSessionHistory": "暂无会话历史",
+    "selectSidebarFileToViewChanges": "在侧边栏选择文件"
   },
   "inbox": {
     "scrollToBottom": "滚动到底部",
@@ -771,8 +771,6 @@
     "chromeWindowOpen": "Chrome 窗口已打开 — 请直接操作，完成后返回 Agent",
     "waitingForScreenshot": "等待浏览器截图...",
     "unified": "统一",
-    "switchToUnifiedDiff": "切换为统一差异视图",
-    "switchToSplitDiff": "切换为并排差异视图",
     "split": "分屏",
     "publishingBranch": "正在 Publish...",
     "notGitInitialized": "未初始化 Git",
@@ -864,7 +862,9 @@
       "webviewHiddenTitle": "网页视图已临时隐藏",
       "webviewHiddenBody": "关闭菜单或弹窗即可重新显示。"
     },
-    "unsavedChangesTitle": "未保存的更改"
+    "unsavedChangesTitle": "未保存的更改",
+    "switchToUnifiedDiff": "切换为统一差异视图",
+    "switchToSplitDiff": "切换为并排差异视图"
   },
   "git": {
     "loading": "正在加载 Git 状态...",

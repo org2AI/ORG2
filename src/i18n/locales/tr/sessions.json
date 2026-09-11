@@ -1050,7 +1050,8 @@
     "sending": "Gönderiliyor…",
     "typeMessage": "Bir mesaj yazın…",
     "session": "Oturum",
-    "history": "Oturumlar"
+    "history": "Oturumlar",
+    "agentFallback": "Agent"
   },
   "tools": {
     "noResultsFound": "Sonuç bulunamadı",

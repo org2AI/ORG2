@@ -855,7 +855,6 @@
     "noSessionsFound": "Session을 찾을 수 없습니다",
     "typeToSearchFiles": "파일을 검색하려면 입력...",
     "selectFileToViewChanges": "변경사항을 보려면 파일을 선택하세요",
-    "selectSidebarFileToViewChanges": "사이드바에서 파일 선택",
     "failedToLoadHistory": "기록 로드 실패",
     "noGitHistory": "Git 기록이 없습니다",
     "noCommitHistory": "커밋을 찾을 수 없습니다",
@@ -918,7 +917,8 @@
     "noData": "데이터 없음",
     "noResults": "결과 없음",
     "noSessionHistoryForFile": "{{file}}에 대한 세션 활동이 없습니다",
-    "noSessionHistory": "세션 기록 없음"
+    "noSessionHistory": "세션 기록 없음",
+    "selectSidebarFileToViewChanges": "사이드바에서 파일 선택"
   },
   "inbox": {
     "scrollToBottom": "맨 아래로",
@@ -940,8 +940,6 @@
     "chromeWindowOpen": "Chrome 창이 열려 있습니다 — 직접 조작한 후 Agent로 돌아가세요",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
-    "switchToUnifiedDiff": "통합 diff로 전환",
-    "switchToSplitDiff": "분할 diff로 전환",
     "split": "Split",
     "publishingBranch": "Publishing...",
     "notGitInitialized": "Git 초기화 안 됨",
@@ -1033,7 +1031,9 @@
         "skipped": "건너뜀",
         "passed": "통과"
       }
-    }
+    },
+    "switchToUnifiedDiff": "통합 diff로 전환",
+    "switchToSplitDiff": "분할 diff로 전환"
   },
   "git": {
     "loading": "Git 상태 로딩 중...",

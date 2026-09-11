@@ -3,8 +3,7 @@ export { default as SidebarBase } from "./SidebarBase";
 
 export { default as HoverSidebar } from "./HoverSidebar";
 
-export { SidebarList } from "./blocks";
-
+// =====================================
 export { default as NavigationMenu } from "./components/NavigationMenu";
 export type { NavigationMenuItem } from "./components/NavigationMenu/config";
 
@@ -14,5 +13,3 @@ export {
 } from "./contexts/ForceVisibleContext";
 
 export { SIDEBAR_STYLE, SIDEBAR_PADDING } from "./config";
-
-export { WorkstationSidebarConnector } from "./connectors";

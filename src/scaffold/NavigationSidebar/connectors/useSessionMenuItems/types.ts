@@ -75,8 +75,6 @@ export interface UseSessionMenuItemsResult {
   menuItems: NavigationMenuItem[];
   sessionMap: Map<string, Session>;
   subagentParentIds: ReadonlySet<string>;
-  isLoadMoreId: (id: string) => SessionListCategory | null;
-  getLoadMoreGroupId: (id: string) => string | null;
 }
 
 export type BuildSessionRow = (session: Session) => NavigationMenuItem;
@@ -95,5 +93,6 @@ export type AppendPinnedSessions = (
 export type AppendTrailingLoadMoreItems = (items: NavigationMenuItem[]) => void;
 
 export type LoadMoreRowFor = (
-  category: SessionListCategory
+  category: SessionListCategory,
+  hasVisibleSessionRows: boolean
 ) => NavigationMenuItem | null;

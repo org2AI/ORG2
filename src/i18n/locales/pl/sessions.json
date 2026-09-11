@@ -1050,7 +1050,8 @@
     "sending": "Wysyłanie…",
     "typeMessage": "Wpisz wiadomość…",
     "session": "Sesja",
-    "history": "Sesje"
+    "history": "Sesje",
+    "agentFallback": "Agent"
   },
   "planning": {
     "agentTyping": "Agent pisze...",

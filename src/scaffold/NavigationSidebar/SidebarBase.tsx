@@ -70,6 +70,9 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
     beforeAddNewActions,
     headerActions,
     topBarFollowingContent,
+    solidSurface = false,
+    includeTrafficLightSpace = true,
+    showCollapseButton = true,
   }) => {
     const sidebarContainerRef = useRef<HTMLDivElement>(null);
     const {
@@ -223,7 +226,7 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
             } as React.CSSProperties
           }
         >
-          {IS_WINDOWS_OR_LINUX_HOST ? (
+          {IS_WINDOWS_OR_LINUX_HOST && showCollapseButton ? (
             <div
               className="flex shrink-0 items-center gap-px"
               data-testid="sidebar-chrome-leading-group"
@@ -332,7 +335,7 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
           style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
           aria-hidden
         />
-        {renderChromeRow()}
+        {includeTrafficLightSpace ? renderChromeRow() : null}
         {topBarFollowingContent}
         <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
       </>
@@ -363,7 +366,8 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
     //
     // A floating/hover sidebar overlays workspace content and is always solid,
     // regardless of this preference, so it stays legible over whatever it covers.
-    const isTranslucentSurface = translucentSidebar && !shouldForceVisible;
+    const isTranslucentSurface =
+      translucentSidebar && !shouldForceVisible && !solidSurface;
     const sidebarBackdropFilter = isTranslucentSurface
       ? "var(--sidebar-backdrop)"
       : "none";

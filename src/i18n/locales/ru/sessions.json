@@ -1050,7 +1050,8 @@
     "sending": "Отправка…",
     "typeMessage": "Введите сообщение…",
     "session": "Сессия",
-    "history": "Сессии"
+    "history": "Сессии",
+    "agentFallback": "Agent"
   },
   "tools": {
     "noResultsFound": "Результатов не найдено",

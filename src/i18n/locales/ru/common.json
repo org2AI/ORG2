@@ -855,7 +855,6 @@
     "noSessionsFound": "Session не найдены",
     "typeToSearchFiles": "Введите для поиска файлов...",
     "selectFileToViewChanges": "Выберите файл для просмотра изменений",
-    "selectSidebarFileToViewChanges": "Выберите файл на боковой панели",
     "failedToLoadHistory": "Не удалось загрузить историю",
     "noGitHistory": "История Git недоступна",
     "noCommitHistory": "Коммиты не найдены",
@@ -918,7 +917,8 @@
     "noData": "Нет данных",
     "noResults": "Нет результатов",
     "noSessionHistoryForFile": "Активность сессий для {{file}} не найдена",
-    "noSessionHistory": "Нет истории сессий"
+    "noSessionHistory": "Нет истории сессий",
+    "selectSidebarFileToViewChanges": "Выберите файл на боковой панели"
   },
   "inbox": {
     "scrollToBottom": "Вниз",
@@ -940,8 +940,6 @@
     "chromeWindowOpen": "Окно Chrome открыто — взаимодействуйте напрямую, затем вернитесь к Agent",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
-    "switchToUnifiedDiff": "Переключить на единый diff",
-    "switchToSplitDiff": "Переключить на разделённый diff",
     "split": "Split",
     "publishingBranch": "Publishing...",
     "notGitInitialized": "Git не инициализирован",
@@ -1033,7 +1031,9 @@
         "skipped": "Пропущено",
         "passed": "Пройдено"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Переключить на единый diff",
+    "switchToSplitDiff": "Переключить на разделённый diff"
   },
   "git": {
     "loading": "Загрузка статуса Git...",

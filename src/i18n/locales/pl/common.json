@@ -855,7 +855,6 @@
     "noSessionsFound": "Nie znaleziono sesji",
     "typeToSearchFiles": "Wpisz, aby wyszukać pliki...",
     "selectFileToViewChanges": "Wybierz plik, aby zobaczyć zmiany",
-    "selectSidebarFileToViewChanges": "Wybierz plik na pasku bocznym",
     "failedToLoadHistory": "Nie udało się załadować historii",
     "noGitHistory": "Brak dostępnej historii Git",
     "noCommitHistory": "Nie znaleziono commitów",
@@ -918,7 +917,8 @@
     "noData": "Brak danych",
     "noResults": "Brak wyników",
     "noSessionHistoryForFile": "Nie znaleziono aktywności sesji dla {{file}}",
-    "noSessionHistory": "Brak historii sesji"
+    "noSessionHistory": "Brak historii sesji",
+    "selectSidebarFileToViewChanges": "Wybierz plik na pasku bocznym"
   },
   "inbox": {
     "scrollToBottom": "Przewiń na dół",
@@ -940,8 +940,6 @@
     "chromeWindowOpen": "Okno Chrome jest otwarte — wchodź w interakcję bezpośrednio, a następnie wróć do Agenta",
     "waitingForScreenshot": "Oczekiwanie na zrzut ekranu z przeglądarki...",
     "unified": "Ujednolicony",
-    "switchToUnifiedDiff": "Przełącz na ujednolicony diff",
-    "switchToSplitDiff": "Przełącz na podzielony diff",
     "split": "Podzielony",
     "publishingBranch": "Publikowanie...",
     "notGitInitialized": "Git nie został zainicjowany",
@@ -1033,7 +1031,9 @@
         "skipped": "Pominięte",
         "passed": "Zaliczone"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Przełącz na ujednolicony diff",
+    "switchToSplitDiff": "Przełącz na podzielony diff"
   },
   "git": {
     "loading": "Ładowanie statusu Git...",

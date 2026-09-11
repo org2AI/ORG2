@@ -855,7 +855,6 @@
     "noSessionsFound": "Không tìm thấy Session nào",
     "typeToSearchFiles": "Nhập để tìm kiếm tệp...",
     "selectFileToViewChanges": "Chọn tệp để xem thay đổi",
-    "selectSidebarFileToViewChanges": "Chọn tệp trong thanh bên",
     "failedToLoadHistory": "Không thể tải lịch sử",
     "noGitHistory": "Không có lịch sử Git",
     "noCommitHistory": "Không tìm thấy commit",
@@ -918,7 +917,8 @@
     "noData": "Không có dữ liệu",
     "noResults": "Không có kết quả",
     "noSessionHistoryForFile": "Không tìm thấy hoạt động phiên nào cho {{file}}",
-    "noSessionHistory": "Không có lịch sử phiên"
+    "noSessionHistory": "Không có lịch sử phiên",
+    "selectSidebarFileToViewChanges": "Chọn tệp trong thanh bên"
   },
   "inbox": {
     "scrollToBottom": "Cuộn xuống cuối",
@@ -940,8 +940,6 @@
     "chromeWindowOpen": "Cửa sổ Chrome đang mở — tương tác trực tiếp, sau đó quay lại Agent",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
-    "switchToUnifiedDiff": "Chuyển sang diff hợp nhất",
-    "switchToSplitDiff": "Chuyển sang diff chia đôi",
     "split": "Split",
     "publishingBranch": "Publishing...",
     "notGitInitialized": "Git chưa được khởi tạo",
@@ -1033,7 +1031,9 @@
         "skipped": "Đã bỏ qua",
         "passed": "Đã đạt"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Chuyển sang diff hợp nhất",
+    "switchToSplitDiff": "Chuyển sang diff chia đôi"
   },
   "git": {
     "loading": "Đang tải trạng thái Git...",

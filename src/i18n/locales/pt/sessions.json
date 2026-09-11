@@ -1050,7 +1050,8 @@
     "sending": "Enviando…",
     "typeMessage": "Digite uma mensagem…",
     "session": "Sessão",
-    "history": "Sessões"
+    "history": "Sessões",
+    "agentFallback": "Agent"
   },
   "planning": {
     "agentTyping": "Agent está digitando...",

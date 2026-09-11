@@ -855,7 +855,6 @@
     "noSessionsFound": "Keine Session gefunden",
     "typeToSearchFiles": "Zum Suchen von Dateien eingeben...",
     "selectFileToViewChanges": "Wählen Sie eine Datei, um Änderungen anzuzeigen",
-    "selectSidebarFileToViewChanges": "Datei in der Seitenleiste auswählen",
     "failedToLoadHistory": "Verlauf konnte nicht geladen werden",
     "noGitHistory": "Kein Git-Verlauf verfügbar",
     "noCommitHistory": "Keine Commits gefunden",
@@ -918,7 +917,8 @@
     "noData": "Keine Daten",
     "noResults": "Keine Ergebnisse",
     "noSessionHistoryForFile": "Keine Sitzungsaktivität für {{file}} gefunden",
-    "noSessionHistory": "Kein Sitzungsverlauf"
+    "noSessionHistory": "Kein Sitzungsverlauf",
+    "selectSidebarFileToViewChanges": "Datei in der Seitenleiste auswählen"
   },
   "inbox": {
     "scrollToBottom": "Nach unten scrollen",
@@ -940,8 +940,6 @@
     "chromeWindowOpen": "Chrome-Fenster ist geöffnet — direkt interagieren, dann zum Agent zurückkehren",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
-    "switchToUnifiedDiff": "Zur einheitlichen Diff-Ansicht wechseln",
-    "switchToSplitDiff": "Zur geteilten Diff-Ansicht wechseln",
     "split": "Split",
     "publishingBranch": "Publishing...",
     "notGitInitialized": "Git nicht initialisiert",
@@ -1033,7 +1031,9 @@
         "skipped": "Übersprungen",
         "passed": "Bestanden"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Zur einheitlichen Diff-Ansicht wechseln",
+    "switchToSplitDiff": "Zur geteilten Diff-Ansicht wechseln"
   },
   "git": {
     "loading": "Git-Status wird geladen...",

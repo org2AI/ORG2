@@ -45,7 +45,8 @@
     "diff": "Diff",
     "colleagues": "同事",
     "terminals": "終端機",
-    "openSourceRepo": "開啟原始碼倉庫"
+    "openSourceRepo": "開啟原始碼倉庫",
+    "teamInbox": "Team Inbox"
   },
   "routes": {
     "session": "聊天",
@@ -127,8 +128,10 @@
     "folderCounts": {
       "repo": "{{count}}個倉庫",
       "multiRepoWorkspace": "{{count}}個多倉庫工作區",
-      "repo_plural": "{{count}}個倉庫",
-      "multiRepoWorkspace_plural": "{{count}}個多倉庫工作區"
+      "repo_other": "{{count}} repos",
+      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces",
+      "repo_plural": "{{count}} repos",
+      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces"
     },
     "bottomBar": {
       "settings": "設定",
@@ -673,7 +676,34 @@
       "unresolvedBadge_one": "{{count}} 則未解決評論",
       "unresolvedBadge": "{{count}} 則未解決評論",
       "unreadBadge_one": "{{count}} 則未讀訊息",
-      "unreadBadge": "{{count}} 則未讀訊息"
+      "unreadBadge": "{{count}} 則未讀訊息",
+      "addError": "發送失敗——草稿已保留",
+      "addPlaceholder": "新增評論…",
+      "agentAddressing": "Agent 正在處理…",
+      "agentAuthor": "Agent @{{name}}",
+      "cancel": "取消",
+      "delete": "刪除",
+      "deletedComment": "評論已刪除",
+      "earlierVersion": "來自此工作階段的較早版本",
+      "edit": "編輯",
+      "editedMarker": "已編輯",
+      "empty": "尚無評論",
+      "loadError": "評論載入失敗",
+      "mentionMembers": "提及成員",
+      "notesButton": "工作階段備註",
+      "notesTitle": "工作階段備註",
+      "reply": "回覆",
+      "replyPlaceholder": "回覆…",
+      "resolved": "已解決",
+      "resolvedToggle": "已解決（{{count}}）",
+      "save": "儲存",
+      "searchMembers": "搜尋成員",
+      "send": "發表",
+      "task": {
+        "assignFailed": "評論已發布，但指派 Agent 失敗——請從討論串重試",
+        "mentionSuggestion": "將這則評論指派給 Agent"
+      },
+      "wontFix": "不修復"
     },
     "billing": {
       "openFailed": "無法開啟帳單頁，請重試。"
@@ -823,7 +853,8 @@
       "off": "關閉",
       "memberNote": "由管理員開啟——無需開啟該工作空間，符合條件的會話也會在背景上傳。"
     },
-    "userName": "使用者名稱"
+    "userName": "使用者名稱",
+    "title": "ORG2 雲端"
   },
   "myRole": {
     "deleteRoleMessage": "「{{name}}」將被移除。此操作無法復原。",
@@ -878,6 +909,69 @@
       "stars": "Star 數",
       "updated": "最近更新",
       "forks": "Fork 數"
+    }
+  },
+  "web": {
+    "title": "ORG2 Web",
+    "sessionsNav": "Sessions",
+    "loadingSession": "Loading session…",
+    "readOnly": {
+      "headerTrailing": "Cloud · Read only",
+      "barLabel": "Read only",
+      "barPlaceholder": "Cloud session is read-only"
+    },
+    "sessionsPage": {
+      "loadError": "Sessions could not be loaded",
+      "loading": "Loading sessions…",
+      "empty": "No synced sessions",
+      "select": "Select a session",
+      "emptyHint": "Open ORG2 Desktop and enable Cloud sync for a session.",
+      "selectHint": "Choose a Cloud session from the sidebar.",
+      "retry": "Retry",
+      "organizationLoadErrorHint": "Your organizations could not be loaded. Check your connection and try again.",
+      "organizationRetryingHint": "The cloud service could not be reached. Retrying automatically…",
+      "organizationRefreshErrorHint": "Organizations could not be refreshed. Showing the last successful session list.",
+      "sessionRefreshErrorHint": "Some organization sessions could not be refreshed.",
+      "organizationSetupTitle": "Connect an organization",
+      "organizationSetupHint": "Create an organization for your team, or join one with an invite link or code.",
+      "organizationModeLabel": "Organization setup method",
+      "createOrganization": "Create organization",
+      "joinOrganization": "Join organization",
+      "organizationNamePlaceholder": "Team or organization name",
+      "invitePlaceholder": "Paste an invite link or code"
+    },
+    "sessionPage": {
+      "notFound": "Session not found",
+      "notFoundHint": "It may no longer be shared with this account.",
+      "loading": "Loading session…",
+      "workstationLoading": "Loading session workspace…",
+      "workstationEmptyTitle": "No session files were uploaded",
+      "workstationEmptySubtitle": "This session has no readable file or edit payloads yet.",
+      "workstationLoadErrorFallback": "Session files could not be loaded",
+      "workstationLoadErrorSubtitle": "Agent Station replay remains available.",
+      "workstationRefreshFailedBanner": "Refresh failed. Showing files already available from session events.",
+      "chatTab": "Chat",
+      "workstationTab": "WorkStation",
+      "forkContext": "Fork of {{owner}}'s session",
+      "notesButton": "Session notes",
+      "notesTitle": "Session notes",
+      "notesEmpty": "No session notes yet."
+    },
+    "login": {
+      "title": "Sign in to ORG2 Web",
+      "subtitle": "Review shared sessions, chat history, and replay from any browser.",
+      "continue": "Continue with ORG2 Cloud",
+      "hint": "Use the same ORG2 Cloud account as the desktop app."
+    },
+    "authCallback": {
+      "failed": "Sign-in failed",
+      "tryAgain": "Try again",
+      "completing": "Completing sign-in",
+      "missingCredentials": "The sign-in callback is missing valid credentials.",
+      "missingIdentity": "The sign-in token does not contain a user identity."
+    },
+    "sidebar": {
+      "signOut": "Sign out {{name}}"
     }
   }
 }

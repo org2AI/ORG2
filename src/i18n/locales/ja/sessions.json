@@ -1050,7 +1050,8 @@
     "sending": "送信中…",
     "typeMessage": "メッセージを入力…",
     "session": "セッション",
-    "history": "セッション"
+    "history": "セッション",
+    "agentFallback": "Agent"
   },
   "tools": {
     "noResultsFound": "結果が見つかりません",

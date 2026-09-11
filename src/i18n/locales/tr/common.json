@@ -855,7 +855,6 @@
     "noSessionsFound": "Session bulunamadı",
     "typeToSearchFiles": "Dosyaları aramak için yazın...",
     "selectFileToViewChanges": "Değişiklikleri görmek için bir dosya seçin",
-    "selectSidebarFileToViewChanges": "Kenar çubuğundan dosya seçin",
     "failedToLoadHistory": "Geçmiş yüklenemedi",
     "noGitHistory": "Git geçmişi mevcut değil",
     "noCommitHistory": "Commit bulunamadı",
@@ -918,7 +917,8 @@
     "noData": "Veri yok",
     "noResults": "Sonuç yok",
     "noSessionHistoryForFile": "{{file}} için oturum etkinliği bulunamadı",
-    "noSessionHistory": "Oturum geçmişi yok"
+    "noSessionHistory": "Oturum geçmişi yok",
+    "selectSidebarFileToViewChanges": "Kenar çubuğundan dosya seçin"
   },
   "inbox": {
     "scrollToBottom": "Alta kaydır",
@@ -940,8 +940,6 @@
     "chromeWindowOpen": "Chrome penceresi açık — doğrudan etkileşime geçin, ardından Agent'a dönün",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
-    "switchToUnifiedDiff": "Birleşik fark görünümüne geç",
-    "switchToSplitDiff": "Bölünmüş fark görünümüne geç",
     "split": "Split",
     "publishingBranch": "Publishing...",
     "notGitInitialized": "Git başlatılmadı",
@@ -1033,7 +1031,9 @@
         "skipped": "Atlandı",
         "passed": "Geçti"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Birleşik fark görünümüne geç",
+    "switchToSplitDiff": "Bölünmüş fark görünümüne geç"
   },
   "git": {
     "loading": "Git durumu yükleniyor...",

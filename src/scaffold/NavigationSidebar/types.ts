@@ -4,6 +4,9 @@ import type { IconSvgElement } from "@src/icons";
 
 /** SidebarBase props */
 export interface SidebarBaseProps {
+  solidSurface?: boolean;
+  includeTrafficLightSpace?: boolean;
+  showCollapseButton?: boolean;
   /** Children content */
   children: ReactNode;
   /** Additional class names */

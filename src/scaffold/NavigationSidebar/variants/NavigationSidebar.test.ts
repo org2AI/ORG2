@@ -7,8 +7,20 @@ import type { NavigationMenuItem } from "../components/NavigationMenu/config";
 import NavigationSidebar from "./NavigationSidebar";
 
 vi.mock("../SidebarBase", () => ({
-  default: ({ children }: { children?: ReactNode }) =>
-    createElement("aside", null, children),
+  default: ({
+    children,
+    includeTrafficLightSpace,
+  }: {
+    children?: ReactNode;
+    includeTrafficLightSpace?: boolean;
+  }) =>
+    createElement(
+      "aside",
+      {
+        "data-include-traffic-light-space": String(includeTrafficLightSpace),
+      },
+      children
+    ),
 }));
 
 vi.mock("../components/NavigationMenu", () => ({
@@ -172,5 +184,16 @@ describe("NavigationSidebar", () => {
 
     expect(markup).toContain('aria-busy="true"');
     expect(markup).not.toContain("animate-pulse");
+  });
+
+  it("lets browser-hosted sidebars remove native window chrome spacing", () => {
+    const markup = renderToStaticMarkup(
+      createElement(NavigationSidebar, {
+        menuItems: [],
+        includeTrafficLightSpace: false,
+      })
+    );
+
+    expect(markup).toContain('data-include-traffic-light-space="false"');
   });
 });

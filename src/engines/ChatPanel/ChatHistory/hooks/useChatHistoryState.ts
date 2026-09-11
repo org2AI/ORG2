@@ -23,10 +23,9 @@ import {
   useChatHistory,
   useChatHistoryActions,
 } from "@src/contexts/workspace/ChatContext";
-import { loadErrorAtom, loadStatusAtom } from "@src/engines/SessionCore";
+import type { SessionTranscriptPlatformState } from "@src/engines/ChatPanel/runtime/sessionTranscriptPlatform.types";
 import type { SessionLoadStatus } from "@src/engines/SessionCore";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { useAgentWorkingRef } from "@src/hooks/streaming/useAgentWorkingRef";
 import {
   chatCodeFontSizeAtom,
   chatFontSizeAtom,
@@ -39,7 +38,9 @@ import type { ChatHistoryListHandle } from "../components/ChatHistoryList";
 // Props Interface
 // ============================================
 
-export type UseChatHistoryStateProps = Record<string, never>;
+export interface UseChatHistoryStateProps {
+  platform: SessionTranscriptPlatformState;
+}
 
 // ============================================
 // Return Type
@@ -82,9 +83,9 @@ export interface UseChatHistoryStateReturn {
 // Hook
 // ============================================
 
-export function useChatHistoryState(
-  _props: UseChatHistoryStateProps = {}
-): UseChatHistoryStateReturn {
+export function useChatHistoryState({
+  platform,
+}: UseChatHistoryStateProps): UseChatHistoryStateReturn {
   // ============================================
   // Context & Atoms
   // ============================================
@@ -98,11 +99,6 @@ export function useChatHistoryState(
   const { setIsChatScrolledToBottom, chatContainerRef } =
     useChatHistoryActions();
 
-  const sessionLoadStatus = useAtomValue(loadStatusAtom);
-  const sessionLoadError = useAtomValue(loadErrorAtom);
-  // Colocated subscription: read agent working state via EventStore selector
-  // instead of isSessionActiveAtom to avoid unnecessary re-renders.
-  const isWpGeneWorkingRef = useAgentWorkingRef();
   const chatFontSize = useAtomValue(chatFontSizeAtom);
   const chatCodeFontSize = useAtomValue(chatCodeFontSizeAtom);
   const chatLineHeight = useAtomValue(chatLineHeightAtom);
@@ -135,7 +131,7 @@ export function useChatHistoryState(
     // Refs
     chatContainerRef,
     virtualListRef,
-    isWpGeneWorkingRef,
+    isWpGeneWorkingRef: platform.isAgentWorkingRef,
 
     // Scroll state
     atBottom,
@@ -149,8 +145,8 @@ export function useChatHistoryState(
     chatLineHeight,
 
     // Session loading
-    sessionLoadStatus,
-    sessionLoadError,
+    sessionLoadStatus: platform.loadStatus,
+    sessionLoadError: platform.loadError,
 
     // Callbacks from context
     setIsChatScrolledToBottom,

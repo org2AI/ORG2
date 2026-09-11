@@ -855,7 +855,6 @@
     "noSessionsFound": "Aucune Session trouvée",
     "typeToSearchFiles": "Tapez pour rechercher des fichiers...",
     "selectFileToViewChanges": "Sélectionnez un fichier pour voir les modifications",
-    "selectSidebarFileToViewChanges": "Sélectionnez un fichier dans la barre latérale",
     "failedToLoadHistory": "Échec du chargement de l'historique",
     "noGitHistory": "Aucun historique Git disponible",
     "noCommitHistory": "Aucun commit trouvé",
@@ -918,7 +917,8 @@
     "noData": "Aucune donnée",
     "noResults": "Aucun résultat",
     "noSessionHistoryForFile": "Aucune activité de session trouvée pour {{file}}",
-    "noSessionHistory": "Aucun historique de session"
+    "noSessionHistory": "Aucun historique de session",
+    "selectSidebarFileToViewChanges": "Sélectionnez un fichier dans la barre latérale"
   },
   "inbox": {
     "scrollToBottom": "Aller en bas",
@@ -940,8 +940,6 @@
     "chromeWindowOpen": "La fenêtre Chrome est ouverte — interagissez directement, puis revenez à l'Agent",
     "waitingForScreenshot": "Waiting for browser screenshot...",
     "unified": "Unified",
-    "switchToUnifiedDiff": "Passer au diff unifié",
-    "switchToSplitDiff": "Passer au diff côte à côte",
     "split": "Split",
     "publishingBranch": "Publishing...",
     "notGitInitialized": "Git non initialisé",
@@ -1033,7 +1031,9 @@
         "skipped": "Ignorés",
         "passed": "Réussis"
       }
-    }
+    },
+    "switchToUnifiedDiff": "Passer au diff unifié",
+    "switchToSplitDiff": "Passer au diff côte à côte"
   },
   "git": {
     "loading": "Chargement du statut Git...",

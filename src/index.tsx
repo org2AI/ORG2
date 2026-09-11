@@ -231,6 +231,10 @@ async function initializeApp() {
     process.env.ORGII_DEV_EAGER_APP === "true"
       ? import(/* webpackMode: "eager" */ "@src/App")
       : import("@src/App");
+  const codeEditorWebSocketPromise =
+    import("@src/api/realtime/codeEditorWebSocket").then(
+      ({ initializeCodeEditorWebSocket }) => initializeCodeEditorWebSocket()
+    );
 
   // Clear stale opened repos from previous app session (main window only)
   // Secondary windows should not clear, as they'd wipe main window's registration
@@ -260,6 +264,7 @@ async function initializeApp() {
   const initPromise = Promise.all([
     initTheme(),
     initializeTauriAPIs().then(() => applyWindowsNativeChromeAttribute()),
+    codeEditorWebSocketPromise,
     appModulePromise,
   ]);
 

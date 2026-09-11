@@ -1050,7 +1050,8 @@
     "sending": "Enviando…",
     "typeMessage": "Escribe un mensaje…",
     "session": "Sesión",
-    "history": "Sesiones"
+    "history": "Sesiones",
+    "agentFallback": "Agent"
   },
   "tools": {
     "noResultsFound": "No se encontraron resultados",

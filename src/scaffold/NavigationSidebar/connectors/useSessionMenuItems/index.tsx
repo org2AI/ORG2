@@ -30,10 +30,11 @@ import {
   buildByWorkspaceMenuItems,
 } from "./menuSectionBuilders";
 import {
+  type SessionPaginationPlan,
   appendSessionGroup,
-  getLoadMoreGroupId,
-  getUnifiedLoadMoreState,
-  isLoadMoreId,
+  getCategoryPaginationPlan,
+  getSessionPaginationPhase,
+  getUnifiedPaginationPlan,
   loadMoreRow,
   unifiedLoadMoreRow,
 } from "./paginationHelpers";
@@ -421,31 +422,42 @@ export function useSessionMenuItems({
     ]
   );
 
-  const loadMoreRowFor = useCallback(
-    (category: SessionListCategory): NavigationMenuItem | null => {
-      const state = pagination[category];
-      if (state.generation === 0 || state.phase === "exhausted") return null;
-      const loading = state.phase === "loading";
-      const label = loading
+  const paginationLabelFor = useCallback(
+    (plan: SessionPaginationPlan): string => {
+      const phase = getSessionPaginationPhase(plan);
+      return phase === "loading"
         ? tCommon("sessions:chat.loading")
-        : state.phase === "error"
+        : phase === "error"
           ? tCommon("common:actions.retry", "Retry")
           : tCommon("common:actions.loadMore");
-      return loadMoreRow(category, loading, label);
     },
-    [pagination, tCommon]
+    [tCommon]
+  );
+
+  const loadMoreRowFor = useCallback(
+    (
+      category: SessionListCategory,
+      hasVisibleSessionRows: boolean
+    ): NavigationMenuItem | null => {
+      const plan = getCategoryPaginationPlan(
+        category,
+        pagination[category],
+        hasVisibleSessionRows
+      );
+      return plan
+        ? loadMoreRow(category, plan, paginationLabelFor(plan))
+        : null;
+    },
+    [pagination, paginationLabelFor]
   );
 
   const trailingLoadMoreItems = useMemo<NavigationMenuItem[]>(() => {
-    const state = getUnifiedLoadMoreState(pagination);
-    if (!state.visible) return [];
-    const label = state.loading
-      ? tCommon("sessions:chat.loading")
-      : state.error
-        ? tCommon("common:actions.retry", "Retry")
-        : tCommon("common:actions.loadMore");
-    return [unifiedLoadMoreRow(state, label)];
-  }, [pagination, tCommon]);
+    const plan = getUnifiedPaginationPlan(
+      pagination,
+      listedSessions.length > 0
+    );
+    return plan ? [unifiedLoadMoreRow(plan, paginationLabelFor(plan))] : [];
+  }, [listedSessions.length, pagination, paginationLabelFor]);
 
   const appendTrailingLoadMoreItems = useCallback(
     (items: NavigationMenuItem[]) => {
@@ -504,7 +516,7 @@ export function useSessionMenuItems({
   const appendPinnedSessions = useCallback(
     (items: NavigationMenuItem[], includeBackendPager = false): boolean => {
       const backendRow = includeBackendPager
-        ? loadMoreRowFor("pinned_native")
+        ? loadMoreRowFor("pinned_native", pinnedSessions.length > 0)
         : null;
       if (pinnedSessions.length === 0 && !backendRow) return false;
       items.push(separator("pinned", pinnedLabel));
@@ -630,7 +642,5 @@ export function useSessionMenuItems({
     menuItems,
     sessionMap,
     subagentParentIds,
-    isLoadMoreId,
-    getLoadMoreGroupId,
   };
 }

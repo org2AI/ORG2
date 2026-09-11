@@ -1050,7 +1050,8 @@
     "sending": "Đang gửi…",
     "typeMessage": "Nhập tin nhắn…",
     "session": "Phiên",
-    "history": "Các phiên"
+    "history": "Các phiên",
+    "agentFallback": "Agent"
   },
   "tools": {
     "noResultsFound": "Không tìm thấy kết quả",

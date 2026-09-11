@@ -855,7 +855,6 @@
     "noSessionsFound": "未找到 Session",
     "typeToSearchFiles": "輸入以搜索文件...",
     "selectFileToViewChanges": "選擇文件以查看變更",
-    "selectSidebarFileToViewChanges": "在側邊欄選擇檔案",
     "failedToLoadHistory": "加載歷史記錄失敗",
     "noGitHistory": "暫無 Git 歷史記錄",
     "noCommitHistory": "未找到提交記錄",
@@ -918,7 +917,8 @@
     "noData": "無資料",
     "noResults": "沒有結果",
     "noSessionHistoryForFile": "找不到 {{file}} 的工作階段活動",
-    "noSessionHistory": "尚無工作階段歷史"
+    "noSessionHistory": "尚無工作階段歷史",
+    "selectSidebarFileToViewChanges": "在側邊欄選擇檔案"
   },
   "inbox": {
     "scrollToBottom": "滾動到底部",
@@ -940,8 +940,6 @@
     "chromeWindowOpen": "Chrome 窗口已打開 — 請直接操作，完成後返回 Agent",
     "waitingForScreenshot": "等待瀏覽器截圖...",
     "unified": "統一",
-    "switchToUnifiedDiff": "切換為統一差異檢視",
-    "switchToSplitDiff": "切換為並排差異檢視",
     "split": "分屏",
     "publishingBranch": "正在 Publish...",
     "notGitInitialized": "尚未初始化 Git",
@@ -1033,7 +1031,9 @@
         "skipped": "已跳過",
         "passed": "已通過"
       }
-    }
+    },
+    "switchToUnifiedDiff": "切換為統一差異檢視",
+    "switchToSplitDiff": "切換為並排差異檢視"
   },
   "git": {
     "loading": "正在加載 Git 狀態...",

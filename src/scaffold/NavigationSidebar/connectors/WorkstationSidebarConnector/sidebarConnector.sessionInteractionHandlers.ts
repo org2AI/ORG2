@@ -8,6 +8,7 @@
 import { useCallback } from "react";
 
 import Message from "@src/components/Message";
+import { createLogger } from "@src/hooks/logger";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import { loadMoreCategory } from "@src/store/session";
 import { type ChatPanelNavigateCommand } from "@src/store/ui/chatPanel/surfaceAtoms";
@@ -18,9 +19,14 @@ import {
 } from "@src/util/ui/terminal/chatPanelTuiSessionId";
 
 import type { SidebarTabDisposition } from "../sidebarTabNavigation";
-import { loadUnifiedReadyCategories } from "../useSessionMenuItems/paginationHelpers";
+import {
+  executeSessionPaginationPlan,
+  hasSessionPaginationPlan,
+} from "../useSessionMenuItems/paginationHelpers";
 import { useWorkstationSidebarHandlers } from "../useWorkstationSidebarHandlers";
 import { CLOUD_MY_SESSIONS_LOAD_MORE_ID } from "./cloudScopedMenuItems";
+
+const log = createLogger("SidebarSessionInteractions");
 
 type SidebarHandlersParams = Parameters<
   typeof useWorkstationSidebarHandlers
@@ -38,13 +44,8 @@ interface UseWorkstationSidebarSessionInteractionHandlersParams {
     visibleCount: number;
   }) => void;
   loadedCloudMySessionRowCount: number;
-  sessionPagination: Parameters<
-    typeof loadUnifiedReadyCategories
-  >[0]["pagination"];
   activeSessionId: string;
   sessionMap: SidebarHandlersParams["sessionMap"];
-  isLoadMoreId: SidebarHandlersParams["isLoadMoreId"];
-  getLoadMoreGroupId: SidebarHandlersParams["getLoadMoreGroupId"];
   sessionRouteLabel: string;
   handleGoToNewSession: SidebarHandlersParams["goToNewSession"];
   navigateTo: SidebarHandlersParams["navigateTo"];
@@ -83,11 +84,8 @@ export function useWorkstationSidebarSessionInteractionHandlers({
   cloudMyPaginationScopeKey,
   setCloudMyPagination,
   loadedCloudMySessionRowCount,
-  sessionPagination,
   activeSessionId,
   sessionMap,
-  isLoadMoreId,
-  getLoadMoreGroupId,
   sessionRouteLabel,
   handleGoToNewSession,
   navigateTo,
@@ -118,11 +116,16 @@ export function useWorkstationSidebarSessionInteractionHandlers({
         scopeKey: cloudMyPaginationScopeKey,
         visibleCount: nextVisibleCount,
       });
-      if (nextVisibleCount >= loadedCloudMySessionRowCount) {
-        void loadUnifiedReadyCategories({
-          pagination: sessionPagination,
+      if (
+        nextVisibleCount >= loadedCloudMySessionRowCount &&
+        hasSessionPaginationPlan(item)
+      ) {
+        void executeSessionPaginationPlan({
+          plan: item.sessionPaginationPlan,
           loadCategory: loadMoreCategory,
-        });
+        })?.catch((error) =>
+          log.error("Cloud session pagination failed", error)
+        );
       }
       return true;
     },
@@ -132,7 +135,6 @@ export function useWorkstationSidebarSessionInteractionHandlers({
       defaultGroupVisibleCount,
       handleCloudSessionItemClick,
       loadedCloudMySessionRowCount,
-      sessionPagination,
       setCloudMyPagination,
     ]
   );
@@ -145,8 +147,6 @@ export function useWorkstationSidebarSessionInteractionHandlers({
   } = useWorkstationSidebarHandlers({
     activeSessionId,
     sessionMap,
-    isLoadMoreId,
-    getLoadMoreGroupId,
     sessionRouteLabel,
     goToNewSession: handleGoToNewSession,
     navigateTo,

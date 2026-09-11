@@ -89,8 +89,8 @@ vi.mock("@src/components/Button", () => ({
   }) => React.createElement("button", props, icon, children),
 }));
 
-vi.mock("@src/scaffold/NavigationSidebar", () => ({
-  NavigationSidebar: (props: Record<string, unknown>) => {
+vi.mock("@src/scaffold/NavigationSidebar/variants/NavigationSidebar", () => ({
+  default: (props: Record<string, unknown>) => {
     testState.sidebarProps = props;
     return React.createElement(
       "aside",

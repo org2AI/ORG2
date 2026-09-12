@@ -101,6 +101,7 @@ const ClaudeCodeSessionSetup: React.FC<ClaudeCodeSessionSetupProps> = ({
         loading: t("keyVault.loadingText"),
         failedToLoadBrowser: t("keyVault.failedToLoadBrowser"),
         retry: t("common:actions.retry"),
+        close: t("common:actions.close"),
         errorHint: t("keyVault.claudeCodeSignInErrorHint"),
       }}
       debugContent={

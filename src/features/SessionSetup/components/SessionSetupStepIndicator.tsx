@@ -27,6 +27,7 @@ const SessionSetupStepIndicator: FC<SessionSetupStepIndicatorProps> = ({
               ? "bg-primary-6 text-text-white"
               : "border border-border-2 bg-bg-2 text-text-3",
         ].join(" ")}
+        aria-current={isActive ? "step" : undefined}
       >
         {isPast ? <span className="text-[10px]">✓</span> : step}
       </div>

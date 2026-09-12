@@ -28,6 +28,7 @@ describe("SessionSetupStepIndicator", () => {
     const markup = renderIndicator({ step: 1, currentStep: 1 });
 
     expect(markup).toContain("bg-primary-6 text-text-white");
+    expect(markup).toContain('aria-current="step"');
     expect(markup).toContain("font-medium text-text-1");
     expect(markup).toContain(">1</div>");
     expect(markup).toContain("Step 1");
@@ -50,6 +51,7 @@ describe("SessionSetupStepIndicator", () => {
 
     expect(markup).toContain("border border-border-2 bg-bg-2 text-text-3");
     expect(markup).toContain("font-normal text-text-3");
+    expect(markup).not.toContain("aria-current");
     expect(markup).toContain(">2</div>");
   });
 });

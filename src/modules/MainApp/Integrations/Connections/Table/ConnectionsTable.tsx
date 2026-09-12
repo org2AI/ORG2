@@ -7,6 +7,7 @@ import {
 } from "@src/api/http/integrations";
 import Button from "@src/components/Button";
 import IntegrationIcon from "@src/components/IntegrationIcon";
+import Message from "@src/components/Message";
 import { Placeholder } from "@src/components/Placeholder";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
@@ -14,7 +15,12 @@ import SettingsTable, {
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
 import TabPill from "@src/components/TabPill";
-import { Delete02Icon, HugeiconsIcon } from "@src/icons";
+import {
+  Add01Icon,
+  Delete02Icon,
+  HugeiconsIcon,
+  Refresh04Icon,
+} from "@src/icons";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
@@ -87,6 +93,7 @@ interface ConnectionsTableProps {
   selectedRowId?: string | null;
   onSelectChannel: (compositeId: string | null, mode?: DetailMode) => void;
   onAdd: () => void;
+  onRefresh: () => Promise<void>;
   onRemoveChannel?: (channelType: string, accountId: string) => Promise<void>;
   onRemoveProjectConnection?: (
     connectionId: string,
@@ -101,6 +108,7 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
   selectedRowId,
   onSelectChannel,
   onAdd,
+  onRefresh,
   onRemoveChannel,
   onRemoveProjectConnection,
 }) => {
@@ -325,6 +333,52 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
                   searchValue: searchQuery,
                   onSearchChange: setSearchQuery,
                   searchPlaceholder: t("integrations.searchPlaceholder"),
+                  rightContent: (
+                    <>
+                      <Button
+                        variant="secondary"
+                        size="default"
+                        icon={
+                          <HugeiconsIcon
+                            icon={Refresh04Icon}
+                            data-icon="refresh-cw"
+                            size={14}
+                            className={loading ? "animate-spin" : undefined}
+                          />
+                        }
+                        iconOnly
+                        disabled={loading}
+                        onClick={() => {
+                          void onRefresh().catch((error: unknown) => {
+                            Message.error(
+                              error instanceof Error
+                                ? error.message
+                                : String(error)
+                            );
+                          });
+                        }}
+                        aria-label={tCommon("actions.refresh")}
+                        title={tCommon("actions.refresh")}
+                        data-testid="connections-refresh-button"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="default"
+                        icon={
+                          <HugeiconsIcon
+                            icon={Add01Icon}
+                            data-icon="plus"
+                            size={14}
+                          />
+                        }
+                        iconOnly
+                        onClick={onAdd}
+                        aria-label={t("integrations.addAccount")}
+                        title={t("integrations.addAccount")}
+                        data-testid="connections-add-button"
+                      />
+                    </>
+                  ),
                 }}
                 emptyTitle={t("integrations.noConnections")}
                 emptyAction={{

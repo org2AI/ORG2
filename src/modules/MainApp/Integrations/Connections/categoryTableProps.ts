@@ -21,6 +21,7 @@ export function getConnectionsCategoryTableProps(params: {
       !params.channels.loaded || params.channels.projectConnectionsLoading,
     onSelectChannel: params.onSelectChannel,
     onAdd: () => params.onAddAction("add-connection"),
+    onRefresh: params.channels.refreshProjectConnections,
     onRemoveChannel: params.channels.handleRemoveChannelRow,
     onRemoveProjectConnection: params.channels.handleRemoveProjectConnection,
   };

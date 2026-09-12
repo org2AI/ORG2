@@ -247,6 +247,7 @@ describe("integration category table contracts", () => {
         selectedChannel: { type: "telegram", accountId: "bot" },
         handleRemoveChannelRow: vi.fn(),
         handleRemoveProjectConnection: vi.fn(),
+        refreshProjectConnections: vi.fn().mockResolvedValue(undefined),
       });
       const onAddAction = vi.fn();
       const onSelectChannel = vi.fn();
@@ -273,6 +274,8 @@ describe("integration category table contracts", () => {
       );
       table.onSelectChannel("telegram:bot", "full");
       expect(onSelectChannel).toHaveBeenCalledWith("telegram:bot", "full");
+      await table.onRefresh();
+      expect(channels.refreshProjectConnections).toHaveBeenCalledOnce();
       table.onAdd();
       expect(onAddAction).toHaveBeenCalledWith("add-connection");
     }

@@ -5,7 +5,6 @@ import Input from "@src/components/Input";
 import IntegrationIcon from "@src/components/IntegrationIcon";
 import Select from "@src/components/Select";
 import type { SelectOption } from "@src/components/Select";
-import { HugeiconsIcon, Search01Icon } from "@src/icons";
 import {
   COMING_SOON_CHANNEL_TYPES,
   LIVE_CHANNEL_TYPES,
@@ -102,8 +101,8 @@ const IntegrationSelection: React.FC<IntegrationSelectionProps> = ({
   projectContent,
   gitContent,
 }) => {
-  const { t } = useTranslation("integrations");
-  const [connectionSearch, setConnectionSearch] = useState("");
+  const { t, i18n } = useTranslation("integrations");
+  const language = i18n.resolvedLanguage;
   const typeGroups: TypeOptionGroup[] = useMemo(() => {
     const channelOptions = LIVE_CHANNEL_TYPES.map((channel) => ({
       key: channel.type,
@@ -118,6 +117,10 @@ const IntegrationSelection: React.FC<IntegrationSelectionProps> = ({
         disabled: true,
       })
     );
+    const compareLabels = (a: SelectionGridOption, b: SelectionGridOption) =>
+      a.label.localeCompare(b.label, language, { sensitivity: "base" });
+    channelOptions.sort(compareLabels);
+    comingSoonChannelOptions.sort(compareLabels);
     const projectOptions = PROJECT_ADAPTER_TYPES.map((adapter) => ({
       key: adapter.type,
       label: t(
@@ -128,6 +131,13 @@ const IntegrationSelection: React.FC<IntegrationSelectionProps> = ({
     }));
 
     return [
+      {
+        category: "projects",
+        label: `${t("categories.git")} & ${t("categories.projects")}`,
+        options: projectOptions,
+        selectOptions: toSelectOptions(projectOptions),
+        selectable: true,
+      },
       {
         category: "channels",
         label: t("categories.channels"),
@@ -142,15 +152,8 @@ const IntegrationSelection: React.FC<IntegrationSelectionProps> = ({
         selectOptions: [],
         selectable: false,
       },
-      {
-        category: "projects",
-        label: `${t("categories.git")} & ${t("categories.projects")}`,
-        options: projectOptions,
-        selectOptions: toSelectOptions(projectOptions),
-        selectable: true,
-      },
     ];
-  }, [t]);
+  }, [t, language]);
 
   const flatSelectOptions = useMemo(
     () => typeGroups.flatMap((group) => group.selectOptions),
@@ -167,23 +170,6 @@ const IntegrationSelection: React.FC<IntegrationSelectionProps> = ({
     }
     return lookup;
   }, [typeGroups]);
-
-  const filteredTypeGroups = useMemo(() => {
-    const query = connectionSearch.trim().toLowerCase();
-    if (!query) return typeGroups;
-    return typeGroups
-      .map((group) => {
-        const options = group.options.filter((option) =>
-          option.label.toLowerCase().includes(query)
-        );
-        return {
-          ...group,
-          options,
-          selectOptions: group.selectable ? toSelectOptions(options) : [],
-        };
-      })
-      .filter((group) => group.options.length > 0);
-  }, [connectionSearch, typeGroups]);
 
   const [accountNameTouched, setAccountNameTouched] = useState(false);
 
@@ -270,24 +256,8 @@ const IntegrationSelection: React.FC<IntegrationSelectionProps> = ({
               />
             ) : (
               <div className="flex flex-col gap-3">
-                <Input
-                  value={connectionSearch}
-                  onChange={setConnectionSearch}
-                  placeholder={t("integrations.searchPlaceholder")}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  prefix={
-                    <HugeiconsIcon
-                      icon={Search01Icon}
-                      data-icon="search"
-                      size={14}
-                    />
-                  }
-                  style={{ width: "100%" }}
-                />
                 <div className="flex flex-col gap-3">
-                  {filteredTypeGroups.map((group) => (
+                  {typeGroups.map((group) => (
                     <div
                       key={`${group.category}:${group.label}`}
                       className="flex flex-col gap-2"

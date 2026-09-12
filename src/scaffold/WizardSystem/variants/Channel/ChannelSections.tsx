@@ -579,35 +579,28 @@ const GitScanPanel: React.FC<GitScanPanelProps> = ({
         layout="vertical"
         required
       >
-        <div className="flex flex-col gap-1.5">
-          {candidates.map((candidate) => {
-            const isSelected =
-              !!selected &&
-              selected.kind === candidate.kind &&
-              selected.secret === candidate.secret;
-            return (
-              <button
-                key={`${candidate.kind}:${candidate.secret}`}
-                type="button"
-                onClick={() => onSelect(isSelected ? null : candidate)}
-                disabled={isDuplicateName}
-                className={`flex items-center justify-between rounded-md border px-3 py-2 text-left text-[12px] transition-colors ${
-                  isSelected
-                    ? "border-primary-6 bg-primary-1 text-text-1"
-                    : "border-border-2 text-text-2 hover:border-border-3"
-                } disabled:cursor-not-allowed disabled:opacity-50`}
-              >
-                <span className="flex flex-col">
-                  <span className="font-medium">{candidate.label}</span>
-                  {candidate.username && (
-                    <span className="text-text-3">{candidate.username}</span>
-                  )}
-                </span>
-                {isSelected && <span className="text-primary-6">✓</span>}
-              </button>
-            );
-          })}
-        </div>
+        <SelectionGrid
+          vertical
+          showRadio
+          options={candidates.map((candidate, index) => ({
+            key: String(index),
+            label: candidate.label,
+            description: candidate.username,
+            disabled: isDuplicateName,
+          }))}
+          selected={
+            selected
+              ? String(
+                  candidates.findIndex(
+                    (candidate) =>
+                      candidate.kind === selected.kind &&
+                      candidate.secret === selected.secret
+                  )
+                )
+              : null
+          }
+          onSelect={(key) => onSelect(candidates[Number(key)])}
+        />
       </SectionRow>
     </SectionContainer>
   );

@@ -130,6 +130,9 @@ export {
   normalizeProjectDetailSurfaceView,
   createProjectGitSyncReviewTab,
   createProjectWorkItemsTab,
+  createProjectTreeTab,
+  createProjectJourneyTab,
+  createSessionJourneyTab,
   createWorkItemDetailTab,
   getProjectLinearProjectsTabChrome,
   getProjectLinearWorkItemsTabChrome,
@@ -196,3 +199,8 @@ export {
   disposeEditorCacheForSessionAtom,
   switchActiveRepoAtom,
 } from "./editorCache";
+
+export type {
+  ProjectJourneyTabData,
+  SessionJourneyTabData,
+} from "./factories/project";

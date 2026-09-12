@@ -187,6 +187,7 @@ fn core_session_record_from_imported_input(input: &ImportedHistoryCacheInput) ->
         parent_session_id: input.parent_session_id.clone(),
         org_member_id: None,
         collaboration_origin: None,
+        journey: Default::default(),
         metadata: AgentMetadata {
             origin: Some(input.source.to_string()),
             display_name: Some(input.source.to_string()),

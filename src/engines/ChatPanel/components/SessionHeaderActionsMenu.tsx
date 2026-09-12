@@ -62,6 +62,7 @@ export interface SessionHeaderActionsMenuProps {
   handleMoveSession: () => void;
   handleOpenCloudShareSettings: () => void;
   handleOpenExportSessionJson: () => void;
+  handleOpenLinkProject: () => void;
   handleOpenLinkWorkItem: () => void;
   handleOpenSearch: () => void;
   handlePaginationToggle: (checked: boolean) => void;
@@ -102,6 +103,7 @@ export const SessionHeaderActionsMenu: React.FC<
   handleMoveSession,
   handleOpenCloudShareSettings,
   handleOpenExportSessionJson,
+  handleOpenLinkProject,
   handleOpenLinkWorkItem,
   handleOpenSearch,
   handlePaginationToggle,
@@ -465,6 +467,24 @@ export const SessionHeaderActionsMenu: React.FC<
                 }
               >
                 {t("sessions:chat.trackAsProject.menuItem")}
+              </DropdownItem>
+              <DropdownItem
+                role="menuitem"
+                fullWidth
+                tabIndex={0}
+                onClick={handleOpenLinkProject}
+                disabled={!currentSessionId}
+                dataTestId="session-link-project-button"
+                icon={
+                  <HugeiconsIcon
+                    icon={Link02Icon}
+                    data-icon="link-2"
+                    size={DROPDOWN_ITEM.iconSize}
+                    strokeWidth={1.75}
+                  />
+                }
+              >
+                {t("chat.linkProject.menuItem")}
               </DropdownItem>
               <DropdownItem
                 role="menuitem"

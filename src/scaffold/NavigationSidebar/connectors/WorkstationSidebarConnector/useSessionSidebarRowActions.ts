@@ -25,6 +25,7 @@ interface UseSessionSidebarRowActionsParams {
   handleOpenInNewTab: ContextMenuParams["handleOpenInNewTab"];
   handleOpenInNewWindow: ContextMenuParams["handleOpenInNewWindow"];
   handleOpenInMyStation: ContextMenuParams["handleOpenInMyStation"];
+  onLinkToProject: NonNullable<ContextMenuParams["onLinkToProject"]>;
   handleTogglePin: ContextMenuParams["handleTogglePin"];
   handleToggleSubagentExpansion: DecorateRowActionsParams["handleToggleSubagentExpansion"];
   buildCloudRemoteItemMenuItems: ContextMenuParams["buildCloudRemoteItemMenuItems"];
@@ -49,6 +50,7 @@ export function useSessionSidebarRowActions({
   handleOpenInNewTab,
   handleOpenInNewWindow,
   handleOpenInMyStation,
+  onLinkToProject,
   handleTogglePin,
   handleToggleSubagentExpansion,
   buildCloudRemoteItemMenuItems,
@@ -77,6 +79,7 @@ export function useSessionSidebarRowActions({
     handleOpenInNewTab,
     handleOpenInNewWindow,
     handleOpenInMyStation,
+    onLinkToProject,
     handleTogglePin,
     isMoveEligible: moveToOrg.isMoveEligible,
     handleOpenMoveToOrg: moveToOrg.openMoveToOrg,

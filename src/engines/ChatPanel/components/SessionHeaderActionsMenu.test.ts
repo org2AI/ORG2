@@ -164,6 +164,7 @@ beforeEach(() => {
     handleMoveSession: vi.fn(),
     handleOpenCloudShareSettings: vi.fn(),
     handleOpenExportSessionJson: vi.fn(),
+    handleOpenLinkProject: vi.fn(),
     handleOpenLinkWorkItem: vi.fn(),
     handleOpenSearch: vi.fn(),
     handlePaginationToggle: vi.fn(),
@@ -364,6 +365,7 @@ describe("SessionHeaderActionsMenu", () => {
       )
     ).toEqual([
       "session-track-as-project-button",
+      "session-link-project-button",
       "session-link-work-item-button",
     ]);
     expect(group.contains(element("cloud-session-share-settings-button"))).toBe(
@@ -388,6 +390,10 @@ describe("SessionHeaderActionsMenu", () => {
     expect(track.getAttribute("aria-disabled")).not.toBe("true");
     act(() => track.focus());
     key("ArrowDown");
+    expect(document.activeElement).toBe(element("session-link-project-button"));
+    key("Enter");
+    expect(props.handleOpenLinkProject).toHaveBeenCalledOnce();
+    key("ArrowDown");
     expect(document.activeElement).toBe(link);
     key("Enter");
     expect(props.handleOpenLinkWorkItem).toHaveBeenCalledOnce();
@@ -398,6 +404,7 @@ describe("SessionHeaderActionsMenu", () => {
     ).toBe("true");
     for (const testId of [
       "session-track-as-project-button",
+      "session-link-project-button",
       "session-link-work-item-button",
     ]) {
       expect(element(testId).getAttribute("aria-disabled")).toBe("true");

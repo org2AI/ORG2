@@ -106,7 +106,7 @@ interface RenderActiveContentOptions {
   projectQuickActions: ProjectManagerContentRouterProps["projectQuickActions"];
 }
 
-function renderActiveContent({
+export function renderActiveContent({
   repoPath,
   activeTab,
   hasNoTabs,
@@ -138,7 +138,13 @@ function renderActiveContent({
               "linear-gradient(180deg, var(--color-bg-1) 0%, var(--color-fill-1) 100%)",
           }}
         >
-          <SessionContentView sessionId={chatSessionId} secondary />
+          <SessionContentView
+            sessionId={chatSessionId}
+            initialMessageId={
+              activeTab.data.initialMessageId as string | undefined
+            }
+            secondary
+          />
         </div>
       </Suspense>
     );
@@ -172,6 +178,9 @@ function renderActiveContent({
     case "project-org":
     case "project-org-settings":
     case "project-settings":
+    case "project-tree":
+    case "project-journey":
+    case "session-journey":
     case "workItem-detail":
       return <UnifiedTabContent tab={activeTab} isActive />;
 

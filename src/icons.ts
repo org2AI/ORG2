@@ -298,6 +298,7 @@ export { default as MailOpen01Icon } from "@hugeicons/core-free-icons/MailOpen01
 export { default as MailReply01Icon } from "@hugeicons/core-free-icons/MailReply01Icon";
 export { default as MailSend01Icon } from "@hugeicons/core-free-icons/MailSend01Icon";
 export { default as MailWarningIcon } from "@hugeicons/core-free-icons/MailWarningIcon";
+export { default as MapsIcon } from "@hugeicons/core-free-icons/MapsIcon";
 export { default as McpServerIcon } from "@hugeicons/core-free-icons/McpServerIcon";
 export { default as Menu01Icon } from "@hugeicons/core-free-icons/Menu01Icon";
 export { default as Message01Icon } from "@hugeicons/core-free-icons/Message01Icon";

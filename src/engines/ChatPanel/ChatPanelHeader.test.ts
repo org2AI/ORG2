@@ -84,6 +84,7 @@ function render({
         handleCopyEventJson: noop,
         handleMoveToWorkstation: noop,
         handleOpenExportSessionJson: noop,
+        handleOpenLinkProject: () => undefined,
         handleOpenLinkWorkItem: noop,
         handleOpenCloudShareSettings: noop,
         handleOpenSearch: noop,

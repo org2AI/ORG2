@@ -37,10 +37,12 @@ import { useShowInteractArea } from "@src/contexts/workspace/ChatContext";
 import { derivePlanApprovalViewState } from "@src/engines/SessionCore/derived/planDisplayEvents";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 import { useTodoSync } from "@src/engines/SessionCore/hooks/session/useTodoSync";
+import { isBackendUserMessageEvent } from "@src/engines/SessionCore/sync/utils/activityIds";
 import { useCloudSessionHasDownloadSurface } from "@src/features/Org2Cloud/useCloudSessionDownloadSurface";
 import { useFileReviewSync } from "@src/hooks/fileReview";
 import { usePendingPlanApproval } from "@src/hooks/session/usePendingPlanApproval";
 import { useSessionWorkspaceSync } from "@src/hooks/session/useSessionWorkspaceSync";
+import { SessionJourneyControls } from "@src/modules/WorkStation/Chat/Journey/SessionJourneyControls";
 import { loadSessions, sessionByIdAtom } from "@src/store/session";
 import type { Session } from "@src/store/session";
 import {
@@ -101,6 +103,7 @@ type ResolvedChatViewProps = Omit<
 const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
   ({
     sessionId,
+    initialMessageId,
     conversationTargetBinding,
     displayMode = "full",
     turnPaginationEnabled = true,
@@ -255,6 +258,27 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       [sessionId, currentPlanApproval]
     );
     const showCurrentPlanSurface = useAtomValue(showCurrentPlanSurfaceAtom);
+    // Journey lifecycle commands require an exact durable `agent_messages.id`.
+    // Use the frontend-only synthetic marker, rather than `user-input-*`, to
+    // exclude optimistic bubbles: real backend rows may legitimately use that
+    // ID prefix (for example after CLI recovery).
+    const latestUserMessageIdAtom = useMemo(
+      () =>
+        selectAtom(
+          chatEventsForSessionAtomFamily(sessionId),
+          (events) => {
+            for (let index = events.length - 1; index >= 0; index -= 1) {
+              const event = events[index];
+              if (event && isBackendUserMessageEvent(event)) return event.id;
+            }
+            return null;
+          },
+          (left, right) => left === right
+        ),
+      [sessionId]
+    );
+    const latestUserMessageId = useAtomValue(latestUserMessageIdAtom);
+
     const hasBlockingDownloadSurface =
       hasCloudDownloadSurface && transcriptEmpty;
     const showExternalHistoryContinuationComposer =
@@ -560,8 +584,20 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                   }
                   data-chat-pinned-header-portal-host
                 />
+                {!isReadOnlySurface && (
+                  <div
+                    className="flex flex-shrink-0 items-center border-b border-border-2 bg-chat-pane px-2 py-1"
+                    data-testid="live-session-journey-controls"
+                  >
+                    <SessionJourneyControls
+                      sessionId={sessionId}
+                      messageId={latestUserMessageId}
+                    />
+                  </div>
+                )}
                 <div className="min-h-0 max-w-full min-w-0 flex-1 overflow-hidden">
                   <ChatViewHistorySurface
+                    initialMessageId={initialMessageId}
                     sessionId={
                       groupChatViewActive
                         ? sessionId

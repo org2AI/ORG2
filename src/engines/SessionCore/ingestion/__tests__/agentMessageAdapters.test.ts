@@ -11,6 +11,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { projectNativeConversationItems } from "../../conversations/nativeConversationMaterializer";
 import type { SessionEvent } from "../../core/types";
 import {
   COMPACT_CONTINUATION_SUFFIX,
@@ -393,7 +394,7 @@ describe("persistedMessageToSessionEvent", () => {
     });
   });
 
-  it("leaves the result empty for a tool_call row", () => {
+  it("keeps a tool_call pending until a durable result is merged", () => {
     const event = persistedMessageToSessionEvent(
       makeRow({
         role: "tool_call",
@@ -404,9 +405,11 @@ describe("persistedMessageToSessionEvent", () => {
       SESSION_ID
     );
 
-    expect(event.result).toEqual({});
+    expect(event.result).toEqual({ status: "pending" });
+    expect(event.displayStatus).toBe("pending");
     expect(event.args).toEqual({ command: "ls" });
     expect(event.actionType).toBe("tool_call");
+    expect(projectNativeConversationItems([event])).toEqual([]);
   });
 
   it("quarantines an unparsable toolInput under `raw` instead of throwing", () => {

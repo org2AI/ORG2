@@ -291,6 +291,10 @@ pub(super) async fn execute_parallel_group(
         }
     }
 
+    // join_all has already executed this batch. A turn directive may stop the
+    // next group, but must not discard the remaining completed outputs: the
+    // event handler persists them as the authoritative tool history.
+    let mut early_exit = None;
     for (_idx, exec_result) in results_by_index {
         let call = calls[exec_result.index];
 
@@ -329,11 +333,15 @@ pub(super) async fn execute_parallel_group(
         // Hook/policy appends happen after budget accounting, so cap them —
         // an uncapped hook would bypass both the per-tool and aggregate
         // budgets. Mirrors the sequential path in `single.rs`.
-        if let Some(extra) = handler
-            .post_tool_hook(&call.name, &exec_result.effective_args, &truncated)
-            .await
-        {
-            truncated.push_str(&truncate_output(&extra, Some(super::HOOK_APPEND_MAX_CHARS)));
+        // Completed results must still be persisted after cancellation, but
+        // optional enrichment and user-hook dispatch must not start new work.
+        if !is_cancelled(cancel_flag) {
+            if let Some(extra) = handler
+                .post_tool_hook(&call.name, &exec_result.effective_args, &truncated)
+                .await
+            {
+                truncated.push_str(&truncate_output(&extra, Some(super::HOOK_APPEND_MAX_CHARS)));
+            }
         }
 
         if FILE_READ_TOOLS.contains(&call.name.as_str()) && !is_error {
@@ -350,17 +358,20 @@ pub(super) async fn execute_parallel_group(
         } else {
             None
         };
-        handler
-            .after_tool_execute(
-                session_id,
-                &call.id,
-                &call.name,
-                &exec_result.effective_args,
-                &truncated,
-                error_str,
-                exec_result.duration_ms,
-            )
-            .await;
+        // A cancellation may arrive while the preceding hook is running.
+        if !is_cancelled(cancel_flag) {
+            handler
+                .after_tool_execute(
+                    session_id,
+                    &call.id,
+                    &call.name,
+                    &exec_result.effective_args,
+                    &truncated,
+                    error_str,
+                    exec_result.duration_ms,
+                )
+                .await;
+        }
 
         let ui_metadata = tools
             .get(&call.name)
@@ -416,19 +427,11 @@ pub(super) async fn execute_parallel_group(
             rich.as_ref().and_then(|result| result.turn_directive),
             Some(crate::tools::result::ToolTurnDirective::EndTurn)
         ) {
-            return ParallelResult::EarlyExit(
-                executed_count + denied_count,
-                execution_usage,
-                ToolBatchOutcome::EndTurn(String::new()),
-            );
+            early_exit.get_or_insert_with(|| ToolBatchOutcome::EndTurn(String::new()));
         }
 
         if is_cancelled(cancel_flag) {
-            return ParallelResult::EarlyExit(
-                executed_count + denied_count,
-                execution_usage,
-                ToolBatchOutcome::Cancelled,
-            );
+            early_exit.get_or_insert(ToolBatchOutcome::Cancelled);
         }
 
         if is_error_text(&truncated) {
@@ -438,21 +441,168 @@ pub(super) async fn execute_parallel_group(
                 while !truncated.is_char_boundary(end) && end > 0 {
                     end -= 1;
                 }
-                return ParallelResult::EarlyExit(
-                    executed_count + denied_count,
-                    execution_usage,
+                early_exit.get_or_insert_with(|| {
                     ToolBatchOutcome::ErrorLoop(format!(
                         "I encountered {} consecutive tool errors and stopped to avoid wasting resources. \
                          The last error was: {}",
                         *consecutive_errors,
                         &truncated[..end]
-                    )),
-                );
+                    ))
+                });
             }
         } else {
             *consecutive_errors = 0;
         }
     }
 
-    ParallelResult::Continue(executed_count + denied_count, execution_usage)
+    match early_exit {
+        Some(outcome) => {
+            ParallelResult::EarlyExit(executed_count + denied_count, execution_usage, outcome)
+        }
+        None => ParallelResult::Continue(executed_count + denied_count, execution_usage),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::session::turn::event_handler::{EventHandlerConfig, UnifiedEventHandler};
+    use crate::tools::traits::{CallContext, Tool, ToolError};
+    use async_trait::async_trait;
+
+    struct CompletedBatchTool {
+        first_is_error: bool,
+    }
+
+    #[async_trait]
+    impl Tool for CompletedBatchTool {
+        fn name(&self) -> &str {
+            "read_fixture"
+        }
+        fn description(&self) -> &str {
+            "Read a synthetic fixture"
+        }
+        fn parameters(&self) -> Value {
+            serde_json::json!({"type":"object"})
+        }
+        fn is_concurrency_safe(&self) -> bool {
+            true
+        }
+        async fn execute(
+            &self,
+            args: Value,
+            _: &CallContext,
+        ) -> Result<ToolExecuteResult, ToolError> {
+            let index = args["index"].as_u64().unwrap();
+            if index == 0 {
+                Ok(if self.first_is_error {
+                    ToolExecuteResult::text("Error: fixture failure")
+                } else {
+                    ToolExecuteResult::end_turn("A newer Team event arrived")
+                })
+            } else {
+                Ok(ToolExecuteResult::text(format!("durable result {index}")))
+            }
+        }
+    }
+
+    async fn assert_completed_batch_survives_early_exit(first_is_error: bool) {
+        let _sandbox = test_helpers::test_env::sandbox();
+        let sid = "parallel-history-regression";
+        let conn = database::db::get_connection().unwrap();
+        crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+        crate::persistence::session_snapshots::ensure_tables().unwrap();
+        conn.execute(
+            "INSERT INTO agent_sessions (session_id,name,session_type,status,created_at,updated_at)
+             VALUES (?1,'Parallel history test','agent','running',datetime('now'),datetime('now'))",
+            [sid],
+        )
+        .unwrap();
+        let handler = UnifiedEventHandler::new(EventHandlerConfig::default());
+        let mut tools = ToolRegistry::new();
+        tools.register(Box::new(CompletedBatchTool { first_is_error }));
+        let mut calls: Vec<_> = (0..4)
+            .map(|index| ToolCallRequest {
+                id: format!("call-{index}"),
+                name: "read_fixture".into(),
+                arguments: serde_json::json!({"index":index}),
+                thought_signature: None,
+            })
+            .collect();
+        // This next sequential group must never be admitted after EndTurn or
+        // the error limit, even though the completed parallel group is drained.
+        calls.push(ToolCallRequest {
+            id: "must-not-start".into(),
+            name: "write_fixture".into(),
+            arguments: serde_json::json!({}),
+            thought_signature: None,
+        });
+        let mut messages = Vec::new();
+        let mut errors = if first_is_error {
+            super::super::super::MAX_CONSECUTIVE_ERRORS - 1
+        } else {
+            0
+        };
+        let (count, usage, outcome) = super::super::execute_tool_calls(
+            &mut messages,
+            &calls,
+            &tools,
+            &ResolvedToolPolicy::permissive(),
+            sid,
+            "turn",
+            &[],
+            None,
+            &handler,
+            None,
+            None,
+            &mut FileTimeTracker::new(),
+            &mut errors,
+            None,
+            4,
+        )
+        .await;
+        assert_eq!(count, 4);
+        assert_eq!(usage.len(), 4);
+        assert_eq!(
+            matches!(outcome, ToolBatchOutcome::ErrorLoop(_)),
+            first_is_error
+        );
+        if !first_is_error {
+            assert!(matches!(outcome, ToolBatchOutcome::EndTurn(_)));
+        }
+        let rows = crate::session::persistence::load_messages(sid).unwrap();
+        assert_eq!(
+            rows.len(),
+            8,
+            "each admitted call must retain its actual durable result"
+        );
+        assert_eq!(messages.len(), 4);
+        for (index, message) in messages.iter().enumerate() {
+            let id = format!("call-{index}");
+            let result = rows
+                .iter()
+                .find(|row| row.role == "tool_result" && row.tool_call_id.as_deref() == Some(&id))
+                .unwrap();
+            assert_eq!(message["content"].as_str(), result.tool_output.as_deref());
+            if index > 0 {
+                assert_eq!(
+                    result.tool_output.as_deref(),
+                    Some(format!("durable result {index}").as_str())
+                );
+            }
+        }
+        assert!(rows
+            .iter()
+            .all(|row| row.tool_call_id.as_deref() != Some("must-not-start")));
+    }
+
+    #[tokio::test]
+    async fn end_turn_persists_all_already_executed_parallel_results() {
+        assert_completed_batch_survives_early_exit(false).await;
+    }
+
+    #[tokio::test]
+    async fn error_limit_persists_all_already_executed_parallel_results() {
+        assert_completed_batch_survives_early_exit(true).await;
+    }
 }

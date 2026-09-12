@@ -138,6 +138,7 @@ mod persist_tests {
 
     #[test]
     fn over_limit_persists_and_stubs() {
+        let _sandbox = test_helpers::test_env::sandbox();
         let big = "line\n".repeat(10_000); // 50K chars
         let session = format!("persist-test-{}", uuid::Uuid::new_v4().simple());
         let out = truncate_or_persist_output(&big, Some(1_000), &session, "run_shell");

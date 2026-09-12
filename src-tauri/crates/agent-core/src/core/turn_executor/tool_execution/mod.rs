@@ -25,6 +25,9 @@ mod diff_feedback;
 mod parallel;
 mod single;
 
+#[cfg(test)]
+mod cancellation_tests;
+
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 

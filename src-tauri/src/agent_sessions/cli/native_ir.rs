@@ -454,6 +454,15 @@ pub(super) fn native_items_from_agent_history(history: &[Value]) -> Vec<NativeCo
                 }
                 for (tool_index, tool) in tool_calls.iter().enumerate() {
                     let raw_call_id = tool.get("id").and_then(Value::as_str).unwrap_or_default();
+                    // A historical interrupted batch may retain calls whose
+                    // results were never persisted. Like CLI pending calls,
+                    // these are not portable conversation items. Preserve the
+                    // stored history and project only the completed pairs.
+                    let Some(position) = results.iter().position(|(_, result)| {
+                        result.get("tool_call_id").and_then(Value::as_str) == Some(raw_call_id)
+                    }) else {
+                        continue;
+                    };
                     let call_id = portable_tool_call_id(raw_call_id);
                     let function = tool.get("function").unwrap_or(tool);
                     let name = function
@@ -472,12 +481,8 @@ pub(super) fn native_items_from_agent_history(history: &[Value]) -> Vec<NativeCo
                         arguments: arguments.to_string(),
                         created_at: created_at.clone(),
                     });
-                    if let Some(position) = results.iter().position(|(_, result)| {
-                        result.get("tool_call_id").and_then(Value::as_str) == Some(raw_call_id)
-                    }) {
-                        let (result_index, result) = results.remove(position);
-                        items.push(tool_result_item(result, result_index, &call_names));
-                    }
+                    let (result_index, result) = results.remove(position);
+                    items.push(tool_result_item(result, result_index, &call_names));
                 }
                 // Results whose call is not in this batch keep their history order.
                 for (result_index, result) in results {
@@ -1060,6 +1065,32 @@ mod tests {
         assert!(provider_portable_append_suffix(&items, &canonical)
             .expect("a persisted history must be a prefix of the conversation it was built from")
             .is_empty());
+    }
+
+    #[test]
+    fn interrupted_agent_batch_projects_only_durable_pairs_before_next_turn() {
+        let history = vec![
+            json!({"role":"assistant","content":null,"tool_calls": [
+                {"id":"call_a","function":{"name":"task_get","arguments":"{}"}},
+                {"id":"call_b","function":{"name":"task_get","arguments":"{}"}},
+                {"id":"call_c","function":{"name":"task_get","arguments":"{}"}},
+                {"id":"call_d","function":{"name":"task_get","arguments":"{}"}}
+            ]}),
+            json!({"role":"tool","tool_call_id":"call_a","content":"new Team event"}),
+            json!({"role":"user","content":"member completed"}),
+        ];
+        let original = history.clone();
+        let items = native_items_from_agent_history(&history);
+        assert!(matches!(items.as_slice(), [
+            NativeConversationItem::ToolCall {call_id, ..},
+            NativeConversationItem::ToolResult {call_id: result_id, output, ..},
+            NativeConversationItem::Message {role, ..}
+        ] if call_id == "call_a" && result_id == "call_a" && output == "new Team event" && role == "user"));
+        assert_eq!(
+            history, original,
+            "legacy recovery must not rewrite stored history"
+        );
+        validate_items(&items).expect("only actual completed pairs are portable");
     }
 
     #[test]

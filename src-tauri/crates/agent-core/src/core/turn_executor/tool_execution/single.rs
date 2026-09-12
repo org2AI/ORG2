@@ -229,17 +229,19 @@ pub(super) async fn execute_single_tool(
                 tool_call.name, stale_err
             );
             let err_result = format!("Error: {}", stale_err);
-            handler
-                .after_tool_execute(
-                    session_id,
-                    &tool_call.id,
-                    &tool_call.name,
-                    &effective_args,
-                    &err_result,
-                    Some(&stale_err),
-                    0,
-                )
-                .await;
+            if !is_cancelled(cancel_flag) {
+                handler
+                    .after_tool_execute(
+                        session_id,
+                        &tool_call.id,
+                        &tool_call.name,
+                        &effective_args,
+                        &err_result,
+                        Some(&stale_err),
+                        0,
+                    )
+                    .await;
+            }
             result_is_error = true;
             err_result
         } else {
@@ -319,11 +321,14 @@ pub(super) async fn execute_single_tool(
             // Hook/policy appends happen after budget accounting, so cap
             // them — an uncapped hook would bypass both the per-tool and
             // aggregate budgets.
-            if let Some(extra) = handler
-                .post_tool_hook(&tool_call.name, &effective_args, &truncated)
-                .await
-            {
-                truncated.push_str(&truncate_output(&extra, Some(super::HOOK_APPEND_MAX_CHARS)));
+            if !is_cancelled(cancel_flag) {
+                if let Some(extra) = handler
+                    .post_tool_hook(&tool_call.name, &effective_args, &truncated)
+                    .await
+                {
+                    truncated
+                        .push_str(&truncate_output(&extra, Some(super::HOOK_APPEND_MAX_CHARS)));
+                }
             }
 
             if FILE_READ_TOOLS.contains(&tool_call.name.as_str()) && !is_error {
@@ -341,17 +346,19 @@ pub(super) async fn execute_single_tool(
             } else {
                 None
             };
-            handler
-                .after_tool_execute(
-                    session_id,
-                    &tool_call.id,
-                    &tool_call.name,
-                    &effective_args,
-                    &truncated,
-                    error_str,
-                    duration_ms,
-                )
-                .await;
+            if !is_cancelled(cancel_flag) {
+                handler
+                    .after_tool_execute(
+                        session_id,
+                        &tool_call.id,
+                        &tool_call.name,
+                        &effective_args,
+                        &truncated,
+                        error_str,
+                        duration_ms,
+                    )
+                    .await;
+            }
 
             truncated
         }

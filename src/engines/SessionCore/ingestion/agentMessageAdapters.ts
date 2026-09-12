@@ -295,6 +295,11 @@ export function persistedMessageToSessionEvent(
       content: msg.toolOutput ?? msg.content,
       observation: msg.toolOutput ?? msg.content,
     };
+  } else if (msg.role === "tool_call") {
+    // A call row records intent, not completion. The matching durable result
+    // is merged separately; absent results must never become display-text
+    // output in the canonical/native conversation projection.
+    result = { status: "pending" };
   }
 
   let args: Record<string, unknown> = {};
@@ -325,7 +330,7 @@ export function persistedMessageToSessionEvent(
     result,
     source,
     displayText,
-    displayStatus: "completed",
+    displayStatus: msg.role === "tool_call" ? "pending" : "completed",
     displayVariant: getDisplayVariant(msg.role as AgentMessageBase["role"]),
     activityStatus: getActivityStatus(msg.role as AgentMessageBase["role"]),
     callId: msg.toolCallId ?? undefined,

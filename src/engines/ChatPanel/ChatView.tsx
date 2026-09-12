@@ -34,6 +34,7 @@ import React, {
 } from "react";
 
 import { useShowInteractArea } from "@src/contexts/workspace/ChatContext";
+import { resolveAgentOrgComposerExecutionOwnership } from "@src/engines/ChatPanel/agentOrgComposerOwnership";
 import { derivePlanApprovalViewState } from "@src/engines/SessionCore/derived/planDisplayEvents";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 import { useTodoSync } from "@src/engines/SessionCore/hooks/session/useTodoSync";
@@ -323,12 +324,32 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       showCurrentPlanSurface,
       conversationRoot: conversationTargetBinding?.root ?? null,
     });
+    // The visible ChatView's session is the authoritative composer target.
+    // Agent-org member views may override it with queueSessionId, but ordinary
+    // imported teammate sessions have no agent-org queue target. Passing null
+    // there made useMessageDispatch fail before onSubmitOverride could admit
+    // the turn to the canonical queue ("no active sessionId"), so no writable
+    // native execution episode could be prepared.
+    const inputAreaSessionId = queueSessionId ?? sessionId;
+    const inputAreaSession = useAtomValue(sessionByIdAtom(inputAreaSessionId));
+    const composerOwnership = groupChatViewActive
+      ? {
+          isDirectAgentOrgMember: false,
+          executionBinding: conversationTargetBinding,
+        }
+      : resolveAgentOrgComposerExecutionOwnership(
+          inputAreaSession,
+          conversationTargetBinding
+        );
+    const { isDirectAgentOrgMember } = composerOwnership;
+    const composerExecutionBinding = composerOwnership.executionBinding;
     const {
       submit: handleConversationSubmit,
       retry: handleCanonicalConversationRetry,
       resolveDispatch: resolveCanonicalRetryDispatch,
     } = useConversationSubmitRouter({
       sessionId,
+      isDirectAgentOrgMember,
       currentSession,
       root: conversationTargetBinding?.root ?? null,
       selectedTarget: conversationTargetBinding?.target ?? null,
@@ -395,13 +416,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
     const chatHistorySessionId = groupChatViewActive
       ? sessionId
       : agentOrgInteractionSessionId;
-    // The visible ChatView's session is the authoritative composer target.
-    // Agent-org member views may override it with queueSessionId, but ordinary
-    // imported teammate sessions have no agent-org queue target. Passing null
-    // there made useMessageDispatch fail before onSubmitOverride could admit
-    // the turn to the canonical queue ("no active sessionId"), so no writable
-    // native execution episode could be prepared.
-    const inputAreaSessionId = queueSessionId ?? sessionId;
     const {
       suggestions: followUpSuggestions,
       clearSuggestions: clearFollowUpSuggestions,
@@ -622,7 +636,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                   />
                 ) : (
                   <ConversationExecutionBindingContext.Provider
-                    value={conversationTargetBinding}
+                    value={composerExecutionBinding}
                   >
                     <ChatViewComposerSection
                       {...composerSectionProps}

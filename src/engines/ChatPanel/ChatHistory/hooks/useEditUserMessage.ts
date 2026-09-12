@@ -201,17 +201,25 @@ export function useEditUserMessage(
             // A held canonical row keeps the runtime it was admitted with.
             // The user changes the picker precisely because that runtime
             // failed, so the retry must carry the runtime shown now.
-            const retryDispatch =
+            const retryDispatchResolution =
               durableFailedQueueRow.conversationDispatch?.kind ===
               "canonical_conversation"
-                ? (resolveFailedUserIntentDispatch?.() ?? undefined)
+                ? (resolveFailedUserIntentDispatch?.() ?? {
+                    action: "preserve" as const,
+                  })
                 : undefined;
             const updated = store.set(editMessageAtom, {
               messageId: durableFailedQueueRow.id,
               content: projection.displayContent,
               imageDataUrls: resendImages,
               turnIntentId: retryTurnIntentId,
-              ...(retryDispatch ? { conversationDispatch: retryDispatch } : {}),
+              ...(retryDispatchResolution?.action === "replace"
+                ? {
+                    conversationDispatch: retryDispatchResolution.dispatch,
+                  }
+                : retryDispatchResolution?.action === "clear"
+                  ? { conversationDispatch: null }
+                  : {}),
             });
             if (!updated) {
               throw new Error("failed delivery is no longer retryable");

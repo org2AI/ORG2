@@ -12,7 +12,10 @@ import {
   vi,
 } from "vitest";
 
-import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import type {
+  QueuedConversationDispatch,
+  QueuedConversationDispatchResolution,
+} from "@src/engines/SessionCore/conversations/queuedConversationContract";
 
 import type { OptimizedChatItem } from "../../chatItemPipeline/types";
 import { useEditUserMessage } from "../useEditUserMessage";
@@ -173,17 +176,30 @@ type EditUserMessageFn = (
   newText: string,
   imageDataUrls?: string[]
 ) => Promise<void>;
+type FailedUserIntentRetry = NonNullable<
+  Parameters<typeof useEditUserMessage>[0]
+>;
 
 let resolveDispatchForTest:
-  | (() => QueuedConversationDispatch | null)
+  | (() => QueuedConversationDispatchResolution)
   | undefined;
+let failedUserIntentRetryForTest: FailedUserIntentRetry | undefined;
 
-function resolveDispatchViaTest(): QueuedConversationDispatch | null {
-  return resolveDispatchForTest?.() ?? null;
+function resolveDispatchViaTest(): QueuedConversationDispatchResolution {
+  return resolveDispatchForTest?.() ?? { action: "preserve" };
+}
+
+async function retryFailedUserIntentViaTest(
+  input: Parameters<FailedUserIntentRetry>[0]
+): Promise<boolean> {
+  return (await failedUserIntentRetryForTest?.(input)) ?? false;
 }
 
 function Harness({ onReady }: { onReady: (fn: EditUserMessageFn) => void }) {
-  const editUserMessage = useEditUserMessage(undefined, resolveDispatchViaTest);
+  const editUserMessage = useEditUserMessage(
+    retryFailedUserIntentViaTest,
+    resolveDispatchViaTest
+  );
   useEffect(() => {
     onReady(editUserMessage);
   }, [editUserMessage, onReady]);
@@ -221,6 +237,8 @@ describe("useEditUserMessage resend projection", () => {
     truncateBeforeIdSpy.mockClear();
     storeSessionId.current = "osagent-session-1";
     surfaceSessionId.current = undefined;
+    failedUserIntentRetryForTest = undefined;
+    resolveDispatchForTest = undefined;
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -327,6 +345,54 @@ describe("useEditUserMessage resend projection", () => {
     );
     expect(checkSnapshotChangesSpy).not.toHaveBeenCalled();
     expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the mounted Member dispatcher when canonical retry declines", async () => {
+    surfaceSessionId.current = "member-session";
+    storeSessionId.current = "root-session";
+    const canonicalRetry = vi.fn().mockResolvedValue(false);
+    failedUserIntentRetryForTest = canonicalRetry;
+    act(() =>
+      root.render(
+        createElement(Harness, {
+          onReady: (fn: EditUserMessageFn) => {
+            editUserMessage = fn;
+          },
+        })
+      )
+    );
+    const failed = {
+      event: {
+        id: "member-user-input-failed",
+        source: "user",
+        displayText: "retry with the same Member",
+        displayStatus: "failed",
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          turnIntentId: "member-turn-intent-failed",
+        },
+      },
+      chunk_id: "member-user-input-failed",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(failed, "retry with the same Member");
+    });
+
+    expect(canonicalRetry).toHaveBeenCalledOnce();
+    expect(submitUserIntentSpy).toHaveBeenCalledOnce();
+    expect(submitUserIntentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "member-session",
+        displayContent: "retry with the same Member",
+        turnIntentId: "member-turn-intent-failed",
+      })
+    );
+    expect(removeByIdPrefixSpy).toHaveBeenCalledWith(
+      "member-user-input-failed",
+      "member-session"
+    );
   });
 
   it("retries a reconciled orphan through the current submit path", async () => {
@@ -459,7 +525,10 @@ describe("useEditUserMessage resend projection", () => {
         model: "gpt-5.6-sol",
       },
     };
-    resolveDispatchForTest = () => currentDispatch;
+    resolveDispatchForTest = () => ({
+      action: "replace",
+      dispatch: currentDispatch,
+    });
     queuedDeliveries.current = [
       {
         id: "queue-rejected",
@@ -509,6 +578,96 @@ describe("useEditUserMessage resend projection", () => {
       expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
       "queue-rejected"
     );
+  });
+
+  it("clears stale canonical ownership when a Member retries its durable failed row", async () => {
+    surfaceSessionId.current = "member-session";
+    storeSessionId.current = "root-session";
+    const admittedDispatch: QueuedConversationDispatch = {
+      kind: "canonical_conversation",
+      root: {
+        authority: "local-session",
+        authorityScope: [],
+        conversationId: "root-session",
+      },
+      target: {
+        cliAgentType: "codex",
+        accountId: "root-account",
+        model: "gpt-root",
+      },
+    };
+    resolveDispatchForTest = () => ({ action: "clear" });
+    queuedDeliveries.current = [
+      {
+        id: "member-queue-rejected",
+        turnIntentId: "member-turn-intent-rejected",
+        sessionId: "member-session",
+        content: "retry on the member",
+        displayContent: "retry on the member",
+        imageDataUrls: ["data:image/png;base64,member"],
+        priority: "next",
+        status: "queued",
+        requiresExplicitDispatch: true,
+        deliveryError: "old root runtime failed",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        conversationDispatch: admittedDispatch,
+      },
+    ];
+    act(() =>
+      root.render(
+        createElement(Harness, {
+          onReady: (fn: EditUserMessageFn) => {
+            editUserMessage = fn;
+          },
+        })
+      )
+    );
+    const failed = {
+      event: {
+        id: "queued-user:member-queue-rejected:",
+        displayText: "retry on the member",
+        displayStatus: "failed",
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          queueMessageId: "member-queue-rejected",
+          turnIntentId: "member-turn-intent-rejected",
+        },
+      },
+      chunk_id: "queued-user:member-queue-rejected:",
+    } as unknown as OptimizedChatItem;
+
+    try {
+      await act(async () => {
+        await editUserMessage?.(failed, "retry on the member");
+      });
+    } finally {
+      resolveDispatchForTest = undefined;
+    }
+
+    expect(storeSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ debugLabel: "editMessageAtom" }),
+      expect.objectContaining({
+        messageId: "member-queue-rejected",
+        conversationDispatch: null,
+        imageDataUrls: undefined,
+      })
+    );
+    expect(updateByIdSpy).toHaveBeenCalledWith(
+      "queued-user:member-queue-rejected:",
+      expect.objectContaining({
+        result: expect.objectContaining({
+          images: ["data:image/png;base64,member"],
+          queueMessageId: "member-queue-rejected",
+        }),
+      }),
+      "member-session"
+    );
+    expect(storeSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
+      "member-queue-rejected"
+    );
+    expect(submitUserIntentSpy).not.toHaveBeenCalled();
   });
 
   it("hydrates a cold failed owner and patches its runner row from the root surface", async () => {

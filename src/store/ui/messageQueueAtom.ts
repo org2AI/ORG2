@@ -420,8 +420,8 @@ export const editMessageAtom = atom(
       agentExecMode?: AgentExecMode;
       /** Caller-owned retry intent when its EventStore projection must match. */
       turnIntentId?: string;
-      /** Re-resolved canonical runtime for a retry of a held canonical row. */
-      conversationDispatch?: QueuedConversationDispatch;
+      /** Re-resolved canonical runtime; null explicitly clears stale ownership. */
+      conversationDispatch?: QueuedConversationDispatch | null;
     }
   ) => {
     if (get(messageQueueHandoffIdsAtom).has(update.messageId)) return false;
@@ -452,8 +452,12 @@ export const editMessageAtom = atom(
             !(nextImageDataUrls && nextImageDataUrls.length > 0) &&
             !isCliSession(msg.sessionId),
         });
+        const dispatchBase = { ...msg };
+        if (update.conversationDispatch === null) {
+          delete dispatchBase.conversationDispatch;
+        }
         const next: QueuedMessage = {
-          ...msg,
+          ...dispatchBase,
           // Saving an edit is a new logical user intent. The previous id may
           // already be a durable stale/rejected pre-run terminal after a
           // crash; terminal intent ids are immutable and cannot be safely
@@ -470,9 +474,10 @@ export const editMessageAtom = atom(
           ...(update.agentExecMode !== undefined && {
             agentExecMode: update.agentExecMode,
           }),
-          ...(update.conversationDispatch !== undefined && {
-            conversationDispatch: update.conversationDispatch,
-          }),
+          ...(update.conversationDispatch !== undefined &&
+            update.conversationDispatch !== null && {
+              conversationDispatch: update.conversationDispatch,
+            }),
           deliveryError: undefined,
         };
         const siblings = prev.filter((item) => item.id !== msg.id);

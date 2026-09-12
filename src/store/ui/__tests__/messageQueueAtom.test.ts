@@ -1,5 +1,6 @@
 import { createStore } from "jotai/vanilla";
 
+import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 
 import {
@@ -36,6 +37,22 @@ function makeMessage(
     status: "queued",
     createdAt: "2026-01-01T00:00:00Z",
     ...overrides,
+  };
+}
+
+function makeConversationDispatch(model: string): QueuedConversationDispatch {
+  return {
+    kind: "canonical_conversation",
+    root: {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "root-session",
+    },
+    target: {
+      cliAgentType: "codex",
+      accountId: "openai-account",
+      model,
+    },
   };
 }
 
@@ -525,6 +542,62 @@ describe("messageQueueAtom", () => {
       );
       store.set(editMessageAtom, { messageId: "m1", content: "new" });
       expect(store.get(messageQueueAtom)[0].modelSelection).toEqual(selection);
+    });
+
+    it("preserves canonical dispatch when the retry resolution is omitted", () => {
+      const admittedDispatch = makeConversationDispatch("gpt-old");
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({ id: "m1", conversationDispatch: admittedDispatch })
+      );
+
+      store.set(editMessageAtom, { messageId: "m1", content: "retry" });
+
+      expect(store.get(messageQueueAtom)[0].conversationDispatch).toEqual(
+        admittedDispatch
+      );
+    });
+
+    it("replaces canonical dispatch with the retry-time runtime", () => {
+      const currentDispatch = makeConversationDispatch("gpt-current");
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({
+          id: "m1",
+          conversationDispatch: makeConversationDispatch("gpt-old"),
+        })
+      );
+
+      store.set(editMessageAtom, {
+        messageId: "m1",
+        content: "retry",
+        conversationDispatch: currentDispatch,
+      });
+
+      expect(store.get(messageQueueAtom)[0].conversationDispatch).toEqual(
+        currentDispatch
+      );
+    });
+
+    it("clears stale canonical dispatch for a direct Member retry", () => {
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({
+          id: "m1",
+          sessionId: "member-session",
+          conversationDispatch: makeConversationDispatch("gpt-root"),
+        })
+      );
+
+      store.set(editMessageAtom, {
+        messageId: "m1",
+        content: "retry directly",
+        conversationDispatch: null,
+      });
+
+      const message = store.get(messageQueueAtom)[0];
+      expect(message.sessionId).toBe("member-session");
+      expect(message).not.toHaveProperty("conversationDispatch");
     });
 
     it("is a no-op for non-matching messageId", () => {

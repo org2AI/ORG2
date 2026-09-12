@@ -12,6 +12,7 @@ import { useCallback, useEffect } from "react";
 import type { AgentExecMode } from "@src/config/sessionCreatorConfig";
 import { resolveSessionAgentExecMode } from "@src/config/sessionCreatorConfig";
 import { refreshAgentOrgRunView } from "@src/engines/ChatPanel/InputArea/components/agentOrgRunViewStore";
+import { isAgentOrgMemberDirectTarget } from "@src/engines/ChatPanel/agentOrgComposerOwnership";
 import { getTurnPhase } from "@src/engines/SessionCore/control/turnLifecycle";
 import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import { flushMessageQueuePersistence } from "@src/engines/SessionCore/hooks/session/messageQueuePersistence";
@@ -87,25 +88,7 @@ interface UseUserIntentSubmitOptions {
   getSessionId: () => string | null;
 }
 
-interface AgentOrgMemberDirectTarget {
-  parentSessionId?: string;
-  orgMemberId?: string;
-}
-
-export function isAgentOrgMemberDirectTarget(
-  session: AgentOrgMemberDirectTarget | null | undefined
-): boolean {
-  // `agentOrgId` intentionally exists only on the root/coordinator Session.
-  // A materialized Member is identified by its canonical parent + roster
-  // identity; Rust still revalidates both against the run before accepting
-  // the source event. Requiring the root-only field here silently downgraded
-  // real Member submits to ordinary SDE sends.
-  return Boolean(
-    session?.parentSessionId &&
-    session.orgMemberId &&
-    session.orgMemberId !== "coordinator"
-  );
-}
+export { isAgentOrgMemberDirectTarget } from "@src/engines/ChatPanel/agentOrgComposerOwnership";
 
 export function useUserIntentSubmit({
   getSessionId,

@@ -19,6 +19,12 @@ export interface QueuedConversationDispatch {
   dispatchIdentityKey?: string;
 }
 
+/** Explicit retry-time update for a queue row's canonical ownership. */
+export type QueuedConversationDispatchResolution =
+  | { action: "preserve" }
+  | { action: "replace"; dispatch: QueuedConversationDispatch }
+  | { action: "clear" };
+
 /** Neutral subset consumed by a canonical authority executor. */
 export interface QueuedConversationMessage {
   id: string;

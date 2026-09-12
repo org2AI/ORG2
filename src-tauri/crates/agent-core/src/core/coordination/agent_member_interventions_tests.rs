@@ -1,9 +1,11 @@
 use super::*;
+use crate::coordination::agent_inbox::{AgentInboxStore, AgentMessage, InsertInboxParams};
 use crate::coordination::agent_org_runs::{
     AgentOrgRunEntryMode, AgentOrgRunStore, CreateAgentOrgRunParams,
 };
 use crate::coordination::agent_org_tasks::{
-    AgentOrgTaskStore, CreateTaskParams, TaskStatus, TASK_METADATA_ELIGIBLE_MEMBER_IDS,
+    AgentOrgTaskStore, CreateTaskParams, TaskOutputInput, TaskOwnerExecution, TaskStatus,
+    TASK_METADATA_ELIGIBLE_MEMBER_IDS,
 };
 use crate::definitions::orgs::{FlatOrgMember, OrgDefinition, PlanApprovalPolicy};
 use crate::foundation::session_bridge::{TurnIntentBridgeSource, TurnIntentBridgeStatus};
@@ -1071,6 +1073,22 @@ fn return_restores_one_exact_continuation_and_never_duplicates_it() {
         })),
     })
     .expect("create restorable Task");
+    let assignment = AgentInboxStore::insert(InsertInboxParams {
+        recipient_agent_id: MEMBER_AGENT_ID.to_string(),
+        recipient_member_id: Some(MEMBER_ID.to_string()),
+        sender_agent_id: "agent-root-restore".to_string(),
+        sender_member_id: Some(COORDINATOR_MEMBER_ID.to_string()),
+        org_run_id: Some(fixture.run_id.clone()),
+        message: AgentMessage::TaskAssigned {
+            task_id: "task-restore".to_string(),
+            subject: "restore me".to_string(),
+            description: String::new(),
+            assigned_by: "Coordinator".to_string(),
+            execution_mode: crate::coordination::agent_org_tasks::TaskExecutionMode::Build,
+            dependency_outputs: Vec::new(),
+        },
+    })
+    .expect("seed original Task assignment");
     agent_org_turn_contexts::accept(&AgentOrgTurnAdmission::task_execution(
         &fixture.run_id,
         &fixture.member_session_id,
@@ -1094,6 +1112,17 @@ fn return_restores_one_exact_continuation_and_never_duplicates_it() {
         [&fixture.member_session_id],
     )
     .expect("start original formal Turn");
+    conn.execute(
+        "INSERT INTO agent_org_runtime_inbox_materializations (
+             inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at
+         ) VALUES (?1,?2,'task-restore-source','turn-original',?3)",
+        params![
+            assignment.id,
+            &fixture.member_session_id,
+            chrono::Utc::now().to_rfc3339()
+        ],
+    )
+    .expect("materialize original Task assignment");
     drop(conn);
 
     seed_direct_source(&fixture, "event-restore", "turn-direct", "quick fix");
@@ -1168,6 +1197,30 @@ fn return_restores_one_exact_continuation_and_never_duplicates_it() {
         )
         .expect("count continuations");
     assert_eq!(continuation_count, 1);
+    let resumed_input = AgentInboxStore::list_unread_task_input_for_turn(
+        MEMBER_ID,
+        &fixture.run_id,
+        "task-restore",
+        &fixture.member_session_id,
+        &continuation_id,
+    )
+    .expect("Return continuation reclaims the original Task input");
+    assert_eq!(
+        resumed_input
+            .rows
+            .iter()
+            .map(|row| row.id)
+            .collect::<Vec<_>>(),
+        vec![assignment.id]
+    );
+    let early_ack = AgentInboxStore::mark_many_read_for_turn(
+        &[assignment.id],
+        &fixture.member_session_id,
+        &continuation_id,
+        None,
+    )
+    .expect_err("Return continuation must finish the Task before acknowledging its input");
+    assert!(early_ack.contains("exact Resume continuation did not complete the Task"));
     assert!(AgentMemberInterventionStore::continuation_is_dispatchable(
         &fixture.member_session_id,
         &continuation_id,
@@ -1200,6 +1253,176 @@ fn return_restores_one_exact_continuation_and_never_duplicates_it() {
         &continuation_id,
     )
     .expect("requeued continuation dispatchability"));
+    AgentOrgTaskStore::owner_complete_with_transactional_effects(
+        TaskOwnerExecution::new(&fixture.member_session_id, &continuation_id)
+            .expect("Return continuation owner authority"),
+        &fixture.run_id,
+        "task-restore",
+        TaskOutputInput {
+            summary: "restored Task completed".to_string(),
+            content: None,
+            artifact_ids: Vec::new(),
+        },
+        |_tx, _outcome, _tasks| Ok(()),
+    )
+    .expect("complete restored Task through the production settlement path");
+    let conn = get_connection().expect("test sqlite connection");
+    conn.execute(
+        "UPDATE session_turn_intents SET status='completed'
+         WHERE session_id=?1 AND turn_intent_id=?2",
+        params![&fixture.member_session_id, &continuation_id],
+    )
+    .expect("terminalize successful Return continuation before its drain guard runs");
+    drop(conn);
+    assert_eq!(
+        AgentInboxStore::mark_many_read_for_turn(
+            &[assignment.id],
+            &fixture.member_session_id,
+            &continuation_id,
+            None,
+        )
+        .expect("successful terminal Return continuation settles its Task input"),
+        0
+    );
+    let conn = get_connection().expect("test sqlite connection");
+    let settled_assignment: (Option<String>, i64, i64) = conn
+        .query_row(
+            "SELECT inbox.read_at,
+                    (SELECT COUNT(*)
+                     FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                     WHERE resolution.inbox_id=inbox.id
+                       AND resolution.reason='task_completed'),
+                    (SELECT COUNT(*)
+                     FROM agent_org_runtime_inbox_materializations materialization
+                     WHERE materialization.inbox_id=inbox.id)
+             FROM agent_org_runtime_inbox inbox WHERE inbox.id=?1",
+            [assignment.id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .expect("read restored assignment settlement");
+    assert_eq!(
+        settled_assignment,
+        (None, 1, 0),
+        "terminal Task settlement keeps the source unread as immutable history while making it non-replayable"
+    );
+}
+
+#[test]
+fn return_rejects_a_receipt_owned_by_another_session_without_clearing_it() {
+    let _sandbox = test_helpers::test_env::sandbox();
+    let fixture = create_fixture("return-session-mismatch", AgentOrgRunStatus::Idle);
+    seed_direct_source(
+        &fixture,
+        "event-return-session-mismatch",
+        "turn-return-session-mismatch",
+        "keep the receipt active",
+    );
+    let accepted = enqueue(
+        &fixture,
+        "event-return-session-mismatch",
+        "turn-return-session-mismatch",
+        "keep the receipt active",
+        32,
+    )
+    .expect("accept direct Turn");
+    mark_direct_terminal(&fixture, "turn-return-session-mismatch");
+
+    let error = AgentMemberInterventionStore::return_to_work(
+        "different-member-session",
+        &accepted.intervention.intervention_receipt_id,
+        "return-wrong-session",
+    )
+    .expect_err("another Session must not clear this Member receipt");
+    assert!(error.contains("receipt belongs to another Session"));
+
+    let receipt = AgentMemberInterventionStore::get_by_receipt(
+        &accepted.intervention.intervention_receipt_id,
+    )
+    .expect("read receipt after rejected Return")
+    .expect("receipt remains present");
+    assert_eq!(receipt.status, MemberInterventionStatus::Active);
+    assert!(receipt.return_request_id.is_none());
+    assert!(receipt.cleared_revision.is_none());
+    assert!(receipt.continuation_turn_intent_id.is_none());
+}
+
+#[test]
+fn return_binds_one_continuation_to_the_current_activation_generation() {
+    let _sandbox = test_helpers::test_env::sandbox();
+    let (fixture, accepted, task_id, formal_turn_id) =
+        create_recoverable_formal_intervention("return-current-generation");
+    let conn = get_connection().expect("test sqlite connection");
+    conn.execute(
+        "UPDATE agent_org_runtime_runs
+         SET activation_generation=2,updated_at=?2 WHERE id=?1",
+        params![&fixture.run_id, chrono::Utc::now().to_rfc3339()],
+    )
+    .expect("advance Team activation generation");
+    conn.execute(
+        "UPDATE agent_org_runtime_tasks
+         SET activation_generation=2,updated_at=?3
+         WHERE org_run_id=?1 AND id=?2 AND owner=?4",
+        params![
+            &fixture.run_id,
+            &task_id,
+            chrono::Utc::now().to_rfc3339(),
+            MEMBER_ID
+        ],
+    )
+    .expect("keep the original Task owned in the current generation");
+    drop(conn);
+
+    let returned = AgentMemberInterventionStore::return_to_work(
+        &fixture.member_session_id,
+        &accepted.intervention.intervention_receipt_id,
+        "return-current-generation",
+    )
+    .expect("restore formal Task on the current generation");
+    assert_eq!(returned.outcome, ReturnToWorkOutcome::RestoredTask);
+    let continuation_id = returned
+        .continuation_turn_intent_id
+        .expect("current-generation continuation identity");
+
+    let conn = get_connection().expect("test sqlite connection");
+    let continuations: Vec<(String, i64)> = conn
+        .prepare(
+            "SELECT turn_intent_id,activation_generation
+             FROM agent_org_runtime_turn_contexts
+             WHERE session_id=?1 AND task_id=?2 AND turn_intent_id<>?3
+             ORDER BY context_id ASC",
+        )
+        .expect("prepare continuation query")
+        .query_map(
+            params![&fixture.member_session_id, &task_id, &formal_turn_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .expect("query continuations")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("collect continuations");
+    assert_eq!(continuations, vec![(continuation_id.clone(), 2)]);
+    drop(conn);
+
+    let replay = AgentMemberInterventionStore::return_to_work(
+        &fixture.member_session_id,
+        &accepted.intervention.intervention_receipt_id,
+        "return-current-generation",
+    )
+    .expect("replay current-generation Return");
+    assert_eq!(replay.outcome, ReturnToWorkOutcome::AlreadyApplied);
+    assert_eq!(
+        replay.continuation_turn_intent_id.as_deref(),
+        Some(continuation_id.as_str())
+    );
+    let conn = get_connection().expect("test sqlite connection");
+    let continuation_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+             WHERE session_id=?1 AND task_id=?2 AND turn_intent_id<>?3",
+            params![&fixture.member_session_id, &task_id, &formal_turn_id],
+            |row| row.get(0),
+        )
+        .expect("count current-generation continuations");
+    assert_eq!(continuation_count, 1);
 }
 
 #[test]

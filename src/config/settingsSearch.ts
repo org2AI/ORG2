@@ -74,12 +74,81 @@ const SECURITY_KEYS = new Set<SettingsKey>([
 /**
  * Exceptions where the persisted setting key and the visible localized row
  * label intentionally use different names. All other entries are derived from
- * the schema key automatically, so new schema-backed options join search
+ * the schema key automatically; registry entries without a settings-page control opt
+ * out through settingsSearch, so new schema-backed options join search
  * without a second sidebar list.
  */
 const SETTINGS_SEARCH_UI_OVERRIDES: Partial<
   Record<SettingsKey, SettingsSearchUiOverride>
 > = {
+  "agent.sde.questionAutoSkipTimeoutByPresence": {
+    labelKey: "navigation:myRole.questionAutoSkipLabel",
+  },
+  "agent.sde.planAutoApproveTimeoutByPresence": {
+    labelKey: "navigation:myRole.planAutoApproveLabel",
+  },
+  "agent.sde.goalMaxTurnsByPresence": {
+    labelKey: "navigation:myRole.goalMaxTurnsLabel",
+  },
+  "agent.sde.modeSwitchAutoPlanByPresence": {
+    labelKey: "navigation:myRole.modeSwitchAutoPlanLabel",
+  },
+  "agent.sde.followUpSuggestionsEnabled": {
+    labelKey: "navigation:myRole.followUpSuggestionsLabel",
+  },
+  "housekeeper.enabled": {
+    labelKey: "integrations:housekeeper.settings.enabled.title",
+  },
+  "housekeeper.accountId": {
+    labelKey: "integrations:housekeeper.settings.account.title",
+  },
+  "housekeeper.model": {
+    labelKey: "integrations:housekeeper.settings.model.title",
+  },
+  "housekeeper.contextLimitTokens": {
+    labelKey: "integrations:housekeeper.settings.context.title",
+  },
+  "git.pullStrategy": { labelKey: "settings:editor.git.pullStrategy" },
+  "git.autoFetch": { labelKey: "settings:editor.git.autoFetch" },
+  "git.autoFetchInterval": {
+    labelKey: "settings:editor.git.autoFetchInterval",
+  },
+  "git.prompts.commitInstructions": {
+    labelKey: "integrations:git.commitInstructions",
+  },
+  "git.prompts.pullRequestInstructions": {
+    labelKey: "integrations:git.pullRequestInstructions",
+  },
+  "git.attribution.coauthorEnabled": {
+    labelKey: "integrations:git.commitAttribution",
+  },
+  "git.attribution.prEnabled": { labelKey: "integrations:git.prAttribution" },
+  "git.autoCreatePr": { labelKey: "integrations:git.autoCreatePr" },
+  "git.worktree.maxCount": { labelKey: "settings:editor.git.worktreeMaxCount" },
+  "git.worktree.cleanupIntervalHours": {
+    labelKey: "settings:editor.git.worktreeCleanupInterval",
+  },
+  "housekeeper.features.promptPolish": {
+    labelKey: "integrations:housekeeper.features.promptPolish.title",
+  },
+  "housekeeper.features.stepExplain": {
+    labelKey: "integrations:housekeeper.features.stepExplain.title",
+  },
+  "housekeeper.features.uiControl": {
+    labelKey: "integrations:housekeeper.features.uiControl.title",
+  },
+  "housekeeper.features.contextCompact": {
+    labelKey: "integrations:housekeeper.features.contextCompact.title",
+  },
+  "agentBrowser.provider": {
+    labelKey: "integrations:builtInTools.agentBrowserProvider",
+  },
+  "agentBrowser.agentBrowserCliPath": {
+    labelKey: "integrations:builtInTools.agentBrowserCliPath",
+  },
+  "agentBrowser.playwrightCliPath": {
+    labelKey: "integrations:builtInTools.playwrightCliPath",
+  },
   "general.theme": { labelKey: "settings:general.appearanceMode" },
   "general.dockIcon": { labelKey: "settings:general.appIcon" },
   "general.primaryColorLight": {
@@ -264,7 +333,13 @@ function translateWithFallback(
   fallback: string
 ): string {
   const translated = translate(translationKey);
-  return translated && translated !== translationKey ? translated : fallback;
+  // i18next returns the key without its namespace when a translation is absent.
+  const unqualifiedKey = translationKey.slice(translationKey.indexOf(":") + 1);
+  return translated &&
+    translated !== translationKey &&
+    translated !== unqualifiedKey
+    ? translated
+    : fallback;
 }
 
 function buildItemPath(
@@ -295,6 +370,7 @@ export function buildGlobalSettingsSearchGroups(
 
   for (const key of getSettingsKeys()) {
     const definition: SettingDefinition = SETTINGS_REGISTRY[key];
+    if (definition.settingsSearch === false) continue;
     const metadata = SETTINGS_SEARCH_UI_OVERRIDES[key];
     const owner = resolveOwner(key, definition.category);
     const navigationItem = itemById.get(owner.navigationItemId);

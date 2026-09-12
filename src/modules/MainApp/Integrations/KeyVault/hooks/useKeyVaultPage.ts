@@ -27,6 +27,7 @@ import {
   buildIntegrationsPath,
   parseCodexReauthIntent,
 } from "@src/config/mainAppPaths";
+import { parseSettingsSetupProvider } from "@src/config/settingsSetupActions";
 import { useKeyVault } from "@src/hooks/keyVault";
 import { requiresCodexReauthentication } from "@src/hooks/keyVault/codexReauthentication";
 import { createLogger } from "@src/hooks/logger";
@@ -439,7 +440,9 @@ export function useKeyVaultPage() {
     showAddForm: showAddForm && !isResolvingReauthAccount,
     formLoading,
     selectedAccountId,
-    formInitialAgentType: isCodexReauth ? ("codex" as const) : undefined,
+    formInitialAgentType: isCodexReauth
+      ? ("codex" as const)
+      : parseSettingsSetupProvider(location.search).keyProvider,
     formInitialData: isCodexReauth
       ? {
           name: reauthAccount?.name ?? "",

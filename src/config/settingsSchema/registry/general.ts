@@ -17,10 +17,6 @@ import {
   FAMILIAR_LANGUAGE_TECH_STACKS,
   TECH_SAVVY_LEVELS,
 } from "@src/config/profile/userProfile";
-import {
-  DEFAULT_SIDEBAR_GUIDE_PROGRESS,
-  SidebarGuideProgressSchema,
-} from "@src/config/settingsSchema/sidebarGuideProgress";
 import type { SettingDefinition } from "@src/config/settingsSchema/types";
 
 /**
@@ -241,6 +237,8 @@ export const GENERAL_SETTINGS_REGISTRY = {
     category: "general",
   },
   "general.chatPanelPosition": {
+    // Edited in the sidebar layout menu, not a settings page.
+    settingsSearch: false,
     schema: z.enum(["left", "right"]),
     default: "left" as const,
     description: "Chat panel side shared by My Station and Agent Station",
@@ -251,6 +249,8 @@ export const GENERAL_SETTINGS_REGISTRY = {
     },
   },
   "general.chatTurnPaginationEnabled": {
+    // Edited in the sidebar layout menu, not a settings page.
+    settingsSearch: false,
     schema: z.boolean(),
     default: false,
     description:
@@ -258,6 +258,8 @@ export const GENERAL_SETTINGS_REGISTRY = {
     category: "general",
   },
   "general.modelPickerStyle": {
+    // Edited in the sidebar layout menu, not a settings page.
+    settingsSearch: false,
     schema: z.enum(["spotlight", "dropdown"]),
     default: "spotlight" as const,
     description:
@@ -269,6 +271,8 @@ export const GENERAL_SETTINGS_REGISTRY = {
     },
   },
   "general.userDisplayName": {
+    // Used as a Task Kanban creator-name fallback; no settings-page editor.
+    settingsSearch: false,
     schema: z.string(),
     default: "",
     description: "User display name shown in the app",
@@ -325,47 +329,6 @@ export const GENERAL_SETTINGS_REGISTRY = {
     default: "auto",
     description:
       "Release channel for app updates. auto follows the installed build (prerelease builds track beta, release builds track stable); stable and beta pin the channel explicitly. Switching from beta to stable never downgrades — it takes effect at the next stable release",
-    category: "general",
-  },
-  "general.setupWalkthroughProgress": {
-    schema: SidebarGuideProgressSchema,
-    default: DEFAULT_SIDEBAR_GUIDE_PROGRESS,
-    description:
-      "Retired sidebar-guide progress, retained only to read existing settings. The onboarding discovery modal does not read or write this value",
-    category: "general",
-  },
-  "general.githubStarPromptCompleted": {
-    schema: z.boolean(),
-    default: false,
-    description:
-      "Whether GitHub has confirmed that the current user starred the canonical ORG2 repository",
-    category: "general",
-  },
-  "general.githubStarPromptDisabled": {
-    schema: z.boolean(),
-    default: false,
-    description: "Permanently disable the optional GitHub Star reminder",
-    category: "general",
-  },
-  "general.githubStarPromptDeferredUntil": {
-    schema: z.number().nonnegative(),
-    default: 0,
-    description:
-      "Unix timestamp in milliseconds before the GitHub Star reminder may appear again",
-    category: "general",
-  },
-  "general.githubStarPromptLastShownAt": {
-    schema: z.number().nonnegative(),
-    default: 0,
-    description:
-      "Unix timestamp in milliseconds when the GitHub Star reminder was last shown",
-    category: "general",
-  },
-  "general.githubStarPromptNextEligibleValueCount": {
-    schema: z.number().int().positive(),
-    default: 1,
-    description:
-      "Value-moment count required before the optional GitHub Star reminder is eligible",
     category: "general",
   },
   "general.voiceInputEnabled": {

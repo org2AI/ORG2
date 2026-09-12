@@ -15,9 +15,9 @@ import {
   DROPDOWN_PANEL,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import Input from "@src/components/Input";
 import { useDropdownEngine } from "@src/hooks/dropdown";
-import { HugeiconsIcon, Search01Icon } from "@src/icons";
+
+import { createSettingsSearchIndex } from "./settingsSearchIndex";
 
 export interface SettingsSearchDropdownItem {
   readonly id: string;
@@ -42,7 +42,7 @@ interface SettingsSearchDropdownTriggerProps {
   readonly onClick: () => void;
 }
 
-interface SettingsSearchDropdownBaseProps<
+interface SettingsSearchDropdownProps<
   TItem extends SettingsSearchDropdownItem,
 > {
   readonly groups: readonly SettingsSearchDropdownGroup<TItem>[];
@@ -50,47 +50,9 @@ interface SettingsSearchDropdownBaseProps<
   readonly onSelect: (item: TItem) => void;
   readonly align?: "left" | "right";
   readonly minWidth?: number;
-  readonly onSearchQueryChange?: (query: string) => void;
-}
-
-type SettingsSearchDropdownProps<TItem extends SettingsSearchDropdownItem> =
-  SettingsSearchDropdownBaseProps<TItem> &
-    (
-      | {
-          readonly variant?: "trigger";
-          readonly renderTrigger: (
-            props: SettingsSearchDropdownTriggerProps
-          ) => React.ReactNode;
-        }
-      | {
-          readonly variant: "search-input";
-          readonly renderTrigger?: never;
-        }
-    );
-
-function normalizeSearchText(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase();
-}
-
-function groupMatchesQuery<TItem extends SettingsSearchDropdownItem>(
-  group: SettingsSearchDropdownGroup<TItem>,
-  query: string
-): SettingsSearchDropdownGroup<TItem> {
-  const tokens = normalizeSearchText(query).trim().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return group;
-
-  return {
-    ...group,
-    items: group.items.filter((item) => {
-      const haystack = normalizeSearchText(
-        [item.label, item.id, ...(item.searchTerms ?? [])].join(" ")
-      );
-      return tokens.every((token) => haystack.includes(token));
-    }),
-  };
+  readonly renderTrigger: (
+    props: SettingsSearchDropdownTriggerProps
+  ) => React.ReactNode;
 }
 
 function SettingsSearchDropdown<TItem extends SettingsSearchDropdownItem>({
@@ -98,22 +60,21 @@ function SettingsSearchDropdown<TItem extends SettingsSearchDropdownItem>({
   activeItemId,
   onSelect,
   renderTrigger,
-  variant = "trigger",
   align = "left",
   minWidth = 240,
-  onSearchQueryChange,
 }: SettingsSearchDropdownProps<TItem>) {
   const { t: tSettings } = useTranslation("settings");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectorOpen, setSelectorOpen] = useState(false);
   const listboxId = useId();
 
+  const searchIndex = useMemo(
+    () => createSettingsSearchIndex(groups),
+    [groups]
+  );
   const filteredGroups = useMemo(
-    () =>
-      groups
-        .map((group) => groupMatchesQuery(group, searchQuery))
-        .filter((group) => group.items.length > 0),
-    [groups, searchQuery]
+    () => searchIndex(searchQuery),
+    [searchIndex, searchQuery]
   );
 
   const visibleItems = useMemo(
@@ -129,10 +90,9 @@ function SettingsSearchDropdown<TItem extends SettingsSearchDropdownItem>({
     (item: TItem) => {
       setSelectorOpen(false);
       setSearchQuery("");
-      onSearchQueryChange?.("");
       onSelect(item);
     },
-    [onSearchQueryChange, onSelect]
+    [onSelect]
   );
 
   const {
@@ -165,7 +125,6 @@ function SettingsSearchDropdown<TItem extends SettingsSearchDropdownItem>({
   const activeDescendant = highlightedItem
     ? `${listboxId}-option-${highlightedItem.id}`
     : undefined;
-  const isPersistentSearch = variant === "search-input";
 
   const handleTriggerClick = useCallback(() => {
     if (!isOpen) setSearchQuery("");
@@ -175,17 +134,10 @@ function SettingsSearchDropdown<TItem extends SettingsSearchDropdownItem>({
   const handleSearchChange = useCallback(
     (value: string) => {
       setSearchQuery(value);
-      onSearchQueryChange?.(value);
-      if (isPersistentSearch) {
-        const hasQuery = value.trim().length > 0;
-        if (hasQuery && !isOpen) setIsOpen(true);
-        if (!hasQuery && isOpen) setIsOpen(false);
-      } else if (!isOpen) {
-        setIsOpen(true);
-      }
+      if (!isOpen) setIsOpen(true);
       keyboard.setSelectedIndex(0);
     },
-    [isOpen, isPersistentSearch, keyboard, onSearchQueryChange, setIsOpen]
+    [isOpen, keyboard, setIsOpen]
   );
 
   const handleSearchKeyDown = useCallback(
@@ -205,44 +157,12 @@ function SettingsSearchDropdown<TItem extends SettingsSearchDropdownItem>({
 
   return (
     <>
-      <span
-        ref={triggerRef}
-        className={
-          isPersistentSearch ? "block w-full min-w-0" : "inline-flex min-w-0"
-        }
-      >
-        {isPersistentSearch ? (
-          <Input
-            type="search"
-            size="small"
-            className="input-sidebar-search"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            onKeyDown={handleSearchKeyDown}
-            placeholder={tSettings("searchPlaceholder")}
-            prefix={
-              <HugeiconsIcon
-                icon={Search01Icon}
-                data-icon="search"
-                size={14}
-                strokeWidth={2}
-                className="text-text-3"
-              />
-            }
-            role="combobox"
-            aria-controls={listboxId}
-            aria-expanded={isOpen}
-            aria-autocomplete="list"
-            aria-activedescendant={activeDescendant}
-            data-testid="settings-navigation-search-input"
-          />
-        ) : (
-          renderTrigger?.({
-            isOpen,
-            listboxId,
-            onClick: handleTriggerClick,
-          })
-        )}
+      <span ref={triggerRef} className="inline-flex min-w-0">
+        {renderTrigger({
+          isOpen,
+          listboxId,
+          onClick: handleTriggerClick,
+        })}
       </span>
 
       {isOpen &&
@@ -265,32 +185,27 @@ function SettingsSearchDropdown<TItem extends SettingsSearchDropdownItem>({
               minWidth: Math.max(panelPosition.width, minWidth),
             }}
           >
-            {!isPersistentSearch && (
-              <DropdownSearch
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onKeyDown={handleSearchKeyDown}
-                placeholder={tSettings("searchPlaceholder")}
-                role="combobox"
-                aria-controls={listboxId}
-                aria-expanded={isOpen}
-                aria-autocomplete="list"
-                aria-activedescendant={activeDescendant}
-                autoFocus
-                testId="settings-navigation-search-input"
-              />
-            )}
+            <DropdownSearch
+              type="text"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown}
+              placeholder={tSettings("searchPlaceholder")}
+              role="combobox"
+              aria-controls={listboxId}
+              aria-expanded={isOpen}
+              aria-autocomplete="list"
+              aria-activedescendant={activeDescendant}
+              autoFocus
+              testId="settings-navigation-search-input"
+            />
             <div
               id={listboxId}
               role="listbox"
               aria-label={tSettings("searchPlaceholder")}
               className={DROPDOWN_CLASSES.optionsContainerOverlay}
               style={{
-                maxHeight: Math.min(
-                  360,
-                  panelPosition.maxHeight - (isPersistentSearch ? 0 : 44)
-                ),
+                maxHeight: Math.min(360, panelPosition.maxHeight - 44),
               }}
             >
               {filteredGroups.length === 0 ? (

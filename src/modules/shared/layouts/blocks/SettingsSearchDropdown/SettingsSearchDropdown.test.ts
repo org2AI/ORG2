@@ -69,23 +69,6 @@ const GROUPS: readonly SettingsSearchDropdownGroup[] = [
   { id: "tools", label: "Agent tools", items: ITEMS.slice(3) },
 ];
 
-const CONTROL_GROUPS: readonly SettingsSearchDropdownGroup[] = [
-  {
-    id: "appearance",
-    label: "Appearance",
-    items: [
-      {
-        id: "settings-row-skin",
-        label: "皮肤",
-        path: "/settings/app/appearance",
-        icon: Settings01Icon,
-        groupId: "appearance",
-        searchTerms: ["Choose the app palette"],
-      },
-    ],
-  },
-];
-
 function setInputValue(input: HTMLInputElement, value: string): void {
   const setter = Object.getOwnPropertyDescriptor(
     HTMLInputElement.prototype,
@@ -274,93 +257,6 @@ describe("SettingsSearchDropdown", () => {
       );
     });
 
-    expect(
-      document.body.querySelector(
-        '[data-testid="settings-navigation-search-panel"]'
-      )
-    ).toBeNull();
-  });
-
-  it("waits for input before showing the left-aligned sidebar result panel", async () => {
-    await act(async () => {
-      root.render(
-        React.createElement(
-          Provider,
-          { store: createStore() },
-          React.createElement(SettingsSearchDropdown, {
-            variant: "search-input",
-            groups: [...GROUPS, ...CONTROL_GROUPS],
-            onSelect,
-            align: "left",
-          })
-        )
-      );
-    });
-
-    const input = container.querySelector<HTMLInputElement>(
-      '[data-testid="settings-navigation-search-input"]'
-    );
-    expect(input).not.toBeNull();
-    expect(
-      input?.closest(".input-wrapper")?.classList.contains("input-size-small")
-    ).toBe(true);
-    expect(input?.closest(".input-inner")?.classList.contains("bg-bg-2")).toBe(
-      true
-    );
-    expect(
-      input
-        ?.closest(".input-wrapper")
-        ?.classList.contains("input-sidebar-search")
-    ).toBe(true);
-
-    await act(async () => {
-      input?.focus();
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => resolve())
-      );
-    });
-
-    expect(
-      document.body.querySelector(
-        '[data-testid="settings-navigation-search-panel"]'
-      )
-    ).toBeNull();
-
-    await act(async () => {
-      if (input) setInputValue(input, "皮肤");
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => resolve())
-      );
-    });
-
-    const panel = document.body.querySelector<HTMLElement>(
-      '[data-testid="settings-navigation-search-panel"]'
-    );
-    expect(panel).not.toBeNull();
-    expect(panel?.style.left).not.toBe("");
-    expect(panel?.style.right).toBe("");
-    expect(
-      panel?.querySelector('[data-testid="settings-navigation-search-input"]')
-    ).toBeNull();
-    expect(container.contains(input)).toBe(true);
-    expect(
-      panel?.querySelector(
-        '[data-testid="settings-navigation-search-result-settings-row-skin"]'
-      )
-    ).not.toBeNull();
-
-    act(() => {
-      if (input) setInputValue(input, "MCP");
-    });
-    expect(
-      document.body.querySelector(
-        '[data-testid="settings-navigation-search-result-externalSkillsets"]'
-      )
-    ).not.toBeNull();
-
-    act(() => {
-      if (input) setInputValue(input, "");
-    });
     expect(
       document.body.querySelector(
         '[data-testid="settings-navigation-search-panel"]'

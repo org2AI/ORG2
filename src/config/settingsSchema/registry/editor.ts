@@ -76,6 +76,8 @@ export const EDITOR_SETTINGS_REGISTRY = {
     category: "editor",
   },
   "editor.showIndentGuides": {
+    // Read by useEditorAppearance; no settings-page control.
+    settingsSearch: false,
     schema: z.boolean(),
     default: true,
     description: "Show indent guides (vertical lines for indentation levels)",
@@ -95,6 +97,8 @@ export const EDITOR_SETTINGS_REGISTRY = {
     category: "editor",
   },
   "editor.showBlame": {
+    // Toggled in the code viewer, not a settings page.
+    settingsSearch: false,
     schema: z.boolean(),
     default: false,
     description:

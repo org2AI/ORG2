@@ -17,6 +17,7 @@ export const AccountCategoryView: React.FC<{
   if (accounts.showAddForm) {
     return (
       <KeyVaultWizard
+        key={accounts.formInitialAgentType ?? "choose"}
         onSubmit={accounts.handleFormSubmit}
         onCancel={accounts.handleFormCancel}
         loading={accounts.formLoading}

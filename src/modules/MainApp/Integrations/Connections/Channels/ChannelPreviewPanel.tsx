@@ -78,6 +78,7 @@ const ChannelPreviewPanel: React.FC<ChannelPreviewPanelProps> = ({
   if (channelWizardMode) {
     return (
       <ChannelWizard
+        key={channelWizardInitialSelection?.type ?? "choose"}
         onSubmit={handleChannelWizardSubmit}
         onCancel={handleChannelWizardCancel}
         existingAccounts={existingAccountsMap}

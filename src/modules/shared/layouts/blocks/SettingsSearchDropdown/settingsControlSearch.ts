@@ -35,7 +35,7 @@ function normalizeRenderedText(value: string | null | undefined): string {
  *
  * SectionRow owns the markers, so newly added or relabelled rows become
  * searchable without a second catalog or registration effect. This only runs
- * while the user types; no observer or idle scan is retained in the app.
+ * on search entry/refocus; no observer or idle scan is retained in the app.
  */
 export function collectRenderedSettingsControls(
   root: ParentNode = document

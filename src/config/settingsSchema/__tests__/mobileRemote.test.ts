@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { generateJsoncContent, validateSettings } from "../index";
 
-describe("Mobile Remote settings compatibility", () => {
-  it("round-trips the deprecated desktop token without using it as active auth", () => {
+describe("Retired Mobile Remote settings", () => {
+  it("drops the unused desktop token at validation and serialization", () => {
     const settings = validateSettings({
       "mobileRemote.desktopToken": "legacy-shared-secret",
     });
 
-    expect(settings["mobileRemote.desktopToken"]).toBe("legacy-shared-secret");
-    expect(generateJsoncContent(settings)).toContain(
+    expect(settings).not.toHaveProperty("mobileRemote.desktopToken");
+    expect(generateJsoncContent(settings)).not.toContain(
       '"mobileRemote.desktopToken": "legacy-shared-secret"'
     );
   });

@@ -9,6 +9,8 @@ export interface SettingDefinition<T extends z.ZodType = z.ZodType> {
   description: string;
   /** Category for grouping in the GUI */
   category: SettingsCategory;
+  /** False for live internal/config-file settings with no settings-page control. */
+  settingsSearch?: false;
   /** Optional list of allowed values (for display in GUI dropdowns) */
   enumLabels?: Record<string, string>;
 }

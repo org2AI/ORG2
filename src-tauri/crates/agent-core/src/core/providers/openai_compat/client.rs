@@ -164,6 +164,12 @@ impl OpenAICompatClient {
             safe_truncate_utf8(body, 500)
         );
 
+        if crate::providers::http_error_body::is_model_unavailable(status, body) {
+            return ProviderError::ModelNotFound(
+                crate::providers::http_error_body::clean_error_message(status, body),
+            );
+        }
+
         if let Ok(err_resp) = serde_json::from_str::<ApiErrorResponse>(body) {
             if let Some(err) = err_resp.error {
                 let message = err.best_message();

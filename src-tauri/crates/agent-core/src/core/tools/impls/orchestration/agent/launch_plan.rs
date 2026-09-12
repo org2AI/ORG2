@@ -82,6 +82,7 @@ impl AgentTool {
             request.explicit_model.as_deref(),
             &parent_model,
             request.is_shadow,
+            self.config.provider.as_ref(),
         );
 
         let parent_account_id_for_provider = self.config.session_account_id.clone().or_else(|| {

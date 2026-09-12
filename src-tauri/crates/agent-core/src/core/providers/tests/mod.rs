@@ -8,3 +8,5 @@ pub mod openai_responses_tests;
 pub mod registry_tests;
 
 mod custom_model_requests_tests;
+
+mod auxiliary_model_tests;

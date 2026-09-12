@@ -63,6 +63,7 @@ static RATE_LIMIT_COOLDOWNS: LazyLock<Mutex<HashMap<String, Instant>>> =
 pub struct ReliableProvider {
     /// Ordered list of (name, provider). First is primary, rest are fallbacks.
     providers: Vec<(String, Box<dyn LLMProvider>)>,
+    auxiliary_policy: Option<super::auxiliary_model::AuxiliaryModelPolicy>,
     /// Maximum retry attempts per provider (0 = no retries, just one attempt).
     max_retries: u32,
     /// Base backoff in milliseconds (doubles each retry, capped at MAX_BACKOFF_MS).
@@ -85,6 +86,7 @@ impl ReliableProvider {
             max_retries,
             base_backoff_ms: base_backoff_ms.max(MIN_BASE_BACKOFF_MS),
             session_id: Mutex::new(None),
+            auxiliary_policy: None,
         }
     }
 
@@ -103,7 +105,16 @@ impl ReliableProvider {
             max_retries,
             base_backoff_ms: base_backoff_ms.max(MIN_BASE_BACKOFF_MS),
             session_id: Mutex::new(None),
+            auxiliary_policy: None,
         }
+    }
+
+    pub(super) fn with_auxiliary_policy(
+        mut self,
+        policy: super::auxiliary_model::AuxiliaryModelPolicy,
+    ) -> Self {
+        self.auxiliary_policy = Some(policy);
+        self
     }
 
     /// Set the session ID for retry warning broadcasts.
@@ -607,6 +618,20 @@ impl LLMProvider for ReliableProvider {
         Err(last_error.unwrap_or_else(|| {
             ProviderError::Other("All providers exhausted with no attempts made.".into())
         }))
+    }
+
+    fn auxiliary_model(&self, parent_model: &str) -> super::auxiliary_model::AuxiliaryModel {
+        let mut selection = self.auxiliary_policy.as_ref().map_or_else(
+            || self.providers[0].1.auxiliary_model(parent_model),
+            |policy| policy.resolve(parent_model),
+        );
+        // A candidate allowed by the primary account is not necessarily
+        // accepted by a different fallback account/transport. Until the chain
+        // has a common capability contract, retain the working parent model.
+        if self.providers.len() > 1 {
+            selection.model = parent_model.to_owned();
+        }
+        selection
     }
 
     fn default_model(&self) -> &str {

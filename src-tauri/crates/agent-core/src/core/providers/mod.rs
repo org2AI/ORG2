@@ -10,6 +10,7 @@
 //! - `CodexNativeClient`: OpenAI Responses API format for Codex OAuth
 
 pub mod anthropic_native;
+pub mod auxiliary_model;
 pub mod codex_native;
 pub mod cursor_native;
 #[cfg(debug_assertions)]

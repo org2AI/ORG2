@@ -504,6 +504,12 @@ pub trait LLMProvider: Send + Sync {
             .await
     }
 
+    /// Resolve an auxiliary model using this connection's account and transport.
+    /// Unknown providers retain the parent, including its reasoning variant.
+    fn auxiliary_model(&self, parent_model: &str) -> super::auxiliary_model::AuxiliaryModel {
+        super::auxiliary_model::AuxiliaryModel::inherit(parent_model)
+    }
+
     /// Get the default model for this provider.
     fn default_model(&self) -> &str;
 

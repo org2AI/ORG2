@@ -1302,6 +1302,7 @@ pub async fn test_memory_metrics() -> Json<serde_json::Value> {
         "coalesced": metrics.coalesced,
         "started": metrics.started,
         "completed": metrics.completed,
+        "skipped": metrics.skipped,
         "failed": metrics.failed,
         "cancelled": metrics.cancelled,
         "timed_out": metrics.timed_out,

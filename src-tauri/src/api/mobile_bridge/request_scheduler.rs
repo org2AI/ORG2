@@ -83,7 +83,13 @@ pub(super) async fn run_with_executor<F, Fut>(
     loop {
         // Closed input means disconnected, including buffered input. Never
         // drain buffered mutations after their connection has disappeared.
-        if requests.is_closed() || responses.is_closed() {
+        if requests.is_closed()
+            || responses.is_closed()
+            || ctx
+                .lan_lease
+                .as_ref()
+                .is_some_and(|lease| !lease.is_current())
+        {
             break;
         }
         while !active_barrier {
@@ -110,7 +116,13 @@ pub(super) async fn run_with_executor<F, Fut>(
                 break;
             }
             // Recheck before admitting work after the receiver's last await.
-            if requests.is_closed() || responses.is_closed() {
+            if requests.is_closed()
+                || responses.is_closed()
+                || ctx
+                    .lan_lease
+                    .as_ref()
+                    .is_some_and(|lease| !lease.is_current())
+            {
                 break;
             }
             let request = pending.remove(index).expect("selected pending request");
@@ -207,6 +219,7 @@ mod tests {
     fn context(initialized: bool) -> RpcContext {
         RpcContext {
             conn_id: 17,
+            lan_lease: None,
             initialized,
             tier: MobileTier::Full,
             settings: MobileRemoteSettings {

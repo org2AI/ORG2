@@ -12,6 +12,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 
 use super::auth::{self, AuthFailure, MobileRemoteSettings};
+use super::authorization::{self, LanLease};
 use super::fanout;
 use super::request_scheduler::{self, REQUEST_QUEUE_CAPACITY};
 use super::rpc::{MobileTier, RpcContext};
@@ -69,14 +70,12 @@ pub async fn mobile_ws_handler(
         return failure_response(AuthFailure::MissingToken);
     };
 
-    let settings = match auth::validate_token(&token)
-        .and_then(|settings| auth::check_bridge_available(&settings).map(|()| settings))
-    {
-        Ok(settings) => settings,
+    let (settings, lease) = match authorization::authorize(&token) {
+        Ok(authorization) => authorization,
         Err(failure) => return failure_response(failure),
     };
 
-    ws.on_upgrade(move |socket| handle_mobile_socket(socket, settings))
+    ws.on_upgrade(move |socket| handle_mobile_socket(socket, settings, lease))
 }
 
 fn failure_response(failure: AuthFailure) -> Response {
@@ -87,9 +86,9 @@ fn failure_response(failure: AuthFailure) -> Response {
         .into_response()
 }
 
-async fn handle_mobile_socket(socket: WebSocket, settings: MobileRemoteSettings) {
+async fn handle_mobile_socket(socket: WebSocket, settings: MobileRemoteSettings, lease: LanLease) {
     let (sender, receiver) = socket.split();
-    handle_mobile_transport(sender, receiver, settings, request_scheduler::run).await;
+    handle_mobile_transport(sender, receiver, settings, lease, request_scheduler::run).await;
 }
 
 /// The socket owns both its fanout registration and every child task, including
@@ -107,6 +106,7 @@ async fn handle_mobile_transport<S, R, E, F, Fut>(
     mut sender: S,
     mut receiver: R,
     settings: MobileRemoteSettings,
+    lease: LanLease,
     run_scheduler: F,
 ) where
     S: Sink<Message> + Unpin + Send + 'static,
@@ -114,6 +114,9 @@ async fn handle_mobile_transport<S, R, E, F, Fut>(
     F: FnOnce(RpcContext, mpsc::Receiver<Value>, mpsc::Sender<Value>) -> Fut,
     Fut: std::future::Future<Output = ()> + Send + 'static,
 {
+    if !lease.is_current() {
+        return;
+    }
     let (outbound_tx, mut outbound_rx) = mpsc::channel::<String>(64);
     let conn_id = fanout::register_connection(outbound_tx.clone());
     let _registration = ConnectionRegistration(conn_id);
@@ -123,14 +126,20 @@ async fn handle_mobile_transport<S, R, E, F, Fut>(
         initialized: false,
         tier: MobileTier::Full,
         settings,
+        lan_lease: Some(lease.clone()),
     };
 
     // JoinSet aborts all children on drop. Any child exiting (including a socket
     // write failure) closes this connection and cancels its outstanding RPCs.
     let mut tasks = JoinSet::new();
+    let writer_lease = lease.clone();
     tasks.spawn(async move {
         while let Some(message) = outbound_rx.recv().await {
-            let result = sender.send(Message::Text(message.into())).await;
+            let result = tokio::select! {
+                biased;
+                _ = writer_lease.revoked() => break,
+                result = sender.send(Message::Text(message.into())) => result,
+            };
             if result.is_err() {
                 break;
             }
@@ -156,6 +165,7 @@ async fn handle_mobile_transport<S, R, E, F, Fut>(
     loop {
         let result = tokio::select! {
             biased;
+            _ = lease.revoked() => break,
             _ = tasks.join_next() => break,
             result = receiver.next() => result,
         };
@@ -248,6 +258,7 @@ mod tests {
     use tokio::time::{timeout, Duration};
 
     struct TestTransport {
+        authority: authorization::Authority,
         input: mpsc::Sender<Message>,
         output: mpsc::Receiver<Message>,
         task: tokio::task::JoinHandle<()>,
@@ -311,13 +322,17 @@ mod tests {
                 Ok::<_, std::io::Error>(outgoing)
             },
         ));
-        let settings = MobileRemoteSettings {
+        let authority = authorization::Authority::new(MobileRemoteSettings {
             enabled: true,
             lan_token: "test-token".into(),
             allow_lan_exposure: true,
-        };
-        let task = tokio::spawn(handle_mobile_transport(sender, receiver, settings, run));
+        });
+        let (settings, lease) = authority.authorize("test-token").unwrap();
+        let task = tokio::spawn(handle_mobile_transport(
+            sender, receiver, settings, lease, run,
+        ));
         TestTransport {
+            authority,
             input,
             output,
             task,
@@ -451,6 +466,92 @@ mod tests {
                 Some(())
             );
             assert!(!fanout::subscribe_session(conn_id, "disconnected"));
+        }
+    }
+
+    #[tokio::test]
+    async fn real_websocket_disconnects_on_token_rotation() {
+        let _registry = fanout::TEST_REGISTRY_LOCK.lock().await;
+        let settings = MobileRemoteSettings {
+            enabled: true,
+            lan_token: "test-token".into(),
+            allow_lan_exposure: true,
+        };
+        let authority = authorization::Authority::new(settings.clone());
+        let route_authority = authority.clone();
+        let router = axum::Router::new().route(
+            "/ws",
+            axum::routing::get(move |upgrade: WebSocketUpgrade| {
+                let (settings, lease) = route_authority.authorize("test-token").unwrap();
+                async move {
+                    upgrade.on_upgrade(move |socket| handle_mobile_socket(socket, settings, lease))
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let mut server = JoinSet::new();
+        server.spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let (mut client, _) = tokio_tungstenite::connect_async(format!("ws://{address}/ws"))
+            .await
+            .unwrap();
+        client
+            .send(tokio_tungstenite::tungstenite::Message::Text("{".into()))
+            .await
+            .unwrap();
+        let message = timeout(Duration::from_secs(2), client.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        assert!(message.to_text().unwrap().contains("invalid json"));
+        authority.update(MobileRemoteSettings {
+            lan_token: "rotated".into(),
+            ..settings
+        });
+        // Transport teardown may be an EOF/reset or a Close frame; no data
+        // response or notification is permitted after the grant is revoked.
+        let terminal = timeout(Duration::from_secs(2), client.next())
+            .await
+            .unwrap();
+        assert!(matches!(
+            terminal,
+            None | Some(Err(_)) | Some(Ok(tokio_tungstenite::tungstenite::Message::Close(_)))
+        ));
+    }
+
+    #[tokio::test]
+    async fn settings_revocation_closes_transport_cancels_reads_and_unregisters() {
+        let _registry = fanout::TEST_REGISTRY_LOCK.lock().await;
+        for change in ["disable", "rotate", "lan_off"] {
+            let (mut transport, conn_id, _release, mut dropped) =
+                transport_with_pending_read().await;
+            let mut settings = MobileRemoteSettings {
+                enabled: true,
+                lan_token: "test-token".into(),
+                allow_lan_exposure: true,
+            };
+            match change {
+                "disable" => settings.enabled = false,
+                "rotate" => settings.lan_token = "new-token".into(),
+                _ => settings.allow_lan_exposure = false,
+            }
+            assert!(fanout::subscribe_session(conn_id, "revocation-test"));
+            transport.authority.update(settings);
+            // Queued notification must not cross the socket after revocation.
+            fanout::fanout_to_session("revocation-test", r#"{"method":"revoked/notification"}"#);
+            timeout(Duration::from_secs(2), &mut transport.task)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                timeout(Duration::from_secs(2), dropped.recv())
+                    .await
+                    .unwrap(),
+                Some(())
+            );
+            assert!(!fanout::subscribe_session(conn_id, "revocation-test"));
+            assert!(transport.output.recv().await.is_none());
         }
     }
 

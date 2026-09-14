@@ -372,6 +372,7 @@ fn relay_rpc_context(conn_id: u64, tier: PermissionTier) -> RpcContext {
             PermissionTier::ReadOnly => MobileTier::ReadOnly,
         },
         settings: enabled_rpc_settings(),
+        lan_lease: None,
     }
 }
 

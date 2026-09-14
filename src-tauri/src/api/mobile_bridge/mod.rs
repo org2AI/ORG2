@@ -2,6 +2,7 @@
 
 pub mod adapters;
 pub mod auth;
+pub(crate) mod authorization;
 pub mod commands;
 mod desktop_identity;
 pub mod fanout;

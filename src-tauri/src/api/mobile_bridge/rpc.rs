@@ -75,6 +75,7 @@ pub struct RpcContext {
     pub initialized: bool,
     pub tier: MobileTier,
     pub settings: MobileRemoteSettings,
+    pub lan_lease: Option<super::authorization::LanLease>,
 }
 
 pub async fn dispatch(ctx: &mut RpcContext, request: &Value) -> Option<Value> {
@@ -103,6 +104,16 @@ async fn dispatch_method(
     method: &str,
     params: &Value,
 ) -> Result<Value, RpcError> {
+    if ctx
+        .lan_lease
+        .as_ref()
+        .is_some_and(|lease| !lease.is_current())
+    {
+        return Err(RpcError::new(
+            RpcErrorCode::Unauthorized,
+            "LAN authorization revoked",
+        ));
+    }
     match method {
         "initialize" => handle_initialize(ctx, params).await,
         "session/resolve" => {
@@ -251,6 +262,7 @@ mod tests {
     fn test_context(enabled: bool) -> RpcContext {
         RpcContext {
             conn_id: 1,
+            lan_lease: None,
             initialized: false,
             tier: MobileTier::Full,
             settings: MobileRemoteSettings {
@@ -258,6 +270,27 @@ mod tests {
                 lan_token: "token".to_string(),
                 allow_lan_exposure: false,
             },
+        }
+    }
+
+    #[tokio::test]
+    async fn revoked_lease_rejects_dispatch_before_any_handler_runs() {
+        let mut ctx = test_context(true);
+        ctx.initialized = true;
+        ctx.settings.allow_lan_exposure = true;
+        let authority = super::super::authorization::Authority::new(ctx.settings.clone());
+        ctx.lan_lease = Some(authority.authorize("token").unwrap().1);
+        authority.update(MobileRemoteSettings::default());
+        for method in [
+            "initialize",
+            "session/list",
+            "session/send",
+            "session/subscribe",
+        ] {
+            let result = dispatch(&mut ctx, &json!({"id": 1, "method": method}))
+                .await
+                .unwrap();
+            assert_eq!(result["error"]["code"], RpcErrorCode::Unauthorized.as_i32());
         }
     }
 

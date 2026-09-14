@@ -29,7 +29,7 @@ enum Lane {
 fn lane(request: &Value) -> Lane {
     match request.get("method").and_then(Value::as_str) {
         Some("initialize") => Lane::Barrier,
-        Some("session/list")
+        Some("session/changes" | "session/list")
             if request
                 .pointer("/params/query")
                 .and_then(Value::as_str)

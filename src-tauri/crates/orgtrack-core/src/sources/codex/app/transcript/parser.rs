@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{BufRead, BufReader, Seek, SeekFrom};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 
 use core_types::activity::ActivityChunk;
@@ -111,6 +111,24 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
     start_offset: u64,
     initial_sequence: usize,
 ) -> Result<CodexTranscriptLoad, String> {
+    parse_codex_app_bounded(
+        session_id,
+        path,
+        mode,
+        start_offset,
+        initial_sequence,
+        u64::MAX,
+    )
+}
+
+pub(super) fn parse_codex_app_bounded<'a>(
+    session_id: &'a str,
+    path: &Path,
+    mode: CodexTranscriptCollectionMode<'a>,
+    start_offset: u64,
+    initial_sequence: usize,
+    max_bytes: u64,
+) -> Result<CodexTranscriptLoad, String> {
     let mut file = fs::File::open(path)
         .map_err(|err| format!("Failed to open Codex history {}: {err}", path.display()))?;
     if start_offset > 0 {
@@ -121,7 +139,7 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             )
         })?;
     }
-    let mut reader = BufReader::new(file);
+    let mut reader = BufReader::new(file.take(max_bytes));
 
     let mut collector = CodexTranscriptCollector::new(session_id, mode);
     let mut pending_tool_calls: imported_history::PendingCallMap<Vec<ImportedToolCall>> =
@@ -170,6 +188,9 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             break;
         }
         next_byte_offset = next_byte_offset.saturating_add(bytes_read as u64);
+        if next_byte_offset.saturating_sub(start_offset) >= max_bytes {
+            return Err("Codex review exceeds transcript byte budget".into());
+        }
         strip_ignored_embedded_images(&mut line);
         let trimmed = line.trim();
         if trimmed.is_empty() {

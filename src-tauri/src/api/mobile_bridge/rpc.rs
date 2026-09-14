@@ -113,6 +113,10 @@ async fn dispatch_method(
             require_initialized(ctx)?;
             session::session_list(params).await
         }
+        "session/changes" => {
+            require_initialized(ctx)?;
+            super::adapters::change_review::historical_changes(params).await
+        }
         "session/subscribe" => {
             require_initialized(ctx)?;
             session::session_subscribe(ctx.conn_id, params).await
@@ -238,6 +242,7 @@ async fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value
             "openSessionFile": true,
             "modelSelection": true,
             "sessionIdentity": true,
+            "changeReview": true,
             "sessionSearch": true,
         }
     }))
@@ -259,6 +264,18 @@ mod tests {
                 allow_lan_exposure: false,
             },
         }
+    }
+
+    #[tokio::test]
+    async fn change_review_requires_initialize_and_is_readonly() {
+        let mut ctx = test_context(true);
+        ctx.tier = MobileTier::ReadOnly;
+        let request = json!({"id":7,"method":"session/changes","params":{}});
+        let before = dispatch(&mut ctx, &request).await.unwrap();
+        assert_eq!(before["error"]["code"], RpcErrorCode::InvalidRequest.as_i32());
+        ctx.initialized = true;
+        let after = dispatch(&mut ctx, &request).await.unwrap();
+        assert_eq!(after["error"]["code"], RpcErrorCode::InvalidParams.as_i32());
     }
 
     #[tokio::test]

@@ -14,6 +14,8 @@ const NATIVE_SOURCE_EVENT_ID_ARG: &str = "__orgiiSourceEventId";
 const NATIVE_SOURCE_EVENT_ID_PREFIX: &str = "orgii_evt_";
 
 pub use reader::{
+    load_codex_app_review_from_path,
+    load_codex_app_review_context_from_path,
     load_codex_app_from_path, load_codex_app_initial_window_from_path,
     load_codex_app_mobile_tail_window_from_path, load_codex_app_turn_from_path,
     load_codex_app_window_turn_from_path, visit_codex_app_from_path, CodexAppInitialWindow,

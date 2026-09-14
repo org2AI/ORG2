@@ -50,6 +50,13 @@ pub async fn orgtrack_get_session_edit_artifacts(
     record_orgtrack_command_call("orgtrack_get_session_edit_artifacts");
     tokio::task::spawn_blocking(move || {
         let conn = get_connection().map_err(|err| err.to_string())?;
+        if source.as_deref().is_none_or(|s| s == "codex_app") {
+            if let Some(id) = session_id.as_deref() {
+                if let Some(imported) = super::imported_changes::read(&conn, id)? {
+                    return Ok(imported.edits);
+                }
+            }
+        }
         let store = SqliteRecordStore::new(&conn);
         store.list_edit_artifacts(source.as_deref(), session_id.as_deref())
     })
@@ -65,6 +72,13 @@ pub async fn orgtrack_get_session_diff_chunks(
     record_orgtrack_command_call("orgtrack_get_session_diff_chunks");
     tokio::task::spawn_blocking(move || {
         let conn = get_connection().map_err(|err| err.to_string())?;
+        if source.as_deref().is_none_or(|s| s == "codex_app") {
+            if let Some(id) = session_id.as_deref() {
+                if let Some(imported) = super::imported_changes::read(&conn, id)? {
+                    return Ok(imported.chunks);
+                }
+            }
+        }
         let store = SqliteRecordStore::new(&conn);
         store.list_diff_chunks(source.as_deref(), session_id.as_deref())
     })
@@ -80,6 +94,23 @@ pub async fn orgtrack_get_session_final_diffs(
     record_orgtrack_command_call("orgtrack_get_session_final_diffs");
     tokio::task::spawn_blocking(move || {
         let conn = get_connection().map_err(|err| err.to_string())?;
+        if source.as_deref().is_none_or(|s| s == "codex_app") {
+            if let Some(id) = session_id.as_deref() {
+                if let Some(imported) = super::imported_changes::read(&conn, id)? {
+                    let paths: std::collections::BTreeSet<_> = imported
+                        .chunks
+                        .iter()
+                        .map(|chunk| chunk.file_path.as_str())
+                        .collect();
+                    return Ok(paths
+                        .into_iter()
+                        .filter_map(|path| {
+                            final_diff_from_chunks("codex_app", id, path, &imported.chunks)
+                        })
+                        .collect());
+                }
+            }
+        }
         let store = SqliteRecordStore::new(&conn);
         let final_diffs = store.list_final_diffs(source.as_deref(), session_id.as_deref())?;
         let final_diffs = if let Some(session_id) = session_id.as_deref() {

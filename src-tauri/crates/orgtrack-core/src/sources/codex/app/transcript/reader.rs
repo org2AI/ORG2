@@ -28,6 +28,61 @@ use super::CODEX_PROVIDER_SLUG;
 const CODEX_TURN_HEADER_PROBE_BYTES: u64 = 8 * 1024 * 1024;
 const CODEX_MOBILE_HISTORY_SCAN_MAX_BYTES: u64 = 32 * 1024 * 1024;
 
+/// Bounded context for historical file replay in a large rollout. Seek near
+/// the selected turn and include at most eight earlier turns / 32 MiB, then
+/// stop after the turn containing the exact provider call. No whole-log scan.
+pub fn load_codex_app_review_context_from_path(
+    session_id: &str,
+    path: &Path,
+    turn_id: &str,
+    call_id: &str,
+) -> Result<Vec<ActivityChunk>, String> {
+    let signature = codex_transcript_file_signature(path)?;
+    let offset = codex_turn_offset_cache()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(path, signature, turn_id)
+        .map(|entry| entry.0)
+        .or_else(|| codex_lazy_turn_offset(turn_id))
+        .filter(|offset| *offset < signature.size_bytes)
+        .ok_or("Review turn has no bounded source offset")?;
+    let previous = find_recent_codex_user_offsets_bounded(path, offset, 8, 32 * 1024 * 1024)?;
+    let start = previous
+        .iter()
+        .map(|e| e.byte_offset)
+        .min()
+        .unwrap_or(offset);
+    let (chunks, _, _) = super::parser::parse_codex_app_bounded(
+        session_id,
+        path,
+        CodexTranscriptCollectionMode::ReviewThroughCall { call_id },
+        start,
+        codex_lazy_turn_sequence(start),
+        64 * 1024 * 1024,
+    )?;
+    if codex_transcript_file_signature(path)? != signature {
+        return Err("History changed during review; retry".into());
+    }
+    Ok(chunks)
+}
+
+/// Explicit review only: reject oversized histories instead of claiming an
+/// incomplete suffix represents the whole session. Never updates raw history.
+pub fn load_codex_app_review_from_path(
+    session_id: &str,
+    path: &Path,
+) -> Result<Vec<ActivityChunk>, String> {
+    let (chunks, _, _) = super::parser::parse_codex_app_bounded(
+        session_id,
+        path,
+        CodexTranscriptCollectionMode::Full,
+        0,
+        0,
+        64 * 1024 * 1024,
+    )?;
+    Ok(chunks)
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexAppInitialWindow {

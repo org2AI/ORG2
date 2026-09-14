@@ -2,6 +2,60 @@ use super::*;
 use crate::sources::imported_history::client_origin::ImportedClientOrigin;
 
 #[test]
+fn codex_exec_empty_patch_result_stays_completed_before_shell_failure_or_background() {
+    let dir = std::env::temp_dir().join(format!("orgii-mixed-results-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("mixed-results.jsonl");
+    for (shell, envelope, patch_success) in [
+        (json!({"exit_code":1,"output":"failed"}), "Script completed", true),
+        (json!({"session_id":71,"output":"running"}), "Script completed", true),
+        (json!({"exit_code":1,"output":"failed"}), "Script failed", false),
+    ] {
+        let patch = "*** Begin Patch\n*** Add File: a\n+whole file\n*** End Patch";
+        let script = format!(
+            "text(await tools.apply_patch({})); text(await tools.exec_command({{cmd:\"check\"}}));",
+            serde_json::to_string(patch).unwrap()
+        );
+        let lines = [
+            json!({"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"mixed","input":script}}),
+            json!({"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"mixed","output":[{"type":"input_text","text":envelope},{"type":"input_text","text":"{}"},{"type":"input_text","text":shell.to_string()}]}}),
+        ];
+        std::fs::write(
+            &path,
+            lines
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n"),
+        )
+        .unwrap();
+        let chunks = load_codex_app_from_path("codexapp-mixed", &path).unwrap();
+        let edit = chunks
+            .iter()
+            .find(|chunk| chunk.result["call_id"] == "mixed:part-0")
+            .expect("completed patch");
+        assert_eq!(edit.result["success"], patch_success);
+        assert_eq!(edit.result["status"], if patch_success { "completed" } else { "failed" });
+        assert_eq!(edit.result["exit_code"], if patch_success { 0 } else { 1 });
+        assert_eq!(
+            chunks[0].result["call_id"], "mixed:part-0",
+            "a following shell must not delay the edit"
+        );
+        let command = chunks
+            .iter()
+            .find(|chunk| chunk.result["call_id"] == "mixed:part-1")
+            .unwrap();
+        if shell.get("exit_code").is_some() {
+            assert_eq!(command.result["success"], false);
+        } else {
+            assert_ne!(command.result["status"], "completed");
+        }
+    }
+    std::fs::remove_file(&path).unwrap();
+    std::fs::remove_dir(&dir).unwrap();
+}
+
+#[test]
 fn includes_codex_session_dir_candidates() {
     let home = std::path::Path::new("/Users/example");
     let paths = codex_sessions_dir_candidates(home);
@@ -1792,6 +1846,50 @@ fn codex_rollout_without_session_start_still_recovers_exec_apply_patch() {
 
     std::fs::remove_file(&path).expect("remove fixture");
     std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn codex_metadata_counts_only_completed_exec_patches() {
+    let path =
+        std::env::temp_dir().join(format!("rollout-exec-impact-{}.jsonl", std::process::id()));
+    let patch = "*** Begin Patch\n*** Add File: src/a.ts\n+hello\n*** End Patch";
+    let call = json!({"timestamp":"2026-09-11T00:00:00Z", "payload": {
+        "type":"custom_tool_call", "name":"exec", "call_id":"c1",
+        "input":format!("text(await tools.apply_patch({}));", serde_json::to_string(patch).unwrap())
+    }});
+    for (output, expected) in [
+        ("Script completed\nOutput:\n{}", 1),
+        ("Script failed", 0),
+        ("", 0),
+    ] {
+        std::fs::write(
+            &path,
+            format!(
+                "{}\n{}\n",
+                call,
+                json!({"payload": {
+                    "type":"custom_tool_call_output", "call_id":"c1",
+                    "output":[{"type":"input_text","text":output}]
+                }})
+            ),
+        )
+        .unwrap();
+        let (source_mtime_ms, source_size_bytes) =
+            imported_paths::file_metadata_signature(&path, "Codex").unwrap();
+        let record = ImportedHistoryDiscoveredRecord {
+            source_session_id: "rollout-exec-impact".into(),
+            source_path: path.clone(),
+            source_record_key: "rollout-exec-impact".into(),
+            source_mtime_ms,
+            source_size_bytes,
+            source_fingerprint: String::new(),
+            parser_version: CODEX_APP_METADATA_PARSER_VERSION,
+        };
+        let meta = parse_codex_session_meta(&record).unwrap().unwrap();
+        assert_eq!(meta.impact.files_changed, expected);
+        assert_eq!(meta.impact.lines_added, expected);
+    }
+    std::fs::remove_file(path).unwrap();
 }
 
 #[test]

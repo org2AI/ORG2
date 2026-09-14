@@ -107,6 +107,17 @@ pub(super) fn resolve_codex_tool_outputs(
     background_tool_calls: &mut imported_history::PendingCallMap<PendingBackgroundToolCall>,
 ) {
     let mut results = codex_exec_results(output_value);
+    // An empty value has no explicit success flag. Do not promote it over an
+    // outer script failure; only typed per-command results can stand alone.
+    let envelope = fallback_output.trim_start();
+    if envelope.starts_with("Script failed") || envelope.starts_with("Script error") {
+        for result in &mut results {
+            if result.empty_tool_value {
+                result.exit_code = Some(1);
+                result.output = fallback_output.to_owned();
+            }
+        }
+    }
     if results.len() == calls.len() {
         for (call, result) in calls.into_iter().zip(results.drain(..)) {
             resolve_codex_call_group(
@@ -121,7 +132,7 @@ pub(super) fn resolve_codex_tool_outputs(
         }
         return;
     }
-    if results.len() == 1 {
+    if results.len() == 1 && !results[0].empty_tool_value {
         resolve_codex_call_group(
             transcript_session_id,
             calls,

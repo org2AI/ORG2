@@ -22,6 +22,7 @@ pub(super) enum CodexTranscriptCollectionMode<'a> {
     Visit(&'a mut dyn FnMut(Vec<ActivityChunk>) -> Result<(), String>),
     Initial { recent_turn_count: usize },
     Turn { turn_id: &'a str },
+    ReviewThroughCall { call_id: &'a str },
     FirstTurn,
 }
 
@@ -100,6 +101,13 @@ impl<'a> CodexTranscriptCollector<'a> {
         };
         let turn_id = user_chunk.chunk_id.clone();
         match &self.mode {
+            CodexTranscriptCollectionMode::ReviewThroughCall { call_id } => {
+                self.selected_turn_found = self.current.iter().any(|chunk| {
+                    chunk.result.get("call_id").and_then(Value::as_str) == Some(*call_id)
+                });
+                self.output.append(&mut self.current);
+                return Ok(());
+            }
             CodexTranscriptCollectionMode::Full => {
                 self.output.append(&mut self.current);
                 return Ok(());

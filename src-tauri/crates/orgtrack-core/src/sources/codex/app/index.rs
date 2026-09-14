@@ -94,6 +94,10 @@ pub fn load_codex_app_for_session(
     Ok(chunks)
 }
 
+pub fn codex_app_review_path(conn: &Connection, session_id: &str) -> Result<PathBuf, String> {
+    resolve_codex_session_path(conn, codex_file_stem_from_session_id(session_id)?)
+}
+
 pub fn load_codex_app_initial_window_for_session(
     conn: &Connection,
     session_id: &str,

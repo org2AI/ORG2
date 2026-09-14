@@ -81,7 +81,7 @@ fn patch_from_codex_args(args: &Value) -> Option<String> {
         .map(str::to_string)
 }
 
-fn accumulate_patch_impact(
+pub(super) fn accumulate_patch_impact(
     patch: &str,
     impact: &mut ImportedHistoryImpactStats,
     touched_files: &mut BTreeSet<String>,

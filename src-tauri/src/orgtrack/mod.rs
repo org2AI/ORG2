@@ -13,6 +13,7 @@ pub mod usage_dashboard_commands;
 
 mod command_stats;
 mod diff_commands;
+pub(crate) mod imported_changes;
 mod file_session_history;
 
 use command_stats::record_orgtrack_command_call;

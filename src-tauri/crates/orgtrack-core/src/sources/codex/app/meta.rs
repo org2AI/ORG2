@@ -80,6 +80,8 @@ struct CodexSessionMetaState {
     touched_files: BTreeSet<String>,
     fallback_impact: ImportedHistoryImpactStats,
     fallback_touched: BTreeSet<String>,
+    #[serde(default)]
+    pending_exec_patches: std::collections::BTreeMap<String, Vec<String>>,
     parent_thread_id: Option<String>,
     source_metadata: CodexAppSourceMetadata,
 }
@@ -213,6 +215,55 @@ impl CodexSessionMetaState {
             &mut self.fallback_impact,
             &mut self.fallback_touched,
         );
+        // A wrapper is an intent, not proof of an edit. Attribute it only when
+        // its matching result confirms completion, including across append scans.
+        let payload = &parsed.payload;
+        if payload.get("type").and_then(Value::as_str) == Some("custom_tool_call")
+            && payload.get("name").and_then(Value::as_str) == Some("exec")
+        {
+            if let (Some(id), Some(input)) = (
+                payload.get("call_id").and_then(Value::as_str),
+                payload.get("input").and_then(Value::as_str),
+            ) {
+                let patches = super::desktop_exec::exec_patches(input);
+                let retained: usize = self
+                    .pending_exec_patches
+                    .values()
+                    .flatten()
+                    .map(String::len)
+                    .sum();
+                if !patches.is_empty()
+                    && self.pending_exec_patches.len() < 64
+                    && retained + patches.iter().map(String::len).sum::<usize>() <= 2 * 1024 * 1024
+                {
+                    self.pending_exec_patches.insert(id.to_string(), patches);
+                }
+            }
+        } else if payload.get("type").and_then(Value::as_str) == Some("custom_tool_call_output") {
+            if let Some(patches) = payload
+                .get("call_id")
+                .and_then(Value::as_str)
+                .and_then(|id| self.pending_exec_patches.remove(id))
+            {
+                let output = super::desktop_exec::codex_tool_output_text(payload.get("output"));
+                if output.starts_with("Script completed")
+                    && !super::desktop_exec::codex_tool_output_failed(
+                        &output,
+                        super::desktop_exec::codex_tool_exit_code(&output),
+                    )
+                    && !output.contains("\"isError\":true")
+                    && !output.contains("\"isError\": true")
+                {
+                    for patch in patches {
+                        super::impact::accumulate_patch_impact(
+                            &patch,
+                            &mut self.fallback_impact,
+                            &mut self.fallback_touched,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     fn finish(

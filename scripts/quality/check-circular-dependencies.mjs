@@ -4,15 +4,33 @@ import madge from "madge";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
+
+import {
+  sourceRoots,
+  workspacePackages,
+  workspaceSourcePaths,
+} from "./workspace-sources.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(SCRIPT_DIR, "..", "..");
 const JSON_OUTPUT = process.argv.includes("--json");
 const STYLE_EXTENSION = /\.(?:css|less|sass|scss|styl)$/i;
 const LOCAL_SPECIFIER = /^(?:\.{1,2}[\\/]|[\\/])/;
+const sources = sourceRoots(ROOT);
+const packages = workspacePackages(ROOT, sources);
 
 function isResolvableExternalSpecifier(specifier) {
   if (LOCAL_SPECIFIER.test(specifier)) return false;
+  // A workspace import skipped by Madge is a graph hole, even if Node resolves it.
+  if (
+    packages.some(
+      (pkg) =>
+        pkg.name &&
+        (specifier === pkg.name || specifier.startsWith(`${pkg.name}/`))
+    )
+  )
+    return false;
 
   try {
     const resolved = import.meta.resolve(specifier);
@@ -67,25 +85,51 @@ function printCycles(cycles) {
 const madgeConfig = JSON.parse(
   readFileSync(join(ROOT, "config", "madge.json"), "utf8")
 );
-const result = await madge(join(ROOT, "src"), {
-  ...madgeConfig,
-  fileExtensions: ["ts", "tsx"],
-  tsConfig: join(ROOT, "tsconfig.json"),
-  // Drop stylesheets from the graph. Load-bearing, not cosmetic: without it
-  // detective-scss reads every animation-name and Tailwind directive as an
-  // import, so 37 bogus specifiers (`modal-scale-in`, `dropIndicatorPulse`,
-  // …) land in warnings().skipped and trip the unresolved gate below on a
-  // perfectly clean tree.
-  //
-  // The cost is real and deliberate. dependency-tree applies `filter` to the
-  // ALREADY-RESOLVED dependency list, so stylesheets vanish as nodes AND
-  // edges, not merely as traversal targets (here: 112 nodes, 143 edges).
-  // They are not leaves — 20 of them carry 56 scss->scss edges — so a cycle
-  // running purely through `@import`s is no longer reported. The previous
-  // `npx madge` invocation did catch that class; it is knowingly given up to
-  // keep this gate usable.
-  dependencyFilter: (dependencyPath) => !STYLE_EXTENSION.test(dependencyPath),
-});
+const configFile = ts.readConfigFile(
+  join(ROOT, "tsconfig.json"),
+  ts.sys.readFile
+);
+if (configFile.error)
+  throw new Error(
+    ts.flattenDiagnosticMessageText(configFile.error.messageText, "\n")
+  );
+const parsedConfig = ts.parseJsonConfigFileContent(
+  configFile.config,
+  ts.sys,
+  ROOT
+);
+const result = await madge(
+  sources.map((source) => join(ROOT, source)),
+  {
+    ...madgeConfig,
+    fileExtensions: ["ts", "tsx"],
+    baseDir: ROOT,
+    tsConfig: {
+      ...parsedConfig.raw,
+      compilerOptions: {
+        ...parsedConfig.options,
+        paths: {
+          ...parsedConfig.options.paths,
+          ...workspaceSourcePaths(packages),
+        },
+      },
+    },
+    // Drop stylesheets from the graph. Load-bearing, not cosmetic: without it
+    // detective-scss reads every animation-name and Tailwind directive as an
+    // import, so 37 bogus specifiers (`modal-scale-in`, `dropIndicatorPulse`,
+    // …) land in warnings().skipped and trip the unresolved gate below on a
+    // perfectly clean tree.
+    //
+    // The cost is real and deliberate. dependency-tree applies `filter` to the
+    // ALREADY-RESOLVED dependency list, so stylesheets vanish as nodes AND
+    // edges, not merely as traversal targets (here: 112 nodes, 143 edges).
+    // They are not leaves — 20 of them carry 56 scss->scss edges — so a cycle
+    // running purely through `@import`s is no longer reported. The previous
+    // `npx madge` invocation did catch that class; it is knowingly given up to
+    // keep this gate usable.
+    dependencyFilter: (dependencyPath) => !STYLE_EXTENSION.test(dependencyPath),
+  }
+);
 
 const cycles = result.circular();
 const skipped = result.warnings().skipped;

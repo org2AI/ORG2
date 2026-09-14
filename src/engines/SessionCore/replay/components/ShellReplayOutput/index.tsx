@@ -1,3 +1,19 @@
+import {
+  type ReplayWindowDirection,
+  SHELL_REPLAY_RANGE_BYTES,
+  SHELL_REPLAY_SETTLE_MS,
+  SHELL_REPLAY_WINDOW_MAX_FRAME_BYTES,
+  type ShellReplayRange,
+  ShellReplayRequestGuard,
+  filterFramesToBookmark,
+  mergeReplayFrameWindow,
+  readShellReplayRangeIfCurrent,
+  replayWindowBounds,
+  scheduleShellReplayPrefetch,
+  shellReplayRowsToText,
+  shellReplayScopeKey,
+  shouldShowShellReplayLoadingPlaceholder,
+} from "@orgii/replay-core/shell";
 import type { UIEvent } from "react";
 import React, {
   memo,
@@ -16,25 +32,7 @@ import type {
   ShellReplayRef,
   ShellReplayState,
 } from "@src/engines/SessionCore/core/types";
-import {
-  type ReplayWindowDirection,
-  SHELL_REPLAY_RANGE_BYTES,
-  SHELL_REPLAY_SETTLE_MS,
-  SHELL_REPLAY_WINDOW_MAX_FRAME_BYTES,
-  type ShellReplayRange,
-  filterFramesToBookmark,
-  mergeReplayFrameWindow,
-  replayWindowBounds,
-  shellReplayRangeCache,
-  shellReplayRowsToText,
-  shellReplayScopeKey,
-} from "@src/engines/SessionCore/replay/shellReplayRange";
-import {
-  ShellReplayRequestGuard,
-  readShellReplayRangeIfCurrent,
-  scheduleShellReplayPrefetch,
-  shouldShowShellReplayLoadingPlaceholder,
-} from "@src/engines/SessionCore/replay/shellReplayRequestGuard";
+import { shellReplayRangeCache } from "@src/engines/SessionCore/replay/shellReplayCache";
 import { TerminalCommand } from "@src/engines/TerminalCore/components/TerminalDisplay";
 import { stripAnsiCodes } from "@src/engines/TerminalCore/components/TerminalDisplay/utils/ansiProcessor";
 import { useTerminalSurfaceStyle } from "@src/hooks/terminal/useTerminalSurfaceStyle";

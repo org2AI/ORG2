@@ -9,17 +9,19 @@
 // request added, copied, modified, or renamed (git diff --diff-filter=ACMR), so
 // deleted files never reach this script.
 //
-// Only .ts and .tsx files under src/ are judged. Markdown, JSON, styles, Rust,
-// scripts, and the vendored JavaScript under src/ are out of scope. Test code is
-// exempt too: test files, the shared Vitest setup, and the E2E bootstrap helpers
-// grow with coverage, not with responsibilities.
+// Only .ts and .tsx files under the application and private package source
+// roots (src/ and packages/<name>/src/) are judged. Markdown, JSON, styles,
+// Rust, scripts, package configuration, and the vendored JavaScript under src/
+// are out of scope. Test code is exempt too: test files, the shared Vitest setup,
+// and the E2E bootstrap helpers grow with coverage, not with responsibilities.
 
 const fs = require("node:fs");
 const path = require("node:path");
 
 const MAX_LINES = 700;
 
-const SOURCE_PREFIX = "src/";
+// Same source roots as scripts/ci/select-lint-targets.cjs.
+const SOURCE_ROOT = /^(?:src\/|packages\/[^/]+\/src\/)/;
 const SOURCE_EXTENSIONS = Object.freeze([".ts", ".tsx"]);
 
 const EXEMPT_PATTERNS = Object.freeze([
@@ -33,7 +35,7 @@ const EXEMPT_PATTERNS = Object.freeze([
 
 function isCheckedSource(filePath) {
   return (
-    filePath.startsWith(SOURCE_PREFIX) &&
+    SOURCE_ROOT.test(filePath) &&
     SOURCE_EXTENSIONS.some((extension) => filePath.endsWith(extension)) &&
     !EXEMPT_PATTERNS.some((pattern) => pattern.test(filePath))
   );

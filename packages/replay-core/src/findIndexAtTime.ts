@@ -31,14 +31,15 @@
  *  - Non-finite timestamps mid-array are treated as "no information",
  *    skipping them rather than poisoning the binary search.
  */
-import type { SessionEvent } from "@src/engines/SessionCore";
 
 export interface FindIndexAtTimeOptions {
   /** What to return when the cursor precedes the first event. Default "clamp". */
   preStart?: "clamp" | "empty";
 }
 
-export interface SessionEventWithActivity extends SessionEvent {
+/** Timestamp fields required to position a replay cursor. */
+export interface ReplayEventTimestamp {
+  createdAt: string;
   lastActivityAt?: string;
 }
 
@@ -48,9 +49,8 @@ export interface SessionEventWithActivity extends SessionEvent {
  * For merged tool-call events (produced by `mergeSessionEventsToolResultsByCallId`)
  * this is `lastActivityAt`. For everything else it's `createdAt`.
  */
-export function eventReplayTimeMs(event: SessionEvent): number {
-  const withActivity = event as SessionEventWithActivity;
-  const candidate = withActivity.lastActivityAt ?? event.createdAt;
+export function eventReplayTimeMs(event: ReplayEventTimestamp): number {
+  const candidate = event.lastActivityAt ?? event.createdAt;
   const t = Date.parse(candidate);
   if (Number.isFinite(t)) return t;
   const fallback = Date.parse(event.createdAt);
@@ -58,7 +58,7 @@ export function eventReplayTimeMs(event: SessionEvent): number {
 }
 
 export function findIndexAtTime(
-  events: SessionEvent[],
+  events: readonly ReplayEventTimestamp[],
   cursorMs: number,
   options: FindIndexAtTimeOptions = {}
 ): number {

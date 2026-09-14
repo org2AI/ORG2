@@ -7,6 +7,10 @@
  * playhead hiding) to the shared component so Kanban and Simulator
  * stay pixel-identical without code duplication.
  */
+import {
+  buildReplayTurnSegments,
+  findActiveReplayTurnSegment,
+} from "@orgii/replay-core/timeline";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,10 +26,6 @@ import {
   simulatorEventCountAtom,
   simulatorEventPreviewByIdAtom,
 } from "@src/engines/SessionCore";
-import {
-  buildReplayTurnSegments,
-  findActiveReplayTurnSegment,
-} from "@src/engines/SessionCore/replay/replayTurnSegments";
 
 import { toReplayProgressSegments } from "./replayTurnSegmentLabels";
 

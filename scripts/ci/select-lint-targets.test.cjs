@@ -31,7 +31,7 @@ test("source changes lint exactly the files they touch", () => {
 });
 
 test("non-lintable paths are dropped, not linted", () => {
-  // package.json#eslintConfig confines linting to src/ and skips CSS/SCSS, so handing these
+  // Lint covers application/package sources and skips CSS/SCSS, so handing these
   // to ESLint would cost a process start and report nothing.
   assert.equal(isLintable("src/styles/_utilities.scss"), false);
   assert.equal(isLintable("src/assets/logo.svg"), false);
@@ -42,6 +42,24 @@ test("non-lintable paths are dropped, not linted", () => {
   assert.deepEqual(
     selectLintTargets(["src/styles/_utilities.scss", "docs/audit/GLOBAL.md"]),
     { mode: "skip", files: [] }
+  );
+});
+
+test("package source edits participate in changed-file lint", () => {
+  assert.deepEqual(
+    selectLintTargets([
+      "packages/replay-core/src/shell.ts",
+      "packages/terminal-shell-integration/src/ShellIntegrationAddon.test.ts",
+      "packages/replay-core/dist/shell.js",
+      "packages/replay-core/vitest.config.ts",
+    ]),
+    {
+      mode: "files",
+      files: [
+        "packages/replay-core/src/shell.ts",
+        "packages/terminal-shell-integration/src/ShellIntegrationAddon.test.ts",
+      ],
+    }
   );
 });
 
@@ -70,6 +88,8 @@ test("rule-changing diffs fall back to the full run", () => {
     "package.json",
     "pnpm-lock.yaml",
     "tsconfig.json",
+    "pnpm-workspace.yaml",
+    "config/tsconfig.package.json",
   ]) {
     assert.equal(requiresFullLint([trigger, "src/a.ts"]), true, trigger);
     assert.deepEqual(selectLintTargets([trigger, "src/a.ts"]), {

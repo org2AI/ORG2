@@ -10,7 +10,8 @@ import {
   replayWindowBounds,
   shellReplayRangeCacheKey,
   shellReplayRowsToText,
-} from "@src/engines/SessionCore/replay/shellReplayRange";
+  shellReplayScopeKey,
+} from "./shellReplayRange";
 
 function frame(
   sequence: number,
@@ -93,6 +94,73 @@ describe("shell replay watermark filtering", () => {
 });
 
 describe("ShellReplayRangeCache", () => {
+  it("keeps budgets, entries, and subscriptions independent between instances", () => {
+    const first = new ShellReplayRangeCache(250);
+    const second = new ShellReplayRangeCache(250);
+    let firstNotifications = 0;
+    let secondNotifications = 0;
+    const unsubscribeFirst = first.subscribe(() => {
+      firstNotifications += 1;
+    });
+    const unsubscribeSecond = second.subscribe(() => {
+      secondNotifications += 1;
+    });
+    const sharedWindow = {
+      frames: [frame(1, 0, "a".repeat(100))],
+      earliestOffset: 0,
+      latestOffset: 100,
+    };
+    const firstKey = first.setWindow("same-scope", sharedWindow);
+    const secondKey = second.setWindow("same-scope", sharedWindow);
+
+    first.setWindow("another-scope", {
+      frames: [frame(2, 100, "b".repeat(100))],
+      earliestOffset: 100,
+      latestOffset: 200,
+    });
+
+    expect(first.peekWindow(firstKey)).toBeUndefined();
+    expect(second.peekWindow(secondKey)?.frames[0].text).toBe("a".repeat(100));
+    expect(first.currentSizeBytes).toBe(200);
+    expect(second.currentSizeBytes).toBe(200);
+    expect(firstNotifications).toBe(2);
+    expect(secondNotifications).toBe(1);
+    unsubscribeFirst();
+    unsubscribeSecond();
+  });
+
+  it("clears retained payloads and notifies only active subscribers", () => {
+    const cache = new ShellReplayRangeCache(250);
+    let notifications = 0;
+    const unsubscribe = cache.subscribe(() => {
+      notifications += 1;
+    });
+    const key = cache.setWindow("session", {
+      frames: [frame(1, 0, "recorded output")],
+      earliestOffset: 0,
+      latestOffset: 15,
+    });
+    const versionBeforeClear = cache.getVersion();
+
+    cache.clear();
+
+    expect(cache.currentSizeBytes).toBe(0);
+    expect(cache.peekWindow(key)).toBeUndefined();
+    expect(cache.findCoveringWindow("session", 0, 15)).toBeUndefined();
+    expect(cache.getVersion()).toBeGreaterThan(versionBeforeClear);
+    expect(notifications).toBe(2);
+
+    unsubscribe();
+    cache.setWindow("next-session", {
+      frames: [frame(1, 0, "next")],
+      earliestOffset: 0,
+      latestOffset: 4,
+    });
+    cache.clear();
+    expect(notifications).toBe(2);
+    expect(cache.currentSizeBytes).toBe(0);
+  });
+
   it("uses one global budget across multiple component windows", () => {
     const cache = new ShellReplayRangeCache(450);
     const firstKey = cache.setWindow("component-one", {
@@ -124,6 +192,45 @@ describe("ShellReplayRangeCache", () => {
     const early = shellReplayRangeCacheKey("s", "c", 0, 100, 2, 50);
     const late = shellReplayRangeCacheKey("s", "c", 0, 100, 8, 400);
     expect(early).not.toBe(late);
+  });
+
+  it("never reuses later output for an earlier cursor or another session", () => {
+    const cache = new ShellReplayRangeCache();
+    const frames = [frame(1, 0, "early"), frame(2, 5, " future")];
+    const earlyWatermark = { visibleThroughSequence: 1, visibleBytes: 5 };
+    const lateWatermark = { visibleThroughSequence: 2, visibleBytes: 12 };
+    const earlyScope = shellReplayScopeKey("session-a", "call", 1, 5);
+    const lateScope = shellReplayScopeKey("session-a", "call", 2, 12);
+    cache.setWindow(lateScope, {
+      frames: filterFramesToBookmark(frames, lateWatermark),
+      earliestOffset: 0,
+      latestOffset: 12,
+    });
+
+    expect(cache.findCoveringWindow(earlyScope, 0, 5)).toBeUndefined();
+    expect(
+      cache.findCoveringWindow(
+        shellReplayScopeKey("session-b", "call", 2, 12),
+        0,
+        12
+      )
+    ).toBeUndefined();
+
+    cache.setWindow(earlyScope, {
+      frames: filterFramesToBookmark(frames, earlyWatermark),
+      earliestOffset: 0,
+      latestOffset: 5,
+    });
+    expect(
+      shellReplayRowsToText(
+        cache.findCoveringWindow(earlyScope, 0, 5)!.value.rows
+      )
+    ).toBe("early");
+    expect(
+      shellReplayRowsToText(
+        cache.findCoveringWindow(lateScope, 0, 12)!.value.rows
+      )
+    ).toBe("early future");
   });
 
   it("notifies mounted consumers when an LRU eviction invalidates a window key", () => {

@@ -1,3 +1,5 @@
+import type { ShellReplayWatermark } from "@orgii/replay-core/shell";
+
 /**
  * Session Core Types
  *
@@ -88,10 +90,7 @@ export interface ShellReplayRef {
   formatVersion: number;
 }
 
-export interface ShellReplayBookmark {
-  visibleThroughSequence: number;
-  visibleBytes: number;
-}
+export type ShellReplayBookmark = ShellReplayWatermark;
 
 /** Immutable shell visibility state captured by one Session replay snapshot. */
 export interface ShellReplayState {

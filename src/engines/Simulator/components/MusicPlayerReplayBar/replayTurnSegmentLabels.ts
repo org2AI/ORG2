@@ -1,8 +1,8 @@
+import type { ReplayTurnSegment } from "@orgii/replay-core/timeline";
 import type { TFunction } from "i18next";
 
 import type { ReplayProgressSegment } from "@src/components/ReplayProgressBar/types";
 import { getTurnTimingLabels } from "@src/engines/ChatPanel/ChatHistory/utils/turnTimingFormatting";
-import type { ReplayTurnSegment } from "@src/engines/SessionCore/replay/replayTurnSegments";
 
 export function formatReplayTurnSegmentLabels(
   segment: ReplayTurnSegment,

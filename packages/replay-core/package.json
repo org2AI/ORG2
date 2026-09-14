@@ -1,0 +1,27 @@
+{
+  "name": "@orgii/replay-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "sideEffects": false,
+  "exports": {
+    "./shell": {
+      "types": "./src/shell.ts",
+      "default": "./src/shell.ts"
+    },
+    "./timeline": {
+      "types": "./src/timeline.ts",
+      "default": "./src/timeline.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.11"
+  }
+}

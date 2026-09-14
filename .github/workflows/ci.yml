@@ -129,11 +129,12 @@ jobs:
       - name: Test CI policy helpers
         run: node --test scripts/ci/*.test.cjs
 
-      # TypeScript files (.ts/.tsx under src/) a pull request touches must stay
-      # within 700 lines. Only the diff is judged: a long file nobody edits
-      # never fails a build, and it gets split the next time a pull request
-      # changes it. Markdown, JSON, styles, and Rust are out of scope. Needs
-      # only git and node, so it runs before the dependency install.
+      # TypeScript files (.ts/.tsx under src/ and packages/*/src/) a pull
+      # request touches must stay within 700 lines. Only the diff is judged: a
+      # long file nobody edits never fails a build, and it gets split the next
+      # time a pull request changes it. Markdown, JSON, styles, and Rust are out
+      # of scope. Needs only git and node, so it runs before the dependency
+      # install.
       # `shell: bash` adds pipefail, so a failed diff fails the step instead of
       # passing an empty file list.
       - name: File length (changed files)
@@ -164,6 +165,12 @@ jobs:
       # 24h and this step can be pointed back at `pnpm typecheck`.
       - name: Type check (tsgo)
         run: pnpm typecheck:fast
+
+      - name: Build private frontend packages
+        run: pnpm build:packages
+
+      - name: Verify workspace bundler integration
+        run: pnpm test:workspace
 
       # Every rule in package.json#eslintConfig judges one file at a time, so a pull request
       # cannot make an untouched file newly non-compliant; whole-tree linting

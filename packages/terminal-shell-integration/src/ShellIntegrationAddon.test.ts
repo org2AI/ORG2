@@ -6,31 +6,31 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  ShellIntegrationAddon,
-  type ShellIntegrationCallbacks,
-} from "../ShellIntegrationAddon";
+import { ShellIntegrationAddon, type ShellIntegrationCallbacks } from "./index";
 
 // Mock terminal with OSC handler registration
 function createMockTerminal() {
-  let oscHandler: ((data: string) => boolean) | null = null;
+  const oscHandlers = new Set<(data: string) => boolean>();
 
   return {
     parser: {
       registerOscHandler: vi.fn(
         (code: number, handler: (data: string) => boolean) => {
           if (code === 633) {
-            oscHandler = handler;
+            oscHandlers.add(handler);
           }
-          return { dispose: vi.fn() };
+          return { dispose: vi.fn(() => oscHandlers.delete(handler)) };
         }
       ),
     },
     // Helper to simulate receiving an OSC sequence
     receiveOsc633: (data: string) => {
-      if (oscHandler) {
-        oscHandler(data);
+      for (const handler of oscHandlers) {
+        handler(data);
       }
+    },
+    get activeHandlerCount() {
+      return oscHandlers.size;
     },
   };
 }
@@ -269,6 +269,88 @@ describe("ShellIntegrationAddon", () => {
       addon.dispose();
 
       expect(disposeHandler.dispose).toHaveBeenCalled();
+    });
+
+    it("stops callbacks after disposal and releases each handler once", () => {
+      mockTerminal.receiveOsc633("A");
+      expect(callbacks.onPromptStart).toHaveBeenCalledTimes(1);
+
+      addon.dispose();
+      addon.dispose();
+      mockTerminal.receiveOsc633("A");
+
+      expect(mockTerminal.activeHandlerCount).toBe(0);
+      expect(callbacks.onPromptStart).toHaveBeenCalledTimes(1);
+      const handler =
+        mockTerminal.parser.registerOscHandler.mock.results[0].value;
+      expect(handler.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    it("releases registrations from every activated terminal", () => {
+      const secondTerminal = createMockTerminal();
+      addon.activate(
+        secondTerminal as unknown as Parameters<typeof addon.activate>[0]
+      );
+      expect(mockTerminal.activeHandlerCount).toBe(1);
+      expect(secondTerminal.activeHandlerCount).toBe(1);
+
+      addon.dispose();
+
+      expect(mockTerminal.activeHandlerCount).toBe(0);
+      expect(secondTerminal.activeHandlerCount).toBe(0);
+      mockTerminal.receiveOsc633("C");
+      secondTerminal.receiveOsc633("C");
+      expect(callbacks.onCommandExecuted).not.toHaveBeenCalled();
+    });
+
+    it("does not accumulate handlers across repeated activation and disposal", () => {
+      for (let cycle = 0; cycle < 20; cycle += 1) {
+        expect(mockTerminal.activeHandlerCount).toBe(1);
+        mockTerminal.receiveOsc633("A");
+        expect(callbacks.onPromptStart).toHaveBeenCalledTimes(cycle + 1);
+        addon.dispose();
+        expect(mockTerminal.activeHandlerCount).toBe(0);
+
+        if (cycle < 19) {
+          addon.activate(
+            mockTerminal as unknown as Parameters<typeof addon.activate>[0]
+          );
+        }
+      }
+    });
+  });
+
+  describe("instance isolation", () => {
+    it("keeps command state and handler disposal local to each addon", () => {
+      const secondTerminal = createMockTerminal();
+      const secondCallbacks: ShellIntegrationCallbacks = {
+        onCommandExecuted: vi.fn(),
+        onCommandFinished: vi.fn(),
+      };
+      const secondAddon = new ShellIntegrationAddon(secondCallbacks);
+      secondAddon.activate(
+        secondTerminal as unknown as Parameters<typeof secondAddon.activate>[0]
+      );
+
+      mockTerminal.receiveOsc633("E;first command");
+      secondTerminal.receiveOsc633("E;second command");
+      mockTerminal.receiveOsc633("C");
+      expect(addon.currentPhase).toBe("running");
+      expect(secondAddon.currentPhase).toBe("idle");
+      expect(callbacks.onCommandExecuted).toHaveBeenCalledWith("first command");
+      expect(secondCallbacks.onCommandExecuted).not.toHaveBeenCalled();
+
+      addon.dispose();
+      secondTerminal.receiveOsc633("C");
+      secondTerminal.receiveOsc633("D;7");
+      expect(secondCallbacks.onCommandExecuted).toHaveBeenCalledWith(
+        "second command"
+      );
+      expect(secondCallbacks.onCommandFinished).toHaveBeenCalledWith(7);
+      expect(secondTerminal.activeHandlerCount).toBe(1);
+
+      secondAddon.dispose();
+      expect(secondTerminal.activeHandlerCount).toBe(0);
     });
   });
 });

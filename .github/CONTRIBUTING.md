@@ -87,10 +87,16 @@ can tell where a new test belongs.
 - A test that covers an invariant rather than a file may be named for the invariant
   (`rustTsContract.test.ts`, `visibilityParity.test.ts`). Keep these rare and obvious.
 
-Vitest discovers `src/**/*.test.ts` only. Two consequences worth knowing:
+The root Vitest workspace runs the application (`src/**/*.test.ts`) and each
+private frontend package (`packages/*/src/**/*.test.ts`) as separate projects.
+Package tests do not load the application's global mocks. `pnpm test` runs all
+projects; `pnpm test:app` runs the application and `pnpm test:packages` runs the
+packages. Path filters still work, for example `pnpm test packages/replay-core`.
+Two consequences worth knowing:
 
-- A test outside `src/` is **not** run by `pnpm test`. The e2e suite under `tests/e2e/`
-  is a separate WebdriverIO run with its own config.
+- A test outside the application and package source roots is **not** run by
+  `pnpm test`. The e2e suite under `tests/e2e/` is a separate WebdriverIO run with
+  its own config; tooling tests use their explicit Node test commands.
 - Only `.test.ts` is collected — not `.test.tsx`. Keep test files as `.ts` and import
   the component under test, rather than renaming the test to `.tsx`.
 
@@ -110,13 +116,17 @@ runs the whole workspace, including those integration targets.
 
 ## Project map
 
-| Path         | Purpose                                                     |
-| ------------ | ----------------------------------------------------------- |
-| `src/`       | React, TypeScript, UI, stores, hooks, and frontend services |
-| `src-tauri/` | Tauri shell and Rust backend                                |
-| `docs/`      | Living architecture and feature documentation               |
-| `scripts/`   | Development, setup, maintenance, and build scripts          |
-| `tests/`     | Repository-level tests and test helpers                     |
+| Path         | Purpose                                                                          |
+| ------------ | -------------------------------------------------------------------------------- |
+| `src/`       | React, TypeScript, UI, stores, hooks, and frontend services                      |
+| `packages/`  | Private frontend workspace packages with explicit exports and independent checks |
+| `src-tauri/` | Tauri shell and Rust backend                                                     |
+| `docs/`      | Living architecture and feature documentation                                    |
+| `scripts/`   | Development, setup, maintenance, and build scripts                               |
+| `tests/`     | Repository-level tests and test helpers                                          |
+
+See [frontend workspace conventions](../docs/development/frontend-workspace.md)
+for package ownership, source exports, builds, and adding a package.
 
 Add or update docs when behavior, architecture, setup, or user-visible behavior changes in a way that is not obvious from the code.
 

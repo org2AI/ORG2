@@ -109,6 +109,12 @@ importers:
       '@libsql/client':
         specifier: ^0.17.0
         version: 0.17.0(encoding@0.1.13)
+      '@orgii/replay-core':
+        specifier: workspace:*
+        version: link:packages/replay-core
+      '@orgii/terminal-shell-integration':
+        specifier: workspace:*
+        version: link:packages/terminal-shell-integration
       '@replit/codemirror-indentation-markers':
         specifier: ^6.5.3
         version: 6.5.3(@codemirror/language@6.12.2)(@codemirror/state@6.6.0)(@codemirror/view@6.40.0)
@@ -497,6 +503,28 @@ importers:
       webpack-dev-server:
         specifier: ^5.2.6
         version: 5.2.6(webpack-cli@5.1.4)(webpack@5.105.4)
+
+  packages/replay-core:
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@20.19.37)(@vitest/coverage-v8@4.1.11)(jsdom@29.1.1)(vite@6.4.3(@types/node@20.19.37)(jiti@2.7.0)(lightningcss@1.32.0)(sass-embedded@1.103.1)(sass@1.98.0)(terser@5.46.0)(yaml@2.9.0))
+
+  packages/terminal-shell-integration:
+    dependencies:
+      '@xterm/xterm':
+        specifier: ^6.0.0
+        version: 6.0.0
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@20.19.37)(@vitest/coverage-v8@4.1.11)(jsdom@29.1.1)(vite@6.4.3(@types/node@20.19.37)(jiti@2.7.0)(lightningcss@1.32.0)(sass-embedded@1.103.1)(sass@1.98.0)(terser@5.46.0)(yaml@2.9.0))
 
 packages:
 

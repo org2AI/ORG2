@@ -13,6 +13,7 @@
  * The cell follows the main replay cursor (video-editor clip model) by
  * default, unless the user manually interacts with its controls.
  */
+import { eventReplayTimeMs } from "@orgii/replay-core/timeline";
 import { useAtomValue } from "jotai";
 import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -34,7 +35,6 @@ import { focusedSubagentCellAtom } from "@src/store/ui/simulatorAtom";
 
 import { useCellReplayState } from "../../hooks/useCellReplayState";
 import type { GridCellProps } from "../../types/gridTypes";
-import { eventReplayTimeMs } from "../../utils/findIndexAtTime";
 import { mergeSessionEventsToolResultsByCallId } from "../../utils/mergeSessionEventsToolResultsByCallId";
 import { SubagentChatPane } from "./SubagentChatPane";
 import { SubagentPinnedPreviewPopover } from "./SubagentPinnedPreviewPopover";

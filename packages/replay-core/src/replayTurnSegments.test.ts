@@ -1,29 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import type { SimulatorEventPreview } from "../../core/types";
+import type { ReplayTurnPreview } from "./replayTurnSegments";
 import {
   applyReplayTurnSegmentLayout,
   buildReplayTurnSegments,
   findActiveReplayTurnSegment,
   indexToReplaySliderValue,
   isReplayTurnStartPreview,
-} from "../replayTurnSegments";
+} from "./replayTurnSegments";
 
 function preview(
-  overrides: Partial<SimulatorEventPreview> & Pick<SimulatorEventPreview, "id">
-): SimulatorEventPreview {
+  overrides: Partial<ReplayTurnPreview> & { id: string }
+): ReplayTurnPreview {
   return {
-    sessionId: "s1",
     createdAt: "2026-08-26T10:00:00.000Z",
     functionName: "read_file",
-    uiCanonical: "read_file",
-    actionType: "tool_call",
     source: "assistant",
     displayText: "Read file",
-    displayStatus: "completed",
-    displayVariant: "tool_call",
-    activityStatus: "agent",
-    filterCategory: "explore",
     ...overrides,
   };
 }

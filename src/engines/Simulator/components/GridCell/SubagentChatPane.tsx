@@ -61,6 +61,7 @@
  * The pane never renders an `InputArea` — composing replies to subagents
  * is a separate, deferred concern. The cell stays read-only.
  */
+import { findIndexAtTime } from "@orgii/replay-core/timeline";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { memo, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -75,7 +76,6 @@ import ChatHistory from "@src/engines/ChatPanel/ChatHistory";
 import { ChatHistoryOverrideContext } from "@src/engines/ChatPanel/ChatHistoryOverrideContext";
 import { ChatSessionContext } from "@src/engines/ChatPanel/ChatSessionContext";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
-import { findIndexAtTime } from "@src/engines/Simulator/utils/findIndexAtTime";
 import { HugeiconsIcon, ListChevronsDownUpIcon } from "@src/icons";
 
 import { SubagentPromptToggle } from "./SubagentPromptToggle";

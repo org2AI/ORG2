@@ -15,6 +15,7 @@
  * For consumers that only have a `subagentSessionId`, use the
  * `NestedActivityListForSession` convenience wrapper.
  */
+import { findIndexAtTime } from "@orgii/replay-core/timeline";
 import React, { memo, useEffect, useMemo, useState } from "react";
 
 import {
@@ -29,7 +30,6 @@ import {
 } from "@src/engines/ChatPanel/ChatHistory/renderers/ExtendedItemRenderers";
 import { useSessionEvents } from "@src/engines/SessionCore/core/store/useSessionEvents";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { findIndexAtTime } from "@src/engines/Simulator/utils/findIndexAtTime";
 
 import { ChatLoadingBlock } from "../primitives";
 import { NestedBlockContext } from "../primitives/nestedBlockContext";

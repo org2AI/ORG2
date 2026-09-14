@@ -5,7 +5,7 @@ import {
   readShellReplayRangeIfCurrent,
   scheduleShellReplayPrefetch,
   shouldShowShellReplayLoadingPlaceholder,
-} from "../shellReplayRequestGuard";
+} from "./shellReplayRequestGuard";
 
 describe("shell replay async UI request guard", () => {
   it("debounces 16ms Snapshot scrubbing without starting a range read", () => {

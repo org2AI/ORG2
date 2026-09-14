@@ -1,4 +1,8 @@
-import type { ShellReplayBookmark } from "@src/engines/SessionCore/core/types";
+/** Immutable upper bound on output visible at a replay cursor. */
+export interface ShellReplayWatermark {
+  visibleThroughSequence: number;
+  visibleBytes: number;
+}
 
 export const SHELL_REPLAY_RANGE_BYTES = 256 * 1024;
 export const SHELL_REPLAY_CACHE_MAX_BYTES = 1024 * 1024;
@@ -254,7 +258,7 @@ export function shellReplayRowsToText(
 /** Defense-in-depth: never render frames beyond the cursor's immutable watermark. */
 export function filterFramesToBookmark(
   frames: readonly ShellReplayFrame[],
-  bookmark: ShellReplayBookmark
+  bookmark: ShellReplayWatermark
 ): ShellReplayFrame[] {
   const filtered: ShellReplayFrame[] = [];
   for (const frame of frames) {
@@ -280,7 +284,7 @@ export type ReplayWindowDirection = "initial" | "prepend" | "append";
 export function mergeReplayFrameWindow(
   existing: readonly ShellReplayFrame[],
   incoming: readonly ShellReplayFrame[],
-  bookmark: ShellReplayBookmark,
+  bookmark: ShellReplayWatermark,
   direction: ReplayWindowDirection,
   maxBytes = SHELL_REPLAY_CACHE_MAX_BYTES
 ): ShellReplayFrame[] {
@@ -341,8 +345,8 @@ function visualRowsMemoryBytes(rows: readonly ShellReplayVisualRow[]): number {
 }
 
 /**
- * The one process-wide replay payload budget. Components retain only a window
- * key and offsets in React state; all frame/row text lives in this evictable LRU.
+ * A bounded replay payload cache. The host owns its lifetime; consumers can
+ * retain only a window key and offsets while frame/row text lives in this LRU.
  */
 export class ShellReplayRangeCache {
   private readonly entries = new Map<string, CachedWindow>();
@@ -447,8 +451,6 @@ export class ShellReplayRangeCache {
     return this.sizeBytes;
   }
 }
-
-export const shellReplayRangeCache = new ShellReplayRangeCache();
 
 export function shellReplayScopeKey(
   sessionId: string,

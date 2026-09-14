@@ -32,6 +32,7 @@
  * All cursor writes go through `commitIndex` — there is no `setCurrentIndexLocal`
  * bypass any more; persisted state and live state cannot diverge.
  */
+import { findIndexAtTime } from "@orgii/replay-core/timeline";
 import { useAtomValue } from "jotai";
 import {
   useCallback,
@@ -47,7 +48,6 @@ import {
   simulatorPlaybackSpeedAtom,
 } from "@src/store/ui/simulatorAtom";
 
-import { findIndexAtTime } from "../utils/findIndexAtTime";
 import type {
   CellReplayControls,
   CellReplayState,

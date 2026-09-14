@@ -1,30 +1,19 @@
-import type { SessionEvent } from "@src/engines/SessionCore";
+import { describe, expect, it } from "vitest";
 
-import { eventReplayTimeMs, findIndexAtTime } from "../findIndexAtTime";
+import type { ReplayEventTimestamp } from "./findIndexAtTime";
+import { eventReplayTimeMs, findIndexAtTime } from "./findIndexAtTime";
 
-function makeSessionEvent(
-  overrides: Partial<SessionEvent> & Pick<SessionEvent, "createdAt">
-): SessionEvent {
+function makeReplayEventTimestamp(
+  overrides: Partial<ReplayEventTimestamp> &
+    Pick<ReplayEventTimestamp, "createdAt">
+): ReplayEventTimestamp {
   return {
-    chunk_id: null,
-    id: `event-${overrides.createdAt}`,
-    sessionId: "session-id",
-    actionType: "tool_call",
-    functionName: "anything",
-    uiCanonical: "",
-    args: {},
-    result: {},
-    source: "assistant",
-    displayText: "",
-    displayStatus: "completed",
-    displayVariant: "tool_call",
-    activityStatus: "agent",
     ...overrides,
   };
 }
 
-function eventsAt(...isoTimes: string[]): SessionEvent[] {
-  return isoTimes.map((createdAt) => makeSessionEvent({ createdAt }));
+function eventsAt(...isoTimes: string[]): ReplayEventTimestamp[] {
+  return isoTimes.map((createdAt) => makeReplayEventTimestamp({ createdAt }));
 }
 
 const T0 = Date.parse("2025-01-01T00:00:00Z");
@@ -73,20 +62,23 @@ describe("findIndexAtTime", () => {
     // Tool call started at T0 but the merged result completed at T2. A
     // cursor at T2 must select this event — not fall through to a slice
     // earlier than the call.
-    const events: SessionEvent[] = [
-      Object.assign(makeSessionEvent({ createdAt: "2025-01-01T00:00:00Z" }), {
-        lastActivityAt: "2025-01-01T00:00:02Z",
-      }),
+    const events: ReplayEventTimestamp[] = [
+      Object.assign(
+        makeReplayEventTimestamp({ createdAt: "2025-01-01T00:00:00Z" }),
+        {
+          lastActivityAt: "2025-01-01T00:00:02Z",
+        }
+      ),
     ];
     expect(findIndexAtTime(events, T2)).toBe(0);
     expect(eventReplayTimeMs(events[0])).toBe(T2);
   });
 
   it("skips non-finite timestamps without poisoning the search", () => {
-    const events: SessionEvent[] = [
-      makeSessionEvent({ createdAt: "2025-01-01T00:00:00Z" }),
-      makeSessionEvent({ createdAt: "not-a-date" }),
-      makeSessionEvent({ createdAt: "2025-01-01T00:00:02Z" }),
+    const events: ReplayEventTimestamp[] = [
+      makeReplayEventTimestamp({ createdAt: "2025-01-01T00:00:00Z" }),
+      makeReplayEventTimestamp({ createdAt: "not-a-date" }),
+      makeReplayEventTimestamp({ createdAt: "2025-01-01T00:00:02Z" }),
     ];
     // The corrupt middle entry must not prevent us from finding index 0.
     expect(findIndexAtTime(events, T0)).toBe(0);
@@ -96,13 +88,15 @@ describe("findIndexAtTime", () => {
 
 describe("eventReplayTimeMs", () => {
   it("falls back to createdAt when lastActivityAt is missing", () => {
-    const event = makeSessionEvent({ createdAt: "2025-01-01T00:00:01Z" });
+    const event = makeReplayEventTimestamp({
+      createdAt: "2025-01-01T00:00:01Z",
+    });
     expect(eventReplayTimeMs(event)).toBe(T1);
   });
 
   it("prefers lastActivityAt over createdAt", () => {
     const event = Object.assign(
-      makeSessionEvent({ createdAt: "2025-01-01T00:00:00Z" }),
+      makeReplayEventTimestamp({ createdAt: "2025-01-01T00:00:00Z" }),
       { lastActivityAt: "2025-01-01T00:00:02Z" }
     );
     expect(eventReplayTimeMs(event)).toBe(T2);

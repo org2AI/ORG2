@@ -1,4 +1,10 @@
-import type { SimulatorEventPreview } from "../core/types";
+/** Event fields used to identify turns and compute their time spans. */
+export interface ReplayTurnPreview {
+  createdAt: string;
+  functionName: string;
+  source: string;
+  displayText: string;
+}
 
 /** Number of alternating low-saturation segment hues. */
 export const REPLAY_TURN_SEGMENT_COLOR_COUNT = 6;
@@ -24,7 +30,7 @@ export interface ReplayTurnSegment {
 
 export interface BuildReplayTurnSegmentsInput {
   eventIds: readonly string[];
-  previewById: Readonly<Record<string, SimulatorEventPreview>>;
+  previewById: Readonly<Record<string, ReplayTurnPreview>>;
   maxValue: number;
   minSegmentSpan?: number;
 }
@@ -37,7 +43,7 @@ function parseEpochMs(iso: string | undefined): number | null {
 
 /** Matches chat turn headers: user-authored messages with visible text. */
 export function isReplayTurnStartPreview(
-  preview: SimulatorEventPreview | null | undefined
+  preview: ReplayTurnPreview | null | undefined
 ): boolean {
   if (!preview) return false;
   if (preview.functionName === "user_message") return true;

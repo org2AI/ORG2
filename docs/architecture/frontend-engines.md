@@ -79,7 +79,6 @@ components.
 **Owns:**
 
 - `utils/eventToDockMapping.ts` — maps `functionName` → `AppType`
-- `utils/findIndexAtTime.ts` — canonical binary-search for replay cursor
 - `utils/eventSegments.ts` — segment calculation for the timeline
 - `utils/simulatorEventRouting.ts` — pattern-based app-type routing
 - `hooks/` — `useGlobalReplay`, `useCellPlayback`, `useEventNavigation`,
@@ -88,6 +87,10 @@ components.
 - `apps/` — app-type entry points (`CODE_EDITOR`, `CHANNELS`, `BROWSER`, etc.)
 - `components/` — `SimulatorMainPane`, `SimulatorContentArea`
 - `types/appTypes.ts` — `AppType` enum
+
+The replay cursor lookup (`findIndexAtTime`) and turn-segment layout come from
+the private `@orgii/replay-core/timeline` package; see
+[Frontend workspace](../development/frontend-workspace.md).
 
 **App-type routing:**
 

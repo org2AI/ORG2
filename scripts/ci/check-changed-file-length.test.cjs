@@ -127,6 +127,41 @@ test("only .ts and .tsx files under src/ are judged", () => {
   );
 });
 
+test("private package source is judged like application source", () => {
+  assert.equal(
+    isCheckedSource("packages/replay-core/src/shellReplayRange.ts"),
+    true
+  );
+  assert.equal(
+    isCheckedSource("packages/terminal-shell-integration/src/index.ts"),
+    true
+  );
+  for (const ignored of [
+    "packages/replay-core/src/shellReplayRange.test.ts",
+    "packages/replay-core/vitest.config.ts",
+    "packages/replay-core/dist/shell.d.ts",
+    "packages/replay-core/package.json",
+    "packages/nested/deeper/src/index.ts",
+  ]) {
+    assert.equal(isCheckedSource(ignored), false, ignored);
+  }
+
+  const root = makeTree({
+    "packages/replay-core/src/long.ts": lines(MAX_LINES + 1),
+    "packages/replay-core/src/long.test.ts": lines(MAX_LINES * 2),
+  });
+  assert.deepEqual(
+    findOversizedFiles(
+      [
+        "packages/replay-core/src/long.ts",
+        "packages/replay-core/src/long.test.ts",
+      ],
+      { root }
+    ),
+    [{ filePath: "packages/replay-core/src/long.ts", lines: MAX_LINES + 1 }]
+  );
+});
+
 test("a listed file missing from the checkout fails loudly", () => {
   const root = makeTree({});
   assert.throws(() => findOversizedFiles(["src/gone.ts"], { root }), /ENOENT/);

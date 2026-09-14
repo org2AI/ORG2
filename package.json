@@ -46,11 +46,11 @@
     "build:stats": "webpack --config config/webpack.config.js --mode production --json build/stats.json",
     "check:bundle-budget": "node scripts/quality/check-bundle-budget.mjs",
     "analyze": "webpack --config config/webpack.config.js --mode production --profile --json > build/stats.json && webpack-bundle-analyzer build/stats.json",
-    "typecheck": "tsc --noEmit --pretty false",
-    "typecheck:fast": "tsgo --noEmit --pretty false",
-    "lint": "pnpm lint:fast && eslint src/ --ext .ts,.tsx,.js,.jsx --max-warnings 0 --report-unused-disable-directives",
-    "lint:fast": "oxlint -c .oxlintrc.json --max-warnings 0 src",
-    "lint:fix": "eslint src/ --ext .ts,.tsx,.js,.jsx --fix --report-unused-disable-directives",
+    "typecheck": "pnpm typecheck:packages && tsc --noEmit --pretty false",
+    "typecheck:fast": "pnpm typecheck:packages && tsgo --noEmit --pretty false",
+    "lint": "pnpm lint:fast && eslint src/ packages/*/src/ --ext .ts,.tsx,.js,.jsx --max-warnings 0 --report-unused-disable-directives",
+    "lint:fast": "oxlint -c .oxlintrc.json --max-warnings 0 src packages/*/src",
+    "lint:fix": "eslint src/ packages/*/src/ --ext .ts,.tsx,.js,.jsx --fix --report-unused-disable-directives",
     "lint:file": "eslint",
     "lint:file:fix": "eslint --fix",
     "cargo:check": "cd src-tauri && cargo check",
@@ -78,7 +78,12 @@
     "test:boundaries": "node --test scripts/quality/dependency-boundaries/*.test.mjs",
     "check:queue-authority": "node scripts/quality/queue-authority/check.mjs",
     "test:queue-authority": "node --test scripts/quality/queue-authority/*.test.mjs",
-    "test:mutation": "stryker run config/stryker.config.mjs"
+    "test:mutation": "stryker run config/stryker.config.mjs",
+    "build:packages": "pnpm -r --filter \"./packages/*\" --workspace-concurrency=1 run build",
+    "typecheck:packages": "pnpm -r --filter \"./packages/*\" --workspace-concurrency=1 run typecheck",
+    "test:packages": "pnpm -r --filter \"./packages/*\" --workspace-concurrency=1 run test",
+    "test:app": "vitest run --config config/vitest.config.ts --project app",
+    "test:workspace": "node --test scripts/quality/workspace/*.test.cjs"
   },
   "keywords": [
     "orgii",
@@ -180,7 +185,9 @@
     "sql-formatter": "^15.7.0",
     "sucrase": "^3.35.0",
     "uuid": "^14.0.2",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "@orgii/replay-core": "workspace:*",
+    "@orgii/terminal-shell-integration": "workspace:*"
   },
   "devDependencies": {
     "@babel/core": "^7.29.6",
@@ -284,6 +291,9 @@
     "ignorePatterns": [
       "/*",
       "!/src",
+      "!/packages",
+      "packages/*/dist/**",
+      "packages/*/node_modules/**",
       "*.css",
       "*.scss"
     ],
@@ -487,6 +497,9 @@
     ],
     "*.{css,scss,md,json}": [
       "prettier --write"
+    ],
+    "packages/*/src/**/*.{ts,tsx,js,jsx}": [
+      "oxlint -c .oxlintrc.json --max-warnings 0"
     ]
   },
   "packageManager": "pnpm@9.15.4+sha512.b2dc20e2fc72b3e18848459b37359a32064663e5627a51e4c74b2c29dd8e8e0491483c3abb40789cfd578bf362fb6ba8261b05f0387d76792ed6e23ea3b1b6a0",
@@ -497,5 +510,6 @@
     "patchedDependencies": {
       "@hugeicons/core-free-icons@4.3.0": "patches/@hugeicons__core-free-icons@4.3.0.patch"
     }
-  }
+  },
+  "private": true
 }

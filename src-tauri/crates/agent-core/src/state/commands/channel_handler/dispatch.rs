@@ -10,7 +10,7 @@ use tracing::{info, warn};
 
 use crate::bus::{InboundMessage, OutboundMessage};
 use crate::definitions::prefix_lookup::SDE_SESSION_PREFIX;
-use crate::definitions::{os_agent, OS_AGENT_ID};
+use crate::definitions::{AgentDefinitionsStore, OS_AGENT_ID};
 use crate::gateway::{parse_command, InboundMessageHandler, InboundProcessorDeps, SessionKey};
 use crate::interaction::permission::AgentPermissionManager;
 use crate::interaction::question::QuestionManager;
@@ -92,7 +92,7 @@ impl InboundMessageHandler for GatewayInboundHandler {
             // OS sessions are registered before dispatch. (SDE sessions manage
             // their own lifecycle and are skipped.)
             if !target_session_id.starts_with(SDE_SESSION_PREFIX) {
-                ensure_os_session_registered(&state, &target_session_id).await;
+                ensure_os_session_registered(&state, &target_session_id).await?;
             }
             return dispatch_to_session(
                 &state,
@@ -172,7 +172,7 @@ impl InboundMessageHandler for GatewayInboundHandler {
             // binding. The actual runtime init happens inside
             // `dispatch_to_session` via `init_channel_session`.
             let sid = derive_os_session_id(&msg.channel, &msg.chat_id);
-            ensure_os_session_registered(&state, &sid).await;
+            ensure_os_session_registered(&state, &sid).await?;
             state
                 .gateway_bindings
                 .set(session_key.clone(), sid.clone())
@@ -258,17 +258,32 @@ fn derive_os_session_id(channel: &str, chat_id: &str) -> String {
 /// Ensure the OS session is registered against `builtin:os` before
 /// `init_channel_session` tries to look it up — without it the
 /// channel init helper errors with `channel session '…' not registered`.
-async fn ensure_os_session_registered(state: &AgentAppState, sid: &str) {
+async fn ensure_os_session_registered(state: &AgentAppState, sid: &str) -> Result<(), String> {
+    let store = crate::definitions::definitions_store();
+    ensure_os_session_registered_from_store(state, sid, &store).await
+}
+
+async fn ensure_os_session_registered_from_store(
+    state: &AgentAppState,
+    sid: &str,
+    store: &AgentDefinitionsStore,
+) -> Result<(), String> {
     let needs_register = match state.get_session(sid).await {
         None => true,
-        Some(existing) => existing.definition.id != os_agent().id,
+        Some(existing) => existing.definition.id != OS_AGENT_ID,
     };
     if needs_register {
-        let definition = os_agent();
+        // Use the effective definition, exactly as desktop launch does. The
+        // initializer resolves inheritance of this node; it cannot recover an
+        // overlay omitted here by replacing the supplied node with its same id.
+        let definition = store
+            .get(OS_AGENT_ID)
+            .ok_or_else(|| format!("Agent definition '{OS_AGENT_ID}' not found"))?;
         let session = AgentSession::new(sid.to_string(), definition);
         state.invalidate_session(sid).await;
         state.register_session(session).await;
     }
+    Ok(())
 }
 
 /// Dispatch a message (usually re-injected) to a target session and
@@ -482,4 +497,64 @@ pub(super) fn build_inbound_deps(state: &AgentAppState) -> Result<InboundProcess
     Ok(InboundProcessorDeps {
         handler: Arc::new(handler),
     })
+}
+
+#[cfg(test)]
+mod effective_definition_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn new_channel_registration_and_desktop_spec_share_effective_os_policy() {
+        let _sandbox = test_helpers::test_env::sandbox();
+        let store = crate::definitions::definitions_store();
+        store
+            .update_with_overlay(OS_AGENT_ID, |definition| {
+                definition.tools.excluded_tools.push("browser".into());
+                definition.agent_policy.as_mut().unwrap().workspace_only = true;
+            })
+            .unwrap();
+        let state = AgentAppState::new();
+        let sid = "osagent-channel-overlay-regression";
+        ensure_os_session_registered_from_store(&state, sid, &store)
+            .await
+            .unwrap();
+        let channel = crate::init::launch_spec::AgentLaunchSpec::registered_session(
+            &state,
+            sid,
+            app_paths::personal_workspace(),
+            None,
+            Some("test-model".into()),
+            None,
+        )
+        .await
+        .unwrap();
+        let desktop_definition = store.get(OS_AGENT_ID).unwrap();
+        let listed = store
+            .list_effective()
+            .unwrap()
+            .into_iter()
+            .find(|agent| agent.id == OS_AGENT_ID)
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(&channel.definition).unwrap(),
+            serde_json::to_value(&desktop_definition).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(&listed).unwrap(),
+            serde_json::to_value(&desktop_definition).unwrap()
+        );
+        let mut definition = channel.definition;
+        definition.selected_model_id = Some("test-model".into());
+        let resolved = crate::definitions::ResolvedAgent::resolve(
+            &definition,
+            Some(&store),
+            &crate::session::overrides::SessionOverrides::default(),
+        )
+        .unwrap();
+        assert!(resolved.policy.workspace_only);
+        assert!(resolved.tools.excluded.contains(&"browser".to_string()));
+        state
+            .begin_shutdown(std::time::Duration::from_secs(1))
+            .await;
+    }
 }

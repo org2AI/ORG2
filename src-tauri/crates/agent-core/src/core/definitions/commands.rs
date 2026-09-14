@@ -1,6 +1,5 @@
 //! Tauri commands for agent definition and org CRUD operations.
 
-use super::builtin::get_builtin_agents;
 use super::orgs::{AgentOrgsStore, OrgDefinition};
 use super::patch::AgentDefinitionPatch;
 use super::schema::AgentDefinition;
@@ -22,9 +21,7 @@ use crate::state::AgentAppState;
 pub async fn agent_definitions_list_all(
     state: tauri::State<'_, std::sync::Arc<AgentDefinitionsStore>>,
 ) -> Result<Vec<AgentDefinition>, String> {
-    let mut all = get_builtin_agents();
-    all.extend(state.snapshot());
-    Ok(all)
+    state.list_effective()
 }
 
 #[tauri::command]

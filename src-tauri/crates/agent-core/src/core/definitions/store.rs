@@ -269,6 +269,27 @@ impl AgentDefinitionsStore {
             .clone()
     }
 
+    /// Effective builtin definitions followed by user definitions, matching `get`.
+    /// Both locks stay held while taking the snapshot; callers cannot bypass overlays.
+    pub fn list_effective(&self) -> Result<Vec<AgentDefinition>, String> {
+        let overrides = self
+            .builtin_overrides
+            .lock()
+            .map_err(|err| format!("Lock error: {err}"))?;
+        let agents = self
+            .agents
+            .lock()
+            .map_err(|err| format!("Lock error: {err}"))?;
+        let mut all = super::builtin::get_builtin_agents();
+        for agent in &mut all {
+            if let Some(effective) = overrides.get(&agent.id) {
+                *agent = effective.clone();
+            }
+        }
+        all.extend(agents.iter().cloned());
+        Ok(all)
+    }
+
     /// Atomically mutate a custom definition; errors leave memory and disk unchanged.
     pub fn update<F>(&self, id: &str, patch: F) -> Result<AgentDefinition, String>
     where

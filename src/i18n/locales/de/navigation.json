@@ -878,5 +878,10 @@
       "updated": "Zuletzt aktualisiert",
       "forks": "Forks"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "Ersetzen wurde gestoppt: Ergebnisse oder Dateien haben sich geändert, oder ein Schreibvorgang ist fehlgeschlagen. Einige Dateien wurden möglicherweise aktualisiert. Vor dem erneuten Versuch erneut suchen.",
+    "budgetExceeded": "Die Suche hat ihr Ressourcenlimit erreicht. Die Ergebnisse sind unvollständig; grenzen Sie die Suche ein.",
+    "timeout": "Zeitüberschreitung bei der Suche. Grenzen Sie die Suche ein und versuchen Sie es erneut."
   }
 }

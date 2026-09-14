@@ -878,5 +878,10 @@
       "updated": "Cập nhật gần đây",
       "forks": "Fork"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "Đã dừng thay thế vì kết quả hoặc tệp đã thay đổi, hoặc ghi thất bại. Một số tệp có thể đã được cập nhật. Hãy tìm kiếm lại trước khi thử lại.",
+    "budgetExceeded": "Tìm kiếm đã đạt giới hạn tài nguyên. Kết quả chưa đầy đủ; hãy thu hẹp phạm vi.",
+    "timeout": "Tìm kiếm đã hết thời gian. Hãy thu hẹp phạm vi và thử lại."
   }
 }

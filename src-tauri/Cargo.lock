@@ -6823,6 +6823,7 @@ dependencies = [
  "app_paths",
  "app_utils",
  "blake3",
+ "globset",
  "grep-regex",
  "grep-searcher",
  "ignore",

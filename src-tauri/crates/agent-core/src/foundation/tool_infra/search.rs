@@ -40,6 +40,8 @@ pub async fn code_search_formatted(
     let search_path_owned = search_path.to_path_buf();
 
     let filters = search::code::commands::SearchFilters {
+        include_globs: None,
+        exclude_globs: None,
         file_extensions: None,
         exclude_dirs: None,
         case_sensitive: Some(false),

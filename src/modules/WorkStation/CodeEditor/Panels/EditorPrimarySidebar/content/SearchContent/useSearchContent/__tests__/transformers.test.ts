@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildSearchFilters,
-  filterResultsByGlob,
   parseFilePatterns,
   toUIOptions,
   toUIResult,
@@ -89,40 +88,6 @@ describe("search transformers", () => {
     });
   });
 
-  describe("filterResultsByGlob", () => {
-    const repoPath = "/repo";
-    const results = [
-      { file_path: "/repo/src/index.ts", matches: [] },
-      { file_path: "/repo/src/utils.ts", matches: [] },
-      { file_path: "/repo/tests/index.test.ts", matches: [] },
-      { file_path: "/repo/docs/readme.md", matches: [] },
-    ];
-
-    it("filters by include patterns", () => {
-      const filtered = filterResultsByGlob(results, repoPath, ["src/**"], []);
-
-      expect(filtered).toHaveLength(2);
-      expect(filtered.map((result) => result.file_path)).toEqual([
-        "/repo/src/index.ts",
-        "/repo/src/utils.ts",
-      ]);
-    });
-
-    it("filters by exclude patterns", () => {
-      const filtered = filterResultsByGlob(
-        results,
-        repoPath,
-        [],
-        ["**/*.test.ts"]
-      );
-
-      expect(filtered).toHaveLength(3);
-      expect(filtered.some((result) => result.file_path.includes("test"))).toBe(
-        false
-      );
-    });
-  });
-
   describe("buildSearchFilters", () => {
     it("builds backend filters from store options", () => {
       const filters = buildSearchFilters(
@@ -145,6 +110,7 @@ describe("search transformers", () => {
       expect(filters.use_regex).toBe(false);
       expect(filters.file_extensions).toEqual([".ts"]);
       expect(filters.exclude_dirs).toEqual(["node_modules", "dist"]);
+      expect(filters.exclude_globs).toEqual(["dist"]);
     });
   });
 });

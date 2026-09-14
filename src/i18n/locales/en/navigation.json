@@ -878,5 +878,10 @@
       "memberNote": "Enabled by an admin — eligible sessions upload in the background without requiring you to open this workspace."
     },
     "userName": "User name"
+  },
+  "fileSearch": {
+    "replaceFailed": "Replacement stopped because the results or file changed, or a write failed. Some files may already be updated. Search again before retrying.",
+    "budgetExceeded": "Search reached its resource budget. Results are partial; narrow the search scope.",
+    "timeout": "Search timed out. Narrow the search scope and try again."
   }
 }

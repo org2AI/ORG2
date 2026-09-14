@@ -878,5 +878,10 @@
       "updated": "Son güncellenen",
       "forks": "Fork'lar"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "Sonuçlar veya dosya değiştiği ya da yazma başarısız olduğu için değiştirme durduruldu. Bazı dosyalar güncellenmiş olabilir. Yeniden denemeden önce tekrar arayın.",
+    "budgetExceeded": "Arama kaynak sınırına ulaştı. Sonuçlar kısmi; arama kapsamını daraltın.",
+    "timeout": "Arama zaman aşımına uğradı. Kapsamı daraltıp tekrar deneyin."
   }
 }

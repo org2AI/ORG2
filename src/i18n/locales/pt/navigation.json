@@ -878,5 +878,10 @@
       "updated": "Atualizados recentemente",
       "forks": "Forks"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "A substituição parou porque os resultados ou o arquivo mudaram, ou uma gravação falhou. Alguns arquivos podem já ter sido atualizados. Pesquise novamente antes de tentar de novo.",
+    "budgetExceeded": "A pesquisa atingiu o limite de recursos. Os resultados são parciais; reduza o âmbito.",
+    "timeout": "A pesquisa excedeu o tempo limite. Reduza o âmbito e tente novamente."
   }
 }

@@ -878,5 +878,10 @@
       "updated": "Mis à jour récemment",
       "forks": "Forks"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "Le remplacement a été arrêté : les résultats ou le fichier ont changé, ou une écriture a échoué. Certains fichiers ont peut-être déjà été modifiés. Relancez la recherche avant de réessayer.",
+    "budgetExceeded": "La recherche a atteint sa limite de ressources. Les résultats sont partiels ; réduisez la portée.",
+    "timeout": "La recherche a expiré. Réduisez la portée et réessayez."
   }
 }

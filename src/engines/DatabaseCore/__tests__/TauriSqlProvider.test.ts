@@ -41,7 +41,7 @@ const config: PostgresConnectionConfig = {
 
 async function connected(): Promise<FakeProvider> {
   const provider = new FakeProvider(config);
-  invokeMock.mockResolvedValueOnce(undefined);
+  invokeMock.mockResolvedValueOnce("lease-1");
   await provider.connect();
   invokeMock.mockClear();
   return provider;
@@ -62,7 +62,7 @@ beforeEach(() => {
 describe("TauriSqlProvider connection lifecycle", () => {
   it("takes its type and connection string from the dialect", async () => {
     const provider = new FakeProvider(config);
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue("lease-1");
 
     expect(provider.type).toBe("postgres");
     expect(provider.status).toEqual({ state: "disconnected" });
@@ -104,7 +104,7 @@ describe("TauriSqlProvider connection lifecycle", () => {
     await provider.disconnect();
 
     expect(invokeMock).toHaveBeenCalledWith("db_sql_disconnect", {
-      connectionId: "conn-1",
+      connectionId: "lease-1",
     });
     expect(provider.status).toEqual({ state: "disconnected" });
     expect(provider.isConnected()).toBe(false);
@@ -175,7 +175,7 @@ describe("TauriSqlProvider SQL building through the dialect", () => {
     expect(invokeMock).toHaveBeenNthCalledWith(
       1,
       "db_sql_execute",
-      expect.objectContaining({ connectionId: "conn-1" })
+      expect.objectContaining({ connectionId: "lease-1" })
     );
   });
 
@@ -199,7 +199,7 @@ describe("TauriSqlProvider SQL building through the dialect", () => {
     const result = await provider.query("SELECT 1");
 
     expect(invokeMock).toHaveBeenCalledWith("db_sql_query", {
-      connectionId: "conn-1",
+      connectionId: "lease-1",
       sql: "SELECT 1",
     });
     expect(result).toMatchObject({ columns: [], values: [], rowCount: 0 });

@@ -62,6 +62,7 @@ export interface QueryOptions {
 
 export interface QueryResult {
   columns: string[];
+  /** Native SQL integers outside the JavaScript safe range are decimal strings. */
   values: unknown[][];
   rowCount: number;
   totalCount?: number;

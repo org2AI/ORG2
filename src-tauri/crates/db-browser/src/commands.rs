@@ -15,7 +15,7 @@ use super::types::{
 // ============================================
 
 /// Open a SQLite file. Returns a `connection_id` string.
-/// If the file is already open the existing ID is returned.
+/// Each caller receives an independent opaque lease, even for the same file.
 #[tauri::command]
 pub async fn db_open(file_path: String) -> Result<String, String> {
     tokio::task::spawn_blocking(move || pool::open(&file_path))

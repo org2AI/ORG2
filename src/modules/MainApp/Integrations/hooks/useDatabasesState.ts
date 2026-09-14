@@ -7,7 +7,7 @@
  * "Add connection" wizard open-state is read from the URL via
  * {@link useWizardParam} (`?wizard=db-connection-add`).
  */
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { WIZARD_IDS } from "@src/config/mainAppPaths";
 import {
@@ -75,12 +75,26 @@ export function useDatabasesState(
   activeCategory: IntegrationCategory,
   setDetailMode: (mode: DetailMode) => void
 ): UseDatabasesStateReturn {
+  const probeGeneration = useRef(0);
+  useEffect(
+    () => () => {
+      probeGeneration.current++;
+    },
+    []
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [probeResult, setProbeResult] = useState<DatabaseProbeResult | null>(
     null
   );
   const [probing, setProbing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    if (activeCategory !== "databases") {
+      probeGeneration.current++;
+      setProbing(false);
+      setProbeResult(null);
+    }
+  }, [activeCategory]);
 
   const { wizard, openWizard, closeWizard } = useWizardParam();
   const addWizardOpen = wizard === WIZARD_IDS.DB_CONNECTION_ADD;
@@ -93,6 +107,8 @@ export function useDatabasesState(
 
   const handleSelectDatabase = useCallback(
     (id: string | null, mode?: DetailMode) => {
+      probeGeneration.current++;
+      setProbing(false);
       setSelectedId(id);
       setProbeResult(null);
       setDetailMode(mode ?? "preview");
@@ -102,6 +118,7 @@ export function useDatabasesState(
 
   const handleProbe = useCallback(async () => {
     if (!selectedId) return;
+    const generation = ++probeGeneration.current;
     setProbing(true);
     setProbeResult(null);
 
@@ -116,9 +133,11 @@ export function useDatabasesState(
       const tables = await service.getTables();
       const elapsed_ms = Math.round(performance.now() - startTime);
 
+      if (generation !== probeGeneration.current) return;
       setProbeResult({ ok: true, tableCount: tables.length, elapsed_ms });
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
+      if (generation !== probeGeneration.current) return;
       const elapsed_ms = Math.round(performance.now() - startTime);
       setProbeResult({
         ok: false,
@@ -126,12 +145,14 @@ export function useDatabasesState(
         elapsed_ms,
       });
     } finally {
-      setProbing(false);
+      if (generation === probeGeneration.current) setProbing(false);
     }
   }, [selectedId]);
 
   const handleRemove = useCallback(() => {
     if (!selectedId) return;
+    probeGeneration.current++;
+    setProbing(false);
     DatabaseServiceFactory.remove(selectedId);
     removeConnectionConfig(selectedId);
     setSelectedId(null);
@@ -150,6 +171,8 @@ export function useDatabasesState(
   }, [closeWizard]);
 
   const clearDatabasesState = useCallback(() => {
+    probeGeneration.current++;
+    setProbing(false);
     setSelectedId(null);
     setProbeResult(null);
     closeWizard();

@@ -12,7 +12,12 @@ import type { DatabaseConnectionConfig, IDatabaseService } from "./types";
 const log = createLogger("DatabaseFactory");
 
 const MAX_SERVICE_CACHE = 50;
+let activeCreations = 0;
 const serviceCache = new Map<string, IDatabaseService>();
+const pending = new Map<
+  string,
+  { token: string; cancelled: boolean; promise: Promise<IDatabaseService> }
+>();
 
 async function createSqliteProvider(
   config: DatabaseConnectionConfig
@@ -76,50 +81,84 @@ export const DatabaseServiceFactory = {
     config: DatabaseConnectionConfig,
     forceNew = false
   ): Promise<IDatabaseService> {
-    if (!forceNew && serviceCache.has(config.id)) {
-      return serviceCache.get(config.id)!;
+    const token = JSON.stringify(config);
+    const flight = pending.get(config.id);
+    if (flight && !forceNew && flight.token === token) return flight.promise;
+    const cached = serviceCache.get(config.id);
+    if (
+      activeCreations >= MAX_SERVICE_CACHE &&
+      !(cached && !forceNew && JSON.stringify(cached.config) === token)
+    )
+      throw new Error(
+        "Database service creation limit reached. Try again after pending work completes."
+      );
+    if (flight) {
+      flight.cancelled = true;
+      pending.delete(config.id);
     }
+    if (cached && !forceNew && JSON.stringify(cached.config) === token)
+      return cached;
+    if (cached) serviceCache.delete(config.id);
+    const request = {
+      token,
+      cancelled: false,
+      promise: null as unknown as Promise<IDatabaseService>,
+    };
+    const run = async () => {
+      if (cached) await cached.disconnect();
+      let service: IDatabaseService;
 
-    let service: IDatabaseService;
-
-    switch (config.type) {
-      case "sqlite":
-        service = await createSqliteProvider(config);
-        break;
-      case "supabase":
-        service = await createSupabaseProvider(config);
-        break;
-      case "turso":
-        service = await createTursoProvider(config);
-        break;
-      case "neon":
-        service = await createNeonProvider(config);
-        break;
-      case "postgres":
-        service = await createPostgresProvider(config);
-        break;
-      case "mysql":
-        service = await createMySQLProvider(config);
-        break;
-      default:
-        throw new Error(
-          `Unsupported database type: ${(config as DatabaseConnectionConfig).type}`
-        );
-    }
-
-    if (serviceCache.size >= MAX_SERVICE_CACHE) {
-      const firstKey = serviceCache.keys().next().value;
-      if (firstKey) {
-        const evicted = serviceCache.get(firstKey);
-        if (evicted?.isConnected()) {
-          evicted.disconnect().catch(log.error);
-        }
-        serviceCache.delete(firstKey);
+      switch (config.type) {
+        case "sqlite":
+          service = await createSqliteProvider(config);
+          break;
+        case "supabase":
+          service = await createSupabaseProvider(config);
+          break;
+        case "turso":
+          service = await createTursoProvider(config);
+          break;
+        case "neon":
+          service = await createNeonProvider(config);
+          break;
+        case "postgres":
+          service = await createPostgresProvider(config);
+          break;
+        case "mysql":
+          service = await createMySQLProvider(config);
+          break;
+        default:
+          throw new Error(
+            `Unsupported database type: ${(config as DatabaseConnectionConfig).type}`
+          );
       }
-    }
 
-    serviceCache.set(config.id, service);
-    return service;
+      if (request.cancelled) {
+        await service.disconnect();
+        throw new Error("Database service creation cancelled");
+      }
+      if (serviceCache.size >= MAX_SERVICE_CACHE) {
+        const idle = [...serviceCache].find(
+          ([, item]) =>
+            !item.isConnected() && item.status.state !== "connecting"
+        );
+        if (!idle)
+          throw new Error(
+            "Database service limit reached. Close a database first."
+          );
+        serviceCache.delete(idle[0]);
+        void idle[1].disconnect().catch(log.error);
+      }
+      serviceCache.set(config.id, service);
+      return service;
+    };
+    activeCreations++;
+    request.promise = run().finally(() => {
+      activeCreations--;
+      if (pending.get(config.id) === request) pending.delete(config.id);
+    });
+    pending.set(config.id, request);
+    return request.promise;
   },
 
   get(connectionId: string): IDatabaseService | undefined {
@@ -134,18 +173,8 @@ export const DatabaseServiceFactory = {
     connectionId: string,
     loadConfigs: ConfigLoader
   ): Promise<IDatabaseService | undefined> {
-    const cached = serviceCache.get(connectionId);
-    if (cached) {
-      if (!cached.isConnected()) {
-        await cached.connect();
-      }
-      return cached;
-    }
-
-    const configs = loadConfigs();
-    const config = configs.find((cfg) => cfg.id === connectionId);
+    const config = loadConfigs().find((cfg) => cfg.id === connectionId);
     if (!config) return undefined;
-
     const service = await this.create(config);
     await service.connect();
     return service;
@@ -156,25 +185,27 @@ export const DatabaseServiceFactory = {
   },
 
   remove(connectionId: string): boolean {
-    const service = serviceCache.get(connectionId);
-    if (service) {
-      if (service.isConnected()) {
-        service.disconnect().catch(log.error);
-      }
-      return serviceCache.delete(connectionId);
+    const flight = pending.get(connectionId);
+    if (flight) {
+      flight.cancelled = true;
+      pending.delete(connectionId);
     }
-    return false;
+    const service = serviceCache.get(connectionId);
+    serviceCache.delete(connectionId);
+    if (service) void service.disconnect().catch(log.error);
+    return !!service || !!flight;
   },
 
   async clearAll(): Promise<void> {
-    const disconnectPromises: Promise<void>[] = [];
-    for (const service of serviceCache.values()) {
-      if (service.isConnected()) {
-        disconnectPromises.push(service.disconnect());
-      }
-    }
-    await Promise.allSettled(disconnectPromises);
+    for (const flight of pending.values()) flight.cancelled = true;
+    const flights = [...pending.values()].map((flight) => flight.promise);
+    pending.clear();
+    const services = [...serviceCache.values()];
     serviceCache.clear();
+    await Promise.allSettled([
+      ...flights,
+      ...services.map((service) => service.disconnect()),
+    ]);
   },
 
   getConnectionIds(): string[] {

@@ -133,31 +133,25 @@ describe("TursoProvider connection lifecycle", () => {
     );
   });
 
-  it("uses a generic message when the driver rejects with a non-Error", async () => {
+  it("preserves the message when the driver rejects with a non-Error", async () => {
     const provider = makeProvider();
     executeMock.mockRejectedValue("socket hang up");
 
     await expect(provider.connect()).rejects.toBe("socket hang up");
     expect(provider.status).toEqual({
       state: "error",
-      error: "Failed to connect",
+      error: "socket hang up",
     });
   });
 
-  it.fails(
-    "KNOWN BUG: a client created before a failed probe is leaked instead of closed",
-    async () => {
-      // connect() sets `this.client = null` in the catch block but never calls
-      // close(), so the underlying HTTP/WS client and its sockets stay open.
-      // Remove this `it.fails` once connect() closes the client on failure.
-      const provider = makeProvider();
-      executeMock.mockRejectedValue(new Error("UNAUTHORIZED"));
+  it("closes a client created before a failed probe", async () => {
+    const provider = makeProvider();
+    executeMock.mockRejectedValue(new Error("UNAUTHORIZED"));
 
-      await expect(provider.connect()).rejects.toThrow();
+    await expect(provider.connect()).rejects.toThrow();
 
-      expect(closeMock).toHaveBeenCalledTimes(1);
-    }
-  );
+    expect(closeMock).toHaveBeenCalledTimes(1);
+  });
 
   it("closes the client on disconnect and allows a fresh connect afterwards", async () => {
     const provider = await connected();

@@ -81,7 +81,7 @@ describe("TauriSqliteProvider connection lifecycle", () => {
     expect(provider.isConnected()).toBe(false);
   });
 
-  it("falls back to a generic message when the driver rejects with a non-Error", async () => {
+  it("preserves the driver message when it rejects with a string", async () => {
     const provider = makeProvider();
     // Tauri rejects with a plain string for Rust-side `Err(String)`.
     invokeMock.mockRejectedValue("db_open: no such file");
@@ -89,7 +89,7 @@ describe("TauriSqliteProvider connection lifecycle", () => {
     await expect(provider.connect()).rejects.toBe("db_open: no such file");
     expect(provider.status).toEqual({
       state: "error",
-      error: "Failed to connect",
+      error: "db_open: no such file",
     });
   });
 

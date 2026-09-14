@@ -80,7 +80,7 @@ interface BrowserSessionWebviewProps {
     sessionId: string,
     updates: Partial<BrowserSession>
   ) => void;
-  onNewTab?: (url: string) => void;
+  onNewTab?: (url: string, incognito?: boolean) => void;
   onPollNow?: () => void;
 }
 
@@ -193,7 +193,7 @@ const BrowserSessionWebview: React.FC<BrowserSessionWebviewProps> = ({
       },
       onNewWindow: (url: string) => {
         if (onNewTab) {
-          onNewTab(url);
+          onNewTab(url, session.incognito ?? false);
         }
       },
     };

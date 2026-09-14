@@ -63,7 +63,9 @@ const loadFromStorage = (): {
   try {
     const stored = localStorage.getItem(BROWSER_SESSIONS_STORAGE_KEY);
     const parsed = stored ? JSON.parse(stored) : null;
-    const sessions = Array.isArray(parsed?.sessions) ? parsed.sessions : [];
+    const sessions = Array.isArray(parsed?.sessions)
+      ? parsed.sessions.filter((session: BrowserSession) => !session.incognito)
+      : [];
     const activeSessionId =
       typeof parsed?.activeSessionId === "string" ? parsed.activeSessionId : "";
     if (sessions.length > 0) {
@@ -83,9 +85,22 @@ const loadFromStorage = (): {
 // Save sessions to localStorage
 const saveToStorage = (sessions: BrowserSession[], activeSessionId: string) => {
   try {
+    const durableSessions = sessions.filter((session) => !session.incognito);
+    if (durableSessions.length === 0) {
+      localStorage.removeItem(BROWSER_SESSIONS_STORAGE_KEY);
+      return;
+    }
+    const durableActiveId = durableSessions.some(
+      (session) => session.id === activeSessionId
+    )
+      ? activeSessionId
+      : durableSessions[0].id;
     localStorage.setItem(
       BROWSER_SESSIONS_STORAGE_KEY,
-      JSON.stringify({ sessions, activeSessionId })
+      JSON.stringify({
+        sessions: durableSessions,
+        activeSessionId: durableActiveId,
+      })
     );
   } catch {
     // Ignore storage errors

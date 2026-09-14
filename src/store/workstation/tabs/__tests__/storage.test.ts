@@ -71,6 +71,44 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
+it("omits private browser resources on persistence and historical hydration", () => {
+  const state = emptyWorkstationTabsState();
+  state.shared.tabs = [
+    tab("browser:normal", "browser-session", {
+      data: { incognito: false, url: "https://normal.example" },
+    }),
+    tab("browser:private", "browser-session", {
+      data: { incognito: true, url: "https://private.example/secret" },
+    }),
+  ];
+  state.globalWorkspace.activeTabRef = {
+    partition: "shared",
+    tabId: "browser:private",
+  };
+  state.globalWorkspace.tabOrder = [
+    { partition: "shared", tabId: "browser:private" },
+    { partition: "shared", tabId: "browser:normal" },
+  ];
+  expect(persistWorkstationTabsState(state)).toBe(true);
+  expect(state.shared.tabs).toHaveLength(2);
+  const saved = JSON.parse(localStorage.getItem(WORKSTATION_V4_SHARED_KEY)!);
+  expect(saved.tabs.map((item: { id: string }) => item.id)).toEqual([
+    "browser:normal",
+  ]);
+  const savedWorkspace = JSON.parse(
+    localStorage.getItem(WORKSTATION_V4_GLOBAL_KEY)!
+  );
+  expect(savedWorkspace.activeTabRef).toBeNull();
+  expect(savedWorkspace.tabOrder).toEqual([
+    { partition: "shared", tabId: "browser:normal" },
+  ]);
+  expect(state.globalWorkspace.activeTabRef?.tabId).toBe("browser:private");
+  localStorage.setItem(WORKSTATION_V4_SHARED_KEY, JSON.stringify(state.shared));
+  expect(loadWorkstationTabsState().shared.tabs.map((item) => item.id)).toEqual(
+    ["browser:normal"]
+  );
+});
+
 describe("sanitizeWorkspaceState", () => {
   it("restores a retired timeline type without losing its references or commit data", () => {
     const ref = { partition: "workspace", tabId: "timeline-diff:abc:/a.ts" };

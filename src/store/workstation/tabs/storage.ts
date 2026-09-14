@@ -132,6 +132,8 @@ function sanitizeTabs(value: unknown): WorkStationTab[] {
           }
         : rawCandidate;
     if (!isValidTab(candidate) || seen.has(candidate.id)) continue;
+    if (candidate.type === "browser-session" && candidate.data.incognito)
+      continue;
     seen.add(candidate.id);
     // A dirty marker without a restored buffer is misleading after restart.
     result.push({
@@ -338,18 +340,45 @@ export function persistWorkstationTabsState(
   state: WorkstationTabsStateV4
 ): boolean {
   if (!hasLocalStorage()) return false;
+  const privateIds = new Set(
+    state.shared.tabs
+      .filter((tab) => tab.type === "browser-session" && tab.data.incognito)
+      .map((tab) => tab.id)
+  );
+  const durableWorkspace = (workspace: WorkstationWorkspaceState) => ({
+    ...workspace,
+    activeTabRef:
+      workspace.activeTabRef && privateIds.has(workspace.activeTabRef.tabId)
+        ? null
+        : workspace.activeTabRef,
+    tabOrder: workspace.tabOrder.filter((ref) => !privateIds.has(ref.tabId)),
+  });
   const sessionIds = Object.keys(state.sessionWorkspaces);
   const writes = [
-    writeJson(WORKSTATION_V4_SHARED_KEY, state.shared),
-    writeJson(WORKSTATION_V4_GLOBAL_KEY, state.globalWorkspace),
+    writeJson(WORKSTATION_V4_SHARED_KEY, {
+      ...state.shared,
+      tabs: state.shared.tabs.filter(
+        (tab) => tab.type !== "browser-session" || !tab.data.incognito
+      ),
+    }),
+    writeJson(
+      WORKSTATION_V4_GLOBAL_KEY,
+      durableWorkspace(state.globalWorkspace)
+    ),
     state.legacySeed
-      ? writeJson(WORKSTATION_V4_LEGACY_SEED_KEY, state.legacySeed)
+      ? writeJson(
+          WORKSTATION_V4_LEGACY_SEED_KEY,
+          durableWorkspace(state.legacySeed)
+        )
       : (() => {
           localStorage.removeItem(WORKSTATION_V4_LEGACY_SEED_KEY);
           return true;
         })(),
     ...sessionIds.map((id) =>
-      writeJson(v4SessionStorageKey(id), state.sessionWorkspaces[id])
+      writeJson(
+        v4SessionStorageKey(id),
+        durableWorkspace(state.sessionWorkspaces[id])
+      )
     ),
   ];
   if (writes.some((ok) => !ok)) return false;

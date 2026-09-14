@@ -53,6 +53,35 @@ it("creates distinct native views for the same restored tab in three windows", (
   vi.mocked(getCurrentWindowLabel).mockReturnValue("main");
 });
 
+it.each([false, true])(
+  "preserves incognito=%s when a native popup creates a tab",
+  (incognito) => {
+    const onNewTab = vi.fn();
+    renderToStaticMarkup(
+      createElement(BrowserSessionWebview, {
+        session: {
+          id: "popup",
+          url: "https://source.example",
+          title: "Source",
+          history: [],
+          historyIndex: -1,
+          isLoading: false,
+          error: null,
+          incognito,
+        },
+        isActive: true,
+        isTabActive: true,
+        containerRef: { current: null },
+        onSessionUpdate: vi.fn(),
+        onNewTab,
+      })
+    );
+    const config = vi.mocked(useInlineWebview).mock.calls.at(-1)?.[0];
+    config?.onNewWindow?.("https://popup.example");
+    expect(onNewTab).toHaveBeenCalledWith("https://popup.example", incognito);
+  }
+);
+
 it("records only the back/forward stack on native navigation", () => {
   const update = vi.fn();
   renderToStaticMarkup(

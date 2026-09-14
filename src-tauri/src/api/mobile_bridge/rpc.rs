@@ -69,6 +69,7 @@ pub enum MobileTier {
     ReadOnly,
 }
 
+#[derive(Clone)]
 pub struct RpcContext {
     pub conn_id: u64,
     pub initialized: bool,

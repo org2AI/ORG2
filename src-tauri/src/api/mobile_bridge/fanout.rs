@@ -16,6 +16,11 @@ struct MobileConnection {
 
 static CONNECTIONS: OnceLock<RwLock<HashMap<u64, MobileConnection>>> = OnceLock::new();
 
+// Registry tests and transport tests share the real fanout registry. Serialize
+// only those tests so clear/broadcast assertions cannot disturb live fixtures.
+#[cfg(test)]
+pub(super) static TEST_REGISTRY_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 fn connections() -> &'static RwLock<HashMap<u64, MobileConnection>> {
     CONNECTIONS.get_or_init(|| RwLock::new(HashMap::new()))
 }
@@ -163,13 +168,10 @@ pub fn on_snapshot_envelope(envelope: &Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Mutex, MutexGuard};
     use tokio::sync::mpsc::error::TryRecvError;
 
-    static TEST_REGISTRY_LOCK: Mutex<()> = Mutex::new(());
-
-    fn isolated_registry() -> MutexGuard<'static, ()> {
-        let guard = TEST_REGISTRY_LOCK.lock().expect("test registry lock");
+    fn isolated_registry() -> tokio::sync::MutexGuard<'static, ()> {
+        let guard = TEST_REGISTRY_LOCK.blocking_lock();
         connections().write().expect("connections lock").clear();
         guard
     }

@@ -25,9 +25,10 @@ use tokio_util::sync::CancellationToken;
 use super::auth::{self, MobileRemoteSettings};
 use super::fanout;
 use super::org2_cloud_auth::{self, SESSION_EXPIRED_MESSAGE};
-use super::rpc::{self, MobileTier, RpcContext};
+use super::request_scheduler;
+use super::rpc::{MobileTier, RpcContext};
 
-const ACTOR_QUEUE_CAPACITY: usize = 32;
+const ACTOR_QUEUE_CAPACITY: usize = request_scheduler::REQUEST_QUEUE_CAPACITY;
 const RELAY_OUTBOUND_CAPACITY: usize = 256;
 const MAX_RELAY_FRAME_BYTES: usize = 1024 * 1024;
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(30);
@@ -432,21 +433,44 @@ async fn handle_relay_frame(
 async fn run_mobile_actor(
     connection_id: String,
     tier: PermissionTier,
-    mut requests: mpsc::Receiver<Value>,
+    requests: mpsc::Receiver<Value>,
     outbound: mpsc::Sender<Message>,
 ) {
+    run_mobile_actor_with_scheduler(
+        connection_id,
+        tier,
+        requests,
+        outbound,
+        request_scheduler::run,
+    )
+    .await;
+}
+
+async fn run_mobile_actor_with_scheduler<Run, RunFuture>(
+    connection_id: String,
+    tier: PermissionTier,
+    requests: mpsc::Receiver<Value>,
+    outbound: mpsc::Sender<Message>,
+    run_scheduler: Run,
+) where
+    Run: FnOnce(RpcContext, mpsc::Receiver<Value>, mpsc::Sender<Value>) -> RunFuture,
+    RunFuture: std::future::Future<Output = ()> + Send + 'static,
+{
     let (fanout_tx, mut fanout_rx) = mpsc::channel::<String>(64);
     let registration = FanoutRegistration(fanout::register_connection(fanout_tx));
-    let mut context = relay_rpc_context(registration.0, tier);
+    let context = relay_rpc_context(registration.0, tier);
+    let (responses_tx, mut responses_rx) = mpsc::channel(ACTOR_QUEUE_CAPACITY);
+    // This task belongs to the phone actor, including when the relay drops or
+    // replaces it. Dropping a plain JoinHandle would leave its RPC work alive.
+    let _scheduler = ActorScheduler(tokio::spawn(run_scheduler(context, requests, responses_tx)));
 
     loop {
         tokio::select! {
-            request = requests.recv() => {
-                let Some(request) = request else { break; };
-                if let Some(response) = rpc::dispatch(&mut context, &request).await {
-                    if send_desktop_frame(&outbound, &connection_id, response).await.is_err() {
-                        break;
-                    }
+            _ = outbound.closed() => break,
+            response = responses_rx.recv() => {
+                let Some(response) = response else { break; };
+                if send_desktop_frame(&outbound, &connection_id, response).await.is_err() {
+                    break;
                 }
             }
             notification = fanout_rx.recv() => {
@@ -457,6 +481,14 @@ async fn run_mobile_actor(
                 }
             }
         }
+    }
+}
+
+struct ActorScheduler(JoinHandle<()>);
+
+impl Drop for ActorScheduler {
+    fn drop(&mut self) {
+        self.0.abort();
     }
 }
 
@@ -487,7 +519,8 @@ async fn send_desktop_frame(
 fn build_websocket_request(
     plan: &RelayConnectionPlan,
 ) -> Result<tokio_tungstenite::tungstenite::http::Request<()>, String> {
-    let mut url = url::Url::parse(&plan.ws_url).map_err(|err| format!("invalid relay URL: {err}"))?;
+    let mut url =
+        url::Url::parse(&plan.ws_url).map_err(|err| format!("invalid relay URL: {err}"))?;
     url.query_pairs_mut()
         .append_pair("token", plan.access_token.trim());
     let mut request = url
@@ -800,5 +833,189 @@ mod tests {
         assert_eq!(full.tier, MobileTier::Full);
         assert!(read_only.initialized);
         assert_eq!(read_only.tier, MobileTier::ReadOnly);
+    }
+
+    struct NotifyTaskStopped(mpsc::Sender<()>);
+
+    impl Drop for NotifyTaskStopped {
+        fn drop(&mut self) {
+            let _ = self.0.try_send(());
+        }
+    }
+
+    struct StalledActor {
+        task: JoinHandle<()>,
+        requests: mpsc::Sender<Value>,
+        outbound: mpsc::Receiver<Message>,
+        conn_id: u64,
+        release: Arc<tokio::sync::Semaphore>,
+        stopped: mpsc::Receiver<()>,
+    }
+
+    async fn stalled_actor() -> StalledActor {
+        let (requests, request_rx) = mpsc::channel(ACTOR_QUEUE_CAPACITY);
+        let (outbound_tx, outbound) = mpsc::channel(8);
+        let (started_tx, mut started_rx) = mpsc::channel(1);
+        let (stopped_tx, stopped) = mpsc::channel(1);
+        let release = Arc::new(tokio::sync::Semaphore::new(0));
+        let gate = release.clone();
+        let task = tokio::spawn(run_mobile_actor_with_scheduler(
+            "phone-test".to_string(),
+            PermissionTier::Full,
+            request_rx,
+            outbound_tx,
+            move |ctx, requests, responses| {
+                request_scheduler::run_with_executor(
+                    ctx,
+                    requests,
+                    responses,
+                    move |ctx, request| {
+                        let started = started_tx.clone();
+                        let stopped = stopped_tx.clone();
+                        let gate = gate.clone();
+                        async move {
+                            let _stopped = NotifyTaskStopped(stopped);
+                            started
+                                .send(ctx.conn_id)
+                                .await
+                                .expect("test receiver alive");
+                            let _permit = gate.acquire().await.expect("test gate open");
+                            let response = serde_json::json!({
+                                "jsonrpc": "2.0", "id": request["id"], "result": "done"
+                            });
+                            (ctx, Some(response))
+                        }
+                    },
+                )
+            },
+        ));
+        requests
+            .send(serde_json::json!({ "jsonrpc": "2.0", "id": 7, "method": "session/list" }))
+            .await
+            .expect("actor accepts request");
+        let conn_id = tokio::time::timeout(Duration::from_secs(1), started_rx.recv())
+            .await
+            .expect("RPC starts")
+            .expect("start signal");
+        assert!(fanout::subscribe_session(
+            conn_id,
+            &format!("session-{conn_id}")
+        ));
+        StalledActor {
+            task,
+            requests,
+            outbound,
+            conn_id,
+            release,
+            stopped,
+        }
+    }
+
+    async fn assert_actor_cleaned_up(conn_id: u64, stopped: &mut mpsc::Receiver<()>) {
+        tokio::time::timeout(Duration::from_secs(1), stopped.recv())
+            .await
+            .expect("in-flight RPC is dropped")
+            .expect("RPC drop signal");
+        assert_eq!(fanout::subscription_count(conn_id), 0);
+        assert!(!fanout::subscribe_session(conn_id, "must-not-survive"));
+    }
+
+    #[tokio::test]
+    async fn relay_actor_forwards_notifications_while_rpc_is_stalled() {
+        let _registry = fanout::TEST_REGISTRY_LOCK.lock().await;
+        let mut actor = stalled_actor().await;
+        let notification = serde_json::json!({
+            "jsonrpc": "2.0", "method": "interaction/pending_changed",
+            "params": { "sessionId": format!("session-{}", actor.conn_id) }
+        });
+        fanout::fanout_to_session(
+            &format!("session-{}", actor.conn_id),
+            &notification.to_string(),
+        );
+        let message = tokio::time::timeout(Duration::from_secs(1), actor.outbound.recv())
+            .await
+            .expect("notification must arrive before RPC finishes")
+            .expect("actor frame");
+        let RelayWireFrame::DesktopFrame {
+            connection_id,
+            payload,
+        } = serde_json::from_str(&message.into_text().expect("text frame")).expect("relay frame")
+        else {
+            panic!("expected desktop frame")
+        };
+        assert_eq!(connection_id, "phone-test");
+        assert_eq!(payload, notification);
+
+        actor.release.add_permits(1);
+        let response = tokio::time::timeout(Duration::from_secs(1), actor.outbound.recv())
+            .await
+            .expect("RPC response after release")
+            .expect("response frame");
+        let RelayWireFrame::DesktopFrame { payload, .. } =
+            serde_json::from_str(&response.into_text().expect("text response"))
+                .expect("relay frame")
+        else {
+            panic!("expected desktop response")
+        };
+        assert_eq!(payload["id"], 7);
+        assert_eq!(payload["result"], "done");
+        drop(actor.requests);
+        tokio::time::timeout(Duration::from_secs(1), actor.task)
+            .await
+            .expect("actor exits")
+            .expect("actor completed");
+        assert_actor_cleaned_up(actor.conn_id, &mut actor.stopped).await;
+    }
+
+    #[tokio::test]
+    async fn relay_disconnect_cancels_rpc_and_unregisters_actor() {
+        let _registry = fanout::TEST_REGISTRY_LOCK.lock().await;
+        for _ in 0..3 {
+            let mut actor = stalled_actor().await;
+            let mut actors = HashMap::from([(
+                "phone-test".to_string(),
+                MobileActor {
+                    requests: actor.requests,
+                    task: actor.task,
+                },
+            )]);
+            let (outbound, _outbound_rx) = mpsc::channel(1);
+            handle_relay_frame(
+                RelayWireFrame::MobileDisconnected {
+                    connection_id: "phone-test".to_string(),
+                },
+                "desktop-test",
+                &outbound,
+                &mut actors,
+            )
+            .await;
+            assert!(actors.is_empty());
+            assert_actor_cleaned_up(actor.conn_id, &mut actor.stopped).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn relay_outbound_close_cancels_rpc_and_unregisters_actor() {
+        let _registry = fanout::TEST_REGISTRY_LOCK.lock().await;
+        let mut actor = stalled_actor().await;
+        drop(actor.outbound);
+        tokio::time::timeout(Duration::from_secs(1), actor.task)
+            .await
+            .expect("closed relay stops actor")
+            .expect("actor completed");
+        assert_actor_cleaned_up(actor.conn_id, &mut actor.stopped).await;
+        assert!(actor.requests.is_closed());
+    }
+
+    #[tokio::test]
+    async fn relay_request_close_cancels_rpc_and_unregisters_actor() {
+        let _registry = fanout::TEST_REGISTRY_LOCK.lock().await;
+        let mut actor = stalled_actor().await;
+        drop(actor.requests);
+        tokio::time::timeout(Duration::from_secs(1), actor.task)
+            .await
+            .expect("closed requests stop actor")
+            .expect("actor completed");
+        assert_actor_cleaned_up(actor.conn_id, &mut actor.stopped).await;
     }
 }

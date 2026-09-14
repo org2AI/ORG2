@@ -238,9 +238,12 @@ export const SessionService = {
         const pendingResult = await getPendingQuestions(sessionId);
         const pendingQuestionsRaw = pendingResult.pendingQuestions ?? [];
 
-        const pendingQuestions = pendingQuestionsRaw.map((pq) => ({
-          questionId: pq.id,
-          questionText: pq.question,
+        const pendingQuestions = pendingQuestionsRaw.map((batch) => ({
+          // Responses address the batch request ID, not an individual question.
+          questionId: batch.requestId,
+          questionText: batch.questions
+            .map(({ question }) => question)
+            .join("\n"),
         }));
 
         const sessionStatus = session?.status ?? "completed";

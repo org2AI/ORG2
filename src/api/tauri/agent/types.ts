@@ -114,12 +114,7 @@ export interface SessionMessage {
   compactFromSequence?: number | null;
 }
 
-export interface PendingQuestion {
-  id: string;
-  question: string;
-  options?: string[];
-  timestamp: string;
-}
+export type { PendingQuestionBatch } from "../rpc/schemas/agentSession";
 
 export interface TodoItem {
   id: string;
@@ -131,6 +126,7 @@ export interface TodoItem {
    * `content`.
    */
   activeForm?: string;
+  blockedBy?: number[];
   status: "pending" | "in_progress" | "completed" | "cancelled";
 }
 

@@ -101,9 +101,8 @@ function getFrontendDispatchCategory(
       : "external_history";
   }
 
-  // Zod describes the post-transform category type, but production RPC calls
-  // intentionally skip output parsing. Normalize the Rust wire value here so
-  // native rows do not disappear from frontend category filters in builds.
+  // RPC responses are decoded before reaching this helper. Keep raw-category
+  // compatibility for callers adapting older persisted/imported records.
   const category = record.category as
     | DispatchCategory
     | "cli"

@@ -1,7 +1,8 @@
 /**
  * Zod schemas for diff/patch Tauri commands.
  *
- * Mirrors Rust types in src-tauri/src/perf/ diff module.
+ * Output schemas describe the camelCase result after snakeToCamel.
+ * Input option structs keep Rust snake_case field names.
  */
 import { z } from "zod/v4";
 
@@ -22,30 +23,30 @@ export const DiffOptionsSchema = z.object({
 });
 
 export const DiffStatsSchema = z.object({
-  lines_added: z.number(),
-  lines_removed: z.number(),
-  lines_unchanged: z.number(),
+  linesAdded: z.number(),
+  linesRemoved: z.number(),
+  linesUnchanged: z.number(),
   hunks: z.number(),
 });
 
 export const DiffResultSchema = z.object({
   diff: z.string(),
   stats: DiffStatsSchema,
-  processing_time_us: z.number(),
+  processingTimeUs: z.number(),
 });
 
 export const HunkFailureSchema = z.object({
-  hunk_index: z.number(),
-  expected_line: z.number(),
+  hunkIndex: z.number(),
+  expectedLine: z.number(),
   reason: z.string(),
 });
 
 export const PatchResultSchema = z.object({
   content: z.string(),
   success: z.boolean(),
-  hunks_applied: z.number(),
-  hunks_failed: z.array(HunkFailureSchema),
-  processing_time_us: z.number(),
+  hunksApplied: z.number(),
+  hunksFailed: z.array(HunkFailureSchema),
+  processingTimeUs: z.number(),
 });
 
 export const FuzzyPatchOptionsSchema = z.object({
@@ -55,8 +56,8 @@ export const FuzzyPatchOptionsSchema = z.object({
 });
 
 export const HunkResultSchema = z.object({
-  hunk_index: z.number(),
-  offset_applied: z.number(),
+  hunkIndex: z.number(),
+  offsetApplied: z.number(),
   similarity: z.number(),
   applied: z.boolean(),
   reason: z.string().nullable(),
@@ -66,14 +67,14 @@ export const FuzzyPatchResultSchema = z.object({
   content: z.string(),
   success: z.boolean(),
   hunks: z.array(HunkResultSchema),
-  processing_time_us: z.number(),
+  processingTimeUs: z.number(),
 });
 
 export const MergeResultSchema = z.object({
   content: z.string(),
   clean: z.boolean(),
-  conflict_count: z.number(),
-  processing_time_us: z.number(),
+  conflictCount: z.number(),
+  processingTimeUs: z.number(),
 });
 
 // ============================================================================

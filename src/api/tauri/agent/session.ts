@@ -21,7 +21,7 @@ import type {
   HousekeeperContextCompactionState,
   ManualCompactResult,
   ModeSwitchChoice,
-  PendingQuestion,
+  PendingQuestionBatch,
   PermissionResponseValue,
   PlanApprovalChoice,
   RevertResult,
@@ -278,7 +278,7 @@ export async function respondCliHookPermission(
 
 export async function getPendingQuestions(
   sessionId: string
-): Promise<{ pendingQuestions: PendingQuestion[] }> {
+): Promise<{ pendingQuestions: PendingQuestionBatch[] }> {
   return rpc.agentSession.getPendingQuestions({ sessionId });
 }
 

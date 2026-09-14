@@ -2,6 +2,11 @@ import { z } from "zod/v4";
 
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
+const OptionalWireStringSchema = z.preprocess(
+  (value) => value ?? undefined,
+  z.string().optional()
+);
+
 const UnknownRecordSchema = z.record(z.string(), z.unknown());
 const SafeU64NumberSchema = z
   .number()
@@ -234,8 +239,8 @@ export const SessionMetadataSchema = z.object({
   eventCount: z.number(),
   cachedAt: z.number(),
   contentRevision: z.number(),
-  timeRangeStart: z.string().optional(),
-  timeRangeEnd: z.string().optional(),
+  timeRangeStart: OptionalWireStringSchema,
+  timeRangeEnd: OptionalWireStringSchema,
 });
 
 export const TurnMetadataIndexInput = z.object({
@@ -264,9 +269,48 @@ export const TruncateResultSchema = z.object({
 export const FullSessionPayloadSchema = z.object({
   sessionId: z.string(),
   events: SessionEventArraySchema,
-  specsJson: z.string().optional(),
-  timeRangeStart: z.string().optional(),
-  timeRangeEnd: z.string().optional(),
+  specsJson: OptionalWireStringSchema,
+  timeRangeStart: OptionalWireStringSchema,
+  timeRangeEnd: OptionalWireStringSchema,
+});
+
+// Rust SimulatorEventPreview deliberately excludes large args/result payloads.
+const SimulatorEventPreviewSchema = SessionEventRuntimeSchema.pick({
+  id: true,
+  sessionId: true,
+  createdAt: true,
+  functionName: true,
+  uiCanonical: true,
+  actionType: true,
+  source: true,
+  displayText: true,
+  displayStatus: true,
+  displayVariant: true,
+  activityStatus: true,
+  threadId: true,
+  processId: true,
+  callId: true,
+  filePath: true,
+  command: true,
+  isDelta: true,
+  repoId: true,
+  repoPath: true,
+}).extend({
+  filterCategory: z.enum([
+    "key_interactions",
+    "file_changes",
+    "terminal_events",
+    "explore",
+    "other",
+  ]),
+});
+
+const LatestCanvasPreviewSchema = z.object({
+  eventId: z.string(),
+  mode: z.enum(["html", "url", "a2ui", "react"]),
+  url: z.string().optional(),
+  title: z.string().optional(),
+  streaming: z.boolean().optional(),
 });
 
 export const DerivedSnapshotSchema = z.object({
@@ -280,6 +324,16 @@ export const DerivedSnapshotSchema = z.object({
   eventIndex: z.record(z.string(), z.number()),
   chatEventCount: z.number(),
   hasRunningEvent: z.boolean(),
+  sortedSimulatorEventIds: z.array(z.string()).optional(),
+  eventPreviewById: z
+    .record(z.string(), SimulatorEventPreviewSchema)
+    .optional(),
+  createdAtById: z.record(z.string(), z.string()).optional(),
+  threadIdById: z.record(z.string(), z.string()).optional(),
+  functionNameById: z.record(z.string(), z.string()).optional(),
+  displayStatusById: z.record(z.string(), z.string()).optional(),
+  displayVariantById: z.record(z.string(), z.string()).optional(),
+  latestCanvasPreview: LatestCanvasPreviewSchema.optional(),
 });
 
 export const NullableSessionIdInput = z.object({

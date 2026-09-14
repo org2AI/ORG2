@@ -16,7 +16,7 @@
  * Each procedure has:
  *   - A Tauri command name (the Rust #[tauri::command] name)
  *   - An input Zod schema (validated before IPC)
- *   - An output Zod schema (validated in dev after IPC)
+ *   - An output Zod schema (decoded in every build after IPC)
  *   - An optional transform (snake_case → camelCase)
  */
 import { type RpcProcedure, rpcCall } from "./invoke";

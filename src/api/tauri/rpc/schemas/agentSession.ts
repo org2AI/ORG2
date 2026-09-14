@@ -6,7 +6,6 @@ import type {
   FileResolution,
   HousekeeperContextCompactionState,
   ManualCompactResult,
-  PendingQuestion,
   RevertResult,
   SessionFileRecord,
   SessionInfo,
@@ -15,6 +14,12 @@ import type {
   SnapshotRecord,
   TodoItem,
 } from "@src/api/tauri/agent/types";
+
+// Rust Option<String> fields serialized as null retain the frontend optional contract.
+const OptionalWireStringSchema = z.preprocess(
+  (value) => value ?? undefined,
+  z.string().optional()
+);
 
 const JsonRecordSchema = z.record(z.string(), z.unknown());
 
@@ -292,17 +297,20 @@ export const ModeSwitchResponseInput = z.object({
   targetMode: z.string().optional(),
 });
 
-export const PendingQuestionSchema = z
-  .object({
-    id: z.string(),
-    question: z.string(),
-    options: z.array(z.string()).optional(),
-    timestamp: z.string(),
-  })
-  .catchall(z.unknown()) as z.ZodType<PendingQuestion, PendingQuestion>;
+// QuestionManager stores request batches, not timestamped individual questions.
+// Keep tool-owned question metadata (options, headers, etc.) intact.
+export const PendingQuestionBatchSchema = z.object({
+  requestId: z.string(),
+  sessionId: z.string(),
+  questions: z.array(z.object({ question: z.string() }).catchall(z.unknown())),
+  toolCallId: OptionalWireStringSchema,
+  autoResolveAt: z.number().nullable().optional(),
+});
+
+export type PendingQuestionBatch = z.output<typeof PendingQuestionBatchSchema>;
 
 export const PendingQuestionsOutput = z.object({
-  pendingQuestions: z.array(PendingQuestionSchema),
+  pendingQuestions: z.array(PendingQuestionBatchSchema),
 });
 
 export const PendingPlanApprovalSchema = z
@@ -311,10 +319,10 @@ export const PendingPlanApprovalSchema = z
     planPath: z.string(),
     planTitle: z.string(),
     planContent: z.string(),
-    toolCallId: z.string().optional(),
+    toolCallId: OptionalWireStringSchema,
     planId: z.string().optional(),
     planRevisionId: z.string().optional(),
-    originToolCallId: z.string().optional(),
+    originToolCallId: OptionalWireStringSchema,
     autoApproveAt: z.number().nullable().optional(),
   })
   .nullable();
@@ -400,7 +408,8 @@ export const RevertFileInput = z.object({
 export const TodoItemSchema = z.object({
   id: z.string(),
   content: z.string(),
-  activeForm: z.string().optional(),
+  activeForm: OptionalWireStringSchema,
+  blockedBy: z.array(z.number().int().nonnegative()).optional(),
   status: z.enum(["pending", "in_progress", "completed", "cancelled"]),
 }) as z.ZodType<TodoItem, TodoItem>;
 

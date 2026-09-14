@@ -107,17 +107,11 @@ describe("typed RPC router", () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
-  it("reports nested procedure output validation failures in development", async () => {
-    const consoleErrorSpy = vi.spyOn(console, "error");
+  it("rejects nested procedure output validation failures", async () => {
     invokeMock.mockResolvedValue({ totalSessions: "bad" });
 
-    await rpc.sessionCore.cache.getStats();
-
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "[RPC:cache_get_stats] Output validation failed",
-      expect.any(Array),
-      "Raw:",
-      { totalSessions: "bad" }
+    await expect(rpc.sessionCore.cache.getStats()).rejects.toThrow(
+      "[RPC:cache_get_stats] Invalid output"
     );
   });
 });

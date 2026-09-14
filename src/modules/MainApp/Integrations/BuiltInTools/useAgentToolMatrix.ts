@@ -1,21 +1,8 @@
-/**
- * useAgentToolMatrix
- *
- * Cross-agent view of "is tool X enabled on agent Y" used by the global
- * Built-in Tools preview pane. Lists every user-visible agent (built-ins
- * plus custom) and lets the user toggle a tool on/off for any of them
- * without having to navigate to that agent's detail view.
- *
- * Toggle writes go through `rpc.agentDef.updatePatch` directly — the same
- * RPC used by `useAgentToolEditor`. Per-agent local state is hydrated
- * lazily from `agent_definitions_list_all` so this hook does not refetch
- * on every selection change.
- */
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { rpc } from "@src/api/tauri/rpc";
-import { createLogger } from "@src/hooks/logger";
+import type { AgentToolStateRow as ResolvedTool } from "@src/api/tauri/rpc/schemas/agentDef";
 import { useEnsureAgentDefs } from "@src/modules/MainApp/AgentOrgs/hooks/useEnsureAgentDefs";
 import {
   allAgentDefsAtom,
@@ -23,172 +10,245 @@ import {
   customAgentsAtom,
 } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
 
-import type {
-  AgentDefinition,
-  AgentToolSelection,
-} from "../../AgentOrgs/types";
-
-const log = createLogger("useAgentToolMatrix");
+import type { AgentDefinition } from "../../AgentOrgs/types";
 
 export interface AgentToolStateRow {
   agentId: string;
-  /** Human label — `name` for the agent, falls back to id. */
   label: string;
   builtIn: boolean;
-  /** True when the system allowlist pins this tool on. */
   pinned: boolean;
-  /** Resolved enabled state (post-pin / post-exclude / post-user-allow). */
   enabled: boolean;
+  disabled: boolean;
+}
+interface Resolution {
+  key: symbol;
+  rows: Map<string, ResolvedTool>;
+  error: string | null;
+}
+interface InflightResolution {
+  key: symbol;
+  agentId: string;
+  promise: Promise<ResolvedTool[]>;
 }
 
-interface AgentRecord {
-  definition: AgentDefinition;
-  id: string;
-  name: string;
-  builtIn: boolean;
-  systemRestrictToTools: string[] | null;
-  userAllowedTools: Set<string>;
-  excludedTools: Set<string>;
-  /** Original `tools` blob, kept verbatim so partial patches don't drop
-   *  unrelated keys we don't surface in the matrix. */
-  toolsRaw: AgentToolSelection;
+function definitionGraphContent(definitions: AgentDefinition[]): string {
+  return JSON.stringify(
+    [...definitions].sort((left, right) => left.id.localeCompare(right.id)),
+    (_key, value: unknown) =>
+      value && typeof value === "object" && !Array.isArray(value)
+        ? Object.fromEntries(
+            Object.entries(value).sort(([left], [right]) =>
+              left.localeCompare(right)
+            )
+          )
+        : value
+  );
 }
 
-function parseAgent(def: AgentDefinition): AgentRecord {
-  const tools: AgentToolSelection = def.tools ?? {};
-  return {
-    definition: def,
-    id: def.id,
-    name: def.name || def.id,
-    builtIn: Boolean(def.builtIn),
-    systemRestrictToTools: Array.isArray(tools.systemRestrictToTools)
-      ? tools.systemRestrictToTools
-      : null,
-    userAllowedTools: new Set(
-      Array.isArray(tools.userAllowedTools) ? tools.userAllowedTools : []
-    ),
-    excludedTools: new Set(
-      Array.isArray(tools.excludedTools) ? tools.excludedTools : []
-    ),
-    toolsRaw: tools,
-  };
-}
-
-function resolveState(record: AgentRecord, toolName: string) {
-  const pinned =
-    record.systemRestrictToTools !== null &&
-    record.systemRestrictToTools.includes(toolName);
-  if (record.excludedTools.has(toolName)) {
-    return { pinned, enabled: false };
-  }
-  if (record.systemRestrictToTools !== null) {
-    if (pinned) return { pinned, enabled: true };
-    if (record.userAllowedTools.has(toolName)) return { pinned, enabled: true };
-    return { pinned, enabled: false };
-  }
-  return { pinned, enabled: true };
-}
-
+/** Display availability resolved by Rust; the matrix never reimplements capability rules. */
 export function useAgentToolMatrix() {
-  // Ensure definitions are loaded (no-op if useAgentDefinitions is already mounted)
   const defsLoaded = useEnsureAgentDefs();
   const builtInAgents = useAtomValue(builtInAgentsAtom);
   const customAgents = useAtomValue(customAgentsAtom);
+  const allDefinitions = useAtomValue(allAgentDefsAtom);
   const setAllDefs = useSetAtom(allAgentDefsAtom);
+  // Rust resolves inheritance against the complete definition graph, including
+  // internal agents absent from the matrix. Retain its content once; cache and
+  // in-flight entries share this token instead of copying the graph per agent.
+  const graphContent = useMemo(
+    () => definitionGraphContent(allDefinitions),
+    [allDefinitions]
+  );
+  const graphSnapshot = useMemo(
+    () => ({ content: graphContent, version: Symbol("definition graph") }),
+    [graphContent]
+  );
   const records = useMemo(
-    () => [...builtInAgents, ...customAgents].map(parseAgent),
-    [builtInAgents, customAgents]
+    () =>
+      [...builtInAgents, ...customAgents].map((definition) => ({
+        definition,
+        key: graphSnapshot.version,
+      })),
+    [builtInAgents, customAgents, graphSnapshot.version]
   );
+  const [resolved, setResolved] = useState<Map<string, Resolution>>(new Map());
+  const cache = useRef(new Map<string, Resolution>());
+  const inflight = useRef(new Set<InflightResolution>());
+  const pendingWrites = useRef(new Set<string>());
+  const [pending, setPending] = useState(new Set<string>());
+  const [writeError, setWriteError] = useState<string | null>(null);
+  const [refreshEpoch, setRefreshEpoch] = useState(0);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
-  const applyDefinition = useCallback(
-    (definition: AgentDefinition) => {
-      const update = (current: AgentDefinition[]) =>
-        current.map((entry) =>
-          entry.id === definition.id ? definition : entry
-        );
-      setAllDefs(update);
-    },
-    [setAllDefs]
-  );
+  useEffect(() => {
+    if (!defsLoaded) return;
+    let cancelled = false;
+    const ids = new Set(records.map(({ definition }) => definition.id));
+    let evicted = false;
+    for (const id of cache.current.keys()) {
+      if (!ids.has(id)) {
+        cache.current.delete(id);
+        evicted = true;
+      }
+    }
+    if (evicted)
+      setResolved(
+        (previous) => new Map([...previous].filter(([id]) => ids.has(id)))
+      );
+    const queue = records.filter(
+      ({ definition, key }) => cache.current.get(definition.id)?.key !== key
+    );
+    let cursor = 0;
+    const worker = async () => {
+      while (!cancelled && cursor < queue.length) {
+        const { definition, key } = queue[cursor++];
+        let request = [...inflight.current].find(
+          (active) => active.key === key && active.agentId === definition.id
+        )?.promise;
+        if (!request) {
+          // Share the four slots across superseded generations as well.
+          while (!cancelled && inflight.current.size >= 4) {
+            await Promise.race(
+              [...inflight.current].map((active) =>
+                active.promise.catch(() => [])
+              )
+            );
+          }
+          if (cancelled) return;
+          request = rpc.agentDef.toolStates({ agentId: definition.id });
+          const active = { key, agentId: definition.id, promise: request };
+          inflight.current.add(active);
+          void request
+            .finally(() => inflight.current.delete(active))
+            .catch(() => {});
+        }
+        let result: Resolution;
+        try {
+          result = {
+            key,
+            rows: new Map((await request).map((row) => [row.name, row])),
+            error: null,
+          };
+        } catch (error) {
+          result = { key, rows: new Map(), error: String(error) };
+        }
+        if (cancelled) return;
+        cache.current.set(definition.id, result);
+        setResolved(new Map(cache.current));
+      }
+    };
+    void Promise.all(
+      Array.from({ length: Math.min(4, queue.length) }, worker)
+    ).catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [defsLoaded, records, refreshEpoch]);
 
   const rowsByTool = useCallback(
-    (toolName: string): AgentToolStateRow[] => {
-      return records.map((record) => {
-        const { pinned, enabled } = resolveState(record, toolName);
+    (toolName: string): AgentToolStateRow[] =>
+      records.map(({ definition, key }) => {
+        const result = resolved.get(definition.id);
+        const row = result?.key === key ? result.rows.get(toolName) : undefined;
         return {
-          agentId: record.id,
-          label: record.name,
-          builtIn: record.builtIn,
-          pinned,
-          enabled,
+          agentId: definition.id,
+          label: definition.name || definition.id,
+          builtIn: Boolean(definition.builtIn),
+          pinned: row?.systemPinned ?? false,
+          enabled: row?.enabled ?? false,
+          disabled:
+            !row ||
+            row.capabilityBlocked ||
+            row.systemPinned ||
+            pending.has(definition.id),
         };
-      });
-    },
-    [records]
+      }),
+    [records, resolved, pending]
   );
 
   const toggle = useCallback(
     async (agentId: string, toolName: string, next: boolean) => {
-      const record = records.find((current) => current.id === agentId);
-      if (!record) return;
-
-      const userAllowed = new Set(record.userAllowedTools);
-      const excluded = new Set(record.excludedTools);
-      const pinned =
-        record.systemRestrictToTools !== null &&
-        record.systemRestrictToTools.includes(toolName);
-
-      if (next) {
-        excluded.delete(toolName);
-        if (record.systemRestrictToTools !== null && !pinned) {
-          userAllowed.add(toolName);
-        }
-      } else {
-        userAllowed.delete(toolName);
-        if (!pinned) {
+      const row = rowsByTool(toolName).find(
+        (entry) => entry.agentId === agentId
+      );
+      if (!row || row.disabled || pendingWrites.current.has(agentId)) return;
+      pendingWrites.current.add(agentId);
+      setPending(new Set(pendingWrites.current));
+      setWriteError(null);
+      try {
+        const definition = (await rpc.agentDef.get({
+          agentId,
+        })) as unknown as AgentDefinition;
+        const allowed = new Set(definition.tools?.userAllowedTools ?? []);
+        const excluded = new Set(definition.tools?.excludedTools ?? []);
+        if (next) {
+          allowed.add(toolName);
+          excluded.delete(toolName);
+        } else {
+          allowed.delete(toolName);
           excluded.add(toolName);
         }
-      }
-
-      const nextTools: AgentToolSelection = {
-        ...record.toolsRaw,
-        userAllowedTools: Array.from(userAllowed),
-        excludedTools: Array.from(excluded),
-      };
-      const nextDefinition: AgentDefinition = {
-        ...record.definition,
-        tools: nextTools,
-      };
-
-      // The shared atoms are the frontend source of truth. Apply the
-      // interaction optimistically there instead of mirroring the same data in
-      // effect-synchronized component state.
-      applyDefinition(nextDefinition);
-
-      try {
-        const savedDefinition = await rpc.agentDef.updatePatch({
+        const saved = await rpc.agentDef.updatePatch({
           agentId,
           patch: {
-            tools: nextTools,
+            tools: {
+              userAllowedTools: [...allowed],
+              excludedTools: [...excluded],
+            },
           },
         });
-        applyDefinition(savedDefinition as unknown as AgentDefinition);
+        if (mounted.current) {
+          cache.current.delete(agentId);
+          setAllDefs((current) =>
+            current.map((entry) =>
+              entry.id === agentId
+                ? (saved as unknown as AgentDefinition)
+                : entry
+            )
+          );
+        }
       } catch (error) {
-        log.error("[useAgentToolMatrix] toggle failed:", error);
-        applyDefinition(record.definition);
+        if (mounted.current) setWriteError(String(error));
+      } finally {
+        pendingWrites.current.delete(agentId);
+        if (mounted.current) setPending(new Set(pendingWrites.current));
       }
     },
-    [applyDefinition, records]
+    [rowsByTool, setAllDefs]
   );
 
-  const agentCount = records.length;
-
+  const refresh = useCallback(() => {
+    cache.current.clear();
+    setResolved(new Map());
+    setWriteError(null);
+    setRefreshEpoch((current) => current + 1);
+  }, []);
   return {
-    loaded: defsLoaded,
+    loaded:
+      defsLoaded &&
+      records.every(
+        ({ definition, key }) => resolved.get(definition.id)?.key === key
+      ),
+    error:
+      writeError ??
+      records
+        .map(({ definition, key }) =>
+          resolved.get(definition.id)?.key === key
+            ? resolved.get(definition.id)?.error
+            : null
+        )
+        .find(Boolean) ??
+      null,
+    refresh,
     rowsByTool,
     toggle,
-    agentCount,
+    agentCount: records.length,
   };
 }
-
 export type UseAgentToolMatrixReturn = ReturnType<typeof useAgentToolMatrix>;

@@ -1,13 +1,3 @@
-/**
- * useAgentToolEditor
- *
- * Per-agent tool editor. The per-tool availability state comes from the
- * backend (`agent_def_tool_states`) — capability satisfaction and the
- * excluded/user-allowed precedence are resolved ONLY in Rust, so the
- * Settings UI can never drift from what the session actually enables.
- * This hook edits only the per-tool deltas (`userAllowedTools` /
- * `excludedTools`) and re-fetches the resolved states after each save.
- */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { rpc } from "@src/api/tauri/rpc";
@@ -21,255 +11,226 @@ import type {
 import type { AgentKind } from "@src/modules/MainApp/Integrations/BuiltInTools/types";
 
 const log = createLogger("useAgentToolEditor");
-
 export type ToolEditorState = "system_pinned" | "enabled" | "disabled";
-
 export interface AgentToolEditorState {
   loaded: boolean;
+  error: string | null;
+  retry: () => void;
   builtIn: boolean;
   agentKind: AgentKind;
   capabilities: CapabilitySet;
-  /** Allowlist authored by builtin definitions; read-only. `null` = no system restriction. */
   systemRestrictToTools: string[] | null;
-  /** User additions on top of system pins. */
   userAllowedTools: Set<string>;
-  /** User subtractions. */
   excludedTools: Set<string>;
-  /**
-   * Backend-resolved availability for a tool, or `undefined` when the
-   * backend has no row for it (non-builtin names).
-   */
-  resolvedToolState: (toolName: string) => AgentToolStateRow | undefined;
-  /**
-   * Per-tool tri-state for rendering, derived from the backend rows.
-   * - `system_pinned` — in the system allowlist.
-   * - `enabled`  — effectively reachable at session resolve.
-   * - `disabled` — effectively unreachable.
-   */
-  toolState: (toolName: string) => ToolEditorState;
-  setUserAllowed: (toolName: string, allowed: boolean) => void;
-  setExcluded: (toolName: string, excluded: boolean) => void;
+  resolvedToolState: (name: string) => AgentToolStateRow | undefined;
+  toolState: (name: string) => ToolEditorState;
+  setToolEnabled: (name: string, enabled: boolean) => void;
 }
-
-function agentKindForDefinition(def: AgentDefinition): AgentKind {
-  if (def.id === "builtin:os") return "os";
-  if (def.id === "builtin:sde") return "sde";
-  return "custom";
-}
-
-function parseTools(def: AgentDefinition): {
-  systemRestrictToTools: string[] | null;
-  userAllowedTools: string[];
-  excludedTools: string[];
-} {
-  const tools: AgentToolSelection = def.tools ?? {};
-  return {
-    systemRestrictToTools: Array.isArray(tools.systemRestrictToTools)
-      ? tools.systemRestrictToTools
-      : null,
-    userAllowedTools: Array.isArray(tools.userAllowedTools)
-      ? tools.userAllowedTools
-      : [],
-    excludedTools: Array.isArray(tools.excludedTools)
-      ? tools.excludedTools
-      : [],
-  };
+interface Snapshot {
+  agentId: string;
+  definition: AgentDefinition;
+  rows: Map<string, AgentToolStateRow>;
+  tools: AgentToolSelection;
+  /** User intent only while waiting for the authoritative save response. */
+  pending: Map<string, boolean>;
 }
 
 export function useAgentToolEditor(agentId: string): AgentToolEditorState {
-  const [loaded, setLoaded] = useState(false);
-  const [builtIn, setBuiltIn] = useState(false);
-  const [agentKind, setAgentKind] = useState<AgentKind>("custom");
-  const [capabilities, setCapabilities] = useState<CapabilitySet>({});
-  const [systemRestrictToTools, setSystemRestrictToTools] = useState<
-    string[] | null
-  >(null);
-  const [userAllowedTools, setUserAllowedTools] = useState<string[]>([]);
-  const [excludedTools, setExcludedTools] = useState<string[]>([]);
-  const [resolvedStates, setResolvedStates] = useState<
-    Map<string, AgentToolStateRow>
-  >(new Map());
-
-  const agentIdRef = useRef(agentId);
-  useEffect(() => {
-    agentIdRef.current = agentId;
-  }, [agentId]);
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingToolsRef = useRef<{
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [failure, setFailure] = useState<{
     agentId: string;
-    userAllowedTools: string[];
-    excludedTools: string[];
+    message: string;
   } | null>(null);
+  const [loadEpoch, setLoadEpoch] = useState(0);
+  const current = useRef<Snapshot | null>(null);
+  const mounted = useRef(false);
+  const scope = useRef(agentId);
+  useEffect(() => {
+    scope.current = agentId;
+  }, [agentId]);
+  const revision = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSave = useRef<{ snapshot: Snapshot; revision: number } | null>(
+    null
+  );
+  const queuedWrites = useRef(
+    new Map<string, { snapshot: Snapshot; revision: number }>()
+  );
+  const writing = useRef(false);
 
-  const fetchResolvedStates = useCallback(async (id: string) => {
-    try {
-      const rows = await rpc.agentDef.toolStates({ agentId: id });
-      setResolvedStates(new Map(rows.map((row) => [row.name, row])));
-    } catch (err) {
-      log.error("[useAgentToolEditor] toolStates failed:", err);
-    }
+  const apply = useCallback((next: Snapshot) => {
+    if (!mounted.current || scope.current !== next.agentId) return;
+    current.current = next;
+    setSnapshot(next);
   }, []);
 
+  const flush = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    const request = pendingSave.current;
+    pendingSave.current = null;
+    if (!request) return;
+    queuedWrites.current.set(request.snapshot.agentId, request);
+    if (writing.current) return;
+    writing.current = true;
+    // One writer, with at most the latest unsent snapshot for each edited agent.
+    void (async () => {
+      while (queuedWrites.current.size > 0) {
+        const entry = queuedWrites.current.entries().next().value;
+        if (!entry) break;
+        const [key, request] = entry;
+        queuedWrites.current.delete(key);
+        const id = request.snapshot.agentId;
+        try {
+          await rpc.agentDef.updatePatch({
+            agentId: id,
+            patch: {
+              tools: {
+                userAllowedTools: request.snapshot.tools.userAllowedTools ?? [],
+                excludedTools: request.snapshot.tools.excludedTools ?? [],
+              },
+            },
+          });
+        } catch (error) {
+          log.error("persistTools failed", error);
+          if (mounted.current && scope.current === id)
+            setFailure({ agentId: id, message: String(error) });
+        }
+        try {
+          // Read back even on failure so optimistic state cannot pose as a saved fact.
+          const [definition, rows] = await Promise.all([
+            rpc.agentDef.get({ agentId: id }),
+            rpc.agentDef.toolStates({ agentId: id }),
+          ]);
+          if (request.revision !== revision.current) continue;
+          const typed = definition as unknown as AgentDefinition;
+          apply({
+            agentId: id,
+            definition: typed,
+            tools: typed.tools ?? {},
+            rows: new Map(rows.map((row) => [row.name, row])),
+            pending: new Map(),
+          });
+        } catch (error) {
+          log.error("refresh tools failed", error);
+          if (mounted.current && scope.current === id)
+            setFailure({ agentId: id, message: String(error) });
+          if (request.revision === revision.current) {
+            apply({
+              ...request.snapshot,
+              tools: request.snapshot.definition.tools ?? {},
+              pending: new Map(),
+            });
+          }
+        }
+      }
+    })()
+      .finally(() => {
+        writing.current = false;
+      })
+      .catch((error) => log.error("Tool write queue failed", error));
+  }, [apply]);
+
   useEffect(() => {
+    mounted.current = true;
     let cancelled = false;
-    Promise.all([
+    const requestRevision = ++revision.current;
+    void Promise.all([
       rpc.agentDef.get({ agentId }),
       rpc.agentDef.toolStates({ agentId }),
     ])
-      .then(([def, rows]) => {
-        if (cancelled) return;
-        const typed = def as unknown as AgentDefinition;
-        const parsed = parseTools(typed);
-        setBuiltIn(Boolean(typed.builtIn));
-        setAgentKind(agentKindForDefinition(typed));
-        setCapabilities(typed.capabilities ?? {});
-        setSystemRestrictToTools(parsed.systemRestrictToTools);
-        setUserAllowedTools(parsed.userAllowedTools);
-        setExcludedTools(parsed.excludedTools);
-        setResolvedStates(new Map(rows.map((row) => [row.name, row])));
-        setLoaded(true);
+      .then(([definition, rows]) => {
+        if (cancelled || requestRevision !== revision.current) return;
+        const typed = definition as unknown as AgentDefinition;
+        apply({
+          agentId,
+          definition: typed,
+          tools: typed.tools ?? {},
+          rows: new Map(rows.map((row) => [row.name, row])),
+          pending: new Map(),
+        });
       })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          log.error("[useAgentToolEditor] load failed:", err);
-          setLoaded(true);
-        }
+      .catch((error) => {
+        log.error("load tools failed", error);
+        if (!cancelled) setFailure({ agentId, message: String(error) });
       });
     return () => {
       cancelled = true;
+      mounted.current = false;
+      flush();
     };
-  }, [agentId]);
+  }, [agentId, apply, flush, loadEpoch]);
 
-  const flushPendingTools = useCallback(() => {
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-    }
-    const pending = pendingToolsRef.current;
-    if (!pending) return;
-    pendingToolsRef.current = null;
-
-    rpc.agentDef
-      .get({ agentId: pending.agentId })
-      .then((def) => {
-        const typed = def as unknown as AgentDefinition;
-        const existing =
-          typed.tools && typeof typed.tools === "object"
-            ? { ...(typed.tools as AgentToolSelection) }
-            : {};
-        return rpc.agentDef.updatePatch({
-          agentId: pending.agentId,
-          patch: {
-            tools: {
-              ...existing,
-              userAllowedTools: pending.userAllowedTools,
-              excludedTools: pending.excludedTools,
-            },
-          },
-        });
-      })
-      .then(() => fetchResolvedStates(pending.agentId))
-      .catch((err: unknown) => {
-        log.error("[useAgentToolEditor] persistTools failed:", err);
-      });
-  }, [fetchResolvedStates]);
-
-  useEffect(() => {
-    return () => {
-      flushPendingTools();
-    };
-  }, [flushPendingTools]);
-
-  const persistTools = useCallback(
-    (nextUserAllowed: string[], nextExcluded: string[]) => {
-      pendingToolsRef.current = {
-        agentId: agentIdRef.current,
-        userAllowedTools: nextUserAllowed,
-        excludedTools: nextExcluded,
-      };
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(flushPendingTools, 400);
-    },
-    [flushPendingTools]
-  );
-
-  const setUserAllowed = useCallback(
-    (toolName: string, allowed: boolean) => {
-      setUserAllowedTools((prev) => {
-        const next = allowed
-          ? prev.includes(toolName)
-            ? prev
-            : [...prev, toolName]
-          : prev.filter((name) => name !== toolName);
-        persistTools(next, excludedTools);
-        return next;
-      });
-    },
-    [excludedTools, persistTools]
-  );
-
-  const setExcluded = useCallback(
-    (toolName: string, excluded: boolean) => {
-      setExcludedTools((prev) => {
-        const next = excluded
-          ? prev.includes(toolName)
-            ? prev
-            : [...prev, toolName]
-          : prev.filter((name) => name !== toolName);
-        persistTools(userAllowedTools, next);
-        return next;
-      });
-    },
-    [userAllowedTools, persistTools]
-  );
-
-  const userAllowedSet = useMemo(
-    () => new Set(userAllowedTools),
-    [userAllowedTools]
-  );
-  const excludedSet = useMemo(() => new Set(excludedTools), [excludedTools]);
-
-  const resolvedToolState = useCallback(
-    (toolName: string): AgentToolStateRow | undefined =>
-      resolvedStates.get(toolName),
-    [resolvedStates]
-  );
-
-  // Optimistic deltas: between a local toggle and the post-save refetch,
-  // overlay the user's pending intent on top of the last backend rows so
-  // the switch responds immediately.
-  const toolState = useCallback(
-    (toolName: string): ToolEditorState => {
-      const row = resolvedStates.get(toolName);
-      const pendingExcluded = excludedSet.has(toolName);
-      const pendingAllowed = userAllowedSet.has(toolName);
-      if (row) {
-        if (row.capabilityBlocked && !pendingAllowed) return "disabled";
-        if (row.systemPinned) return "system_pinned";
-        const baseEnabled = row.enabled;
-        if (pendingExcluded && !pendingAllowed) return "disabled";
-        if (pendingAllowed) return "enabled";
-        return baseEnabled ? "enabled" : "disabled";
+  const setToolEnabled = useCallback(
+    (name: string, enabled: boolean) => {
+      setFailure(null);
+      const previous = current.current;
+      if (!previous || previous.agentId !== agentId) return;
+      const row = previous.rows.get(name);
+      if (!row || row.capabilityBlocked || row.systemPinned) return;
+      const allowed = new Set(previous.tools.userAllowedTools ?? []);
+      const excluded = new Set(previous.tools.excludedTools ?? []);
+      if (enabled) {
+        allowed.add(name);
+        excluded.delete(name);
+      } else {
+        allowed.delete(name);
+        excluded.add(name);
       }
-      // No backend row (unknown/MCP name): fall back to the deltas.
-      if (pendingExcluded && !pendingAllowed) return "disabled";
-      return "enabled";
+      const next: Snapshot = {
+        ...previous,
+        tools: {
+          ...previous.tools,
+          userAllowedTools: [...allowed],
+          excludedTools: [...excluded],
+        },
+        pending: new Map(previous.pending).set(name, enabled),
+      };
+      apply(next);
+      pendingSave.current = { snapshot: next, revision: ++revision.current };
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(flush, 400);
     },
-    [resolvedStates, excludedSet, userAllowedSet]
+    [agentId, apply, flush]
   );
 
+  const visible = snapshot?.agentId === agentId ? snapshot : null;
+  const tools = visible?.tools;
+  const userAllowedTools = useMemo(
+    () => new Set(tools?.userAllowedTools ?? []),
+    [tools]
+  );
+  const excludedTools = useMemo(
+    () => new Set(tools?.excludedTools ?? []),
+    [tools]
+  );
   return {
-    loaded,
-    builtIn,
-    agentKind,
-    capabilities,
-    systemRestrictToTools,
-    userAllowedTools: userAllowedSet,
-    excludedTools: excludedSet,
-    resolvedToolState,
-    toolState,
-    setUserAllowed,
-    setExcluded,
+    loaded: visible !== null,
+    error: failure?.agentId === agentId ? failure.message : null,
+    retry: () => {
+      setFailure(null);
+      setLoadEpoch((value) => value + 1);
+    },
+    builtIn: Boolean(visible?.definition.builtIn),
+    agentKind:
+      agentId === "builtin:os"
+        ? "os"
+        : agentId === "builtin:sde"
+          ? "sde"
+          : "custom",
+    capabilities: visible?.definition.capabilities ?? {},
+    systemRestrictToTools: tools?.systemRestrictToTools ?? null,
+    userAllowedTools,
+    excludedTools,
+    resolvedToolState: (name) => visible?.rows.get(name),
+    toolState: (name) => {
+      const row = visible?.rows.get(name);
+      if (!row || row.capabilityBlocked) return "disabled";
+      if (row.systemPinned) return "system_pinned";
+      return (visible?.pending.get(name) ?? row.enabled)
+        ? "enabled"
+        : "disabled";
+    },
+    setToolEnabled,
   };
 }

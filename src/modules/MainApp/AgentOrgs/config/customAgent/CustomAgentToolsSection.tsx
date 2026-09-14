@@ -21,6 +21,8 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
+import PageNotice from "@src/components/PageNotice";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
   SETTINGS_TABLE_COL,
@@ -234,18 +236,16 @@ const CustomAgentToolsSection: React.FC<CustomAgentToolsSectionProps> = ({
 
       const checked = state === "enabled";
       const onChange = (next: boolean) => {
-        if (editor.systemRestrictToTools !== null) {
-          editor.setUserAllowed(row.name, next);
-          if (!next) editor.setExcluded(row.name, false);
-        } else {
-          editor.setExcluded(row.name, !next);
-        }
+        editor.setToolEnabled(row.name, next);
       };
 
       return (
         <div className="flex justify-center">
           <Switch
             checked={checked}
+            disabled={
+              editor.resolvedToolState(row.name)?.capabilityBlocked ?? true
+            }
             onCheckedChange={onChange}
             dataTestId={`agent-orgs-tool-switch-${row.name}`}
           />
@@ -295,7 +295,7 @@ const CustomAgentToolsSection: React.FC<CustomAgentToolsSectionProps> = ({
     [t, renderToolSwitch]
   );
 
-  const configLoading = toolsLoading || !editor.loaded;
+  const configLoading = toolsLoading || (!editor.loaded && !editor.error);
 
   const renderExpandedToolCard = (row: ToolDisplayRow) => (
     <ToolInlineInfoCard
@@ -316,6 +316,14 @@ const CustomAgentToolsSection: React.FC<CustomAgentToolsSectionProps> = ({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
           <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>
+            {editor.error && (
+              <PageNotice type="danger" title={t("common:status.error")}>
+                {editor.error}
+                <Button onClick={editor.retry}>
+                  {t("common:actions.retry")}
+                </Button>
+              </PageNotice>
+            )}
             <SettingsTable<ToolDisplayRow>
               hover
               loading={configLoading}

@@ -7,6 +7,8 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
+import PageNotice from "@src/components/PageNotice";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
   SETTINGS_TABLE_COL,
@@ -232,7 +234,7 @@ export const BuiltInToolsTable: React.FC<BuiltInToolsTableProps> = ({
                 <Switch
                   size="small"
                   checked={agentRow.enabled}
-                  disabled={agentRow.pinned || toolName == null}
+                  disabled={agentRow.disabled || toolName == null}
                   ariaLabel={
                     agentRow.pinned
                       ? tSettings("agentTools.systemPinned")
@@ -283,6 +285,14 @@ export const BuiltInToolsTable: React.FC<BuiltInToolsTableProps> = ({
     <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
       <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>
         <div className="flex flex-col gap-3">
+          {agentMatrix.error && (
+            <PageNotice type="danger" title={t("common:status.error")}>
+              {agentMatrix.error}
+              <Button onClick={agentMatrix.refresh}>
+                {t("common:actions.retry")}
+              </Button>
+            </PageNotice>
+          )}
           <SettingsTable<ToolRow>
             hover
             loading={tools.configLoading}

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * Builds the `org2-pm` CLI and stages it where tauri's `externalBin`
- * expects it: `src-tauri/binaries/org2-pm-<target-triple>[.exe]`.
+ * Builds the `org2-pm` and `org2-ui` CLIs and stages them where tauri's
+ * `externalBin` expects: `src-tauri/binaries/<name>-<target-triple>[.exe]`.
  *
  * Unlike the downloaded sidecars (peekaboo, agent-browser, git — fetched
- * into ~/.orgii/bin at first launch), org2-pm is built from this repo and
+ * into ~/.orgii/bin at first launch), these CLIs are built from this repo and
  * version-locked to the app: agents resolve it via the PATH prepend that
  * points at the app binary's own directory, so the bundle must carry the
  * exact matching build.
@@ -30,6 +30,9 @@ function argValue(flag) {
 const profile = argValue("--profile") ?? "debug";
 const explicitTarget = argValue("--target");
 
+// Rust-only CI has no node_modules. Build the checked-in catalog here;
+// frontend protocol tests verify it against Zod, including its content hash.
+
 function hostTriple() {
   const result = spawnSync("rustc", ["-vV"], { encoding: "utf8" });
   if (result.status !== 0) {
@@ -38,7 +41,9 @@ function hostTriple() {
   }
   const match = result.stdout.match(/host: (\S+)/);
   if (!match) {
-    console.error("[prepare-sidecars] could not parse host triple from rustc -vV");
+    console.error(
+      "[prepare-sidecars] could not parse host triple from rustc -vV"
+    );
     process.exit(1);
   }
   return match[1];
@@ -60,7 +65,15 @@ function cargoTargetDir() {
 const triple = explicitTarget ?? hostTriple();
 const exeSuffix = triple.includes("windows") ? ".exe" : "";
 
-const cargoArgs = ["build", "-p", "orgtrack-pm-cli", "--bin", "org2-pm"];
+const sidecars = ["org2-pm", "org2-ui"];
+const cargoArgs = [
+  "build",
+  "-p",
+  "orgtrack-pm-cli",
+  "-p",
+  "org2_ui_cli",
+  "--bins",
+];
 if (profile === "release") {
   cargoArgs.push("--release");
 } else if (profile !== "debug") {
@@ -77,27 +90,27 @@ const build = spawnSync("cargo", cargoArgs, {
   env: process.env,
 });
 if (build.status !== 0) {
-  console.error("[prepare-sidecars] org2-pm build failed");
+  console.error("[prepare-sidecars] CLI sidecar build failed");
   process.exit(build.status ?? 1);
 }
 
 const profileDir = profile === "debug" ? "debug" : profile;
-const builtPath = path.join(
+const builtDir = path.join(
   cargoTargetDir(),
   ...(explicitTarget ? [explicitTarget] : []),
-  profileDir,
-  `org2-pm${exeSuffix}`
+  profileDir
 );
-if (!fs.existsSync(builtPath)) {
-  console.error(`[prepare-sidecars] built binary not found at ${builtPath}`);
-  process.exit(1);
-}
 
 const stagingDir = path.join(srcTauriDir, "binaries");
 fs.mkdirSync(stagingDir, { recursive: true });
-const stagedPath = path.join(stagingDir, `org2-pm-${triple}${exeSuffix}`);
-fs.copyFileSync(builtPath, stagedPath);
-if (process.platform !== "win32") {
-  fs.chmodSync(stagedPath, 0o755);
+for (const name of sidecars) {
+  const builtPath = path.join(builtDir, `${name}${exeSuffix}`);
+  if (!fs.existsSync(builtPath)) {
+    console.error(`[prepare-sidecars] built binary not found at ${builtPath}`);
+    process.exit(1);
+  }
+  const stagedPath = path.join(stagingDir, `${name}-${triple}${exeSuffix}`);
+  fs.copyFileSync(builtPath, stagedPath);
+  if (process.platform !== "win32") fs.chmodSync(stagedPath, 0o755);
+  console.log(`[prepare-sidecars] staged ${stagedPath}`);
 }
-console.log(`[prepare-sidecars] staged ${stagedPath}`);

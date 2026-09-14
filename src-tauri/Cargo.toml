@@ -8,6 +8,8 @@ members = [
     "crates/app-platform",
     "crates/app-utils",
     "crates/app-window",
+    "crates/app-ui",
+    "crates/org2-ui-cli",
     "crates/bin-gateway-chat-cli",
     "crates/bin-provider-key-check",
     "crates/bin-telegram-smoke",
@@ -179,6 +181,8 @@ tauri-build = { version = "2.5.6", features = [] }
 cc = "1.0"
 
 [dependencies]
+app_ui = { path = "crates/app-ui" }
+org2_ui_cli = { path = "crates/org2-ui-cli" }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"

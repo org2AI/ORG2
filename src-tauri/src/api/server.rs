@@ -336,6 +336,8 @@ pub async fn start_server(
         // `project_management::sync::webhook_listener` for the full
         // request lifecycle.
         .merge(project_management::sync::webhook_listener::router())
+        // UI routes enforce their own local credential and reject browser origins.
+        .merge(super::ui_commands::routes())
         // Merge WebSocket router
         .merge(ws_router)
         // NOTE: the Mobile Remote bridge is deliberately NOT merged here. It
@@ -357,6 +359,13 @@ pub async fn start_server(
     // Publish the live-status endpoint descriptor only once the port is
     // actually bound, so hook posts never race a half-started server.
     super::agent_status_ingest::write_endpoint_file(port);
+    let _ui_descriptor = match super::ui_commands::publish(port).await {
+        Ok(descriptor) => Some(descriptor),
+        Err(error) => {
+            tracing::warn!(%error, "UI CLI endpoint discovery unavailable");
+            None
+        }
+    };
     // Claim the IDE port first, then let the mobile bridge take its own.
     mobile_bridge::spawn_bridge_listener(port);
     axum::serve(listener, app).await?;

@@ -57,6 +57,8 @@ pub const READ_ONLY_DENY_TOOLS: &[&str] = &[
     crate::tools::names::WORKTREE,
     crate::tools::names::MANAGE_LSP,
     crate::tools::names::SETUP_REPO,
+    crate::tools::names::OPEN_IN_ORG2,
+    crate::tools::names::WRITE_ORG2_TERMINAL,
 ];
 
 impl AutonomyLevel {

@@ -7,6 +7,7 @@
 //! handler.
 
 pub mod agent;
+pub mod ui_commands;
 pub mod agent_approval_ingest;
 pub mod agent_status_ingest;
 pub mod mobile_bridge;

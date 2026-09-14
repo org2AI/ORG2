@@ -60,6 +60,7 @@ version = "0.1.0"
 dependencies = [
  "app_paths",
  "app_platform",
+ "app_ui",
  "app_utils",
  "assert_matches",
  "async-stream",
@@ -226,6 +227,17 @@ name = "app_platform"
 version = "0.1.0"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "app_ui"
+version = "0.1.0"
+dependencies = [
+ "core_types",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -4997,6 +5009,7 @@ dependencies = [
  "api_search",
  "app_paths",
  "app_platform",
+ "app_ui",
  "app_utils",
  "app_window",
  "assert_matches",
@@ -5035,6 +5048,7 @@ dependencies = [
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
+ "org2_ui_cli",
  "orgtrack_core",
  "parking_lot",
  "perf_utils",
@@ -5092,6 +5106,19 @@ dependencies = [
  "windows 0.61.3",
  "wiremock",
  "zip 2.4.2",
+]
+
+[[package]]
+name = "org2_ui_cli"
+version = "0.1.0"
+dependencies = [
+ "app_paths",
+ "app_ui",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio-rustls",
+ "uuid",
 ]
 
 [[package]]

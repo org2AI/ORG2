@@ -35,6 +35,7 @@ import {
   GENERAL_LAYOUT_TOUR_TARGETS,
 } from "@src/scaffold/Tutorials/generalLayoutTourConfig";
 import { GUIDE_TARGETS } from "@src/scaffold/Tutorials/guideTargets";
+import { useUiCommandRuntime } from "@src/services/uiCommands/useUiCommandRuntime";
 import { effectiveChatPanelMaximizedAtom } from "@src/store/chatPanel/chatPanelLayoutAtoms";
 import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { useSyncStatusBridge } from "@src/store/sync";
@@ -117,6 +118,7 @@ const CodeEditorTour = React.lazy(
 /** Mounts useOpenUrlInBrowser inside BrowserProvider so the hook can access BrowserContext. */
 const BrowserEventBridge: React.FC = () => {
   useOpenUrlInBrowser();
+  useUiCommandRuntime();
   return null;
 };
 

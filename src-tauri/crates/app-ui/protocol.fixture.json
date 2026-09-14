@@ -1,0 +1,13 @@
+{
+  "protocolVersion": 1,
+  "requestId": "contract-fixture",
+  "command": "ui.file.open",
+  "target": {
+    "instanceId": "fixture-instance",
+    "windowId": "main",
+    "workspace": { "kind": "session", "sessionId": "fixture-session" }
+  },
+  "params": { "path": "file.ts", "line": 42 },
+  "reveal": true,
+  "timeoutMs": 10000
+}

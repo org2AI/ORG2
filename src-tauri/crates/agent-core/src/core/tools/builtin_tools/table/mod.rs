@@ -55,5 +55,20 @@ pub static BUILTIN_TOOLS: LazyLock<&'static [ToolEntry]> = LazyLock::new(|| {
     ] {
         all.extend_from_slice(slice);
     }
+    all.extend(app_ui::agent_tools::ALL.iter().map(|kind| ToolEntry {
+        name: kind.name(),
+        description: kind.description(),
+        description_detail: kind.description(),
+        category: aliases::tool_categories::WEB,
+        icon_id: "panel-top",
+        simulator_app: aliases::AppCode,
+        app_subtool: aliases::OtherTool,
+        chat_block: aliases::CbFallback,
+        required_capability: aliases::CapManagement,
+        label_running: "tools.orgiiGuiRunning",
+        label_done: "tools.orgiiGuiDone",
+        label_failed: "tools.orgiiGuiFailed",
+        ..super::types::DEFAULT_TOOL_ENTRY
+    }));
     Vec::leak(all)
 });

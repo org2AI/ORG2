@@ -66,10 +66,10 @@ const CONTROL_CARDS: &[ControlCard] = &[
         ],
     },
     ControlCard {
-        id: "workstation.openSourceControlTab",
-        kind: "action",
+        id: "open_in_org2",
+        kind: "tool",
         summary: "Open the Workstation Source Control / Git sidebar tab.",
-        call: r#"control_orgii({ "action": "workstation.openSourceControlTab", "params": {} })"#,
+        call: r#"open_in_org2({"target":{"type":"source-control"}}). Omit workspace to use the calling session; specify another workspace only when the user intends it."#,
         terms: &["source control", "scm", "git panel", "git sidebar", "changes", "staged", "unstaged"],
     },
     ControlCard {

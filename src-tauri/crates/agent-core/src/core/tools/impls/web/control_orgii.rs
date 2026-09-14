@@ -133,13 +133,18 @@ impl Tool for OrgiiControlTool {
     }
 
     fn description(&self) -> &str {
-        "Inspect and control the ORG2 GUI through the frontend ActionSystem. Prefer action=gui.context for current route/station/tab/session/URL state, action=gui.inspect to discover registered actions and visible controls, guide.* actions for tutorials/highlights, then action=gui.execute or a direct registered action to execute one."
+        "Use open_in_org2 and the dedicated ORG2 tools for files, pages, tabs and terminals. This tool retains settings, guides and advanced protocol access; read get_org2_ui_docs with topic=protocol before using uiRequest. Inspect and control the ORG2 GUI through the frontend ActionSystem. Prefer action=gui.context for current route/station/tab/session/URL state, action=gui.inspect to discover registered actions and visible controls, guide.* actions for tutorials/highlights, then action=gui.execute or a direct registered action to execute one."
     }
 
     fn parameters(&self) -> Value {
         serde_json::json!({
             "type": "object",
             "properties": {
+                "uiRequest": {
+                    "type": "object",
+                    "description": "Versioned public UI request (protocolVersion, requestId, command, target, params, reveal). Uses the same broker and policy as org2 ui. Read org2 rulebook or action=ui.capabilities first.",
+                    "additionalProperties": true
+                },
                 "operation": {
                     "type": "string",
                     "enum": ["dispatch"],
@@ -169,6 +174,46 @@ impl Tool for OrgiiControlTool {
         ctx: &crate::tools::traits::CallContext,
     ) -> Result<String, ToolError> {
         ctx.require_tool_authority(self.name())?;
+        if params.get("action").and_then(Value::as_str) == Some("ui.capabilities") {
+            return Ok(app_ui::capabilities().to_string());
+        }
+        if params.get("action").and_then(Value::as_str) == Some("ui.rulebook") {
+            return Ok(app_ui::docs::rulebook_markdown().to_string());
+        }
+        if params.get("action").and_then(Value::as_str) == Some("ui.docs") {
+            let topic = params["params"]["topic"].as_str();
+            let mut flags = std::collections::HashMap::new();
+            let mut words = vec!["docs".to_string()];
+            if let Some(topic) = topic {
+                words.push(topic.to_string());
+            } else if let Some(query) = params["params"]["query"].as_str() {
+                flags.insert("search".into(), query.to_string());
+            } else {
+                flags.insert("list".into(), "true".into());
+            }
+            let result = app_ui::docs::read(&words, &flags).map_err(ToolError::InvalidParams)?;
+            return Ok(result["markdown"]
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| result.to_string()));
+        }
+        if params.get("action").and_then(Value::as_str) == Some("ui.receipt") {
+            let id = params["params"]["requestId"]
+                .as_str()
+                .ok_or_else(|| ToolError::InvalidParams("params.requestId is required".into()))?;
+            return Ok(app_ui::broker().receipt(&format!("native:{}", ctx.session_id), id)
+                .map(|r| serde_json::to_value(r).expect("UI response serializes"))
+                .unwrap_or_else(|| serde_json::json!({"requestId":id,"status":"unknown","error":{"code":"RECEIPT_UNAVAILABLE","message":"Pending, expired or unknown receipt"}})).to_string());
+        }
+        if let Some(request) = params.get("uiRequest") {
+            let request: app_ui::Request = serde_json::from_value(request.clone())
+                .map_err(|err| ToolError::InvalidParams(err.to_string()))?;
+            let result = app_ui::broker()
+                .execute(&format!("native:{}", ctx.session_id), request)
+                .await;
+            return serde_json::to_string(&result)
+                .map_err(|err| ToolError::ExecutionFailed(err.to_string()));
+        }
         execute_gui_control_operation(&self.bridge, tool_names::CONTROL_ORGII, params).await
     }
 }

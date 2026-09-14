@@ -21,7 +21,7 @@ import type { CloudPushAccess } from "./org2CloudAccessSettings";
 import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
 import { getCloudCapabilitiesConfirmed } from "./org2CloudCapabilities";
 import { broadcastOrgControlChangedToPeers } from "./org2CloudControlBus";
-import { endpointForOrg } from "./org2CloudOrgEndpointRouter";
+import type { CloudSessionOperation } from "./org2CloudSessionOperation";
 import { Org2CloudSessionPushGuards } from "./org2CloudSessionSync.pushGuards";
 import {
   Org2CloudSessionSyncPushPhases,
@@ -45,17 +45,14 @@ export {
 } from "./org2CloudSessionSync.pushGuards";
 export { normalizeTurnPromptPreview } from "./org2CloudSessionSync.turnIndex";
 export { SESSION_SEGMENT_UPLOAD_BATCH_SIZE } from "./org2CloudSessionSync.upload";
-
 export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
   /** Per-session transient retry + shrink confirmation, split out to
    * `Org2CloudSessionPushGuards`. */
   private readonly pushGuards = new Org2CloudSessionPushGuards();
-
   override reset(): void {
     super.reset();
     this.pushGuards.reset();
   }
-
   override prune(
     liveOrgIds: ReadonlySet<string>,
     liveSessionIds: ReadonlySet<string>
@@ -63,7 +60,6 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     super.prune(liveOrgIds, liveSessionIds);
     this.pushGuards.prune(liveOrgIds, liveSessionIds);
   }
-
   /** Seed volatile cold-start caches from a server-authoritative listing. */
   seedFromRemoteSummary(
     auth: Org2CloudAuthState,
@@ -73,27 +69,29 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     access: CloudPushAccess,
     remote: RemoteTeammateSessionMetadata
   ): Promise<void> {
-    return seedFromRemoteSummary(
-      this.remoteSeedHost(),
-      auth,
-      orgId,
-      session,
-      scopeKey,
-      access,
-      remote
+    return this.runOperation(auth, orgId, (operation) =>
+      seedFromRemoteSummary(
+        this.remoteSeedHost(operation),
+        auth,
+        orgId,
+        session,
+        scopeKey,
+        access,
+        remote,
+        operation
+      )
     );
   }
-
   /** The chain's protected bookkeeping, handed to the seed helper. */
-  private remoteSeedHost(): RemoteSeedHost {
+  private remoteSeedHost(operation: CloudSessionOperation): RemoteSeedHost {
     return {
       remoteSeedAttemptedKeys: this.remoteSeedAttemptedKeys,
       lastPushedMetadataHashes: this.lastPushedMetadataHashes,
       eventActivityStamps: this.eventActivityStamps,
       setPushedMetadataMarker: (orgId, sessionId) =>
-        this.setPushedMetadataMarker(orgId, sessionId),
+        this.setPushedMetadataMarker(operation, orgId, sessionId),
       getCursor: (orgId, sessionId) => this.getCursor(orgId, sessionId),
-      setCursor: (cursor) => this.setCursor(cursor),
+      setCursor: (cursor) => this.setCursor(operation, cursor),
       loadLocalExecutionRevision: (sessionId) =>
         this.loadLocalExecutionRevision(sessionId),
       markEventPlaneClean: (
@@ -105,6 +103,7 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
         localExecutionRevision
       ) =>
         this.markEventPlaneClean(
+          operation,
           orgId,
           session,
           stampAtRead,
@@ -114,44 +113,102 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
         ),
     };
   }
-
   /** Soft-tombstone a prior push and clear every local pushed marker. */
   /** Live server rows this ACCOUNT owns in the org, regardless of which
    * device pushed them or whether local push markers survived. */
-  async listSelfOwnedLiveRemoteSessionIds(
+  listSelfOwnedLiveRemoteSessionIds(
     auth: Org2CloudAuthState,
     orgId: string
   ): Promise<string[]> {
-    const result = await this.client.listOrgSessions(auth.accessToken, orgId);
+    return this.runOperation(auth, orgId, (operation) =>
+      this.listSelfOwnedLiveRemoteSessionIdsWithOperation(
+        auth,
+        orgId,
+        operation
+      )
+    );
+  }
+  private async listSelfOwnedLiveRemoteSessionIdsWithOperation(
+    auth: Org2CloudAuthState,
+    orgId: string,
+    operation: CloudSessionOperation
+  ): Promise<string[]> {
+    operation.assertCurrent();
+    const result = await operation.wait(() =>
+      this.client.listOrgSessions(
+        auth.accessToken,
+        orgId,
+        undefined,
+        operation.signal,
+        operation.request
+      )
+    );
     return result.sessions
       .filter((row) => row.ownerUserId === auth.userId && !row.deletedAt)
       .map((row) => row.sourceSessionId);
   }
-
-  async retractSession(
+  retractSession(
     auth: Org2CloudAuthState,
     orgId: string,
     sessionId: string
   ): Promise<void> {
+    return this.runOperation(auth, orgId, (operation) =>
+      this.retractSessionWithOperation(auth, orgId, sessionId, operation)
+    );
+  }
+  private async retractSessionWithOperation(
+    auth: Org2CloudAuthState,
+    orgId: string,
+    sessionId: string,
+    operation: CloudSessionOperation
+  ): Promise<void> {
+    operation.assertCurrent();
     try {
-      await this.client.deleteSession(auth.accessToken, orgId, sessionId);
+      await operation.wait(() =>
+        this.client.deleteSession(
+          auth.accessToken,
+          orgId,
+          sessionId,
+          operation.request
+        )
+      );
     } catch (error) {
+      operation.assertCurrent();
       if (!isOrg2SyncErrorCode(error, "ORG2_SESSION_NOT_FOUND")) throw error;
     }
     this.invalidatePushedMetadataHash(orgId, sessionId);
     this.lastPushedTurnIndexHashes.delete(`${orgId}:${sessionId}`);
-    this.clearPushedMetadataMarker(orgId, sessionId);
-    this.clearCursor(orgId, sessionId);
+    this.clearPushedMetadataMarker(operation, orgId, sessionId);
+    this.clearCursor(operation, orgId, sessionId);
     broadcastOrgControlChangedToPeers(orgId, "sessions");
   }
-
-  async pushSession(
+  pushSession(
     auth: Org2CloudAuthState,
     orgId: string,
     session: Session,
     scopeKey: string | null,
     access: CloudPushAccess
   ): Promise<void> {
+    return this.runOperation(auth, orgId, (operation) =>
+      this.pushSessionWithOperation(
+        auth,
+        orgId,
+        session,
+        scopeKey,
+        access,
+        operation
+      )
+    );
+  }
+  private async pushSessionWithOperation(
+    auth: Org2CloudAuthState,
+    orgId: string,
+    session: Session,
+    scopeKey: string | null,
+    access: CloudPushAccess,
+    operation: CloudSessionOperation
+  ): Promise<void> {
+    operation.assertCurrent();
     const sessionId = session.session_id;
     if (
       access.accessMode !== COLLAB_SESSION_ACCESS_MODE.METADATA_ONLY &&
@@ -159,46 +216,56 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     ) {
       // Metadata remains cheap and live while the expensive transcript plane
       // sleeps. The hash gate makes this a no-RPC no-op when unchanged.
-      await this.upsertMetadataIfChanged(
-        auth,
-        orgId,
-        session,
-        scopeKey,
-        access
+      await operation.wait(() =>
+        this.upsertMetadataIfChanged(
+          auth,
+          orgId,
+          session,
+          scopeKey,
+          access,
+          operation
+        )
       );
       return;
     }
     try {
-      await this.pushSessionOnce(auth, orgId, session, scopeKey, access);
+      await operation.wait(() =>
+        this.pushSessionOnce(auth, orgId, session, scopeKey, access, operation)
+      );
       this.pushGuards.clearSessionPushFailure(orgId, sessionId);
     } catch (error) {
+      operation.assertCurrent();
       if (this.pushGuards.shouldBackOffSessionFailure(error)) {
         this.pushGuards.noteSessionPushFailure(orgId, sessionId);
       }
       throw error;
     }
   }
-
   private async pushSessionOnce(
     auth: Org2CloudAuthState,
     orgId: string,
     session: Session,
     scopeKey: string | null,
-    access: CloudPushAccess
+    access: CloudPushAccess,
+    operation: CloudSessionOperation
   ): Promise<void> {
+    operation.assertCurrent();
     const sessionId = session.session_id;
     if (access.accessMode === COLLAB_SESSION_ACCESS_MODE.METADATA_ONLY) {
-      await this.upsertMetadataIfChanged(
-        auth,
-        orgId,
-        session,
-        scopeKey,
-        access
+      await operation.wait(async () =>
+        this.upsertMetadataIfChanged(
+          auth,
+          orgId,
+          session,
+          scopeKey,
+          access,
+          operation
+        )
       );
       // A metadata-only pass invalidates local segment knowledge. If policy
       // later rises to full replay, rebuild the authoritative transcript.
       this.cleanEventPlanes.get(sessionId)?.delete(orgId);
-      this.clearCursor(orgId, sessionId);
+      this.clearCursor(operation, orgId, sessionId);
       return;
     }
     // The external-history scanner updates sessionsAtom directly, without an
@@ -206,17 +273,20 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     // event-store stamp, and defer metadata together with replay so a live CLI
     // turn does not produce one cloud upsert per scanner refresh.
     if (!this.isExternalHistorySettled(session)) return;
-    const currentLocalExecutionRevision =
-      await this.loadLocalExecutionRevision(sessionId);
+    const currentLocalExecutionRevision = await operation.wait(async () =>
+      this.loadLocalExecutionRevision(sessionId)
+    );
     const cursor = this.getCursor(orgId, sessionId);
     // Old transcript cursors do not prove the referenced files were uploaded.
     // Probe is endpoint-cached; unsupported servers preserve the existing idle gate.
     const needsFileBackfill =
       cursor && cursor.sharedFilesVersion !== 1
         ? (
-            await getCloudCapabilitiesConfirmed(
-              auth.accessToken,
-              endpointForOrg(orgId)
+            await operation.wait(async () =>
+              getCloudCapabilitiesConfirmed(
+                auth.accessToken,
+                operation.endpoint
+              )
             )
           ).capabilities.sharedSessionFiles === true
         : false;
@@ -224,19 +294,20 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
       !needsFileBackfill &&
       this.isEventPlaneClean(orgId, session, currentLocalExecutionRevision)
     ) {
-      await this.upsertMetadataIfChanged(
-        auth,
-        orgId,
-        session,
-        scopeKey,
-        access
+      await operation.wait(async () =>
+        this.upsertMetadataIfChanged(
+          auth,
+          orgId,
+          session,
+          scopeKey,
+          access,
+          operation
+        )
       );
       return;
     }
-    const prepared = await this.preparePushEventsForPass(
-      sessionId,
-      cursor,
-      needsFileBackfill
+    const prepared = await operation.wait(async () =>
+      this.preparePushEventsForPass(sessionId, cursor, needsFileBackfill)
     );
     const {
       stampAtRead,
@@ -248,6 +319,7 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     } = prepared;
     let sharedFilesReady = false;
     const markPreparedClean = () => {
+      operation.assertCurrent();
       if (
         prepared.cliHistoryMutation &&
         (this.eventActivityStamps.get(sessionId) ?? 0) === stampAtRead
@@ -257,14 +329,14 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
           acknowledged &&
           acknowledged.cliHistoryEpoch !== prepared.cliHistoryMutation.epoch
         ) {
-          this.setCursor({
+          this.setCursor(operation, {
             ...acknowledged,
             cliHistoryEpoch: prepared.cliHistoryMutation.epoch,
           });
         }
       }
-
       this.markEventPlaneClean(
+        operation,
         orgId,
         session,
         stampAtRead,
@@ -278,18 +350,27 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
         latestCursor &&
         latestCursor.sharedFilesVersion !== 1
       )
-        this.setCursor({ ...latestCursor, sharedFilesVersion: 1 });
+        this.setCursor(operation, { ...latestCursor, sharedFilesVersion: 1 });
     };
     const publishPreparedTurnIndex = () => {
-      void this.publishTurnIndexBestEffort(auth, orgId, session, stampAtRead);
-    };
-    if (!cursor && events.length === 0) {
-      await this.upsertMetadataIfChanged(
+      return this.publishTurnIndexBestEffort(
         auth,
         orgId,
         session,
-        scopeKey,
-        access
+        stampAtRead,
+        operation
+      );
+    };
+    if (!cursor && events.length === 0) {
+      await operation.wait(async () =>
+        this.upsertMetadataIfChanged(
+          auth,
+          orgId,
+          session,
+          scopeKey,
+          access,
+          operation
+        )
       );
       markPreparedClean();
       return;
@@ -325,19 +406,25 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
       if (shrink === "skip") return;
       confirmedShrink = shrink === "confirmed";
     }
-
     // A replay exposes its referenced files as independent immutable snapshots.
     // Register only after the source session exists; no transcript bytes/hashes
     // are rewritten to add attachment data.
-    await this.upsertMetadataIfChanged(auth, orgId, session, scopeKey, access);
-    sharedFilesReady = await this.syncReplaySharedFiles(
-      auth,
-      orgId,
-      session,
-      events
+    await operation.wait(async () =>
+      this.upsertMetadataIfChanged(
+        auth,
+        orgId,
+        session,
+        scopeKey,
+        access,
+        operation
+      )
     );
-    const preparedPlan = await prepared.plan();
+    sharedFilesReady = await operation.wait(async () =>
+      this.syncReplaySharedFiles(auth, orgId, session, events, operation)
+    );
+    const preparedPlan = await operation.wait(async () => prepared.plan());
     const pass: PreparedPushPass = {
+      operation,
       auth,
       orgId,
       session,
@@ -349,17 +436,16 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
       markPreparedClean,
       publishPreparedTurnIndex,
     };
-
     if (cursor && mode === "incremental") {
-      await this.pushIncrementalReplay(pass, cursor);
+      await operation.wait(async () =>
+        this.pushIncrementalReplay(pass, cursor)
+      );
       return;
     }
-
     if (cursor) {
-      await this.pushCursorReplay(pass, cursor);
+      await operation.wait(async () => this.pushCursorReplay(pass, cursor));
       return;
     }
-
-    await this.pushInitialReplay(pass);
+    await operation.wait(async () => this.pushInitialReplay(pass));
   }
 }

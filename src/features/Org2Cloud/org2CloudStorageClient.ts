@@ -55,19 +55,24 @@ export async function uploadReplayObject(
   path: string,
   bytes: Uint8Array,
   endpoint: CloudEndpoint = getCloudEndpoint(),
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  assertCurrent?: () => void
 ): Promise<void> {
-  const response = await fetchWithTransportRetry(objectUrl(path, endpoint), {
-    method: "POST",
-    headers: {
-      ...objectHeaders(accessToken, endpoint),
-      "content-type": "application/gzip",
+  const response = await fetchWithTransportRetry(
+    objectUrl(path, endpoint),
+    {
+      method: "POST",
+      headers: {
+        ...objectHeaders(accessToken, endpoint),
+        "content-type": "application/gzip",
+      },
+      // Copy into a fresh ArrayBuffer-backed view: the DOM typings reject
+      // Uint8Array<ArrayBufferLike> as a BodyInit.
+      body: new Uint8Array(bytes),
+      signal,
     },
-    // Copy into a fresh ArrayBuffer-backed view: the DOM typings reject
-    // Uint8Array<ArrayBufferLike> as a BodyInit.
-    body: new Uint8Array(bytes),
-    signal,
-  });
+    assertCurrent
+  );
   if (response.ok) return;
   const body = await response.text().catch(() => "");
   // Replay objects are content-addressed (segment hash in the key), so a
@@ -85,7 +90,8 @@ export async function uploadReplayObject(
       accessToken,
       path,
       endpoint,
-      signal
+      signal,
+      assertCurrent
     );
     if (exists) return;
   }
@@ -120,14 +126,19 @@ async function replayObjectExists(
   accessToken: string,
   path: string,
   endpoint: CloudEndpoint,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  assertCurrent?: () => void
 ): Promise<boolean> {
   try {
-    const response = await fetchWithTransportRetry(objectUrl(path, endpoint), {
-      method: "HEAD",
-      headers: objectHeaders(accessToken, endpoint),
-      signal,
-    });
+    const response = await fetchWithTransportRetry(
+      objectUrl(path, endpoint),
+      {
+        method: "HEAD",
+        headers: objectHeaders(accessToken, endpoint),
+        signal,
+      },
+      assertCurrent
+    );
     return response.ok;
   } catch {
     return false;
@@ -146,12 +157,22 @@ export async function ensureReplayObject(
   path: string,
   bytes: Uint8Array,
   endpoint: CloudEndpoint = getCloudEndpoint(),
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  assertCurrent?: () => void
 ): Promise<"existing" | "uploaded"> {
-  if (await replayObjectExists(accessToken, path, endpoint, signal)) {
+  if (
+    await replayObjectExists(accessToken, path, endpoint, signal, assertCurrent)
+  ) {
     return "existing";
   }
-  await uploadReplayObject(accessToken, path, bytes, endpoint, signal);
+  await uploadReplayObject(
+    accessToken,
+    path,
+    bytes,
+    endpoint,
+    signal,
+    assertCurrent
+  );
   return "uploaded";
 }
 

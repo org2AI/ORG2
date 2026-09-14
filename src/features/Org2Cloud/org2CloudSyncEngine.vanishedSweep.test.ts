@@ -93,7 +93,11 @@ describe("vanished-session sweep two-strike confirmation", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "ghost-1"
+      "ghost-1",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
     // A successful retract clears the durable marker, so later sweeps have
     // no suspect left to confirm.
@@ -123,7 +127,11 @@ describe("vanished-session sweep two-strike confirmation", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-2",
-      "ghost-2"
+      "ghost-2",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
   });
 
@@ -217,7 +225,11 @@ describe("superseded-continuation reconcile", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "old-sib"
+      "old-sib",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
     // The retract dropped the marker; nothing is left to reconcile.
     await runSweepPass();
@@ -251,7 +263,11 @@ describe("superseded-continuation reconcile", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "old-sib"
+      "old-sib",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
   });
 
@@ -291,7 +307,11 @@ describe("superseded-continuation reconcile", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "old-sib"
+      "old-sib",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
   });
 
@@ -337,7 +357,11 @@ describe("superseded-continuation reconcile", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "old-sib"
+      "old-sib",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
   });
 

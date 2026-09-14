@@ -307,7 +307,11 @@ describe("Org2CloudSyncEngine session publishing", () => {
       "jwt-1",
       "corg-1",
       "session-guest-fork",
-      expect.any(Object)
+      expect.any(Object),
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
   });
 
@@ -526,7 +530,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
       "jwt-1",
       "corg-1",
       "session-1",
-      { afterSeq: 2_147_483_647 }
+      expect.objectContaining({ afterSeq: 2_147_483_647 })
     );
     expect(client.rewriteSessionEvents).toHaveBeenCalledTimes(2);
     const [, reanchor] = client.rewriteSessionEvents.mock.calls[1];
@@ -770,7 +774,11 @@ describe("Org2CloudSyncEngine session publishing", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "session-1"
+      "session-1",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
     expect(store.get(sessionOrgTagsAtom)).toEqual({});
   });
@@ -2036,7 +2044,11 @@ describe("Org2CloudSyncEngine session publishing", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "session-1"
+      "session-1",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
     expect(
       store.get(org2CloudPushCursorsAtom)["corg-1:session-1"]
@@ -2090,7 +2102,11 @@ describe("Org2CloudSyncEngine session publishing", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "session-1"
+      "session-1",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
     expect(
       store.get(org2CloudPushedMetadataAtom)["corg-1:session-1"]

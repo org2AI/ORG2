@@ -260,9 +260,14 @@ describe("listTeamInboxMentions", () => {
   });
 
   it("cancels an in-flight RPC when its owning Inbox scope is disposed", async () => {
-    fetchMock.mockImplementationOnce(
-      () => new Promise<Response>(() => undefined)
-    );
+    let notifyFetchStarted!: () => void;
+    const fetchStarted = new Promise<void>((resolve) => {
+      notifyFetchStarted = resolve;
+    });
+    fetchMock.mockImplementationOnce(() => {
+      notifyFetchStarted();
+      return new Promise<Response>(() => undefined);
+    });
     const controller = new AbortController();
 
     const request = listTeamInboxMentions(
@@ -272,11 +277,34 @@ describe("listTeamInboxMentions", () => {
       25,
       controller.signal
     );
+    await fetchStarted;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((lastCall().init.signal as AbortSignal).aborted).toBe(false);
     controller.abort();
 
     await expect(request).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect((lastCall().init.signal as AbortSignal).aborted).toBe(true);
   });
+
+  it.each(["before calling", "before fetch starts"])(
+    "does not send an RPC when the owning scope is cancelled %s",
+    async (timing) => {
+      const controller = new AbortController();
+      if (timing === "before calling") controller.abort();
+      const request = listTeamInboxMentions(
+        "jwt-viewer",
+        "org-1",
+        null,
+        25,
+        controller.signal
+      );
+      if (timing === "before fetch starts") controller.abort();
+
+      await expect(request).rejects.toMatchObject({ name: "AbortError" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe("Team Inbox read receipts", () => {

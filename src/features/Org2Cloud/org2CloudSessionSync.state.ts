@@ -10,6 +10,11 @@ import type { Session } from "@src/store/session/sessionAtom/types";
 import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 
 import { sha256Hex } from "../TeamCollaboration/collabSyncUtils";
+import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
+import {
+  type CloudSessionOperation,
+  createCloudSessionOperation,
+} from "./org2CloudSessionOperation";
 import type {
   CleanEventPlaneStamp,
   ExternalHistoryVersionObservation,
@@ -29,6 +34,8 @@ import {
 const MAX_PASS_PREPARE_CACHE_ENTRIES = 2;
 
 export class Org2CloudSessionSyncState {
+  private operationGeneration = 0;
+  private readonly operationControllers = new Set<AbortController>();
   /** `${orgId}:${sessionId}` to hash of the last upserted metadata. */
   protected readonly lastPushedMetadataHashes = new Map<string, string>();
   /** `${orgId}:${sessionId}` to hash of the last published turn index (0012). */
@@ -57,7 +64,36 @@ export class Org2CloudSessionSyncState {
 
   constructor(protected readonly getStore: () => CloudStore | null) {}
 
+  protected async runOperation<T>(
+    auth: Org2CloudAuthState,
+    orgId: string,
+    work: (operation: CloudSessionOperation) => Promise<T>
+  ): Promise<T> {
+    const store = this.getStore();
+    if (!store) throw new DOMException("Cloud sync stopped", "AbortError");
+    const generation = this.operationGeneration;
+    const controller = new AbortController();
+    const operation = createCloudSessionOperation(
+      store,
+      auth,
+      orgId,
+      () =>
+        this.operationGeneration === generation && this.getStore() === store,
+      controller
+    );
+    this.operationControllers.add(controller);
+    try {
+      return await operation.wait(() => work(operation));
+    } finally {
+      operation.dispose();
+      this.operationControllers.delete(controller);
+    }
+  }
+
   reset(): void {
+    this.operationGeneration += 1;
+    for (const controller of this.operationControllers) controller.abort();
+    this.operationControllers.clear();
     this.lastPushedMetadataHashes.clear();
     this.lastPushedTurnIndexHashes.clear();
     this.cleanEventPlanes.clear();
@@ -213,6 +249,7 @@ export class Org2CloudSessionSyncState {
   }
 
   protected markEventPlaneClean(
+    operation: CloudSessionOperation,
     orgId: string,
     session: Session,
     stampAtRead: number,
@@ -220,6 +257,7 @@ export class Org2CloudSessionSyncState {
     localContentRevision?: number,
     localExecutionRevision?: string | null
   ): void {
+    operation.assertCurrent();
     const sessionId = session.session_id;
     if ((this.eventActivityStamps.get(sessionId) ?? 0) !== stampAtRead) return;
     // Defense in depth: the push loader rejects unstable child snapshots
@@ -243,7 +281,7 @@ export class Org2CloudSessionSyncState {
       localContentRevision !== undefined &&
       cursor.localContentRevision !== localContentRevision
     ) {
-      this.setCursor({ ...cursor, localContentRevision });
+      this.setCursor(operation, { ...cursor, localContentRevision });
     } else if (
       localContentRevision === undefined &&
       cursor.localContentUpdatedAt !== session.updated_at
@@ -251,7 +289,10 @@ export class Org2CloudSessionSyncState {
       // Provider-native histories without an events-cache row still use the
       // source session version. Native cached histories use the independent
       // revision above so renaming/pinning never dirties their replay.
-      this.setCursor({ ...cursor, localContentUpdatedAt: session.updated_at });
+      this.setCursor(operation, {
+        ...cursor,
+        localContentUpdatedAt: session.updated_at,
+      });
     }
   }
 
@@ -264,8 +305,12 @@ export class Org2CloudSessionSyncState {
     ];
   }
 
-  protected setCursor(cursor: CollabSessionPushCursor): void {
-    this.getStore()?.set(org2CloudPushCursorsAtom, (current) => ({
+  protected setCursor(
+    operation: CloudSessionOperation,
+    cursor: CollabSessionPushCursor
+  ): void {
+    operation.assertCurrent();
+    operation.store.set(org2CloudPushCursorsAtom, (current) => ({
       ...current,
       [`${cursor.orgId}:${cursor.sessionId}`]: cursor,
     }));
@@ -330,16 +375,26 @@ export class Org2CloudSessionSyncState {
     );
   }
 
-  protected setPushedMetadataMarker(orgId: string, sessionId: string): void {
+  protected setPushedMetadataMarker(
+    operation: CloudSessionOperation,
+    orgId: string,
+    sessionId: string
+  ): void {
+    operation.assertCurrent();
     const key = `${orgId}:${sessionId}`;
-    this.getStore()?.set(org2CloudPushedMetadataAtom, (current) =>
+    operation.store.set(org2CloudPushedMetadataAtom, (current) =>
       current[key] ? current : { ...current, [key]: true }
     );
   }
 
-  protected clearPushedMetadataMarker(orgId: string, sessionId: string): void {
+  protected clearPushedMetadataMarker(
+    operation: CloudSessionOperation,
+    orgId: string,
+    sessionId: string
+  ): void {
+    operation.assertCurrent();
     const key = `${orgId}:${sessionId}`;
-    this.getStore()?.set(org2CloudPushedMetadataAtom, (current) => {
+    operation.store.set(org2CloudPushedMetadataAtom, (current) => {
       if (!(key in current)) return current;
       const next = { ...current };
       delete next[key];
@@ -347,9 +402,14 @@ export class Org2CloudSessionSyncState {
     });
   }
 
-  protected clearCursor(orgId: string, sessionId: string): void {
+  protected clearCursor(
+    operation: CloudSessionOperation,
+    orgId: string,
+    sessionId: string
+  ): void {
+    operation.assertCurrent();
     const key = `${orgId}:${sessionId}`;
-    this.getStore()?.set(org2CloudPushCursorsAtom, (current) => {
+    operation.store.set(org2CloudPushCursorsAtom, (current) => {
       if (!(key in current)) return current;
       const next = { ...current };
       delete next[key];

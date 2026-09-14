@@ -35,6 +35,7 @@ import {
   MAX_SESSION_EVENT_PAGES,
   SESSION_EVENTS_PAGE_SIZE,
 } from "./org2CloudSyncClient.schemas";
+import type { CloudSyncRequestOptions } from "./org2CloudSyncRequest.types";
 
 /** supabaseUrl set of backends that rejected the storage segment wire (pre-0006). */
 const storageSegmentsUnsupportedEndpoints = new Set<string>();
@@ -45,12 +46,14 @@ export const __STORAGE_SEGMENTS_INTERNALS = {
 
 async function shouldUseStorageSegments(
   accessToken: string,
-  endpoint: CloudEndpoint
+  endpoint: CloudEndpoint,
+  options?: CloudSyncRequestOptions
 ): Promise<boolean> {
+  options?.assertCurrent();
   if (storageSegmentsUnsupportedEndpoints.has(endpoint.supabaseUrl)) {
     return false;
   }
-  return (await getCloudCapabilities(accessToken)).storageSegments;
+  return (await getCloudCapabilities(accessToken, endpoint)).storageSegments;
 }
 
 interface CloudStorageSegmentWire {
@@ -67,25 +70,39 @@ async function uploadFrozenSegmentsToStorage(
   orgId: string,
   sessionId: string,
   epoch: number,
-  segments: SessionEventsSegmentInput[]
+  segments: SessionEventsSegmentInput[],
+  options?: CloudSyncRequestOptions
 ): Promise<CloudStorageSegmentWire[]> {
-  return mapSegmentsBounded(segments, async (segment) => {
-    const encoded = await toFrozenSegmentStorage(segment);
-    const storagePath = buildReplayObjectPath(
-      orgId,
-      sessionId,
-      epoch,
-      encoded.seq,
-      encoded.segmentHash
-    );
-    await ensureReplayObject(accessToken, storagePath, encoded.bytes, endpoint);
-    return {
-      seq: encoded.seq,
-      storagePath,
-      eventCount: encoded.eventCount,
-      segmentHash: encoded.segmentHash,
-    };
-  });
+  return mapSegmentsBounded(
+    segments,
+    async (segment) => {
+      options?.assertCurrent();
+      const encoded = await toFrozenSegmentStorage(segment);
+      const storagePath = buildReplayObjectPath(
+        orgId,
+        sessionId,
+        epoch,
+        encoded.seq,
+        encoded.segmentHash
+      );
+      options?.assertCurrent();
+      await ensureReplayObject(
+        accessToken,
+        storagePath,
+        encoded.bytes,
+        endpoint,
+        options?.signal,
+        options?.assertCurrent
+      );
+      return {
+        seq: encoded.seq,
+        storagePath,
+        eventCount: encoded.eventCount,
+        segmentHash: encoded.segmentHash,
+      };
+    },
+    options?.signal
+  );
 }
 
 export interface CloudRewriteSessionEventsInput {
@@ -100,9 +117,11 @@ export interface CloudRewriteSessionEventsInput {
 /** Owner: epoch-bumped full rewrite of the session's segments. */
 export async function rewriteSessionEvents(
   accessToken: string,
-  input: CloudRewriteSessionEventsInput
+  input: CloudRewriteSessionEventsInput,
+  options?: CloudSyncRequestOptions
 ): Promise<void> {
-  const endpoint = endpointForOrg(input.orgId);
+  options?.assertCurrent();
+  const endpoint = options?.endpoint ?? endpointForOrg(input.orgId);
   const baseBody = {
     p_org_id: input.orgId,
     p_session_id: input.sessionId,
@@ -112,7 +131,7 @@ export async function rewriteSessionEvents(
   };
   if (
     input.frozenSegments.length > 0 &&
-    (await shouldUseStorageSegments(accessToken, endpoint))
+    (await shouldUseStorageSegments(accessToken, endpoint, options))
   ) {
     const frozenSegments = await uploadFrozenSegmentsToStorage(
       accessToken,
@@ -120,17 +139,22 @@ export async function rewriteSessionEvents(
       input.orgId,
       input.sessionId,
       input.newEpoch,
-      input.frozenSegments
+      input.frozenSegments,
+      options
     );
     try {
       await callSyncRpc(
         "cloud_rewrite_session_events",
         accessToken,
         { ...baseBody, frozen_segments: frozenSegments },
-        endpoint
+        endpoint,
+        options?.signal,
+        undefined,
+        options?.assertCurrent
       );
       return;
     } catch (error) {
+      options?.assertCurrent();
       if (!isRpcSignatureUnsupported(error)) throw error;
       storageSegmentsUnsupportedEndpoints.add(endpoint.supabaseUrl);
     }
@@ -144,10 +168,14 @@ export async function rewriteSessionEvents(
       // canonical/gzip/base64 buffers simultaneously and multiplies RSS.
       frozen_segments: await mapSegmentsBounded(
         input.frozenSegments,
-        toFrozenSegmentWire
+        toFrozenSegmentWire,
+        options?.signal
       ),
     },
-    endpoint
+    endpoint,
+    options?.signal,
+    undefined,
+    options?.assertCurrent
   );
 }
 
@@ -166,9 +194,11 @@ export interface CloudAppendSessionEventsInput {
 /** Owner: incremental append (new frozen segments + tail replace). */
 export async function appendSessionEvents(
   accessToken: string,
-  input: CloudAppendSessionEventsInput
+  input: CloudAppendSessionEventsInput,
+  options?: CloudSyncRequestOptions
 ): Promise<void> {
-  const endpoint = endpointForOrg(input.orgId);
+  options?.assertCurrent();
+  const endpoint = options?.endpoint ?? endpointForOrg(input.orgId);
   const baseBody = {
     p_org_id: input.orgId,
     p_session_id: input.sessionId,
@@ -180,7 +210,7 @@ export async function appendSessionEvents(
   };
   if (
     input.newFrozenSegments.length > 0 &&
-    (await shouldUseStorageSegments(accessToken, endpoint))
+    (await shouldUseStorageSegments(accessToken, endpoint, options))
   ) {
     const newFrozenSegments = await uploadFrozenSegmentsToStorage(
       accessToken,
@@ -188,17 +218,22 @@ export async function appendSessionEvents(
       input.orgId,
       input.sessionId,
       input.expectedEpoch,
-      input.newFrozenSegments
+      input.newFrozenSegments,
+      options
     );
     try {
       await callSyncRpc(
         "cloud_append_session_events",
         accessToken,
         { ...baseBody, new_frozen_segments: newFrozenSegments },
-        endpoint
+        endpoint,
+        options?.signal,
+        undefined,
+        options?.assertCurrent
       );
       return;
     } catch (error) {
+      options?.assertCurrent();
       if (!isRpcSignatureUnsupported(error)) throw error;
       storageSegmentsUnsupportedEndpoints.add(endpoint.supabaseUrl);
     }
@@ -210,10 +245,14 @@ export async function appendSessionEvents(
       ...baseBody,
       new_frozen_segments: await mapSegmentsBounded(
         input.newFrozenSegments,
-        toFrozenSegmentWire
+        toFrozenSegmentWire,
+        options?.signal
       ),
     },
-    endpoint
+    endpoint,
+    options?.signal,
+    undefined,
+    options?.assertCurrent
   );
 }
 

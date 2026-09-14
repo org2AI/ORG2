@@ -66,14 +66,17 @@ export abstract class Org2CloudSyncLifecycle {
   private projectPushRetryBudget = 0;
   private dataChangedUnlisten: Promise<UnlistenFn> | null = null;
   private eventStoreUnsubscribe: (() => void) | null = null;
-  private passRunning = false;
+  private activePass: object | null = null;
   private passDirty = false;
   /** A full/outbound trigger that arrived while the current pass was busy. */
   private nextPassPushSessions = false;
   /** Serialized passes actually started (test seam for pass-count budgets). */
   startedPassCount = 0;
   /** Explicit user-action waiters resolve after the active and dirty passes drain. */
-  private readonly passDrainWaiters: Array<() => void> = [];
+  private readonly passDrainWaiters: Array<{
+    resolve: () => void;
+    reject: (error: Error) => void;
+  }> = [];
 
   /** Realtime invalidations waiting to be consumed by a pass. */
   protected readonly pendingInboundOrgIds = new Set<string>();
@@ -185,10 +188,12 @@ export abstract class Org2CloudSyncLifecycle {
       window.removeEventListener("online", this.onOnline);
     }
     this.resetSyncState();
-    this.passRunning = false;
+    this.activePass = null;
     this.passDirty = false;
     this.nextPassPushSessions = false;
-    for (const resolve of this.passDrainWaiters.splice(0)) resolve();
+    for (const waiter of this.passDrainWaiters.splice(0)) {
+      waiter.reject(new DOMException("Cloud sync stopped", "AbortError"));
+    }
     this.pendingInboundOrgIds.clear();
     this.pendingFullInboundOrgIds.clear();
     this.forceAllInboundNextPass = false;
@@ -200,16 +205,18 @@ export abstract class Org2CloudSyncLifecycle {
   async runSyncPass(options: { pushSessions?: boolean } = {}): Promise<void> {
     if (!this.started || !this.store) return;
     const pushSessions = options.pushSessions !== false;
-    if (this.passRunning) {
+    if (this.activePass) {
       this.passDirty = true;
       this.nextPassPushSessions ||= pushSessions;
       return;
     }
-    this.passRunning = true;
+    const pass = {};
+    this.activePass = pass;
     this.startedPassCount += 1;
     const generation = this.generation;
     try {
       await this.syncAllOrgs(generation, { pushSessions });
+      if (this.activePass !== pass) return;
       // Journaling only — the pass outcome itself is unchanged.
       //
       // A successful pass advances the last-sync stamp but deliberately does
@@ -219,6 +226,7 @@ export abstract class Org2CloudSyncLifecycle {
       // journal is for problems; "it ran and worked" is the last-sync stamp.
       markSyncPass({ success: true });
     } catch (error) {
+      if (this.activePass !== pass) return;
       log.warn("cloud sync pass failed:", error);
       markSyncPass({ success: false });
       const described = describeSyncError(error);
@@ -229,15 +237,20 @@ export abstract class Org2CloudSyncLifecycle {
         code: described.code,
       });
     } finally {
-      this.afterSyncPass();
-      this.passRunning = false;
-      if (this.started && this.generation === generation && this.passDirty) {
-        this.passDirty = false;
-        const nextPushSessions = this.nextPassPushSessions;
-        this.nextPassPushSessions = false;
-        void this.runSyncPass({ pushSessions: nextPushSessions });
-      } else {
-        for (const resolve of this.passDrainWaiters.splice(0)) resolve();
+      // stop/start replaces ownership while old promises may still settle.
+      // Only the owning pass may release caches, the lock, or drain waiters.
+      if (this.activePass === pass) {
+        this.afterSyncPass();
+        this.activePass = null;
+        if (this.started && this.generation === generation && this.passDirty) {
+          this.passDirty = false;
+          const nextPushSessions = this.nextPassPushSessions;
+          this.nextPassPushSessions = false;
+          void this.runSyncPass({ pushSessions: nextPushSessions });
+        } else {
+          for (const waiter of this.passDrainWaiters.splice(0))
+            waiter.resolve();
+        }
       }
     }
   }
@@ -245,8 +258,8 @@ export abstract class Org2CloudSyncLifecycle {
   /** Request a pass and wait for it plus every coalesced dirty follow-up. */
   async runSyncPassAndWaitForDrain(): Promise<void> {
     if (!this.started || !this.store) return;
-    const drained = new Promise<void>((resolve) => {
-      this.passDrainWaiters.push(resolve);
+    const drained = new Promise<void>((resolve, reject) => {
+      this.passDrainWaiters.push({ resolve, reject });
     });
     void this.runSyncPass();
     await drained;
@@ -287,8 +300,8 @@ export abstract class Org2CloudSyncLifecycle {
     options: { full?: boolean; pushSessions?: boolean } = {}
   ): Promise<void> {
     if (!this.started || !this.store) return;
-    const drained = new Promise<void>((resolve) => {
-      this.passDrainWaiters.push(resolve);
+    const drained = new Promise<void>((resolve, reject) => {
+      this.passDrainWaiters.push({ resolve, reject });
     });
     this.invalidateOrgInbound(orgId, options);
     await drained;

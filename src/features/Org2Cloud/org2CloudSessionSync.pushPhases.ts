@@ -13,13 +13,9 @@ import type { Session } from "@src/store/session/sessionAtom/types";
 
 import { splitFrozenIntoSegments } from "../TeamCollaboration/engine/collabSyncEngineHelpers";
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
-import {
-  type Org2CloudAuthState,
-  org2CloudAuthAtom,
-  org2CloudAuthIdentityKey,
-} from "./org2CloudAuthAtom";
+import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
 import { broadcastOrgControlChangedToPeers } from "./org2CloudControlBus";
-import { endpointForOrg } from "./org2CloudOrgEndpointRouter";
+import type { CloudSessionOperation } from "./org2CloudSessionOperation";
 import type {
   PreparedPushEvents,
   PreparedPushPlan,
@@ -29,9 +25,9 @@ import type { CollabSessionPushCursor } from "./org2CloudSyncAtoms";
 import { isOrg2SyncErrorCode } from "./org2CloudSyncClient";
 
 const log = createLogger("Org2CloudSyncEngine");
-
 /** One prepared pass, handed from `pushSessionOnce` to its write phases. */
 export interface PreparedPushPass {
+  operation: CloudSessionOperation;
   auth: Org2CloudAuthState;
   orgId: string;
   session: Session;
@@ -43,10 +39,9 @@ export interface PreparedPushPass {
   confirmedShrink: boolean;
   /** Stamp the event plane clean for the prepared read. */
   markPreparedClean: () => void;
-  /** Fire the best-effort turn-index publish for the prepared read. */
-  publishPreparedTurnIndex: () => void;
+  /** Await the best-effort turn-index publish for the prepared read. */
+  publishPreparedTurnIndex: () => Promise<void>;
 }
-
 export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
   /**
    * Share the files a replay references. Resolves false when the server lacks
@@ -56,11 +51,14 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
     auth: Org2CloudAuthState,
     orgId: string,
     session: Session,
-    events: SessionEvent[]
+    events: SessionEvent[],
+    operation: CloudSessionOperation
   ): Promise<boolean> {
     const sessionId = session.session_id;
-    const { syncSessionSharedFiles } = await import("./syncSessionSharedFiles");
-    const endpoint = endpointForOrg(orgId);
+    const { syncSessionSharedFiles } = await operation.wait(
+      async () => import("./syncSessionSharedFiles")
+    );
+    const endpoint = operation.endpoint;
     return syncSessionSharedFiles({
       token: auth.accessToken,
       endpoint,
@@ -68,18 +66,10 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
       sessionId,
       events,
       repoPath: session.repoPath,
-      assertCurrentIdentity: () => {
-        const latest = this.getStore()?.get(org2CloudAuthAtom);
-        if (
-          !latest ||
-          org2CloudAuthIdentityKey(latest) !== org2CloudAuthIdentityKey(auth) ||
-          endpointForOrg(orgId).supabaseUrl !== endpoint.supabaseUrl
-        )
-          throw new Error("Cloud identity changed while sharing session files");
-      },
+      signal: operation.signal,
+      assertCurrentIdentity: operation.assertCurrent,
     });
   }
-
   /**
    * Imported history prepared from only the suffix past the cursor: one
    * bounded append, re-anchored by a full authoritative rewrite on conflict.
@@ -88,7 +78,9 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
     pass: PreparedPushPass,
     cursor: CollabSessionPushCursor
   ): Promise<void> {
-    const { auth, orgId, session, scopeKey, access, preparedPlan } = pass;
+    const { operation, auth, orgId, session, scopeKey, access, preparedPlan } =
+      pass;
+    operation.assertCurrent();
     const { markPreparedClean, publishPreparedTurnIndex } = pass;
     const sessionId = session.session_id;
     const { baseEventCount, events } = pass.prepared;
@@ -109,15 +101,18 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
       tailHash === cursor.tailHash &&
       totalEventCount === cursor.pushedCount
     ) {
-      await this.upsertMetadataIfChanged(
-        auth,
-        orgId,
-        session,
-        scopeKey,
-        access
+      await operation.wait(async () =>
+        this.upsertMetadataIfChanged(
+          auth,
+          orgId,
+          session,
+          scopeKey,
+          access,
+          operation
+        )
       );
       if (importedReplay) {
-        this.setCursor({
+        this.setCursor(operation, {
           ...cursor,
           frozenChainHash,
           importedReplay,
@@ -126,35 +121,55 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
       markPreparedClean();
       return;
     }
-    await this.upsertMetadataIfChanged(auth, orgId, session, scopeKey, access);
-    try {
-      await this.appendIncrementalSession(
+    await operation.wait(async () =>
+      this.upsertMetadataIfChanged(
         auth,
         orgId,
-        sessionId,
-        cursor,
-        newFrozenEvents,
-        preparedPlan
+        session,
+        scopeKey,
+        access,
+        operation
+      )
+    );
+    try {
+      await operation.wait(async () =>
+        this.appendIncrementalSession(
+          auth,
+          orgId,
+          sessionId,
+          cursor,
+          newFrozenEvents,
+          preparedPlan,
+          operation
+        )
       );
     } catch (error) {
+      operation.assertCurrent();
       if (!isOrg2SyncErrorCode(error, "ORG2_CONFLICT")) throw error;
-      const fullPrepared = await this.preparePushEventsForPass(
-        sessionId,
-        cursor,
-        true
+      const fullPrepared = await operation.wait(async () =>
+        this.preparePushEventsForPass(sessionId, cursor, true)
       );
-      const fullPlan = await fullPrepared.plan();
-      await this.rewriteSession(auth, orgId, session, scopeKey, access, {
-        events: fullPrepared.events,
-        ...fullPlan,
-        newEpoch: null,
-      });
+      const fullPlan = await operation.wait(async () => fullPrepared.plan());
+      await operation.wait(async () =>
+        this.rewriteSession(
+          auth,
+          orgId,
+          session,
+          scopeKey,
+          access,
+          {
+            events: fullPrepared.events,
+            ...fullPlan,
+            newEpoch: null,
+          },
+          operation
+        )
+      );
     }
     broadcastOrgControlChangedToPeers(orgId, "sessions");
     markPreparedClean();
-    publishPreparedTurnIndex();
+    await operation.wait(async () => publishPreparedTurnIndex());
   }
-
   /**
    * Full read against an existing cursor: extend its epoch while the frozen
    * history is intact, otherwise rewrite the history under the next epoch.
@@ -163,7 +178,9 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
     pass: PreparedPushPass,
     cursor: CollabSessionPushCursor
   ): Promise<void> {
-    const { auth, orgId, session, scopeKey, access, preparedPlan } = pass;
+    const { operation, auth, orgId, session, scopeKey, access, preparedPlan } =
+      pass;
+    operation.assertCurrent();
     const { confirmedShrink, markPreparedClean, publishPreparedTurnIndex } =
       pass;
     const sessionId = session.session_id;
@@ -190,9 +207,10 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
       // in either — an intact history rides the delta append and adopts
       // this plan's mode there; a mode change alone must never force the
       // O(total) epoch rewrite.
-      frozenIntact = await this.frozenChainMatchesCursor(cursor, preparedPlan);
+      frozenIntact = await operation.wait(async () =>
+        this.frozenChainMatchesCursor(cursor, preparedPlan)
+      );
     }
-
     if (!frozenIntact) {
       // An epoch rewrite re-uploads the ENTIRE frozen history. It is the
       // expensive path, so name the condition that forced it: a silent
@@ -201,34 +219,41 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
         `epoch rewrite for ${sessionId} org ${orgId}: ` +
           `confirmedShrink=${confirmedShrink} ` +
           `frozen=${frozenEventCount} cursorFrozen=${cursor.frozenEventCount} ` +
-          `chainMismatch=${
-            !confirmedShrink && frozenEventCount >= cursor.frozenEventCount
-          }`
+          `chainMismatch=${!confirmedShrink && frozenEventCount >= cursor.frozenEventCount}`
       );
     }
-
     if (frozenIntact) {
-      await this.appendIntactFrozenHistory(pass, cursor);
+      await operation.wait(async () =>
+        this.appendIntactFrozenHistory(pass, cursor)
+      );
       return;
     }
-
-    await this.rewriteSession(auth, orgId, session, scopeKey, access, {
-      events,
-      perEventHashes,
-      frozenHashMode,
-      totalEventCount,
-      frozenEventCount,
-      localFrozenEventCount,
-      frozenChainHash,
-      tailEvents,
-      tailHash,
-      importedReplay,
-      newEpoch: cursor.epoch + 1,
-    });
+    await operation.wait(async () =>
+      this.rewriteSession(
+        auth,
+        orgId,
+        session,
+        scopeKey,
+        access,
+        {
+          events,
+          perEventHashes,
+          frozenHashMode,
+          totalEventCount,
+          frozenEventCount,
+          localFrozenEventCount,
+          frozenChainHash,
+          tailEvents,
+          tailHash,
+          importedReplay,
+          newEpoch: cursor.epoch + 1,
+        },
+        operation
+      )
+    );
     markPreparedClean();
-    publishPreparedTurnIndex();
+    await operation.wait(async () => publishPreparedTurnIndex());
   }
-
   /**
    * Intact frozen history: converge an unchanged read locally, otherwise
    * append the frozen delta in batches (a conflict re-anchors via rewrite).
@@ -237,7 +262,8 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
     pass: PreparedPushPass,
     cursor: CollabSessionPushCursor
   ): Promise<void> {
-    const { auth, orgId, session, scopeKey, access } = pass;
+    const { operation, auth, orgId, session, scopeKey, access } = pass;
+    operation.assertCurrent();
     const { markPreparedClean, publishPreparedTurnIndex } = pass;
     const sessionId = session.session_id;
     const { events } = pass.prepared;
@@ -261,12 +287,15 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
       tailHash === cursor.tailHash &&
       totalEventCount === cursor.pushedCount
     ) {
-      await this.upsertMetadataIfChanged(
-        auth,
-        orgId,
-        session,
-        scopeKey,
-        access
+      await operation.wait(async () =>
+        this.upsertMetadataIfChanged(
+          auth,
+          orgId,
+          session,
+          scopeKey,
+          access,
+          operation
+        )
       );
       if (importedReplay && frozenChainHash !== cursor.frozenChainHash) {
         // Same content in an upgraded hash mode: converge the local
@@ -274,64 +303,91 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
         // delta takes the bounded path — no network write is needed.
         // The downgrade direction deliberately keeps the cursor: a
         // still-valid checkpoint must survive a transiently failed probe.
-        this.setCursor({ ...cursor, frozenChainHash, importedReplay });
+        this.setCursor(operation, {
+          ...cursor,
+          frozenChainHash,
+          importedReplay,
+        });
       }
       markPreparedClean();
       return;
     }
-    await this.upsertMetadataIfChanged(auth, orgId, session, scopeKey, access);
+    await operation.wait(async () =>
+      this.upsertMetadataIfChanged(
+        auth,
+        orgId,
+        session,
+        scopeKey,
+        access,
+        operation
+      )
+    );
     const frozenSegments = splitFrozenIntoSegments(
       newFrozenEvents,
       cursor.frozenSeq + 1
     );
     try {
-      await this.appendSessionBatches(
-        auth,
-        orgId,
-        sessionId,
-        cursor,
-        frozenSegments,
-        {
-          events,
-          perEventHashes,
-          frozenHashMode,
-          totalEventCount,
-          frozenEventCount,
-          localFrozenEventCount,
-          frozenChainHash,
-          tailEvents,
-          tailHash,
-          importedReplay,
-        }
+      await operation.wait(async () =>
+        this.appendSessionBatches(
+          auth,
+          orgId,
+          sessionId,
+          cursor,
+          frozenSegments,
+          {
+            events,
+            perEventHashes,
+            frozenHashMode,
+            totalEventCount,
+            frozenEventCount,
+            localFrozenEventCount,
+            frozenChainHash,
+            tailEvents,
+            tailHash,
+            importedReplay,
+          },
+          operation
+        )
       );
       broadcastOrgControlChangedToPeers(orgId, "sessions");
       markPreparedClean();
-      publishPreparedTurnIndex();
+      await operation.wait(async () => publishPreparedTurnIndex());
       return;
     } catch (error) {
+      operation.assertCurrent();
       if (!isOrg2SyncErrorCode(error, "ORG2_CONFLICT")) throw error;
-      await this.rewriteSession(auth, orgId, session, scopeKey, access, {
-        events,
-        perEventHashes,
-        frozenHashMode,
-        totalEventCount,
-        frozenEventCount,
-        localFrozenEventCount,
-        frozenChainHash,
-        tailEvents,
-        tailHash,
-        importedReplay,
-        newEpoch: null,
-      });
+      await operation.wait(async () =>
+        this.rewriteSession(
+          auth,
+          orgId,
+          session,
+          scopeKey,
+          access,
+          {
+            events,
+            perEventHashes,
+            frozenHashMode,
+            totalEventCount,
+            frozenEventCount,
+            localFrozenEventCount,
+            frozenChainHash,
+            tailEvents,
+            tailHash,
+            importedReplay,
+            newEpoch: null,
+          },
+          operation
+        )
+      );
       markPreparedClean();
-      publishPreparedTurnIndex();
+      await operation.wait(async () => publishPreparedTurnIndex());
       return;
     }
   }
-
   /** No cursor yet: publish the complete replay as epoch 1. */
   protected async pushInitialReplay(pass: PreparedPushPass): Promise<void> {
-    const { auth, orgId, session, scopeKey, access } = pass;
+    const { operation, auth, orgId, session, scopeKey, access } = pass;
+    operation.assertCurrent();
     const { markPreparedClean, publishPreparedTurnIndex } = pass;
     const { events } = pass.prepared;
     const {
@@ -345,20 +401,30 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
       frozenChainHash,
       importedReplay,
     } = pass.preparedPlan;
-    await this.rewriteSession(auth, orgId, session, scopeKey, access, {
-      events,
-      perEventHashes,
-      frozenHashMode,
-      totalEventCount,
-      frozenEventCount,
-      localFrozenEventCount,
-      frozenChainHash,
-      tailEvents,
-      tailHash,
-      importedReplay,
-      newEpoch: 1,
-    });
+    await operation.wait(async () =>
+      this.rewriteSession(
+        auth,
+        orgId,
+        session,
+        scopeKey,
+        access,
+        {
+          events,
+          perEventHashes,
+          frozenHashMode,
+          totalEventCount,
+          frozenEventCount,
+          localFrozenEventCount,
+          frozenChainHash,
+          tailEvents,
+          tailHash,
+          importedReplay,
+          newEpoch: 1,
+        },
+        operation
+      )
+    );
     markPreparedClean();
-    publishPreparedTurnIndex();
+    await operation.wait(async () => publishPreparedTurnIndex());
   }
 }

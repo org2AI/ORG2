@@ -17,6 +17,7 @@ import { splitFrozenIntoSegments } from "../TeamCollaboration/engine/collabSyncE
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
 import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
 import { broadcastOrgControlChangedToPeers } from "./org2CloudControlBus";
+import type { CloudSessionOperation } from "./org2CloudSessionOperation";
 import { buildCloudSessionMetadata } from "./org2CloudSessionSync.metadata";
 import { IMPORTED_INCREMENTAL_SEGMENT_LIMIT } from "./org2CloudSessionSync.pushEvents";
 import { Org2CloudSessionSyncTurnIndex } from "./org2CloudSessionSync.turnIndex";
@@ -41,8 +42,10 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
     orgId: string,
     session: Session,
     scopeKey: string | null,
-    access: CloudPushAccess
+    access: CloudPushAccess,
+    operation: CloudSessionOperation
   ): Promise<void> {
+    operation.assertCurrent();
     const displayName =
       auth.profile?.displayName ?? auth.profile?.primaryEmail ?? auth.userId;
     const metadata = buildCloudSessionMetadata(
@@ -55,16 +58,21 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
       auth.profile?.avatarUrl
     );
     const key = `${orgId}:${session.session_id}`;
-    const hash = await sha256Hex(stableStringify(metadata));
+    const hash = await operation.wait(() =>
+      sha256Hex(stableStringify(metadata))
+    );
     if (this.lastPushedMetadataHashes.get(key) === hash) return;
-    await this.client.upsertSessionMetadata(
-      auth.accessToken,
-      orgId,
-      session.session_id,
-      metadata
+    await operation.wait(() =>
+      this.client.upsertSessionMetadata(
+        auth.accessToken,
+        orgId,
+        session.session_id,
+        metadata,
+        operation.request
+      )
     );
     this.lastPushedMetadataHashes.set(key, hash);
-    this.setPushedMetadataMarker(orgId, session.session_id);
+    this.setPushedMetadataMarker(operation, orgId, session.session_id);
     broadcastOrgControlChangedToPeers(orgId, "sessions");
   }
 
@@ -79,8 +87,10 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
     sessionId: string,
     cursor: CollabSessionPushCursor,
     newFrozenEvents: SessionEvent[],
-    plan: PreparedPushPlan
+    plan: PreparedPushPlan,
+    operation: CloudSessionOperation
   ): Promise<void> {
+    operation.assertCurrent();
     const frozenSegments = splitFrozenIntoSegments(
       newFrozenEvents,
       cursor.frozenSeq + 1
@@ -88,17 +98,23 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
     if (frozenSegments.length > IMPORTED_INCREMENTAL_SEGMENT_LIMIT) {
       throw new Error("Incremental imported replay exceeded its segment bound");
     }
-    await this.client.appendSessionEvents(auth.accessToken, {
-      orgId,
-      sessionId,
-      expectedEpoch: cursor.epoch,
-      expectedFrozenSeq: cursor.frozenSeq,
-      expectedTailHash: cursor.tailHash,
-      newFrozenSegments: frozenSegments,
-      tail: plan.tailEvents.length > 0 ? plan.tailEvents : null,
-      totalCount: plan.totalEventCount,
-    });
-    this.setCursor({
+    await operation.wait(() =>
+      this.client.appendSessionEvents(
+        auth.accessToken,
+        {
+          orgId,
+          sessionId,
+          expectedEpoch: cursor.epoch,
+          expectedFrozenSeq: cursor.frozenSeq,
+          expectedTailHash: cursor.tailHash,
+          newFrozenSegments: frozenSegments,
+          tail: plan.tailEvents.length > 0 ? plan.tailEvents : null,
+          totalCount: plan.totalEventCount,
+        },
+        operation.request
+      )
+    );
+    this.setCursor(operation, {
       orgId,
       sessionId,
       epoch: cursor.epoch,
@@ -123,8 +139,10 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
     sessionId: string,
     initialCursor: CollabSessionPushCursor,
     frozenSegments: ReturnType<typeof splitFrozenIntoSegments>,
-    plan: PreparedPushPlan & { events: SessionEvent[] }
+    plan: PreparedPushPlan & { events: SessionEvent[] },
+    operation: CloudSessionOperation
   ): Promise<CollabSessionPushCursor> {
+    operation.assertCurrent();
     let cursor = initialCursor;
     // An empty frozen delta still needs one append to replace the mutable tail
     // (or repair total_count), so model it as a single empty final batch.
@@ -148,10 +166,12 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
       const nextChainHash =
         nextFrozenEventCount === plan.frozenEventCount
           ? plan.frozenChainHash
-          : await this.computeFrozenHashAtCount(
-              plan.perEventHashes,
-              nextFrozenEventCount,
-              plan.frozenHashMode
+          : await operation.wait(() =>
+              this.computeFrozenHashAtCount(
+                plan.perEventHashes,
+                nextFrozenEventCount,
+                plan.frozenHashMode
+              )
             );
       const nextTail = finalBatch ? plan.tailEvents : [];
       const nextTailHash = finalBatch ? plan.tailHash : null;
@@ -159,16 +179,22 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
         ? plan.totalEventCount
         : nextFrozenEventCount;
 
-      await this.client.appendSessionEvents(auth.accessToken, {
-        orgId,
-        sessionId,
-        expectedEpoch: cursor.epoch,
-        expectedFrozenSeq: cursor.frozenSeq,
-        expectedTailHash: cursor.tailHash,
-        newFrozenSegments: batch,
-        tail: nextTail.length > 0 ? nextTail : null,
-        totalCount: nextPushedCount,
-      });
+      await operation.wait(() =>
+        this.client.appendSessionEvents(
+          auth.accessToken,
+          {
+            orgId,
+            sessionId,
+            expectedEpoch: cursor.epoch,
+            expectedFrozenSeq: cursor.frozenSeq,
+            expectedTailHash: cursor.tailHash,
+            newFrozenSegments: batch,
+            tail: nextTail.length > 0 ? nextTail : null,
+            totalCount: nextPushedCount,
+          },
+          operation.request
+        )
+      );
       cursor = {
         orgId,
         sessionId,
@@ -182,7 +208,7 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
           ? { importedReplay: plan.importedReplay }
           : {}),
       };
-      this.setCursor(cursor);
+      this.setCursor(operation, cursor);
     }
     return cursor;
   }
@@ -197,20 +223,35 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
     plan: PreparedPushPlan & {
       events: SessionEvent[];
       newEpoch: number | null;
-    }
+    },
+    operation: CloudSessionOperation
   ): Promise<void> {
+    operation.assertCurrent();
     const sessionId = session.session_id;
     let epoch = plan.newEpoch;
     let reanchored = epoch === null;
     if (epoch === null) {
-      epoch = (await this.readServerEpoch(auth, orgId, sessionId)) + 1;
+      epoch =
+        (await operation.wait(() =>
+          this.readServerEpoch(auth, orgId, sessionId, operation)
+        )) + 1;
     }
-    await this.upsertMetadataIfChanged(auth, orgId, session, scopeKey, access);
+    await operation.wait(() =>
+      this.upsertMetadataIfChanged(
+        auth,
+        orgId,
+        session,
+        scopeKey,
+        access,
+        operation
+      )
+    );
     const frozenSegments = splitFrozenIntoSegments(
       plan.events.slice(0, plan.frozenEventCount),
       1
     );
     for (;;) {
+      const uploadEpoch = epoch;
       try {
         const progressive =
           frozenSegments.length > SESSION_SEGMENT_UPLOAD_BATCH_SIZE;
@@ -224,22 +265,32 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
         const initialChainHash =
           initialFrozenEventCount === plan.frozenEventCount
             ? plan.frozenChainHash
-            : await this.computeFrozenHashAtCount(
-                plan.perEventHashes,
-                initialFrozenEventCount,
-                plan.frozenHashMode
+            : await operation.wait(() =>
+                this.computeFrozenHashAtCount(
+                  plan.perEventHashes,
+                  initialFrozenEventCount,
+                  plan.frozenHashMode
+                )
               );
-        await this.client.rewriteSessionEvents(auth.accessToken, {
-          orgId,
-          sessionId,
-          newEpoch: epoch,
-          frozenSegments: initialSegments,
-          tail:
-            !progressive && plan.tailEvents.length > 0 ? plan.tailEvents : null,
-          totalCount: progressive
-            ? initialFrozenEventCount
-            : plan.totalEventCount,
-        });
+        await operation.wait(() =>
+          this.client.rewriteSessionEvents(
+            auth.accessToken,
+            {
+              orgId,
+              sessionId,
+              newEpoch: uploadEpoch,
+              frozenSegments: initialSegments,
+              tail:
+                !progressive && plan.tailEvents.length > 0
+                  ? plan.tailEvents
+                  : null,
+              totalCount: progressive
+                ? initialFrozenEventCount
+                : plan.totalEventCount,
+            },
+            operation.request
+          )
+        );
         const cursor: CollabSessionPushCursor = {
           orgId,
           sessionId,
@@ -255,25 +306,32 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
             ? { importedReplay: plan.importedReplay }
             : {}),
         };
-        this.setCursor(cursor);
+        this.setCursor(operation, cursor);
         if (progressive) {
-          await this.appendSessionBatches(
-            auth,
-            orgId,
-            sessionId,
-            cursor,
-            frozenSegments.slice(initialSegments.length),
-            plan
+          await operation.wait(() =>
+            this.appendSessionBatches(
+              auth,
+              orgId,
+              sessionId,
+              cursor,
+              frozenSegments.slice(initialSegments.length),
+              plan,
+              operation
+            )
           );
         }
         broadcastOrgControlChangedToPeers(orgId, "sessions");
         return;
       } catch (error) {
+        operation.assertCurrent();
         if (!isOrg2SyncErrorCode(error, "ORG2_CONFLICT") || reanchored) {
           throw error;
         }
         reanchored = true;
-        epoch = (await this.readServerEpoch(auth, orgId, sessionId)) + 1;
+        epoch =
+          (await operation.wait(() =>
+            this.readServerEpoch(auth, orgId, sessionId, operation)
+          )) + 1;
       }
     }
   }
@@ -281,13 +339,15 @@ export class Org2CloudSessionSyncUpload extends Org2CloudSessionSyncTurnIndex {
   private async readServerEpoch(
     auth: Org2CloudAuthState,
     orgId: string,
-    sessionId: string
+    sessionId: string,
+    operation: CloudSessionOperation
   ): Promise<number> {
-    const snapshot = await this.client.getSessionEvents(
-      auth.accessToken,
-      orgId,
-      sessionId,
-      { afterSeq: HEAD_READ_AFTER_SEQ }
+    operation.assertCurrent();
+    const snapshot = await operation.wait(() =>
+      this.client.getSessionEvents(auth.accessToken, orgId, sessionId, {
+        ...operation,
+        afterSeq: HEAD_READ_AFTER_SEQ,
+      })
     );
     return snapshot.epoch ?? 0;
   }

@@ -18,13 +18,21 @@
 
 export async function fetchWithTransportRetry(
   input: string | URL,
-  init?: RequestInit
+  init?: RequestInit,
+  beforeRequest?: () => void
 ): Promise<Response> {
+  const request = () => {
+    beforeRequest?.();
+    if (init?.signal?.aborted) {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    }
+    return fetch(input, init);
+  };
   try {
-    return await fetch(input, init);
+    return await request();
   } catch (error) {
     if (!isFetchTransportError(error) || init?.signal?.aborted) throw error;
-    return fetch(input, init);
+    return request();
   }
 }
 

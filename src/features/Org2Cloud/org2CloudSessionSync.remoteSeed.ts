@@ -21,6 +21,7 @@ import {
 } from "../TeamCollaboration/collabSyncUtils";
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
 import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
+import type { CloudSessionOperation } from "./org2CloudSessionOperation";
 import {
   buildCloudSessionMetadata,
   metadataPayloadForHash,
@@ -50,7 +51,6 @@ export interface RemoteSeedHost {
     localExecutionRevision?: string | null
   ) => void;
 }
-
 /** Seed volatile cold-start caches from a server-authoritative listing. */
 export async function seedFromRemoteSummary(
   host: RemoteSeedHost,
@@ -59,8 +59,10 @@ export async function seedFromRemoteSummary(
   session: Session,
   scopeKey: string | null,
   access: CloudPushAccess,
-  remote: RemoteTeammateSessionMetadata
+  remote: RemoteTeammateSessionMetadata,
+  operation: CloudSessionOperation
 ): Promise<void> {
+  operation.assertCurrent();
   const key = `${orgId}:${session.session_id}`;
   if (host.remoteSeedAttemptedKeys.has(key)) return;
   host.remoteSeedAttemptedKeys.add(key);
@@ -82,21 +84,24 @@ export async function seedFromRemoteSummary(
     access,
     auth.profile?.avatarUrl
   );
-  const [localHash, remoteHash] = await Promise.all([
-    sha256Hex(stableStringify(metadataPayloadForHash(localMetadata))),
-    sha256Hex(stableStringify(metadataPayloadForHash(remote))),
-  ]);
+  const [localHash, remoteHash] = await operation.wait(async () =>
+    Promise.all([
+      sha256Hex(stableStringify(metadataPayloadForHash(localMetadata))),
+      sha256Hex(stableStringify(metadataPayloadForHash(remote))),
+    ])
+  );
   if (localHash === remoteHash) {
     // upsertMetadataIfChanged gates on the FULL payload hash; seeding the
     // stripped comparison hash would never match it and every restart would
     // re-upsert an identical payload for every pushed session.
     host.lastPushedMetadataHashes.set(
       key,
-      await sha256Hex(stableStringify(localMetadata))
+      await operation.wait(async () =>
+        sha256Hex(stableStringify(localMetadata))
+      )
     );
     host.setPushedMetadataMarker(orgId, session.session_id);
   }
-
   // Metadata and transcript are independent planes. Even if a title or
   // access field changed locally, a cursor stamped with this exact local
   // content version plus the server summary proves the event plane clean.
@@ -111,8 +116,8 @@ export async function seedFromRemoteSummary(
   ) {
     return;
   }
-  const localExecutionRevision = await host.loadLocalExecutionRevision(
-    session.session_id
+  const localExecutionRevision = await operation.wait(async () =>
+    host.loadLocalExecutionRevision(session.session_id)
   );
   // The durable cursor predates continuation-child revision stamps. A root
   // with children therefore needs one authoritative combined replay after
@@ -129,8 +134,8 @@ export async function seedFromRemoteSummary(
     )
       return;
   } else if (!isImportedHistorySession(session.session_id)) {
-    const durable = await eventStoreProxy.getPersistedEventRevision(
-      session.session_id
+    const durable = await operation.wait(async () =>
+      eventStoreProxy.getPersistedEventRevision(session.session_id)
     );
     if (durable && durable.eventCount > 0) {
       if (durable.eventCount !== cursor.pushedCount) return;

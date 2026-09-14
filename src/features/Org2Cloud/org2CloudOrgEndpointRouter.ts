@@ -21,12 +21,26 @@ const orgEndpoints = new Map<string, CloudEndpoint>();
  * falls back to the official anon key (harmless: the shard rejects it,
  * which fails closed rather than silently mixing projects). */
 const anonKeyByOrigin = new Map<string, string>();
+const directoryListeners = new Set<() => void>();
+
+/** Owners of pending requests must cancel even if the old transport hangs. */
+export function subscribeOrgEndpointDirectory(
+  listener: () => void
+): () => void {
+  directoryListeners.add(listener);
+  return () => directoryListeners.delete(listener);
+}
+
+function notifyDirectoryChanged(): void {
+  for (const listener of directoryListeners) listener();
+}
 
 export function setAnonKeyDirectory(
   entries: ReadonlyArray<readonly [origin: string, anonKey: string]>
 ): void {
   anonKeyByOrigin.clear();
   for (const [origin, anonKey] of entries) anonKeyByOrigin.set(origin, anonKey);
+  notifyDirectoryChanged();
 }
 
 export function setOrgEndpointDirectory(
@@ -36,6 +50,7 @@ export function setOrgEndpointDirectory(
   for (const [orgId, endpoint] of entries) {
     orgEndpoints.set(orgId, endpoint);
   }
+  notifyDirectoryChanged();
 }
 
 export function endpointForOrg(orgId: string): CloudEndpoint {
@@ -59,4 +74,5 @@ export function endpointForOrigin(supabaseUrl: string): CloudEndpoint {
 export function resetOrgEndpointDirectory(): void {
   orgEndpoints.clear();
   anonKeyByOrigin.clear();
+  notifyDirectoryChanged();
 }

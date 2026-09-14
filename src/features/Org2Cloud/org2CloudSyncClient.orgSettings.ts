@@ -12,6 +12,7 @@ import { endpointForOrg } from "./org2CloudOrgEndpointRouter";
 import { callSyncRpc } from "./org2CloudSyncClient.rpc";
 import type { CloudOrgScopeState } from "./org2CloudSyncClient.schemas";
 import { CloudOrgScopeStateSchema } from "./org2CloudSyncClient.schemas";
+import type { CloudSyncRequestOptions } from "./org2CloudSyncRequest.types";
 
 /**
  * Member: repo-scope governance state for one org — the authoritative scope
@@ -90,7 +91,8 @@ export async function upsertSessionMetadata(
   accessToken: string,
   orgId: string,
   sessionId: string,
-  metadata: RemoteTeammateSessionMetadata
+  metadata: RemoteTeammateSessionMetadata,
+  options?: CloudSyncRequestOptions
 ): Promise<void> {
   await callSyncRpc(
     "cloud_upsert_session_metadata",
@@ -100,7 +102,10 @@ export async function upsertSessionMetadata(
       p_session_id: sessionId,
       metadata,
     },
-    endpointForOrg(orgId)
+    options?.endpoint ?? endpointForOrg(orgId),
+    options?.signal,
+    undefined,
+    options?.assertCurrent
   );
 }
 
@@ -114,13 +119,17 @@ export async function upsertSessionMetadata(
 export async function deleteSession(
   accessToken: string,
   orgId: string,
-  sessionId: string
+  sessionId: string,
+  options?: CloudSyncRequestOptions
 ): Promise<void> {
   await callSyncRpc(
     "cloud_delete_session",
     accessToken,
     { p_org_id: orgId, p_session_id: sessionId },
-    endpointForOrg(orgId)
+    options?.endpoint ?? endpointForOrg(orgId),
+    options?.signal,
+    undefined,
+    options?.assertCurrent
   );
 }
 

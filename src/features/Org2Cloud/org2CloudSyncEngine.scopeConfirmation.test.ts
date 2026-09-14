@@ -67,7 +67,11 @@ describe("scope-driven retract requires server-confirmed scopes", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      SESSION.session_id
+      SESSION.session_id,
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
     expect(store.get(sessionOrgTagsAtom)[SESSION.session_id] ?? []).toEqual([]);
   });

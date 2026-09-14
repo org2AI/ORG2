@@ -20,6 +20,7 @@ export async function syncSessionSharedFiles(input: {
   sessionId: string;
   events: readonly SessionEvent[];
   repoPath?: string;
+  signal?: AbortSignal;
   assertCurrentIdentity: () => void;
 }): Promise<boolean> {
   const candidates = collectSessionSharedFiles(input.events, input.repoPath);
@@ -44,7 +45,9 @@ export async function syncSessionSharedFiles(input: {
       input.endpoint,
       input.orgId,
       input.sessionId,
-      batch
+      batch,
+      input.signal,
+      input.assertCurrentIdentity
     );
     input.assertCurrentIdentity();
     for (const candidate of batch) {
@@ -69,7 +72,9 @@ export async function syncSessionSharedFiles(input: {
         input.sessionId,
         candidate.path.split("/").pop() || "file",
         bytes,
-        candidate
+        candidate,
+        input.signal,
+        input.assertCurrentIdentity
       );
       input.assertCurrentIdentity();
     }

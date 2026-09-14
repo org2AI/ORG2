@@ -12,6 +12,7 @@ import {
   callSyncRpc,
   isRpcSignatureUnsupported,
 } from "./org2CloudSyncClient.rpc";
+import type { CloudSyncRequestOptions } from "./org2CloudSyncRequest.types";
 
 /**
  * One owner-published round summary. The wire is an opaque jsonb array on
@@ -68,9 +69,11 @@ export async function upsertSessionTurnIndex(
   orgId: string,
   sessionId: string,
   epoch: number,
-  turns: CloudSessionTurnSummary[]
+  turns: CloudSessionTurnSummary[],
+  options?: CloudSyncRequestOptions
 ): Promise<boolean> {
-  const endpoint = endpointForOrg(orgId);
+  options?.assertCurrent();
+  const endpoint = options?.endpoint ?? endpointForOrg(orgId);
   if (turnIndexUnsupportedEndpoints.has(endpoint.supabaseUrl)) return false;
   if (!(await getCloudCapabilities(accessToken, endpoint)).sessionTurnIndex) {
     return false;
@@ -85,10 +88,14 @@ export async function upsertSessionTurnIndex(
         p_epoch: epoch,
         p_turns: turns,
       },
-      endpoint
+      endpoint,
+      options?.signal,
+      undefined,
+      options?.assertCurrent
     );
     return true;
   } catch (error) {
+    options?.assertCurrent();
     if (isRpcSignatureUnsupported(error)) {
       turnIndexUnsupportedEndpoints.add(endpoint.supabaseUrl);
       return false;

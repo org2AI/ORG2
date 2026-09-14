@@ -60,7 +60,9 @@ describe("shared session artifact publication", () => {
       "session",
       "report.md",
       new Uint8Array([1, 2, 3]),
-      { path: "/author/report.md", revision: "e1:now" }
+      { path: "/author/report.md", revision: "e1:now" },
+      undefined,
+      input.assertCurrentIdentity
     );
     expect(event.filePath).toBe("/author/report.md");
   });

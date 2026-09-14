@@ -14,6 +14,7 @@ import {
   stableStringify,
 } from "../TeamCollaboration/collabSyncUtils";
 import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
+import type { CloudSessionOperation } from "./org2CloudSessionOperation";
 import { Org2CloudSessionSyncPushEvents } from "./org2CloudSessionSync.pushEvents";
 import type { Org2CloudSyncClientDeps } from "./org2CloudSessionSync.types";
 import type { CloudSessionTurnSummary } from "./org2CloudSyncClient";
@@ -58,15 +59,17 @@ export class Org2CloudSessionSyncTurnIndex extends Org2CloudSessionSyncPushEvent
    * the local per-round index, normalizes prompt previews, and uploads a
    * wholesale replacement for the cursor's epoch. Progressive enhancement
    * only: capability/endpoint gating lives in the client wrapper, the
-   * in-memory hash gate dedups repeat passes, and every failure is logged
-   * and swallowed — a push must never fail or retry-storm on this.
+   * in-memory hash gate dedups repeat passes. Transport failures are logged
+   * and swallowed; lifecycle cancellation exits the owning operation.
    */
   protected async publishTurnIndexBestEffort(
     auth: Org2CloudAuthState,
     orgId: string,
     session: Session,
-    stampAtRead: number
+    stampAtRead: number,
+    operation: CloudSessionOperation
   ): Promise<void> {
+    operation.assertCurrent();
     const sessionId = session.session_id;
     try {
       const upsertTurnIndex = this.client.upsertSessionTurnIndex;
@@ -83,7 +86,7 @@ export class Org2CloudSessionSyncTurnIndex extends Org2CloudSessionSyncPushEvent
       // describes; without one there is nothing published to annotate.
       const cursor = this.getCursor(orgId, sessionId);
       if (!cursor) return;
-      const summaries = await loadTurnIndex(sessionId);
+      const summaries = await operation.wait(() => loadTurnIndex(sessionId));
       if (summaries.length === 0 || summaries.length > TURN_INDEX_MAX_ROUNDS) {
         return;
       }
@@ -98,19 +101,23 @@ export class Org2CloudSessionSyncTurnIndex extends Org2CloudSessionSyncPushEvent
         ...(turn.nextTurnId ? { nextTurnId: turn.nextTurnId } : {}),
       }));
       const key = `${orgId}:${sessionId}`;
-      const hash = await sha256Hex(
-        stableStringify({ epoch: cursor.epoch, turns })
+      const hash = await operation.wait(() =>
+        sha256Hex(stableStringify({ epoch: cursor.epoch, turns }))
       );
       if (this.lastPushedTurnIndexHashes.get(key) === hash) return;
-      const published = await upsertTurnIndex(
-        auth.accessToken,
-        orgId,
-        sessionId,
-        cursor.epoch,
-        turns
+      const published = await operation.wait(() =>
+        upsertTurnIndex(
+          auth.accessToken,
+          orgId,
+          sessionId,
+          cursor.epoch,
+          turns,
+          operation.request
+        )
       );
       if (published) this.lastPushedTurnIndexHashes.set(key, hash);
     } catch (error) {
+      operation.assertCurrent();
       log.warn(`turn-index publish skipped for ${sessionId}`, error);
     }
   }

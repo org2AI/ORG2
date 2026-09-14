@@ -5,6 +5,7 @@ import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreP
 import { COLLAB_SESSION_ACCESS_MODE } from "@src/store/collaboration/types";
 
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
+import { org2CloudAuthAtom } from "./org2CloudAuthAtom";
 import { Org2CloudSessionSync } from "./org2CloudSessionSync";
 import { buildCloudSessionMetadata } from "./org2CloudSessionSync.metadata";
 import { Org2CloudSessionSyncState } from "./org2CloudSessionSync.state";
@@ -71,7 +72,9 @@ function matchingRemoteSummary() {
 describe("Org2CloudSessionSync seedFromRemoteSummary", () => {
   it("suppresses the first metadata upsert after seeding from a matching summary", async () => {
     const client = makeSeedClient();
-    const sync = new Org2CloudSessionSync(() => createStore(), client);
+    const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
+    const sync = new Org2CloudSessionSync(() => store, client);
 
     await sync.seedFromRemoteSummary(
       AUTH,
@@ -88,7 +91,9 @@ describe("Org2CloudSessionSync seedFromRemoteSummary", () => {
 
   it("still upserts when the remote summary does not match the local payload", async () => {
     const client = makeSeedClient();
-    const sync = new Org2CloudSessionSync(() => createStore(), client);
+    const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
+    const sync = new Org2CloudSessionSync(() => store, client);
 
     await sync.seedFromRemoteSummary(AUTH, ORG_ID, SESSION, SCOPE_KEY, ACCESS, {
       ...matchingRemoteSummary(),
@@ -102,6 +107,7 @@ describe("Org2CloudSessionSync seedFromRemoteSummary", () => {
   it("skips native transcript materialization when cursor, content revision, and remote summary match", async () => {
     const client = makeSeedClient();
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const sync = new Org2CloudSessionSync(() => store, client);
     const access: CloudPushAccess = {
       accessMode: COLLAB_SESSION_ACCESS_MODE.FULL_REPLAY,
@@ -157,6 +163,7 @@ describe("Org2CloudSessionSync seedFromRemoteSummary", () => {
   it("upgrades a legacy native cursor with a cheap persisted-count proof", async () => {
     const client = makeSeedClient();
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const sync = new Org2CloudSessionSync(() => store, client);
     const access: CloudPushAccess = {
       accessMode: COLLAB_SESSION_ACCESS_MODE.FULL_REPLAY,
@@ -213,6 +220,7 @@ describe("Org2CloudSessionSync seedFromRemoteSummary", () => {
   it("pushes renamed metadata without re-reading an unchanged native replay", async () => {
     const client = makeSeedClient();
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const sync = new Org2CloudSessionSync(() => store, client);
     const access: CloudPushAccess = {
       accessMode: COLLAB_SESSION_ACCESS_MODE.FULL_REPLAY,

@@ -8,6 +8,7 @@ import { COLLAB_SESSION_ACCESS_MODE } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session";
 
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
+import { org2CloudAuthAtom } from "./org2CloudAuthAtom";
 import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
 import { Org2CloudSessionSync } from "./org2CloudSessionSync";
 import type { Org2CloudSyncClientDeps } from "./org2CloudSessionSync.types";
@@ -135,6 +136,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
 
   it("publishes a native root with user/tool history despite an assistant-only cache, and skips unchanged reads", async () => {
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
     const complete = [
@@ -172,6 +174,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
 
   it("backfills files once for an otherwise clean pre-upload cursor", async () => {
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
     const events = [event("generated", "[report](/sender/report.md)")];
@@ -236,6 +239,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
 
   it("publishes the verified root-plus-child snapshot through the full replay owner", async () => {
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
     const combined = [event("root", "root"), event("child", "child")];
@@ -263,6 +267,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
 
   it("uses the imported source identity when publishing its continuation children", async () => {
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
     const imported = {
@@ -308,6 +313,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
 
   it("publishes an SDE Agent root with its native continuation children", async () => {
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
     const agent = {
@@ -337,6 +343,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
 
   it("keeps the existing EventStore reader when a local root has no children", async () => {
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
     const agent = {
@@ -360,6 +367,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
 
   it("keeps the existing reader without probing execution children for a non-conversation session", async () => {
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
     const persisted = [event("plain", "plain")];
@@ -378,6 +386,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
 
   it("invalidates a clean root when only its child frontier changes", async () => {
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
     let revision = "revision-1";
@@ -407,6 +416,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
     "revalidates a persisted cursor across two cold engines without rewriting (native root: %s)",
     async (nativeRoot) => {
       const store = createStore();
+      store.set(org2CloudAuthAtom, AUTH);
       const cloud = client();
       const combined = [event("root", "root"), event("child", "child")];
       mocks.childRevision.mockResolvedValue("stable-1");
@@ -451,6 +461,7 @@ describe("Org2CloudSessionSync local continuation replay", () => {
     let now = Date.now();
     vi.spyOn(Date, "now").mockImplementation(() => now);
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
     const combined = [event("root", "root"), event("child", "child")];

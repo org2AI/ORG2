@@ -13,6 +13,7 @@ import {
 } from "./org2CloudSyncClient.rpc";
 import type { CloudOrgSessions } from "./org2CloudSyncClient.schemas";
 import { CloudOrgSessionsSchema } from "./org2CloudSyncClient.schemas";
+import type { CloudSyncRequestOptions } from "./org2CloudSyncRequest.types";
 
 const log = createLogger("Org2CloudSyncClient");
 
@@ -74,9 +75,11 @@ export async function listOrgSessions(
   accessToken: string,
   orgId: string,
   since?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: CloudSyncRequestOptions
 ): Promise<CloudOrgSessions> {
-  const endpoint = endpointForOrg(orgId);
+  options?.assertCurrent();
+  const endpoint = options?.endpoint ?? endpointForOrg(orgId);
   const legacyCall = async () => {
     const payload = await callSyncRpc(
       "cloud_list_org_sessions",
@@ -87,7 +90,8 @@ export async function listOrgSessions(
       },
       endpoint,
       signal,
-      15_000
+      15_000,
+      options?.assertCurrent
     );
     const raw = CloudOrgSessionsSchema.parse(payload);
     return {
@@ -126,7 +130,8 @@ export async function listOrgSessions(
           },
           endpoint,
           signal,
-          15_000
+          15_000,
+          options?.assertCurrent
         );
       } catch (error) {
         if (page === 0 && isRpcSignatureUnsupported(error)) {

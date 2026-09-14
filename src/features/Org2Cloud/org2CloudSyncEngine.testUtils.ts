@@ -13,6 +13,7 @@ import type {
   SessionEvent,
 } from "@src/engines/SessionCore/core/types";
 import { processChunksRust } from "@src/engines/SessionCore/ingestion/rustBridge";
+import { loadTurnIndex } from "@src/engines/SessionCore/storage/cacheAdapter";
 import { buildInitialChatPanelTabsState } from "@src/store/chatPanel/chatPanelTabFactories";
 import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
@@ -44,6 +45,10 @@ import {
 import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
 import { org2CloudAuthAtom } from "./org2CloudAuthAtom";
 import {
+  resetOrgEndpointDirectory,
+  setOrgEndpointDirectory,
+} from "./org2CloudOrgEndpointRouter";
+import {
   org2CloudOrgsAtom,
   sidebarActiveCloudOrgIdAtom,
 } from "./org2CloudOrgsAtom";
@@ -51,6 +56,7 @@ import { ensureProjectOrgForCloudOrg } from "./org2CloudProjectOrgAlias";
 import type { CloudOrgCollabState } from "./org2CloudProjectsClient";
 import { Org2CloudProjectsError } from "./org2CloudProjectsClient";
 import {
+  Org2CloudSessionSync,
   SESSION_PUSH_RETRY_BASE_MS,
   SESSION_SEGMENT_UPLOAD_BATCH_SIZE,
 } from "./org2CloudSessionSync";
@@ -434,6 +440,10 @@ export const engineTestDeps = {
   Org2CloudProjectsError,
   Org2CloudSyncEngine,
   Org2CloudSyncError,
+  Org2CloudSessionSync,
+  loadTurnIndex,
+  resetOrgEndpointDirectory,
+  setOrgEndpointDirectory,
   PERSONAL_EXCLUDED_TOKEN,
   PROJECT_PUSH_RETRY_DELAY_MS,
   SESSION_PUSH_RETRY_BASE_MS,

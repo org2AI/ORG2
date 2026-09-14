@@ -86,9 +86,11 @@ export async function callSyncRpc(
   body: Record<string, unknown>,
   endpoint: CloudEndpoint = getCloudEndpoint(),
   signal?: AbortSignal,
-  timeoutMs?: number
+  timeoutMs?: number,
+  assertCurrent?: () => void
 ): Promise<unknown> {
   const execute = async (requestSignal?: AbortSignal): Promise<unknown> => {
+    assertCurrent?.();
     const response = await fetchWithTransportRetry(
       rpcUrl(functionName, endpoint),
       {
@@ -96,7 +98,8 @@ export async function callSyncRpc(
         headers: rpcHeaders(accessToken, endpoint),
         body: JSON.stringify(body),
         signal: requestSignal,
-      }
+      },
+      assertCurrent
     );
     const text = await response.text();
     let payload: unknown = null;

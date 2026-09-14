@@ -21,6 +21,41 @@ afterEach(() => {
 });
 
 describe("fetchWithTransportRetry", () => {
+  it("checks the operation again before retrying a failed transport", async () => {
+    const controller = new AbortController();
+    let current = true;
+    const assertCurrent = () => {
+      if (!current) {
+        controller.abort();
+        throw new DOMException("Identity changed", "AbortError");
+      }
+    };
+    fetchMock.mockImplementationOnce(async () => {
+      current = false;
+      throw new TypeError("Load failed");
+    });
+    await expect(
+      fetchWithTransportRetry(
+        "https://cloud.test/rpc",
+        {
+          signal: controller.signal,
+        },
+        assertCurrent
+      )
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not invoke fetch when cancellation already happened", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      fetchWithTransportRetry("https://cloud.test/rpc", {
+        signal: controller.signal,
+      })
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
   it("passes a first-attempt success through without a second request", async () => {
     const response = new Response("ok");
     fetchMock.mockResolvedValueOnce(response);

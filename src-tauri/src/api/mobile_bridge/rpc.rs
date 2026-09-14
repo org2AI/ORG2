@@ -121,6 +121,10 @@ async fn dispatch_method(
             require_initialized(ctx)?;
             session::session_round(params).await
         }
+        "session/history" => {
+            require_initialized(ctx)?;
+            session::session_history(params).await
+        }
         "session/unsubscribe" => {
             require_initialized(ctx)?;
             session::session_unsubscribe(ctx.conn_id, params)
@@ -246,6 +250,30 @@ async fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn history_hydration_requires_initialize_and_is_readonly() {
+        let mut ctx = RpcContext {
+            conn_id: 0,
+            initialized: false,
+            tier: MobileTier::ReadOnly,
+            settings: MobileRemoteSettings {
+                enabled: true,
+                lan_token: "test".into(),
+                allow_lan_exposure: false,
+            },
+        };
+        let request = json!({"jsonrpc":"2.0","id":7,"method":"session/history","params":{}});
+        let before = dispatch(&mut ctx, &request).await.unwrap();
+        assert_eq!(
+            before["error"]["code"],
+            RpcErrorCode::InvalidRequest.as_i32()
+        );
+        ctx.initialized = true;
+        let after = dispatch(&mut ctx, &request).await.unwrap();
+        assert_eq!(after["id"], 7);
+        assert_eq!(after["error"]["code"], RpcErrorCode::InvalidParams.as_i32());
+    }
+
     use crate::api::mobile_bridge::auth::MobileRemoteSettings;
 
     fn test_context(enabled: bool) -> RpcContext {

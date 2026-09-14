@@ -11,10 +11,10 @@ import {
   toMobileRpcError,
 } from "../connection/mobileRpcClient";
 import type { MobileConnectionState } from "../connection/types";
+import { loadSubscriptionHistory } from "../lib/loadSubscriptionHistory";
 import {
   type TranscriptRoundResult,
   type TranscriptSnapshotEnvelope,
-  type TranscriptSubscribeResult,
   applyLiveTranscriptSnapshot,
   applyTranscriptRoundResult,
   applyTranscriptSubscribeResult,
@@ -97,29 +97,28 @@ export function useMobileTranscript({
     async (
       client: MobileRpcClient,
       sessionId: string,
-      subscriptionGeneration: number
+      subscriptionGeneration: number,
+      latestOnly = true
     ) => {
       try {
-        const result = await client.call<TranscriptSubscribeResult>(
-          "session/subscribe",
-          { sessionId }
+        return await loadSubscriptionHistory(
+          client,
+          sessionId,
+          () =>
+            clientRef.current === client &&
+            activeSessionRef.current === sessionId &&
+            subscriptionGenerationRef.current === subscriptionGeneration,
+          (result) =>
+            setTranscript((prev) =>
+              applyTranscriptSubscribeResult(
+                prev,
+                result,
+                sessionId,
+                subscriptionGeneration
+              )
+            ),
+          latestOnly
         );
-        if (
-          clientRef.current !== client ||
-          activeSessionRef.current !== sessionId ||
-          subscriptionGenerationRef.current !== subscriptionGeneration
-        ) {
-          return;
-        }
-        setTranscript((prev) =>
-          applyTranscriptSubscribeResult(
-            prev,
-            result,
-            sessionId,
-            subscriptionGeneration
-          )
-        );
-        return true;
       } catch (error) {
         if (
           clientRef.current !== client ||
@@ -160,7 +159,12 @@ export function useMobileTranscript({
     setTranscript((current) =>
       beginTranscriptLoad(current, sessionId, subscriptionGeneration)
     );
-    void requestSessionSnapshot(client, sessionId, subscriptionGeneration)
+    void requestSessionSnapshot(
+      client,
+      sessionId,
+      subscriptionGeneration,
+      false
+    )
       .catch(() => undefined)
       .finally(() => {
         if (refreshInFlightRef.current?.token !== token) return;

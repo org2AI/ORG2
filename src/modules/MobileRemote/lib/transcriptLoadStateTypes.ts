@@ -45,6 +45,8 @@ export interface TranscriptSnapshotEnvelope {
 }
 
 export interface TranscriptSubscribeResult {
+  /** Latest body is ready; the full directory is available through session/history. */
+  historyDeferred?: boolean;
   sessionId?: string;
   rounds?: TranscriptRoundIndexEnvelope;
   snapshot?: TranscriptSnapshotEnvelope;

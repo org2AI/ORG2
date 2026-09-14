@@ -247,6 +247,57 @@ describe("MobileRemoteProviders send lifecycle", () => {
     });
   });
 
+  it("renders a ready latest body while the full directory is still pending", async () => {
+    const directory = deferred<unknown>();
+    const base = mocks.call.getMockImplementation()!;
+    const preview = {
+      sessionId: "slow-history",
+      historyDeferred: true,
+      rounds: { items: [{ id: "recent" }], complete: false },
+      snapshot: {
+        sessionId: "slow-history",
+        roundId: "recent",
+        version: 1,
+        snapshotDelta: false,
+        upserts: [
+          {
+            id: "reply",
+            source: "assistant",
+            displayVariant: "message",
+            displayText: "Ready before directory",
+          },
+        ],
+      },
+    };
+    mocks.call.mockImplementation(
+      (method: string, params?: Record<string, unknown>) => {
+        if (
+          method === "session/subscribe" &&
+          params?.sessionId === "slow-history"
+        )
+          return Promise.resolve(preview);
+        if (method === "session/history") return directory.promise;
+        return base(method, params);
+      }
+    );
+    await act(async () => {
+      await latestContext!.subscribeSession("slow-history");
+    });
+    expect(latestContext!.transcriptPhase).toBe("ready");
+    expect(latestContext!.transcriptItems).toHaveLength(1);
+    expect(latestContext!.transcriptRoundsComplete).toBe(false);
+    await act(async () => {
+      directory.resolve({
+        ...preview,
+        historyDeferred: false,
+        rounds: { items: [{ id: "older" }, { id: "recent" }], complete: true },
+      });
+      await directory.promise;
+    });
+    expect(latestContext!.transcriptRoundsComplete).toBe(true);
+    expect(latestContext!.transcriptItems).toHaveLength(1);
+  });
+
   afterEach(() => {
     act(() => root.unmount());
     container.remove();

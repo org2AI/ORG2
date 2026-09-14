@@ -1726,13 +1726,74 @@ pub async fn session_subscribe(conn_id: u64, params: &Value) -> Result<Value, Rp
         ));
     }
 
-    let history = match load_mobile_initial_history(session_id).await {
+    let latest_only = params.get("latestOnly").and_then(Value::as_bool) == Some(true);
+    let history = match load_subscription_history(session_id, latest_only).await {
         Ok(loaded) => loaded,
         Err(err) => {
             fanout::unsubscribe_session(conn_id, session_id);
             return Err(err);
         }
     };
+    let mut response = subscription_history_response(session_id, history.0, history.1);
+    response["subscribed"] = Value::Bool(true);
+    Ok(response)
+}
+
+/// Read the full directory after a fast subscription response, without changing
+/// subscription state or occupying the mutation lane.
+pub async fn session_history(params: &Value) -> Result<Value, RpcError> {
+    let session_id = params
+        .get("sessionId")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty())
+        .ok_or_else(|| RpcError::invalid_params("sessionId is required"))?;
+    let history = load_mobile_initial_history(session_id).await?;
+    Ok(subscription_history_response(session_id, history, false))
+}
+
+async fn load_subscription_history(
+    session_id: &str,
+    latest_only: bool,
+) -> Result<(MobileHistoryWindow, bool), RpcError> {
+    let history_id = mobile_history_session_id(session_id);
+    if latest_only && history_id.starts_with(orgtrack_core::sources::codex::SESSION_PREFIX) {
+        // This bounded tail reader does not build the full turn catalog. Empty
+        // or exceptionally large latest turns retain the existing full reader.
+        if let Ok(window) =
+            crate::orgtrack::history_commands::codex_app_mobile_tail_window(history_id).await
+        {
+            return mobile_codex_preview(session_id, window)
+                .await
+                .map(|history| (history, true));
+        }
+    }
+    load_mobile_initial_history(session_id)
+        .await
+        .map(|history| (history, false))
+}
+
+async fn mobile_codex_preview(
+    session_id: &str,
+    window: orgtrack_core::sources::codex::app::CodexAppInitialWindow,
+) -> Result<MobileHistoryWindow, RpcError> {
+    let rounds = mobile_rounds_from_projected(&window.turns);
+    let latest_round_id = rounds.last().map(|round| round.id.clone());
+    let chunks = latest_round_chunks(window.chunks, latest_round_id.as_deref());
+    let loaded = events_from_chunks(chunks, session_id.to_string()).await?;
+    Ok(MobileHistoryWindow {
+        rounds,
+        rounds_complete: false,
+        latest_round_id,
+        events: loaded.events,
+        events_truncated: loaded.truncated,
+    })
+}
+
+fn subscription_history_response(
+    session_id: &str,
+    history: MobileHistoryWindow,
+    history_deferred: bool,
+) -> Value {
     let snapshot = build_subscription_snapshot(
         session_id,
         history.latest_round_id.as_deref(),
@@ -1741,15 +1802,15 @@ pub async fn session_subscribe(conn_id: u64, params: &Value) -> Result<Value, Rp
         0,
     );
 
-    Ok(json!({
-        "subscribed": true,
+    json!({
         "sessionId": session_id,
+        "historyDeferred": history_deferred,
         "rounds": {
             "items": history.rounds,
             "complete": history.rounds_complete,
         },
         "snapshot": snapshot,
-    }))
+    })
 }
 
 /// Load one exact round body without mutating the desktop EventStore window.
@@ -1794,6 +1855,78 @@ pub fn session_unsubscribe(conn_id: u64, params: &Value) -> Result<Value, RpcErr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    #[ignore = "requires an explicitly supplied local transcript path; reads only"]
+    async fn mobile_history_read_latency_probe() {
+        use orgtrack_core::sources::codex::app;
+        let path = std::path::PathBuf::from(
+            std::env::var("ORG2_HISTORY_PROBE_PATH").expect("fixture path"),
+        );
+        let start = std::time::Instant::now();
+        let tail =
+            app::load_codex_app_mobile_tail_window_from_path("codexapp-probe", &path).unwrap();
+        let tail = mobile_codex_preview("codexapp-probe", tail).await.unwrap();
+        let tail_elapsed = start.elapsed();
+        let start = std::time::Instant::now();
+        let full =
+            app::load_codex_app_initial_window_from_path("codexapp-probe", &path, 1).unwrap();
+        let rounds = mobile_rounds_from_projected(&full.turns);
+        let full_latest = rounds.last().map(|round| round.id.clone());
+        let chunks = latest_round_chunks(full.chunks, full_latest.as_deref());
+        let _events = events_from_chunks(chunks, "codexapp-probe".into())
+            .await
+            .unwrap();
+        let full_elapsed = start.elapsed();
+        assert_eq!(tail.latest_round_id, full_latest);
+        eprintln!(
+            "history probe: bytes={}, latest_ms={}, full_ms={}, rounds={}",
+            std::fs::metadata(&path).unwrap().len(),
+            tail_elapsed.as_millis(),
+            full_elapsed.as_millis(),
+            rounds.len()
+        );
+    }
+
+    #[tokio::test]
+    async fn mobile_preview_projects_real_latest_turn_and_defers_the_directory() {
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        for (kind, message) in [
+            ("user_message", "older"),
+            ("agent_message", "old answer"),
+            ("user_message", "latest"),
+            ("agent_message", "latest answer"),
+        ] {
+            writeln!(
+                file,
+                "{}",
+                json!({"timestamp":"2026-09-12T00:00:00Z",
+                "payload":{"type":kind,"message":message}})
+            )
+            .unwrap();
+        }
+        let id = "codexapp-preview-fixture";
+        let window =
+            orgtrack_core::sources::codex::app::load_codex_app_mobile_tail_window_from_path(
+                id,
+                file.path(),
+            )
+            .unwrap();
+        let history = mobile_codex_preview(id, window).await.unwrap();
+        let response = subscription_history_response(id, history, true);
+        assert_eq!(response["historyDeferred"], true);
+        assert_eq!(response["rounds"]["complete"], false);
+        assert_eq!(response["rounds"]["items"].as_array().unwrap().len(), 1);
+        assert!(
+            response.get("subscribed").is_none(),
+            "history read does not mutate subscription"
+        );
+        let encoded = serde_json::to_string(&response).unwrap();
+        assert!(encoded.contains("latest answer"));
+        assert!(!encoded.contains("old answer"));
+        assert_eq!(response["snapshot"]["sessionId"], id);
+    }
 
     #[tokio::test]
     async fn managed_codex_native_reply_keeps_submit_identity_after_append() {

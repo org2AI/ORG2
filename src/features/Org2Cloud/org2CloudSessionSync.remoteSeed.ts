@@ -12,6 +12,7 @@
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session/sessionAtom/types";
+import { isCliSession } from "@src/util/session/sessionDispatch";
 import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 
 import {
@@ -120,7 +121,14 @@ export async function seedFromRemoteSummary(
     return;
   }
   let localContentRevision: number | undefined;
-  if (!isImportedHistorySession(session.session_id)) {
+  if (isCliSession(session.session_id)) {
+    // Cached mobile input cannot prove native replay completeness.
+    if (
+      cursor.cliHistoryEpoch === undefined ||
+      cursor.localContentUpdatedAt !== session.updated_at
+    )
+      return;
+  } else if (!isImportedHistorySession(session.session_id)) {
     const durable = await eventStoreProxy.getPersistedEventRevision(
       session.session_id
     );

@@ -4,6 +4,19 @@ import { defineProcedure } from "../invoke";
 import * as schemas from "../schemas";
 
 export const cli = {
+  historyMutation: defineProcedure("cli_agent_history_mutation")
+    .input(schemas.cli.CliSessionIdInputSchema)
+    .output(
+      z
+        .object({
+          sessionId: z.string(),
+          epoch: z.number().int().nonnegative(),
+          reason: z.string(),
+          mutatedAt: z.string(),
+        })
+        .nullable()
+    )
+    .build(),
   message: defineProcedure("cli_agent_message")
     .input(schemas.cli.CliMessageInputSchema)
     .output(schemas.cli.CliRunReceiptSchema)

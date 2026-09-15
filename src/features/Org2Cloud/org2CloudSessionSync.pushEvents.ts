@@ -49,6 +49,10 @@ import type {
   PreparedPushEvents,
   PreparedPushPlan,
 } from "./org2CloudSessionSync.types";
+import {
+  type CliReplayMutation,
+  loadCliSessionTranscript,
+} from "./org2CloudSessionTranscript";
 import type {
   CollabSessionPushCursor,
   ImportedReplayCheckpoint,
@@ -76,6 +80,7 @@ interface ImportedReplayAnchorDraft {
 }
 
 interface LoadedPushEvents {
+  cliHistoryMutation?: CliReplayMutation;
   events: SessionEvent[];
   localContentRevision?: number;
   localExecutionRevision?: string | null;
@@ -250,6 +255,7 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
       }
       return { events, localExecutionRevision };
     }
+    if (isCliSession(sessionId)) return loadCliSessionTranscript(sessionId);
     const revisionBefore =
       await eventStoreProxy.getPersistedEventRevision(sessionId);
     const persisted = await eventStoreProxy.getPersistedEvents(sessionId);
@@ -560,6 +566,7 @@ export class Org2CloudSessionSyncPushEvents extends Org2CloudSessionSyncState {
       baseEventCount,
       localContentRevision: loaded.localContentRevision,
       localExecutionRevision: loaded.localExecutionRevision,
+      cliHistoryMutation: loaded.cliHistoryMutation,
       events,
       plan,
     };

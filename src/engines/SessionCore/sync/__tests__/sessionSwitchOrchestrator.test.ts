@@ -322,4 +322,157 @@ describe("runSessionSwitchOrchestrator reconciliation", () => {
       );
     }
   );
+
+  function openNativeSession(runStatus = "completed") {
+    const abortController = new AbortController();
+    const actions = createActions();
+    const adapter = {
+      category: "cli",
+      loadHistory: vi.fn(),
+      postLoad: vi.fn(async () => {
+        return { runStatus, transcriptSource: "native" };
+      }),
+    } as unknown as SessionAdapter;
+    runSessionSwitchOrchestrator({
+      sessionId: "cli-session",
+      adapter,
+      abortController,
+      refs: { liveSessionIdRef: { current: "cli-session" } },
+      actions,
+      setPendingPlanApprovals: vi.fn(),
+      logger: { error: vi.fn() } as never,
+    });
+    return { abortController, actions };
+  }
+
+  it("replaces a visible mobile-only cache with the provider's full history", async () => {
+    mocks.getEvents.mockResolvedValue([{ id: "user-message-mobile" }]);
+    const history = [{ id: "original-user" }, { id: "original-assistant" }];
+    mocks.loadPersistedHistory.mockResolvedValue(history);
+    openNativeSession();
+
+    await vi.waitFor(() =>
+      expect(mocks.dispatchLoadSession).toHaveBeenCalledOnce()
+    );
+    expect(mocks.loadPersistedHistory).toHaveBeenCalledOnce();
+    expect(mocks.hydrateSessionStoreBeforeDisplay).toHaveBeenCalledWith(
+      "cli-session",
+      history
+    );
+    expect(mocks.dispatchLoadSession).toHaveBeenCalledWith({
+      sessionId: "cli-session",
+      events: history,
+      storeHydrated: true,
+      nativeHistoryRevision: { revision: "v1", generation: 0 },
+      isFromCache: false,
+    });
+  });
+
+  it("accepts a stable authoritative empty native history", async () => {
+    mocks.loadPersistedHistory.mockResolvedValue([]);
+    openNativeSession();
+    await vi.waitFor(() =>
+      expect(mocks.dispatchLoadSession).toHaveBeenCalledOnce()
+    );
+    expect(mocks.hydrateSessionStoreBeforeDisplay).toHaveBeenCalledWith(
+      "cli-session",
+      []
+    );
+    expect(mocks.dispatchLoadSession).toHaveBeenCalledWith({
+      sessionId: "cli-session",
+      events: [],
+      isFromCache: false,
+      storeHydrated: true,
+      nativeHistoryRevision: { revision: "v1", generation: 0 },
+    });
+  });
+
+  it("uses the same canonical replacement on a native cache miss", async () => {
+    mocks.switchSession.mockResolvedValue(false);
+    const history = [{ id: "original-user" }, { id: "original-assistant" }];
+    mocks.loadPersistedHistory.mockResolvedValue(history);
+    openNativeSession();
+    await vi.waitFor(() =>
+      expect(mocks.dispatchLoadSession).toHaveBeenCalledOnce()
+    );
+    expect(mocks.hydrateSessionStoreBeforeDisplay).toHaveBeenCalledWith(
+      "cli-session",
+      history,
+      "replace"
+    );
+    expect(mocks.dispatchLoadSession).toHaveBeenCalledWith({
+      sessionId: "cli-session",
+      events: history,
+      storeHydrated: true,
+      nativeHistoryRevision: { revision: "v1", generation: 0 },
+    });
+  });
+
+  it("surfaces a native read failure without replacing the cached events", async () => {
+    mocks.loadPersistedHistory.mockRejectedValueOnce(
+      new Error("native read failed")
+    );
+    const { actions } = openNativeSession();
+    await vi.waitFor(() =>
+      expect(actions.failSessionLoad).toHaveBeenCalledWith("native read failed")
+    );
+    expect(mocks.hydrateSessionStoreBeforeDisplay).not.toHaveBeenCalled();
+    expect(mocks.dispatchLoadSession).not.toHaveBeenCalled();
+  });
+
+  it("does not replay over a running native turn", async () => {
+    openNativeSession("running");
+    await vi.waitFor(() =>
+      expect(mocks.dispatchLoadSession).toHaveBeenCalledOnce()
+    );
+    expect(mocks.loadPersistedHistory).not.toHaveBeenCalled();
+    expect(mocks.reconcileInFlightHistory).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [true, false],
+    [true, true],
+    [false, false],
+    [false, true],
+  ])(
+    "discards a read superseded by a new turn (cache hit=%s, already ended=%s)",
+    async (cacheHit, ended) => {
+      mocks.switchSession.mockResolvedValue(cacheHit);
+      mocks.loadPersistedHistory.mockImplementationOnce(async () => {
+        mocks.generation.mockReturnValue(1);
+        mocks.turnActive.mockReturnValue(!ended);
+        return [{ id: "stale" }];
+      });
+      const { actions } = openNativeSession();
+      await vi.waitFor(() => {
+        if (cacheHit)
+          expect(mocks.dispatchLoadSession).toHaveBeenCalledWith(
+            expect.objectContaining({ events: [{ id: "visible" }] })
+          );
+        else expect(actions.setLoadStatus).toHaveBeenCalledWith("loaded");
+      });
+      expect(mocks.hydrateSessionStoreBeforeDisplay).not.toHaveBeenCalled();
+      if (!cacheHit) {
+        expect(mocks.dispatchLoadSession).not.toHaveBeenCalled();
+        expect(mocks.applyPostLoadResult).not.toHaveBeenCalled();
+      }
+    }
+  );
+
+  it("drops native history when the session switch is aborted during the read", async () => {
+    let resolveHistory!: (events: never[]) => void;
+    const pending = new Promise<never[]>((resolve) => {
+      resolveHistory = resolve;
+    });
+    mocks.loadPersistedHistory.mockReturnValueOnce(pending);
+    const { abortController } = openNativeSession();
+    await vi.waitFor(() =>
+      expect(mocks.loadPersistedHistory).toHaveBeenCalledOnce()
+    );
+    abortController.abort();
+    resolveHistory([]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.hydrateSessionStoreBeforeDisplay).not.toHaveBeenCalled();
+    expect(mocks.dispatchLoadSession).not.toHaveBeenCalled();
+  });
 });

@@ -311,6 +311,7 @@ async function handleCacheMiss(
   actions.setLoadStatus("loading");
 
   const postLoadLifecycle = capturePostLoadLifecycleSnapshot(sessionId);
+  const turnGeneration = getTurnGeneration(sessionId);
   const missPostResult = adapter.postLoad
     ? await adapter.postLoad(sessionId, abortController.signal)
     : null;
@@ -337,6 +338,17 @@ async function handleCacheMiss(
         )
       : { value: await load(), nativeHistoryRevision: undefined };
   if (abortController.signal.aborted) return;
+  const replaceNativeHistory =
+    adapter.category === "cli" &&
+    missPostResult?.transcriptSource === "native" &&
+    !missInFlight;
+  if (
+    replaceNativeHistory &&
+    (getTurnGeneration(sessionId) !== turnGeneration || isTurnActive(sessionId))
+  ) {
+    actions.setLoadStatus("loaded");
+    return;
+  }
   await hydrateSessionStoreBeforeDisplay(
     sessionId,
     events,

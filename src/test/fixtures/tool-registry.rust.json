@@ -1,0 +1,3887 @@
+{
+  "cli_aliases": {
+    "AGENT": ["assistant", "agent_message", "CHANNELS", "message", "fallback"],
+    "Agent": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "ApplyPatch": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "AskQuestion": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "AskUserQuestion": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "Await": [
+      "await_output",
+      "await_output",
+      "CODE_EDITOR",
+      "shell",
+      "title_only"
+    ],
+    "AwaitToolCall": [
+      "await_output",
+      "await_output",
+      "CODE_EDITOR",
+      "shell",
+      "title_only"
+    ],
+    "BASH": ["run_command_line", "run_shell", "CODE_EDITOR", "shell", "shell"],
+    "Bash": ["run_command_line", "run_shell", "CODE_EDITOR", "shell", "shell"],
+    "CONSULT_AGENT": [
+      "consult_agent",
+      "consult_agent",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "CollectFeedback": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "ConsultAgent": [
+      "consult_agent",
+      "consult_agent",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "Create": ["create_file", "edit_file", "CODE_EDITOR", "file_write", "diff"],
+    "CreatePullRequest": [
+      "tool_call",
+      "tool_call",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "CronCreate": ["cron_create", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "CronDelete": ["cron_delete", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "CronList": ["cron_list", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "Delete": [
+      "delete_file",
+      "delete_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "EDIT": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "Edit": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "EnterPlanMode": [
+      "enter_plan_mode",
+      "suggest_mode_switch",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "EnterWorktree": [
+      "enter_worktree",
+      "tool_call",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "ExecCommand": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "Execute": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "ExitPlanMode": [
+      "exit_plan_mode",
+      "suggest_mode_switch",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "ExitWorktree": [
+      "exit_worktree",
+      "tool_call",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "FetchUrl": ["web_fetch", "web_search", "BROWSER", "browser", "web_search"],
+    "GLOB": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "GREP": ["grep", "code_search", "CODE_EDITOR", "explore", "search"],
+    "GitCommit": ["tool_call", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "GitPush": ["tool_call", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "Glob": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "Glob File": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "GlobFile": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "Grep": ["grep", "code_search", "CODE_EDITOR", "explore", "search"],
+    "LS": ["list_directory", "list_dir", "CODE_EDITOR", "explore", "explore"],
+    "LSP": ["query_lsp", "query_lsp", "CODE_EDITOR", "explore", "search"],
+    "ListDir": [
+      "list_directory",
+      "list_dir",
+      "CODE_EDITOR",
+      "explore",
+      "explore"
+    ],
+    "ListMcpResourcesTool": [
+      "list_mcp_resources",
+      "tool_call",
+      "CODE_EDITOR",
+      "other_tool",
+      "fallback"
+    ],
+    "Ls": ["list_directory", "list_dir", "CODE_EDITOR", "explore", "explore"],
+    "Mcp": ["tool_call", "tool_call", "CODE_EDITOR", "other_tool", "fallback"],
+    "McpToolCall": [
+      "tool_call",
+      "tool_call",
+      "CODE_EDITOR",
+      "other_tool",
+      "fallback"
+    ],
+    "Monitor": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "MultiEdit": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "NotebookEdit": [
+      "notebook_edit",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "PatchApply": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "PowerShell": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "PushNotification": [
+      "push_notification",
+      "tool_call",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "READ": ["read_file", "read_file", "CODE_EDITOR", "file_read", "read_file"],
+    "Read": ["read_file", "read_file", "CODE_EDITOR", "file_read", "read_file"],
+    "Read Lints": [
+      "query_lsp",
+      "query_lsp",
+      "CODE_EDITOR",
+      "explore",
+      "search"
+    ],
+    "ReadFile": [
+      "read_file",
+      "read_file",
+      "CODE_EDITOR",
+      "file_read",
+      "read_file"
+    ],
+    "ReadLints": ["query_lsp", "query_lsp", "CODE_EDITOR", "explore", "search"],
+    "ReadMcpResourceTool": [
+      "read_mcp_resource",
+      "tool_call",
+      "CODE_EDITOR",
+      "other_tool",
+      "fallback"
+    ],
+    "RemoteTrigger": [
+      "remote_trigger",
+      "tool_call",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "SHELL": ["run_command_line", "run_shell", "CODE_EDITOR", "shell", "shell"],
+    "Search": [
+      "codebase_search",
+      "code_search",
+      "CODE_EDITOR",
+      "explore",
+      "search"
+    ],
+    "SearchFiles": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "SendMessage": [
+      "send_message",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "ShareOnboardingGuide": [
+      "share_onboarding_guide",
+      "tool_call",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "Shell": ["run_command_line", "run_shell", "CODE_EDITOR", "shell", "shell"],
+    "Skill": ["skill", "subagent", "BACKGROUND_TASKS", "subagent", "subagent"],
+    "Subagent": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "SuggestModeSwitch": [
+      "suggest_mode_switch",
+      "suggest_mode_switch",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "THINKING": ["thinking", "thinking", "CHANNELS", "thinking", "fallback"],
+    "Task": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "TaskCreate": [
+      "task_create",
+      "task_create",
+      "CHANNELS",
+      "todo",
+      "org_task"
+    ],
+    "TaskGet": ["task_get", "task_get", "CHANNELS", "todo", "org_task"],
+    "TaskList": ["task_list", "task_list", "CHANNELS", "todo", "org_task"],
+    "TaskOutput": ["task_output", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "TaskStop": ["task_stop", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "TaskUpdate": [
+      "task_update",
+      "task_update",
+      "CHANNELS",
+      "todo",
+      "org_task"
+    ],
+    "TeamCreate": [
+      "team_create",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "TeamDelete": [
+      "team_delete",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "Thinking": ["thinking", "thinking", "CHANNELS", "thinking", "fallback"],
+    "TodoRead": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "TodoWrite": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "ToolSearch": [
+      "tool_search",
+      "tool_call",
+      "CODE_EDITOR",
+      "explore",
+      "explore"
+    ],
+    "UpdateTodos": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "WRITE": ["create_file", "edit_file", "CODE_EDITOR", "file_write", "diff"],
+    "WebFetch": ["web_fetch", "web_search", "BROWSER", "browser", "web_search"],
+    "WebSearch": [
+      "web_search",
+      "web_search",
+      "BROWSER",
+      "browser",
+      "web_search"
+    ],
+    "Write": ["create_file", "edit_file", "CODE_EDITOR", "file_write", "diff"],
+    "agent": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "agent_message": [
+      "assistant",
+      "agent_message",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "agent_message_delta": [
+      "assistant",
+      "agent_message",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "agent_response": [
+      "assistant",
+      "agent_message",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "append_file": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "apply_patch": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "approval_request": [
+      "ask_user_permissions",
+      "ask_user_permissions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "approval_response": [
+      "ask_user_permissions",
+      "ask_user_permissions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "ask_followup_question": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "ask_question": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "ask_user": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "ask_user_permissions": [
+      "ask_user_permissions",
+      "ask_user_permissions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "ask_user_questions": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "askuserquestion": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "assistant": [
+      "assistant",
+      "agent_message",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "assistant_delta": [
+      "assistant",
+      "agent_message",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "assistant_message": [
+      "assistant",
+      "agent_message",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "await": [
+      "await_output",
+      "await_output",
+      "CODE_EDITOR",
+      "shell",
+      "title_only"
+    ],
+    "awaitToolCall": [
+      "await_output",
+      "await_output",
+      "CODE_EDITOR",
+      "shell",
+      "title_only"
+    ],
+    "bash": ["run_command_line", "run_shell", "CODE_EDITOR", "shell", "shell"],
+    "browser": ["browser", "browser", "BROWSER", "browser", "web_search"],
+    "browser_act": ["browser", "browser", "BROWSER", "browser", "web_search"],
+    "browser_navigate": [
+      "browser",
+      "browser",
+      "BROWSER",
+      "browser",
+      "web_search"
+    ],
+    "browser_open": ["browser", "browser", "BROWSER", "browser", "web_search"],
+    "browser_screenshot": [
+      "browser",
+      "browser",
+      "BROWSER",
+      "browser",
+      "web_search"
+    ],
+    "browser_snapshot": [
+      "browser",
+      "browser",
+      "BROWSER",
+      "browser",
+      "web_search"
+    ],
+    "browser_visit": ["browser", "browser", "BROWSER", "browser", "web_search"],
+    "call_tool": [
+      "tool_call",
+      "tool_call",
+      "CODE_EDITOR",
+      "other_tool",
+      "fallback"
+    ],
+    "cat": ["read_file", "read_file", "CODE_EDITOR", "file_read", "read_file"],
+    "clarification": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "code_search": [
+      "codebase_search",
+      "code_search",
+      "CODE_EDITOR",
+      "explore",
+      "search"
+    ],
+    "codebase_search": [
+      "codebase_search",
+      "code_search",
+      "CODE_EDITOR",
+      "explore",
+      "search"
+    ],
+    "command_execution": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "consult_agent": [
+      "consult_agent",
+      "consult_agent",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "control_browser": [
+      "browser",
+      "browser",
+      "BROWSER",
+      "browser",
+      "web_search"
+    ],
+    "control_desktop_with_peekaboo": [
+      "control_desktop_with_peekaboo",
+      "browser",
+      "BROWSER",
+      "browser",
+      "web_search"
+    ],
+    "control_external_browser": [
+      "browser",
+      "browser",
+      "BROWSER",
+      "browser",
+      "web_search"
+    ],
+    "control_internal_browser": [
+      "internal_browser",
+      "internal_browser",
+      "BROWSER",
+      "internal_browser",
+      "web_search"
+    ],
+    "createToolCall": [
+      "create_file",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "create_file": [
+      "create_file",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "create_pr": ["tool_call", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "create_pull_request": [
+      "tool_call",
+      "tool_call",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "cron_create": [
+      "cron_create",
+      "tool_call",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "cron_delete": [
+      "cron_delete",
+      "tool_call",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "cron_list": ["cron_list", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "delegate": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "delete": [
+      "delete_file",
+      "delete_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "deleteToolCall": [
+      "delete_file",
+      "delete_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "edit": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "editToolCall": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "edit_file_by_replace": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "enter_plan_mode": [
+      "enter_plan_mode",
+      "suggest_mode_switch",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "enter_worktree": [
+      "enter_worktree",
+      "tool_call",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "exec": ["run_command_line", "run_shell", "CODE_EDITOR", "shell", "shell"],
+    "execute": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "exit_plan_mode": [
+      "exit_plan_mode",
+      "suggest_mode_switch",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "exit_worktree": [
+      "exit_worktree",
+      "tool_call",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "file_diff": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "file_range_edit": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "file_read": [
+      "read_file",
+      "read_file",
+      "CODE_EDITOR",
+      "file_read",
+      "read_file"
+    ],
+    "file_search": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "file_write": [
+      "create_file",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "find_files": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "git_commit": ["tool_call", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "git_push": ["tool_call", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "glob": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "glob_file": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "grep": ["grep", "code_search", "CODE_EDITOR", "explore", "search"],
+    "insert_content_at_line": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "internal_monologue": [
+      "thinking",
+      "thinking",
+      "CHANNELS",
+      "thinking",
+      "fallback"
+    ],
+    "list_directory": [
+      "list_directory",
+      "list_dir",
+      "CODE_EDITOR",
+      "explore",
+      "explore"
+    ],
+    "list_mcp_resources": [
+      "list_mcp_resources",
+      "tool_call",
+      "CODE_EDITOR",
+      "other_tool",
+      "fallback"
+    ],
+    "llm_thinking": [
+      "thinking",
+      "thinking",
+      "CHANNELS",
+      "thinking",
+      "fallback"
+    ],
+    "llm_thinking_delta": [
+      "thinking",
+      "thinking",
+      "CHANNELS",
+      "thinking",
+      "fallback"
+    ],
+    "load_web_page": [
+      "web_fetch",
+      "web_search",
+      "BROWSER",
+      "browser",
+      "web_search"
+    ],
+    "ls": ["list_directory", "list_dir", "CODE_EDITOR", "explore", "explore"],
+    "lsp": ["query_lsp", "query_lsp", "CODE_EDITOR", "explore", "search"],
+    "manage_agent_def": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "manage_session": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "manage_todo": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "mcp": ["tool_call", "tool_call", "CODE_EDITOR", "other_tool", "fallback"],
+    "message": [
+      "assistant",
+      "agent_message",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "message_delta": [
+      "assistant",
+      "agent_message",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "mode_switch": [
+      "suggest_mode_switch",
+      "suggest_mode_switch",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "monitor": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "navigate_url": ["browser", "browser", "BROWSER", "browser", "web_search"],
+    "notebook_edit": [
+      "notebook_edit",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "open_url": ["browser", "browser", "BROWSER", "browser", "web_search"],
+    "plan_update": [
+      "tool_call",
+      "tool_call",
+      "CODE_EDITOR",
+      "other_tool",
+      "fallback"
+    ],
+    "power_shell": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "powershell": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "push_notification": [
+      "push_notification",
+      "tool_call",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "question": [
+      "ask_user_questions",
+      "ask_user_questions",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "raw": ["user", "user", "CHANNELS", "message", "fallback"],
+    "raw_event": ["user", "user", "CHANNELS", "message", "fallback"],
+    "read": ["read_file", "read_file", "CODE_EDITOR", "file_read", "read_file"],
+    "readToolCall": [
+      "read_file",
+      "read_file",
+      "CODE_EDITOR",
+      "file_read",
+      "read_file"
+    ],
+    "read_lint": ["query_lsp", "query_lsp", "CODE_EDITOR", "explore", "search"],
+    "read_lints": [
+      "query_lsp",
+      "query_lsp",
+      "CODE_EDITOR",
+      "explore",
+      "search"
+    ],
+    "read_mcp_resource": [
+      "read_mcp_resource",
+      "tool_call",
+      "CODE_EDITOR",
+      "other_tool",
+      "fallback"
+    ],
+    "reasoning": ["thinking", "thinking", "CHANNELS", "thinking", "fallback"],
+    "reflection": ["thinking", "thinking", "CHANNELS", "thinking", "fallback"],
+    "remote_trigger": [
+      "remote_trigger",
+      "tool_call",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "remove_file": [
+      "delete_file",
+      "delete_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "ripgrep": ["grep", "code_search", "CODE_EDITOR", "explore", "search"],
+    "run_command": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "run_command_line": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "run_shell": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "run_terminal_cmd": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "schedule_task": [
+      "tool_call",
+      "tool_call",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "search": [
+      "codebase_search",
+      "code_search",
+      "CODE_EDITOR",
+      "explore",
+      "search"
+    ],
+    "searchToolCall": [
+      "codebase_search",
+      "code_search",
+      "CODE_EDITOR",
+      "explore",
+      "search"
+    ],
+    "search_code": [
+      "codebase_search",
+      "code_search",
+      "CODE_EDITOR",
+      "explore",
+      "search"
+    ],
+    "search_codebase": [
+      "codebase_search",
+      "code_search",
+      "CODE_EDITOR",
+      "explore",
+      "search"
+    ],
+    "search_directory": [
+      "list_directory",
+      "list_dir",
+      "CODE_EDITOR",
+      "explore",
+      "explore"
+    ],
+    "search_files": [
+      "glob_file_search",
+      "glob_file_search",
+      "CODE_EDITOR",
+      "explore",
+      "glob"
+    ],
+    "search_replace": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "send_message": [
+      "send_message",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "session": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "share_onboarding_guide": [
+      "share_onboarding_guide",
+      "tool_call",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "shell": ["run_command_line", "run_shell", "CODE_EDITOR", "shell", "shell"],
+    "shellToolCall": [
+      "run_command_line",
+      "run_shell",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "skill": ["skill", "tool_call", "CODE_EDITOR", "other_tool", "fallback"],
+    "spawn": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "spawn_agent": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "spawn_sub_agent": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "str_replace_editor": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "sub_agent": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "subagent": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "suggestModeSwitch": [
+      "suggest_mode_switch",
+      "suggest_mode_switch",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "suggest_mode_switch": [
+      "suggest_mode_switch",
+      "suggest_mode_switch",
+      "CHANNELS",
+      "message",
+      "fallback"
+    ],
+    "task": [
+      "subagent",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "task_create": [
+      "task_create",
+      "task_create",
+      "CHANNELS",
+      "todo",
+      "org_task"
+    ],
+    "task_get": ["task_get", "task_get", "CHANNELS", "todo", "org_task"],
+    "task_list": ["task_list", "task_list", "CHANNELS", "todo", "org_task"],
+    "task_output": [
+      "task_output",
+      "tool_call",
+      "CODE_EDITOR",
+      "shell",
+      "shell"
+    ],
+    "task_stop": ["task_stop", "tool_call", "CODE_EDITOR", "shell", "shell"],
+    "task_update": [
+      "task_update",
+      "task_update",
+      "CHANNELS",
+      "todo",
+      "org_task"
+    ],
+    "team_create": [
+      "team_create",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "team_delete": [
+      "team_delete",
+      "subagent",
+      "BACKGROUND_TASKS",
+      "subagent",
+      "subagent"
+    ],
+    "text_editor": [
+      "edit_file_by_replace",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "think": ["thinking", "thinking", "CHANNELS", "thinking", "fallback"],
+    "thinking": ["thinking", "thinking", "CHANNELS", "thinking", "fallback"],
+    "thinking_delta": [
+      "thinking",
+      "thinking",
+      "CHANNELS",
+      "thinking",
+      "fallback"
+    ],
+    "todo": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "todo_read": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "todo_write": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "todoread": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "todowrite": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "tool_search": [
+      "tool_search",
+      "tool_call",
+      "CODE_EDITOR",
+      "explore",
+      "explore"
+    ],
+    "update_todos": ["manage_todo", "manage_todo", "CHANNELS", "todo", "todo"],
+    "user": ["user", "user", "CHANNELS", "message", "fallback"],
+    "visit_page": ["browser", "browser", "BROWSER", "browser", "web_search"],
+    "wait": [
+      "await_output",
+      "await_output",
+      "CODE_EDITOR",
+      "shell",
+      "title_only"
+    ],
+    "web_fetch": [
+      "web_fetch",
+      "web_search",
+      "BROWSER",
+      "browser",
+      "web_search"
+    ],
+    "web_navigate": ["browser", "browser", "BROWSER", "browser", "web_search"],
+    "web_open": ["browser", "browser", "BROWSER", "browser", "web_search"],
+    "write": ["create_file", "edit_file", "CODE_EDITOR", "file_write", "diff"],
+    "write_file": [
+      "create_file",
+      "edit_file",
+      "CODE_EDITOR",
+      "file_write",
+      "diff"
+    ],
+    "write_stdin": [
+      "await_output",
+      "await_output",
+      "CODE_EDITOR",
+      "shell",
+      "title_only"
+    ]
+  },
+  "tools": [
+    {
+      "actionIcons": {
+        "read_image": "image",
+        "read_pdf": "file-box"
+      },
+      "actions": [
+        {
+          "appSubtool": "file_read",
+          "labelDone": "tools.readTextDone",
+          "labelFailed": "tools.readTextFailed",
+          "labelRunning": "tools.readTextRunning",
+          "name": "read_text",
+          "summary": "Read text file contents with optional line range"
+        },
+        {
+          "appSubtool": "file_read",
+          "labelDone": "tools.readImageDone",
+          "labelFailed": "tools.readImageFailed",
+          "labelRunning": "tools.readImageRunning",
+          "name": "read_image",
+          "summary": "Read image file into context for vision analysis"
+        },
+        {
+          "appSubtool": "file_read",
+          "labelDone": "tools.readPdfDone",
+          "labelFailed": "tools.readPdfFailed",
+          "labelRunning": "tools.readPdfRunning",
+          "name": "read_pdf",
+          "summary": "Extract text from a PDF document"
+        }
+      ],
+      "appSubtool": "file_read",
+      "category": "coding",
+      "chatBlock": "read_file",
+      "description": "Read the contents of a file.",
+      "description_detail": "Reads text from a workspace-relative or absolute file path. Honors repository boundaries and configured size limits where applicable. Use before editing, for code review, or to pull excerpts into the conversation.",
+      "displayBehavior": "instant",
+      "humanToolKey": "codeEditor",
+      "icon_id": "book-open-02",
+      "labelDone": "tools.readFileDone",
+      "labelFailed": "tools.readFileFailed",
+      "labelRunning": "tools.readFileRunning",
+      "name": "read_file",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "statusLabels": {
+        "skill_done": "tools.readFileSkillDone",
+        "skill_failed": "tools.readFileSkillFailed",
+        "skill_running": "tools.readFileSkillRunning"
+      },
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "explore",
+          "labelDone": "tools.listDirListDone",
+          "labelFailed": "tools.listDirListFailed",
+          "labelRunning": "tools.listDirListRunning",
+          "name": "list",
+          "summary": "List files and subdirectories at a given path"
+        }
+      ],
+      "appSubtool": "explore",
+      "category": "coding",
+      "chatBlock": "explore",
+      "description": "List files and directories in a given path.",
+      "description_detail": "Enumerates entries under a directory with optional filtering. Helps map project layout, find configuration files, or choose targets for search and edits without opening every file.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "folder-open",
+      "labelDone": "tools.listDirDone",
+      "labelFailed": "tools.listDirFailed",
+      "labelRunning": "tools.listDirRunning",
+      "name": "list_dir",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "shell",
+          "labelDone": "tools.runShellRunDone",
+          "labelFailed": "tools.runShellRunFailed",
+          "labelRunning": "tools.runShellRunRunning",
+          "name": "run",
+          "summary": "Execute a shell command and capture output"
+        },
+        {
+          "appSubtool": "shell",
+          "labelDone": "tools.killProcessDone",
+          "labelFailed": "tools.killProcessFailed",
+          "labelRunning": "tools.killProcessRunning",
+          "name": "kill",
+          "summary": "Kill a backgrounded process by handle (SIGTERM + SIGKILL)"
+        }
+      ],
+      "appSubtool": "shell",
+      "category": "coding",
+      "chatBlock": "shell",
+      "description": "Execute a shell command (subprocess or PTY).",
+      "description_detail": "Runs shell commands with captured stdout, stderr, and exit status, or attaches to a pseudo-terminal for interactive-style programs. Use for builds, tests, package managers, and scripts according to agent policy.",
+      "displayBehavior": "stream",
+      "humanToolKey": "terminal",
+      "icon_id": "terminal",
+      "labelDone": "tools.runShellDone",
+      "labelFailed": "tools.runShellFailed",
+      "labelRunning": "tools.runShellRunning",
+      "name": "run_shell",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "statusLabels": {
+        "background": "tools.shellStatus.background",
+        "exited": "tools.shellStatus.exited",
+        "killed": "tools.shellStatus.killed"
+      },
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "close": "x",
+        "read_output": "scroll-text",
+        "write_input": "keyboard"
+      },
+      "actions": [
+        {
+          "appSubtool": "shell",
+          "chatBlock": "fallback",
+          "labelDone": "tools.inspectTerminalsListDone",
+          "labelFailed": "tools.inspectTerminalsListFailed",
+          "labelRunning": "tools.inspectTerminalsListRunning",
+          "name": "list",
+          "summary": "List live ORG2-managed terminal sessions"
+        },
+        {
+          "appSubtool": "shell",
+          "chatBlock": "fallback",
+          "labelDone": "tools.inspectTerminalsReadOutputDone",
+          "labelFailed": "tools.inspectTerminalsReadOutputFailed",
+          "labelRunning": "tools.inspectTerminalsReadOutputRunning",
+          "name": "read_output",
+          "summary": "Read a bounded redacted output snapshot from a terminal session"
+        },
+        {
+          "appSubtool": "shell",
+          "chatBlock": "fallback",
+          "labelDone": "tools.inspectTerminalsWriteInputDone",
+          "labelFailed": "tools.inspectTerminalsWriteInputFailed",
+          "labelRunning": "tools.inspectTerminalsWriteInputRunning",
+          "name": "write_input",
+          "summary": "Write input text or control characters into a terminal session"
+        },
+        {
+          "appSubtool": "shell",
+          "chatBlock": "fallback",
+          "labelDone": "tools.inspectTerminalsCloseDone",
+          "labelFailed": "tools.inspectTerminalsCloseFailed",
+          "labelRunning": "tools.inspectTerminalsCloseRunning",
+          "name": "close",
+          "summary": "Close a terminal session"
+        }
+      ],
+      "appSubtool": "shell",
+      "category": "coding",
+      "chatBlock": "fallback",
+      "description": "Inspect and control live terminal sessions.",
+      "description_detail": "Every request must include an `action` field. Use `{\"action\":\"list\"}` to list ORG2-managed PTY sessions, then `{\"action\":\"read_output\",\"session_id\":\"...\"}` to read bounded redacted output, `{\"action\":\"write_input\",\"session_id\":\"...\",\"input\":\"...\"}` to write input, or `{\"action\":\"close\",\"session_id\":\"...\"}` to close a selected PTY. Output returned to agents is read from the redacted snapshot buffer, not the raw terminal byte stream.",
+      "displayBehavior": "stream",
+      "humanToolKey": "terminal",
+      "icon_id": "terminal-square",
+      "labelDone": "tools.inspectTerminalsDone",
+      "labelFailed": "tools.inspectTerminalsFailed",
+      "labelRunning": "tools.inspectTerminalsRunning",
+      "name": "inspect_terminals",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "list": "list-tree",
+        "monitor": "focus"
+      },
+      "actions": [
+        {
+          "appSubtool": "shell",
+          "chatBlock": "title_only",
+          "displayBehavior": "stream",
+          "labelDone": "tools.awaitOutputWaitForDone",
+          "labelFailed": "tools.awaitOutputWaitForFailed",
+          "labelRunning": "tools.awaitOutputWaitForRunning",
+          "name": "wait_for",
+          "summary": "Block until a regex pattern matches, the job completes, or the timeout elapses"
+        },
+        {
+          "appSubtool": "shell",
+          "chatBlock": "title_only",
+          "displayBehavior": "stream",
+          "labelDone": "tools.awaitOutputMonitorDone",
+          "labelFailed": "tools.awaitOutputMonitorFailed",
+          "labelRunning": "tools.awaitOutputMonitorRunning",
+          "name": "monitor",
+          "summary": "Non-blocking snapshot of a background job (current status + last N lines)"
+        },
+        {
+          "appSubtool": "explore",
+          "chatBlock": "fallback",
+          "displayBehavior": "wait_for_result",
+          "labelDone": "tools.awaitOutputListDone",
+          "labelFailed": "tools.awaitOutputListFailed",
+          "labelRunning": "tools.awaitOutputListRunning",
+          "name": "list",
+          "summary": "List all background jobs for this session"
+        }
+      ],
+      "appSubtool": "shell",
+      "category": "coding",
+      "chatBlock": "title_only",
+      "description": "Monitor background jobs (shell processes and subagents).",
+      "description_detail": "Multi-command tool for monitoring backgrounded processes and subagents. Supports blocking wait_for with regex matching, non-blocking monitor snapshots, and session-scoped job listing.",
+      "displayBehavior": "stream",
+      "humanToolKey": "terminal",
+      "icon_id": "timer",
+      "labelDone": "tools.awaitOutputDone",
+      "labelFailed": "tools.awaitOutputFailed",
+      "labelRunning": "tools.awaitOutputRunning",
+      "name": "await_output",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "statusLabels": {
+        "keep_waiting": "tools.awaitOutputKeepWaiting",
+        "killed": "tools.awaitOutputKilled",
+        "not_found": "tools.awaitOutputNotFound",
+        "pattern_matched": "tools.awaitOutputPatternMatched",
+        "still_running": "tools.awaitOutputStillRunning"
+      },
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "check_status": "activity",
+        "find_files": "folder-search"
+      },
+      "actions": [
+        {
+          "appSubtool": "search",
+          "labelDone": "tools.searchGrepDone",
+          "labelFailed": "tools.searchGrepFailed",
+          "labelRunning": "tools.searchGrepRunning",
+          "name": "grep",
+          "summary": "Regex content search via ripgrep"
+        },
+        {
+          "appSubtool": "glob",
+          "chatBlock": "glob",
+          "labelDone": "tools.searchFindFilesDone",
+          "labelFailed": "tools.searchFindFilesFailed",
+          "labelRunning": "tools.searchFindFilesRunning",
+          "name": "find_files",
+          "summary": "Fuzzy file name search"
+        },
+        {
+          "appSubtool": "glob",
+          "chatBlock": "glob",
+          "labelDone": "tools.searchGlobDone",
+          "labelFailed": "tools.searchGlobFailed",
+          "labelRunning": "tools.searchGlobRunning",
+          "name": "glob",
+          "summary": "True glob pattern matching (e.g. src/**/*.ts)"
+        },
+        {
+          "appSubtool": "search",
+          "labelDone": "tools.searchSymbolsDone",
+          "labelFailed": "tools.searchSymbolsFailed",
+          "labelRunning": "tools.searchSymbolsRunning",
+          "name": "symbols",
+          "summary": "Search for code symbols (functions, classes, types)"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "fallback",
+          "labelDone": "tools.searchCheckStatusDone",
+          "labelFailed": "tools.searchCheckStatusFailed",
+          "labelRunning": "tools.searchCheckStatusRunning",
+          "name": "check_status",
+          "summary": "Check search status for a repository"
+        }
+      ],
+      "appSubtool": "search",
+      "category": "coding",
+      "chatBlock": "search",
+      "description": "Code and file search via ripgrep + glob.",
+      "description_detail": "Fast content search backed by ripgrep with optional path scopes and glob patterns. Locates symbols, literals, and regex patterns across the codebase for navigation and impact analysis.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "search",
+      "labelDone": "tools.searchGrepDone",
+      "labelFailed": "tools.searchGrepFailed",
+      "labelRunning": "tools.searchGrepRunning",
+      "name": "code_search",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "add": "folder-plus",
+        "create": "folder-pen",
+        "list": "folder-git-2",
+        "remove": "folder-minus"
+      },
+      "actions": [
+        {
+          "appSubtool": "explore",
+          "chatBlock": "fallback",
+          "labelDone": "tools.manageWorkspaceListDone",
+          "labelFailed": "tools.manageWorkspaceListFailed",
+          "labelRunning": "tools.manageWorkspaceListRunning",
+          "name": "list",
+          "summary": "List all tracked workspaces with paths and kinds"
+        },
+        {
+          "appSubtool": "explore",
+          "chatBlock": "fallback",
+          "labelDone": "tools.manageWorkspaceAddDone",
+          "labelFailed": "tools.manageWorkspaceAddFailed",
+          "labelRunning": "tools.manageWorkspaceAddRunning",
+          "name": "add",
+          "summary": "Register an existing local directory as a workspace (auto-detects git vs folder, runs git init if needed)"
+        },
+        {
+          "appSubtool": "explore",
+          "chatBlock": "fallback",
+          "labelDone": "tools.manageWorkspaceCreateDone",
+          "labelFailed": "tools.manageWorkspaceCreateFailed",
+          "labelRunning": "tools.manageWorkspaceCreateRunning",
+          "name": "create",
+          "summary": "Create a new empty workspace (git=true by default; set git=false for a plain folder)"
+        },
+        {
+          "appSubtool": "explore",
+          "chatBlock": "fallback",
+          "labelDone": "tools.manageWorkspaceRemoveDone",
+          "labelFailed": "tools.manageWorkspaceRemoveFailed",
+          "labelRunning": "tools.manageWorkspaceRemoveRunning",
+          "name": "remove",
+          "summary": "Unregister a workspace by path or repo_id (files on disk are preserved)"
+        }
+      ],
+      "appSubtool": "explore",
+      "category": "coding",
+      "chatBlock": "fallback",
+      "description": "Manage orgii workspaces (git repos and work folders) tracked by the IDE.",
+      "description_detail": "Unified tool for listing, adding, creating, and removing workspaces. Actions: `list` enumerates tracked workspaces (names, paths, kinds); `add` registers an existing directory (auto-detects git vs folder); `create` creates a brand-new workspace (git=true|false); `remove` unregisters a workspace without touching files on disk. To clone a remote repo, use `run_shell` with `git clone`, wait for completion with `await_output` if it backgrounds, then register the cloned path with `add`.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "folder-git-2",
+      "labelDone": "tools.manageWorkspaceListDone",
+      "labelFailed": "tools.manageWorkspaceListFailed",
+      "labelRunning": "tools.manageWorkspaceListRunning",
+      "name": "manage_workspace",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "file_write",
+          "labelDone": "tools.editFileCreateDone",
+          "labelFailed": "tools.editFileCreateFailed",
+          "labelRunning": "tools.editFileCreateRunning",
+          "name": "create",
+          "summary": "Create a new file with full content"
+        },
+        {
+          "appSubtool": "file_write",
+          "labelDone": "tools.editFileOverwriteDone",
+          "labelFailed": "tools.editFileOverwriteFailed",
+          "labelRunning": "tools.editFileOverwriteRunning",
+          "name": "overwrite",
+          "summary": "Replace entire file contents"
+        },
+        {
+          "appSubtool": "file_write",
+          "labelDone": "tools.editFileEditDone",
+          "labelFailed": "tools.editFileEditFailed",
+          "labelRunning": "tools.editFileEditRunning",
+          "name": "edit",
+          "summary": "Apply a search-and-replace edit with fuzzy matching"
+        }
+      ],
+      "appSubtool": "file_write",
+      "category": "coding",
+      "chatBlock": "diff",
+      "description": "Create, overwrite, or edit files with fuzzy search-and-replace.",
+      "description_detail": "Unified file editing tool with two modes:\n\n**Create/Overwrite mode**: Provide `file_path` + `content` to create a new file or overwrite an existing one. Creates parent directories automatically.\n\n**Edit mode**: Provide `file_path` + `old_string` + `new_string` for surgical search-and-replace. Uses 9 fuzzy matching strategies (whitespace, indentation, escapes) so minor formatting differences resolve automatically.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "file-pen-line",
+      "labelDone": "tools.editFileDone",
+      "labelFailed": "tools.editFileFailed",
+      "labelRunning": "tools.editFileRunning",
+      "name": "edit_file",
+      "requiredCapability": "coding",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "statusLabels": {
+        "compact_done": "tools.editFileCompactDone",
+        "compact_running": "tools.editFileCompactRunning"
+      },
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "file_write",
+          "labelDone": "tools.deleteFileDeleteDone",
+          "labelFailed": "tools.deleteFileDeleteFailed",
+          "labelRunning": "tools.deleteFileDeleteRunning",
+          "name": "delete",
+          "summary": "Delete a single file"
+        }
+      ],
+      "appSubtool": "file_write",
+      "category": "coding",
+      "chatBlock": "diff",
+      "description": "Delete a single file from the workspace.",
+      "description_detail": "Deletes exactly one file after workspace sandbox validation. Refuses to delete directories.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "trash-2",
+      "labelDone": "tools.deleteFileDone",
+      "labelFailed": "tools.deleteFileFailed",
+      "labelRunning": "tools.deleteFileRunning",
+      "name": "delete_file",
+      "requiredCapability": "coding",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "statusLabels": {
+        "compact_done": "tools.deleteFileCompactDone",
+        "compact_running": "tools.deleteFileCompactRunning"
+      },
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "explore",
+          "labelDone": "tools.queryLspDiagnosticsDone",
+          "labelFailed": "tools.queryLspDiagnosticsFailed",
+          "labelRunning": "tools.queryLspDiagnosticsRunning",
+          "name": "diagnostics",
+          "summary": "Get lint/type errors for one or more files/directories"
+        },
+        {
+          "appSubtool": "explore",
+          "labelDone": "tools.queryLspDefinitionDone",
+          "labelFailed": "tools.queryLspDefinitionFailed",
+          "labelRunning": "tools.queryLspDefinitionRunning",
+          "name": "definition",
+          "summary": "Go to definition at a position"
+        },
+        {
+          "appSubtool": "explore",
+          "labelDone": "tools.queryLspReferencesDone",
+          "labelFailed": "tools.queryLspReferencesFailed",
+          "labelRunning": "tools.queryLspReferencesRunning",
+          "name": "references",
+          "summary": "Find all references of a symbol"
+        },
+        {
+          "appSubtool": "explore",
+          "labelDone": "tools.queryLspHoverDone",
+          "labelFailed": "tools.queryLspHoverFailed",
+          "labelRunning": "tools.queryLspHoverRunning",
+          "name": "hover",
+          "summary": "Get type info and documentation at a position"
+        },
+        {
+          "appSubtool": "explore",
+          "labelDone": "tools.queryLspDone",
+          "labelFailed": "tools.queryLspFailed",
+          "labelRunning": "tools.queryLspRunning",
+          "name": "document_symbol",
+          "summary": "List symbols in a file"
+        },
+        {
+          "appSubtool": "explore",
+          "labelDone": "tools.queryLspDone",
+          "labelFailed": "tools.queryLspFailed",
+          "labelRunning": "tools.queryLspRunning",
+          "name": "workspace_symbol",
+          "summary": "Search symbols across the workspace"
+        }
+      ],
+      "appSubtool": "explore",
+      "category": "coding",
+      "chatBlock": "explore",
+      "description": "Query language servers for diagnostics and code navigation.",
+      "description_detail": "Talks to installed Language Servers for diagnostics, definitions, references, hover details, document symbols, and workspace symbol search. Grounds edits in real type and project structure.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "braces",
+      "labelDone": "tools.queryLspDone",
+      "labelFailed": "tools.queryLspFailed",
+      "labelRunning": "tools.queryLspRunning",
+      "name": "query_lsp",
+      "requiredCapability": "coding",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageLspListDone",
+          "labelFailed": "tools.manageLspListFailed",
+          "labelRunning": "tools.manageLspListRunning",
+          "name": "list",
+          "summary": "List supported servers with installed, running, and workspace-enabled status"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageLspRunningDone",
+          "labelFailed": "tools.manageLspRunningFailed",
+          "labelRunning": "tools.manageLspRunningRunning",
+          "name": "running",
+          "summary": "List currently running language servers"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageLspStatusDone",
+          "labelFailed": "tools.manageLspStatusFailed",
+          "labelRunning": "tools.manageLspStatusRunning",
+          "name": "status",
+          "summary": "Inspect one language server in detail"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageLspInstallCommandDone",
+          "labelFailed": "tools.manageLspInstallCommandFailed",
+          "labelRunning": "tools.manageLspInstallCommandRunning",
+          "name": "install_command",
+          "summary": "Return the command needed to install a language server"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageLspUninstallCommandDone",
+          "labelFailed": "tools.manageLspUninstallCommandFailed",
+          "labelRunning": "tools.manageLspUninstallCommandRunning",
+          "name": "uninstall_command",
+          "summary": "Return the command needed to uninstall a language server"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageLspEnableDone",
+          "labelFailed": "tools.manageLspEnableFailed",
+          "labelRunning": "tools.manageLspEnableRunning",
+          "name": "enable",
+          "summary": "Enable a language server for the workspace"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageLspDisableDone",
+          "labelFailed": "tools.manageLspDisableFailed",
+          "labelRunning": "tools.manageLspDisableRunning",
+          "name": "disable",
+          "summary": "Disable a language server for the workspace"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageLspStartDone",
+          "labelFailed": "tools.manageLspStartFailed",
+          "labelRunning": "tools.manageLspStartRunning",
+          "name": "start",
+          "summary": "Start a language server process"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageLspStopDone",
+          "labelFailed": "tools.manageLspStopFailed",
+          "labelRunning": "tools.manageLspStopRunning",
+          "name": "stop",
+          "summary": "Stop a language server process"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "coding",
+      "chatBlock": "fallback",
+      "description": "Inspect, configure, and control installed language servers.",
+      "description_detail": "Lists supported language servers, reports installed and running status, returns install or uninstall commands, toggles workspace enablement, and starts or stops LSP processes. It does not execute package manager commands directly.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "braces",
+      "labelDone": "tools.manageLspDone",
+      "labelFailed": "tools.manageLspFailed",
+      "labelRunning": "tools.manageLspRunning",
+      "name": "manage_lsp",
+      "requiredCapability": "coding",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "todo",
+          "labelDone": "tools.manageTodoWriteDone",
+          "labelFailed": "tools.manageTodoWriteFailed",
+          "labelRunning": "tools.manageTodoWriteRunning",
+          "name": "write",
+          "summary": "Replace the entire todo list for this session"
+        },
+        {
+          "appSubtool": "todo",
+          "labelDone": "tools.manageTodoReadDone",
+          "labelFailed": "tools.manageTodoReadFailed",
+          "labelRunning": "tools.manageTodoReadRunning",
+          "name": "read",
+          "summary": "Fetch the current todo list"
+        }
+      ],
+      "appSubtool": "todo",
+      "category": "coding",
+      "chatBlock": "todo",
+      "description": "Session-scoped task tracking (write and read todo lists).",
+      "description_detail": "Creates, updates, and reads in-session todo items for plans, checklists, and progress tracking visible across turns.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "list-todo",
+      "labelDone": "tools.manageTodoDone",
+      "labelFailed": "tools.manageTodoFailed",
+      "labelRunning": "tools.manageTodoRunning",
+      "name": "manage_todo",
+      "requiredCapability": "coding",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "other_interactions",
+      "category": "coding",
+      "chatBlock": "plan_doc",
+      "description": "Write the session plan document and submit it for review.",
+      "description_detail": "Only available in Plan mode. In a top-level session or coordinator turn, this submits the plan to the user-facing Build approval surface. In a non-coordinator Agent Org member turn, this submits a typed plan approval request to the coordinator inbox. Calling again with the same title overwrites the same file; pass `new_plan: true` to rotate the slug.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "clipboard-list",
+      "labelDone": "tools.createPlanDone",
+      "labelFailed": "tools.createPlanFailed",
+      "labelRunning": "tools.createPlanRunning",
+      "name": "create_plan",
+      "requiredCapability": "core",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "file_write",
+          "labelDone": "tools.writeEnvFileWriteDone",
+          "labelFailed": "tools.writeEnvFileWriteFailed",
+          "labelRunning": "tools.writeEnvFileWriteRunning",
+          "name": "write",
+          "summary": "Write a `.env` file, resolving any secret tokens at write time"
+        }
+      ],
+      "appSubtool": "file_write",
+      "category": "coding",
+      "chatBlock": "fallback",
+      "description": "Write `.env`-style files, resolving secret tokens at write time.",
+      "description_detail": "Privileged consumer of `manage_secrets` tokens. Resolves any `{{secret:<token>}}` placeholders in the body to plaintext at the moment of write, sets `0o600` on Unix, enforces dotenv-style filenames, and refuses to overwrite git-tracked files without an explicit acknowledgement. The plaintext never enters the LLM transcript or the chat history.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "lock",
+      "labelDone": "tools.writeEnvFileDone",
+      "labelFailed": "tools.writeEnvFileFailed",
+      "labelRunning": "tools.writeEnvFileRunning",
+      "name": "write_env_file",
+      "requiredCapability": "coding",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "setup_repo",
+          "labelDone": "tools.setupRepoReportStatusDone",
+          "labelFailed": "tools.setupRepoReportStatusFailed",
+          "labelRunning": "tools.setupRepoReportStatusRunning",
+          "name": "report_status",
+          "summary": "Report detected runtimes and dependency state"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "setup_repo",
+          "labelDone": "tools.setupRepoUpdateEnvDone",
+          "labelFailed": "tools.setupRepoUpdateEnvFailed",
+          "labelRunning": "tools.setupRepoUpdateEnvRunning",
+          "name": "update_env",
+          "summary": "Update environment variable configuration"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "setup_repo",
+          "labelDone": "tools.setupRepoAddEnvVarsDone",
+          "labelFailed": "tools.setupRepoAddEnvVarsFailed",
+          "labelRunning": "tools.setupRepoAddEnvVarsRunning",
+          "name": "add_env_vars",
+          "summary": "Add new environment variables to the setup"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "setup_repo",
+          "labelDone": "tools.setupRepoLaunchAppDone",
+          "labelFailed": "tools.setupRepoLaunchAppFailed",
+          "labelRunning": "tools.setupRepoLaunchAppRunning",
+          "name": "launch_app",
+          "summary": "Launch the configured application"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "coding",
+      "chatBlock": "setup_repo",
+      "description": "Report setup status and environment variables to the App Launcher.",
+      "description_detail": "Surfaces detected runtimes, dependency state, and relevant environment variables to the App Launcher for onboarding and reproducible dev setup.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "folder-cog",
+      "labelDone": "tools.setupRepoDone",
+      "labelFailed": "tools.setupRepoFailed",
+      "labelRunning": "tools.setupRepoRunning",
+      "name": "setup_repo",
+      "requiredCapability": "coding",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.worktreeAddDone",
+          "labelFailed": "tools.worktreeAddFailed",
+          "labelRunning": "tools.worktreeAddRunning",
+          "name": "add",
+          "summary": "Create a worktree for a branch and switch into it"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.worktreeLeaveDone",
+          "labelFailed": "tools.worktreeLeaveFailed",
+          "labelRunning": "tools.worktreeLeaveRunning",
+          "name": "leave",
+          "summary": "Leave the current worktree and return to the main workspace"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.worktreeListDone",
+          "labelFailed": "tools.worktreeListFailed",
+          "labelRunning": "tools.worktreeListRunning",
+          "name": "list",
+          "summary": "Show all active worktrees for the repository"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "coding",
+      "chatBlock": "fallback",
+      "description": "Manage git worktrees for isolated parallel work.",
+      "description_detail": "Creates and manages git worktrees so the agent can work on a branch in an isolated checkout without disturbing the main workspace. Useful for parallel session sandboxing and safe refactors.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "git-branch",
+      "labelDone": "tools.worktreeDone",
+      "labelFailed": "tools.worktreeFailed",
+      "labelRunning": "tools.worktreeRunning",
+      "name": "worktree",
+      "requiredCapability": "coding",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "canvas_inline",
+          "labelDone": "tools.renderInlineCanvasHtmlDone",
+          "labelFailed": "tools.renderInlineCanvasHtmlFailed",
+          "labelRunning": "tools.renderInlineCanvasHtmlRunning",
+          "name": "html",
+          "summary": "Render a self-contained HTML/SVG/CSS snippet"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "canvas_inline",
+          "labelDone": "tools.renderInlineCanvasUrlDone",
+          "labelFailed": "tools.renderInlineCanvasUrlFailed",
+          "labelRunning": "tools.renderInlineCanvasUrlRunning",
+          "name": "url",
+          "summary": "Present an HTTPS URL as an external-open action"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "canvas_inline",
+          "labelDone": "tools.renderInlineCanvasHtmlDone",
+          "labelFailed": "tools.renderInlineCanvasHtmlFailed",
+          "labelRunning": "tools.renderInlineCanvasHtmlRunning",
+          "name": "react",
+          "summary": "Render a stateful JSX App component"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "canvas_inline",
+          "labelDone": "tools.renderInlineCanvasA2uiDone",
+          "labelFailed": "tools.renderInlineCanvasA2uiFailed",
+          "labelRunning": "tools.renderInlineCanvasA2uiRunning",
+          "name": "a2ui",
+          "summary": "Stream typed UI elements (heading, text, code, image, button, list)"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "coding",
+      "chatBlock": "canvas_inline",
+      "description": "Render interactive sketches and UI inline in the chat panel.",
+      "description_detail": "Displays an interactive preview card directly in the chat stream. Supports four modes: \"html\" (sanitized static HTML/SVG/CSS), \"url\" (HTTPS URL presented as an external-open action), \"react\" (stateful JSX App component with runtime errors), and \"a2ui\" (structured JSONL element stream for headings, text, code blocks, images, buttons, and lists). Available to both SDE Agent and OS Agent.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "layout",
+      "labelDone": "tools.renderInlineCanvasDone",
+      "labelFailed": "tools.renderInlineCanvasFailed",
+      "labelRunning": "tools.renderInlineCanvasRunning",
+      "name": "render_inline_canvas",
+      "requiredCapability": "core",
+      "simulatorApp": "CANVAS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "canvas_inline",
+          "labelDone": "tools.reviseInlineCanvasHtmlDone",
+          "labelFailed": "tools.reviseInlineCanvasHtmlFailed",
+          "labelRunning": "tools.reviseInlineCanvasHtmlRunning",
+          "name": "html",
+          "summary": "Revise with a self-contained HTML/SVG/CSS snippet"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "canvas_inline",
+          "labelDone": "tools.reviseInlineCanvasUrlDone",
+          "labelFailed": "tools.reviseInlineCanvasUrlFailed",
+          "labelRunning": "tools.reviseInlineCanvasUrlRunning",
+          "name": "url",
+          "summary": "Revise with an HTTPS URL external-open action"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "canvas_inline",
+          "labelDone": "tools.reviseInlineCanvasHtmlDone",
+          "labelFailed": "tools.reviseInlineCanvasHtmlFailed",
+          "labelRunning": "tools.reviseInlineCanvasHtmlRunning",
+          "name": "react",
+          "summary": "Revise with a stateful JSX App component"
+        },
+        {
+          "appSubtool": "other_tool",
+          "chatBlock": "canvas_inline",
+          "labelDone": "tools.reviseInlineCanvasA2uiDone",
+          "labelFailed": "tools.reviseInlineCanvasA2uiFailed",
+          "labelRunning": "tools.reviseInlineCanvasA2uiRunning",
+          "name": "a2ui",
+          "summary": "Revise with typed UI elements"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "coding",
+      "chatBlock": "canvas_inline",
+      "description": "Revise an existing inline Canvas without creating a new one.",
+      "description_detail": "Replaces the content of a previously rendered inline Canvas while preserving its logical identity and sidebar position. Requires the exact target Canvas event id and validates that the target belongs to the same session. Supports the same html, url, react, and a2ui payload modes as render_inline_canvas.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "layout",
+      "labelDone": "tools.reviseInlineCanvasDone",
+      "labelFailed": "tools.reviseInlineCanvasFailed",
+      "labelRunning": "tools.reviseInlineCanvasRunning",
+      "name": "revise_inline_canvas",
+      "requiredCapability": "core",
+      "simulatorApp": "CANVAS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageFileHistoryListDone",
+          "labelFailed": "tools.manageFileHistoryListFailed",
+          "labelRunning": "tools.manageFileHistoryListRunning",
+          "name": "list",
+          "summary": "List all snapshots for this session"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageFileHistoryRewindDone",
+          "labelFailed": "tools.manageFileHistoryRewindFailed",
+          "labelRunning": "tools.manageFileHistoryRewindRunning",
+          "name": "rewind",
+          "summary": "Revert all files to their state before a message"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageFileHistoryRedoDone",
+          "labelFailed": "tools.manageFileHistoryRedoFailed",
+          "labelRunning": "tools.manageFileHistoryRedoRunning",
+          "name": "redo",
+          "summary": "Re-apply the most recent rewind"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "coding",
+      "chatBlock": "fallback",
+      "description": "Inspect and rewind file-history snapshots for this session.",
+      "description_detail": "Lists captured snapshots and their files. Use `rewind` to restore all files to their state before a given message — this undoes every agent file edit since that point. Use `redo` to re-apply the most recent rewind if a redo snapshot exists.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "codeEditor",
+      "icon_id": "history",
+      "labelDone": "tools.manageFileHistoryDone",
+      "labelFailed": "tools.manageFileHistoryFailed",
+      "labelRunning": "tools.manageFileHistoryRunning",
+      "name": "manage_file_history",
+      "requiredCapability": "coding",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "dispatch": "mouse-pointer-click",
+        "inspect": "search",
+        "list": "list"
+      },
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "list",
+          "summary": "List available frontend GUI actions and visible controls"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "inspect",
+          "summary": "Inspect frontend GUI action metadata and parameter schemas"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "dispatch",
+          "summary": "Dispatch a frontend GUI action"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "web",
+      "chatBlock": "fallback",
+      "description": "Inspect and control ORG2 GUI actions through the frontend ActionSystem.",
+      "description_detail": "Lists and inspects registered GUI-layer actions and visible controls, then dispatches app navigation, Workstation view changes, settings panels, and DOM control operations via the frontend ActionSystem bridge.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "mouse-pointer-click",
+      "labelDone": "tools.orgiiGuiDone",
+      "labelFailed": "tools.orgiiGuiFailed",
+      "labelRunning": "tools.orgiiGuiRunning",
+      "name": "control_orgii",
+      "requiredCapability": "management",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "custom"]
+    },
+    {
+      "actionIcons": {
+        "agent_session_search": "bot",
+        "branch_picker": "git-branch",
+        "close": "x",
+        "command_palette": "terminal",
+        "file_search": "file-search",
+        "open": "search",
+        "toggle": "panel-top",
+        "workspace_picker": "folder-open"
+      },
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "open",
+          "summary": "Open Spotlight"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "close",
+          "summary": "Close Spotlight"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "toggle",
+          "summary": "Toggle Spotlight"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "workspace_picker",
+          "summary": "Open Spotlight workspace picker"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "branch_picker",
+          "summary": "Open Spotlight branch picker"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "file_search",
+          "summary": "Open Spotlight file search"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "command_palette",
+          "summary": "Open Spotlight command palette"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "agent_session_search",
+          "summary": "Open Spotlight Agent session search"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "web",
+      "chatBlock": "fallback",
+      "description": "Open and control ORG2 Spotlight.",
+      "description_detail": "Directly opens, closes, toggles, or routes Spotlight to common flows such as workspace picker, branch picker, file search, command palette, and Agent session search without first inspecting GUI actions.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "search",
+      "labelDone": "tools.orgiiGuiDone",
+      "labelFailed": "tools.orgiiGuiFailed",
+      "labelRunning": "tools.orgiiGuiRunning",
+      "name": "spotlight",
+      "requiredCapability": "management",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "reply": "message-square-reply"
+      },
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.orgiiGuiDone",
+          "labelFailed": "tools.orgiiGuiFailed",
+          "labelRunning": "tools.orgiiGuiRunning",
+          "name": "reply",
+          "summary": "Post a reply to a review-comment thread"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "web",
+      "chatBlock": "fallback",
+      "description": "Reply to a review-comment thread on this session.",
+      "description_detail": "Posts a reply to a session review-comment thread through the frontend ActionSystem bridge. Only valid for commentIds provided in the current instructions.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "message-square-reply",
+      "labelDone": "tools.orgiiGuiDone",
+      "labelFailed": "tools.orgiiGuiFailed",
+      "labelRunning": "tools.orgiiGuiRunning",
+      "name": "reply_session_comment",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.webSearchSearchDone",
+          "labelFailed": "tools.webSearchSearchFailed",
+          "labelRunning": "tools.webSearchSearchRunning",
+          "name": "search",
+          "summary": "Query Brave Search and return ranked results with snippets"
+        }
+      ],
+      "appSubtool": "browser",
+      "category": "web",
+      "chatBlock": "web_search",
+      "description": "Search the web for information via Brave Search API.",
+      "description_detail": "Queries the Brave Search API for ranked results and snippets when fresh public information is required beyond the training cutoff.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "globe",
+      "labelDone": "tools.webSearchDone",
+      "labelFailed": "tools.webSearchFailed",
+      "labelRunning": "tools.webSearchRunning",
+      "name": "web_search",
+      "requiredCapability": "core",
+      "simulatorApp": "BROWSER",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.webFetchFetchDone",
+          "labelFailed": "tools.webFetchFetchFailed",
+          "labelRunning": "tools.webFetchFetchRunning",
+          "name": "fetch",
+          "summary": "Fetch a URL and extract readable text content"
+        }
+      ],
+      "appSubtool": "browser",
+      "category": "web",
+      "chatBlock": "web_search",
+      "description": "Fetch a web page and return its text content.",
+      "description_detail": "Retrieves a URL and returns extracted readable text. Use to quote documentation, verify release notes, or summarize a single page.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "globe",
+      "labelDone": "tools.webFetchDone",
+      "labelFailed": "tools.webFetchFailed",
+      "labelRunning": "tools.webFetchRunning",
+      "name": "web_fetch",
+      "requiredCapability": "core",
+      "simulatorApp": "BROWSER",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "click": "mouse-pointer-click",
+        "close": "x",
+        "console": "terminal",
+        "evaluate": "braces",
+        "fill": "list-checks",
+        "hover": "mouse-pointer",
+        "open": "globe",
+        "press": "keyboard",
+        "screenshot": "fullscreen",
+        "scroll": "move-vertical",
+        "select": "list-filter",
+        "snapshot": "fullscreen",
+        "tabs": "panel-top",
+        "type": "text-cursor-input",
+        "wait": "clock"
+      },
+      "actions": [
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserOpenDone",
+          "labelFailed": "tools.browserOpenFailed",
+          "labelRunning": "tools.browserOpenRunning",
+          "name": "open",
+          "summary": "Open a URL through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserClickDone",
+          "labelFailed": "tools.browserClickFailed",
+          "labelRunning": "tools.browserClickRunning",
+          "name": "click",
+          "summary": "Click an element through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserTypeDone",
+          "labelFailed": "tools.browserTypeFailed",
+          "labelRunning": "tools.browserTypeRunning",
+          "name": "type",
+          "summary": "Type text through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserPressDone",
+          "labelFailed": "tools.browserPressFailed",
+          "labelRunning": "tools.browserPressRunning",
+          "name": "press",
+          "summary": "Press a key through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserHoverDone",
+          "labelFailed": "tools.browserHoverFailed",
+          "labelRunning": "tools.browserHoverRunning",
+          "name": "hover",
+          "summary": "Hover an element through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserFillDone",
+          "labelFailed": "tools.browserFillFailed",
+          "labelRunning": "tools.browserFillRunning",
+          "name": "fill",
+          "summary": "Fill a form through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserEvaluateDone",
+          "labelFailed": "tools.browserEvaluateFailed",
+          "labelRunning": "tools.browserEvaluateRunning",
+          "name": "evaluate",
+          "summary": "Evaluate JavaScript through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserWaitDone",
+          "labelFailed": "tools.browserWaitFailed",
+          "labelRunning": "tools.browserWaitRunning",
+          "name": "wait",
+          "summary": "Wait for browser state through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserScrollDone",
+          "labelFailed": "tools.browserScrollFailed",
+          "labelRunning": "tools.browserScrollRunning",
+          "name": "scroll",
+          "summary": "Scroll the page through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserSelectDone",
+          "labelFailed": "tools.browserSelectFailed",
+          "labelRunning": "tools.browserSelectRunning",
+          "name": "select",
+          "summary": "Select an option through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserSnapshotDone",
+          "labelFailed": "tools.browserSnapshotFailed",
+          "labelRunning": "tools.browserSnapshotRunning",
+          "name": "snapshot",
+          "summary": "Capture the current page snapshot"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserScreenshotDone",
+          "labelFailed": "tools.browserScreenshotFailed",
+          "labelRunning": "tools.browserScreenshotRunning",
+          "name": "screenshot",
+          "summary": "Write a screenshot with agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserTabsDone",
+          "labelFailed": "tools.browserTabsFailed",
+          "labelRunning": "tools.browserTabsRunning",
+          "name": "tabs",
+          "summary": "List browser tabs through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserConsoleDone",
+          "labelFailed": "tools.browserConsoleFailed",
+          "labelRunning": "tools.browserConsoleRunning",
+          "name": "console",
+          "summary": "Read browser console through agent-browser CLI"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserCloseDone",
+          "labelFailed": "tools.browserCloseFailed",
+          "labelRunning": "tools.browserCloseRunning",
+          "name": "close",
+          "summary": "Close the managed browser session"
+        }
+      ],
+      "appSubtool": "browser",
+      "category": "web",
+      "chatBlock": "fallback",
+      "description": "Run raw browser automation commands through Vercel agent-browser CLI.",
+      "description_detail": "Executes the selected subcommand with ORG2's managed session flags: agent-browser --session orgii --json <command>. Use for open, snapshot, screenshot, close, and other supported agent-browser commands.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "browser",
+      "icon_id": "chrome",
+      "labelDone": "tools.browserDone",
+      "labelFailed": "tools.browserFailed",
+      "labelRunning": "tools.browserRunning",
+      "name": "control_browser_with_agent_browser",
+      "requiredCapability": "browserExternal",
+      "simulatorApp": "BROWSER",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "click": "mouse-pointer-click",
+        "close": "x",
+        "console": "terminal",
+        "evaluate": "braces",
+        "fill": "list-checks",
+        "hover": "mouse-pointer",
+        "open": "globe",
+        "press": "keyboard",
+        "screenshot": "fullscreen",
+        "scroll": "move-vertical",
+        "select": "list-filter",
+        "snapshot": "fullscreen",
+        "tabs": "panel-top",
+        "type": "text-cursor-input",
+        "wait": "clock"
+      },
+      "actions": [
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserOpenDone",
+          "labelFailed": "tools.browserOpenFailed",
+          "labelRunning": "tools.browserOpenRunning",
+          "name": "open",
+          "summary": "Open a URL through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserClickDone",
+          "labelFailed": "tools.browserClickFailed",
+          "labelRunning": "tools.browserClickRunning",
+          "name": "click",
+          "summary": "Click an element through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserTypeDone",
+          "labelFailed": "tools.browserTypeFailed",
+          "labelRunning": "tools.browserTypeRunning",
+          "name": "type",
+          "summary": "Type text through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserPressDone",
+          "labelFailed": "tools.browserPressFailed",
+          "labelRunning": "tools.browserPressRunning",
+          "name": "press",
+          "summary": "Press a key through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserHoverDone",
+          "labelFailed": "tools.browserHoverFailed",
+          "labelRunning": "tools.browserHoverRunning",
+          "name": "hover",
+          "summary": "Hover an element through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserFillDone",
+          "labelFailed": "tools.browserFillFailed",
+          "labelRunning": "tools.browserFillRunning",
+          "name": "fill",
+          "summary": "Fill a form through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserEvaluateDone",
+          "labelFailed": "tools.browserEvaluateFailed",
+          "labelRunning": "tools.browserEvaluateRunning",
+          "name": "evaluate",
+          "summary": "Evaluate JavaScript through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserWaitDone",
+          "labelFailed": "tools.browserWaitFailed",
+          "labelRunning": "tools.browserWaitRunning",
+          "name": "wait",
+          "summary": "Wait for browser state through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserScrollDone",
+          "labelFailed": "tools.browserScrollFailed",
+          "labelRunning": "tools.browserScrollRunning",
+          "name": "scroll",
+          "summary": "Scroll the page through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserSelectDone",
+          "labelFailed": "tools.browserSelectFailed",
+          "labelRunning": "tools.browserSelectRunning",
+          "name": "select",
+          "summary": "Select an option through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserSnapshotDone",
+          "labelFailed": "tools.browserSnapshotFailed",
+          "labelRunning": "tools.browserSnapshotRunning",
+          "name": "snapshot",
+          "summary": "Capture the current page snapshot"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserScreenshotDone",
+          "labelFailed": "tools.browserScreenshotFailed",
+          "labelRunning": "tools.browserScreenshotRunning",
+          "name": "screenshot",
+          "summary": "Write a screenshot with playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserTabsDone",
+          "labelFailed": "tools.browserTabsFailed",
+          "labelRunning": "tools.browserTabsRunning",
+          "name": "tabs",
+          "summary": "List browser tabs through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserConsoleDone",
+          "labelFailed": "tools.browserConsoleFailed",
+          "labelRunning": "tools.browserConsoleRunning",
+          "name": "console",
+          "summary": "Read browser console through playwright-cli"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.browserCloseDone",
+          "labelFailed": "tools.browserCloseFailed",
+          "labelRunning": "tools.browserCloseRunning",
+          "name": "close",
+          "summary": "Close the managed browser session"
+        }
+      ],
+      "appSubtool": "browser",
+      "category": "web",
+      "chatBlock": "fallback",
+      "description": "Run raw browser automation commands through playwright-cli.",
+      "description_detail": "Executes the selected subcommand with ORG2's managed session flag: playwright-cli -s=orgii <command>. Use for open, snapshot, screenshot, close, and other supported playwright-cli commands.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "browser",
+      "icon_id": "chrome",
+      "labelDone": "tools.browserDone",
+      "labelFailed": "tools.browserFailed",
+      "labelRunning": "tools.browserRunning",
+      "name": "control_browser_with_playwright",
+      "requiredCapability": "browserExternal",
+      "simulatorApp": "BROWSER",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "clean_up": "sparkle",
+        "click": "mouse-pointer-click",
+        "get_state": "eye",
+        "hide_mask": "shield-off",
+        "input": "text-cursor-input",
+        "is_ready": "check-circle-2",
+        "list": "list",
+        "scroll": "move-vertical",
+        "select": "list-filter",
+        "show_mask": "shield"
+      },
+      "actions": [
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserDone",
+          "labelFailed": "tools.internalBrowserFailed",
+          "labelRunning": "tools.internalBrowserRunning",
+          "name": "list",
+          "summary": "List internal browser targets"
+        },
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserDone",
+          "labelFailed": "tools.internalBrowserFailed",
+          "labelRunning": "tools.internalBrowserRunning",
+          "name": "is_ready",
+          "summary": "Check whether the active internal browser Page Agent is ready"
+        },
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserGetStateDone",
+          "labelFailed": "tools.internalBrowserGetStateFailed",
+          "labelRunning": "tools.internalBrowserGetStateRunning",
+          "name": "get_state",
+          "summary": "Read the internal browser state"
+        },
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserClickDone",
+          "labelFailed": "tools.internalBrowserClickFailed",
+          "labelRunning": "tools.internalBrowserClickRunning",
+          "name": "click",
+          "summary": "Click an indexed element in the internal browser"
+        },
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserInputDone",
+          "labelFailed": "tools.internalBrowserInputFailed",
+          "labelRunning": "tools.internalBrowserInputRunning",
+          "name": "input",
+          "summary": "Input text into an indexed element in the internal browser"
+        },
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserSelectDone",
+          "labelFailed": "tools.internalBrowserSelectFailed",
+          "labelRunning": "tools.internalBrowserSelectRunning",
+          "name": "select",
+          "summary": "Select an option in the internal browser"
+        },
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserScrollDone",
+          "labelFailed": "tools.internalBrowserScrollFailed",
+          "labelRunning": "tools.internalBrowserScrollRunning",
+          "name": "scroll",
+          "summary": "Scroll the internal browser viewport"
+        },
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserShowMaskDone",
+          "labelFailed": "tools.internalBrowserShowMaskFailed",
+          "labelRunning": "tools.internalBrowserShowMaskRunning",
+          "name": "show_mask",
+          "summary": "Show the internal browser element mask"
+        },
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserHideMaskDone",
+          "labelFailed": "tools.internalBrowserHideMaskFailed",
+          "labelRunning": "tools.internalBrowserHideMaskRunning",
+          "name": "hide_mask",
+          "summary": "Hide the internal browser element mask"
+        },
+        {
+          "appSubtool": "internal_browser",
+          "labelDone": "tools.internalBrowserCleanUpDone",
+          "labelFailed": "tools.internalBrowserCleanUpFailed",
+          "labelRunning": "tools.internalBrowserCleanUpRunning",
+          "name": "clean_up",
+          "summary": "Clean up internal browser overlays"
+        }
+      ],
+      "appSubtool": "internal_browser",
+      "category": "web",
+      "chatBlock": "fallback",
+      "description": "Inspect and control the currently visible ORG2 internal Browser WebView.",
+      "description_detail": "Targets the active internal browser-session WebView tracked by the frontend lifecycle. Exposes list, is_ready, get_state, click, input, select, scroll, show_mask, hide_mask, and clean_up through the embedded Tauri/WebView Page Agent rather than external Chrome or Playwright, and never accepts arbitrary WebView labels from the model. Call get_state before indexed actions; element indexes are snapshots and can become stale after DOM changes, scrolling, or navigation.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "browser",
+      "icon_id": "mouse-pointer-click",
+      "labelDone": "tools.internalBrowserDone",
+      "labelFailed": "tools.internalBrowserFailed",
+      "labelRunning": "tools.internalBrowserRunning",
+      "name": "control_internal_browser",
+      "requiredCapability": "browserInternal",
+      "simulatorApp": "BROWSER",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "app": "monitor",
+        "click": "mouse-pointer-2",
+        "clipboard": "clipboard-list",
+        "dialog": "messages-square",
+        "dock": "monitor",
+        "drag": "mouse-pointer-2",
+        "hotkey": "keyboard",
+        "image": "camera",
+        "list": "list",
+        "menu": "list",
+        "menubar": "list",
+        "move": "mouse-pointer-2",
+        "open": "globe",
+        "paste": "clipboard-list",
+        "perform-action": "activity",
+        "permissions": "shield-check",
+        "press": "keyboard",
+        "scroll": "mouse-pointer-2",
+        "see": "fullscreen",
+        "set-value": "file-pen-line",
+        "space": "layers",
+        "swipe": "mouse-pointer-2",
+        "type": "keyboard",
+        "window": "monitor"
+      },
+      "actions": [
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopSeeDone",
+          "labelFailed": "tools.desktopSeeFailed",
+          "labelRunning": "tools.desktopSeeRunning",
+          "name": "see",
+          "summary": "Capture and map UI elements with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopImageDone",
+          "labelFailed": "tools.desktopImageFailed",
+          "labelRunning": "tools.desktopImageRunning",
+          "name": "image",
+          "summary": "Capture a screen, window, app, or menu image with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopListDone",
+          "labelFailed": "tools.desktopListFailed",
+          "labelRunning": "tools.desktopListRunning",
+          "name": "list",
+          "summary": "List apps, windows for an app, screens, menubar, or permissions with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopPermissionsDone",
+          "labelFailed": "tools.desktopPermissionsFailed",
+          "labelRunning": "tools.desktopPermissionsRunning",
+          "name": "permissions",
+          "summary": "Check macOS desktop permissions with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopAppDone",
+          "labelFailed": "tools.desktopAppFailed",
+          "labelRunning": "tools.desktopAppRunning",
+          "name": "app",
+          "summary": "Launch, switch, hide, unhide, quit, or relaunch apps with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopOpenDone",
+          "labelFailed": "tools.desktopOpenFailed",
+          "labelRunning": "tools.desktopOpenRunning",
+          "name": "open",
+          "summary": "Open a URL or file with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopClickDone",
+          "labelFailed": "tools.desktopClickFailed",
+          "labelRunning": "tools.desktopClickRunning",
+          "name": "click",
+          "summary": "Click an element, label, or coordinate with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopMoveDone",
+          "labelFailed": "tools.desktopMoveFailed",
+          "labelRunning": "tools.desktopMoveRunning",
+          "name": "move",
+          "summary": "Move the mouse cursor with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopDragDone",
+          "labelFailed": "tools.desktopDragFailed",
+          "labelRunning": "tools.desktopDragRunning",
+          "name": "drag",
+          "summary": "Perform a drag-and-drop operation with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopSwipeDone",
+          "labelFailed": "tools.desktopSwipeFailed",
+          "labelRunning": "tools.desktopSwipeRunning",
+          "name": "swipe",
+          "summary": "Perform a swipe gesture with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopTypeDone",
+          "labelFailed": "tools.desktopTypeFailed",
+          "labelRunning": "tools.desktopTypeRunning",
+          "name": "type",
+          "summary": "Enter text or keyboard input with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopPasteDone",
+          "labelFailed": "tools.desktopPasteFailed",
+          "labelRunning": "tools.desktopPasteRunning",
+          "name": "paste",
+          "summary": "Paste text or clipboard content with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopPressDone",
+          "labelFailed": "tools.desktopPressFailed",
+          "labelRunning": "tools.desktopPressRunning",
+          "name": "press",
+          "summary": "Press individual keys with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopHotkeyDone",
+          "labelFailed": "tools.desktopHotkeyFailed",
+          "labelRunning": "tools.desktopHotkeyRunning",
+          "name": "hotkey",
+          "summary": "Press a modifier key combination with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopScrollDone",
+          "labelFailed": "tools.desktopScrollFailed",
+          "labelRunning": "tools.desktopScrollRunning",
+          "name": "scroll",
+          "summary": "Scroll the mouse wheel with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopSetValueDone",
+          "labelFailed": "tools.desktopSetValueFailed",
+          "labelRunning": "tools.desktopSetValueRunning",
+          "name": "set-value",
+          "summary": "Set an accessibility element value with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopPerformActionDone",
+          "labelFailed": "tools.desktopPerformActionFailed",
+          "labelRunning": "tools.desktopPerformActionRunning",
+          "name": "perform-action",
+          "summary": "Perform a named accessibility action with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopWindowDone",
+          "labelFailed": "tools.desktopWindowFailed",
+          "labelRunning": "tools.desktopWindowRunning",
+          "name": "window",
+          "summary": "Manipulate application windows with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopMenuDone",
+          "labelFailed": "tools.desktopMenuFailed",
+          "labelRunning": "tools.desktopMenuRunning",
+          "name": "menu",
+          "summary": "Interact with app menus with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopMenubarDone",
+          "labelFailed": "tools.desktopMenubarFailed",
+          "labelRunning": "tools.desktopMenubarRunning",
+          "name": "menubar",
+          "summary": "Interact with macOS menubar items with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopDockDone",
+          "labelFailed": "tools.desktopDockFailed",
+          "labelRunning": "tools.desktopDockRunning",
+          "name": "dock",
+          "summary": "Interact with the macOS Dock with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopDialogDone",
+          "labelFailed": "tools.desktopDialogFailed",
+          "labelRunning": "tools.desktopDialogRunning",
+          "name": "dialog",
+          "summary": "Interact with system dialogs and alerts with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopSpaceDone",
+          "labelFailed": "tools.desktopSpaceFailed",
+          "labelRunning": "tools.desktopSpaceRunning",
+          "name": "space",
+          "summary": "Manage macOS Spaces with Peekaboo"
+        },
+        {
+          "appSubtool": "browser",
+          "labelDone": "tools.desktopClipboardDone",
+          "labelFailed": "tools.desktopClipboardFailed",
+          "labelRunning": "tools.desktopClipboardRunning",
+          "name": "clipboard",
+          "summary": "Read or write the macOS clipboard with Peekaboo"
+        }
+      ],
+      "appSubtool": "browser",
+      "category": "desktop",
+      "chatBlock": "fallback",
+      "description": "Run raw macOS desktop automation commands through the bundled Peekaboo CLI.",
+      "description_detail": "Executes the selected subcommand with ORG2's bundled Peekaboo binary. Use for see, image, app, open, click, type, paste, press, hotkey, scroll, drag, window, menu, menubar, dock, dialog, space, permissions, and other supported Peekaboo commands.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "monitor",
+      "labelDone": "tools.desktopDone",
+      "labelFailed": "tools.desktopFailed",
+      "labelRunning": "tools.desktopRunning",
+      "name": "control_desktop_with_peekaboo",
+      "requiredCapability": "desktop",
+      "simulatorApp": "BROWSER",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "subagent",
+          "chatBlock": "title_only",
+          "labelDone": "tools.subagentAssigned",
+          "labelFailed": "tools.subagentAssignFailed",
+          "labelRunning": "tools.subagentAssigning",
+          "name": "assign",
+          "summary": "Assigning task to a subagent (pre-start phase)"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.subagentDelegateDone",
+          "labelFailed": "tools.subagentDelegateFailed",
+          "labelRunning": "tools.subagentDelegateRunning",
+          "name": "delegate",
+          "summary": "Invoke a named agent by agent_id"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.subagentShadowDone",
+          "labelFailed": "tools.subagentShadowFailed",
+          "labelRunning": "tools.subagentShadowRunning",
+          "name": "shadow",
+          "summary": "Clone current agent's setup for parallel subtask"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.subagentKillDone",
+          "labelFailed": "tools.subagentKillFailed",
+          "labelRunning": "tools.subagentKillRunning",
+          "name": "kill",
+          "summary": "Abort a running background subagent by handle"
+        }
+      ],
+      "appSubtool": "subagent",
+      "category": "agent",
+      "chatBlock": "subagent",
+      "description": "Launch a subagent to handle a task autonomously.",
+      "description_detail": "Invoke any built-in or custom agent as a subagent. Built-in: builtin:explore (read-only search), builtin:general (full tools). Pass an agent_id and a detailed prompt.",
+      "displayBehavior": "wait_for_result",
+      "humanToolKey": "sessions",
+      "icon_id": "infinity",
+      "labelDone": "tools.subagentDone",
+      "labelFailed": "tools.subagentFailed",
+      "labelRunning": "tools.subagentRunning",
+      "name": "agent",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "BACKGROUND_TASKS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actionIcons": {
+        "create": "bot",
+        "create_org": "bot",
+        "get": "bot-message-square",
+        "get_org": "users",
+        "list": "bot-message-square",
+        "list_orgs": "users",
+        "remove": "bot-off",
+        "remove_org": "bot-off",
+        "update": "refresh-cw",
+        "update_org": "refresh-cw"
+      },
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefListDone",
+          "labelFailed": "tools.manageAgentDefListFailed",
+          "labelRunning": "tools.manageAgentDefListRunning",
+          "name": "list",
+          "summary": "List custom agents"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefGetDone",
+          "labelFailed": "tools.manageAgentDefGetFailed",
+          "labelRunning": "tools.manageAgentDefGetRunning",
+          "name": "get",
+          "summary": "Get a custom agent definition"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefCreateDone",
+          "labelFailed": "tools.manageAgentDefCreateFailed",
+          "labelRunning": "tools.manageAgentDefCreateRunning",
+          "name": "create",
+          "summary": "Create a custom agent"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefUpdateDone",
+          "labelFailed": "tools.manageAgentDefUpdateFailed",
+          "labelRunning": "tools.manageAgentDefUpdateRunning",
+          "name": "update",
+          "summary": "Update a custom agent"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefRemoveDone",
+          "labelFailed": "tools.manageAgentDefRemoveFailed",
+          "labelRunning": "tools.manageAgentDefRemoveRunning",
+          "name": "remove",
+          "summary": "Delete a custom agent"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefListOrgsDone",
+          "labelFailed": "tools.manageAgentDefListOrgsFailed",
+          "labelRunning": "tools.manageAgentDefListOrgsRunning",
+          "name": "list_orgs",
+          "summary": "List agent organizations"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefGetOrgDone",
+          "labelFailed": "tools.manageAgentDefGetOrgFailed",
+          "labelRunning": "tools.manageAgentDefGetOrgRunning",
+          "name": "get_org",
+          "summary": "Get an org definition"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefCreateOrgDone",
+          "labelFailed": "tools.manageAgentDefCreateOrgFailed",
+          "labelRunning": "tools.manageAgentDefCreateOrgRunning",
+          "name": "create_org",
+          "summary": "Create an org"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefUpdateOrgDone",
+          "labelFailed": "tools.manageAgentDefUpdateOrgFailed",
+          "labelRunning": "tools.manageAgentDefUpdateOrgRunning",
+          "name": "update_org",
+          "summary": "Update an org"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageAgentDefRemoveOrgDone",
+          "labelFailed": "tools.manageAgentDefRemoveOrgFailed",
+          "labelRunning": "tools.manageAgentDefRemoveOrgRunning",
+          "name": "remove_org",
+          "summary": "Delete an org"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "agent",
+      "chatBlock": "fallback",
+      "description": "Manage custom agent definitions and agent organizations.",
+      "description_detail": "CRUD over custom agents (list, get, create, update, remove) and agent organizations (list_orgs, get_org, create_org, update_org, remove_org). Use to inspect, create, or modify the user's library of custom agents and orgs.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "users",
+      "labelDone": "tools.manageAgentDefDone",
+      "labelFailed": "tools.manageAgentDefFailed",
+      "labelRunning": "tools.manageAgentDefRunning",
+      "name": "manage_agent_def",
+      "requiredCapability": "management",
+      "simulatorApp": "BACKGROUND_TASKS",
+      "source": "builtin",
+      "supported_agents": ["os", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesStatusDone",
+          "labelFailed": "tools.manageNodesStatusFailed",
+          "labelRunning": "tools.manageNodesStatusRunning",
+          "name": "status",
+          "summary": "Get connection status of all nodes"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesDescribeDone",
+          "labelFailed": "tools.manageNodesDescribeFailed",
+          "labelRunning": "tools.manageNodesDescribeRunning",
+          "name": "describe",
+          "summary": "Get device capabilities and metadata"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesNotifyDone",
+          "labelFailed": "tools.manageNodesNotifyFailed",
+          "labelRunning": "tools.manageNodesNotifyRunning",
+          "name": "notify",
+          "summary": "Send a notification to a device"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesCameraSnapDone",
+          "labelFailed": "tools.manageNodesCameraSnapFailed",
+          "labelRunning": "tools.manageNodesCameraSnapRunning",
+          "name": "camera_snap",
+          "summary": "Take a photo with the device camera"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesCameraListDone",
+          "labelFailed": "tools.manageNodesCameraListFailed",
+          "labelRunning": "tools.manageNodesCameraListRunning",
+          "name": "camera_list",
+          "summary": "List available cameras"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesCameraClipDone",
+          "labelFailed": "tools.manageNodesCameraClipFailed",
+          "labelRunning": "tools.manageNodesCameraClipRunning",
+          "name": "camera_clip",
+          "summary": "Record a short video clip"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesScreenRecordDone",
+          "labelFailed": "tools.manageNodesScreenRecordFailed",
+          "labelRunning": "tools.manageNodesScreenRecordRunning",
+          "name": "screen_record",
+          "summary": "Capture screen recording"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesLocationGetDone",
+          "labelFailed": "tools.manageNodesLocationGetFailed",
+          "labelRunning": "tools.manageNodesLocationGetRunning",
+          "name": "location_get",
+          "summary": "Get device GPS location"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesRunDone",
+          "labelFailed": "tools.manageNodesRunFailed",
+          "labelRunning": "tools.manageNodesRunRunning",
+          "name": "run",
+          "summary": "Execute a command on the device"
+        },
+        {
+          "appSubtool": "other_tool",
+          "labelDone": "tools.manageNodesInvokeDone",
+          "labelFailed": "tools.manageNodesInvokeFailed",
+          "labelRunning": "tools.manageNodesInvokeRunning",
+          "name": "invoke",
+          "summary": "Call a custom device capability"
+        }
+      ],
+      "appSubtool": "other_tool",
+      "category": "data",
+      "chatBlock": "fallback",
+      "description": "Control remote devices (mobile, IoT) connected via WebSocket.",
+      "description_detail": "Sends commands to remote devices registered through the nodes bridge, such as phones, IoT endpoints, or simulators, over WebSocket.",
+      "displayBehavior": "wait_for_result",
+      "icon_id": "network",
+      "labelDone": "tools.manageNodesDone",
+      "labelFailed": "tools.manageNodesFailed",
+      "labelRunning": "tools.manageNodesRunning",
+      "name": "manage_nodes",
+      "requiredCapability": "data",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "other_interactions",
+          "labelDone": "tools.askUserQuestionsAskDone",
+          "labelFailed": "tools.askUserQuestionsAskFailed",
+          "labelRunning": "tools.askUserQuestionsAskRunning",
+          "name": "ask",
+          "summary": "Present a structured question and wait for user response"
+        }
+      ],
+      "appSubtool": "other_interactions",
+      "category": "agent",
+      "chatBlock": "fallback",
+      "description": "Ask the user structured questions during execution.",
+      "description_detail": "Presents structured prompts, confirmations, or multi-step choices mid-run and returns answers from the user to unblock the agent.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "message-circle-question-mark",
+      "labelDone": "tools.askUserQuestionsDone",
+      "labelFailed": "tools.askUserQuestionsFailed",
+      "labelRunning": "tools.askUserQuestionsRunning",
+      "name": "ask_user_questions",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "statusIcons": {
+        "answered": "check-circle-2"
+      },
+      "statusLabels": {
+        "answered": "tools.askUserQuestionsAnswered",
+        "skipped": "tools.askUserQuestionsSkipped"
+      },
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "other_interactions",
+          "labelDone": "tools.manageSecretsRequestDone",
+          "labelFailed": "tools.manageSecretsRequestFailed",
+          "labelRunning": "tools.manageSecretsRequestRunning",
+          "name": "request",
+          "summary": "Prompt the user via a secure modal for a sensitive value"
+        },
+        {
+          "appSubtool": "other_interactions",
+          "labelDone": "tools.manageSecretsListDone",
+          "labelFailed": "tools.manageSecretsListFailed",
+          "labelRunning": "tools.manageSecretsListRunning",
+          "name": "list",
+          "summary": "List captured secrets (label/kind/length only)"
+        },
+        {
+          "appSubtool": "other_interactions",
+          "labelDone": "tools.manageSecretsDiscardDone",
+          "labelFailed": "tools.manageSecretsDiscardFailed",
+          "labelRunning": "tools.manageSecretsDiscardRunning",
+          "name": "discard",
+          "summary": "Drop a captured secret immediately"
+        }
+      ],
+      "appSubtool": "other_interactions",
+      "category": "agent",
+      "chatBlock": "fallback",
+      "description": "Capture sensitive user input out-of-band (no plaintext in chat).",
+      "description_detail": "Out-of-band capture of API keys, passwords, and OAuth tokens via a secure frontend modal. Returns opaque `{{secret:<token>}}` placeholders that downstream tools (today: only `write_env_file`) resolve to plaintext at write time. The plaintext never enters the LLM transcript or the chat history.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "lock",
+      "labelDone": "tools.manageSecretsDone",
+      "labelFailed": "tools.manageSecretsFailed",
+      "labelRunning": "tools.manageSecretsRunning",
+      "name": "manage_secrets",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "statusIcons": {
+        "answered": "check-circle-2"
+      },
+      "statusLabels": {
+        "answered": "tools.manageSecretsAnswered",
+        "rejected": "tools.manageSecretsRejected"
+      },
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionCreateDone",
+          "labelFailed": "tools.manageSessionCreateFailed",
+          "labelRunning": "tools.manageSessionCreateRunning",
+          "name": "create",
+          "summary": "Start a new session with a task description"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionListDone",
+          "labelFailed": "tools.manageSessionListFailed",
+          "labelRunning": "tools.manageSessionListRunning",
+          "name": "list",
+          "summary": "Enumerate all sessions"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionGetStatusDone",
+          "labelFailed": "tools.manageSessionGetStatusFailed",
+          "labelRunning": "tools.manageSessionGetStatusRunning",
+          "name": "get_status",
+          "summary": "Detailed state including pending questions"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionSendMessageDone",
+          "labelFailed": "tools.manageSessionSendMessageFailed",
+          "labelRunning": "tools.manageSessionSendMessageRunning",
+          "name": "send_message",
+          "summary": "Send a message to a running session"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionAnswerQuestionDone",
+          "labelFailed": "tools.manageSessionAnswerQuestionFailed",
+          "labelRunning": "tools.manageSessionAnswerQuestionRunning",
+          "name": "answer_question",
+          "summary": "Answer a pending question from the agent"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionPauseDone",
+          "labelFailed": "tools.manageSessionPauseFailed",
+          "labelRunning": "tools.manageSessionPauseRunning",
+          "name": "pause",
+          "summary": "Pause a running session"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionResumeDone",
+          "labelFailed": "tools.manageSessionResumeFailed",
+          "labelRunning": "tools.manageSessionResumeRunning",
+          "name": "resume",
+          "summary": "Resume a paused session"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionCancelDone",
+          "labelFailed": "tools.manageSessionCancelFailed",
+          "labelRunning": "tools.manageSessionCancelRunning",
+          "name": "cancel",
+          "summary": "Cancel a session"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionOpenDone",
+          "labelFailed": "tools.manageSessionOpenFailed",
+          "labelRunning": "tools.manageSessionOpenRunning",
+          "name": "open",
+          "summary": "Navigate to the session in the IDE"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionUploadFileDone",
+          "labelFailed": "tools.manageSessionUploadFileFailed",
+          "labelRunning": "tools.manageSessionUploadFileRunning",
+          "name": "upload_file",
+          "summary": "Upload a file to the session worktree"
+        },
+        {
+          "appSubtool": "subagent",
+          "labelDone": "tools.manageSessionMergeDone",
+          "labelFailed": "tools.manageSessionMergeFailed",
+          "labelRunning": "tools.manageSessionMergeRunning",
+          "name": "merge",
+          "summary": "Merge the worktree branch back to base"
+        }
+      ],
+      "appSubtool": "subagent",
+      "category": "agent",
+      "chatBlock": "subagent",
+      "description": "Manage agent sessions: create, monitor, and intervene.",
+      "description_detail": "Full lifecycle management for agent sessions.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "humanToolKey": "sessions",
+      "icon_id": "box",
+      "labelDone": "tools.askUserDone",
+      "labelFailed": "tools.askUserFailed",
+      "labelRunning": "tools.askUserRunning",
+      "name": "manage_session",
+      "requiredCapability": "management",
+      "simulatorApp": "BACKGROUND_TASKS",
+      "source": "builtin",
+      "supported_agents": ["os", "custom"]
+    },
+    {
+      "actions": [
+        {
+          "appSubtool": "message",
+          "labelDone": "tools.messageSendDone",
+          "labelFailed": "tools.messageSendFailed",
+          "labelRunning": "tools.messageSendRunning",
+          "name": "send",
+          "summary": "Send a message to a configured channel"
+        }
+      ],
+      "appSubtool": "message",
+      "category": "agent",
+      "chatBlock": "sent_message",
+      "description": "Send messages to channels (Telegram, Discord, etc.).",
+      "description_detail": "Posts outbound messages through configured channels such as Telegram or Discord using stored credentials and channel routing.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "send",
+      "labelDone": "tools.messageDone",
+      "labelFailed": "tools.messageFailed",
+      "labelRunning": "tools.messageRunning",
+      "name": "send_message",
+      "requiredCapability": "gateway",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "message",
+      "category": "agent",
+      "chatBlock": "sent_message",
+      "description": "Send a notification or summary to the user's inbox.",
+      "description_detail": "Delivers messages, task results, periodic reports, or reminders to the user's local inbox for later review.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "inbox",
+      "labelDone": "tools.sendToInboxDone",
+      "labelFailed": "tools.sendToInboxFailed",
+      "labelRunning": "tools.sendToInboxRunning",
+      "name": "send_to_inbox",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "explore",
+      "category": "agent",
+      "chatBlock": "explore",
+      "description": "Discover additional tools not currently loaded.",
+      "description_detail": "Searches across deferred (on-demand) tools by keyword and returns matching names and descriptions. Enables a two-tier tool loading strategy where specialized tools stay dormant until the agent explicitly discovers them.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "book-search",
+      "labelDone": "tools.toolSearchDone",
+      "labelFailed": "tools.toolSearchFailed",
+      "labelRunning": "tools.toolSearchRunning",
+      "name": "tool_search",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "message",
+      "category": "orchestration",
+      "chatBlock": "sent_message",
+      "description": "Send a typed org message inside an Agent Org run.",
+      "description_detail": "Org messaging primitive: routes a typed AgentMessage (plain or structured RPC) to an org participant by name, agent_id, or broadcast. Persisted to the org inbox; surfaced to the recipient on its next turn.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "mail",
+      "labelDone": "tools.orgSendMessageDone",
+      "labelFailed": "tools.orgSendMessageFailed",
+      "labelRunning": "tools.orgSendMessageRunning",
+      "name": "org_send_message",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "todo",
+      "category": "orchestration",
+      "chatBlock": "org_task",
+      "description": "Create a task on the Agent Org task board.",
+      "description_detail": "Creates a pending shared Task for the current Agent Org run, including its graph fields, execution mode, and optional worker Owner.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "clipboard-copy",
+      "labelDone": "tools.taskCreateDone",
+      "labelFailed": "tools.taskCreateFailed",
+      "labelRunning": "tools.taskCreateRunning",
+      "name": "task_create",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "todo",
+      "category": "orchestration",
+      "chatBlock": "org_task",
+      "description": "Create an atomic Agent Org task graph.",
+      "description_detail": "Validates and creates a complete dependency graph in one transaction, using local node keys that resolve to durable task ids.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "git-branch",
+      "labelDone": "tools.taskCreateDone",
+      "labelFailed": "tools.taskCreateFailed",
+      "labelRunning": "tools.taskCreateRunning",
+      "name": "task_graph_create",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "todo",
+      "category": "orchestration",
+      "chatBlock": "org_task",
+      "description": "Apply one authorized Task operation.",
+      "description_detail": "Applies one tagged graph-admin or Owner-lifecycle operation; mixed authority fields and terminal rewrites are rejected.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "clipboard-pen",
+      "labelDone": "tools.taskUpdateDone",
+      "labelFailed": "tools.taskUpdateFailed",
+      "labelRunning": "tools.taskUpdateRunning",
+      "name": "task_update",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "todo",
+      "category": "orchestration",
+      "chatBlock": "org_task",
+      "description": "List tasks on the Agent Org task board.",
+      "description_detail": "Lists shared task-board items for the current Agent Org run, optionally filtered by owner or status.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "list-checks",
+      "labelDone": "tools.taskListDone",
+      "labelFailed": "tools.taskListFailed",
+      "labelRunning": "tools.taskListRunning",
+      "name": "task_list",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "todo",
+      "category": "orchestration",
+      "chatBlock": "org_task",
+      "description": "Fetch one Agent Org task.",
+      "description_detail": "Fetches one shared Agent Org task-board item by id with the full task payload.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "clipboard-list",
+      "labelDone": "tools.taskGetDone",
+      "labelFailed": "tools.taskGetFailed",
+      "labelRunning": "tools.taskGetRunning",
+      "name": "task_get",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "todo",
+      "category": "orchestration",
+      "chatBlock": "org_task",
+      "description": "Request safe completion of an Agent Org run.",
+      "description_detail": "Records a coordinator completion request at the current work revision. It does not bypass task, delivery, approval, intervention, or turn-finality checks.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "circle-check-big",
+      "labelDone": "tools.taskUpdateDone",
+      "labelFailed": "tools.taskUpdateFailed",
+      "labelRunning": "tools.taskUpdateRunning",
+      "name": "org_run_complete",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "todo",
+      "category": "orchestration",
+      "chatBlock": "org_task",
+      "description": "Repair an undeliverable Agent Org Inbox row.",
+      "description_detail": "Coordinator-only. Inspects, cancels, or supersedes an Inbox delivery while preserving the original row as audit evidence.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "mail-warning",
+      "labelDone": "tools.taskUpdateDone",
+      "labelFailed": "tools.taskUpdateFailed",
+      "labelRunning": "tools.taskUpdateRunning",
+      "name": "org_inbox_repair",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "other_interactions",
+      "category": "event",
+      "chatBlock": "title_only",
+      "description": "Suggest switching the agent execution mode.",
+      "description_detail": "Proposes a mode switch (e.g., to plan mode) with a reason. The user or system confirms or skips the switch.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "arrow-right-left",
+      "labelDone": "tools.suggestModeSwitchDone",
+      "labelFailed": "tools.suggestModeSwitchFailed",
+      "labelRunning": "tools.suggestModeSwitchRunning",
+      "name": "suggest_mode_switch",
+      "requiredCapability": "orchestration",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "statusIcons": {
+        "skipped": "arrow-right-left",
+        "switched": "check-circle-2"
+      },
+      "statusLabels": {
+        "skipped": "tools.suggestModeSwitchSkipped",
+        "switched": "tools.suggestModeSwitchSwitched"
+      },
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "other_interactions",
+      "category": "event",
+      "chatBlock": "title_only",
+      "description": "Request user approval before executing a tool.",
+      "description_detail": "Presents a permission prompt for a tool invocation that requires explicit user consent.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "bell-ring",
+      "labelDone": "tools.askUserPermissionsDone",
+      "labelFailed": "tools.askUserPermissionsFailed",
+      "labelRunning": "tools.askUserPermissionsRunning",
+      "name": "ask_user_permissions",
+      "requiredCapability": "core",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "statusIcons": {
+        "approved": "check-circle-2",
+        "denied": "x-circle"
+      },
+      "statusLabels": {
+        "approved": "tools.askUserPermissionsGranted",
+        "denied": "tools.askUserPermissionsDenied"
+      },
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "thinking",
+      "category": "event",
+      "chatBlock": "fallback",
+      "description": "LLM reasoning / thinking output.",
+      "description_detail": "Internal model reasoning trace displayed to the user. Not an invokable tool.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "sparkle",
+      "name": "thinking",
+      "requiredCapability": "core",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "message",
+      "category": "event",
+      "chatBlock": "fallback",
+      "description": "Agent text response to the user.",
+      "description_detail": "The main conversational output from the agent. Not an invokable tool.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "message-circle",
+      "name": "agent_message",
+      "requiredCapability": "core",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "message",
+      "category": "event",
+      "chatBlock": "fallback",
+      "description": "User message to the agent.",
+      "description_detail": "A user-authored message in the conversation. Not an invokable tool.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "user",
+      "name": "user_message",
+      "requiredCapability": "core",
+      "simulatorApp": "CHANNELS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "subagent",
+      "category": "event",
+      "chatBlock": "subagent",
+      "description": "Subagent execution container.",
+      "description_detail": "Wraps a delegated subagent's lifecycle (start, progress, completion) in the chat history.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "infinity",
+      "name": "subagent",
+      "requiredCapability": "core",
+      "simulatorApp": "BACKGROUND_TASKS",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "other_tool",
+      "category": "event",
+      "chatBlock": "fallback",
+      "description": "MCP server tool call.",
+      "description_detail": "Tool call routed to an external Model Context Protocol server.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "mcp-logo",
+      "name": "mcp_tool",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    },
+    {
+      "appSubtool": "other_tool",
+      "category": "event",
+      "chatBlock": "fallback",
+      "description": "Generic tool call.",
+      "description_detail": "Fallback renderer for tool calls without a dedicated event component.",
+      "displayBehavior": "wait_for_result",
+      "hidden": true,
+      "icon_id": "wrench",
+      "name": "tool_call",
+      "requiredCapability": "core",
+      "simulatorApp": "CODE_EDITOR",
+      "source": "builtin",
+      "supported_agents": ["os", "sde", "custom"]
+    }
+  ]
+}

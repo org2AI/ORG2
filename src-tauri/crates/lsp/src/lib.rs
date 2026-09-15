@@ -25,7 +25,7 @@ pub use config::{
 pub use install_pipeline::{
     ensure_binary, find_binary, is_install_enabled_sync, InstallError, InstallMethod,
 };
-pub use manager::{server_key_for_language, LspManager, ServerKey};
+pub use manager::{server_key_for_language, LspManager, ServerKey, ServerLease};
 pub use root_detection::{find_nearest_root, find_workspace_root, RootPattern};
 pub use server_defs::{
     builtin_servers, server_by_id, servers_for_file, servers_for_language_id, supported_extensions,

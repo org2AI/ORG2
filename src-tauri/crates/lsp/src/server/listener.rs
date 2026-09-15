@@ -1,179 +1,136 @@
-//! Inbound stdio pumps: the stderr drain task and the framed stdout
-//! listener that correlates responses and dispatches
-//! `textDocument/publishDiagnostics`.
-
-use tokio::io::{AsyncBufReadExt, BufReader};
-
-use super::super::types::*;
-use super::lifecycle::LspServer;
-use super::transport::drain_pending_on_close;
+//! Bounded stdio pumps and bidirectional JSON-RPC dispatch.
+use super::{
+    lifecycle::LspServer,
+    transport::{drain_pending_on_close, write_frame},
+};
+use crate::types::PublishDiagnosticsParams;
+use tokio::io::{AsyncReadExt, BufReader};
 
 impl LspServer {
-    /// Start listening to stdout and emit diagnostic events.
-    ///
-    /// Consumes the pre-taken `self.stdout` (taken in `new_with_binary` to
-    /// avoid pipe-fill deadlocks during `initialize`). Also spawns a
-    /// background task to drain `self.stderr` into `log::warn!` so noisy
-    /// servers (gopls, pyright) don't block on a full stderr pipe.
     pub fn start_listening(
         &mut self,
         _app_handle: tauri::AppHandle,
         language: String,
     ) -> Result<(), String> {
-        let stdout = self
-            .stdout
-            .take()
-            .ok_or_else(|| "LSP stdout already consumed".to_string())?;
-
+        self.start_stdio(language)
+    }
+    pub(crate) fn start_stdio(&mut self, language: String) -> Result<(), String> {
+        let stdout = self.stdout.take().ok_or("LSP stdout already consumed")?;
         if let Some(stderr) = self.stderr.take() {
-            let lang_for_stderr = language.clone();
-            let stderr_log = self.log_buffer.clone();
-            tokio::spawn(async move {
+            let stop = self.stop.clone();
+            let log = self.log_buffer.clone();
+            self.pumps.get_mut().push(tokio::spawn(async move {
+                // read_line allocates until newline; fixed chunks bound even a
+                // child emitting an endless line. The log itself is bounded.
                 let mut reader = BufReader::new(stderr);
-                let mut line = String::new();
+                let mut bytes = [0u8; 2048];
                 loop {
-                    line.clear();
-                    match reader.read_line(&mut line).await {
-                        Ok(0) => break,
-                        Ok(_) => {
-                            let trimmed = line.trim_end();
-                            if !trimmed.is_empty() {
-                                log::warn!("[LSP {} stderr] {}", lang_for_stderr, trimmed);
-                                stderr_log.push(crate::log_buffer::IoKind::StdErr, trimmed);
-                            }
-                        }
-                        Err(err) => {
-                            log::debug!(
-                                "[LSP] stderr drain for {} stopped: {}",
-                                lang_for_stderr,
-                                err
-                            );
-                            break;
-                        }
+                    let result = tokio::select! { biased; _ = stop.cancelled() => break, r = reader.read(&mut bytes) => r };
+                    match result {
+                        Ok(0) | Err(_) => break,
+                        Ok(n) => log.push(crate::log_buffer::IoKind::StdErr, String::from_utf8_lossy(&bytes[..n]).as_ref()),
                     }
                 }
-            });
+            }));
         }
-
-        log::info!("[LSP] Starting stdout listener for {} server", language);
-
         let cache = self.diagnostics_cache.clone();
         let pending = self.pending_requests.clone();
-        let stdout_log = self.log_buffer.clone();
-
-        // Spawn task to read stdout. We drive the LSP framing layer
-        // through `tokio_util::codec::FramedRead<LspCodec>`, which
-        // owns the read buffer and hands us one body's worth of bytes
-        // at a time. The previous hand-rolled loop revalidated UTF-8
-        // on every poll and did O(n) `buffer.drain(..consumed)` shifts;
-        // the codec works on `BytesMut` slices directly and only
-        // touches header bytes (always 7-bit ASCII).
-        tokio::spawn(async move {
-            use crate::codec::LspCodec;
+        let log = self.log_buffer.clone();
+        let stop = self.stop.clone();
+        let stdin = self.stdin.clone();
+        let settings = self.workspace_settings.clone();
+        self.pumps.get_mut().push(tokio::spawn(async move {
             use futures::StreamExt;
-            use tokio_util::codec::FramedRead;
-
-            let mut framed = FramedRead::with_capacity(stdout, LspCodec::new(), 8 * 1024);
-
-            while let Some(frame) = framed.next().await {
-                let body = match frame {
-                    Ok(body) => body,
-                    Err(err) => {
-                        // Codec errors are unrecoverable — a server
-                        // emitting malformed framing means it's in a
-                        // bad state. Log loudly and end the listener
-                        // so `drain_pending_on_close` runs.
-                        log::error!("[LSP] {} stdout framing error: {}", language, err);
-                        break;
-                    }
-                };
-
-                let value: serde_json::Value = match serde_json::from_slice(&body) {
-                    Ok(value) => value,
-                    Err(err) => {
-                        log::warn!(
-                            "[LSP] {} sent unparseable JSON-RPC message: {}",
-                            language,
-                            err
-                        );
-                        // Still log the raw bytes so the user can see
-                        // what the server actually printed when it
-                        // emitted unparseable JSON.
-                        let lossy = String::from_utf8_lossy(&body).to_string();
-                        stdout_log.push(crate::log_buffer::IoKind::StdOut, lossy);
-                        continue;
-                    }
-                };
-
-                // Push the parsed body into the log buffer. We use the
-                // already-validated UTF-8 bytes from the codec rather
-                // than re-serializing `value` so the log preserves
-                // exactly what the server sent.
-                let lossy_body = String::from_utf8_lossy(&body).to_string();
-                stdout_log.push(crate::log_buffer::IoKind::StdOut, lossy_body);
-
-                // Response correlation. A JSON-RPC response has `id`
-                // and no `method`. We resolve the matching `oneshot`
-                // sender; the sync `parking_lot::Mutex` critical
-                // section is intentionally short (no `.await`).
-                if let Some(id) = value.get("id").and_then(|v| v.as_u64()) {
-                    if value.get("method").is_none() {
-                        let removed = pending.lock().remove(&id);
-                        if let Some(sender) = removed {
-                            let result = value
-                                .get("result")
-                                .cloned()
-                                .unwrap_or(serde_json::Value::Null);
-                            let _ = sender.send(result);
-                            log::debug!("[LSP] Resolved response for request {}", id);
-                        }
-                    }
-                }
-
-                // Notification dispatch. Today we only act on
-                // `textDocument/publishDiagnostics`; everything else
-                // (window/logMessage, $/progress, …) is ignored at
-                // this layer.
+            let mut framed = tokio_util::codec::FramedRead::with_capacity(stdout, crate::codec::LspCodec::new(), 8*1024);
+            loop {
+                let frame = tokio::select! { biased; _ = stop.cancelled() => break, frame = framed.next() => frame };
+                let body = match frame { Some(Ok(body)) => body, Some(Err(error)) => {log::warn!("LSP {language} framing failed: {error}");break;}, None => break };
+                log.push(crate::log_buffer::IoKind::StdOut, String::from_utf8_lossy(&body).as_ref());
+                let value: serde_json::Value = match serde_json::from_slice(&body) { Ok(value) => value, Err(_) => continue };
                 if let Some(method) = value.get("method").and_then(|m| m.as_str()) {
-                    if method == "textDocument/publishDiagnostics" {
-                        log::debug!("[LSP] Received publishDiagnostics for {}", language);
-
-                        // Typed cache update — see Phase 9. Caching
-                        // the typed payload means downstream readers
-                        // (post-edit hook, query_lsp) never walk raw
-                        // JSON.
-                        if let Some(params_value) = value.get("params") {
-                            match serde_json::from_value::<PublishDiagnosticsParams>(
-                                params_value.clone(),
-                            ) {
-                                Ok(parsed) => {
-                                    let uri_str = parsed.uri.to_string();
-                                    let mut diag_cache = cache.write().await;
-                                    diag_cache.upsert(uri_str, parsed);
-                                }
-                                Err(err) => {
-                                    log::warn!(
-                                        "[LSP] {} sent unparseable publishDiagnostics payload: {}",
-                                        language,
-                                        err
-                                    );
-                                }
-                            }
+                    if let Some(id) = value.get("id") {
+                        let response = if id.as_str().is_some_and(|id| id.len() > 128) || !(id.is_string() || id.is_number() || id.is_null()) {
+                            serde_json::json!({"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"Invalid or oversized request id"}})
+                        } else { server_request_response(id.clone(), method, value.get("params"), &*settings.read().await) };
+                        let message = crate::protocol::format_lsp_message(&response.to_string());
+                        if write_frame(&stdin, &stop, &message).await.is_err() { break; }
+                    } else if method == "textDocument/publishDiagnostics" {
+                        if let Some(params) = value.get("params").and_then(|p| serde_json::from_value::<PublishDiagnosticsParams>(p.clone()).ok()) {
+                            cache.write().await.upsert(params.uri.to_string(), params);
                         }
+                    }
+                } else if let Some(id) = value.get("id").and_then(|id| id.as_u64()) {
+                    if let Some(sender) = pending.lock().remove(&id) {
+                        let response = if let Some(error) = value.get("error") {
+                            serde_json::from_value(error.clone()).map_or_else(|_| Err(crate::protocol::JsonRpcError {code:-32603,message:"Malformed JSON-RPC error".into(),data:Some(error.clone())}), Err)
+                        } else if let Some(result) = value.get("result") { Ok(result.clone()) }
+                        else { Err(crate::protocol::JsonRpcError {code:-32603,message:"Response missing result/error".into(),data:None}) };
+                        let _ = sender.send(response);
                     }
                 }
             }
-
-            log::debug!("[LSP] {} server stdout closed", language);
-
-            // Server stdout has ended (clean shutdown or crash). Drain any
-            // pending requests so awaiters get an immediate `Canceled`
-            // instead of waiting the full per-request timeout.
+            stop.close();
             drain_pending_on_close(&pending, &language).await;
-
-            log::info!("[LSP] {} server stdout listener stopped", language);
-        });
-
+        }));
         Ok(())
     }
 }
+
+fn server_request_response(
+    id: serde_json::Value,
+    method: &str,
+    params: Option<&serde_json::Value>,
+    settings: &serde_json::Value,
+) -> serde_json::Value {
+    if method == "workspace/configuration" {
+        let Some(items) = params
+            .and_then(|p| p.get("items"))
+            .and_then(|i| i.as_array())
+        else {
+            return serde_json::json!({"jsonrpc":"2.0","id":id,"error":{"code":-32602,"message":"configuration.items must be an array"}});
+        };
+        if items.len() > 128 {
+            return serde_json::json!({"jsonrpc":"2.0","id":id,"error":{"code":-32602,"message":"Too many configuration items (maximum 128)"}});
+        }
+        let mut budget = JsonBudget(1024 * 1024 - 512);
+        let mut values = Vec::with_capacity(items.len());
+        for item in items {
+            let section = item.get("section").and_then(|s| s.as_str()).unwrap_or("");
+            let value = if section.is_empty() {
+                settings
+            } else {
+                section
+                    .split('.')
+                    .try_fold(settings, |value, key| value.get(key))
+                    .unwrap_or(&serde_json::Value::Null)
+            };
+            if serde_json::to_writer(&mut budget, value).is_err() {
+                return serde_json::json!({"jsonrpc":"2.0","id":id,"error":{"code":-32603,"message":"Configuration response exceeds byte budget"}});
+            }
+            values.push(value.clone());
+        }
+
+        serde_json::json!({"jsonrpc":"2.0","id":id,"result":values})
+    } else {
+        serde_json::json!({"jsonrpc":"2.0","id":id,"error":{"code":-32601,"message":format!("Unsupported client method: {method}")}})
+    }
+}
+
+// Counts serialized bytes without first allocating the expanded response.
+struct JsonBudget(usize);
+impl std::io::Write for JsonBudget {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if bytes.len() > self.0 {
+            return Err(std::io::Error::other("JSON byte budget exceeded"));
+        }
+        self.0 -= bytes.len();
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+#[path = "../tests/listener_tests.rs"]
+mod tests;

@@ -30,20 +30,12 @@ pub async fn get_post_edit_diagnostics(
     let language = language_for_file(file_path)?;
     let document_language_id = document_language_id_for_file(file_path)?;
     let uri = path_to_uri(file_path);
-    let manager = lsp_manager.lock().await;
-
-    if !manager.is_server_running(language).await {
-        let root_path = infer_workspace_root(file_path, workspace_root);
-        let root_path_str = root_path.to_string_lossy().to_string();
-        if manager
-            .start_server(language, &root_path_str, app_handle.clone())
-            .await
-            .is_err()
-        {
-            return None;
-        }
-        tokio::time::sleep(Duration::from_millis(250)).await;
-    }
+    let manager = lsp_manager.lock().await.clone();
+    let root = infer_workspace_root(file_path, workspace_root);
+    let server = manager
+        .start_server(language, &root.to_string_lossy(), app_handle.clone())
+        .await
+        .ok()?;
 
     let content = match tokio::fs::read_to_string(file_path).await {
         Ok(text) => text,
@@ -56,46 +48,15 @@ pub async fn get_post_edit_diagnostics(
         }
     };
 
-    // Pick a version that's almost certainly higher than whatever the
-    // LspTool has tracked for this URI in the current session — the two
-    // version sequences are independent (one per LspTool instance, one per
-    // post-edit hook call) and rust-analyzer / pyright both refuse a
-    // `did_change` with a non-monotonically-increasing version. We start
-    // post-edit versions from `POST_EDIT_VERSION_BASE` so the LspTool
-    // would have to fire >1B operations to clash. `did_open` is sent with
-    // version 1 first because LSP servers reset the document's version
-    // counter on every open.
-    const POST_EDIT_VERSION_BASE: i32 = 1_000_000_001;
-    if let Err(err) = manager
-        .did_open(document_language_id, &uri, 1, &content)
+    server
+        .sync_document(&uri, document_language_id, &content)
         .await
-    {
-        debug!(
-            "post-edit diagnostics: did_open failed ({}), trying did_change",
-            err
-        );
-        if let Err(err) = manager
-            .did_change(language, &uri, POST_EDIT_VERSION_BASE, &content)
-            .await
-        {
-            debug!("post-edit diagnostics: did_change also failed: {}", err);
-        }
-    }
-
-    drop(manager);
+        .ok()?;
     tokio::time::sleep(Duration::from_millis(500)).await;
-
-    let manager = lsp_manager.lock().await;
-    let diagnostics = match manager.get_file_diagnostics(language, &uri).await {
-        Ok(diag) => diag,
-        Err(err) => {
-            debug!(
-                "post-edit diagnostics: get_file_diagnostics failed: {}",
-                err
-            );
-            return None;
-        }
-    };
+    if server.is_closed() {
+        return None;
+    }
+    let diagnostics = server.get_file_diagnostics(&uri).await.ok()?;
 
     let issues: Vec<Diagnostic> = diagnostics
         .into_iter()

@@ -1,185 +1,351 @@
-//! LSP Manager
-//!
-//! Manages multiple language server processes keyed by `(root, server_id)`.
-//! Today every caller (agent-core's `query_lsp` / `manage_lsp` tools, the
-//! post-edit hook, the Tauri `lsp_start_server` command) passes a single
-//! workspace root per session, so in practice the manager runs at most
-//! one process per `(language, root)` pair. The map is keyed on `ServerKey`
-//! to leave room for multi-root workspaces, but no producer attaches a
-//! second root today — when one lands (frontend workspace-folders UI), it
-//! will need:
-//!
-//! 1. capability-detection of `workspace.workspaceFolders.supported`,
-//! 2. an `add_workspace_folder` / `remove_workspace_folder` path that
-//!    re-uses an existing `LspServer` instead of spawning a new one,
-//! 3. a `workspace/didChangeWorkspaceFolders` notification.
-//!
-//! Provides:
-//! - On-demand spawning with deduplication (a single critical section
-//!   on `spawning` covers the running / broken / spawning checks so two
-//!   concurrent callers can never both insert primary spawners).
-//! - Automatic server selection based on language ID via
-//!   `find_server_for_language`.
-//! - Broken-server cooldown tracking (5 min).
-//!
-//! Public API surface is language-keyed (`start_server`, `did_open`,
-//! `goto_definition`, …) — these resolve the first running server
-//! matching the requested language and delegate.
+//! Workspace-keyed server ownership. Callers retain a lease, never re-resolve a
+//! language against the first app-wide process after awaiting another step.
+use super::{
+    config::{get_server_override, is_server_enabled},
+    server::LspServer,
+    server_defs::{servers_for_language_id, ServerDef},
+};
+use parking_lot::Mutex;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::{Duration, Instant},
+};
+use tokio::sync::watch;
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-use tokio::sync::{oneshot, RwLock};
-
-use super::config::{get_server_override, is_server_enabled};
-use super::server::LspServer;
-use super::server_defs::{server_by_id, servers_for_language_id, ServerDef};
-use super::types::{Diagnostic, GotoDefinitionResponse, Hover, Location, PublishDiagnosticsParams};
-
-/// Composite key for identifying a running server instance.
-/// A server is uniquely identified by its root directory and server ID.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ServerKey {
-    /// The workspace/workspace root this server is initialized with
     pub root: PathBuf,
-    /// The server definition ID (e.g., "typescript", "rust", "python")
     pub server_id: String,
 }
-
 impl ServerKey {
     pub fn new(root: impl Into<PathBuf>, server_id: impl Into<String>) -> Self {
+        let root = root.into();
+        // Do not perform blocking filesystem canonicalization on this path.
+        // URI/root spelling is retained consistently by the caller lease.
         Self {
-            root: root.into(),
+            root,
             server_id: server_id.into(),
         }
     }
 }
-
-/// Information about a broken server for cooldown tracking.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+pub struct ServerLease {
+    key: ServerKey,
+    server: Arc<LspServer>,
+}
+impl ServerLease {
+    pub fn key(&self) -> &ServerKey {
+        &self.key
+    }
+}
+impl std::ops::Deref for ServerLease {
+    type Target = LspServer;
+    fn deref(&self) -> &LspServer {
+        &self.server
+    }
+}
 struct BrokenInfo {
-    /// When the server was marked broken
     broken_at: Instant,
-    /// Error message from the failure
     error: String,
 }
-
-/// Cooldown period before retrying a broken server (5 minutes).
+const MAX_SERVER_OWNERS: usize = 32;
 const BROKEN_COOLDOWN: Duration = Duration::from_secs(300);
-
-/// Pending spawn waiters per server key.
-type SpawningMap = HashMap<ServerKey, Vec<oneshot::Sender<Result<(), String>>>>;
-
-/// Manager for multiple LSP servers keyed by (root, server_id).
-pub struct LspManager {
-    /// Running servers keyed by (root, server_id)
-    servers: Arc<RwLock<HashMap<ServerKey, LspServer>>>,
-
-    /// Servers that are currently being spawned (deduplication)
-    spawning: Arc<RwLock<SpawningMap>>,
-
-    /// Servers that failed to start and their cooldown info
-    broken: Arc<RwLock<HashMap<ServerKey, BrokenInfo>>>,
+type SpawnResult = Result<Arc<LspServer>, String>;
+struct SpawnEntry {
+    id: u64,
+    result: watch::Sender<Option<SpawnResult>>,
 }
-
-impl LspManager {
-    /// Create a new LSP manager
-    pub fn new() -> Self {
-        log::info!("[LSP Manager] Initializing");
-        Self {
-            servers: Arc::new(RwLock::new(HashMap::new())),
-            spawning: Arc::new(RwLock::new(HashMap::new())),
-            broken: Arc::new(RwLock::new(HashMap::new())),
+type Spawning = Arc<Mutex<HashMap<ServerKey, SpawnEntry>>>;
+struct SpawnGuard {
+    key: ServerKey,
+    id: u64,
+    spawning: Spawning,
+}
+impl Drop for SpawnGuard {
+    fn drop(&mut self) {
+        let mut spawning = self.spawning.lock();
+        if spawning.get(&self.key).is_some_and(|e| e.id == self.id) {
+            if let Some(entry) = spawning.remove(&self.key) {
+                entry
+                    .result
+                    .send_replace(Some(Err("LSP startup cancelled".into())));
+            }
         }
     }
-
-    /// Start a server using a ServerDef.
-    ///
-    /// The "already running", "broken cooldown", and "already spawning"
-    /// checks are folded into a single critical section on `self.spawning`
-    /// so two concurrent callers can never both pass the running check and
-    /// both insert primary spawners (TOCTOU). Whichever caller wins the
-    /// `entry()` race becomes the primary; everyone else attaches a
-    /// oneshot waiter and awaits the primary's result.
-    async fn start_server_with_def(
+}
+#[derive(Clone)]
+pub struct LspManager {
+    servers: Arc<Mutex<HashMap<ServerKey, Arc<LspServer>>>>,
+    spawning: Spawning,
+    broken: Arc<Mutex<HashMap<ServerKey, BrokenInfo>>>,
+    next_spawn: Arc<AtomicU64>,
+}
+impl Default for LspManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl LspManager {
+    pub fn new() -> Self {
+        Self {
+            servers: Default::default(),
+            spawning: Default::default(),
+            broken: Default::default(),
+            next_spawn: Arc::new(AtomicU64::new(1)),
+        }
+    }
+    pub async fn start_server(
+        &self,
+        language: &str,
+        root: &str,
+        _app: tauri::AppHandle,
+    ) -> Result<ServerLease, String> {
+        let key = server_key_for_language(language, root)
+            .ok_or_else(|| format!("No LSP server for {language}"))?;
+        let defs = servers_for_language_id(language);
+        let def = *defs
+            .first()
+            .ok_or_else(|| format!("No LSP server for {language}"))?;
+        if !is_server_enabled(&key.server_id).await {
+            return Err(format!("Server {} is disabled", key.server_id));
+        }
+        self.start_with(&key, self.do_spawn_server(&key, def)).await
+    }
+    pub(crate) async fn start_with(
         &self,
         key: &ServerKey,
-        server_def: &dyn ServerDef,
-        app_handle: tauri::AppHandle,
-    ) -> Result<(), String> {
-        // Check if server is disabled in config (no shared state, cheap).
-        if !is_server_enabled(&key.server_id).await {
-            return Err(format!("Server {} is disabled in config", key.server_id));
-        }
-
-        // Single atomic critical section: running? broken? spawning?
-        {
-            let mut spawning = self.spawning.write().await;
-
-            // 1. Already running — short-circuit.
+        spawn: impl std::future::Future<Output = Result<LspServer, String>>,
+    ) -> Result<ServerLease, String> {
+        let (id, mut receiver, primary) = {
+            let mut spawning = self.spawning.lock();
+            self.servers.lock().retain(|_, server| !server.is_closed());
+            if let Some(server) = self
+                .servers
+                .lock()
+                .get(key)
+                .filter(|s| !s.is_closed())
+                .cloned()
             {
-                let servers = self.servers.read().await;
-                if servers.contains_key(key) {
-                    log::debug!(
-                        "[LSP Manager] Server {} at {:?} already running",
-                        key.server_id,
-                        key.root
-                    );
-                    return Ok(());
-                }
+                return Ok(ServerLease {
+                    key: key.clone(),
+                    server,
+                });
             }
-
-            // 2. In cooldown from a previous failure.
-            {
-                let broken = self.broken.read().await;
-                if let Some(info) = broken.get(key) {
-                    if info.broken_at.elapsed() < BROKEN_COOLDOWN {
-                        return Err(format!(
-                            "Server {} is in cooldown (failed {} ago): {}",
-                            key.server_id,
-                            humanize_duration(info.broken_at.elapsed()),
-                            info.error
-                        ));
+            self.broken
+                .lock()
+                .retain(|_, entry| entry.broken_at.elapsed() < BROKEN_COOLDOWN);
+            if let Some(info) = self.broken.lock().get(key) {
+                return Err(format!(
+                    "Server {} in cooldown: {}",
+                    key.server_id, info.error
+                ));
+            }
+            if let Some(entry) = spawning.get(key) {
+                (entry.id, entry.result.subscribe(), false)
+            } else {
+                if self.servers.lock().len() + spawning.len() >= MAX_SERVER_OWNERS {
+                    return Err("LSP server limit reached; stop an unused workspace server".into());
+                }
+                let id = self.next_spawn.fetch_add(1, Ordering::Relaxed);
+                let (result, receiver) = watch::channel(None);
+                spawning.insert(key.clone(), SpawnEntry { id, result });
+                (id, receiver, true)
+            }
+        };
+        if !primary {
+            loop {
+                if let Some(result) = receiver.borrow_and_update().clone() {
+                    return result.map(|server| ServerLease {
+                        key: key.clone(),
+                        server,
+                    });
+                }
+                receiver
+                    .changed()
+                    .await
+                    .map_err(|_| "LSP startup cancelled".to_string())?;
+            }
+        }
+        let _guard = SpawnGuard {
+            key: key.clone(),
+            id,
+            spawning: self.spawning.clone(),
+        };
+        let result = tokio::select! {
+            result = spawn => result.and_then(|server| {
+                if server.is_closed() { Err("LSP exited during startup".into()) }
+                else { Ok(Arc::new(server)) }
+            }),
+            _ = receiver.changed() => Err("LSP startup cancelled".into()),
+        };
+        {
+            let mut spawning = self.spawning.lock();
+            if !spawning.get(key).is_some_and(|e| e.id == id) {
+                return Err("LSP startup superseded".into());
+            }
+            if let Ok(server) = &result {
+                self.servers.lock().insert(key.clone(), server.clone());
+                self.broken.lock().remove(key);
+            } else if let Err(error) = &result {
+                let mut broken = self.broken.lock();
+                if broken.len() >= MAX_SERVER_OWNERS {
+                    let oldest = broken
+                        .iter()
+                        .min_by_key(|(_, info)| info.broken_at)
+                        .map(|(key, _)| key.clone());
+                    if let Some(oldest) = oldest {
+                        broken.remove(&oldest);
                     }
                 }
+                broken.insert(
+                    key.clone(),
+                    BrokenInfo {
+                        broken_at: Instant::now(),
+                        error: error.clone(),
+                    },
+                );
             }
-
-            // 3. Spawn dedup. If a waiters vec already exists, attach.
-            //    Otherwise we are the primary spawner.
-            if let Some(waiters) = spawning.get_mut(key) {
-                let (tx, rx) = oneshot::channel();
-                waiters.push(tx);
-                drop(spawning);
-                return rx.await.map_err(|_| "Spawn cancelled".to_string())?;
-            }
-
-            spawning.insert(key.clone(), Vec::new());
+            let entry = spawning.remove(key).expect("owned spawn entry");
+            entry.result.send_replace(Some(result.clone()));
         }
-
-        // Outside the critical section: actually spawn. We always remove
-        // our entry from `spawning` and notify waiters, even on early-return.
-        let result = self.do_spawn_server(key, server_def, app_handle).await;
-
-        let waiters = {
-            let mut spawning = self.spawning.write().await;
-            spawning.remove(key).unwrap_or_default()
-        };
-
-        for tx in waiters {
-            let _ = tx.send(result.clone());
-        }
-
-        result
+        result.map(|server| ServerLease {
+            key: key.clone(),
+            server,
+        })
     }
-
+    pub async fn server(&self, key: &ServerKey) -> Result<ServerLease, String> {
+        self.servers
+            .lock()
+            .get(key)
+            .filter(|s| !s.is_closed())
+            .cloned()
+            .map(|server| ServerLease {
+                key: key.clone(),
+                server,
+            })
+            .ok_or_else(|| {
+                format!(
+                    "No running LSP server for {} at {}",
+                    key.server_id,
+                    key.root.display()
+                )
+            })
+    }
+    pub async fn is_server_running(&self, key: &ServerKey) -> bool {
+        self.server(key).await.is_ok()
+    }
+    pub async fn get_running_servers(&self) -> Vec<String> {
+        self.servers
+            .lock()
+            .iter()
+            .filter(|(_, s)| !s.is_closed())
+            .map(|(k, _)| k.server_id.clone())
+            .collect()
+    }
+    pub async fn running_at(&self, root: &str) -> Vec<String> {
+        self.servers
+            .lock()
+            .iter()
+            .filter(|(k, s)| k.root == Path::new(root) && !s.is_closed())
+            .map(|(k, _)| k.server_id.clone())
+            .collect()
+    }
+    pub async fn stop_server(&self, key: &ServerKey) -> Result<(), String> {
+        let server = {
+            let mut spawning = self.spawning.lock();
+            if let Some(entry) = spawning.remove(key) {
+                entry
+                    .result
+                    .send_replace(Some(Err("LSP startup stopped".into())));
+            }
+            self.servers.lock().remove(key)
+        };
+        self.broken.lock().remove(key);
+        if let Some(server) = server {
+            server.close();
+            server.shutdown().await;
+        }
+        Ok(())
+    }
+    pub async fn shutdown(&self) -> Result<(), String> {
+        self.broken.lock().clear();
+        let servers = {
+            let mut spawning = self.spawning.lock();
+            for (_, entry) in spawning.drain() {
+                entry
+                    .result
+                    .send_replace(Some(Err("LSP manager shutdown".into())));
+            }
+            self.servers
+                .lock()
+                .drain()
+                .map(|(_, s)| s)
+                .collect::<Vec<_>>()
+        };
+        for server in &servers {
+            server.close();
+        }
+        futures::future::join_all(servers.iter().map(|s| s.shutdown())).await;
+        Ok(())
+    }
+    pub async fn get_server_log(&self, key: &ServerKey) -> Vec<crate::log_buffer::LogLine> {
+        self.server(key)
+            .await
+            .map(|s| s.log_snapshot())
+            .unwrap_or_default()
+    }
+    pub async fn revive_server(&self, server_id: &str) -> usize {
+        let mut b = self.broken.lock();
+        let before = b.len();
+        b.retain(|k, _| k.server_id != server_id);
+        before - b.len()
+    }
+    pub async fn revive_all(&self) -> usize {
+        let mut b = self.broken.lock();
+        let n = b.len();
+        b.clear();
+        n
+    }
+    pub async fn broken_snapshot(&self) -> Vec<(String, String, u64)> {
+        self.broken
+            .lock()
+            .iter()
+            .filter(|(_, i)| i.broken_at.elapsed() < BROKEN_COOLDOWN)
+            .map(|(k, i)| {
+                (
+                    k.server_id.clone(),
+                    i.error.clone(),
+                    i.broken_at.elapsed().as_secs(),
+                )
+            })
+            .collect()
+    }
+    #[cfg(debug_assertions)]
+    pub async fn seed_broken_for_test(&self, key: ServerKey, error: String) {
+        self.broken.lock().insert(
+            key,
+            BrokenInfo {
+                broken_at: Instant::now(),
+                error,
+            },
+        );
+    }
+    pub fn get_install_hint(language: &str) -> Option<String> {
+        servers_for_language_id(language)
+            .first()
+            .map(|s| s.install_hint())
+    }
     /// Actually spawn a server (called after deduplication checks).
     async fn do_spawn_server(
         &self,
         key: &ServerKey,
         server_def: &dyn ServerDef,
-        app_handle: tauri::AppHandle,
-    ) -> Result<(), String> {
+    ) -> Result<LspServer, String> {
         log::info!(
             "[LSP Manager] Starting {} server at {:?}",
             key.server_id,
@@ -226,7 +392,6 @@ impl LspManager {
         ) {
             Ok(server) => server,
             Err(err) => {
-                self.mark_broken(key, &err).await;
                 return Err(err);
             }
         };
@@ -237,8 +402,7 @@ impl LspManager {
         // its response sits in the OS pipe with no consumer and the
         // 60s timeout always fires (the cooldown error users see as
         // "initialize timed out after 60s for typescript").
-        if let Err(err) = server.start_listening(app_handle.clone(), key.server_id.clone()) {
-            self.mark_broken(key, &err).await;
+        if let Err(err) = server.start_stdio(key.server_id.clone()) {
             server.shutdown().await;
             return Err(err);
         }
@@ -250,7 +414,6 @@ impl LspManager {
             .initialize_with_options(&root_str, init_options, workspace_config)
             .await
         {
-            self.mark_broken(key, &err).await;
             // The server we just spawned hasn't been published into
             // `self.servers` yet, so reap its child here instead of
             // leaving cleanup to the (sync) Drop impl.
@@ -258,25 +421,7 @@ impl LspManager {
             return Err(err);
         }
 
-        // Store the server
-        {
-            let mut servers = self.servers.write().await;
-            servers.insert(key.clone(), server);
-        }
-
-        // Clear from broken if it was there
-        {
-            let mut broken = self.broken.write().await;
-            broken.remove(key);
-        }
-
-        log::info!(
-            "[LSP Manager] Started {} server at {:?}",
-            key.server_id,
-            key.root
-        );
-
-        Ok(())
+        Ok(server)
     }
 
     /// Resolve the binary path for a server definition.
@@ -323,454 +468,12 @@ impl LspManager {
             server_def.install_hint()
         ))
     }
-
-    /// Mark a server as broken (failed to start).
-    ///
-    /// Inline await — must complete before the caller returns the error to
-    /// its waiters, otherwise a concurrent retry can race the broken-cooldown
-    /// check and re-spawn the same failing process.
-    async fn mark_broken(&self, key: &ServerKey, error: &str) {
-        let mut guard = self.broken.write().await;
-        guard.insert(
-            key.clone(),
-            BrokenInfo {
-                broken_at: Instant::now(),
-                error: error.to_string(),
-            },
-        );
-    }
-
-    /// Clear the broken-cooldown entry for every server matching
-    /// `server_id` (any root). Used by the user-facing "Retry" / revive
-    /// action so a transient init failure doesn't make the server
-    /// unreachable for the full 5-minute cooldown.
-    ///
-    /// Returns the number of entries cleared. A zero return is not an
-    /// error — it simply means the server was not in cooldown.
-    pub async fn revive_server(&self, server_id: &str) -> usize {
-        let mut guard = self.broken.write().await;
-        let before = guard.len();
-        guard.retain(|key, _| key.server_id != server_id);
-        before - guard.len()
-    }
-
-    /// Clear every broken-cooldown entry. Used by "Revive all" and on
-    /// app focus / network-recovery hooks.
-    pub async fn revive_all(&self) -> usize {
-        let mut guard = self.broken.write().await;
-        let cleared = guard.len();
-        guard.clear();
-        cleared
-    }
-
-    /// Snapshot of currently-broken servers for diagnostic surfaces
-    /// (Language Servers page, Problems panel). Each entry is
-    /// `(server_id, error_message, seconds_in_cooldown)`. Servers
-    /// whose cooldown has already expired are filtered out so callers
-    /// don't have to know the `BROKEN_COOLDOWN` constant.
-    pub async fn broken_snapshot(&self) -> Vec<(String, String, u64)> {
-        let guard = self.broken.read().await;
-        guard
-            .iter()
-            .filter(|(_, info)| info.broken_at.elapsed() < BROKEN_COOLDOWN)
-            .map(|(key, info)| {
-                (
-                    key.server_id.clone(),
-                    info.error.clone(),
-                    info.broken_at.elapsed().as_secs(),
-                )
-            })
-            .collect()
-    }
-
-    /// Debug-only: seed an entry into the broken-cooldown map without
-    /// going through a real spawn-failure. Used by E2E tests to assert
-    /// the cooldown consumer (the `BROKEN_COOLDOWN` short-circuit in
-    /// `start_server_with_def`) honours its own map. The production
-    /// `mark_broken` is private and only reachable via real
-    /// `LspServer::new_with_binary` / `initialize` failures, neither of
-    /// which is straightforward to provoke deterministically without a
-    /// real LSP binary that crashes on init.
-    #[cfg(debug_assertions)]
-    pub async fn seed_broken_for_test(&self, key: ServerKey, error: String) {
-        let mut guard = self.broken.write().await;
-        guard.insert(
-            key,
-            BrokenInfo {
-                broken_at: Instant::now(),
-                error,
-            },
-        );
-    }
-
-    /// Start an LSP server for a specific language at the given root.
-    pub async fn start_server(
-        &self,
-        language: &str,
-        root_path: &str,
-        app_handle: tauri::AppHandle,
-    ) -> Result<(), String> {
-        let base_lang = get_base_language(language);
-
-        // Find server definition
-        let servers = servers_for_language_id(base_lang);
-        let server_def = servers
-            .first()
-            .ok_or_else(|| format!("No LSP server available for language: {}", language))?;
-
-        let root = PathBuf::from(root_path);
-        let key = ServerKey::new(root, server_def.id());
-
-        self.start_server_with_def(&key, *server_def, app_handle)
-            .await
-    }
-
-    /// Get the install hint for a language server.
-    pub fn get_install_hint(language: &str) -> Option<String> {
-        let base_lang = get_base_language(language);
-        servers_for_language_id(base_lang)
-            .first()
-            .map(|s| s.install_hint())
-    }
-
-    /// Find a running server for a language.
-    async fn find_server_for_language(&self, language: &str) -> Option<ServerKey> {
-        let base_lang = get_base_language(language);
-        let servers = self.servers.read().await;
-
-        // Find first server that matches the language
-        for key in servers.keys() {
-            if key.server_id == base_lang {
-                return Some(key.clone());
-            }
-            // Also check if server handles this language
-            if let Some(def) = server_by_id(&key.server_id) {
-                if def.language_ids().contains(&base_lang) {
-                    return Some(key.clone());
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Notify server that a document was opened.
-    pub async fn did_open(
-        &self,
-        language: &str,
-        uri: &str,
-        version: i32,
-        text: &str,
-    ) -> Result<(), String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        server.did_open(uri, language, version, text).await
-    }
-
-    /// Notify server that a document changed by re-shipping the full
-    /// document text. Capability-gated on the server's
-    /// `text_document_sync.change` — see `LspServer::did_change`.
-    pub async fn did_change(
-        &self,
-        language: &str,
-        uri: &str,
-        version: i32,
-        text: &str,
-    ) -> Result<(), String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        server.did_change(uri, version, text).await
-    }
-
-    /// Notify server that a document was closed.
-    pub async fn did_close(&self, language: &str, uri: &str) -> Result<(), String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        server.did_close(uri).await
-    }
-
-    /// Shutdown all LSP servers, draining each through `LspServer::shutdown`
-    /// so child processes are reaped instead of leaked as zombies.
-    pub async fn shutdown(&self) -> Result<(), String> {
-        log::info!("[LSP Manager] Shutting down all servers");
-        let drained: Vec<(ServerKey, LspServer)> = {
-            let mut servers = self.servers.write().await;
-            servers.drain().collect()
-        };
-
-        let count = drained.len();
-        let futures = drained.into_iter().map(|(key, server)| async move {
-            log::debug!(
-                "[LSP Manager] Awaiting shutdown for {} at {:?}",
-                key.server_id,
-                key.root
-            );
-            server.shutdown().await;
-        });
-
-        futures::future::join_all(futures).await;
-        log::info!("[LSP Manager] Shut down {} server(s)", count);
-        Ok(())
-    }
-
-    /// Check if a server is running for a language.
-    pub async fn is_server_running(&self, language: &str) -> bool {
-        self.find_server_for_language(language).await.is_some()
-    }
-
-    /// Get list of running servers (server IDs / language names).
-    /// Used by the agent-core `manage_lsp` tool to enumerate which
-    /// language servers are currently up.
-    pub async fn get_running_servers(&self) -> Vec<String> {
-        let servers = self.servers.read().await;
-        servers.keys().map(|k| k.server_id.clone()).collect()
-    }
-
-    /// Get cached diagnostics from a running LSP server.
-    pub async fn get_cached_diagnostics(
-        &self,
-        language: &str,
-    ) -> Result<HashMap<String, PublishDiagnosticsParams>, String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        Ok(server.get_cached_diagnostics().await)
-    }
-
-    /// Snapshot the per-server stdio log buffer for a running server.
-    /// Used by the `lsp_get_server_log` Tauri command + the
-    /// `LanguageServersPage` log drawer to surface what a server has
-    /// been doing recently (helpful for diagnosing rust-analyzer OOMs,
-    /// pyright panics, etc.). Returns an empty `Vec` if no server is
-    /// running for the language — the caller treats "no server" as
-    /// "no log to show" rather than an error, so the drawer can be
-    /// opened on inactive rows without an exception.
-    pub async fn get_server_log(&self, language: &str) -> Vec<crate::log_buffer::LogLine> {
-        let Some(key) = self.find_server_for_language(language).await else {
-            return Vec::new();
-        };
-        let servers = self.servers.read().await;
-        match servers.get(&key) {
-            Some(server) => server.log_snapshot(),
-            None => Vec::new(),
-        }
-    }
-
-    /// Get cached diagnostics for a single file.
-    pub async fn get_file_diagnostics(
-        &self,
-        language: &str,
-        uri: &str,
-    ) -> Result<Vec<Diagnostic>, String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        Ok(server.get_file_diagnostics(uri).await)
-    }
-
-    /// Go to definition at a position in a file.
-    pub async fn goto_definition(
-        &self,
-        language: &str,
-        uri: &str,
-        line: u32,
-        character: u32,
-    ) -> Result<Option<GotoDefinitionResponse>, String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        server.goto_definition(uri, line, character).await
-    }
-
-    /// Find all references to a symbol at a position.
-    pub async fn find_references(
-        &self,
-        language: &str,
-        uri: &str,
-        line: u32,
-        character: u32,
-        include_declaration: bool,
-    ) -> Result<Option<Vec<Location>>, String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        server
-            .find_references(uri, line, character, include_declaration)
-            .await
-    }
-
-    /// Get hover information (type/docs) at a position.
-    pub async fn hover(
-        &self,
-        language: &str,
-        uri: &str,
-        line: u32,
-        character: u32,
-    ) -> Result<Option<Hover>, String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        server.hover(uri, line, character).await
-    }
-
-    /// Get document symbols for a file.
-    pub async fn document_symbol(
-        &self,
-        language: &str,
-        uri: &str,
-    ) -> Result<Option<super::types::DocumentSymbolResponse>, String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        server.document_symbol(uri).await
-    }
-
-    /// Search workspace symbols for a running language server.
-    pub async fn workspace_symbol(
-        &self,
-        language: &str,
-        query: &str,
-    ) -> Result<Option<super::types::WorkspaceSymbolResponse>, String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let servers = self.servers.read().await;
-        let server = servers
-            .get(&key)
-            .ok_or_else(|| format!("Server not found: {:?}", key))?;
-
-        server.workspace_symbol(query).await
-    }
-
-    /// Stop a specific LSP server (resolves first running server for the language).
-    pub async fn stop_server(&self, language: &str) -> Result<(), String> {
-        let key = self
-            .find_server_for_language(language)
-            .await
-            .ok_or_else(|| format!("No LSP server running for language: {}", language))?;
-
-        let server = {
-            let mut servers = self.servers.write().await;
-            servers.remove(&key)
-        };
-
-        if let Some(server) = server {
-            server.shutdown().await;
-            log::info!("[LSP Manager] Stopped {} server", language);
-            Ok(())
-        } else {
-            Err(format!("No LSP server running for language: {}", language))
-        }
-    }
 }
-
-impl Default for LspManager {
-    fn default() -> Self {
-        Self::new()
-    }
+pub fn server_key_for_language(language: &str, root: &str) -> Option<ServerKey> {
+    servers_for_language_id(language)
+        .first()
+        .map(|s| ServerKey::new(root, s.id()))
 }
-
-/// Normalize language to base language for server lookup.
-/// typescript and typescriptreact share the same server.
-fn get_base_language(language: &str) -> &str {
-    match language {
-        "typescriptreact" | "typescript" => "typescript",
-        "javascriptreact" | "javascript" => "javascript",
-        _ => language,
-    }
-}
-
-/// Resolve the `ServerKey` that `start_server(language, root)` would
-/// construct without actually starting anything. Used by E2E debug
-/// endpoints to derive a key consistent with the production lookup
-/// path (so a `seed_broken` call lands at the same map slot the next
-/// `start_server` will read).
-pub fn server_key_for_language(language: &str, root_path: &str) -> Option<ServerKey> {
-    let base_lang = get_base_language(language);
-    let server_def = servers_for_language_id(base_lang).first().copied()?;
-    Some(ServerKey::new(PathBuf::from(root_path), server_def.id()))
-}
-
-/// Format a duration for human display
-fn humanize_duration(d: Duration) -> String {
-    let secs = d.as_secs();
-    if secs < 60 {
-        format!("{}s", secs)
-    } else if secs < 3600 {
-        format!("{}m", secs / 60)
-    } else {
-        format!("{}h", secs / 3600)
-    }
-}
-
 #[cfg(test)]
 #[path = "tests/manager_tests.rs"]
 mod tests;

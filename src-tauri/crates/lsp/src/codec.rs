@@ -37,6 +37,7 @@ const CONTENT_LENGTH: &[u8] = b"Content-Length:";
 /// us pre-allocate a TB of `BytesMut`. 32 MiB is comfortably above
 /// realistic payloads (huge `workspace/configuration` snapshots,
 /// jdt.ls semantic-tokens responses) and bounds memory under attack.
+const MAX_HEADER_BYTES: usize = 8 * 1024;
 const MAX_MESSAGE_BYTES: usize = 32 * 1024 * 1024;
 
 /// Parsed Content-Length: header with the byte offset of the body.
@@ -57,6 +58,8 @@ struct Header {
 pub enum LspCodecError {
     #[error("Content-Length header missing or invalid")]
     InvalidHeader,
+    #[error("LSP header exceeds 8192 bytes")]
+    HeaderTooLarge,
     #[error("Content-Length {0} exceeds the {1}-byte cap")]
     BodyTooLarge(usize, usize),
     #[error("io error: {0}")]
@@ -119,7 +122,10 @@ impl Decoder for LspCodec {
 ///   instead of silently re-syncing so server-side framing bugs
 ///   are loud.
 fn parse_header(src: &[u8]) -> Result<Option<Header>, LspCodecError> {
-    let Some(sep_off) = find_subslice(src, HEADER_SEP) else {
+    let Some(sep_off) = find_subslice(&src[..src.len().min(MAX_HEADER_BYTES)], HEADER_SEP) else {
+        if src.len() >= MAX_HEADER_BYTES {
+            return Err(LspCodecError::HeaderTooLarge);
+        }
         return Ok(None);
     };
     let header_bytes = &src[..sep_off];
@@ -308,5 +314,30 @@ mod tests {
         let mut buf = BytesMut::from(&b"Content-Length: abc\r\n\r\n"[..]);
         let err = codec.decode(&mut buf).unwrap_err();
         assert!(matches!(err, LspCodecError::InvalidHeader));
+    }
+}
+
+#[cfg(test)]
+mod header_budget_tests {
+    use super::*;
+    #[test]
+    fn missing_separator_and_oversized_headers_fail_before_body_allocation() {
+        let mut codec = LspCodec::new();
+        let mut bytes = BytesMut::from(&vec![b'x'; MAX_HEADER_BYTES][..]);
+        assert!(matches!(
+            codec.decode(&mut bytes),
+            Err(LspCodecError::HeaderTooLarge)
+        ));
+        let mut bytes = BytesMut::from(
+            &[
+                vec![b'x'; MAX_HEADER_BYTES],
+                b"\r\nContent-Length: 0\r\n\r\n".to_vec(),
+            ]
+            .concat()[..],
+        );
+        assert!(matches!(
+            codec.decode(&mut bytes),
+            Err(LspCodecError::HeaderTooLarge)
+        ));
     }
 }

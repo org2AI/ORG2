@@ -6,8 +6,8 @@ use std::process::Stdio;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
-use tokio::sync::{oneshot, Mutex, RwLock};
+use tokio::process::{ChildStderr, ChildStdin, ChildStdout, Command};
+use tokio::sync::{Mutex, RwLock};
 
 use super::super::types::*;
 use super::diagnostics::DiagnosticsCache;
@@ -20,76 +20,28 @@ use super::transport::drain_pending_on_close;
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Time we give a server to acknowledge `shutdown` before we send `exit`
-/// and SIGTERM the process.
+/// and terminate the process.
 const SHUTDOWN_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Time we wait for the child to actually exit after SIGTERM before
-/// escalating to SIGKILL.
-const PROCESS_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
-
-/// LSP Server instance managing a single language server process.
-///
-/// `process` and `stdin` are wrapped in `Option` so `shutdown` can `take()`
-/// them and drive a clean async kill+wait sequence. `Drop` is a sync
-/// best-effort fallback that only sends SIGKILL — the canonical cleanup
-/// path is `LspServer::shutdown(self).await`, called by `LspManager`.
+/// A single server generation. Its supervisor owns/reaps the child; stop
+/// wakes all pipe tasks, even while callers retain a lease after removal.
 pub struct LspServer {
-    /// Language identifier (e.g., "typescript", "python")
+    #[cfg(test)]
+    pub(super) process_id: u32,
     pub(super) language: String,
-
-    /// Child process handle. `None` after `shutdown()` consumes it.
-    pub(super) process: Option<Child>,
-
-    /// Stdin for sending requests/notifications. `None` after `shutdown()`
-    /// drops the writer to flush EOF to the server.
+    pub(super) supervisor: Mutex<Option<tokio::task::JoinHandle<()>>>,
+    pub(super) stop: Arc<super::control::Stop>,
+    pub(super) pumps: Mutex<Vec<tokio::task::JoinHandle<()>>>,
+    pub(super) workspace_settings: Arc<RwLock<serde_json::Value>>,
+    pub(super) documents: Arc<Mutex<HashMap<String, i32>>>,
     pub(super) stdin: Arc<Mutex<Option<ChildStdin>>>,
-
-    /// Stdout pipe — taken from the child in `new_with_binary` BEFORE
-    /// `initialize` writes anything, then consumed by `start_listening`.
-    /// Pre-taking matters: rust-analyzer / json-language-server serialize
-    /// large schemas during initialize, and if the OS pipe fills before
-    /// anyone is reading stdout, the server blocks on its first write
-    /// and `initialize` hangs forever.
     pub(super) stdout: Option<ChildStdout>,
-
-    /// Stderr pipe — drained by a background task right after spawn so
-    /// servers that log heavily on startup (gopls, pyright) don't fill
-    /// their stderr pipe and block. The drained lines are also forwarded
-    /// to `log::warn!` for diagnostics.
     pub(super) stderr: Option<ChildStderr>,
-
-    /// Monotonically-increasing JSON-RPC request ID. Atomic so we can
-    /// allocate IDs without taking a lock — every outbound request hits
-    /// this counter and contention here directly bounds throughput.
     pub(super) next_request_id: Arc<AtomicU64>,
-
-    /// Pending requests — maps request ID to a oneshot sender for the response.
-    /// The stdout listener resolves these when a response with a matching ID arrives.
-    /// On EOF (server crashed) the listener drains this map so awaiters get an
-    /// immediate `Canceled` instead of waiting the per-request timeout.
-    ///
-    /// Uses `parking_lot::Mutex` (sync) rather than `tokio::sync::Mutex`
-    /// because the critical sections are short HashMap mutations that
-    /// never `.await` while holding the guard.
-    pub(super) pending_requests:
-        Arc<parking_lot::Mutex<HashMap<u64, oneshot::Sender<serde_json::Value>>>>,
-
-    /// Bounded cache of diagnostics from `textDocument/publishDiagnostics`.
-    /// Capped at `MAX_DIAGNOSTIC_FILES` URIs with FIFO eviction so the
-    /// cache cannot grow unboundedly in long-lived sessions.
-    pub(super) diagnostics_cache: Arc<tokio::sync::RwLock<DiagnosticsCache>>,
-
-    /// Server capabilities advertised in the `initialize` response.
-    /// `None` until `initialize_with_options` succeeds. Wrapped in
-    /// `RwLock` so the typical "every reader after init" path is
-    /// lock-free with no writer contention.
+    pub(super) pending_requests: super::transport::Pending,
+    pub(super) cancel_slots: Arc<tokio::sync::Semaphore>,
+    pub(super) diagnostics_cache: Arc<RwLock<DiagnosticsCache>>,
     pub(super) capabilities: Arc<RwLock<Option<ServerCapabilities>>>,
-
-    /// Bounded ring buffer of recent stdio activity. Outbound writes,
-    /// inbound JSON-RPC method tags, and stderr lines are pushed here
-    /// for the `LanguageServersPage` log drawer to surface. See
-    /// `crate::log_buffer` for the cap (`MAX_LOG_LINES = 500`) and
-    /// per-line truncation rules.
     pub(super) log_buffer: crate::log_buffer::LogBuffer,
 }
 
@@ -132,7 +84,8 @@ impl LspServer {
             .current_dir(root_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stderr(Stdio::piped())
+            .kill_on_drop(true);
 
         // Add environment variables
         for (key, value) in &env_vars {
@@ -169,14 +122,36 @@ impl LspServer {
             process.id()
         );
 
+        let stop = super::control::Stop::new();
+        let pending_requests = Arc::new(parking_lot::Mutex::new(HashMap::new()));
+        let owner_stop = stop.clone();
+        let owner_pending = pending_requests.clone();
+        #[cfg(test)]
+        let process_id = process.id().expect("spawned child has a pid");
+        let supervisor = tokio::spawn(async move {
+            tokio::select! {
+                _ = owner_stop.cancelled() => { let _ = process.start_kill(); let _ = process.wait().await; }
+                _ = process.wait() => {}
+            }
+            owner_stop.close();
+            owner_pending.lock().clear();
+        });
+
         Ok(Self {
+            #[cfg(test)]
+            process_id,
             language: language.to_string(),
-            process: Some(process),
+            supervisor: Mutex::new(Some(supervisor)),
+            stop,
+            pumps: Mutex::new(Vec::new()),
+            workspace_settings: Arc::new(RwLock::new(serde_json::Value::Null)),
+            documents: Arc::new(Mutex::new(HashMap::new())),
             stdin: Arc::new(Mutex::new(Some(stdin))),
             stdout: Some(stdout),
             stderr: Some(stderr),
             next_request_id: Arc::new(AtomicU64::new(1)),
-            pending_requests: Arc::new(parking_lot::Mutex::new(HashMap::new())),
+            pending_requests,
+            cancel_slots: Arc::new(tokio::sync::Semaphore::new(16)),
             diagnostics_cache: Arc::new(tokio::sync::RwLock::new(DiagnosticsCache::default())),
             capabilities: Arc::new(RwLock::new(None)),
             log_buffer: crate::log_buffer::LogBuffer::new(),
@@ -195,7 +170,7 @@ impl LspServer {
     ///
     /// Both `init_options` and `workspace_config` come from the
     /// caller-resolved `ServerDef` (typically via
-    /// `LspManager::start_server_with_def`). The LSP host itself is
+    /// `LspManager::start_server`). The LSP host itself is
     /// language-agnostic and does NOT inspect `self.language` here —
     /// any server-specific defaults belong on the `ServerDef` impl.
     ///
@@ -216,95 +191,72 @@ impl LspServer {
         );
 
         let final_init_options = init_options.unwrap_or_else(|| serde_json::json!({}));
+        *self.workspace_settings.write().await =
+            workspace_config.clone().unwrap_or(serde_json::Value::Null);
+        let root_uri = tauri::Url::from_directory_path(root_path)
+            .map_err(|_| "Invalid workspace directory".to_string())?
+            .to_string();
 
         let params = serde_json::json!({
             "processId": std::process::id(),
             "rootPath": root_path,
-            "rootUri": format!("file://{}", root_path),
+            "rootUri": root_uri,
             "capabilities": {
                 "textDocument": {
                     "synchronization": {
-                        "dynamicRegistration": true,
+                        "dynamicRegistration": false,
                         "willSave": false,
                         "willSaveWaitUntil": false,
                         "didSave": false
                     },
                     "completion": {
-                        "dynamicRegistration": true,
+                        "dynamicRegistration": false,
                         "completionItem": {
                             "snippetSupport": false
                         }
                     },
-                    "hover": { "dynamicRegistration": true },
-                    "definition": { "dynamicRegistration": true },
-                    "references": { "dynamicRegistration": true },
+                    "hover": { "dynamicRegistration": false },
+                    "definition": { "dynamicRegistration": false },
+                    "references": { "dynamicRegistration": false },
                     "documentSymbol": {
-                        "dynamicRegistration": true,
+                        "dynamicRegistration": false,
                         "hierarchicalDocumentSymbolSupport": true
                     },
-                    "documentHighlight": { "dynamicRegistration": true },
+                    "documentHighlight": { "dynamicRegistration": false },
                     "publishDiagnostics": {
                         "relatedInformation": true
                     }
                 },
                 "workspace": {
-                    "applyEdit": true,
+                    "applyEdit": false,
                     "workspaceEdit": {
                         "documentChanges": true
                     },
                     "didChangeConfiguration": {
-                        "dynamicRegistration": true
+                        "dynamicRegistration": false
                     },
                     "didChangeWatchedFiles": {
-                        "dynamicRegistration": true
+                        "dynamicRegistration": false
                     },
                     "symbol": {
-                        "dynamicRegistration": true
+                        "dynamicRegistration": false
                     },
                     "configuration": true
                 }
             },
             "initializationOptions": final_init_options,
             "workspaceFolders": [{
-                "uri": format!("file://{}", root_path),
+                "uri": root_uri,
                 "name": "workspace"
             }]
         });
 
-        let (init_id, receiver) = self
-            .send_request_with_response("initialize", Some(params))
+        let init_result = self
+            .request_with_timeout("initialize", params, INITIALIZE_TIMEOUT)
             .await?;
-        let init_result = match tokio::time::timeout(INITIALIZE_TIMEOUT, receiver).await {
-            Ok(Ok(value)) => value,
-            Ok(Err(_)) => {
-                return Err("initialize response channel closed".to_string());
-            }
-            Err(_) => {
-                self.cancel_request(init_id).await;
-                return Err(format!(
-                    "initialize timed out after {:?} for {}",
-                    INITIALIZE_TIMEOUT, self.language
-                ));
-            }
-        };
-
-        // Parse the full `InitializeResult` so future fields (server
-        // info, offset encoding, …) become available with no extra
-        // wire-walking. A malformed result is logged but not fatal —
-        // we degrade to default capabilities rather than refusing to
-        // start the server.
-        let capabilities = match serde_json::from_value::<InitializeResult>(init_result) {
-            Ok(parsed) => parsed.capabilities,
-            Err(err) => {
-                log::warn!(
-                    "[LSP] {} returned unparseable InitializeResult ({}); \
-                     falling back to default capabilities",
-                    self.language,
-                    err
-                );
-                ServerCapabilities::default()
-            }
-        };
+        let capabilities = serde_json::from_value::<InitializeResult>(init_result)
+            .map_err(|err| format!("Invalid initialize result: {err}"))?
+            .capabilities;
         *self.capabilities.write().await = Some(capabilities);
 
         self.send_notification("initialized", Some(serde_json::json!({})))
@@ -322,91 +274,41 @@ impl LspServer {
         Ok(())
     }
 
-    /// Cleanly shut down the LSP server.
-    ///
-    /// This is the canonical cleanup path — call it from `LspManager::shutdown`
-    /// and `stop_server_by_key`. The sequence is:
-    ///   1. Send `shutdown` request and wait up to `SHUTDOWN_REQUEST_TIMEOUT`.
-    ///   2. Send `exit` notification.
-    ///   3. Drop stdin to flush EOF to the server.
-    ///   4. SIGTERM via `start_kill`, then await the child for up to
-    ///      `PROCESS_WAIT_TIMEOUT`.
-    ///   5. If still alive, SIGKILL via `kill().await`.
-    ///   6. Drain `pending_requests` so any racers get cancelled instead of
-    ///      timing out.
-    ///
-    /// After this returns the child process is guaranteed to be reaped — no
-    /// zombies, no leaked PIDs.
-    pub async fn shutdown(mut self) {
-        log::info!("[LSP] Shutting down {} server", self.language);
+    pub fn close(&self) {
+        self.stop.close();
+    }
+    pub fn is_closed(&self) -> bool {
+        self.stop.is_closed()
+    }
 
-        // Best-effort `shutdown` request — many servers reject further work
-        // after this and respond with `null`. Ignore the result; if the
-        // server has already crashed the write will fail and we move on.
-        if let Ok((_id, receiver)) = self.send_request_with_response("shutdown", None).await {
-            let _ = tokio::time::timeout(SHUTDOWN_REQUEST_TIMEOUT, receiver).await;
+    /// Close remains independent of a stuck writer. Graceful protocol gets a
+    /// short budget; then the process owner kills and reaps the child.
+    pub async fn shutdown(&self) {
+        let graceful = async {
+            let _ = self
+                .request_with_timeout(
+                    "shutdown",
+                    serde_json::Value::Null,
+                    SHUTDOWN_REQUEST_TIMEOUT,
+                )
+                .await;
+            let _ = self.send_notification("exit", None).await;
+        };
+        let _ = tokio::time::timeout(SHUTDOWN_REQUEST_TIMEOUT, graceful).await;
+        self.stop.close();
+        if let Some(task) = self.supervisor.lock().await.take() {
+            let _ = task.await;
         }
-
-        // Tell the server to exit (notification, no response expected).
-        let _ = self.send_notification("exit", None).await;
-
-        // Drop stdin so the server sees EOF on its stdin and exits cleanly
-        // even if it ignored our `exit` notification.
-        {
-            let mut guard = self.stdin.lock().await;
-            *guard = None;
+        *self.stdin.lock().await = None;
+        let pumps = std::mem::take(&mut *self.pumps.lock().await);
+        for task in pumps {
+            let _ = task.await;
         }
-
-        if let Some(mut process) = self.process.take() {
-            // Queue SIGTERM (sync, returns immediately).
-            if let Err(err) = process.start_kill() {
-                log::warn!(
-                    "[LSP] start_kill failed for {} server: {}",
-                    self.language,
-                    err
-                );
-            }
-
-            // Reap the child within the wait timeout.
-            match tokio::time::timeout(PROCESS_WAIT_TIMEOUT, process.wait()).await {
-                Ok(Ok(status)) => {
-                    log::info!(
-                        "[LSP] {} server exited with status {:?}",
-                        self.language,
-                        status
-                    );
-                }
-                Ok(Err(err)) => {
-                    log::warn!("[LSP] Failed to wait for {} server: {}", self.language, err);
-                }
-                Err(_) => {
-                    log::warn!(
-                        "[LSP] {} server did not exit within {:?}, sending SIGKILL",
-                        self.language,
-                        PROCESS_WAIT_TIMEOUT
-                    );
-                    let _ = process.kill().await;
-                }
-            }
-        }
-
-        // Final drain in case the listener task hadn't yet observed EOF.
         drain_pending_on_close(&self.pending_requests, &self.language).await;
     }
 }
-
 impl Drop for LspServer {
     fn drop(&mut self) {
-        // Best-effort sync fallback for the case where the server is dropped
-        // without going through `shutdown().await` (e.g. panic unwind). We
-        // can only queue SIGKILL; we cannot await `wait()` here. The
-        // canonical cleanup path is `LspServer::shutdown`.
-        if let Some(process) = self.process.as_mut() {
-            log::warn!(
-                "[LSP] {} server dropped without shutdown(); sending SIGKILL fallback",
-                self.language
-            );
-            let _ = process.start_kill();
-        }
+        self.stop.close();
     }
 }

@@ -106,7 +106,7 @@ async fn lsp_stop(cfg: &Config, language: &str) -> Result<serde_json::Value, Str
     http_post(
         cfg,
         "/agent/test/lsp/stop",
-        serde_json::json!({ "language": language }),
+        serde_json::json!({ "language": language, "root_path": root_path() }),
     )
     .await
 }
@@ -136,6 +136,7 @@ async fn lsp_did_open(
         serde_json::json!({
             "language": language,
             "uri": uri,
+            "root_path": root_path(),
             "version": 1,
             "text": text,
         }),
@@ -144,7 +145,14 @@ async fn lsp_did_open(
 }
 
 async fn lsp_log(cfg: &Config, language: &str) -> Result<serde_json::Value, String> {
-    http_get(cfg, &format!("/agent/test/lsp/log/{language}")).await
+    let response = reqwest::Client::new()
+        .get(format!("{}/agent/test/lsp/log/{language}", cfg.base_url))
+        .query(&[("root_path", root_path())])
+        .timeout(std::time::Duration::from_secs(30))
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
+    response.json().await.map_err(|error| error.to_string())
 }
 
 async fn lsp_seed_broken(

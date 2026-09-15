@@ -8,8 +8,7 @@ rust-version = "1.85.0"
 #
 # Spawns and supervises external LSP server processes (rust-analyzer,
 # typescript-language-server, pyright, gopls, etc.), parses their JSON-RPC
-# `textDocument/publishDiagnostics` notifications, and forwards them to the
-# IDE WebSocket so the frontend can render diagnostics in-place. Also owns
+# `textDocument/publishDiagnostics` notifications for agent tools. Also owns
 # the per-workspace LSP config that gates which servers auto-start.
 #
 # cargo-machete cannot see that `lzma-sys` is intentionally included to force
@@ -17,16 +16,9 @@ rust-version = "1.85.0"
 [package.metadata.cargo-machete]
 ignored = ["lzma-sys"]
 
-# Inversion-of-control points (so this crate never depends back into `app`):
-# - `broadcast::register_broadcast` — `app::run` registers the IDE WebSocket
-#   `api::websocket_handler::broadcast` function pointer at startup so the
-#   diagnostics pipeline can publish updates without compile-time coupling.
-# - System-dependency cache is read directly via `app_paths::dependencies_cache`
-#   instead of calling back into `infrastructure::platform::dependencies`.
-#
-# Tauri command surface stays in-crate (browser / key-vault / cursor-bridge
-# pattern). `app::commands::handler_list` registers each via bare
-# `lsp::commands::…` paths.
+# The active callers are agent tools. Tauri command adapters remain in-crate
+# for contract checking but are not registered by the archived frontend UI.
+# System-dependency cache is read through app_paths.
 
 [lib]
 name = "lsp"

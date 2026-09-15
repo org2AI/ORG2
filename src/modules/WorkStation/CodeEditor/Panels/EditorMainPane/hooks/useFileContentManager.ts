@@ -10,8 +10,14 @@
  * - Uses refs for stable callback references
  * - Avoids recreating callbacks when content changes
  */
-import { writeTextFile } from "@tauri-apps/plugin-fs";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { createLogger } from "@src/hooks/logger";
 import {
@@ -19,6 +25,7 @@ import {
   invalidateFileCache,
   useFileContent,
 } from "@src/modules/WorkStation/CodeEditor/hooks/fileContent/useFileContent";
+import { writeTextFileSerial } from "@src/services/file/writeTextFileSerial";
 
 import type { UseFileContentManagerOptions } from "../types";
 
@@ -70,6 +77,14 @@ export function useFileContentManager(
 
   // Local saving state
   const [saving, setSaving] = useState(false);
+  const pendingSaves = useRef(new Map<string, number>());
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // PERFORMANCE: Create refs for use in callbacks (avoid stale closures)
   const fileContentStateRef = useRef(fileContentState);
@@ -77,11 +92,17 @@ export function useFileContentManager(
   const onSaveSuccessRef = useRef(onSaveSuccess);
 
   // Keep refs updated
-  useEffect(() => {
+  useLayoutEffect(() => {
     fileContentStateRef.current = fileContentState;
     activeFilePathRef.current = activeFilePath;
     onSaveSuccessRef.current = onSaveSuccess;
   });
+  useLayoutEffect(() => {
+    setSaving(
+      activeFilePath !== null &&
+        (pendingSaves.current.get(activeFilePath) ?? 0) > 0
+    );
+  }, [activeFilePath]);
 
   // Handle content change (human edits from CodeMirror)
   const handleContentChange = useCallback((newContent: string) => {
@@ -95,9 +116,13 @@ export function useFileContentManager(
 
     if (!filePath || !contentState.hasUnsavedChanges) return;
 
+    pendingSaves.current.set(
+      filePath,
+      (pendingSaves.current.get(filePath) ?? 0) + 1
+    );
     setSaving(true);
     try {
-      await writeTextFile(filePath, contentState.content);
+      await writeTextFileSerial(filePath, contentState.content);
       contentState.markSaved();
 
       // Dispatch file save event to Filesync output
@@ -111,11 +136,16 @@ export function useFileContentManager(
       invalidateFileCache(filePath);
 
       // Notify success (e.g., refresh git status)
-      onSaveSuccessRef.current?.();
+      if (mounted.current && activeFilePathRef.current === filePath)
+        onSaveSuccessRef.current?.();
     } catch (err) {
       log.error("[useFileContentManager] Save failed:", err);
     } finally {
-      setSaving(false);
+      const remaining = (pendingSaves.current.get(filePath) ?? 1) - 1;
+      if (remaining > 0) pendingSaves.current.set(filePath, remaining);
+      else pendingSaves.current.delete(filePath);
+      if (mounted.current && activeFilePathRef.current === filePath)
+        setSaving(remaining > 0);
     }
   }, []); // No dependencies - uses refs
 

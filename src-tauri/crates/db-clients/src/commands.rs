@@ -12,9 +12,13 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
+#[cfg(feature = "mysql")]
+use crate::row_values::mysql_row_to_json;
+#[cfg(feature = "postgres")]
+use crate::row_values::pg_row_to_json;
 use serde::{Deserialize, Serialize};
 #[cfg(any(feature = "postgres", feature = "mysql"))]
-use sqlx::{Column, Row, TypeInfo};
+use sqlx::{Column, Executor, Row, Statement};
 use tokio::sync::Mutex;
 
 static POOLS: LazyLock<Mutex<HashMap<String, PoolEntry>>> =
@@ -66,82 +70,6 @@ pub struct ColumnInfo {
 // ============================================
 // Helpers
 // ============================================
-
-#[cfg(feature = "postgres")]
-fn pg_row_to_json(row: &sqlx::postgres::PgRow) -> Vec<serde_json::Value> {
-    let columns = row.columns();
-    columns
-        .iter()
-        .map(|col| {
-            let type_name = col.type_info().name();
-            match type_name {
-                "BOOL" => row
-                    .try_get::<bool, _>(col.ordinal())
-                    .map(serde_json::Value::Bool)
-                    .unwrap_or(serde_json::Value::Null),
-                "INT2" | "INT4" => row
-                    .try_get::<i32, _>(col.ordinal())
-                    .map(|v| serde_json::Value::Number(v.into()))
-                    .unwrap_or(serde_json::Value::Null),
-                "INT8" => row
-                    .try_get::<i64, _>(col.ordinal())
-                    .map(|v| serde_json::Value::Number(v.into()))
-                    .unwrap_or(serde_json::Value::Null),
-                "FLOAT4" | "FLOAT8" | "NUMERIC" => row
-                    .try_get::<f64, _>(col.ordinal())
-                    .ok()
-                    .and_then(serde_json::Number::from_f64)
-                    .map(serde_json::Value::Number)
-                    .unwrap_or(serde_json::Value::Null),
-                "JSONB" | "JSON" => row
-                    .try_get::<serde_json::Value, _>(col.ordinal())
-                    .unwrap_or(serde_json::Value::Null),
-                _ => row
-                    .try_get::<String, _>(col.ordinal())
-                    .map(serde_json::Value::String)
-                    .unwrap_or(serde_json::Value::Null),
-            }
-        })
-        .collect()
-}
-
-#[cfg(feature = "mysql")]
-fn mysql_row_to_json(row: &sqlx::mysql::MySqlRow) -> Vec<serde_json::Value> {
-    let columns = row.columns();
-    columns
-        .iter()
-        .map(|col| {
-            let type_name = col.type_info().name();
-            match type_name {
-                "BOOLEAN" | "TINYINT(1)" => row
-                    .try_get::<bool, _>(col.ordinal())
-                    .map(serde_json::Value::Bool)
-                    .unwrap_or(serde_json::Value::Null),
-                "TINYINT" | "SMALLINT" | "INT" | "MEDIUMINT" => row
-                    .try_get::<i32, _>(col.ordinal())
-                    .map(|v| serde_json::Value::Number(v.into()))
-                    .unwrap_or(serde_json::Value::Null),
-                "BIGINT" => row
-                    .try_get::<i64, _>(col.ordinal())
-                    .map(|v| serde_json::Value::Number(v.into()))
-                    .unwrap_or(serde_json::Value::Null),
-                "FLOAT" | "DOUBLE" | "DECIMAL" => row
-                    .try_get::<f64, _>(col.ordinal())
-                    .ok()
-                    .and_then(serde_json::Number::from_f64)
-                    .map(serde_json::Value::Number)
-                    .unwrap_or(serde_json::Value::Null),
-                "JSON" => row
-                    .try_get::<serde_json::Value, _>(col.ordinal())
-                    .unwrap_or(serde_json::Value::Null),
-                _ => row
-                    .try_get::<String, _>(col.ordinal())
-                    .map(serde_json::Value::String)
-                    .unwrap_or(serde_json::Value::Null),
-            }
-        })
-        .collect()
-}
 
 // ============================================
 // Tauri Commands
@@ -221,37 +149,28 @@ pub async fn db_sql_query(connection_id: String, sql: String) -> Result<QueryRes
     match entry {
         #[cfg(feature = "postgres")]
         PoolEntry::Postgres(pool) => {
-            let rows: Vec<sqlx::postgres::PgRow> = sqlx::query(&sql)
-                .fetch_all(pool)
+            // Preparation and execution must share session state (for example,
+            // temporary tables). Retain metadata even when execution returns no rows.
+            let mut connection = pool
+                .acquire()
+                .await
+                .map_err(|err| format!("Query failed: {err}"))?;
+            let statement = connection
+                .prepare(&sql)
+                .await
+                .map_err(|err| format!("Query failed: {err}"))?;
+            let rows: Vec<sqlx::postgres::PgRow> = statement
+                .query()
+                .fetch_all(&mut *connection)
                 .await
                 .map_err(|err| format!("Query failed: {err}"))?;
 
             let columns: Vec<String> = if rows.is_empty() {
-                vec![]
-            } else {
-                rows[0]
+                statement
                     .columns()
                     .iter()
-                    .map(|c| c.name().to_string())
+                    .map(|column| column.name().to_string())
                     .collect()
-            };
-            let row_count = rows.len();
-            let json_rows: Vec<Vec<serde_json::Value>> = rows.iter().map(pg_row_to_json).collect();
-            Ok(QueryResult {
-                columns,
-                rows: json_rows,
-                row_count,
-            })
-        }
-        #[cfg(feature = "mysql")]
-        PoolEntry::Mysql(pool) => {
-            let rows: Vec<sqlx::mysql::MySqlRow> = sqlx::query(&sql)
-                .fetch_all(pool)
-                .await
-                .map_err(|err| format!("Query failed: {err}"))?;
-
-            let columns: Vec<String> = if rows.is_empty() {
-                vec![]
             } else {
                 rows[0]
                     .columns()
@@ -261,7 +180,49 @@ pub async fn db_sql_query(connection_id: String, sql: String) -> Result<QueryRes
             };
             let row_count = rows.len();
             let json_rows: Vec<Vec<serde_json::Value>> =
-                rows.iter().map(mysql_row_to_json).collect();
+                rows.iter().map(pg_row_to_json).collect::<Result<_, _>>()?;
+            Ok(QueryResult {
+                columns,
+                rows: json_rows,
+                row_count,
+            })
+        }
+        #[cfg(feature = "mysql")]
+        PoolEntry::Mysql(pool) => {
+            // Preparation and execution must share session state (for example,
+            // temporary tables). Retain metadata even when execution returns no rows.
+            let mut connection = pool
+                .acquire()
+                .await
+                .map_err(|err| format!("Query failed: {err}"))?;
+            let statement = connection
+                .prepare(&sql)
+                .await
+                .map_err(|err| format!("Query failed: {err}"))?;
+            let rows: Vec<sqlx::mysql::MySqlRow> = statement
+                .query()
+                .fetch_all(&mut *connection)
+                .await
+                .map_err(|err| format!("Query failed: {err}"))?;
+
+            let columns: Vec<String> = if rows.is_empty() {
+                statement
+                    .columns()
+                    .iter()
+                    .map(|column| column.name().to_string())
+                    .collect()
+            } else {
+                rows[0]
+                    .columns()
+                    .iter()
+                    .map(|c| c.name().to_string())
+                    .collect()
+            };
+            let row_count = rows.len();
+            let json_rows: Vec<Vec<serde_json::Value>> = rows
+                .iter()
+                .map(mysql_row_to_json)
+                .collect::<Result<_, _>>()?;
             Ok(QueryResult {
                 columns,
                 rows: json_rows,
@@ -511,7 +472,10 @@ mod tests {
     async fn disconnect_is_a_no_op_for_an_unknown_connection() {
         // The frontend calls disconnect on teardown paths that may never have
         // connected; that must not surface an error to the user.
-        assert_eq!(db_sql_disconnect(unconnected_id("disconnect")).await, Ok(()));
+        assert_eq!(
+            db_sql_disconnect(unconnected_id("disconnect")).await,
+            Ok(())
+        );
     }
 
     // ---------- unresolved-connection guards ----------
@@ -632,5 +596,188 @@ mod tests {
                 "primary_key",
             ]
         );
+    }
+}
+
+#[cfg(all(test, feature = "mysql"))]
+mod row_boundary_tests {
+    use super::*;
+
+    #[tokio::test]
+    #[ignore = "requires ORGII_TEST_MYSQL_URL pointing to a disposable local MySQL server"]
+    async fn mysql_query_preserves_values_nulls_errors_and_empty_columns() {
+        let url = std::env::var("ORGII_TEST_MYSQL_URL").expect("disposable MySQL URL");
+        let id = "row-contract-mysql-fixture".to_string();
+        db_sql_connect(id.clone(), "mysql".into(), url)
+            .await
+            .unwrap();
+        let result = async {
+            let values = db_sql_query(id.clone(),
+                r#"SELECT NULL AS nil, CAST(7 AS SIGNED) AS small_value, CAST(18446744073709551615 AS UNSIGNED) AS huge_value, 'hello' AS text_value, CAST('{"ok":true}' AS JSON) AS json_value"#.into()).await?;
+            let empty = db_sql_query(id.clone(), "SELECT CAST(1 AS SIGNED) AS preserved_column WHERE FALSE".into()).await?;
+            let unsupported = db_sql_query(id.clone(), "SELECT DATE('2026-09-14') AS date_value".into()).await;
+            Ok::<_, String>((values, empty, unsupported))
+        }.await;
+        db_sql_disconnect(id).await.unwrap();
+        let (values, empty, unsupported) = result.unwrap();
+        assert_eq!(
+            values.rows,
+            vec![vec![
+                serde_json::Value::Null,
+                serde_json::json!(7),
+                serde_json::json!("18446744073709551615"),
+                serde_json::json!("hello"),
+                serde_json::json!({"ok":true})
+            ]]
+        );
+        assert_eq!(empty.row_count, 0);
+        assert_eq!(empty.columns, vec!["preserved_column"]);
+        assert!(unsupported
+            .err()
+            .unwrap()
+            .contains("Unsupported SQL type DATE"));
+    }
+}
+
+#[cfg(test)]
+mod session_metadata_tests {
+    use super::*;
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
+
+    // A one-connection pool makes before_acquire count every checkout. The old
+    // fetch_all(pool) + describe(pool) path checks out twice for an empty result.
+
+    #[cfg(feature = "postgres")]
+    #[tokio::test]
+    #[ignore = "requires ORGII_TEST_POSTGRES_URL pointing to a disposable local server"]
+    async fn postgres_query_keeps_session_metadata_and_releases_connection() {
+        let url = std::env::var("ORGII_TEST_POSTGRES_URL").expect("disposable database URL");
+        let checkouts = Arc::new(AtomicUsize::new(0));
+        let counter = checkouts.clone();
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .before_acquire(move |_, _| {
+                counter.fetch_add(1, Ordering::SeqCst);
+                Box::pin(async { Ok(true) })
+            })
+            .connect(&url)
+            .await
+            .unwrap();
+        // citext is the real extension type, not a fabricated type-info name.
+        sqlx::query("CREATE EXTENSION IF NOT EXISTS citext")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("CREATE TEMP TABLE row_contract AS SELECT 'Alice'::citext AS label, 7::int2 AS small_value").execute(&pool).await.unwrap();
+        let id = "postgres-session-metadata-fixture".to_string();
+        POOLS
+            .lock()
+            .await
+            .insert(id.clone(), PoolEntry::Postgres(pool));
+        let result = async {
+            let values = db_sql_query(id.clone(), "SELECT * FROM row_contract".into()).await?;
+            assert_eq!(
+                values.rows,
+                vec![vec![serde_json::json!("Alice"), serde_json::json!(7)]]
+            );
+            checkouts.store(0, Ordering::SeqCst);
+            let empty =
+                db_sql_query(id.clone(), "SELECT * FROM row_contract WHERE FALSE".into()).await?;
+            assert_eq!(empty.columns, vec!["label", "small_value"]);
+            assert!(empty.rows.is_empty());
+            assert_eq!(
+                checkouts.load(Ordering::SeqCst),
+                1,
+                "metadata must use the execution checkout"
+            );
+            assert!(
+                db_sql_query(id.clone(), "SELECT * FROM nonexistent_row_contract".into())
+                    .await
+                    .is_err()
+            );
+            assert!(
+                db_sql_query(id.clone(), "SELECT CURRENT_DATE AS unsupported".into())
+                    .await
+                    .is_err()
+            );
+            // Both prepare and decoding errors must release the only connection.
+            let recovered = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                db_sql_query(id.clone(), "SELECT * FROM row_contract WHERE FALSE".into()),
+            )
+            .await
+            .map_err(|err| err.to_string())??;
+            assert_eq!(recovered.columns, vec!["label", "small_value"]);
+            Ok::<_, String>(())
+        }
+        .await;
+        db_sql_disconnect(id).await.unwrap();
+        result.unwrap();
+    }
+
+    #[cfg(feature = "mysql")]
+    #[tokio::test]
+    #[ignore = "requires ORGII_TEST_MYSQL_URL pointing to a disposable local server"]
+    async fn mysql_query_keeps_session_metadata_and_releases_connection() {
+        let url = std::env::var("ORGII_TEST_MYSQL_URL").expect("disposable database URL");
+        let checkouts = Arc::new(AtomicUsize::new(0));
+        let counter = checkouts.clone();
+        let pool = sqlx::mysql::MySqlPoolOptions::new()
+            .max_connections(1)
+            .before_acquire(move |_, _| {
+                counter.fetch_add(1, Ordering::SeqCst);
+                Box::pin(async { Ok(true) })
+            })
+            .connect(&url)
+            .await
+            .unwrap();
+        sqlx::query("CREATE TEMPORARY TABLE row_contract AS SELECT 'Alice' AS label, CAST(7 AS SIGNED) AS small_value").execute(&pool).await.unwrap();
+        let id = "mysql-session-metadata-fixture".to_string();
+        POOLS
+            .lock()
+            .await
+            .insert(id.clone(), PoolEntry::Mysql(pool));
+        let result = async {
+            let values = db_sql_query(id.clone(), "SELECT * FROM row_contract".into()).await?;
+            assert_eq!(
+                values.rows,
+                vec![vec![serde_json::json!("Alice"), serde_json::json!(7)]]
+            );
+            checkouts.store(0, Ordering::SeqCst);
+            let empty =
+                db_sql_query(id.clone(), "SELECT * FROM row_contract WHERE FALSE".into()).await?;
+            assert_eq!(empty.columns, vec!["label", "small_value"]);
+            assert!(empty.rows.is_empty());
+            assert_eq!(
+                checkouts.load(Ordering::SeqCst),
+                1,
+                "metadata must use the execution checkout"
+            );
+            assert!(
+                db_sql_query(id.clone(), "SELECT * FROM nonexistent_row_contract".into())
+                    .await
+                    .is_err()
+            );
+            assert!(
+                db_sql_query(id.clone(), "SELECT CURRENT_DATE AS unsupported".into())
+                    .await
+                    .is_err()
+            );
+            // Both prepare and decoding errors must release the only connection.
+            let recovered = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                db_sql_query(id.clone(), "SELECT * FROM row_contract WHERE FALSE".into()),
+            )
+            .await
+            .map_err(|err| err.to_string())??;
+            assert_eq!(recovered.columns, vec!["label", "small_value"]);
+            Ok::<_, String>(())
+        }
+        .await;
+        db_sql_disconnect(id).await.unwrap();
+        result.unwrap();
     }
 }

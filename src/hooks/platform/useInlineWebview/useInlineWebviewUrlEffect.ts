@@ -8,7 +8,7 @@ export interface UseInlineWebviewUrlEffectParams {
   createDelay: number;
   containerRef: RefObject<HTMLDivElement | null>;
   isDestroyedRef: MutableRefObject<boolean>;
-  lastRequestedUrlRef: MutableRefObject<string>;
+  lastAppliedUrlRef: MutableRefObject<string>;
   createWebview: (targetUrl: string) => Promise<void>;
   navigate: (targetUrl: string) => Promise<void>;
   setError: (error: Error | null) => void;
@@ -26,7 +26,7 @@ export function useInlineWebviewUrlEffect(
     createDelay,
     containerRef,
     isDestroyedRef,
-    lastRequestedUrlRef,
+    lastAppliedUrlRef,
     createWebview,
     navigate,
     setError,
@@ -39,7 +39,7 @@ export function useInlineWebviewUrlEffect(
       isActive,
       url,
       isWebviewCreated,
-      lastRequestedUrl: lastRequestedUrlRef.current,
+      lastAppliedUrl: lastAppliedUrlRef.current,
       containerExists: !!containerRef.current,
     });
 
@@ -47,18 +47,17 @@ export function useInlineWebviewUrlEffect(
       return;
     }
 
-    if (isWebviewCreated && lastRequestedUrlRef.current === url) {
+    if (isWebviewCreated && lastAppliedUrlRef.current === url) {
       log("WebView already exists with same requested URL");
       return;
     }
 
-    if (isWebviewCreated && lastRequestedUrlRef.current !== url) {
+    if (isWebviewCreated && lastAppliedUrlRef.current !== url) {
       log("WebView exists, navigating to new URL");
-      lastRequestedUrlRef.current = url;
-      const navTimer = setTimeout(() => {
-        void navigate(url);
-      }, 0);
-      return () => clearTimeout(navTimer);
+      // Publish the new navigation intent immediately. A deferred timer leaves
+      // a gap where the previous IPC completion can overwrite this newer URL.
+      void navigate(url);
+      return;
     }
 
     isDestroyedRef.current = false;
@@ -90,7 +89,6 @@ export function useInlineWebviewUrlEffect(
       }
 
       void createWebview(url);
-      lastRequestedUrlRef.current = url;
     };
 
     const timer = setTimeout(() => {
@@ -113,7 +111,7 @@ export function useInlineWebviewUrlEffect(
     containerRef,
     log,
     isDestroyedRef,
-    lastRequestedUrlRef,
+    lastAppliedUrlRef,
     setError,
   ]);
 }

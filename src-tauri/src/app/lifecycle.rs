@@ -2,6 +2,7 @@
 //! page loads, and the process-level run-event loop (including shutdown).
 
 use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use tauri::Manager;
@@ -12,6 +13,72 @@ const SHUTDOWN_RUNNING: u8 = 0;
 const SHUTDOWN_DRAINING: u8 = 1;
 const SHUTDOWN_READY_TO_EXIT: u8 = 2;
 static SHUTDOWN_PHASE: AtomicU8 = AtomicU8::new(SHUTDOWN_RUNNING);
+
+#[derive(Default)]
+struct InlineReloadWorker {
+    pending:
+        std::collections::HashMap<String, (tauri::AppHandle, browser::inline::InlineWebviewReload)>,
+    task: Option<tauri::async_runtime::JoinHandle<()>>,
+    stopped: bool,
+}
+static INLINE_RELOAD_WORKER: OnceLock<Mutex<InlineReloadWorker>> = OnceLock::new();
+
+fn inline_reload_worker() -> &'static Mutex<InlineReloadWorker> {
+    INLINE_RELOAD_WORKER.get_or_init(|| Mutex::new(InlineReloadWorker::default()))
+}
+
+fn schedule_inline_reload(app: &tauri::AppHandle, window_label: &str) {
+    let mut worker = inline_reload_worker().lock().unwrap();
+    if worker.stopped {
+        return;
+    }
+    // Fence synchronously, before returning control to the new renderer. The
+    // worker retains at most one running cleanup and one latest snapshot per window.
+    let plan = browser::inline::begin_inline_webview_reload(app, window_label);
+    worker
+        .pending
+        .insert(window_label.to_string(), (app.clone(), plan));
+    if worker.task.is_none() {
+        worker.task = Some(tauri::async_runtime::spawn(async {
+            loop {
+                let pending = {
+                    let mut worker = inline_reload_worker().lock().unwrap();
+                    match worker.pending.keys().next().cloned() {
+                        Some(label) => worker.pending.remove(&label).unwrap(),
+                        None => {
+                            worker.task = None;
+                            return;
+                        }
+                    }
+                };
+                match pending.1.close(pending.0).await {
+                    Ok(closed) if !closed.is_empty() => {
+                        tracing::info!(
+                            count = closed.len(),
+                            ?closed,
+                            "[PageReload] Closed inline webviews"
+                        );
+                    }
+                    Err(error) => tracing::warn!(%error, "[PageReload] Inline cleanup failed"),
+                    _ => {}
+                }
+            }
+        }));
+    }
+}
+
+fn stop_inline_reload_worker(app: &tauri::AppHandle) {
+    let mut worker = inline_reload_worker().lock().unwrap();
+    worker.stopped = true;
+    worker.pending.clear();
+    // Reject already-admitted creates even if they have not reached their lane.
+    for label in app.windows().keys() {
+        let _ = browser::inline::begin_inline_webview_reload(app, label);
+    }
+    if let Some(task) = worker.task.take() {
+        task.abort();
+    }
+}
 
 const AGENT_DRAIN_BUDGET: Duration = Duration::from_secs(3);
 const DATABASE_POOL_DRAIN_BUDGET: Duration = Duration::from_secs(2);
@@ -69,9 +136,12 @@ pub(crate) fn handle_window_close_and_destroy(
         app_window::release_page_backdrop(_window.label());
         system_services::power::release_sleep_inhibitor_for_window_label(_window.label());
         if app_window::is_station_window_label(_window.label()) {
-            browser::inline::release_station_window_webview_state(_window.label());
+            schedule_inline_reload(_window.app_handle(), _window.label());
         }
         notify_main_of_station_window_closed(_window);
+        if _window.label() == "main" {
+            schedule_inline_reload(_window.app_handle(), _window.label());
+        }
     }
     if let tauri::WindowEvent::CloseRequested { api: _api, .. } = _event {
         // Only hide the "main" window — let auxiliary windows close normally
@@ -137,20 +207,7 @@ pub(crate) fn handle_page_load(
     if (webview.label() == "main" || app_window::is_station_window_label(webview.label()))
         && matches!(payload.event(), PageLoadEvent::Started)
     {
-        let app = webview.app_handle().clone();
-        match browser::inline::close_inline_webviews_for_window(app, webview.window().label()) {
-            Ok(closed) if !closed.is_empty() => {
-                tracing::info!(
-                    count = closed.len(),
-                    ?closed,
-                    "[PageReload] Closed inline webviews"
-                );
-            }
-            Err(err) => {
-                tracing::warn!(error = %err, "[PageReload] Failed to close inline webviews");
-            }
-            _ => {}
-        }
+        schedule_inline_reload(webview.app_handle(), webview.window().label());
     }
 }
 
@@ -181,6 +238,7 @@ pub(crate) fn handle_run_event(app_handle: &tauri::AppHandle, event: tauri::RunE
             }
         }
         tauri::RunEvent::ExitRequested { api, code, .. } => {
+            stop_inline_reload_worker(app_handle);
             // Tauri explicitly ignores prevent_exit for request_restart. No
             // current ORGII call site uses that path; keep the old synchronous
             // best effort and make the missing bounded drain visible.

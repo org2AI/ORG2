@@ -32,6 +32,7 @@ function createParams(
     isDestroyedRef: { current: false },
     pollIntervalRef: { current: null },
     lastPolledUrlRef: { current: "https://example.com" },
+    lastAppliedUrlRef: { current: "https://example.com" },
     getContainerRect: () => null,
     log: vi.fn(),
     isWebviewCreated: true,

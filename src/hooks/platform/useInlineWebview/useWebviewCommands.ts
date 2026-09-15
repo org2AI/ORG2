@@ -10,6 +10,10 @@ import {
 
 import { toNativeFrame } from "@src/util/platform/tauri/nativeFrame";
 
+// Shared across React remounts so two owners of one label cannot receive the
+// same millisecond timestamp. This is a process-local IPC ownership token.
+let nextLifecycleGeneration = 0;
+
 export interface UseWebviewCommandsParams {
   isWebviewAvailable: boolean;
   isUnmountedRef: RefObject<boolean>;
@@ -20,6 +24,7 @@ export interface UseWebviewCommandsParams {
   isDestroyedRef: MutableRefObject<boolean>;
   pollIntervalRef: MutableRefObject<ReturnType<typeof setInterval> | null>;
   lastPolledUrlRef: MutableRefObject<string>;
+  lastAppliedUrlRef: MutableRefObject<string>;
   getContainerRect: () => DOMRect | null;
   log: (...args: unknown[]) => void;
   onCreated?: (webview: Webview) => void;
@@ -55,6 +60,7 @@ export function useWebviewCommands(
     isDestroyedRef,
     pollIntervalRef,
     lastPolledUrlRef,
+    lastAppliedUrlRef,
     getContainerRect,
     log,
     onCreated,
@@ -69,12 +75,14 @@ export function useWebviewCommands(
     isVisible,
   } = params;
 
-  // Tracks whether this React instance has successfully called create_inline_webview
-  // (and therefore incremented the Rust ref-count). Only when this is true should
-  // we call close_inline_webview to decrement the ref-count on destroy.
-  const hasIncrementedRefCount = useRef(false);
+  // One successful create acquires one native owner token. Pending create
+  // disposal also releases after its reply, independent of IPC arrival order.
+  const hasOwnerRef = useRef(false);
   const createInFlightRef = useRef<Promise<void> | null>(null);
   const lifecycleGenerationRef = useRef(0);
+  const releasedGenerationRef = useRef(0);
+  const desiredNavigationRef = useRef<string | null>(null);
+  const navigationInFlightRef = useRef<Promise<void> | null>(null);
 
   const createWebview = useCallback(
     (targetUrl: string): Promise<void> => {
@@ -87,10 +95,10 @@ export function useWebviewCommands(
         return Promise.resolve();
       }
 
-      // A single React owner must hold exactly one Rust ref-count slot. Effect
+      // A single React owner must hold exactly one native owner token. Effect
       // restarts (for example, Station visibility changing while creation is
       // still awaiting IPC) may call this again before state reflects success.
-      if (hasIncrementedRefCount.current) {
+      if (hasOwnerRef.current) {
         return Promise.resolve();
       }
       if (createInFlightRef.current) {
@@ -112,10 +120,8 @@ export function useWebviewCommands(
 
           const appWindow = getCurrentWindow();
           const parentLabel = appWindow.label;
-          const generation = Math.max(
-            lifecycleGenerationRef.current + 1,
-            Date.now()
-          );
+          const generation = Math.max(nextLifecycleGeneration + 1, Date.now());
+          nextLifecycleGeneration = generation;
           lifecycleGenerationRef.current = generation;
 
           log("Creating WebView via Rust command at rect:", rect);
@@ -132,16 +138,19 @@ export function useWebviewCommands(
             visible: isVisible,
           });
 
-          // Mark that this instance has a ref-count slot. Even if we are already
+          // Mark that this instance acquired its native owner token. Even if we are already
           // unmounted at this point we still need to release it.
-          hasIncrementedRefCount.current = true;
+          hasOwnerRef.current = true;
 
           // create_inline_webview returns with the webview staged offscreen.
-          // Rust uses the generation to prevent stale creates from becoming visible.
-          if (isUnmountedRef.current) {
-            // Unmounted while create was in-flight. Release the ref-count so the
+          // Only a still-mounted owner may publish the view as ready/visible.
+          if (
+            isUnmountedRef.current ||
+            releasedGenerationRef.current >= generation
+          ) {
+            // Unmounted while create was in-flight. Release this owner so the
             // offscreen webview is destroyed without ever being shown.
-            hasIncrementedRefCount.current = false;
+            hasOwnerRef.current = false;
             await invoke("close_inline_webview", {
               label: labelRef.current,
               generation,
@@ -152,6 +161,7 @@ export function useWebviewCommands(
           setIsWebviewCreated(true);
           setCurrentUrl(targetUrl);
           lastPolledUrlRef.current = targetUrl;
+          lastAppliedUrlRef.current = targetUrl;
 
           log("WebView created successfully with label:", labelRef.current);
 
@@ -172,11 +182,13 @@ export function useWebviewCommands(
       })();
 
       createInFlightRef.current = operation;
-      void operation.finally(() => {
+      const releaseFlight = () => {
         if (createInFlightRef.current === operation) {
           createInFlightRef.current = null;
         }
-      });
+      };
+      // Observe both outcomes without creating a rejected finally promise.
+      void operation.then(releaseFlight, releaseFlight);
       return operation;
     },
     [
@@ -189,6 +201,7 @@ export function useWebviewCommands(
       isDestroyedRef,
       labelRef,
       lastPolledUrlRef,
+      lastAppliedUrlRef,
       log,
       isVisible,
       onCreated,
@@ -201,56 +214,65 @@ export function useWebviewCommands(
   );
 
   const navigate = useCallback(
-    async (targetUrl: string) => {
-      log("Navigate to:", targetUrl);
-
-      if (!isWebviewCreated) {
-        await createWebview(targetUrl);
-        return;
-      }
-
-      try {
-        if (!isUnmountedRef.current) {
-          setIsLoading(true);
-        }
-
-        await invoke("navigate_inline_webview", {
-          label: labelRef.current,
-          url: targetUrl,
-        });
-
-        if (isUnmountedRef.current) return;
-
-        setCurrentUrl(targetUrl);
-        lastPolledUrlRef.current = targetUrl;
-        onNavigate?.(targetUrl);
-        setIsLoading(false);
-      } catch (err) {
-        if (isUnmountedRef.current) return;
-        log("Navigation failed, recreating webview:", err);
-
-        // Release our ref-count slot before closing so the Rust registry
-        // correctly reflects that this instance no longer holds the webview.
-        // createWebview will re-acquire it if recreation succeeds.
-        if (hasIncrementedRefCount.current) {
-          hasIncrementedRefCount.current = false;
+    (targetUrl: string): Promise<void> => {
+      desiredNavigationRef.current = targetUrl;
+      if (navigationInFlightRef.current) return navigationInFlightRef.current;
+      const operation = (async () => {
+        while (!isUnmountedRef.current && !isDestroyedRef.current) {
+          const desired = desiredNavigationRef.current;
+          if (!desired || desired === lastAppliedUrlRef.current) return;
           try {
-            await invoke("close_inline_webview", {
-              label: labelRef.current,
-              generation: lifecycleGenerationRef.current,
-            });
-          } catch {
-            // Ignore close errors during recovery
+            setIsLoading(true);
+            if (!hasOwnerRef.current && !isWebviewCreated) {
+              await createWebview(desired);
+              if (!hasOwnerRef.current) return;
+            } else {
+              await invoke("navigate_inline_webview", {
+                label: labelRef.current,
+                url: desired,
+              });
+              if (isUnmountedRef.current || isDestroyedRef.current) return;
+              lastAppliedUrlRef.current = desired;
+            }
+            if (isUnmountedRef.current || isDestroyedRef.current) return;
+            // Never publish an older navigation back into the session URL. The
+            // next loop applies the latest unsent target with only one IPC live.
+            if (desiredNavigationRef.current !== desired) continue;
+            setCurrentUrl(desired);
+            lastPolledUrlRef.current = desired;
+            onNavigate?.(desired);
+            setIsLoading(false);
+          } catch (err) {
+            if (isUnmountedRef.current || isDestroyedRef.current) return;
+            log("Navigation failed, recreating webview:", err);
+            if (hasOwnerRef.current) {
+              hasOwnerRef.current = false;
+              await invoke("close_inline_webview", {
+                label: labelRef.current,
+                generation: lifecycleGenerationRef.current,
+              }).catch(() => {});
+            }
+            if (isUnmountedRef.current || isDestroyedRef.current) return;
+            setIsWebviewCreated(false);
+            lastAppliedUrlRef.current = "";
+            const recoveryUrl = desiredNavigationRef.current;
+            if (!recoveryUrl) return;
+            await createWebview(recoveryUrl);
+            if (!hasOwnerRef.current) return;
+            if (isUnmountedRef.current || isDestroyedRef.current) return;
+            if (desiredNavigationRef.current === recoveryUrl)
+              onNavigate?.(recoveryUrl);
           }
         }
-        setIsWebviewCreated(false);
-
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        if (isUnmountedRef.current) return;
-
-        await createWebview(targetUrl);
-        onNavigate?.(targetUrl);
-      }
+      })();
+      navigationInFlightRef.current = operation;
+      const releaseFlight = () => {
+        if (navigationInFlightRef.current === operation)
+          navigationInFlightRef.current = null;
+      };
+      // Observe both outcomes without creating a rejected finally promise.
+      void operation.then(releaseFlight, releaseFlight);
+      return operation;
     },
     [
       isWebviewCreated,
@@ -258,8 +280,10 @@ export function useWebviewCommands(
       log,
       onNavigate,
       isUnmountedRef,
+      isDestroyedRef,
       labelRef,
       lastPolledUrlRef,
+      lastAppliedUrlRef,
       setIsLoading,
       setCurrentUrl,
       setIsWebviewCreated,
@@ -298,12 +322,15 @@ export function useWebviewCommands(
   );
 
   const destroy = useCallback(async () => {
-    // Always send the latest generation to Rust, even if create_inline_webview
-    // has not returned yet. Rust records the cancellation and closes the
-    // offscreen webview if that late create eventually completes.
+    // Release promptly, even if create has not replied. If close arrives before
+    // create, it is a safe no-op; the create completion above releases again.
+    // Rust owner tokens make both paths idempotent without tombstones.
     const generation = lifecycleGenerationRef.current;
-    if (!hasIncrementedRefCount.current && generation === 0) return;
-    hasIncrementedRefCount.current = false;
+    if (!hasOwnerRef.current && generation === 0) return;
+    hasOwnerRef.current = false;
+    releasedGenerationRef.current = generation;
+    isDestroyedRef.current = true;
+    desiredNavigationRef.current = null;
 
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -312,18 +339,8 @@ export function useWebviewCommands(
 
     const label = labelRef.current;
 
-    // Move offscreen before closing so the native webview never stays visible
-    // while the async close_inline_webview round-trip is in-flight. Avoid
-    // calling hide(); WKWebView visibility changes during lifecycle races can
-    // poison wry's runtime mutex on macOS.
-    void invoke("update_inline_webview_position", {
-      label,
-      x: -10000,
-      y: -10000,
-      width: 1,
-      height: 1,
-    });
-
+    // Native release is owner-scoped. An unscoped position update here could
+    // move a new owner's WebView when an old React cleanup runs late.
     try {
       log("Destroying WebView");
       await invoke("close_inline_webview", {

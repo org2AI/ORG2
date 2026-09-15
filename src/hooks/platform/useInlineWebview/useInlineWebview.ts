@@ -50,7 +50,7 @@ export function useInlineWebview(
   const isDestroyedRef = useRef(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPolledUrlRef = useRef<string>("");
-  const lastRequestedUrlRef = useRef<string>("");
+  const lastAppliedUrlRef = useRef<string>("");
   const isUnmountedRef = useRef(false);
 
   const log = useCallback(
@@ -100,6 +100,7 @@ export function useInlineWebview(
       isDestroyedRef,
       pollIntervalRef,
       lastPolledUrlRef,
+      lastAppliedUrlRef,
       getContainerRect,
       log,
       onCreated,
@@ -131,7 +132,7 @@ export function useInlineWebview(
     createDelay,
     containerRef,
     isDestroyedRef,
-    lastRequestedUrlRef,
+    lastAppliedUrlRef,
     createWebview,
     navigate,
     setError,

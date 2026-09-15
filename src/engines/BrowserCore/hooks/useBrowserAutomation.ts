@@ -96,7 +96,11 @@ export function useBrowserAutomation(
             }
           }
         );
-        if (!cancelled) unlisteners.push(unlistenFrame);
+        if (cancelled) {
+          unlistenFrame();
+          return;
+        }
+        unlisteners.push(unlistenFrame);
 
         const unlistenStatus = await listenTauri<BrowserStatusEvent>(
           "browser:status",
@@ -106,7 +110,11 @@ export function useBrowserAutomation(
             }
           }
         );
-        if (!cancelled) unlisteners.push(unlistenStatus);
+        if (cancelled) {
+          unlistenStatus();
+          return;
+        }
+        unlisteners.push(unlistenStatus);
       } catch {
         // Tauri events may not be available in web dev mode
       }

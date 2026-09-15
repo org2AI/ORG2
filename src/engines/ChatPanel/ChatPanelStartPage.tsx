@@ -7,7 +7,6 @@ import type { SelectOption } from "@src/components/Select";
 import { CREATOR_COMPOSER_POSITION } from "@src/config/sessionCreatorConfig";
 import ImportSharedSessionDialog from "@src/features/Org2Cloud/ImportSharedSessionDialog";
 import { LaunchpadActionCard } from "@src/features/SessionCreator/components/LaunchpadActionGrid";
-import { useAvailableAppUpdate } from "@src/scaffold/AppUpdater/state";
 import { creatorComposerPositionAtom } from "@src/store/session/creatorComposerPositionAtom";
 import { creatorLaunchpadActionsVisibleAtom } from "@src/store/session/creatorLaunchpadActionsVisibleAtom";
 import {
@@ -41,7 +40,6 @@ interface ChatPanelStartPageProps {
   ) => React.ReactNode;
   onAddApiKey: () => void;
   onCreateTarget: (target: string) => void;
-  onInstallLatestUpdate: () => void;
   onProjectAgentModeChange: (enabled: boolean) => void;
   onWorkItemAgentModeChange: (enabled: boolean) => void;
   projectAgentMode: boolean;
@@ -90,7 +88,6 @@ export function ChatPanelStartPage({
   moreLauncher,
   onAddApiKey,
   onCreateTarget,
-  onInstallLatestUpdate,
   onProjectAgentModeChange,
   onWorkItemAgentModeChange,
   projectAgentMode,
@@ -105,11 +102,8 @@ export function ChatPanelStartPage({
   const [isImportSessionDialogOpen, setIsImportSessionDialogOpen] =
     useState(false);
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
-  const availableUpdate = useAvailableAppUpdate();
   const utilityActions = buildStartPageUtilityActions({
-    availableUpdate,
     onAddApiKey,
-    onInstallLatestUpdate,
     setIsImportSessionDialogOpen,
     setIsQuotaModalOpen,
     t,

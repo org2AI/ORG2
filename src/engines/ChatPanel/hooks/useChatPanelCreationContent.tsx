@@ -9,7 +9,6 @@ import {
 } from "@src/config/mainAppPaths";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { allAgentDefsAtom } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
-import { installAvailableAppUpdate } from "@src/scaffold/AppUpdater/actions";
 import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { projectListRefreshAtom } from "@src/store/project/projectAtom";
 import { sessionCreatorStateAtom } from "@src/store/session";
@@ -94,9 +93,6 @@ export function useChatPanelCreationContent({
     navigate(buildWizardPath(accountsPath, WIZARD_IDS.KEY_ADD));
   }, [navigate]);
 
-  const handleStartPageInstallLatestUpdate = useCallback(() => {
-    void installAvailableAppUpdate();
-  }, []);
   const { createTargetOptions, handleCreateTargetChange } =
     useChatPanelCreateTarget({
       sessionCreatorAvailable: Boolean(SessionCreatorSlot),
@@ -159,7 +155,6 @@ export function useChatPanelCreationContent({
       handleOpenCliTerminal={handleOpenCliTerminal}
       handleRegionNoticeChange={handleRegionNoticeChange}
       handleStartPageAddApiKey={handleStartPageAddApiKey}
-      handleStartPageInstallLatestUpdate={handleStartPageInstallLatestUpdate}
       handleStartPageSessionStart={handleStartPageSessionStart}
       handleProjectAgentCreatorToggle={handleProjectAgentCreatorToggle}
       handleWorkItemAgentCreatorToggle={handleWorkItemAgentCreatorToggle}

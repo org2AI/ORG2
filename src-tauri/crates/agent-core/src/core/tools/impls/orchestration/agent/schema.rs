@@ -76,8 +76,8 @@ pub fn llm_visible_agent_ids(allowed_subagents: Option<&Vec<String>>) -> Vec<Str
     }
 
     let store = crate::definitions::definitions_store();
-    if let Ok(custom_agents) = store.agents.lock() {
-        for agent in custom_agents.iter() {
+    {
+        for agent in store.snapshot().iter() {
             let delegatable = agent
                 .delegation_config
                 .as_ref()
@@ -138,8 +138,8 @@ pub(super) fn llm_description(allowed_subagents: Option<&Vec<String>>) -> Option
 
     // Custom agents from the store (snapshot under lock).
     let store = crate::definitions::definitions_store();
-    if let Ok(custom_agents) = store.agents.lock() {
-        for agent in custom_agents.iter() {
+    {
+        for agent in store.snapshot().iter() {
             let delegatable = agent
                 .delegation_config
                 .as_ref()

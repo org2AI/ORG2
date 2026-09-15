@@ -2102,7 +2102,7 @@
         "cancelled": "Đã hủy",
         "failed": "Thất bại"
       },
-      "title": "Tổng quan Nhóm Agent",
+      "title": "Tổng quan nhóm",
       "summary": "{{active}} đang hoạt động · {{pending}} chờ xử lý",
       "loadFailed": "Không tải được tổng quan nhóm",
       "tasks": "Nhiệm vụ",
@@ -2177,9 +2177,7 @@
       "activeMembers": "Thành viên đang hoạt động",
       "inFlightTurns": "Lượt đang chạy",
       "openTasks": "Nhiệm vụ đang mở",
-      "blockingInbox": "Hộp thư đến đang chặn",
-      "blockersTitle": "Những gì vẫn đang cản trở hoàn tất",
-      "unknownBlocker": "Trở ngại hệ thống không xác định"
+      "blockingInbox": "Hộp thư đến đang chặn"
     },
     "agentOrgIntervention": {
       "directTitle": "Làm việc trực tiếp với {{member}}",
@@ -2344,7 +2342,6 @@
     },
     "triggerLabel": "Trò chuyện nhóm",
     "userMessageOutcomeUnknown": "Không xác định được kết quả gửi. Hãy thử lại lần gửi ban đầu.",
-    "coordinatorLabel": "Điều phối viên",
     "youLabel": "Bạn",
     "retry": "Thử lại",
     "memberCount_one": "{{count}} thành viên",

@@ -12,7 +12,6 @@ import { activeSessionIdAtom } from "@src/store/session";
 
 import AgentOrgFinalSummaryCard from "./AgentOrgFinalSummaryCard";
 import AgentOrgOverviewArchivedSections from "./AgentOrgOverviewArchivedSections";
-import AgentOrgOverviewBlockers from "./AgentOrgOverviewBlockers";
 import AgentOrgOverviewCurrentWorkSection from "./AgentOrgOverviewCurrentWorkSection";
 import AgentOrgOverviewDeleteTeamDialog from "./AgentOrgOverviewDeleteTeamDialog";
 import AgentOrgOverviewHeaderActions from "./AgentOrgOverviewHeaderActions";
@@ -275,10 +274,6 @@ const AgentOrgOverviewPanel: React.FC<AgentOrgOverviewPanelProps> = memo(
               activeMembers={activeMembers}
               pendingMessages={pendingMessages}
             />
-
-            {view.blockers.length > 0 && (
-              <AgentOrgOverviewBlockers blockers={view.blockers} />
-            )}
 
             {view.finalSummary?.status === "failed" ? (
               <AgentOrgFinalSummaryCard

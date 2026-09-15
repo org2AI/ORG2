@@ -2121,7 +2121,7 @@
         "cancelled": "Anulowano",
         "failed": "Niepowodzenie"
       },
-      "title": "Przegląd Zespołu Agent",
+      "title": "Przegląd zespołu",
       "summary": "{{active}} aktywnych · {{pending}} oczekujących",
       "loadFailed": "Nie udało się załadować przeglądu zespołu",
       "tasks": "Zadania",
@@ -2196,9 +2196,7 @@
       "activeMembers": "Aktywni członkowie",
       "inFlightTurns": "Trwające tury",
       "openTasks": "Otwarte zadania",
-      "blockingInbox": "Blokująca skrzynka odbiorcza",
-      "blockersTitle": "Co nadal blokuje ukończenie",
-      "unknownBlocker": "Nieznana blokada systemowa"
+      "blockingInbox": "Blokująca skrzynka odbiorcza"
     },
     "agentOrgIntervention": {
       "directTitle": "Bezpośrednia praca z {{member}}",
@@ -2344,7 +2342,6 @@
     },
     "triggerLabel": "Czat grupowy",
     "userMessageOutcomeUnknown": "Wynik dostarczenia jest nieznany. Ponów pierwotne dostarczenie.",
-    "coordinatorLabel": "Koordynator",
     "youLabel": "Ty",
     "retry": "Ponów",
     "memberCount_one": "{{count}} członek",

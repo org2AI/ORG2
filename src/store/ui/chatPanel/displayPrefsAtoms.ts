@@ -14,9 +14,10 @@ import {
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
 /**
- * Per-session opt-in for the Agent Team group chat view. Holds the
- * coordinator session id whose ChatPanel is currently rendering the
- * group view (or `null` for none). Non-persistent: closing or
+ * Per-surface opt-in for the Agent Team group chat view. Holds the owning
+ * ChatView session id whose panel is currently rendering the group view (or
+ * `null` for none). The group's data and actions still use the canonical
+ * coordinator/root session. Non-persistent: closing or
  * switching session reverts to the per-member ChatHistory default,
  * matching the user's preference that the dropdown choice not stick.
  *

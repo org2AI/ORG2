@@ -33,7 +33,13 @@ import zhSessions from "@src/i18n/locales/zh/sessions.json";
 
 import AgentOrgGroupProjectionView from "../AgentOrgGroupProjectionView";
 
-const sessionsLocales: Record<string, { groupChat: unknown }> = {
+const sessionsLocales: Record<
+  string,
+  {
+    groupChat: unknown;
+    planner: { agentOrgOverview: { title: string } };
+  }
+> = {
   de: deSessions,
   en: enSessions,
   es: esSessions,
@@ -112,6 +118,18 @@ vi.mock("@src/components/Button", () => ({
 vi.mock("@src/components/MarkDown", () => ({
   default: ({ textContent }: { textContent: string }) =>
     React.createElement("p", null, textContent),
+}));
+
+vi.mock("@src/hooks/dropdown", () => ({
+  useDropdownEngine: () => ({
+    isOpen: true,
+    isPositioned: true,
+    setIsOpen: vi.fn(),
+    close: vi.fn(),
+    triggerRef: { current: null },
+    panelRef: { current: null },
+    panelPosition: { top: 10, left: 10, width: 180, maxHeight: 300 },
+  }),
 }));
 
 vi.mock("@src/util/data/formatters/date", () => ({
@@ -330,6 +348,8 @@ describe("AgentOrgGroupProjectionView", () => {
           actionError: null,
           actionPendingTurns: new Set<string>(),
           overviewPanel: React.createElement("div", null, "overview"),
+          overviewScopeKey: "root-session",
+          surfaceBgClass: "bg-chat-pane",
           bottomInset: 0,
           viewportSessionKey: "run:test",
           onScrollNavChange,
@@ -441,8 +461,8 @@ describe("AgentOrgGroupProjectionView", () => {
 
   it("exits Group before opening the Coordinator or a Member page", async () => {
     await renderView();
-    const coordinator = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "groupChat.coordinatorLabel"
+    const coordinator = document.querySelector<HTMLButtonElement>(
+      '[data-testid="agent-org-member-switcher-option-coordinator"]'
     );
 
     await act(async () => coordinator?.click());
@@ -563,6 +583,65 @@ describe("AgentOrgGroupProjectionView", () => {
     expect(scroller.scrollTop).toBe(920);
   });
 
+  it("uses the shared compact navigation and overview tray without round controls", async () => {
+    await renderView();
+
+    expect(
+      container.querySelector('[data-testid="agent-org-surface-switcher"]')
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="agent-org-surface-switcher"]')
+        ?.className
+    ).toContain("overflow-hidden");
+    expect(
+      container.querySelector(
+        '[data-testid="agent-org-group-projection-content"]'
+      )?.className
+    ).toContain("max-w-[800px]");
+    expect(
+      container.querySelector('[data-testid="agent-org-overview-trigger"]')
+        ?.textContent
+    ).toContain("sessions:planner.agentOrgOverview.title");
+    expect(
+      container.querySelector("[data-turn-navigation-toolbar]")
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-testid="agent-org-overview-tray"]')
+    ).toBeNull();
+
+    const overviewTrigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="agent-org-overview-trigger"]'
+    );
+    await act(async () => overviewTrigger?.click());
+
+    const overviewTray = container.querySelector(
+      '[data-testid="agent-org-overview-tray"]'
+    );
+    expect(overviewTray).not.toBeNull();
+    expect(overviewTray?.className).toContain("max-h-[45%]");
+    expect(
+      overviewTray?.querySelector('[data-agent-org-overview-panel="true"]')
+        ?.parentElement?.className
+    ).toContain("max-w-[800px]");
+    expect(container.textContent).toContain("overview");
+
+    await act(async () => {
+      overviewTray
+        ?.querySelector('[data-agent-org-overview-panel="true"]')
+        ?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    });
+    expect(
+      container.querySelector('[data-testid="agent-org-overview-tray"]')
+    ).not.toBeNull();
+
+    await act(async () => {
+      container.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    });
+    expect(
+      container.querySelector('[data-testid="agent-org-overview-tray"]')
+    ).toBeNull();
+  });
+
   it("shows bounded loading, error, empty, and archived states", async () => {
     await renderView({ projectedItems: [], loading: true });
     expect(
@@ -592,6 +671,24 @@ describe("AgentOrgGroupProjectionView", () => {
 });
 
 describe("Agent Org Group locale parity", () => {
+  it("uses a localized Team Overview title without repeating Agent", () => {
+    const titles = Object.entries(sessionsLocales).map(([locale, sessions]) => [
+      locale,
+      sessions.planner.agentOrgOverview.title,
+    ]);
+
+    expect(titles).toHaveLength(13);
+    expect(Object.fromEntries(titles)).toMatchObject({
+      en: "Team Overview",
+      zh: "团队概览",
+      "zh-Hant": "團隊概覽",
+    });
+    for (const [locale, title] of titles) {
+      expect(title, locale).not.toMatch(/agent/i);
+      expect(title, locale).not.toHaveLength(0);
+    }
+  });
+
   it("keeps every Group projection-visible key and interpolation parameter aligned in all 13 locales", () => {
     const locales = Object.entries(sessionsLocales).map(([locale, module]) => ({
       locale,
@@ -601,7 +698,6 @@ describe("Agent Org Group locale parity", () => {
     const english = locales.find(({ locale }) => locale === "en");
     expect(english).toBeDefined();
     const expectedKeys = [
-      "coordinatorLabel",
       "memberCount_one",
       "memberCount_other",
       "memberFallback",

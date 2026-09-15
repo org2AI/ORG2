@@ -2121,7 +2121,7 @@
         "cancelled": "Cancelado",
         "failed": "Falhou"
       },
-      "title": "Visão geral da Equipe Agent",
+      "title": "Visão geral da equipe",
       "summary": "{{active}} ativos · {{pending}} pendentes",
       "loadFailed": "Falha ao carregar a visão geral da equipe",
       "tasks": "Tarefas",
@@ -2196,9 +2196,7 @@
       "activeMembers": "Membros ativos",
       "inFlightTurns": "Turnos em andamento",
       "openTasks": "Tarefas abertas",
-      "blockingInbox": "Caixa de entrada bloqueante",
-      "blockersTitle": "O que ainda impede a conclusão",
-      "unknownBlocker": "Bloqueio de sistema desconhecido"
+      "blockingInbox": "Caixa de entrada bloqueante"
     },
     "agentOrgIntervention": {
       "directTitle": "Trabalho direto com {{member}}",
@@ -2344,7 +2342,6 @@
     },
     "triggerLabel": "Chat em grupo",
     "userMessageOutcomeUnknown": "O resultado da entrega é desconhecido. Tente novamente a entrega original.",
-    "coordinatorLabel": "Coordenador",
     "youLabel": "Você",
     "retry": "Tentar novamente",
     "memberCount_one": "{{count}} membro",

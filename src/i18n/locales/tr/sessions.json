@@ -2102,7 +2102,7 @@
         "cancelled": "İptal edildi",
         "failed": "Başarısız"
       },
-      "title": "Agent Ekibi genel görünümü",
+      "title": "Ekip genel görünümü",
       "summary": "{{active}} aktif · {{pending}} bekleyen",
       "loadFailed": "Ekip genel görünümü yüklenemedi",
       "tasks": "Görevler",
@@ -2177,9 +2177,7 @@
       "activeMembers": "Aktif üyeler",
       "inFlightTurns": "Devam eden turlar",
       "openTasks": "Açık görevler",
-      "blockingInbox": "Engelleyen gelen kutusu",
-      "blockersTitle": "Tamamlanmayı hâlâ engelleyenler",
-      "unknownBlocker": "Bilinmeyen sistem engeli"
+      "blockingInbox": "Engelleyen gelen kutusu"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}} ile doğrudan çalışma",
@@ -2344,7 +2342,6 @@
     },
     "triggerLabel": "Grup sohbeti",
     "userMessageOutcomeUnknown": "Teslimat sonucu bilinmiyor. Özgün teslimatı yeniden deneyin.",
-    "coordinatorLabel": "Koordinatör",
     "youLabel": "Siz",
     "retry": "Yeniden dene",
     "memberCount_one": "{{count}} üye",

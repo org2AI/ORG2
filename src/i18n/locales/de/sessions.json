@@ -2102,7 +2102,7 @@
         "cancelled": "Abgebrochen",
         "failed": "Fehlgeschlagen"
       },
-      "title": "Agent-Team-Übersicht",
+      "title": "Teamübersicht",
       "summary": "{{active}} aktiv · {{pending}} ausstehend",
       "loadFailed": "Team-Übersicht konnte nicht geladen werden",
       "tasks": "Aufgaben",
@@ -2177,9 +2177,7 @@
       "activeMembers": "Aktive Mitglieder",
       "inFlightTurns": "Laufende Durchläufe",
       "openTasks": "Offene Aufgaben",
-      "blockingInbox": "Blockierende Nachrichten",
-      "blockersTitle": "Was den Abschluss noch blockiert",
-      "unknownBlocker": "Unbekannte Systemblockade"
+      "blockingInbox": "Blockierende Nachrichten"
     },
     "agentOrgIntervention": {
       "directTitle": "Direkte Arbeit mit {{member}}",
@@ -2344,7 +2342,6 @@
     },
     "triggerLabel": "Gruppenchat",
     "userMessageOutcomeUnknown": "Das Zustellungsergebnis ist unbekannt. Wiederhole die ursprüngliche Zustellung.",
-    "coordinatorLabel": "Koordinator",
     "youLabel": "Du",
     "retry": "Erneut versuchen",
     "memberCount_one": "{{count}} Mitglied",

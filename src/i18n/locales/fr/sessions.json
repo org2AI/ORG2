@@ -2102,7 +2102,7 @@
         "cancelled": "Annulé",
         "failed": "Échec"
       },
-      "title": "Vue d’ensemble de l’Équipe Agent",
+      "title": "Vue d’ensemble de l’équipe",
       "summary": "{{active}} actifs · {{pending}} en attente",
       "loadFailed": "Échec du chargement de la vue d’ensemble de l’équipe",
       "tasks": "Tâches",
@@ -2177,9 +2177,7 @@
       "activeMembers": "Membres actifs",
       "inFlightTurns": "Tours en cours",
       "openTasks": "Tâches ouvertes",
-      "blockingInbox": "Boîte de réception bloquante",
-      "blockersTitle": "Ce qui bloque encore la finalisation",
-      "unknownBlocker": "Blocage système inconnu"
+      "blockingInbox": "Boîte de réception bloquante"
     },
     "agentOrgIntervention": {
       "directTitle": "Travail direct avec {{member}}",
@@ -2344,7 +2342,6 @@
     },
     "triggerLabel": "Discussion de groupe",
     "userMessageOutcomeUnknown": "Le résultat de l’envoi est inconnu. Réessayez l’envoi d’origine.",
-    "coordinatorLabel": "Coordinateur",
     "youLabel": "Vous",
     "retry": "Réessayer",
     "memberCount_one": "{{count}} membre",

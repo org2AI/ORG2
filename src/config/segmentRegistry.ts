@@ -149,6 +149,7 @@ export const SEGMENT_REGISTRY: Record<string, SegmentRegistryEntry> = {
     labelKey: "settings:sections.mobileRemote",
     icon: SmartPhone,
   },
+  development: { labelKey: "settings:sections.development", icon: Code },
   update: { labelKey: "settings:sections.appUpdate", icon: Package },
   "harness-connections": {
     labelKey: "settings:sections.harnessConnections",

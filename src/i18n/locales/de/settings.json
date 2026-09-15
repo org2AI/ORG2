@@ -18,7 +18,8 @@
     "storage": "Speicher",
     "agentOrg": "Agent-Team",
     "harnessConnections": "App-Verbindungen",
-    "mobileRemote": "Mobile Remote"
+    "mobileRemote": "Mobile Remote",
+    "development": "Entwicklermodus"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "addPhone": "Smartphone hinzufügen",
     "pairingPermission": "Smartphone-Berechtigungen",
     "relayDisabledHint": "Internetverbindungen sind deaktiviert. Aktiviere sie in den erweiterten Einstellungen"
+  },
+  "development": {
+    "updateAvailable": "Update verfügbar",
+    "updateAvailableDesc": "Update-Anzeigen in der gesamten App mit Version 99.0.0 einblenden — Update-Aktionen öffnen nur die Vorschau"
   }
 }

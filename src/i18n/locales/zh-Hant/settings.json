@@ -18,7 +18,8 @@
     "storage": "存儲",
     "agentOrg": "Agent 團隊",
     "harnessConnections": "應用程式連線",
-    "mobileRemote": "行動遙控"
+    "mobileRemote": "行動遙控",
+    "development": "開發模式"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "addPhone": "新增手機",
     "pairingPermission": "手機權限",
     "relayDisabledHint": "網際網路連線已關閉，可在進階設定中開啟"
+  },
+  "development": {
+    "updateAvailable": "有可用更新",
+    "updateAvailableDesc": "在整個應用中顯示版本 99.0.0 的更新提示 — 更新操作僅預覽對話框"
   }
 }

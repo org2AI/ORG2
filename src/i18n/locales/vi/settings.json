@@ -18,7 +18,8 @@
     "storage": "Lưu trữ",
     "agentOrg": "Nhóm Agent",
     "harnessConnections": "Kết nối ứng dụng",
-    "mobileRemote": "Điều khiển từ điện thoại"
+    "mobileRemote": "Điều khiển từ điện thoại",
+    "development": "Chế độ phát triển"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "addPhone": "Thêm điện thoại",
     "pairingPermission": "Quyền của điện thoại",
     "relayDisabledHint": "Kết nối qua internet đang tắt. Bạn có thể bật trong cài đặt nâng cao"
+  },
+  "development": {
+    "updateAvailable": "Có bản cập nhật",
+    "updateAvailableDesc": "Hiện chỉ báo cập nhật trên toàn ứng dụng với phiên bản 99.0.0 — thao tác cập nhật chỉ mở bản xem trước"
   }
 }

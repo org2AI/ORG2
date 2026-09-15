@@ -125,3 +125,16 @@ export const APP_SETTINGS_UI_SECTIONS: SettingsSectionDefinition[] = [
     coveredKeys: [],
   },
 ];
+
+// Build-time gate: the in-app Dev Mode preference cannot expose mocks in builds.
+if (process.env.NODE_ENV === "development") {
+  APP_SETTINGS_UI_SECTIONS.push({
+    id: "development",
+    tab: "app",
+    labelKey: "development",
+    headingTitleKey: "sections.development",
+    icon: iconForSegment("development"),
+    customSectionSlotId: SETTINGS_SECTION_SLOT_IDS.APP_DEVELOPMENT,
+    coveredKeys: [],
+  });
+}

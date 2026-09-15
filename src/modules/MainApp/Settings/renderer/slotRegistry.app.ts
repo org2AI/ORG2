@@ -1,3 +1,5 @@
+import { lazy } from "react";
+
 import {
   SETTINGS_SECTION_SLOT_IDS,
   type SettingsSectionSlotId,
@@ -21,3 +23,8 @@ export const appSettingsSectionSlotRegistry: Partial<
   [SETTINGS_SECTION_SLOT_IDS.APP_SECURITY]: SecuritySection,
   [SETTINGS_SECTION_SLOT_IDS.APP_MOBILE_REMOTE]: MobileRemoteSettingsSection,
 };
+
+if (process.env.NODE_ENV === "development") {
+  appSettingsSectionSlotRegistry[SETTINGS_SECTION_SLOT_IDS.APP_DEVELOPMENT] =
+    lazy(() => import("../sections/DevelopmentSection"));
+}

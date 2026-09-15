@@ -18,7 +18,8 @@
     "storage": "Storage",
     "agentOrg": "Agent Team",
     "mobileRemote": "Mobile Remote",
-    "harnessConnections": "App connections"
+    "harnessConnections": "App connections",
+    "development": "Dev mode"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "fetchDone": "Model list loaded; choose or enter an ID",
     "testDone": "Tool round trip and streaming passed; test evidence expires after 15 minutes",
     "role": "Role"
+  },
+  "development": {
+    "updateAvailable": "Update available",
+    "updateAvailableDesc": "Show update indicators across the app using version 99.0.0 — update actions only preview the dialog"
   }
 }

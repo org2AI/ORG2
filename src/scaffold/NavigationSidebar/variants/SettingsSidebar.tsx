@@ -41,6 +41,7 @@ import HoverAnimatedIcon, {
 import NavigationMenu from "../components/NavigationMenu";
 import type { NavigationMenuItem } from "../components/NavigationMenu/config";
 import SidebarAccountButton from "../connectors/SidebarAccountButton";
+import SettingsSidebarCount from "./SettingsSidebarCount";
 import SettingsSidebarSearch from "./SettingsSidebarSearch";
 import type { SettingsControlSearchItem } from "./settingsSidebarSearchPages";
 
@@ -229,6 +230,10 @@ export const SettingsRootBody: React.FC<SettingsRootBodyProps> = ({
         icon: item.icon,
         dataTestId: item.dataTestId,
         routePath: item.path,
+        labelBadge:
+          item.id === "general" || item.id === "development" ? (
+            <SettingsSidebarCount section={item.id} />
+          ) : undefined,
       })),
     []
   );

@@ -182,7 +182,7 @@ export const NavigationMenuParentRow = React.forwardRef<
                 item.disclosureFollowsLabel ? "" : "flex-1"
               }`}
             >
-              <span className="flex min-w-0 items-center gap-1">
+              <span className="flex min-w-0 items-center gap-3">
                 <span className="truncate text-[13px] leading-4 text-text-1">
                   {item.label}
                 </span>

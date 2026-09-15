@@ -29,6 +29,7 @@ import {
   appUpdateDownloadProgressAtom,
   appUpdateInstallPromptAtom,
   appUpdaterStateAtom,
+  mockAppUpdateEnabledAtom,
   separateAppUpdateInstallingAtom,
 } from "./state";
 
@@ -503,6 +504,10 @@ function showDownloadFailure(
 export async function installAvailableAppUpdate(
   options: InstallAvailableAppUpdateOptions = {}
 ): Promise<void> {
+  if (store().get(mockAppUpdateEnabledAtom)) {
+    store().set(appUpdateInstallPromptAtom, !options.confirmed);
+    return;
+  }
   const { confirmed = false, silentDownload = false } = options;
   const update =
     coordinator.getAvailableUpdate() ?? (await checkForUpdatesManually());
@@ -661,7 +666,8 @@ export function startAutomaticAppUpdates(): () => void {
 }
 
 export function postponeAppUpdate(version: string | undefined): void {
-  if (version) deferUpdateReminder(version);
+  if (version && !store().get(mockAppUpdateEnabledAtom))
+    deferUpdateReminder(version);
   store().set(appUpdateInstallPromptAtom, false);
 }
 

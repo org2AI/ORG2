@@ -18,7 +18,8 @@
     "storage": "Хранилище",
     "agentOrg": "Команда Agent",
     "harnessConnections": "Подключения приложений",
-    "mobileRemote": "Mobile Remote"
+    "mobileRemote": "Mobile Remote",
+    "development": "Режим разработчика"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "addPhone": "Добавить телефон",
     "pairingPermission": "Разрешения телефона",
     "relayDisabledHint": "Подключения через интернет отключены. Включите их в дополнительных настройках"
+  },
+  "development": {
+    "updateAvailable": "Доступно обновление",
+    "updateAvailableDesc": "Показывать индикаторы обновления во всём приложении для версии 99.0.0 — действия открывают только предпросмотр"
   }
 }

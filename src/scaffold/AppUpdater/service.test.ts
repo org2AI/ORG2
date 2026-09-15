@@ -24,7 +24,11 @@ import {
   skipAppUpdateVersion,
   startAutomaticAppUpdates,
 } from "./service";
-import { appUpdateInstallPromptAtom, availableAppUpdateAtom } from "./state";
+import {
+  appUpdateInstallPromptAtom,
+  availableAppUpdateAtom,
+  mockAppUpdateEnabledAtom,
+} from "./state";
 
 const mocks = vi.hoisted(() => ({
   check: vi.fn(),
@@ -103,6 +107,30 @@ describe("AppUpdater service boundary", () => {
     resetAppUpdaterForTests();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("routes mock install actions to the prompt without checking, installing, restarting or persisting", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const store = mocks.store!;
+      store.set(mockAppUpdateEnabledAtom, true);
+      const storageWrite = vi.spyOn(window.localStorage, "setItem");
+      await actions.installAvailableAppUpdate();
+      expect(store.get(appUpdateInstallPromptAtom)).toBe(true);
+      postponeAppUpdate("99.0.0");
+      expect(store.get(appUpdateInstallPromptAtom)).toBe(false);
+      await actions.installAvailableAppUpdate();
+      await installAvailableAppUpdate({ confirmed: true });
+      expect(store.get(appUpdateInstallPromptAtom)).toBe(false);
+      expect(store.get(mockAppUpdateEnabledAtom)).toBe(true);
+      expect(mocks.check).not.toHaveBeenCalled();
+      expect(mocks.provenance).not.toHaveBeenCalled();
+      expect(mocks.separateInstall).not.toHaveBeenCalled();
+      expect(mocks.relaunch).not.toHaveBeenCalled();
+      expect(storageWrite).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("localizes separate-install success without losing the destination", async () => {

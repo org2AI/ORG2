@@ -18,7 +18,8 @@
     "storage": "Pamięć masowa",
     "agentOrg": "Zespół Agent",
     "harnessConnections": "Połączenia aplikacji",
-    "mobileRemote": "Mobile Remote"
+    "mobileRemote": "Mobile Remote",
+    "development": "Tryb programisty"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "addPhone": "Dodaj telefon",
     "pairingPermission": "Uprawnienia telefonu",
     "relayDisabledHint": "Połączenia przez internet są wyłączone. Włącz je w ustawieniach zaawansowanych"
+  },
+  "development": {
+    "updateAvailable": "Dostępna aktualizacja",
+    "updateAvailableDesc": "Pokaż wskaźniki aktualizacji w całej aplikacji dla wersji 99.0.0 — akcje aktualizacji otwierają tylko podgląd"
   }
 }

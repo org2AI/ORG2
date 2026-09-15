@@ -18,7 +18,8 @@
     "storage": "스토리지",
     "agentOrg": "Agent 팀",
     "harnessConnections": "앱 연결",
-    "mobileRemote": "Mobile Remote"
+    "mobileRemote": "Mobile Remote",
+    "development": "개발 모드"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "addPhone": "휴대폰 추가",
     "pairingPermission": "휴대폰 권한",
     "relayDisabledHint": "인터넷 연결이 꺼져 있음. 고급 설정에서 켤 수 있음"
+  },
+  "development": {
+    "updateAvailable": "업데이트 사용 가능",
+    "updateAvailableDesc": "버전 99.0.0 업데이트 표시를 앱 전체에 표시 — 업데이트 작업은 대화 상자 미리 보기만 제공"
   }
 }

@@ -556,11 +556,13 @@ describe("AppUpdater", () => {
     await installAvailableAppUpdate();
     renderPreparedUpdate(update);
 
-    await capturedButton("Install and restart").onClick?.();
+    capturedButton("Install and restart").onClick?.();
 
-    expect(update.install).toHaveBeenCalledOnce();
-    expect(mocks.relaunch).toHaveBeenCalledOnce();
-    expect(mocks.setInstallPromptVisible).toHaveBeenCalledWith(false);
+    await vi.waitFor(() => {
+      expect(update.install).toHaveBeenCalledOnce();
+      expect(mocks.relaunch).toHaveBeenCalledOnce();
+      expect(mocks.setInstallPromptVisible).toHaveBeenCalledWith(false);
+    });
   });
 
   it("keeps one progress notice alive and updates it in place", async () => {

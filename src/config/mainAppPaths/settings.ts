@@ -12,10 +12,12 @@ export type SettingsSectionSegment =
   | "editor"
   | "security"
   | "mobile-remote"
+  | "development"
   | "update"
   | "harness-connections";
 
 export const SETTINGS_SECTIONS: readonly SettingsSectionSegment[] = [
+  ...(process.env.NODE_ENV === "development" ? ["development" as const] : []),
   "general",
   "appearance",
   "editor",

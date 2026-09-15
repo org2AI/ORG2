@@ -18,7 +18,8 @@
     "storage": "ストレージ",
     "agentOrg": "Agent チーム",
     "harnessConnections": "アプリ接続",
-    "mobileRemote": "Mobile Remote"
+    "mobileRemote": "Mobile Remote",
+    "development": "開発モード"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "addPhone": "スマートフォンを追加",
     "pairingPermission": "スマートフォンの権限",
     "relayDisabledHint": "インターネット接続はオフです。詳細設定で有効にできます"
+  },
+  "development": {
+    "updateAvailable": "アップデートあり",
+    "updateAvailableDesc": "バージョン 99.0.0 の更新表示をアプリ全体に表示 — 更新操作はダイアログのプレビューのみ"
   }
 }

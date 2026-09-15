@@ -18,7 +18,8 @@
     "storage": "Armazenamento",
     "agentOrg": "Equipe Agent",
     "harnessConnections": "Conexões de aplicativos",
-    "mobileRemote": "Mobile Remote"
+    "mobileRemote": "Mobile Remote",
+    "development": "Modo de desenvolvimento"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "addPhone": "Adicionar celular",
     "pairingPermission": "Permissões do celular",
     "relayDisabledHint": "As conexões pela internet estão desativadas. Ative-as nas configurações avançadas"
+  },
+  "development": {
+    "updateAvailable": "Atualização disponível",
+    "updateAvailableDesc": "Mostrar indicadores de atualização em todo o aplicativo com a versão 99.0.0 — as ações apenas abrem a prévia"
   }
 }

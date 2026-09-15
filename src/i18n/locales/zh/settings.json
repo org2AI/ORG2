@@ -18,7 +18,8 @@
     "storage": "存储",
     "agentOrg": "Agent 团队",
     "mobileRemote": "移动遥控",
-    "harnessConnections": "应用连接"
+    "harnessConnections": "应用连接",
+    "development": "开发模式"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "fetchDone": "模型列表已加载，可选择或手动输入 ID",
     "testDone": "工具调用往返和流式响应测试通过；测试凭证在 15 分钟后过期",
     "role": "模型角色"
+  },
+  "development": {
+    "updateAvailable": "有可用更新",
+    "updateAvailableDesc": "在整个应用中显示版本 99.0.0 的更新提示 — 更新操作仅预览对话框"
   }
 }

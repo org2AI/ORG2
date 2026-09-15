@@ -162,7 +162,7 @@ export const NavigationMenuLeafRow = React.forwardRef<
           })}
           {!collapsed && (
             <div className={SESSION_ROW_PRESENTATION.text}>
-              <span className="flex min-w-0 items-center gap-1">
+              <span className="flex min-w-0 items-center gap-3">
                 <span
                   className={`${SESSION_ROW_PRESENTATION.title} ${
                     item.disabled

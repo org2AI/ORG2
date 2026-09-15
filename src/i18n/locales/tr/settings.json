@@ -18,7 +18,8 @@
     "storage": "Depolama",
     "agentOrg": "Agent Ekibi",
     "harnessConnections": "Uygulama bağlantıları",
-    "mobileRemote": "Mobil Uzaktan Erişim"
+    "mobileRemote": "Mobil Uzaktan Erişim",
+    "development": "Geliştirici modu"
   },
   "coreSidebar": {
     "groups": {
@@ -1050,5 +1051,9 @@
     "addPhone": "Telefon ekle",
     "pairingPermission": "Telefon izinleri",
     "relayDisabledHint": "İnternet bağlantıları kapalı. Gelişmiş ayarlardan etkinleştirebilirsiniz"
+  },
+  "development": {
+    "updateAvailable": "Güncelleme mevcut",
+    "updateAvailableDesc": "Uygulama genelinde 99.0.0 sürümü için güncelleme göstergelerini göster — güncelleme işlemleri yalnızca önizlemeyi açar"
   }
 }

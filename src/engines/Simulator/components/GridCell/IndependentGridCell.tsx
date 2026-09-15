@@ -30,7 +30,10 @@ import {
   PauseIcon,
   PlayIcon,
 } from "@src/icons";
-import { focusedSubagentCellAtom } from "@src/store/ui/simulatorAtom";
+import {
+  cellReplayKey,
+  focusedSubagentCellAtom,
+} from "@src/store/ui/simulatorAtom";
 
 import { useCellReplayState } from "../../hooks/useCellReplayState";
 import type { GridCellProps } from "../../types/gridTypes";
@@ -40,6 +43,7 @@ import { SubagentChatPane } from "./SubagentChatPane";
 import { SubagentPinnedPreviewPopover } from "./SubagentPinnedPreviewPopover";
 
 const IndependentGridCellComponent: React.FC<GridCellProps> = ({
+  sessionId,
   historyLoad,
   index,
   color: _color,
@@ -68,7 +72,7 @@ const IndependentGridCellComponent: React.FC<GridCellProps> = ({
   // Persist replay overrides under a stable, session-scoped key when
   // available. Falling back to `cell-${index}` would conflate two different
   // sessions occupying the same grid slot across rerenders.
-  const cellId = threadId ?? `cell-${index}`;
+  const cellId = cellReplayKey(sessionId, threadId ?? `cell-${index}`);
 
   const { state, controls } = useCellReplayState({
     events: mergedEvents,
@@ -361,6 +365,7 @@ const areGridCellPropsEqual = (
   prev: GridCellProps,
   next: GridCellProps
 ): boolean => {
+  if (prev.sessionId !== next.sessionId) return false;
   if (prev.index !== next.index) return false;
   if (prev.threadId !== next.threadId) return false;
   if (prev.title !== next.title) return false;
@@ -376,7 +381,15 @@ const areGridCellPropsEqual = (
 };
 
 const IndependentGridCell = memo<GridCellProps>(
-  IndependentGridCellComponent,
+  (props) => (
+    <IndependentGridCellComponent
+      key={cellReplayKey(
+        props.sessionId,
+        props.threadId ?? `cell-${props.index}`
+      )}
+      {...props}
+    />
+  ),
   areGridCellPropsEqual
 );
 IndependentGridCell.displayName = "IndependentGridCell";

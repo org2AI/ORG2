@@ -640,6 +640,7 @@ const SubagentPipCard: React.FC<SubagentPipCardProps> = ({
                       events={entry.events}
                       specs={[]}
                       sessionType={entry.sessionType}
+                      sessionId={entry.sessionId}
                       threadId={entry.sessionId}
                       historyLoad={loadState(entry.sessionId)}
                       externalCursorMs={liveFollow ? null : mainCursorMs}

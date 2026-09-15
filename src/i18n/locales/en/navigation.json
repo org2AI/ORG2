@@ -191,6 +191,19 @@
     "guide": {
       "startSession": "Start a session",
       "connectOrganization": "Connect or create a workspace"
+    },
+    "sections": {
+      "section": "Section",
+      "create": "New section",
+      "name": "Section name",
+      "rename": "Rename section",
+      "delete": "Delete section (keep sessions)",
+      "remove": "Remove from section",
+      "up": "Move up",
+      "down": "Move down",
+      "manage": "Manage section",
+      "more": "Load more",
+      "retry": "Retry"
     }
   },
   "collaboration": {

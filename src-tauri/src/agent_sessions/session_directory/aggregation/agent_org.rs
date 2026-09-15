@@ -18,7 +18,7 @@ fn agent_org_display_name(run: &AgentOrgRunRecord) -> String {
         .unwrap_or_else(|| run.org_id.clone())
 }
 
-pub(super) fn annotate_agent_org_root_rows(
+pub(in crate::agent_sessions::session_directory) fn annotate_agent_org_root_rows(
     sessions: &mut [SessionAggregateRecord],
 ) -> Result<(), String> {
     let requested_root_ids = sessions

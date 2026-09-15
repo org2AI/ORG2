@@ -18,6 +18,7 @@ import { sessionBranchTagsVisibleAtom } from "@src/store/ui/sidebarAtom";
 import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 import { isPrimarySessionListSession } from "@src/util/session/sessionVisibility";
 
+import { buildCustomSectionItems } from "../sections/projection";
 import {
   continuationWinnerIds,
   isHiddenContinuationSibling,
@@ -157,6 +158,7 @@ function insertExpandedSubagentRows({
 
 export function useSessionMenuItems({
   sortedSessions,
+  customSections,
   visitedSessions,
   repoPathToName,
   groupByMode,
@@ -197,7 +199,9 @@ export function useSessionMenuItems({
         return (
           isPrimarySessionListSession(session) &&
           (explicitlyRevealed ||
-            (isInSidebarRoster(session) &&
+            ((isInSidebarRoster(session) ||
+              (customSections?.loadedIds.has(session.session_id) &&
+                session.status !== "archived")) &&
               (includeExternal ||
                 !isImportedHistorySession(session.session_id)) &&
               (sessionMatchesOrgFilter(session, selectedOrgIds) ||
@@ -206,6 +210,7 @@ export function useSessionMenuItems({
       }),
     [
       extraSessionIds,
+      customSections?.loadedIds,
       includeExternal,
       isInSidebarRoster,
       revealedSessionIds,
@@ -373,8 +378,12 @@ export function useSessionMenuItems({
   );
 
   const unpinnedSessions = useMemo(
-    () => listedSessions.filter((session) => !session.pinned),
-    [listedSessions]
+    () =>
+      listedSessions.filter(
+        (session) =>
+          !session.pinned && !customSections?.membership.has(session.session_id)
+      ),
+    [listedSessions, customSections?.membership]
   );
 
   const sessionMap = useMemo(() => {
@@ -496,21 +505,51 @@ export function useSessionMenuItems({
 
   const pinnedLabel = tCommon("sessions:chat.historyPinned", "Pinned");
 
+  const customHeaders = customSections?.headers;
+  const customMembership = customSections?.membership;
+  const customPager = customSections?.pager;
+  const customSectionItems = useMemo(
+    () =>
+      customHeaders && customMembership && customPager
+        ? buildCustomSectionItems(
+            listedSessions,
+            customHeaders,
+            customMembership,
+            buildSessionRow,
+            customPager
+          )
+        : [],
+    [
+      listedSessions,
+      customHeaders,
+      customMembership,
+      customPager,
+      buildSessionRow,
+    ]
+  );
+
   const appendPinnedSessions = useCallback(
     (items: NavigationMenuItem[], includeBackendPager = false): boolean => {
       const backendRow = includeBackendPager
         ? loadMoreRowFor("pinned_native")
         : null;
-      if (pinnedSessions.length === 0 && !backendRow) return false;
-      items.push(separator("pinned", pinnedLabel));
+      if (pinnedSessions.length > 0 || backendRow)
+        items.push(separator("pinned", pinnedLabel));
       const hasHiddenRows =
         pinnedSessions.length > 0
           ? appendGroupSessions(items, "pinned", pinnedSessions)
           : false;
       if (!hasHiddenRows && backendRow) items.push(backendRow);
+      items.push(...customSectionItems);
       return hasHiddenRows;
     },
-    [appendGroupSessions, loadMoreRowFor, pinnedLabel, pinnedSessions]
+    [
+      appendGroupSessions,
+      loadMoreRowFor,
+      pinnedLabel,
+      pinnedSessions,
+      customSectionItems,
+    ]
   );
 
   const byTimeMenuItems = useMemo<NavigationMenuItem[]>(

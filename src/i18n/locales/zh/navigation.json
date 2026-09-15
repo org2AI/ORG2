@@ -169,6 +169,19 @@
     "guide": {
       "startSession": "创建第一个会话",
       "connectOrganization": "连接或创建工作空间"
+    },
+    "sections": {
+      "section": "分区",
+      "create": "新建分区",
+      "name": "分区名称",
+      "rename": "重命名分区",
+      "delete": "删除分区（保留会话）",
+      "remove": "移出分区",
+      "up": "上移",
+      "down": "下移",
+      "manage": "管理分区",
+      "more": "加载更多",
+      "retry": "重试"
     }
   },
   "launchpad": {

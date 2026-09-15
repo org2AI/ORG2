@@ -169,6 +169,19 @@
     "guide": {
       "startSession": "Oturum başlat",
       "connectOrganization": "Bir çalışma alanı bağlayın veya oluşturun"
+    },
+    "sections": {
+      "section": "Bölüm",
+      "create": "Yeni bölüm",
+      "name": "Bölüm adı",
+      "rename": "Bölümü yeniden adlandır",
+      "delete": "Bölümü sil (oturumları koru)",
+      "remove": "Bölümden çıkar",
+      "up": "Yukarı taşı",
+      "down": "Aşağı taşı",
+      "manage": "Bölümü yönet",
+      "more": "Daha fazla yükle",
+      "retry": "Yeniden dene"
     }
   },
   "launchpad": {

@@ -169,6 +169,19 @@
     "guide": {
       "startSession": "세션 시작",
       "connectOrganization": "워크스페이스 연결 또는 만들기"
+    },
+    "sections": {
+      "section": "섹션",
+      "create": "새 섹션",
+      "name": "섹션 이름",
+      "rename": "섹션 이름 변경",
+      "delete": "섹션 삭제 (세션 유지)",
+      "remove": "섹션에서 제거",
+      "up": "위로 이동",
+      "down": "아래로 이동",
+      "manage": "섹션 관리",
+      "more": "더 불러오기",
+      "retry": "다시 시도"
     }
   },
   "launchpad": {

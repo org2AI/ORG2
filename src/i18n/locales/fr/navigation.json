@@ -169,6 +169,19 @@
     "guide": {
       "startSession": "Démarrer une session",
       "connectOrganization": "Connecter ou créer un espace de travail"
+    },
+    "sections": {
+      "section": "Section",
+      "create": "Nouvelle section",
+      "name": "Nom de la section",
+      "rename": "Renommer la section",
+      "delete": "Supprimer la section (conserver les sessions)",
+      "remove": "Retirer de la section",
+      "up": "Monter",
+      "down": "Descendre",
+      "manage": "Gérer la section",
+      "more": "Charger plus",
+      "retry": "Réessayer"
     }
   },
   "launchpad": {

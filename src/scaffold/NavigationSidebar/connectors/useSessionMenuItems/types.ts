@@ -27,6 +27,7 @@ export interface WorkspaceGroupActions {
 }
 
 export interface UseSessionMenuItemsParams {
+  customSections?: import("../sections/useSidebarSections").SidebarSectionsController;
   sortedSessions: Session[];
   visitedSessions: ReadonlySet<string>;
   repoPathToName: Map<string, string>;

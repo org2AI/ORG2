@@ -354,3 +354,42 @@ export type ExternalHistorySidebarResponse = z.output<
 export type ExternalHistorySidebarBatchResponse = z.output<
   typeof ExternalHistorySidebarBatchResponseSchema
 >;
+
+export const SidebarSectionsSchema = z.object({
+  sections: z.array(
+    z.object({ id: z.string(), name: z.string(), position: z.number() })
+  ),
+  members: z.array(z.object({ sessionId: z.string(), sectionId: z.string() })),
+});
+export const SidebarSectionMutationSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("create"),
+    name: z.string(),
+    sessionId: z.string().nullable(),
+  }),
+  z.object({ kind: z.literal("rename"), id: z.string(), name: z.string() }),
+  z.object({ kind: z.literal("delete"), id: z.string() }),
+  z.object({ kind: z.literal("reorder"), ids: z.array(z.string()) }),
+  z.object({
+    kind: z.literal("assign"),
+    sessionId: z.string(),
+    sectionId: z.string().nullable(),
+  }),
+]);
+export const SidebarSectionMutationInput = z.object({
+  mutation: SidebarSectionMutationSchema,
+});
+export const SidebarSectionPageInput = z.object({
+  id: z.string(),
+  after: z.string().nullable(),
+  limit: z.number().int().min(1).max(50),
+});
+export const SidebarSectionPageSchema = z.object({
+  sessions: z.array(SessionAggregateRecordSchema),
+  nextCursor: z.string().nullable(),
+  hasMore: z.boolean(),
+});
+export type SidebarSections = z.infer<typeof SidebarSectionsSchema>;
+export type SidebarSectionMutation = z.infer<
+  typeof SidebarSectionMutationSchema
+>;

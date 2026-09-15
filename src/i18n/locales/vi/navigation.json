@@ -169,6 +169,19 @@
     "guide": {
       "startSession": "Bắt đầu phiên",
       "connectOrganization": "Kết nối hoặc tạo không gian làm việc"
+    },
+    "sections": {
+      "section": "Mục",
+      "create": "Mục mới",
+      "name": "Tên mục",
+      "rename": "Đổi tên mục",
+      "delete": "Xóa mục (giữ phiên)",
+      "remove": "Xóa khỏi mục",
+      "up": "Di chuyển lên",
+      "down": "Di chuyển xuống",
+      "manage": "Quản lý mục",
+      "more": "Tải thêm",
+      "retry": "Thử lại"
     }
   },
   "launchpad": {

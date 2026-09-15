@@ -169,6 +169,19 @@
     "guide": {
       "startSession": "Rozpocznij sesję",
       "connectOrganization": "Połącz lub utwórz obszar roboczy"
+    },
+    "sections": {
+      "section": "Sekcja",
+      "create": "Nowa sekcja",
+      "name": "Nazwa sekcji",
+      "rename": "Zmień nazwę sekcji",
+      "delete": "Usuń sekcję (zachowaj sesje)",
+      "remove": "Usuń z sekcji",
+      "up": "Przenieś w górę",
+      "down": "Przenieś w dół",
+      "manage": "Zarządzaj sekcją",
+      "more": "Wczytaj więcej",
+      "retry": "Ponów"
     }
   },
   "launchpad": {

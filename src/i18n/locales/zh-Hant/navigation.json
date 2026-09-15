@@ -169,6 +169,19 @@
     "guide": {
       "startSession": "建立第一個工作階段",
       "connectOrganization": "連接或建立工作空間"
+    },
+    "sections": {
+      "section": "分區",
+      "create": "新增分區",
+      "name": "分區名稱",
+      "rename": "重新命名分區",
+      "delete": "刪除分區（保留對話）",
+      "remove": "移出分區",
+      "up": "上移",
+      "down": "下移",
+      "manage": "管理分區",
+      "more": "載入更多",
+      "retry": "重試"
     }
   },
   "launchpad": {

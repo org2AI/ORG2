@@ -169,6 +169,19 @@
     "guide": {
       "startSession": "セッションを開始",
       "connectOrganization": "ワークスペースを接続または作成"
+    },
+    "sections": {
+      "section": "セクション",
+      "create": "新しいセクション",
+      "name": "セクション名",
+      "rename": "セクション名を変更",
+      "delete": "セクションを削除（セッションを保持）",
+      "remove": "セクションから外す",
+      "up": "上へ移動",
+      "down": "下へ移動",
+      "manage": "セクションを管理",
+      "more": "さらに読み込む",
+      "retry": "再試行"
     }
   },
   "launchpad": {

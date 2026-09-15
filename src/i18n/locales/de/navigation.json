@@ -169,6 +169,19 @@
     "guide": {
       "startSession": "Sitzung starten",
       "connectOrganization": "Arbeitsbereich verbinden oder erstellen"
+    },
+    "sections": {
+      "section": "Abschnitt",
+      "create": "Neuer Abschnitt",
+      "name": "Abschnittsname",
+      "rename": "Abschnitt umbenennen",
+      "delete": "Abschnitt löschen (Sitzungen behalten)",
+      "remove": "Aus Abschnitt entfernen",
+      "up": "Nach oben",
+      "down": "Nach unten",
+      "manage": "Abschnitt verwalten",
+      "more": "Mehr laden",
+      "retry": "Erneut versuchen"
     }
   },
   "launchpad": {

@@ -74,17 +74,20 @@ it("preserves shared field refs, value callbacks, Enter behavior and multiline r
         const ref = React.createRef<HTMLInputElement | HTMLTextAreaElement>();
         const onChange = vi.fn();
         const onSubmit = vi.fn();
+        const props = {
+          value: "needle",
+          onChange,
+          onSubmit,
+          multiline,
+          inputRef: ref as React.RefObject<
+            HTMLInputElement | HTMLTextAreaElement
+          >,
+        };
         await act(async () =>
           root.render(
-            React.createElement(Component, {
-              value: "needle",
-              onChange,
-              onSubmit,
-              multiline,
-              inputRef: ref as React.RefObject<
-                HTMLInputElement | HTMLTextAreaElement
-              >,
-            })
+            Component === SearchInput
+              ? React.createElement(SearchInput, props)
+              : React.createElement(ReplaceInput, props)
           )
         );
         const field = host.querySelector<

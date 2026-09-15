@@ -27,7 +27,8 @@ const SESSION_COLUMNS: &str =
      cs.project_slug, cs.work_item_id, cs.agent_role,
      cs.created_at, cs.updated_at,
      COALESCE(cs.transcript_source, 'chunks'), cs.product_mode,
-     cs.agent_definition_id";
+     cs.agent_definition_id,
+     (SELECT selection FROM code_session_credential_sources WHERE session_id = cs.session_id)";
 
 /// Get a session by ID.
 pub fn get_session(session_id: &str) -> SqliteResult<Option<CodeSession>> {
@@ -231,5 +232,6 @@ fn row_to_session(row: &rusqlite::Row) -> rusqlite::Result<CodeSession> {
         transcript_source: row.get(41)?,
         product_mode: row.get(42)?,
         agent_definition_id: row.get(43)?,
+        credential_source: row.get(44)?,
     })
 }

@@ -273,6 +273,8 @@ pub async fn cli_agent_delete(session_id: String) -> Result<bool, String> {
 
     let sid = session_id.clone();
     tokio::task::spawn_blocking(move || {
+        crate::cli_managed_proxy::release_session_route(&sid)?;
+        agent_cli::managed_config::launch::release(&sid)?;
         persistence::delete_session(&sid).map_err(|e| format!("DB error: {}", e))
     })
     .await

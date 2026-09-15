@@ -140,6 +140,7 @@ mod tests {
             branch: None,
             model: Some("gpt-4".to_string()),
             account_id: None,
+            credential_source: None,
             cli_agent_type: None,
             key_source,
             tier: None,

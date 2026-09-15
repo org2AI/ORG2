@@ -32,6 +32,7 @@ fn connection() -> DirectConnection {
         model: "claude-sonnet-5".into(),
         base_url: "https://desktop.example/anthropic".into(),
         api_key: "synthetic-desktop-key".into(),
+        desktop_helper: None,
         desktop_auth_scheme: Some("x-api-key".into()),
     }
 }
@@ -170,4 +171,44 @@ fn stale_catalog_and_external_edit_block_apply_and_restore_without_partial_write
             assert_eq!(std::fs::read(&file.target_path).unwrap(), before[index]);
         }
     }
+}
+
+#[test]
+fn helper_profile_keeps_all_models_without_persisting_a_bearer() {
+    let mut value = connection();
+    value.api_key.clear();
+    value.desktop_helper = Some(desktop::CredentialHelper {
+        path: std::env::temp_dir().join("org2-test-credential-helper"),
+        models: vec!["claude-opus-4-6".into(), value.model.clone()],
+    });
+    let result =
+        direct::generate_direct_configs(desktop::TARGET, &BTreeMap::new(), &value, None).unwrap();
+    let profile: serde_json::Value = serde_json::from_str(&result["profile"]).unwrap();
+    assert!(profile.get("inferenceGatewayApiKey").is_none());
+    assert_eq!(profile["inferenceCredentialKind"], "helper-script");
+    assert_eq!(profile["inferenceCredentialHelperTtlSec"], 60);
+    assert_eq!(profile["inferenceModels"][0]["name"], value.model);
+    assert_eq!(profile["inferenceModels"][1]["name"], "claude-opus-4-6");
+    assert!(
+        direct::generate_direct_configs("claude_code", &BTreeMap::new(), &value, None).is_err()
+    );
+    value.api_key = "must-not-be-saved".into();
+    assert!(
+        direct::generate_direct_configs(desktop::TARGET, &BTreeMap::new(), &value, None).is_err()
+    );
+}
+
+#[cfg(any(target_os = "macos", windows))]
+#[test]
+fn disconnect_restores_matching_direct_profile_but_preserves_new_selection() {
+    let _lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii"));
+    let _external = ExternalHome::set(temp.path());
+    enable_direct(desktop::TARGET, connection(), None).unwrap();
+    let untouched = restore_if_selected_matching(desktop::TARGET, |_| Ok(false)).unwrap();
+    assert_eq!(untouched.mode, CliConfigMode::Direct);
+    let restored =
+        restore_if_selected_matching(desktop::TARGET, |key| Ok(key == "desktop-key")).unwrap();
+    assert_eq!(restored.mode, CliConfigMode::Default);
 }

@@ -1,4 +1,30 @@
 {
+  "marketConnection": {
+    "noSavedWorkspaces": "Connectez un espace de travail depuis Market pour gérer son autorisation ici",
+    "moduleUnavailable": "Le module de connexion Market est indisponible dans cette version",
+    "loadingPurchases": "Chargement des achats…",
+    "purchasesFailed": "Impossible de charger les achats. Vous pouvez toujours déconnecter la connexion locale.",
+    "retryPurchases": "Recharger les achats",
+    "manage": "Gérer la connexion",
+    "reauthorize": "Autoriser à nouveau",
+    "platformUnavailable": "Les connexions acheteur Market ne sont pas disponibles sur cette plateforme, car le stockage sécurisé des identifiants n’est pas pris en charge",
+    "authorizationSaved": "Autorisation Market enregistrée ; le client reste à configurer",
+    "failed": "La connexion à Market a échoué. Rouvrez la connexion de l’espace de travail.",
+    "title": "Connecter l’espace de travail",
+    "close": "Fermer",
+    "disconnect": "Déconnecter",
+    "configure": "Configurer le client",
+    "adapterPending": "Cet adaptateur client n’est pas encore prêt",
+    "listing": "Offre",
+    "model": "Modèle",
+    "noPurchases": "Aucun achat actif dans cet espace de travail",
+    "conflict": "Configuration modifiée hors d’ORG2 ; vérifiez-la avant application",
+    "configured": "Configuration enregistrée ; une requête au modèle reste à vérifier",
+    "openWorkspace": "Choisir un dossier et ouvrir le client",
+    "launchNote": "ORG2 ouvre le client dans le dossier choisi. Aucune commande ni clé à copier.",
+    "clientMissing": "Installez ce client dans les paramètres ORG2, puis réessayez.",
+    "launchFailed": "Impossible d’ouvrir l’espace de travail. Vérifiez le dossier et reconnectez l’offre sélectionnée."
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Spécifique au repo",
@@ -1665,5 +1691,14 @@
     "sharedToOrg": "Skill partagé avec l’organisation",
     "shareToOrgHint": "Les membres de l’organisation reçoivent l’instantané actuel de ce skill ; partagez à nouveau après modification pour publier une mise à jour.",
     "shareOrgPlaceholder": "Organisation"
+  },
+  "marketSeller": {
+    "title": "Connecter un compte vendeur",
+    "approval": "Autorisez la connexion dans votre navigateur, puis revenez à ORG2.",
+    "connecting": "Connectez-vous au fournisseur dans votre navigateur. ORG2 associera automatiquement le compte.",
+    "completed": "Compte connecté. Retrouvez-le dans les comptes Market.",
+    "failed": "Connexion non confirmée. Vérifiez les comptes Market avant de réessayer.",
+    "cancelling": "Annulation de la connexion…",
+    "cancel": "Annuler"
   }
 }

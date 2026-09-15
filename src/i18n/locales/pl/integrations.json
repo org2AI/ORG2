@@ -1,4 +1,30 @@
 {
+  "marketConnection": {
+    "noSavedWorkspaces": "Połącz obszar roboczy przez Market, aby zarządzać tutaj jego autoryzacją",
+    "moduleUnavailable": "Moduł połączenia Market jest niedostępny w tej wersji",
+    "loadingPurchases": "Wczytywanie zakupów…",
+    "purchasesFailed": "Nie udało się wczytać zakupów. Nadal możesz rozłączyć połączenie lokalne.",
+    "retryPurchases": "Wczytaj zakupy ponownie",
+    "manage": "Zarządzaj połączeniem",
+    "reauthorize": "Autoryzuj ponownie",
+    "platformUnavailable": "Połączenia kupującego Market są niedostępne na tej platformie, ponieważ nie obsługuje ona bezpiecznego przechowywania danych uwierzytelniających",
+    "authorizationSaved": "Zapisano autoryzację Market; klient nadal wymaga konfiguracji",
+    "failed": "Nie udało się połączyć z Market. Otwórz ponownie połączenie obszaru roboczego.",
+    "title": "Połącz obszar roboczy",
+    "close": "Zamknij",
+    "disconnect": "Rozłącz",
+    "configure": "Skonfiguruj klienta",
+    "adapterPending": "Ten adapter klienta nie jest jeszcze gotowy",
+    "listing": "Oferta",
+    "model": "Model",
+    "noPurchases": "Brak aktywnych zakupów w tym obszarze roboczym",
+    "conflict": "Konfiguracja zmieniona poza ORG2; sprawdź ją przed zastosowaniem",
+    "configured": "Konfiguracja zapisana; trzeba jeszcze zweryfikować żądanie do modelu",
+    "openWorkspace": "Wybierz folder i otwórz klienta",
+    "launchNote": "ORG2 otworzy klienta w wybranym folderze. Nie trzeba kopiować poleceń ani kluczy.",
+    "clientMissing": "Zainstaluj tego klienta w ustawieniach ORG2 i spróbuj ponownie.",
+    "launchFailed": "Nie można otworzyć obszaru roboczego. Sprawdź folder i połącz ponownie wybraną ofertę."
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Specyficzne dla repo",
@@ -1665,5 +1691,14 @@
     "sharedToOrg": "Skill udostępniony organizacji",
     "shareToOrgHint": "Członkowie organizacji otrzymują bieżącą migawkę tego skilla; po edycji udostępnij ponownie, aby opublikować aktualizację.",
     "shareOrgPlaceholder": "Organizacja"
+  },
+  "marketSeller": {
+    "title": "Połącz konto sprzedawcy",
+    "approval": "Zatwierdź połączenie w przeglądarce i wróć do ORG2.",
+    "connecting": "Zatwierdź logowanie dostawcy w przeglądarce. ORG2 automatycznie powiąże konto.",
+    "completed": "Konto połączone. Znajdziesz je na stronie kont Market.",
+    "failed": "Nie potwierdzono połączenia. Sprawdź konta Market przed ponowną próbą.",
+    "cancelling": "Anulowanie połączenia…",
+    "cancel": "Anuluj"
   }
 }

@@ -13,7 +13,7 @@ mod resume_state;
 mod shared;
 mod transcript_source;
 
-pub use create::create_session;
+pub use create::{create_session, create_session_with_source};
 pub use delete::delete_session;
 pub use field_updates::{
     link_bootstrap_work_item, update_agent_exec_mode, update_draft_text, update_mode_axes,

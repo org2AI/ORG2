@@ -76,7 +76,7 @@ mod catalog;
 mod slash;
 pub(crate) use catalog::{
     archive_thread, ensure_project, native_codex_app_server_command, register_thread,
-    synchronize_thread,
+    synchronize_thread, CatalogProfile,
 };
 
 /// How long to keep draining after `turn/interrupt` before giving up on a
@@ -625,7 +625,10 @@ impl CodexAppServerEventParser {
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
                 if will_retry {
-                    tracing::warn!("[CodexAppServer] Retryable error: {}", message);
+                    tracing::warn!(
+                        "[CodexAppServer] Retryable error: {}",
+                        canonicalize_cli_error_message(message)
+                    );
                     self.last_retry_notice = Some(canonicalize_cli_error_message(message));
                     return vec![];
                 }

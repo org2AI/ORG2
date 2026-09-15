@@ -989,3 +989,389 @@ fn credential_profile_writes_are_owner_only_from_the_first_byte() {
         "staging files left behind: {leftovers:?}"
     );
 }
+
+#[test]
+fn source_disconnect_refuses_to_restore_a_newer_selection() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let target_path = temp.path().join("config.toml");
+    let profile_root = temp.path().join("profiles");
+    let target = test_target("config", &target_path, &profile_root);
+    std::fs::write(&target_path, b"new-selected-configuration").unwrap();
+    let mut manifest = test_manifest(CODEX_AGENT, vec![target]);
+    manifest.mode = CliConfigMode::OrgiiManaged;
+    manifest.selected_key_id = Some("new-source".into());
+    write_manifest(&manifest).unwrap();
+    assert!(restore_if_selected(CODEX_AGENT, "old-source").is_ok());
+    assert!(restore_if_selected(CODEX_AGENT, "old-source").is_ok());
+    assert_eq!(
+        std::fs::read(&target_path).unwrap(),
+        b"new-selected-configuration"
+    );
+    assert_eq!(
+        read_manifest(CODEX_AGENT)
+            .unwrap()
+            .unwrap()
+            .selected_key_id
+            .as_deref(),
+        Some("new-source")
+    );
+}
+
+#[test]
+fn managed_launch_freezes_proxy_generation_and_releases_only_its_session() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    for agent in [CODEX_AGENT, "claude_code"] {
+        let target_path = temp.path().join(format!("{agent}.config"));
+        std::fs::write(&target_path, b"current config").unwrap();
+        let mut target = test_target("config", &target_path, &temp.path().join("profiles"));
+        target.last_applied_hash = file_hash(&target_path).unwrap();
+        let mut manifest = test_manifest(agent, vec![target]);
+        write_manifest(&manifest).unwrap();
+        let session_id = format!("cli_test_{agent}");
+        let profile = launch::prepare(agent, "key-1", "gpt-test", &session_id).unwrap();
+        let env_key = if agent == CODEX_AGENT {
+            "CODEX_HOME"
+        } else {
+            "CLAUDE_CONFIG_DIR"
+        };
+        let directory = PathBuf::from(profile.env.get(env_key).unwrap());
+        let config_path = directory.join(if agent == CODEX_AGENT {
+            "config.toml"
+        } else {
+            "settings.json"
+        });
+        let original = std::fs::read_to_string(&config_path).unwrap();
+        assert!(original.contains(TEST_PROXY_TOKEN));
+        assert!(!serde_json::to_string(&profile)
+            .unwrap()
+            .contains(TEST_PROXY_TOKEN));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                std::fs::metadata(&config_path)
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o600
+            );
+        }
+        let routed_id = format!("cli_routed_{agent}");
+        let routed = launch::prepare_with_proxy_token(
+            agent,
+            "key-1",
+            "gpt-test",
+            &routed_id,
+            Some("session_independent-token"),
+        )
+        .unwrap();
+        let routed_dir = PathBuf::from(routed.env.get(env_key).unwrap());
+        let routed_content = std::fs::read_to_string(routed_dir.join(if agent == CODEX_AGENT {
+            "config.toml"
+        } else {
+            "settings.json"
+        }))
+        .unwrap();
+        assert!(routed_content.contains("session_independent-token"));
+        assert!(!routed_content.contains(TEST_PROXY_TOKEN));
+        assert!(!serde_json::to_string(&routed)
+            .unwrap()
+            .contains("session_independent-token"));
+        launch::release(&routed_id).unwrap();
+        // A later global switch must never rewrite this session's profile.
+        manifest.selected_key_id = Some("key-2".into());
+        manifest.proxy_token = Some("new-proxy-generation".into());
+        write_manifest(&manifest).unwrap();
+        assert!(launch::prepare(agent, "key-1", "gpt-test", "cli_stale").is_err());
+        assert_eq!(std::fs::read_to_string(&config_path).unwrap(), original);
+        assert!(launch::release("../profiles").is_err());
+        let history = directory.join("sessions").join("native-session.jsonl");
+        std::fs::create_dir_all(history.parent().unwrap()).unwrap();
+        std::fs::write(&history, b"persistent native transcript").unwrap();
+        launch::release(&session_id).unwrap();
+        launch::release(&session_id).unwrap();
+        assert!(!config_path.exists());
+        assert_eq!(
+            std::fs::read(&history).unwrap(),
+            b"persistent native transcript"
+        );
+        let restored = launch::restore_with_proxy_token(
+            agent,
+            "gpt-test",
+            &session_id,
+            "http://127.0.0.1:43123",
+            "session_restored-token",
+        )
+        .unwrap();
+        assert_eq!(restored.env.get(env_key), profile.env.get(env_key));
+        assert!(std::fs::read_to_string(&config_path)
+            .unwrap()
+            .contains("session_restored-token"));
+        // Reconstruct after an unclean exit, while the old owned config remains.
+        launch::restore_with_proxy_token(
+            agent,
+            "gpt-test",
+            &session_id,
+            "http://127.0.0.1:43123",
+            "session_rotated-token",
+        )
+        .unwrap();
+        assert!(std::fs::read_to_string(&config_path)
+            .unwrap()
+            .contains("session_rotated-token"));
+        assert_eq!(
+            std::fs::read(&history).unwrap(),
+            b"persistent native transcript"
+        );
+        std::fs::write(&config_path, b"user edited config").unwrap();
+        assert!(launch::restore_with_proxy_token(
+            agent,
+            "gpt-test",
+            &session_id,
+            "http://127.0.0.1:43123",
+            "session_rejected-token"
+        )
+        .is_err());
+        assert!(launch::release(&session_id).is_err());
+        assert_eq!(std::fs::read(&config_path).unwrap(), b"user edited config");
+        assert_eq!(std::fs::read(&target_path).unwrap(), b"current config");
+    }
+}
+
+#[test]
+fn managed_launch_refuses_external_file_edits() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let target_path = temp.path().join("config");
+    std::fs::write(&target_path, b"before").unwrap();
+    let mut target = test_target("config", &target_path, &temp.path().join("profiles"));
+    target.last_applied_hash = file_hash(&target_path).unwrap();
+    write_manifest(&test_manifest(CODEX_AGENT, vec![target])).unwrap();
+    std::fs::write(&target_path, b"external edit").unwrap();
+    assert!(launch::prepare(CODEX_AGENT, "key-1", "gpt-test", "cli_conflict").is_err());
+    assert!(!temp
+        .path()
+        .join("orgii-home/managed-cli-launches/cli_conflict")
+        .exists());
+}
+
+#[test]
+fn managed_launch_restores_interrupted_owned_writes_and_rejects_unmarked_files() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    for agent in [CODEX_AGENT, "claude_code"] {
+        let session = format!("cli_crash_{agent}");
+        let profile = launch::restore_with_proxy_token(
+            agent,
+            "gpt-test",
+            &session,
+            "http://127.0.0.1:43123",
+            "session_first-token",
+        )
+        .unwrap();
+        let directory = PathBuf::from(profile.env.values().next().unwrap());
+        let filename = if agent == CODEX_AGENT {
+            "config.toml"
+        } else {
+            "settings.json"
+        };
+        let config = directory.join(filename);
+        let marker = directory.join(".org2-launch-config.json");
+        let history = directory.join("transcript.jsonl");
+        std::fs::write(&history, b"original transcript").unwrap();
+        // Simulate interruption before or after the atomic config replacement.
+        for pending_is_current in [false, true] {
+            let current = file_hash(&config).unwrap().unwrap();
+            let (old, pending) = if pending_is_current {
+                ("previous".to_owned(), current)
+            } else {
+                (current, "pending".to_owned())
+            };
+            std::fs::write(
+                &marker,
+                serde_json::to_vec(&serde_json::json!({
+                    "filename": filename, "hash": old, "pending_hash": pending
+                }))
+                .unwrap(),
+            )
+            .unwrap();
+            launch::restore_with_proxy_token(
+                agent,
+                "gpt-test",
+                &session,
+                "http://127.0.0.1:43123",
+                "session_retry-token",
+            )
+            .unwrap();
+            assert_eq!(std::fs::read(&history).unwrap(), b"original transcript");
+        }
+        let other = if agent == CODEX_AGENT {
+            "claude_code"
+        } else {
+            CODEX_AGENT
+        };
+        assert!(launch::restore_with_proxy_token(
+            other,
+            "gpt-test",
+            &session,
+            "http://127.0.0.1:43123",
+            "session_other-token"
+        )
+        .is_err());
+        std::fs::remove_file(&marker).unwrap();
+        let before = std::fs::read(&config).unwrap();
+        assert!(launch::restore_with_proxy_token(
+            agent,
+            "gpt-test",
+            &session,
+            "http://127.0.0.1:43123",
+            "session_unmarked-token"
+        )
+        .is_err());
+        assert_eq!(std::fs::read(&config).unwrap(), before);
+        assert_eq!(std::fs::read(&history).unwrap(), b"original transcript");
+    }
+}
+
+#[test]
+fn connection_matcher_restores_only_owned_unchanged_config_and_is_retryable() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let target_path = temp.path().join("config.toml");
+    let profile_root = temp.path().join("profiles");
+    let mut target = test_target("config", &target_path, &profile_root);
+    let backup = PathBuf::from(&target.default_backup_path);
+    std::fs::create_dir_all(backup.parent().unwrap()).unwrap();
+    std::fs::write(&backup, b"original-config").unwrap();
+    std::fs::write(&target_path, b"managed-config").unwrap();
+    target.original_hash = Some(sha256_bytes(b"original-config"));
+    target.last_applied_hash = Some(sha256_bytes(b"managed-config"));
+    let mut manifest = test_manifest(CODEX_AGENT, vec![target]);
+    manifest.mode = CliConfigMode::OrgiiManaged;
+    manifest.selected_key_id = Some("connection-owned-key".into());
+    write_manifest(&manifest).unwrap();
+    assert!(restore_if_selected_matching(CODEX_AGENT, |_| Err("invalid-owner".into())).is_err());
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"managed-config");
+    restore_if_selected_matching(CODEX_AGENT, |_| Ok(false)).unwrap();
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"managed-config");
+    std::fs::write(&target_path, b"external-edit").unwrap();
+    assert!(restore_if_selected_matching(CODEX_AGENT, |_| Ok(true)).is_err());
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"external-edit");
+    std::fs::write(&target_path, b"managed-config").unwrap();
+    restore_if_selected_matching(CODEX_AGENT, |key| Ok(key == "connection-owned-key")).unwrap();
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"original-config");
+    restore_if_selected_matching(CODEX_AGENT, |_| {
+        panic!("already restored; no owner match needed")
+    })
+    .unwrap();
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"original-config");
+}
+
+#[test]
+fn startup_recovery_preserves_unmatched_history_and_retries_conflicts() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let target_path = temp.path().join("config.toml");
+    let history = temp.path().join("history.jsonl");
+    std::fs::write(&history, b"user-session-history").unwrap();
+    let mut target = test_target("config", &target_path, &temp.path().join("profiles"));
+    let backup = PathBuf::from(&target.default_backup_path);
+    std::fs::create_dir_all(backup.parent().unwrap()).unwrap();
+    std::fs::write(&backup, b"original").unwrap();
+    std::fs::write(&target_path, b"managed").unwrap();
+    target.original_hash = Some(sha256_bytes(b"original"));
+    target.last_applied_hash = Some(sha256_bytes(b"managed"));
+    let mut manifest = test_manifest(CODEX_AGENT, vec![target]);
+    manifest.selected_key_id = Some("removed:selection".into());
+    write_manifest(&manifest).unwrap();
+
+    let unmatched = restore_managed_configs_matching(|_| Ok(false)).unwrap();
+    assert!(unmatched.restored_agents.is_empty());
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"managed");
+    let failed = restore_managed_configs_matching(|_| Err("registry unavailable".into())).unwrap();
+    assert_eq!(failed.failed_agents.len(), 1);
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"managed");
+
+    std::fs::write(&target_path, b"external-edit").unwrap();
+    let conflict =
+        restore_managed_configs_matching(|key| Ok(key == Some("removed:selection"))).unwrap();
+    assert_eq!(conflict.failed_agents.len(), 1);
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"external-edit");
+    std::fs::write(&target_path, b"managed").unwrap();
+    let restored =
+        restore_managed_configs_matching(|key| Ok(key == Some("removed:selection"))).unwrap();
+    assert_eq!(restored.restored_agents, vec![CODEX_AGENT.to_string()]);
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"original");
+    assert_eq!(std::fs::read(&history).unwrap(), b"user-session-history");
+    assert!(restore_managed_configs_matching(|_| Ok(true))
+        .unwrap()
+        .restored_agents
+        .is_empty());
+}
+
+#[test]
+fn managed_launch_preserves_codex_trust_across_token_rotation() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let profile = launch::restore_with_proxy_token(
+        CODEX_AGENT,
+        "gpt-test",
+        "cli_trust",
+        "http://127.0.0.1:43123",
+        "session_first-token",
+    )
+    .unwrap();
+    let directory = PathBuf::from(profile.env.values().next().unwrap());
+    let config = directory.join("config.toml");
+    let original = std::fs::read_to_string(&config).unwrap();
+    std::fs::write(
+        &config,
+        format!("{original}\n[projects.\"/tmp/project\"]\ntrust_level = \"trusted\"\n"),
+    )
+    .unwrap();
+    std::fs::write(directory.join("history.jsonl"), b"retained").unwrap();
+    for token in ["session_second-token", "session_third-token"] {
+        launch::restore_with_proxy_token(
+            CODEX_AGENT,
+            "gpt-test",
+            "cli_trust",
+            "http://127.0.0.1:43123",
+            token,
+        )
+        .unwrap();
+        let content = std::fs::read_to_string(&config).unwrap();
+        assert!(content.contains(token));
+        let parsed: toml::Value = toml::from_str(&content).unwrap();
+        assert_eq!(
+            parsed["projects"]["/tmp/project"]["trust_level"].as_str(),
+            Some("trusted")
+        );
+    }
+    let changed = std::fs::read_to_string(&config)
+        .unwrap()
+        .replace("43123", "43124");
+    std::fs::write(&config, &changed).unwrap();
+    assert!(launch::restore_with_proxy_token(
+        CODEX_AGENT,
+        "gpt-test",
+        "cli_trust",
+        "http://127.0.0.1:43123",
+        "session_fourth-token"
+    )
+    .is_err());
+    assert_eq!(std::fs::read_to_string(config).unwrap(), changed);
+    assert_eq!(
+        std::fs::read(directory.join("history.jsonl")).unwrap(),
+        b"retained"
+    );
+}

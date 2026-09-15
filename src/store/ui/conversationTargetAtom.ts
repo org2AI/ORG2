@@ -38,6 +38,7 @@ function sameConversationTarget(
     left.cliAgentType === right.cliAgentType &&
     left.agentDefinitionId === right.agentDefinitionId &&
     left.accountId === right.accountId &&
+    left.credentialSource === right.credentialSource &&
     left.model === right.model &&
     (left.workspaceRepoPath ?? null) === (right.workspaceRepoPath ?? null)
   );

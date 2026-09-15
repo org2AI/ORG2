@@ -130,6 +130,7 @@ pub fn classify_claude_transcript(
 /// root, which only ORGII writes to.
 fn is_org2_managed_claude_transcript(path: &Path) -> bool {
     path.starts_with(app_paths::claude_code_cli_profile_root())
+        || path.starts_with(app_paths::managed_cli_launch_root())
 }
 
 /// Classify a Claude Code transcript's `entrypoint` alone. Prefer

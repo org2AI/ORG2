@@ -1,4 +1,30 @@
 {
+  "marketConnection": {
+    "noSavedWorkspaces": "从 Market 连接工作区后，可在这里管理授权",
+    "moduleUnavailable": "此版本未启用 Market 连接模块",
+    "loadingPurchases": "正在读取购买记录…",
+    "purchasesFailed": "购买记录读取失败，仍可断开本地连接。",
+    "retryPurchases": "重新读取购买记录",
+    "manage": "管理连接",
+    "reauthorize": "重新授权",
+    "platformUnavailable": "当前平台不支持安全保存凭据，暂时无法连接 Market 买家工作区",
+    "authorizationSaved": "Market 授权已保存，客户端配置尚未完成",
+    "failed": "Market 连接未完成，请重新打开工作区连接",
+    "title": "连接工作区",
+    "close": "关闭",
+    "disconnect": "断开连接",
+    "configure": "配置客户端",
+    "adapterPending": "此客户端适配尚未完成",
+    "listing": "服务",
+    "model": "模型",
+    "noPurchases": "此工作区没有有效购买项",
+    "conflict": "配置已在 ORG2 外被修改，请先检查",
+    "configured": "配置已保存，仍需验证实际模型请求",
+    "openWorkspace": "选择文件夹并打开客户端",
+    "launchNote": "ORG2 会在所选文件夹中打开客户端，无需复制命令或密钥。",
+    "clientMissing": "请先在 ORG2 设置中安装此客户端，然后重试。",
+    "launchFailed": "无法打开工作区。请检查文件夹，并重新连接所选服务。"
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Repo-specific",
@@ -1665,5 +1691,14 @@
     "sharedToOrg": "技能已共享到组织",
     "shareToOrgHint": "组织成员会收到该技能当前的快照；编辑后再次共享即发布更新。",
     "shareOrgPlaceholder": "组织"
+  },
+  "marketSeller": {
+    "title": "接入卖家账户",
+    "approval": "请在浏览器中批准接入，然后返回 ORG2。",
+    "connecting": "请在浏览器中完成供应商授权，ORG2 会自动绑定账户。",
+    "completed": "账户已接入。返回市场账户页即可查看。",
+    "failed": "未能确认接入结果。请先返回市场账户页检查，再决定是否重试。",
+    "cancelling": "正在取消接入…",
+    "cancel": "取消"
   }
 }

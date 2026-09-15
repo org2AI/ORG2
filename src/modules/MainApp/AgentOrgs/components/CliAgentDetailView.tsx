@@ -14,6 +14,7 @@ import ModelIcon from "@src/components/ModelIcon";
 import StatusDot from "@src/components/StatusDot";
 import TabPill from "@src/components/TabPill";
 import { buildIntegrationsPath } from "@src/config/mainAppPaths";
+import ConnectionSettings from "@src/features/MarketConnect/ConnectionSettings";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import {
   getCliCompatibleAccounts,
@@ -376,6 +377,8 @@ const CliAgentDetailView: React.FC<CliAgentDetailViewProps> = ({
               variant="settings"
             />
           </SectionContainer>
+
+          <ConnectionSettings agentName={agent.name} />
 
           {agent.name === "claude_code" || agent.name === "codex" ? (
             <HarnessConnectionEditor

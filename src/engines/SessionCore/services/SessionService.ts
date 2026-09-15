@@ -159,6 +159,7 @@ export const SessionService = {
       workspacePath: params.projectRepoPath || params.repoPath || undefined,
       worktreePath: params.worktreePath || undefined,
       accountId: params.accountId || undefined,
+      credentialSource: params.credentialSource,
       name: params.name || params.task.slice(0, 60),
       mode: params.mode || undefined,
       agentDefinitionId: params.agentDefinitionId || undefined,
@@ -169,7 +170,7 @@ export const SessionService = {
       ideContext: adeContext,
       ...(params.projectSlug ? { projectSlug: params.projectSlug } : {}),
       ...(isCli
-        ? { platform: params.cliAgentType }
+        ? { platform: params.cliAgentType, model: params.model || undefined }
         : params.keySource === "hosted_key"
           ? {
               tier: params.tier || undefined,

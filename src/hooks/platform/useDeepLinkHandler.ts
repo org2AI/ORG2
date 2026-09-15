@@ -27,6 +27,7 @@ import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 
 import { ROUTES } from "@src/config/routes";
+import { handleMarketConnectionUrl } from "@src/features/MarketConnect/deepLink";
 import {
   isOrg2CloudAuthCallback,
   parseAuthCallbackFragment,
@@ -364,6 +365,10 @@ export function useDeepLinkHandler(): void {
               continue;
             }
 
+            if (handleMarketConnectionUrl(url)) {
+              break;
+            }
+
             if (handleOrg2CloudAuthUrl(url)) {
               processedDeepLinks.current.add(url);
               break;
@@ -499,6 +504,10 @@ export function useDeepLinkHandler(): void {
           for (const url of initialUrls) {
             if (processedDeepLinks.current.has(url)) {
               continue;
+            }
+
+            if (handleMarketConnectionUrl(url)) {
+              break;
             }
 
             if (handleOrg2CloudAuthUrl(url)) {

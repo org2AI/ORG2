@@ -49,6 +49,7 @@ fn make_session(
         branch: None,
         model: None,
         account_id: None,
+        credential_source: None,
         cli_agent_type: None,
         key_source: KeySource::OwnKey,
         tier: None,

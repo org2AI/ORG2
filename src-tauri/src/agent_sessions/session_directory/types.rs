@@ -63,6 +63,9 @@ pub struct SessionAggregateRecord {
     /// Code account ID
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_id: Option<String>,
+    /// Non-secret dynamic source owned by a native CLI Session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_source: Option<String>,
     /// CLI agent type (cursor_cli, claude_code, codex, etc.)
     #[serde(rename = "cliAgentType", skip_serializing_if = "Option::is_none")]
     pub cli_agent_type: Option<String>,

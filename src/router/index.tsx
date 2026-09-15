@@ -2,6 +2,7 @@ import { registerAppActions } from "@/src/ActionSystem/registerAppActions";
 import { useEffect } from "react";
 import { Outlet, createBrowserRouter } from "react-router-dom";
 
+import ConnectionHost from "@src/features/MarketConnect/ConnectionHost";
 import { useOrg2CloudOrgs } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { useOrg2CloudRosterReconcile } from "@src/features/Org2Cloud/org2CloudRosterReconcile";
 import { useOrg2CloudGuestShareAccess } from "@src/features/Org2Cloud/useOrg2CloudGuestShareAccess";
@@ -60,6 +61,7 @@ const RootLayout = () => {
   return (
     <>
       <RouteDebugModal />
+      <ConnectionHost />
       {/* AuthGuard wraps Outlet - if not authenticated, redirects to login */}
       <AuthGuard>
         <Outlet />

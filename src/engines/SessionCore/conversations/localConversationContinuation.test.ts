@@ -16,6 +16,7 @@ import {
   parseConversationExecutionParentId,
   recoverLocalConversationTurn,
 } from "./localConversationContinuation";
+import { candidateMatchesTarget } from "./localConversationExecutionTargets";
 
 const mocks = vi.hoisted(() => ({
   getAgentSession: vi.fn(),
@@ -3114,4 +3115,93 @@ describe("local native conversation continuation", () => {
       ])
     );
   });
+});
+
+describe("dynamic source execution identity", () => {
+  it("hydrates the source after restart and never reuses another billing source", async () => {
+    const root = {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "cliagent-market-root",
+    };
+    const target = {
+      cliAgentType: "codex",
+      credentialSource: "market:workspace-a",
+      model: "model",
+      workspaceRepoPath: "/repo",
+    };
+    mocks.cliStatus.mockResolvedValue({
+      ...target,
+      repoPath: "/repo",
+      sessionId: root.conversationId,
+      updatedAt: "2026-09-14",
+    });
+    const rows = await loadLocalConversationExecutionTargets(root);
+    expect(rows[0]?.target).toEqual(target);
+    expect(await candidateMatchesTarget(root.conversationId, target)).toBe(
+      true
+    );
+    expect(
+      await candidateMatchesTarget(root.conversationId, {
+        ...target,
+        credentialSource: "market:workspace-b",
+      })
+    ).toBe(false);
+    expect(
+      await candidateMatchesTarget(root.conversationId, {
+        cliAgentType: "codex",
+        accountId: "keyvault",
+        model: "model",
+      })
+    ).toBe(false);
+  });
+  it("does not turn corrupt or mixed source ownership into ambient Claude", async () => {
+    const root = {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "cliagent-corrupt-root",
+    };
+    for (const extra of [
+      { credentialSource: "" },
+      { credentialSource: "market:a", accountId: "other" },
+    ]) {
+      mocks.cliStatus.mockResolvedValue({
+        cliAgentType: "claude_code",
+        model: "model",
+        updatedAt: "now",
+        ...extra,
+      });
+      expect(await loadLocalConversationExecutionTargets(root)).toEqual([]);
+    }
+  });
+});
+
+it("carries the dynamic source and selected model into a new execution episode", async () => {
+  mocks.cliStatus.mockResolvedValue(null);
+  await expect(
+    continueLocalConversationAfterTimelineLoad({
+      root,
+      title: "Market recovery",
+      displayText: "continue",
+      turnIntentId: "source-create",
+      target: {
+        cliAgentType: "codex",
+        credentialSource: "market:workspace",
+        model: "selected-model",
+        workspaceRepoPath: "/repo",
+      },
+      loadTimeline: async () => {
+        throw new Error("controlled timeline failure");
+      },
+    })
+  ).rejects.toThrow("controlled timeline failure");
+  expect(mocks.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      cliAgentType: "codex",
+      credentialSource: "market:workspace",
+      model: "selected-model",
+      accountId: undefined,
+    })
+  );
+  expect(mocks.sendMessage).not.toHaveBeenCalled();
 });

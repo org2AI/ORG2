@@ -43,6 +43,7 @@ fn connection(profile: ClaudeProviderProfile) -> DirectConnection {
             .clone(),
         base_url: profile.endpoint.clone(),
         api_key: "synthetic-native-secret".into(),
+        desktop_helper: None,
         desktop_auth_scheme: (profile.target == "claude_desktop")
             .then(|| profile.auth_scheme.clone()),
         profile: Some(profile),

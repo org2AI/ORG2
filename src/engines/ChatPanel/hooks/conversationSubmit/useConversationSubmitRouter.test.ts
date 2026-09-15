@@ -13,7 +13,10 @@ import {
   vi,
 } from "vitest";
 
-import type { ConversationRootLocator } from "@src/engines/SessionCore/conversations/conversationTypes";
+import type {
+  ConversationRootLocator,
+  LocalConversationTarget,
+} from "@src/engines/SessionCore/conversations/conversationTypes";
 
 import { SubmitValidationError } from "../useInputArea/types";
 import {
@@ -54,7 +57,7 @@ interface RouterHarnessProps {
   sessionId: string;
   isDirectAgentOrgMember: boolean;
   onSurfaceSubmit: () => Promise<boolean>;
-  selectedTarget: typeof selectedTarget | null;
+  selectedTarget: LocalConversationTarget | null;
   onReady: (router: ConversationSubmitRouter) => void;
 }
 
@@ -83,7 +86,7 @@ function renderRouter(params: {
   sessionId?: string;
   isDirectAgentOrgMember?: boolean;
   onSurfaceSubmit?: () => Promise<boolean>;
-  selectedTarget?: typeof selectedTarget | null;
+  selectedTarget?: LocalConversationTarget | null;
 }) {
   let router: ConversationSubmitRouter | undefined;
   const container = document.createElement("div");
@@ -208,6 +211,58 @@ describe("useConversationSubmitRouter", () => {
       }),
     });
   });
+
+  it.each(["claude_code", "codex"])(
+    "preserves a dynamic %s source through submission and retry",
+    async (cliAgentType) => {
+      const target = {
+        cliAgentType,
+        credentialSource: "market:synthetic-selection",
+        model: "test-model",
+        workspaceRepoPath: "/repo",
+      };
+      const router = renderRouter({ selectedTarget: target });
+      const input = { displayText: "continue", agentContent: "continue" };
+      await expect(router.submit(input)).resolves.toBe(true);
+      await expect(
+        router.retry({ ...input, turnIntentId: "retry-market" })
+      ).resolves.toBe(true);
+      expect(mocks.submitUserIntent).toHaveBeenCalledTimes(2);
+      for (const [request] of mocks.submitUserIntent.mock.calls) {
+        expect(request.conversationDispatch.target).toEqual(target);
+        expect(request.conversationDispatch.target.accountId).toBeUndefined();
+      }
+      expect(router.resolveDispatch()).toEqual({
+        action: "replace",
+        dispatch: expect.objectContaining({ target }),
+      });
+    }
+  );
+
+  it.each([
+    { credentialSource: "" },
+    { credentialSource: " market:selection" },
+    { accountId: "other-account" },
+    { model: undefined },
+    { cliAgentType: "unsupported" },
+  ])(
+    "rejects malformed dynamic targets before queue admission: %j",
+    async (override) => {
+      const router = renderRouter({
+        selectedTarget: {
+          cliAgentType: "codex",
+          credentialSource: "market:synthetic-selection",
+          model: "test-model",
+          ...override,
+        },
+      });
+      const input = { displayText: "continue", agentContent: "continue" };
+      await expect(router.submit(input)).rejects.toThrow(SubmitValidationError);
+      await expect(router.retry(input)).rejects.toThrow(SubmitValidationError);
+      expect(mocks.submitUserIntent).not.toHaveBeenCalled();
+      expect(router.resolveDispatch()).toEqual({ action: "preserve" });
+    }
+  );
 
   it("keeps surface routing first and never submits a second time", async () => {
     const onSurfaceSubmit = vi.fn().mockResolvedValue(true);

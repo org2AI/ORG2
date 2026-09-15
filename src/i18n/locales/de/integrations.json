@@ -1,4 +1,30 @@
 {
+  "marketConnection": {
+    "noSavedWorkspaces": "Verbinde einen Arbeitsbereich über Market, um seine Autorisierung hier zu verwalten",
+    "moduleUnavailable": "Das Market-Verbindungsmodul ist in diesem Build nicht verfügbar",
+    "loadingPurchases": "Käufe werden geladen…",
+    "purchasesFailed": "Käufe konnten nicht geladen werden. Die lokale Verbindung kann weiterhin getrennt werden.",
+    "retryPurchases": "Käufe erneut laden",
+    "manage": "Verbindung verwalten",
+    "reauthorize": "Erneut autorisieren",
+    "platformUnavailable": "Market-Käuferverbindungen sind auf dieser Plattform nicht verfügbar, da die sichere Speicherung von Zugangsdaten nicht unterstützt wird",
+    "authorizationSaved": "Market-Autorisierung gespeichert; die Client-Einrichtung steht noch aus",
+    "failed": "Die Market-Verbindung konnte nicht abgeschlossen werden. Öffne die Arbeitsbereichsverbindung erneut.",
+    "title": "Arbeitsbereich verbinden",
+    "close": "Schließen",
+    "disconnect": "Trennen",
+    "configure": "Client einrichten",
+    "adapterPending": "Dieser Client-Adapter ist noch nicht bereit",
+    "listing": "Angebot",
+    "model": "Modell",
+    "noPurchases": "Keine aktiven Käufe in diesem Arbeitsbereich",
+    "conflict": "Konfiguration außerhalb von ORG2 geändert; vor dem Anwenden prüfen",
+    "configured": "Konfiguration gespeichert; eine Modellanfrage muss noch überprüft werden",
+    "openWorkspace": "Ordner wählen und Client öffnen",
+    "launchNote": "ORG2 öffnet den Client im gewählten Ordner. Keine Befehle oder Schlüssel kopieren.",
+    "clientMissing": "Installiere diesen Client in den ORG2-Einstellungen und versuche es erneut.",
+    "launchFailed": "Arbeitsbereich konnte nicht geöffnet werden. Prüfe den Ordner und verbinde das gewählte Angebot erneut."
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Repo-spezifisch",
@@ -1665,5 +1691,14 @@
     "sharedToOrg": "Skill mit der Organisation geteilt",
     "shareToOrgHint": "Mitglieder der Organisation erhalten den aktuellen Snapshot dieses Skills; teile ihn nach dem Bearbeiten erneut, um ein Update zu veröffentlichen.",
     "shareOrgPlaceholder": "Organisation"
+  },
+  "marketSeller": {
+    "title": "Verkäuferkonto verbinden",
+    "approval": "Bestätigen Sie die Verbindung im Browser und kehren Sie zu ORG2 zurück.",
+    "connecting": "Bestätigen Sie die Anbieteranmeldung im Browser. ORG2 verknüpft das Konto automatisch.",
+    "completed": "Konto verbunden. Es erscheint unter Market-Konten.",
+    "failed": "Verbindung nicht bestätigt. Prüfen Sie vor einem neuen Versuch Ihre Market-Konten.",
+    "cancelling": "Verbindung wird abgebrochen…",
+    "cancel": "Abbrechen"
   }
 }

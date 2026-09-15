@@ -17,13 +17,14 @@ pub mod hook_approvals;
 pub mod interactions;
 mod interactions_protocol;
 pub mod launch_profile_store;
+pub(crate) mod mcp_config;
 mod native_ir;
 pub mod native_materializer;
 mod native_store;
 pub mod native_transcript;
 pub mod parsers;
-pub mod persistence;
 mod permission_lifecycle;
+pub mod persistence;
 pub mod platform_adapters;
 pub mod session_permissions;
 pub mod session_runner;
@@ -72,6 +73,20 @@ pub fn init_cli_agent_tables(conn: &Connection) -> SqliteResult<()> {
             created_at     TEXT NOT NULL,
             updated_at     TEXT NOT NULL
         );
+
+        -- Non-secret credential-source identity belongs to the durable Session.
+        -- Rotating grants and local proxy tokens are never stored here.
+        CREATE TABLE IF NOT EXISTS code_session_credential_sources (
+            session_id TEXT PRIMARY KEY REFERENCES code_sessions(session_id) ON DELETE CASCADE,
+            selection TEXT NOT NULL CHECK(length(selection) BETWEEN 1 AND 1024)
+        );
+
+        -- sessions.db does not explicitly guarantee foreign_keys is enabled.
+        -- The trigger keeps source deletion atomic with its owner deletion.
+        CREATE TRIGGER IF NOT EXISTS code_session_credential_source_cleanup
+        AFTER DELETE ON code_sessions BEGIN
+            DELETE FROM code_session_credential_sources WHERE session_id=OLD.session_id;
+        END;
 
         CREATE TABLE IF NOT EXISTS code_session_permissions (
             session_id TEXT PRIMARY KEY REFERENCES code_sessions(session_id) ON DELETE CASCADE,

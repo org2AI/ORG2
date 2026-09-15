@@ -43,6 +43,7 @@ pub struct SessionLaunchParams {
     // Model / Key / provider override
     pub key_source: Option<String>,
     pub account_id: Option<String>,
+    pub credential_source: Option<String>,
     pub model: Option<String>,
     pub native_harness_type: Option<String>,
 
@@ -142,6 +143,13 @@ pub async fn session_launch_impl(
     org_store: Option<&AgentOrgsStore>,
     mut params: SessionLaunchParams,
 ) -> Result<SessionLaunchResult, String> {
+    if params.credential_source.is_some()
+        && (params.category != SESSION_CATEGORY_CLI_AGENT
+            || params.account_id.is_some()
+            || params.key_source.as_deref().is_some_and(|s| s != "own_key"))
+    {
+        return Err("Dynamic credential source requires an exclusive CLI account".into());
+    }
     validate_workspace_launch_fields(
         params.isolate,
         params.workspace_path.as_deref(),
@@ -475,6 +483,7 @@ async fn launch_cli_agent(
         model: params.model,
         tier: params.tier,
         account_id: params.account_id,
+        credential_source: params.credential_source,
         repo_path: params.workspace_path,
         branch: params.branch,
         worktree_path: params.worktree_path,

@@ -85,3 +85,32 @@ describe("isConversationRootLocator", () => {
     ).toBe(false);
   });
 });
+
+describe("dynamic execution targets", () => {
+  it("round-trips a bounded source without a KeyVault account", () => {
+    for (const cliAgentType of ["codex", "claude_code"]) {
+      const target = {
+        cliAgentType,
+        credentialSource: "market:workspace",
+        model: "model",
+      };
+      expect(
+        isLocalConversationTarget(JSON.parse(JSON.stringify(target)))
+      ).toBe(true);
+      expect(
+        isLocalConversationTarget({ ...target, accountId: "keyvault" })
+      ).toBe(false);
+      expect(
+        isLocalConversationTarget({ ...target, agentDefinitionId: "native" })
+      ).toBe(false);
+      for (const credentialSource of ["", " ", "x".repeat(1025), 1, null]) {
+        expect(isLocalConversationTarget({ ...target, credentialSource })).toBe(
+          false
+        );
+      }
+      expect(isLocalConversationTarget({ ...target, model: undefined })).toBe(
+        false
+      );
+    }
+  });
+});

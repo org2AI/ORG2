@@ -1,4 +1,30 @@
 {
+  "marketConnection": {
+    "noSavedWorkspaces": "Connect a workspace from Market to manage its authorization here",
+    "moduleUnavailable": "The Market connection module is not available in this build",
+    "loadingPurchases": "Loading purchases…",
+    "purchasesFailed": "Could not load purchases. Your local connection can still be disconnected.",
+    "retryPurchases": "Retry loading purchases",
+    "manage": "Manage connection",
+    "reauthorize": "Authorize again",
+    "platformUnavailable": "Market buyer connections are not available on this platform because secure credential storage is not supported",
+    "authorizationSaved": "Market authorization saved; client setup is still required",
+    "failed": "Market connection could not be completed. Open the workspace connection again.",
+    "title": "Connect workspace",
+    "close": "Close",
+    "disconnect": "Disconnect",
+    "configure": "Configure client",
+    "adapterPending": "This client adapter is not ready yet",
+    "listing": "Listing",
+    "model": "Model",
+    "noPurchases": "No active purchases in this workspace",
+    "conflict": "Configuration changed outside ORG2; review it before applying",
+    "configured": "Configuration saved; a successful model request still needs verification",
+    "openWorkspace": "Choose folder and open client",
+    "launchNote": "ORG2 opens the client in your chosen folder. No command or key needs to be copied.",
+    "clientMissing": "Install this client in ORG2 Settings, then try again.",
+    "launchFailed": "Could not open the workspace. Check the folder and reconnect the selected listing."
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Repo-specific",
@@ -1665,5 +1691,14 @@
     "sharedToOrg": "Skill shared with the organization",
     "shareToOrgHint": "Members of the organization receive this skill's current snapshot; share again after editing to publish an update.",
     "shareOrgPlaceholder": "Organization"
+  },
+  "marketSeller": {
+    "title": "Connect seller account",
+    "approval": "Approve the connection in your browser, then return to ORG2.",
+    "connecting": "Approve the provider sign-in in your browser. ORG2 will bind the account automatically.",
+    "completed": "Account connected. Return to Market Accounts to see it.",
+    "failed": "Connection could not be confirmed. Return to Market Accounts to check before trying again.",
+    "cancelling": "Cancelling the connection…",
+    "cancel": "Cancel"
   }
 }

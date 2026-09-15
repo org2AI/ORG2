@@ -166,6 +166,7 @@ pub fn cli_session_to_aggregate_record(
         branch: session.branch,
         model: session.model,
         account_id: session.account_id,
+        credential_source: session.credential_source,
         cli_agent_type: session.cli_agent_type,
         key_source: session.key_source,
         tier: session.tier,
@@ -245,6 +246,7 @@ pub fn imported_history_to_aggregate_record(
         branch: row.branch,
         model: row.model,
         account_id: None,
+        credential_source: None,
         cli_agent_type,
         key_source: KeySource::OwnKey,
         tier: None,
@@ -279,7 +281,9 @@ pub fn imported_history_to_aggregate_record(
         lines_added: Some(row.lines_added),
         lines_removed: Some(row.lines_removed),
         touched_files: Some(row.touched_files),
-        client_origin: row.client_origin.map(|origin| origin.as_wire_str().to_string()),
+        client_origin: row
+            .client_origin
+            .map(|origin| origin.as_wire_str().to_string()),
         client_origin_raw: row.client_origin_raw,
     }
 }
@@ -306,6 +310,7 @@ pub fn cursor_ide_history_to_aggregate_record(
         branch: row.branch,
         model: row.model,
         account_id: None,
+        credential_source: None,
         cli_agent_type: imported_history_cli_agent_type(source_label),
         key_source: KeySource::OwnKey,
         tier: None,
@@ -384,6 +389,7 @@ pub fn sde_session_to_aggregate_record(
         branch: None,
         model: session.model,
         account_id: session.account_id,
+        credential_source: None,
         cli_agent_type: None,
         key_source: session.key_source,
         tier: None,
@@ -455,6 +461,7 @@ pub fn os_session_to_aggregate_record(
         branch: None,
         model: session.model,
         account_id: session.account_id,
+        credential_source: None,
         cli_agent_type: None,
         key_source: session.key_source,
         tier: None,
@@ -526,6 +533,7 @@ pub fn human_session_to_aggregate_record(
         branch: None,
         model: session.model,
         account_id: session.account_id,
+        credential_source: None,
         cli_agent_type: None,
         key_source: session.key_source,
         tier: None,
@@ -591,5 +599,36 @@ mod tests {
             imported_history_cli_agent_type(SOURCE_COPILOT).as_deref(),
             Some(CliAgentType::Copilot.as_str())
         );
+    }
+}
+
+#[cfg(test)]
+mod dynamic_source_tests {
+    use super::*;
+    #[test]
+    fn cli_aggregate_retains_source_without_reclassifying_it_as_an_account() {
+        let _sandbox = crate::test_utils::test_env::sandbox();
+        let params = serde_json::from_value(serde_json::json!({
+            "platform":"codex", "model":"model", "repoPath":"/tmp"
+        }))
+        .unwrap();
+        let session = cli_session_persistence::create_session_with_source(
+            "cli-aggregate-source",
+            &params,
+            Some("test:workspace"),
+        )
+        .unwrap();
+        let row = cli_session_to_aggregate_record(session);
+        assert_eq!(row.credential_source.as_deref(), Some("test:workspace"));
+        assert_eq!(row.account_id, None);
+        let wire = serde_json::to_value(&row).unwrap();
+        assert_eq!(wire["credentialSource"], "test:workspace");
+        assert!(wire.get("accountId").is_none());
+        let mut legacy = wire;
+        legacy.as_object_mut().unwrap().remove("credentialSource");
+        assert!(serde_json::from_value::<SessionAggregateRecord>(legacy)
+            .unwrap()
+            .credential_source
+            .is_none());
     }
 }

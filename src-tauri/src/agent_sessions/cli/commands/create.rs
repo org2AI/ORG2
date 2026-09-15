@@ -69,7 +69,14 @@ async fn remove_cli_session_worktree(
 /// When `key_source` is "hosted_key" and hosted_token is provided,
 /// Rust automatically allocates a proxy token from the hosted service.
 #[tauri::command]
-pub async fn cli_agent_create(mut params: CreateCodeSessionParams) -> Result<CodeSession, String> {
+pub async fn cli_agent_create(params: CreateCodeSessionParams) -> Result<CodeSession, String> {
+    cli_agent_create_with_source(params, None).await
+}
+
+pub(crate) async fn cli_agent_create_with_source(
+    mut params: CreateCodeSessionParams,
+    credential_source: Option<String>,
+) -> Result<CodeSession, String> {
     let session_id = format!(
         "{}{}-{}",
         CLI_SESSION_PREFIX,
@@ -178,8 +185,12 @@ pub async fn cli_agent_create(mut params: CreateCodeSessionParams) -> Result<Cod
         let sid = session_id.clone();
         let create_params = params.clone();
         move || {
-            persistence::create_session(&sid, &create_params)
-                .map_err(|e| format!("Failed to create session: {}", e))
+            persistence::create_session_with_source(
+                &sid,
+                &create_params,
+                credential_source.as_deref(),
+            )
+            .map_err(|e| format!("Failed to create session: {}", e))
         }
     })
     .await

@@ -139,3 +139,8 @@ pub fn tool_results_dir(session_id: &str) -> PathBuf {
 pub fn agent_worktrees_root() -> PathBuf {
     orgii_root().join("agent-worktrees")
 }
+
+/// Session-scoped managed CLI homes. Native history outlives temporary config.
+pub fn managed_cli_launch_root() -> PathBuf {
+    orgii_root().join("managed-cli-launches")
+}

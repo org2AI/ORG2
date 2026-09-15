@@ -9,6 +9,7 @@ import {
   type ConversationSource,
   type LocalConversationTarget,
   NATIVE_CONVERSATION_CLI_TARGETS,
+  isLocalConversationTarget,
 } from "@src/engines/SessionCore/conversations/conversationTypes";
 import type { SessionCommentTarget } from "@src/features/Org2Cloud/sessionCommentTarget";
 import {
@@ -86,6 +87,21 @@ interface PickedConversationRuntimeTargetInput {
 
 const EMPTY_AGENT_REGISTRY: AgentRegistry = { agents: [], apiProviders: [] };
 
+function retainedDynamicTarget(
+  target: LocalConversationTarget,
+  workspaceRepoPath: string | null,
+  nativeCliTargets: readonly CliAgentType[]
+): LocalConversationTarget | null {
+  if (
+    !isLocalConversationTarget(target) ||
+    !target.credentialSource ||
+    !target.cliAgentType ||
+    !nativeCliTargets.includes(target.cliAgentType as CliAgentType)
+  )
+    return null;
+  return { ...target, workspaceRepoPath };
+}
+
 function selectionForTarget(
   target: LocalConversationTarget
 ): AgentRuntimeSelection | null {
@@ -113,7 +129,9 @@ function configForTarget(
     agent: account?.modelType,
     provider: account?.modelType,
     nativeHarnessType: account?.nativeHarnessType,
-    selectedSourceLabel: account?.name,
+    selectedSourceLabel: target.credentialSource?.startsWith("market:")
+      ? "ORG2 Market"
+      : account?.name,
     selectedSourceModelType:
       account?.modelType ??
       (target.cliAgentType === "claude_code" ? "claude_code" : undefined),
@@ -200,6 +218,13 @@ export function resolveDefaultConversationTarget({
 
   for (const candidate of [preferredTarget, initialTarget]) {
     if (!candidate) continue;
+    if (candidate.credentialSource !== undefined) {
+      return retainedDynamicTarget(
+        candidate,
+        resolvedWorkspaceRepoPath,
+        nativeCliTargets
+      );
+    }
     const runtime = selectionForTarget(candidate);
     if (!runtime) continue;
     const selection: AgentSelection = candidate.cliAgentType
@@ -265,6 +290,18 @@ export function resolveConversationRuntimeTarget({
   registry = EMPTY_AGENT_REGISTRY,
   nativeCliTargets,
 }: RuntimeConversationTargetInput): LocalConversationTarget | null {
+  if (selection.category === "cli_agent") {
+    const previous = [current, ...previousTargets].find(
+      (candidate) => candidate?.cliAgentType === selection.cliAgentType
+    );
+    if (previous?.credentialSource !== undefined) {
+      return retainedDynamicTarget(
+        previous,
+        workspaceRepoPath,
+        nativeCliTargets
+      );
+    }
+  }
   const candidates: AdvancedConfig[] = [];
   if (current) candidates.push(configForTarget(current, accounts));
   candidates.push(

@@ -18,19 +18,19 @@ use std::path::Path;
 
 use agent_core::mcp::config::{McpConfigFile, McpServerConfig, McpTransportType};
 
-pub(super) struct SessionMcpServers {
+pub(crate) struct SessionMcpServers {
     servers: BTreeMap<String, McpServerConfig>,
 }
 
 /// Owner-only Claude Code MCP config whose pathname remains valid for the
 /// lifetime of one managed CLI run. `TempPath` removes the file on every
 /// normal return, error return, or cancelled future when this guard drops.
-pub(super) struct ClaudeMcpConfigFile {
+pub(crate) struct ClaudeMcpConfigFile {
     path: tempfile::TempPath,
 }
 
 impl ClaudeMcpConfigFile {
-    pub(super) fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         self.path.as_ref()
     }
 }
@@ -38,37 +38,68 @@ impl ClaudeMcpConfigFile {
 /// Owner-only Codex config layer selected by its non-secret profile name.
 /// Keeping the secret-bearing TOML out of `-c` arguments prevents local
 /// process-list observers from reading MCP environment values or headers.
-pub(super) struct CodexMcpProfileFile {
+pub(crate) struct CodexMcpProfileFile {
     _path: tempfile::TempPath,
     profile_name: String,
 }
 
 impl CodexMcpProfileFile {
     #[cfg(test)]
-    pub(super) fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         self._path.as_ref()
     }
 
-    pub(super) fn profile_name(&self) -> &str {
+    pub(crate) fn profile_name(&self) -> &str {
         &self.profile_name
     }
 }
 
 impl SessionMcpServers {
-    pub(super) fn resolve(
+    pub(crate) fn resolve_with_connection(
         working_dir: &str,
         agent_definition_id: Option<&str>,
+        connection: Option<McpServerConfig>,
     ) -> Result<Self, SessionMcpPolicyError> {
         let policy = SessionMcpPolicy::resolve(agent_definition_id)?;
+        let loaded = McpConfigFile::load_merged_with_workspace_scope(
+            Some(Path::new(working_dir)),
+            policy.load_workspace_resources,
+        );
+        if let Some(connection) = connection {
+            let config =
+                loaded.map_err(|message| SessionMcpPolicyError::ConfigLoadFailed { message })?;
+            return Self::with_connection(
+                config,
+                &policy.disabled_servers,
+                &policy.disabled_tools,
+                connection,
+            );
+        }
         Self::from_load_result(
-            McpConfigFile::load_merged_with_workspace_scope(
-                Some(Path::new(working_dir)),
-                policy.load_workspace_resources,
-            ),
+            loaded,
             &policy.disabled_servers,
             &policy.disabled_tools,
             policy.requires_mcp_config,
         )
+    }
+
+    fn with_connection(
+        mut config: McpConfigFile,
+        disabled_servers: &HashSet<String>,
+        disabled_tools: &HashSet<String>,
+        connection: McpServerConfig,
+    ) -> Result<Self, SessionMcpPolicyError> {
+        // Run the same Agent policy as all other servers; never overwrite a
+        // user-defined server or silently drop the purchased connection.
+        if config.mcp_servers.contains_key("org2_market") {
+            return Err(SessionMcpPolicyError::ConnectionUnavailable);
+        }
+        config.mcp_servers.insert("org2_market".into(), connection);
+        let resolved = Self::from_config(config, disabled_servers, disabled_tools);
+        if !resolved.servers.contains_key("org2_market") {
+            return Err(SessionMcpPolicyError::ConnectionUnavailable);
+        }
+        Ok(resolved)
     }
 
     fn from_load_result(
@@ -127,7 +158,7 @@ impl SessionMcpServers {
     }
 
     #[cfg(test)]
-    pub(super) fn empty_for_test() -> Self {
+    pub(crate) fn empty_for_test() -> Self {
         Self {
             servers: BTreeMap::new(),
         }
@@ -135,7 +166,7 @@ impl SessionMcpServers {
 
     /// Remove every resolved MCP connection value before child diagnostics
     /// reach tracing, persisted failure details, or the frontend.
-    pub(super) fn redact_secrets_from_text(&self, text: &str) -> String {
+    pub(crate) fn redact_secrets_from_text(&self, text: &str) -> String {
         self.servers
             .values()
             .fold(text.to_string(), |redacted, server| {
@@ -144,7 +175,7 @@ impl SessionMcpServers {
     }
 
     /// `.mcp.json`-shaped document for Claude Code's `--mcp-config`.
-    pub(super) fn claude_mcp_json(&self) -> serde_json::Value {
+    pub(crate) fn claude_mcp_json(&self) -> serde_json::Value {
         let mut servers = serde_json::Map::new();
         for (name, server) in &self.servers {
             let mut entry = serde_json::Map::new();
@@ -189,7 +220,7 @@ impl SessionMcpServers {
     /// Write the Claude Code config document to an owner-only per-run file.
     /// The returned guard owns cleanup; callers must keep it alive until the
     /// CLI child (including any in-process retry) has finished.
-    pub(super) fn write_claude_mcp_config(&self) -> Result<ClaudeMcpConfigFile, String> {
+    pub(crate) fn write_claude_mcp_config(&self) -> Result<ClaudeMcpConfigFile, String> {
         let dir = app_paths::orgii_temp_root().join("mcp-configs");
         self.write_claude_mcp_config_in(&dir)
     }
@@ -222,7 +253,7 @@ impl SessionMcpServers {
 
     /// ACP `session/new` / `session/load` `mcpServers` entries
     /// (stdio only — the ACP session params carry command launches).
-    pub(super) fn acp_servers(&self) -> Vec<serde_json::Value> {
+    pub(crate) fn acp_servers(&self) -> Vec<serde_json::Value> {
         self.servers
             .iter()
             .filter_map(|(name, server)| {
@@ -302,7 +333,7 @@ impl SessionMcpServers {
     /// In-memory config overrides for Codex app-server `thread/start` and
     /// `thread/resume`. Unlike `-c` argv overrides, this JSON-RPC payload does
     /// not expose MCP environment values or HTTP headers to process listings.
-    pub(super) fn codex_app_server_config(&self) -> Option<serde_json::Value> {
+    pub(crate) fn codex_app_server_config(&self) -> Option<serde_json::Value> {
         let mut servers = serde_json::Map::new();
         for (name, server) in &self.servers {
             let mut entry = serde_json::Map::new();
@@ -341,7 +372,7 @@ impl SessionMcpServers {
     /// Write a per-run `$CODEX_HOME/<name>.config.toml` layer and return the
     /// guard that owns cleanup. Only the random profile name is passed on the
     /// command line; the MCP values remain in this owner-only file.
-    pub(super) fn write_codex_mcp_profile(
+    pub(crate) fn write_codex_mcp_profile(
         &self,
         codex_home: &Path,
     ) -> Result<Option<CodexMcpProfileFile>, String> {
@@ -451,8 +482,9 @@ impl SessionMcpPolicy {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum SessionMcpPolicyError {
+pub(crate) enum SessionMcpPolicyError {
     InvalidAgentDefinitionId,
+    ConnectionUnavailable,
     UnknownAgentDefinition { id: String },
     ConfigLoadFailed { message: String },
 }
@@ -460,6 +492,7 @@ pub(super) enum SessionMcpPolicyError {
 impl std::fmt::Display for SessionMcpPolicyError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::ConnectionUnavailable => write!(formatter, "CLI_MCP_POLICY_ERR:CONNECTION_UNAVAILABLE: connection server conflicts with the MCP configuration or Agent policy"),
             Self::InvalidAgentDefinitionId => write!(
                 formatter,
                 "CLI_MCP_POLICY_ERR:INVALID_AGENT_DEFINITION_ID: the session carries an empty agent definition id"
@@ -611,6 +644,60 @@ mod tests {
             "url": url,
         }))
         .expect("streamable HTTP config")
+    }
+
+    #[test]
+    fn connection_server_merges_into_each_native_transport_without_bypassing_policy() {
+        let connection =
+            crate::cli_managed_proxy::mcp::server_config("codex", "local-only-capability");
+        let config = || config_with(vec![("docs", stdio("docs-server"))]);
+        let resolved = SessionMcpServers::with_connection(
+            config(),
+            &HashSet::new(),
+            &HashSet::new(),
+            connection.clone(),
+        )
+        .unwrap();
+        let claude = resolved.claude_mcp_json();
+        assert_eq!(claude["mcpServers"]["docs"]["command"], "docs-server");
+        assert_eq!(claude["mcpServers"]["org2_market"]["type"], "http");
+        assert_eq!(
+            claude["mcpServers"]["org2_market"]["headers"]["Authorization"],
+            "Bearer local-only-capability"
+        );
+        let codex = resolved.codex_app_server_config().unwrap();
+        assert_eq!(
+            codex["mcp_servers"]["org2_market"]["http_headers"]["Authorization"],
+            "Bearer local-only-capability"
+        );
+        assert!(resolved
+            .codex_config_entries()
+            .iter()
+            .any(|line| line.contains("org2_market") && line.contains("http_headers")));
+        assert!(!resolved
+            .redact_secrets_from_text("failed Bearer local-only-capability")
+            .contains("local-only-capability"));
+        assert!(SessionMcpServers::with_connection(
+            config(),
+            &HashSet::from(["org2_market".into()]),
+            &HashSet::new(),
+            connection.clone()
+        )
+        .is_err());
+        assert!(SessionMcpServers::with_connection(
+            config(),
+            &HashSet::new(),
+            &HashSet::from(["mcp__org2_market__private".into()]),
+            connection.clone()
+        )
+        .is_err());
+        assert!(SessionMcpServers::with_connection(
+            config_with(vec![("org2_market", stdio("user-server"))]),
+            &HashSet::new(),
+            &HashSet::new(),
+            connection
+        )
+        .is_err());
     }
 
     #[test]

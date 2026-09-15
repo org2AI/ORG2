@@ -1,4 +1,30 @@
 {
+  "marketConnection": {
+    "noSavedWorkspaces": "Market からワークスペースを接続すると、ここで認証を管理できます",
+    "moduleUnavailable": "このビルドでは Market 接続モジュールを利用できません",
+    "loadingPurchases": "購入履歴を読み込み中…",
+    "purchasesFailed": "購入履歴を読み込めませんでした。ローカル接続は引き続き解除できます。",
+    "retryPurchases": "購入履歴を再読み込み",
+    "manage": "接続を管理",
+    "reauthorize": "再認証",
+    "platformUnavailable": "このプラットフォームは認証情報の安全な保存に対応していないため、Market の購入者ワークスペースには接続できません",
+    "authorizationSaved": "Market の認可を保存しました。クライアントの設定は未完了です",
+    "failed": "Market に接続できませんでした。ワークスペースの接続をもう一度開いてください。",
+    "title": "ワークスペースを接続",
+    "close": "閉じる",
+    "disconnect": "切断",
+    "configure": "クライアントを設定",
+    "adapterPending": "このクライアントへの対応はまだ完了していません",
+    "listing": "出品",
+    "model": "モデル",
+    "noPurchases": "このワークスペースに有効な購入はありません",
+    "conflict": "ORG2 外で設定が変更されています。適用前に確認してください",
+    "configured": "設定を保存しました。モデルへの実際のリクエストは未検証です",
+    "openWorkspace": "フォルダーを選んでクライアントを開く",
+    "launchNote": "ORG2 が選択したフォルダーでクライアントを開きます。コマンドやキーのコピーは不要です。",
+    "clientMissing": "ORG2 の設定でこのクライアントをインストールしてから再試行してください。",
+    "launchFailed": "ワークスペースを開けませんでした。フォルダーを確認し、選択した出品に再接続してください。"
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Repo-specific",
@@ -1665,5 +1691,14 @@
     "sharedToOrg": "Skill を組織に共有しました",
     "shareToOrgHint": "組織のメンバーはこの Skill の現在のスナップショットを受け取ります。編集後に再度共有すると更新が公開されます。",
     "shareOrgPlaceholder": "組織"
+  },
+  "marketSeller": {
+    "title": "販売者アカウントを接続",
+    "approval": "ブラウザで接続を承認し、ORG2 に戻ってください。",
+    "connecting": "ブラウザでプロバイダーの認証を完了してください。ORG2 がアカウントを自動接続します。",
+    "completed": "接続しました。Market のアカウントページで確認できます。",
+    "failed": "接続を確認できませんでした。再試行する前に Market のアカウントページを確認してください。",
+    "cancelling": "接続をキャンセル中…",
+    "cancel": "キャンセル"
   }
 }

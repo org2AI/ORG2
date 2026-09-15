@@ -52,3 +52,25 @@ describe("conversation target override lifecycle", () => {
     );
   });
 });
+
+it("keeps a source override until that exact billing source is durable", () => {
+  const store = createStore();
+  const target = {
+    cliAgentType: "codex",
+    credentialSource: "market:a",
+    model: "model",
+  };
+  store.set(setConversationTargetOverrideAtom, { rootKey: "root", target });
+  store.set(reconcileConversationTargetOverrideAtom, {
+    rootKey: "root",
+    persistedTarget: { ...target, credentialSource: "market:b" },
+  });
+  expect(store.get(conversationTargetOverridesAtom).get("root")).toEqual(
+    target
+  );
+  store.set(reconcileConversationTargetOverrideAtom, {
+    rootKey: "root",
+    persistedTarget: target,
+  });
+  expect(store.get(conversationTargetOverridesAtom).has("root")).toBe(false);
+});

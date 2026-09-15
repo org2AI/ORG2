@@ -92,7 +92,24 @@ fn native_window_chunks(
     Ok(Some(chunks))
 }
 
+// Provider-owned rollouts can retain an old proxy error as assistant text.
+// Sanitize at the history projection boundary; never rewrite native files.
+fn redact_proxy_routes(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::String(text) if text.contains("/cli/") => {
+            *text = terminal::redaction::redact_terminal_text(text);
+        }
+        serde_json::Value::Array(values) => values.iter_mut().for_each(redact_proxy_routes),
+        serde_json::Value::Object(values) => values.values_mut().for_each(redact_proxy_routes),
+        _ => {}
+    }
+}
+
 fn normalize_history(mut chunks: Vec<ActivityChunk>, session_id: &str) -> Vec<SessionEvent> {
+    for chunk in &mut chunks {
+        redact_proxy_routes(&mut chunk.args);
+        redact_proxy_routes(&mut chunk.result);
+    }
     super::super::interactions::overlay_live_questions(session_id, &mut chunks);
     // Move fields instead of a serialize/parse round-trip through the WebView.
     // This mirrors rustBridge.toRawChunk, including its absent top-level call id.
@@ -216,6 +233,25 @@ mod tests {
 
     fn check_managed_native_history(turn_count: i64) {
         check_managed_native_history_impl(turn_count, false);
+    }
+
+    #[test]
+    fn native_history_projection_redacts_proxy_errors_replayed_as_assistant_text() {
+        let _sandbox = crate::test_utils::test_env::sandbox();
+        let token = format!("session_{}", "c".repeat(32));
+        let text = format!(
+            "credential_store_read_failed http://127.0.0.1:17930/cli/codex/{token}/v1/responses"
+        );
+        let chunk = ActivityChunk::new("history-redaction", "agent_response", "agent_response")
+            .with_result(json!({"observation": text, "text": text}));
+        let original = serde_json::to_string(&chunk).unwrap();
+        let events = normalize_history(vec![chunk], "history-redaction");
+        assert!(!events.is_empty());
+        let output = serde_json::to_string(&events).unwrap();
+        assert!(!output.contains(&token));
+        assert!(output.contains("credential_store_read_failed"));
+        assert!(output.contains("secret_*******"));
+        assert!(original.contains(&token), "native input is not rewritten");
     }
 
     fn check_managed_native_history_impl(turn_count: i64, streaming_only: bool) {

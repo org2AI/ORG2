@@ -309,6 +309,7 @@ pub async fn harness_connection_apply(
                 model: connection.model,
                 base_url: connection.base_url,
                 api_key: connection.api_key,
+                desktop_helper: None,
                 desktop_auth_scheme: (agent_name == "claude_desktop")
                     .then(|| connection.auth_scheme.as_str().to_string()),
             },

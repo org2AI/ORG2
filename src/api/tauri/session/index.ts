@@ -141,6 +141,7 @@ export function toFrontendSession(record: SessionAggregateRecord): Session {
     model: record.model,
     keySource: record.keySource,
     accountId: record.accountId,
+    credentialSource: record.credentialSource,
     tier: record.tier,
     pid: record.pid ?? null,
     repoPath: record.repoPath,

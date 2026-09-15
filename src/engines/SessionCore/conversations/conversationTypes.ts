@@ -20,6 +20,7 @@ export type LocalConversationTarget =
       agentDefinitionId: string;
       cliAgentType?: never;
       accountId: string;
+      credentialSource?: never;
       model: string;
       workspaceRepoPath?: string | null;
     }
@@ -29,6 +30,8 @@ export type LocalConversationTarget =
       cliAgentType: string;
       /** Undefined means the provider's ambient local CLI profile. */
       accountId?: string;
+      /** Non-secret native dynamic source, mutually exclusive with accountId. */
+      credentialSource?: string;
       model?: string;
       workspaceRepoPath?: string | null;
     };
@@ -48,10 +51,27 @@ export function isLocalConversationTarget(
     return (
       target.agentDefinitionId.length > 0 &&
       target.cliAgentType === undefined &&
+      target.credentialSource === undefined &&
       typeof target.accountId === "string" &&
       target.accountId.length > 0 &&
       typeof target.model === "string" &&
       target.model.length > 0
+    );
+  }
+  if (target.credentialSource !== undefined) {
+    return (
+      target.agentDefinitionId === undefined &&
+      target.accountId === undefined &&
+      typeof target.credentialSource === "string" &&
+      target.credentialSource.length > 0 &&
+      target.credentialSource.length <= 1024 &&
+      target.credentialSource === target.credentialSource.trim() &&
+      typeof target.cliAgentType === "string" &&
+      NATIVE_CONVERSATION_CLI_TARGETS.includes(
+        target.cliAgentType as NativeConversationCliTarget
+      ) &&
+      typeof target.model === "string" &&
+      target.model.trim().length > 0
     );
   }
   const cliAgentType = target.cliAgentType as NativeConversationCliTarget;

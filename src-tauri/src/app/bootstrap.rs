@@ -193,6 +193,9 @@ pub(crate) fn bootstrap(identifier: &str) {
     // the `cli_agent_create` + `cli_agent_run` adapter. Required for any
     // CLI launch path (`launch_session` -> `launch_cli_agent`).
     register_cli_launch_bridge();
+    if let Err(error) = crate::market_connection::register_source() {
+        tracing::error!(%error,"Market credential source registration failed");
+    }
 
     // Install the process-wide rustls crypto provider before any TLS code
     // runs. We use the `rustls-no-provider` feature on reqwest (and on

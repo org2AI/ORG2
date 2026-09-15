@@ -4,6 +4,11 @@ use super::{direct::DirectConnection, dto::CliConfigProfileManifest};
 use serde_json::{json, Value};
 use std::{collections::BTreeMap, path::PathBuf};
 
+pub struct CredentialHelper {
+    pub path: std::path::PathBuf,
+    pub models: Vec<String>,
+}
+
 pub const TARGET: &str = "claude_desktop";
 const PROFILE_ID: &str = "01704638-8000-4000-8000-000000000002";
 
@@ -131,6 +136,20 @@ pub(super) fn generate(
     } else {
         validate_model(&connection.model)?;
     }
+    if let Some(helper) = &connection.desktop_helper {
+        if !connection.api_key.is_empty()
+            || connection.profile.is_some()
+            || !helper.path.is_absolute()
+            || helper.models.is_empty()
+            || helper.models.len() > 256
+            || !helper.models.contains(&connection.model)
+        {
+            return Err("Invalid Desktop credential helper configuration".into());
+        }
+        for model in &helper.models {
+            validate_model(model)?;
+        }
+    }
     let owned = previous.is_some_and(|manifest| manifest.mode != super::CliConfigMode::Default);
     if !owned
         && contents
@@ -182,6 +201,25 @@ pub(super) fn generate(
             "modelDiscoveryEnabled": false
         }),
     );
+    if let Some(helper) = &connection.desktop_helper {
+        let profile = generated
+            .get_mut("profile")
+            .ok_or("Desktop profile missing")?;
+        profile
+            .as_object_mut()
+            .ok_or("Desktop profile invalid")?
+            .remove("inferenceGatewayApiKey");
+        profile["inferenceCredentialKind"] = json!("helper-script");
+        profile["inferenceCredentialHelper"] = json!(helper.path);
+        profile["inferenceCredentialHelperTtlSec"] = json!(60);
+        let mut models = helper.models.clone();
+        models.sort_by_key(|model| model != &connection.model);
+        models.dedup();
+        profile["inferenceModels"] = json!(models
+            .into_iter()
+            .map(|name| json!({"name":name}))
+            .collect::<Vec<_>>());
+    }
     generated
         .into_iter()
         .map(|(id, value)| {

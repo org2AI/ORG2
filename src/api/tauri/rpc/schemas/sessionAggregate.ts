@@ -212,6 +212,7 @@ export const SessionAggregateRecordSchema = z.object({
   branch: z.string().optional(),
   model: z.string().optional(),
   accountId: z.string().optional(),
+  credentialSource: z.string().min(1).max(1024).optional(),
   cliAgentType: CliAgentTypeSchema.optional(),
   keySource: KeySourceSchema,
   tier: PriceTierSchema.optional(),

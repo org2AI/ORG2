@@ -30,6 +30,7 @@ export interface SessionCreateParams {
   model?: string;
   /** Override account ID (defaults to OS agent's account) */
   accountId?: string;
+  credentialSource?: string;
   /** Session name override */
   name?: string;
   /** Linked work item short ID (e.g. "PROJ-0042") */

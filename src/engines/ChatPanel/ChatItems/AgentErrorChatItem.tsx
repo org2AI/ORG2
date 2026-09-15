@@ -20,6 +20,11 @@ import {
   buildCodexReauthPath,
 } from "@src/config/mainAppPaths";
 import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms";
+import { handleMarketConnectionUrl } from "@src/features/MarketConnect/deepLink";
+import {
+  requiresMarketReauthorization,
+  sessionMarketConnection,
+} from "@src/features/MarketConnect/sessionRecovery";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 import { sessionByIdAtom } from "@src/store/session";
@@ -43,27 +48,54 @@ const AgentErrorChatItem: React.FC<AgentErrorChatItemProps> = memo(
     const [detailsExpanded, setDetailsExpanded] = useState(false);
 
     const cleanMessage = sanitizeAgentErrorMessage(errorMessage);
+    const marketConnection = sessionMarketConnection(session?.credentialSource);
+    const needsMarketReauthentication =
+      marketConnection !== null && requiresMarketReauthorization(errorMessage);
     const needsCodexReauthentication =
+      session?.credentialSource === undefined &&
       requiresCodexReauthentication(errorMessage);
     const title = needsCodexReauthentication
       ? t("errors.codexLoginExpired")
       : t("errors.agentRequestFailed");
-    const action = needsCodexReauthentication
+    const action = marketConnection
       ? {
-          label: t("errors.reconnectCodex"),
+          label: t(
+            needsMarketReauthentication
+              ? "integrations:marketConnection.reauthorize"
+              : "integrations:marketConnection.manage"
+          ),
           onClick: () => {
-            const returnTo = `${location.pathname}${location.search}${location.hash}`;
-            void navigate(buildCodexReauthPath(session?.accountId), {
-              state: { [CODEX_REAUTH_RETURN_TO_STATE_KEY]: returnTo },
-            });
+            if (needsMarketReauthentication) {
+              handleMarketConnectionUrl(
+                `orgii://market/connect?workspace_id=${encodeURIComponent(marketConnection.workspace_id)}&target=${marketConnection.target}`
+              );
+            } else {
+              window.dispatchEvent(
+                new CustomEvent("market-connection-open", {
+                  detail: marketConnection,
+                })
+              );
+            }
           },
         }
-      : undefined;
+      : needsCodexReauthentication
+        ? {
+            label: t("errors.reconnectCodex"),
+            onClick: () => {
+              const returnTo = `${location.pathname}${location.search}${location.hash}`;
+              void navigate(buildCodexReauthPath(session?.accountId), {
+                state: { [CODEX_REAUTH_RETURN_TO_STATE_KEY]: returnTo },
+              });
+            },
+          }
+        : undefined;
 
     return (
       <div className="animate-fade-in">
         <PageNotice title={title} action={action}>
-          {needsCodexReauthentication ? (
+          {needsMarketReauthentication ? (
+            <div>{t("integrations:marketConnection.failed")}</div>
+          ) : needsCodexReauthentication ? (
             <>
               <div>{t("errors.codexLoginExpiredDescription")}</div>
               <Button

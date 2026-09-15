@@ -1,4 +1,30 @@
 {
+  "marketConnection": {
+    "noSavedWorkspaces": "Kết nối không gian làm việc từ Market để quản lý quyền truy cập tại đây",
+    "moduleUnavailable": "Mô-đun kết nối Market không khả dụng trong bản dựng này",
+    "loadingPurchases": "Đang tải giao dịch mua…",
+    "purchasesFailed": "Không thể tải giao dịch mua. Bạn vẫn có thể ngắt kết nối cục bộ.",
+    "retryPurchases": "Tải lại giao dịch mua",
+    "manage": "Quản lý kết nối",
+    "reauthorize": "Ủy quyền lại",
+    "platformUnavailable": "Không thể kết nối không gian làm việc của người mua Market trên nền tảng này vì chưa hỗ trợ lưu thông tin xác thực an toàn",
+    "authorizationSaved": "Đã lưu ủy quyền Market; vẫn cần thiết lập ứng dụng khách",
+    "failed": "Không thể hoàn tất kết nối Market. Hãy mở lại kết nối không gian làm việc.",
+    "title": "Kết nối không gian làm việc",
+    "close": "Đóng",
+    "disconnect": "Ngắt kết nối",
+    "configure": "Thiết lập ứng dụng khách",
+    "adapterPending": "Bộ tích hợp ứng dụng khách này chưa sẵn sàng",
+    "listing": "Tin đăng",
+    "model": "Mô hình",
+    "noPurchases": "Không có giao dịch mua đang hoạt động trong không gian này",
+    "conflict": "Cấu hình đã bị thay đổi bên ngoài ORG2; hãy kiểm tra trước khi áp dụng",
+    "configured": "Đã lưu cấu hình; vẫn cần xác minh yêu cầu thực tế tới mô hình",
+    "openWorkspace": "Chọn thư mục và mở ứng dụng",
+    "launchNote": "ORG2 mở ứng dụng trong thư mục đã chọn. Không cần sao chép lệnh hoặc khóa.",
+    "clientMissing": "Cài ứng dụng này trong cài đặt ORG2 rồi thử lại.",
+    "launchFailed": "Không thể mở không gian làm việc. Kiểm tra thư mục và kết nối lại dịch vụ đã chọn."
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Theo repo",
@@ -1665,5 +1691,14 @@
     "sharedToOrg": "Đã chia sẻ Skill với tổ chức",
     "shareToOrgHint": "Thành viên của tổ chức nhận được ảnh chụp hiện tại của skill này; hãy chia sẻ lại sau khi chỉnh sửa để phát hành bản cập nhật.",
     "shareOrgPlaceholder": "Tổ chức"
+  },
+  "marketSeller": {
+    "title": "Kết nối tài khoản người bán",
+    "approval": "Chấp thuận kết nối trong trình duyệt rồi quay lại ORG2.",
+    "connecting": "Chấp thuận đăng nhập nhà cung cấp trong trình duyệt. ORG2 sẽ tự động liên kết tài khoản.",
+    "completed": "Đã kết nối tài khoản. Xem tại trang tài khoản Market.",
+    "failed": "Chưa xác nhận được kết nối. Kiểm tra tài khoản Market trước khi thử lại.",
+    "cancelling": "Đang hủy kết nối…",
+    "cancel": "Hủy"
   }
 }

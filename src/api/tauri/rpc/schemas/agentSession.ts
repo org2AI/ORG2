@@ -429,6 +429,7 @@ const SessionLaunchParamsSchema = z
     workspacePath: z.string().optional(),
     keySource: z.string().optional(),
     accountId: z.string().optional(),
+    credentialSource: z.string().min(1).max(1024).optional(),
     model: z.string().optional(),
     nativeHarnessType: z.string().optional(),
     platform: z.string().optional(),

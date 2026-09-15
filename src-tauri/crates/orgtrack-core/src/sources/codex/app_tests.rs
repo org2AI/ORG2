@@ -56,7 +56,23 @@ fn includes_account_and_hosted_managed_codex_rollouts() {
     std::fs::create_dir_all(&account_sessions).unwrap();
     std::fs::create_dir_all(&hosted_sessions).unwrap();
 
-    let dirs = codex_managed_sessions_dirs(&account_root, &hosted_root);
+    let launch_root = temp.0.join("launches");
+    let retained_sessions = launch_root.join("closed-session").join("sessions");
+    std::fs::create_dir_all(&retained_sessions).unwrap();
+    let transcript = retained_sessions.join("retained.jsonl");
+    std::fs::write(&transcript, b"retained native transcript").unwrap();
+    // No config or ownership marker remains after terminal release.
+    let dirs = codex_managed_sessions_dirs(&account_root, &hosted_root, &launch_root);
+    assert!(dirs.contains(&retained_sessions));
+    assert_eq!(
+        std::fs::read(&transcript).unwrap(),
+        b"retained native transcript"
+    );
+    // Discovery has no process-local registry and works again after restart.
+    assert_eq!(
+        dirs,
+        codex_managed_sessions_dirs(&account_root, &hosted_root, &launch_root)
+    );
 
     assert!(dirs.contains(&account_sessions));
     assert!(dirs.contains(&hosted_sessions));
@@ -3192,10 +3208,12 @@ fn codex_window_discards_old_catalog_after_larger_atomic_replacement() {
     let dir = std::env::temp_dir().join(format!("orgii-codex-rotation-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("rollout.jsonl");
-    let transcript = |label: &str| (0..3).map(|i| format!("{}\n{}\n",
+    let transcript = |label: &str| {
+        (0..3).map(|i| format!("{}\n{}\n",
         serde_json::json!({"type":"event_msg","timestamp":"2026-09-09T00:00:00Z","payload":{"type":"user_message","message":format!("{label}-question-{i}")}}),
         serde_json::json!({"type":"event_msg","timestamp":"2026-09-09T00:00:01Z","payload":{"type":"agent_message","message":format!("{label}-answer-{i}")}})
-    )).collect::<String>();
+    )).collect::<String>()
+    };
     std::fs::write(&path, transcript("old")).unwrap();
     load_codex_app_initial_window_from_path("codexapp-rotation", &path, 1).unwrap();
     let replacement = dir.join("replacement.jsonl");
@@ -3203,7 +3221,10 @@ fn codex_window_discards_old_catalog_after_larger_atomic_replacement() {
     std::fs::rename(replacement, &path).unwrap();
     let window = load_codex_app_initial_window_from_path("codexapp-rotation", &path, 1).unwrap();
     let encoded = serde_json::to_string(&window.chunks).unwrap();
-    assert!(!encoded.contains("old-question"), "rotated source must not keep stale catalog rows");
+    assert!(
+        !encoded.contains("old-question"),
+        "rotated source must not keep stale catalog rows"
+    );
     assert!(encoded.contains("replacement-is-longer-question-0"));
     std::fs::remove_dir_all(dir).unwrap();
 }
@@ -3256,8 +3277,18 @@ fn discovery_survives_dangling_profile_symlinks_and_dedupes_live_ones() {
             .unwrap()
             .as_nanos()
     ));
-    let native = temp.join("native").join("sessions").join("2026").join("08").join("28");
-    let profile = temp.join("profile").join("sessions").join("2026").join("08").join("28");
+    let native = temp
+        .join("native")
+        .join("sessions")
+        .join("2026")
+        .join("08")
+        .join("28");
+    let profile = temp
+        .join("profile")
+        .join("sessions")
+        .join("2026")
+        .join("08")
+        .join("28");
     std::fs::create_dir_all(&native).unwrap();
     std::fs::create_dir_all(&profile).unwrap();
     let stem = "rollout-2026-08-28T17-12-59-0236a8cf-8dbb-4c52-9555-f5f54438ceb1";
@@ -3274,7 +3305,8 @@ fn discovery_survives_dangling_profile_symlinks_and_dedupes_live_ones() {
     .unwrap();
     std::os::unix::fs::symlink(&real, profile.join(format!("{stem}.jsonl"))).unwrap();
     std::os::unix::fs::symlink(
-        temp.join("gone").join("rollout-2026-08-28T17-17-01-5787846d-f20d-4c89-b2cd-a755414c2500.jsonl"),
+        temp.join("gone")
+            .join("rollout-2026-08-28T17-17-01-5787846d-f20d-4c89-b2cd-a755414c2500.jsonl"),
         profile.join("rollout-2026-08-28T17-17-01-5787846d-f20d-4c89-b2cd-a755414c2500.jsonl"),
     )
     .unwrap();
@@ -3324,16 +3356,24 @@ fn discovery_keeps_the_first_file_when_two_roots_hold_the_same_stem() {
             .unwrap()
             .as_nanos()
     ));
-    let native = temp.join("native").join("sessions").join("2026").join("08").join("27");
-    let profile = temp.join("profile").join("sessions").join("2026").join("08").join("27");
+    let native = temp
+        .join("native")
+        .join("sessions")
+        .join("2026")
+        .join("08")
+        .join("27");
+    let profile = temp
+        .join("profile")
+        .join("sessions")
+        .join("2026")
+        .join("08")
+        .join("27");
     std::fs::create_dir_all(&native).unwrap();
     std::fs::create_dir_all(&profile).unwrap();
     let stem = "rollout-2026-08-27T11-15-00-7a1d349c-0b12-49ce-844d-d03d204e15a0";
     // The same session materialized into two roots as two diverged copies.
     let header = r#"{"timestamp":"2026-08-27T11:15:00Z","type":"session_meta","payload":{"id":"7a1d349c-0b12-49ce-844d-d03d204e15a0","originator":"codex_cli_rs","cwd":"/tmp/project"}}"#;
-    let user = |text: &str| {
-        serde_json::json!({"timestamp":"2026-08-27T11:15:01Z","type":"event_msg","payload":{"type":"user_message","message":text}})
-    };
+    let user = |text: &str| serde_json::json!({"timestamp":"2026-08-27T11:15:01Z","type":"event_msg","payload":{"type":"user_message","message":text}});
     std::fs::write(
         native.join(format!("{stem}.jsonl")),
         format!("{header}\n{}\n", user("native copy")),
@@ -3387,10 +3427,12 @@ fn native_function_calls_with_response_ids_still_normalize() {
             .as_nanos()
     ));
     std::fs::create_dir_all(&temp_dir).unwrap();
-    let path = temp_dir.join("rollout-2026-09-10T22-20-46-01a08ee9-424a-7261-b262-5bb2b0cbbb35.jsonl");
+    let path =
+        temp_dir.join("rollout-2026-09-10T22-20-46-01a08ee9-424a-7261-b262-5bb2b0cbbb35.jsonl");
     // Shapes copied from a Codex Desktop 0.153.4 rollout: every native
     // function call carries an `fc_…` response-item id.
-    let spawn_args = json!({"task_name":"resend_probe","fork_turns":"none","message":"Reply DONE"}).to_string();
+    let spawn_args =
+        json!({"task_name":"resend_probe","fork_turns":"none","message":"Reply DONE"}).to_string();
     let shell_args = json!({"command":["bash","-lc","ls"],"workdir":"/tmp"}).to_string();
     let content = format!(
         "{}\n{}\n{}\n{}\n{}\n",
@@ -3415,9 +3457,14 @@ fn native_function_calls_with_response_ids_still_normalize() {
         .iter()
         .find(|chunk| chunk.function == imported_history::FUNCTION_RUN_COMMAND_LINE)
         .expect("native shell with a response id must normalize to run_command_line");
-    assert_eq!(shell.args["command"], "ls", "argv-form command must survive normalization");
+    assert_eq!(
+        shell.args["command"], "ls",
+        "argv-form command must survive normalization"
+    );
     assert_eq!(shell.args["cwd"], "/tmp");
-    assert!(chunks.iter().all(|chunk| chunk.function != "spawn_agent" && chunk.function != "shell"));
+    assert!(chunks
+        .iter()
+        .all(|chunk| chunk.function != "spawn_agent" && chunk.function != "shell"));
     std::fs::remove_dir_all(&temp_dir).unwrap();
 }
 
@@ -3565,4 +3612,51 @@ fn codex_sleep_normalizes_qualified_and_wrapped_calls_without_guessing_other_wai
         normalize_codex_tool_calls("wait", json!({"cell_id": "12"}))[0].0,
         "wait"
     );
+}
+
+#[test]
+fn retained_launch_history_survives_index_restart_and_resolves_native_resume_identity() {
+    let root = std::env::temp_dir().join(format!(
+        "org2-retained-history-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let launches = root.join("launches");
+    let sessions = launches.join("closed-launch").join("sessions");
+    std::fs::create_dir_all(&sessions).unwrap();
+    let native_id = "0236a8cf-8dbb-4c52-9555-f5f54438ceb1";
+    let stem = format!("rollout-2026-08-28T17-12-59-{native_id}");
+    let transcript = sessions.join(format!("{stem}.jsonl"));
+    let content = concat!(
+        r#"{"timestamp":"2026-08-28T17:12:59Z","type":"session_meta","payload":{"id":"0236a8cf-8dbb-4c52-9555-f5f54438ceb1","originator":"cli","cwd":"/tmp/retained-project"}}"#,
+        "\n",
+        r#"{"timestamp":"2026-08-28T17:13:00Z","type":"event_msg","payload":{"type":"user_message","message":"retained work"}}"#,
+        "\n"
+    );
+    std::fs::write(&transcript, content).unwrap();
+    let database = root.join("history.sqlite");
+    for _ in 0..2 {
+        // A fresh connection models application restart, not an in-memory cache.
+        let mut conn = rusqlite::Connection::open(&database).unwrap();
+        crate::store::sqlite::SqliteRecordStore::init_tables(&conn).unwrap();
+        crate::store::sqlite::SqliteRecordStore::init_source_cache_tables(&conn).unwrap();
+        let dirs =
+            codex_managed_sessions_dirs(&root.join("accounts"), &root.join("hosted"), &launches);
+        index::sync_codex_app_cache_from_dirs(&mut conn, &dirs).unwrap();
+        let (plan, cached) = crate::sources::cli_resume::cli_resume_plan_for_cached_session(
+            &conn,
+            &format!("codexapp-{stem}"),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(plan.native_session_id, native_id);
+        assert_eq!(plan.resume_args, vec!["resume", native_id]);
+        assert_eq!(plan.cwd.as_deref(), Some("/tmp/retained-project"));
+        assert_eq!(cached.source_path, transcript.to_string_lossy());
+        assert_eq!(std::fs::read_to_string(&transcript).unwrap(), content);
+    }
+    std::fs::remove_dir_all(root).unwrap();
 }

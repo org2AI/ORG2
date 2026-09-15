@@ -4,6 +4,7 @@ import {
   type ConversationSource,
   type LocalConversationTarget,
   NATIVE_CONVERSATION_CLI_TARGETS,
+  isLocalConversationTarget,
 } from "@src/engines/SessionCore/conversations/conversationTypes";
 import {
   localConversationRootForSession,
@@ -62,12 +63,23 @@ export function localConversationTargetFromSession(
     | "cliAgentType"
     | "agentDefinitionId"
     | "accountId"
+    | "credentialSource"
     | "model"
     | "repoPath"
     | "worktreePath"
   >
 ): LocalConversationTarget | null {
   const workspaceRepoPath = session.worktreePath ?? session.repoPath ?? null;
+  if (session.credentialSource !== undefined) {
+    const target = {
+      cliAgentType: session.cliAgentType,
+      credentialSource: session.credentialSource,
+      accountId: session.accountId,
+      model: session.model,
+      workspaceRepoPath,
+    };
+    return isLocalConversationTarget(target) ? target : null;
+  }
   if (
     session.cliAgentType &&
     (session.accountId || session.cliAgentType === "claude_code")

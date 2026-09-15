@@ -1,4 +1,30 @@
 {
+  "marketConnection": {
+    "noSavedWorkspaces": "Market에서 워크스페이스를 연결하면 여기에서 인증을 관리할 수 있습니다",
+    "moduleUnavailable": "이 빌드에서는 Market 연결 모듈을 사용할 수 없습니다",
+    "loadingPurchases": "구매 내역 불러오는 중…",
+    "purchasesFailed": "구매 내역을 불러오지 못했습니다. 로컬 연결은 계속 해제할 수 있습니다.",
+    "retryPurchases": "구매 내역 다시 불러오기",
+    "manage": "연결 관리",
+    "reauthorize": "다시 인증",
+    "platformUnavailable": "이 플랫폼은 자격 증명의 안전한 저장을 지원하지 않아 Market 구매자 작업 공간에 연결할 수 없습니다",
+    "authorizationSaved": "Market 인증이 저장되었습니다. 클라이언트 설정이 아직 필요합니다",
+    "failed": "Market 연결을 완료하지 못했습니다. 워크스페이스 연결을 다시 열어 주세요.",
+    "title": "워크스페이스 연결",
+    "close": "닫기",
+    "disconnect": "연결 해제",
+    "configure": "클라이언트 설정",
+    "adapterPending": "이 클라이언트 연동은 아직 준비되지 않았습니다",
+    "listing": "리스팅",
+    "model": "모델",
+    "noPurchases": "이 워크스페이스에 활성 구매가 없습니다",
+    "conflict": "ORG2 외부에서 설정이 변경되었습니다. 적용 전에 확인하세요",
+    "configured": "설정이 저장되었습니다. 실제 모델 요청은 아직 검증이 필요합니다",
+    "openWorkspace": "폴더 선택 후 클라이언트 열기",
+    "launchNote": "ORG2가 선택한 폴더에서 클라이언트를 엽니다. 명령어나 키를 복사할 필요가 없습니다.",
+    "clientMissing": "ORG2 설정에서 이 클라이언트를 설치한 후 다시 시도하세요.",
+    "launchFailed": "작업 공간을 열 수 없습니다. 폴더를 확인하고 선택한 상품을 다시 연결하세요."
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Repo-specific",
@@ -1665,5 +1691,14 @@
     "sharedToOrg": "Skill을 조직에 공유했습니다",
     "shareToOrgHint": "조직 멤버는 이 Skill의 현재 스냅샷을 받습니다. 편집 후 업데이트를 게시하려면 다시 공유하세요.",
     "shareOrgPlaceholder": "조직"
+  },
+  "marketSeller": {
+    "title": "판매자 계정 연결",
+    "approval": "브라우저에서 연결을 승인한 후 ORG2로 돌아오세요.",
+    "connecting": "브라우저에서 공급자 인증을 완료하세요. ORG2가 계정을 자동으로 연결합니다.",
+    "completed": "계정이 연결되었습니다. Market 계정 페이지에서 확인하세요.",
+    "failed": "연결 결과를 확인하지 못했습니다. 다시 시도하기 전에 Market 계정 페이지를 확인하세요.",
+    "cancelling": "연결 취소 중…",
+    "cancel": "취소"
   }
 }

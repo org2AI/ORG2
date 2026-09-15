@@ -12,6 +12,7 @@ pub struct DirectConnection {
     pub base_url: String,
     pub api_key: String,
     pub desktop_auth_scheme: Option<String>,
+    pub desktop_helper: Option<super::desktop::CredentialHelper>,
 }
 
 pub(super) fn generate_direct_configs(
@@ -20,11 +21,16 @@ pub(super) fn generate_direct_configs(
     connection: &DirectConnection,
     previous: Option<&CliConfigProfileManifest>,
 ) -> Result<BTreeMap<String, String>, String> {
-    if connection.api_key.trim().is_empty() || connection.model.trim().is_empty() {
+    if (connection.api_key.trim().is_empty() && connection.desktop_helper.is_none())
+        || connection.model.trim().is_empty()
+    {
         return Err("An API key and model are required".into());
     }
     if agent == super::desktop::TARGET {
         return super::desktop::generate(contents, connection, previous);
+    }
+    if connection.desktop_helper.is_some() {
+        return Err("Desktop helpers cannot configure a CLI target".into());
     }
     if connection.profile.is_some() && !matches!(agent, "claude_code" | "claude_desktop") {
         return Err("Claude profiles cannot configure another app".into());

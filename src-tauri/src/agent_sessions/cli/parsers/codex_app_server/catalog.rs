@@ -110,7 +110,14 @@ fn entry_from_thread(thread: &Value) -> Result<CodexCatalogEntry, String> {
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CatalogProfile {
+    NativeApp,
+    ManagedSession,
+}
+
 fn effective_model_provider(
+    profile: CatalogProfile,
     runtime: &tokio::runtime::Runtime,
     client: &mut super::CodexAppServerRpcClient,
     cwd: &Path,
@@ -121,7 +128,16 @@ fn effective_model_provider(
         "config/read",
         json!({"cwd": cwd, "includeLayers": false}),
     )?;
-    Ok(allowlisted_native_model_provider(&result))
+    Ok(match profile {
+        CatalogProfile::NativeApp => allowlisted_native_model_provider(&result),
+        // This home belongs to one managed Session. Its configured provider
+        // is authoritative and is never published into the real App home.
+        CatalogProfile::ManagedSession => result["config"]["model_provider"]
+            .as_str()
+            .filter(|value| !value.is_empty())
+            .unwrap_or(CODEX_NATIVE_MODEL_PROVIDER)
+            .to_string(),
+    })
 }
 
 fn allowlisted_native_model_provider(config_result: &Value) -> String {
@@ -406,6 +422,7 @@ pub(crate) fn ensure_project(codex_home: &Path, project_root: &Path) -> Result<S
 }
 
 pub(crate) fn register_thread(
+    profile: CatalogProfile,
     codex_home: &Path,
     cwd: &Path,
     title: &str,
@@ -416,7 +433,7 @@ pub(crate) fn register_thread(
     // the runner. Assign membership at creation, exactly like fresh runs.
     let project_id = ensure_project(codex_home, project_root)?;
     with_rpc(codex_home, cwd, |runtime, client| {
-        let model_provider = effective_model_provider(runtime, client, cwd)?;
+        let model_provider = effective_model_provider(profile, runtime, client, cwd)?;
         let result = request(
             runtime,
             client,
@@ -459,6 +476,7 @@ pub(crate) fn register_thread(
 }
 
 pub(crate) fn synchronize_thread(
+    profile: CatalogProfile,
     codex_home: &Path,
     path: &Path,
     expected_id: &str,
@@ -472,7 +490,7 @@ pub(crate) fn synchronize_thread(
     // mixed/unknown suffix blindly.
     let suffix_application = inspect_suffix_application(path, items)?;
     with_rpc(codex_home, cwd, |runtime, client| {
-        let model_provider = effective_model_provider(runtime, client, cwd)?;
+        let model_provider = effective_model_provider(profile, runtime, client, cwd)?;
         let result = request(
             runtime,
             client,
@@ -505,13 +523,14 @@ pub(crate) fn synchronize_thread(
 }
 
 pub(crate) fn archive_thread(
+    profile: CatalogProfile,
     codex_home: &Path,
     path: &Path,
     expected_id: &str,
     cwd: &Path,
 ) -> Result<(), String> {
     with_rpc(codex_home, cwd, |runtime, client| {
-        let model_provider = effective_model_provider(runtime, client, cwd)?;
+        let model_provider = effective_model_provider(profile, runtime, client, cwd)?;
         let result = request(
             runtime,
             client,
@@ -546,6 +565,53 @@ mod tests {
 
     #[test]
     #[ignore = "requires installed Codex app-server; isolated storage, no model requests"]
+    fn managed_thread_preserves_configured_provider_across_resume() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let home = root.join("managed-home");
+        let project = root.join("project");
+        std::fs::create_dir(&home).unwrap();
+        std::fs::create_dir(&project).unwrap();
+        std::fs::write(
+            home.join("config.toml"),
+            r#"model_provider = "orgii"
+[model_providers.orgii]
+name = "Isolated managed fixture"
+base_url = "http://127.0.0.1:9/v1"
+wire_api = "responses"
+requires_openai_auth = false
+supports_websockets = false
+"#,
+        )
+        .unwrap();
+        let entry = register_thread(
+            CatalogProfile::ManagedSession,
+            &home,
+            &project,
+            "Managed fixture",
+            &[],
+            &project,
+        )
+        .unwrap();
+        assert_eq!(entry.model_provider, "orgii");
+        for _ in 0..2 {
+            let resumed = synchronize_thread(
+                CatalogProfile::ManagedSession,
+                &home,
+                &entry.path,
+                &entry.id,
+                &project,
+                "Managed fixture",
+                &[],
+            )
+            .unwrap();
+            assert_eq!(resumed.model_provider, "orgii");
+            assert_eq!(resumed.id, entry.id);
+        }
+    }
+
+    #[test]
+    #[ignore = "requires installed Codex app-server; isolated storage, no model requests"]
     fn converted_thread_preserves_repository_project_across_resume() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().canonicalize().unwrap();
@@ -559,10 +625,18 @@ mod tests {
         let items = vec![
             json!({"type":"message", "role":"user", "content":[{"type":"input_text","text":"conversion project fixture"}]}),
         ];
-        let entry =
-            register_thread(&home, &worktree, "Converted fixture", &items, &project).unwrap();
+        let entry = register_thread(
+            CatalogProfile::NativeApp,
+            &home,
+            &worktree,
+            "Converted fixture",
+            &items,
+            &project,
+        )
+        .unwrap();
         for _ in 0..2 {
             synchronize_thread(
+                CatalogProfile::NativeApp,
                 &home,
                 &entry.path,
                 &entry.id,

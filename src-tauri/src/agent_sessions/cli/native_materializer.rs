@@ -39,6 +39,9 @@ use super::native_transcript::TRANSCRIPT_SOURCE_NATIVE;
 use super::parsers::codex_app_server as codex_native_catalog;
 use super::persistence;
 
+mod storage;
+use storage::NativeStorageOwner;
+
 const CODEX_NATIVE_PATH_CACHE_MAX_ENTRIES: usize = 512;
 const CLAUDE_PROJECT_INDEX_VERSION: u64 = 1;
 const CLAUDE_DESKTOP_ACCOUNT_SCAN_LIMIT: usize = 64;
@@ -284,6 +287,9 @@ fn atomic_json(path: &Path, value: &Value) -> Result<(), String> {
 }
 
 fn replace_runner_link(native_path: &Path, runner_path: &Path) -> Result<(), String> {
+    if native_path == runner_path {
+        return Ok(());
+    }
     replace_file_link_atomically(native_path, runner_path, "native runner transcript link")
 }
 
@@ -580,6 +586,7 @@ fn claude_native_paths(
 /// The returned pair is canonical even when only the profile-only path created
 /// by an intermediate release exists. Mutation code can then promote that file
 /// without teaching every caller a second storage layout.
+#[cfg(test)]
 fn existing_claude_native_paths(
     account_id: Option<&str>,
     cwd: &Path,
@@ -708,23 +715,17 @@ fn materialized_cli_transcript_paths(
     native_id: &str,
 ) -> Result<Option<(String, NativeTranscriptPaths)>, String> {
     let agent = session.cli_agent_type.as_deref().unwrap_or_default();
-    let account_id = session
-        .account_id
-        .as_deref()
-        .filter(|value| !value.trim().is_empty());
+    let owner = NativeStorageOwner::for_session(session)?;
     let cwd = execution_cwd(session)?;
     let paths = match agent {
         "claude_code" => {
-            let Some(paths) = existing_claude_native_paths(account_id, &cwd, native_id) else {
+            let Some(paths) = owner.existing_claude(&cwd, native_id)? else {
                 return Ok(None);
             };
             paths
         }
         "codex" => {
-            let account_id = account_id.ok_or_else(|| {
-                "native Codex transcript read requires an explicit local account".to_string()
-            })?;
-            let Some(paths) = existing_codex_native_paths(account_id, native_id)? else {
+            let Some(paths) = owner.existing_codex(native_id)? else {
                 return Ok(None);
             };
             paths
@@ -973,6 +974,7 @@ fn transcript_modified_metadata(path: &Path) -> Result<(i64, String), String> {
 /// Maintain Claude Code's native project catalog next to the durable JSONL.
 /// The transcript remains the source of truth; this is only the provider-owned
 /// discovery projection required by the native App.
+#[cfg(test)]
 fn publish_claude_project_index(
     cwd: &Path,
     native_id: &str,
@@ -980,6 +982,16 @@ fn publish_claude_project_index(
     git_branch: Option<&str>,
 ) -> Result<(), String> {
     let transcript_path = claude_native_paths(None, cwd, native_id).native_path;
+    publish_claude_project_index_at(&transcript_path, cwd, native_id, items, git_branch)
+}
+
+fn publish_claude_project_index_at(
+    transcript_path: &Path,
+    cwd: &Path,
+    native_id: &str,
+    items: &[NativeConversationItem],
+    git_branch: Option<&str>,
+) -> Result<(), String> {
     let project_dir = transcript_path.parent().ok_or_else(|| {
         format!(
             "Claude native transcript has no project directory: {}",
@@ -1064,9 +1076,19 @@ fn publish_claude_project_index(
     atomic_json(&index_path, &index)
 }
 
+#[cfg(test)]
 fn remove_claude_project_index_entry(cwd: &Path, native_id: &str) -> Result<(), String> {
-    let index_path = claude_native_paths(None, cwd, native_id)
-        .native_path
+    remove_claude_project_index_entry_at(
+        &claude_native_paths(None, cwd, native_id).native_path,
+        native_id,
+    )
+}
+
+fn remove_claude_project_index_entry_at(
+    transcript_path: &Path,
+    native_id: &str,
+) -> Result<(), String> {
+    let index_path = transcript_path
         .parent()
         .map(|project| project.join("sessions-index.json"))
         .ok_or_else(|| "Claude native transcript has no project directory".to_string())?;
@@ -2079,14 +2101,14 @@ fn discard_cli_materialization(session_id: &str, native_id: &str) -> Result<bool
         );
     }
     let agent = session.cli_agent_type.as_deref().unwrap_or_default();
+    let owner = NativeStorageOwner::for_session(&session)?;
     let cwd = execution_cwd(&session)?;
     let paths = match agent {
-        "claude_code" => existing_claude_native_paths(account_id, &cwd, native_id)
-            .unwrap_or_else(|| claude_native_paths(account_id, &cwd, native_id)),
+        "claude_code" => owner
+            .existing_claude(&cwd, native_id)?
+            .unwrap_or(owner.claude_paths(&cwd, native_id)?),
         "codex" => {
-            let account_id = account_id
-                .ok_or_else(|| "native Codex materialization has no account binding".to_string())?;
-            let Some(paths) = existing_codex_native_paths(account_id, native_id)? else {
+            let Some(paths) = owner.existing_codex(native_id)? else {
                 // A previous rollback may have removed the rollout and then
                 // failed while clearing the DB binding. Treat the missing
                 // marked artifact as already removed so retry can finish the
@@ -2103,7 +2125,8 @@ fn discard_cli_materialization(session_id: &str, native_id: &str) -> Result<bool
         "codex" => {
             if paths.native_path.is_file() {
                 codex_native_catalog::archive_thread(
-                    &codex_native_app_home(),
+                    owner.catalog_profile(),
+                    &owner.codex_home()?,
                     &paths.native_path,
                     native_id,
                     &cwd,
@@ -2121,7 +2144,7 @@ fn discard_cli_materialization(session_id: &str, native_id: &str) -> Result<bool
             remove_orgii_claude_desktop_session(&cwd, native_id)?;
             let runner_removed = remove_file_if_present(&paths.runner_path)?;
             let native_removed = remove_file_if_present(&paths.native_path)?;
-            remove_claude_project_index_entry(&cwd, native_id)?;
+            remove_claude_project_index_entry_at(&paths.native_path, native_id)?;
             runner_removed || native_removed
         }
         _ => false,
@@ -2151,12 +2174,13 @@ fn materialize_cli(
         .account_id
         .as_deref()
         .filter(|value| !value.trim().is_empty());
+    let owner = NativeStorageOwner::for_session(&session)?;
     let cwd = execution_cwd(&session)?;
     let agent = session.cli_agent_type.as_deref().unwrap_or_default();
     let (native_id, paths) = match agent {
         "claude_code" => {
             let native_id = Uuid::new_v4().to_string();
-            let paths = claude_native_paths(account_id, &cwd, &native_id);
+            let paths = owner.claude_paths(&cwd, &native_id)?;
             let title = claude_session_title(&session, items);
             let bound =
                 persistence::stage_cli_session_id_for_account(session_id, account_id, &native_id)
@@ -2181,16 +2205,14 @@ fn materialize_cli(
             (native_id, paths)
         }
         "codex" => {
-            let account_id = account_id.ok_or_else(|| {
-                "native Codex materialization requires an explicit local account".to_string()
-            })?;
             let title = if session.name.trim().is_empty() {
                 first_user_title(items)
             } else {
                 session.name.clone()
             };
-            let codex_home = codex_native_app_home();
+            let codex_home = owner.codex_home()?;
             let registered = codex_native_catalog::register_thread(
+                owner.catalog_profile(),
                 &codex_home,
                 &cwd,
                 &title,
@@ -2204,12 +2226,13 @@ fn materialize_cli(
             )?;
             let staged = persistence::stage_cli_session_id_for_account(
                 session_id,
-                Some(account_id),
+                account_id,
                 &registered.id,
             )
             .map_err(|err| format!("record pending Codex materialization: {err}"))?;
             if !staged {
                 let _ = codex_native_catalog::archive_thread(
+                    owner.catalog_profile(),
                     &codex_home,
                     &registered.path,
                     &registered.id,
@@ -2220,10 +2243,11 @@ fn materialize_cli(
                     "record pending Codex materialization: target session {session_id} disappeared"
                 ));
             }
-            let paths = match registered_codex_native_paths(account_id, &registered.path) {
+            let paths = match owner.registered_codex(&registered.path) {
                 Ok(paths) => paths,
                 Err(error) => {
                     let _ = codex_native_catalog::archive_thread(
+                        owner.catalog_profile(),
                         &codex_home,
                         &registered.path,
                         &registered.id,
@@ -2232,15 +2256,16 @@ fn materialize_cli(
                     let _ = remove_file_if_present(&registered.path);
                     let _ = persistence::clear_staged_cli_session_id_for_account(
                         session_id,
-                        Some(account_id),
+                        account_id,
                         &registered.id,
                     );
                     return Err(error);
                 }
             };
-            cache_codex_native_paths(account_id, &registered.id, &paths);
+            owner.cache_codex(&registered.id, &paths);
             if let Err(error) = replace_runner_link(&paths.native_path, &paths.runner_path) {
                 let _ = codex_native_catalog::archive_thread(
+                    owner.catalog_profile(),
                     &codex_home,
                     &paths.native_path,
                     &registered.id,
@@ -2250,7 +2275,7 @@ fn materialize_cli(
                 let _ = remove_file_if_present(&paths.native_path);
                 let _ = persistence::clear_staged_cli_session_id_for_account(
                     session_id,
-                    Some(account_id),
+                    account_id,
                     &registered.id,
                 );
                 return Err(error);
@@ -2264,12 +2289,16 @@ fn materialize_cli(
         }
     };
     if agent == "claude_code" {
-        if let Err(error) =
-            publish_claude_project_index(&cwd, &native_id, items, session.branch.as_deref())
-        {
+        if let Err(error) = publish_claude_project_index_at(
+            &paths.native_path,
+            &cwd,
+            &native_id,
+            items,
+            session.branch.as_deref(),
+        ) {
             let _ = remove_file_if_present(&paths.runner_path);
             let _ = remove_file_if_present(&paths.native_path);
-            let _ = remove_claude_project_index_entry(&cwd, &native_id);
+            let _ = remove_claude_project_index_entry_at(&paths.native_path, &native_id);
             let _ = persistence::clear_staged_cli_session_id_for_account(
                 session_id, account_id, &native_id,
             );
@@ -2345,17 +2374,16 @@ fn synchronize_cli(
     let native_id = persistence::get_cli_session_id_for_account(session_id, account_id)
         .map_err(|err| format!("read native binding for {session_id}: {err}"))?
         .ok_or_else(|| format!("CLI session {session_id} has no native resume binding"))?;
+    let owner = NativeStorageOwner::for_session(&session)?;
     let cwd = execution_cwd(&session)?;
     let agent = session.cli_agent_type.as_deref().unwrap_or_default();
     let paths = match agent {
-        "claude_code" => existing_claude_native_paths(account_id, &cwd, &native_id)
-            .unwrap_or_else(|| claude_native_paths(account_id, &cwd, &native_id)),
-        "codex" => {
-            let account_id = account_id
-                .ok_or_else(|| "native Codex synchronization has no account binding".to_string())?;
-            existing_codex_native_paths(account_id, &native_id)?
-                .ok_or_else(|| format!("materialized Codex transcript {native_id} was not found"))?
-        }
+        "claude_code" => owner
+            .existing_claude(&cwd, &native_id)?
+            .unwrap_or(owner.claude_paths(&cwd, &native_id)?),
+        "codex" => owner
+            .existing_codex(&native_id)?
+            .ok_or_else(|| format!("materialized Codex transcript {native_id} was not found"))?,
         other => {
             return Err(format!(
                 "CLI target {other:?} cannot write a provider-native role/tool transcript"
@@ -2399,7 +2427,8 @@ fn synchronize_cli(
             }
             let title = claude_session_title(&session, complete_items);
             ensure_claude_native_metadata(&paths.native_path, &native_id, complete_items, &title)?;
-            publish_claude_project_index(
+            publish_claude_project_index_at(
+                &paths.native_path,
                 &cwd,
                 &native_id,
                 complete_items,
@@ -2415,7 +2444,8 @@ fn synchronize_cli(
             };
             if promoted_to_native_app || !append_items.is_empty() {
                 codex_native_catalog::synchronize_thread(
-                    &codex_native_app_home(),
+                    owner.catalog_profile(),
+                    &owner.codex_home()?,
                     &paths.native_path,
                     &native_id,
                     &cwd,
@@ -2452,6 +2482,8 @@ enum BoundNativeCatalogRefresh {
         branch: Option<String>,
     },
     Codex {
+        profile: codex_native_catalog::CatalogProfile,
+        codex_home: PathBuf,
         receipt: persistence::NativeCatalogRefreshReceipt,
         cwd: PathBuf,
         native_id: String,
@@ -2489,6 +2521,7 @@ fn converge_bound_native_transcript(
         return Ok(None);
     }
 
+    let owner = NativeStorageOwner::for_session(&session)?;
     let cwd = execution_cwd(&session)?;
     // Convergence runs for every native-transcript session that carries a
     // provider binding, not only the ones ORG2 materialized. A binding whose
@@ -2497,7 +2530,7 @@ fn converge_bound_native_transcript(
     // scanned roots — is missing evidence, not proof of divergence, so it
     // must not fail the turn closed.
     let paths = match agent.as_str() {
-        "claude_code" => match existing_claude_native_paths(account_id, &cwd, &native_id) {
+        "claude_code" => match owner.existing_claude(&cwd, &native_id)? {
             Some(paths) => paths,
             None => {
                 tracing::warn!(
@@ -2509,7 +2542,7 @@ fn converge_bound_native_transcript(
             }
         },
         "codex" => {
-            let Some(account_id) = account_id else {
+            if !owner.has_codex_store() {
                 tracing::warn!(
                     session_id,
                     native_id,
@@ -2517,7 +2550,7 @@ fn converge_bound_native_transcript(
                 );
                 return Ok(None);
             };
-            match existing_codex_native_paths(account_id, &native_id)? {
+            match owner.existing_codex(&native_id)? {
                 Some(paths) => paths,
                 None => {
                     tracing::warn!(
@@ -2568,6 +2601,8 @@ fn converge_bound_native_transcript(
             branch: session.branch,
         },
         "codex" => BoundNativeCatalogRefresh::Codex {
+            profile: owner.catalog_profile(),
+            codex_home: owner.codex_home()?,
             receipt,
             cwd,
             native_id,
@@ -2606,7 +2641,13 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
                 // boundary so a large JSONL cannot delay the footer.
                 let items =
                     native_items_from_provider_path(&session_id, "claude_code", &native_path)?;
-                publish_claude_project_index(&cwd, &native_id, &items, branch.as_deref())?;
+                publish_claude_project_index_at(
+                    &native_path,
+                    &cwd,
+                    &native_id,
+                    &items,
+                    branch.as_deref(),
+                )?;
                 parsed_items = Some(items);
             }
 
@@ -2645,6 +2686,8 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
             receipt
         }
         BoundNativeCatalogRefresh::Codex {
+            profile,
+            codex_home,
             receipt,
             cwd,
             native_id,
@@ -2652,7 +2695,8 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
             title,
         } => {
             codex_native_catalog::synchronize_thread(
-                &codex_native_app_home(),
+                profile,
+                &codex_home,
                 &native_path,
                 &native_id,
                 &cwd,
@@ -2674,18 +2718,20 @@ fn prepare_pending_native_catalog_refresh(
 ) -> Result<BoundNativeCatalogRefresh, String> {
     let session_id = pending.receipt.session_id.clone();
     let native_id = pending.receipt.cli_session_id.clone();
-    let account_id = pending.receipt.account_id().map(str::to_string);
     let session = persistence::get_session(&session_id)
         .map_err(|error| format!("load CLI session {session_id}: {error}"))?
         .ok_or_else(|| format!("CLI session {session_id} does not exist"))?;
+    if pending.receipt.account_id() != session.account_id.as_deref() {
+        return Err("Pending native catalog storage owner changed".into());
+    }
+    let owner = NativeStorageOwner::for_session(&session)?;
     let cwd = execution_cwd(&session)?;
 
     match pending.source.as_str() {
         "claude_code" => {
-            let paths = existing_claude_native_paths(account_id.as_deref(), &cwd, &native_id)
-                .ok_or_else(|| {
-                    format!("no Claude transcript for pending native binding {native_id}")
-                })?;
+            let paths = owner.existing_claude(&cwd, &native_id)?.ok_or_else(|| {
+                format!("no Claude transcript for pending native binding {native_id}")
+            })?;
             let _transcript_guard = lock_claude_transcript(&paths.native_path)?;
             ensure_durable_runner_alias(&paths, &native_id)?;
             Ok(BoundNativeCatalogRefresh::Claude {
@@ -2699,14 +2745,13 @@ fn prepare_pending_native_catalog_refresh(
             })
         }
         "codex_app" => {
-            let account_id = account_id.as_deref().ok_or_else(|| {
-                format!("pending Codex native binding {native_id} has no local account")
-            })?;
-            let paths = existing_codex_native_paths(account_id, &native_id)?.ok_or_else(|| {
+            let paths = owner.existing_codex(&native_id)?.ok_or_else(|| {
                 format!("no Codex rollout for pending native binding {native_id}")
             })?;
             ensure_durable_runner_alias(&paths, &native_id)?;
             Ok(BoundNativeCatalogRefresh::Codex {
+                profile: owner.catalog_profile(),
+                codex_home: owner.codex_home()?,
                 receipt: pending.receipt,
                 cwd,
                 native_id,
@@ -3129,6 +3174,171 @@ mod tests {
         }
     }
 
+    #[test]
+    fn managed_claude_history_survives_release_reload_sync_and_scoped_rollback() {
+        let sandbox = test_env::sandbox();
+        let id = "cliagent-managed-native-history";
+        create_native_session_with_source(
+            id,
+            "claude_code",
+            None,
+            sandbox.path(),
+            Some("test:workspace"),
+        );
+        let home = agent_cli::managed_config::launch::native_home(id).unwrap();
+        let profile = agent_cli::managed_config::launch::restore_with_proxy_token(
+            "claude_code",
+            "model",
+            id,
+            "http://127.0.0.1:9876",
+            "test-route",
+        )
+        .unwrap();
+        assert_eq!(PathBuf::from(&profile.env["CLAUDE_CONFIG_DIR"]), home);
+        let first = vec![message("managed-user", "user", "original request")];
+        let receipt = materialize_cli(id, &first).unwrap();
+        let session = persistence::get_session(id).unwrap().unwrap();
+        let cwd = execution_cwd(&session).unwrap();
+        let (_, paths) = materialized_cli_transcript_paths(&session, &receipt.native_session_id)
+            .unwrap()
+            .unwrap();
+        assert!(paths.native_path.starts_with(&home));
+        assert_eq!(paths.native_path, paths.runner_path);
+        let original = fs::read(&paths.native_path).unwrap();
+        let global = claude_native_paths(None, &cwd, &receipt.native_session_id).native_path;
+        fs::create_dir_all(global.parent().unwrap()).unwrap();
+        fs::write(&global, b"unrelated global history").unwrap();
+        agent_cli::managed_config::launch::release(id).unwrap();
+        assert_eq!(fs::read(&paths.native_path).unwrap(), original);
+        let reloaded = persistence::get_session(id).unwrap().unwrap();
+        assert_eq!(
+            materialized_cli_transcript_path(&reloaded, &receipt.native_session_id)
+                .unwrap()
+                .unwrap()
+                .1,
+            paths.native_path
+        );
+        let suffix = vec![message("managed-assistant", "assistant", "retained reply")];
+        let mut complete = first;
+        complete.extend(suffix.clone());
+        synchronize_cli(id, &complete, &suffix).unwrap();
+        let refresh = converge_bound_native_transcript(id).unwrap().unwrap();
+        refresh_bound_native_catalog(refresh).unwrap();
+        let once = fs::read(&paths.native_path).unwrap();
+        synchronize_cli(id, &complete, &suffix).unwrap();
+        assert_eq!(fs::read(&paths.native_path).unwrap(), once);
+        let index_path = paths
+            .native_path
+            .parent()
+            .unwrap()
+            .join("sessions-index.json");
+        let index: Value = serde_json::from_slice(&fs::read(&index_path).unwrap()).unwrap();
+        assert_eq!(
+            index["entries"][0]["fullPath"],
+            paths.native_path.to_string_lossy().as_ref()
+        );
+        assert!(discard_cli_materialization(id, &receipt.native_session_id).unwrap());
+        assert!(!paths.native_path.exists());
+        assert_eq!(fs::read(&global).unwrap(), b"unrelated global history");
+        let index: Value = serde_json::from_slice(&fs::read(index_path).unwrap()).unwrap();
+        assert!(index["entries"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn managed_codex_reads_only_original_home_and_carries_it_into_pending_refresh() {
+        let sandbox = test_env::sandbox();
+        let id = "cliagent-managed-codex-history";
+        let native_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+        create_native_session_with_source(
+            id,
+            "codex",
+            None,
+            sandbox.path(),
+            Some("test:workspace"),
+        );
+        let session = persistence::get_session(id).unwrap().unwrap();
+        let owner = NativeStorageOwner::for_session(&session).unwrap();
+        let home = owner.codex_home().unwrap();
+        let global = codex_native_app_sessions_root().join(format!("rollout-{native_id}.jsonl"));
+        fs::create_dir_all(global.parent().unwrap()).unwrap();
+        fs::write(&global, b"unrelated global history").unwrap();
+        assert!(materialized_cli_transcript_paths(&session, native_id)
+            .unwrap()
+            .is_none());
+        assert!(owner.registered_codex(&global).is_err());
+        let path = home
+            .join("sessions/2026/09/14")
+            .join(format!("rollout-{native_id}.jsonl"));
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(
+            &path,
+            format!("{{\"type\":\"session_meta\",\"payload\":{{\"id\":\"{native_id}\"}}}}\n"),
+        )
+        .unwrap();
+        persistence::update_cli_session_id_for_account(id, None, native_id).unwrap();
+        let (_, paths) = materialized_cli_transcript_paths(&session, native_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(paths.native_path, path);
+        assert_eq!(paths.runner_path, path);
+        assert_eq!(
+            owner
+                .registered_codex(&fs::canonicalize(&path).unwrap())
+                .unwrap()
+                .native_path,
+            path
+        );
+        assert!(!ensure_durable_runner_alias(&paths, native_id).unwrap());
+        persistence::request_native_catalog_refresh(id, None, native_id)
+            .unwrap()
+            .unwrap();
+        let pending = persistence::pending_native_catalog_refreshes(10)
+            .unwrap()
+            .into_iter()
+            .find(|p| p.receipt.session_id == id)
+            .unwrap();
+        let BoundNativeCatalogRefresh::Codex {
+            profile,
+            codex_home,
+            native_path,
+            ..
+        } = prepare_pending_native_catalog_refresh(pending).unwrap()
+        else {
+            panic!("Codex receipt required")
+        };
+        assert_eq!(codex_home, home);
+        assert_eq!(
+            profile,
+            codex_native_catalog::CatalogProfile::ManagedSession
+        );
+        assert_eq!(native_path, path);
+        let mut mixed = session;
+        mixed.account_id = Some("other-owner".into());
+        assert!(NativeStorageOwner::for_session(&mixed).is_err());
+        assert_eq!(fs::read(&global).unwrap(), b"unrelated global history");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn managed_native_history_rejects_symlinked_stores_before_mutation() {
+        let sandbox = test_env::sandbox();
+        let id = "cliagent-managed-symlink";
+        create_native_session_with_source(
+            id,
+            "claude_code",
+            None,
+            sandbox.path(),
+            Some("test:workspace"),
+        );
+        let home = agent_cli::managed_config::launch::native_home(id).unwrap();
+        let elsewhere = sandbox.path().join("unrelated-history");
+        fs::create_dir_all(&elsewhere).unwrap();
+        fs::create_dir_all(&home).unwrap();
+        std::os::unix::fs::symlink(&elsewhere, home.join("projects")).unwrap();
+        assert!(materialize_cli(id, &[message("u", "user", "must not write")]).is_err());
+        assert_eq!(fs::read_dir(elsewhere).unwrap().count(), 0);
+    }
+
     fn create_native_claude_session(session_id: &str, account_id: &str, repo_path: &Path) {
         create_native_session(session_id, "claude_code", Some(account_id), repo_path);
     }
@@ -3139,7 +3349,17 @@ mod tests {
         account_id: Option<&str>,
         repo_path: &Path,
     ) {
-        persistence::create_session(
+        create_native_session_with_source(session_id, cli_agent_type, account_id, repo_path, None);
+    }
+
+    fn create_native_session_with_source(
+        session_id: &str,
+        cli_agent_type: &str,
+        account_id: Option<&str>,
+        repo_path: &Path,
+        source: Option<&str>,
+    ) {
+        persistence::create_session_with_source(
             session_id,
             &persistence::CreateCodeSessionParams {
                 name: Some("Native synchronization fixture".to_string()),
@@ -3172,6 +3392,7 @@ mod tests {
                 agent_role: None,
                 product_mode: None,
             },
+            source,
         )
         .expect("create fresh native CLI episode");
     }

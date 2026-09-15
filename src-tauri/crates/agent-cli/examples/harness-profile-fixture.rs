@@ -50,6 +50,7 @@ fn main() -> Result<(), String> {
         if mapped { "claude_code" } else { &args[1] },
         agent_cli::managed_config::DirectConnection {
             profile,
+            desktop_helper: None,
             desktop_auth_scheme: None,
             key_id: "fixture".into(),
             provider: "custom_api".into(),

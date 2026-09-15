@@ -1308,3 +1308,26 @@ async fn live_native_question_round_trip_in_plan_mode() {
         "model did not consume selected answer: {text}"
     );
 }
+
+#[test]
+fn proxy_capability_is_redacted_before_error_chunks_and_turn_state() {
+    let mut p = parser();
+    let token = format!("session_{}", "a".repeat(32));
+    let message = format!("unexpected status 412 Precondition Failed: credential_store_read_failed, url: http://127.0.0.1:17930/cli/codex/{token}/v1/responses");
+    assert!(notif(
+        &mut p,
+        "error",
+        json!({"error":{"message":message},"willRetry":false})
+    )
+    .is_empty());
+    let chunks = notif(
+        &mut p,
+        "turn/completed",
+        json!({"turn":{"id":"failed-turn","status":"failed","error":{"message":message}}}),
+    );
+    let serialized = serde_json::to_string(&chunks).unwrap();
+    assert!(!serialized.contains(&token));
+    assert!(serialized.contains("credential_store_read_failed"));
+    assert!(serialized.contains("/cli/codex/secret_*******/v1/responses"));
+    assert!(!p.turn_error().unwrap().contains(&token));
+}

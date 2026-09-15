@@ -466,6 +466,24 @@ jobs:
             ${{ steps.artifacts.outputs.latest_nsis }}
             latest.json
 
+      # Publish only after the macOS and Windows installers have been uploaded.
+      # This advertises wire compatibility, not signing or live acceptance.
+      - name: Publish Market native protocol marker
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --test scripts/market-release/protocol.test.mjs
+          node scripts/market-release/protocol.mjs "$TAG" market-native-protocol.json
+          gh release view "$TAG" --json assets --jq '.assets[].name' > release-assets.txt
+          if grep -Fxq 'market-native-protocol.json' release-assets.txt; then
+            gh release download "$TAG" --pattern market-native-protocol.json --output existing-market-native-protocol.json
+            cmp market-native-protocol.json existing-market-native-protocol.json
+          else
+            gh release upload "$TAG" market-native-protocol.json
+          fi
+
   # ── Linux x64 build ───────────────────────────────────────────────────
   build-linux:
     name: Build & Release (Linux x64)

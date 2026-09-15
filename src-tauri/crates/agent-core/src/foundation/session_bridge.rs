@@ -45,6 +45,7 @@ pub struct CliLaunchParams {
     pub model: Option<String>,
     pub tier: Option<String>,
     pub account_id: Option<String>,
+    pub credential_source: Option<String>,
     pub repo_path: Option<String>,
     pub branch: Option<String>,
     pub worktree_path: Option<String>,

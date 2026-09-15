@@ -242,6 +242,7 @@ async function createConversationExecution(
     repoPath: params.target.workspaceRepoPath ?? undefined,
     model: params.target.model,
     accountId: params.target.accountId,
+    credentialSource: params.target.credentialSource,
     cliAgentType: params.target.cliAgentType,
     keySource: "own_key",
     agentDefinitionId: params.target.agentDefinitionId,

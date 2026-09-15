@@ -395,34 +395,30 @@ describe("TursoProvider.getTableSchema", () => {
     ]);
   });
 
-  it.fails(
-    "KNOWN BUG: the sqlite_master lookup compares against a double-quoted identifier, not a string literal",
-    async () => {
-      // `name="users"` is an identifier reference in SQLite, not a string.
-      // For a table named after a sqlite_master column ("name", "sql", "type",
-      // "tbl_name") the predicate degenerates to `name = name` — always true —
-      // and the CREATE statement of an unrelated table is used for the
-      // AUTOINCREMENT probe. It should be `name = 'users'` with quotes doubled.
-      // Remove this `it.fails` once the literal is quoted correctly.
-      const provider = await connected();
-      executeMock.mockResolvedValue(resultSet());
-
-      await provider.getTableSchema("users");
-
-      expect(sqlAt(1)).toBe(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='users'"
-      );
-    }
-  );
-
-  it("currently emits the double-quoted form (the defect above, pinned)", async () => {
+  it("sqlite_master lookup compares a correctly quoted string literal", async () => {
+    // `name="users"` is an identifier reference in SQLite, not a string.
+    // For a table named after a sqlite_master column ("name", "sql", "type",
+    // "tbl_name") the predicate degenerates to `name = name` — always true —
+    // and the CREATE statement of an unrelated table is used for the
+    // AUTOINCREMENT probe. It should be `name = 'users'` with quotes doubled.
     const provider = await connected();
     executeMock.mockResolvedValue(resultSet());
 
     await provider.getTableSchema("users");
 
     expect(sqlAt(1)).toBe(
-      "SELECT sql FROM sqlite_master WHERE type='table' AND name=\"users\""
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='users'"
+    );
+  });
+
+  it("escapes a quoted table name in the sqlite_master literal", async () => {
+    const provider = await connected();
+    executeMock.mockResolvedValue(resultSet());
+
+    await provider.getTableSchema("users");
+
+    expect(sqlAt(1)).toBe(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='users'"
     );
   });
 });

@@ -6,6 +6,7 @@
  */
 import type { PostgresConnectionConfig } from "../types";
 import { type TauriSqlDialect, TauriSqlProvider } from "./TauriSqlProvider";
+import { quoteIdentifier } from "./sqlSyntax";
 
 function formatPostgresValue(value: unknown): string {
   if (value === null || value === undefined) return "NULL";
@@ -22,13 +23,13 @@ const POSTGRES_DIALECT: TauriSqlDialect<PostgresConnectionConfig> = {
   type: "postgres",
   buildConnectionString(config) {
     const userPart = config.password
-      ? `${config.user}:${config.password}`
-      : config.user;
+      ? `${encodeURIComponent(config.user)}:${encodeURIComponent(config.password)}`
+      : encodeURIComponent(config.user);
     const sslMode = config.ssl ? "require" : "prefer";
-    return `postgres://${userPart}@${config.host}:${config.port}/${config.database}?sslmode=${sslMode}`;
+    return `postgres://${userPart}@${config.host}:${config.port}/${encodeURIComponent(config.database)}?sslmode=${sslMode}`;
   },
   quoteIdentifier(identifier) {
-    return `"${identifier}"`;
+    return quoteIdentifier(identifier);
   },
   formatValue: formatPostgresValue,
 };

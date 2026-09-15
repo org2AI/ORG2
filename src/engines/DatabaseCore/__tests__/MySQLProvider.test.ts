@@ -384,15 +384,13 @@ describe("MySQLProvider write SQL", () => {
     );
   });
 
-  it("does not escape a backtick inside an identifier", async () => {
-    // KNOWN DEFECT (reported): backticks in a column name are not doubled, so
-    // a hostile column name escapes the quoted-identifier context.
+  it("escapes a backtick inside an identifier", async () => {
     const provider = await connected();
     invokeMock.mockResolvedValue({ rows_affected: 1 });
 
     await provider.insert("t", { "a`, `b": 1 });
 
-    expect(sqlAt(0)).toBe("INSERT INTO `t` (`a`, `b`) VALUES (1)");
+    expect(sqlAt(0)).toBe("INSERT INTO `t` (`a``, ``b`) VALUES (1)");
   });
 
   it("translates write failures into failed ExecuteResults", async () => {

@@ -6,6 +6,7 @@
  */
 import type { MySQLConnectionConfig } from "../types";
 import { type TauriSqlDialect, TauriSqlProvider } from "./TauriSqlProvider";
+import { quoteIdentifier } from "./sqlSyntax";
 
 function formatMySqlValue(value: unknown): string {
   if (value === null || value === undefined) return "NULL";
@@ -22,13 +23,13 @@ const MYSQL_DIALECT: TauriSqlDialect<MySQLConnectionConfig> = {
   type: "mysql",
   buildConnectionString(config) {
     const userPart = config.password
-      ? `${config.user}:${config.password}`
-      : config.user;
+      ? `${encodeURIComponent(config.user)}:${encodeURIComponent(config.password)}`
+      : encodeURIComponent(config.user);
     const sslMode = config.ssl ? "REQUIRED" : "PREFERRED";
-    return `mysql://${userPart}@${config.host}:${config.port}/${config.database}?ssl-mode=${sslMode}`;
+    return `mysql://${userPart}@${config.host}:${config.port}/${encodeURIComponent(config.database)}?ssl-mode=${sslMode}`;
   },
   quoteIdentifier(identifier) {
-    return `\`${identifier}\``;
+    return quoteIdentifier(identifier, "`");
   },
   formatValue: formatMySqlValue,
 };

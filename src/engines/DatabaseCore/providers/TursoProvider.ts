@@ -16,6 +16,7 @@ import type {
   TableInfo,
   TursoConnectionConfig,
 } from "../types";
+import { quoteIdentifier, quoteLiteral } from "./sqlSyntax";
 
 function toInValues(values: unknown[]): InValue[] {
   return values.map((v) => (v === undefined ? null : (v as InValue)));
@@ -92,7 +93,7 @@ export class TursoProvider implements IDatabaseService {
       if (table.type === "table") {
         try {
           const countResult = await this.client!.execute(
-            `SELECT COUNT(*) as count FROM "${table.name}"`
+            `SELECT COUNT(*) as count FROM ${quoteIdentifier(table.name)}`
           );
           if (countResult.rows.length > 0) {
             table.rowCount = Number(countResult.rows[0].count);
@@ -110,11 +111,11 @@ export class TursoProvider implements IDatabaseService {
     this.ensureConnected();
 
     const result = await this.client!.execute(
-      `PRAGMA table_info("${tableName}")`
+      `PRAGMA table_info(${quoteIdentifier(tableName)})`
     );
 
     const createResult = await this.client!.execute(
-      `SELECT sql FROM sqlite_master WHERE type='table' AND name="${tableName}"`
+      `SELECT sql FROM sqlite_master WHERE type='table' AND name=${quoteLiteral(tableName)}`
     );
     const createSql =
       createResult.rows.length > 0
@@ -160,9 +161,9 @@ export class TursoProvider implements IDatabaseService {
     } = options;
     const offset = (page - 1) * pageSize;
 
-    let sql = `SELECT * FROM "${tableName}"`;
+    let sql = `SELECT * FROM ${quoteIdentifier(tableName)}`;
     if (orderBy) {
-      sql += ` ORDER BY "${orderBy}" ${orderDirection.toUpperCase()}`;
+      sql += ` ORDER BY ${quoteIdentifier(orderBy)} ${orderDirection.toUpperCase()}`;
     }
     sql += ` LIMIT ${pageSize} OFFSET ${offset}`;
 
@@ -171,7 +172,7 @@ export class TursoProvider implements IDatabaseService {
     const duration = performance.now() - startTime;
 
     const countResult = await this.client!.execute(
-      `SELECT COUNT(*) as count FROM "${tableName}"`
+      `SELECT COUNT(*) as count FROM ${quoteIdentifier(tableName)}`
     );
     const totalCount =
       countResult.rows.length > 0 ? Number(countResult.rows[0].count) : 0;
@@ -253,7 +254,7 @@ export class TursoProvider implements IDatabaseService {
     const placeholders = columns.map(() => "?").join(", ");
     const values = Object.values(data);
 
-    const sql = `INSERT INTO "${tableName}" (${columns.map((col) => `"${col}"`).join(", ")}) VALUES (${placeholders})`;
+    const sql = `INSERT INTO ${quoteIdentifier(tableName)} (${columns.map((col) => `${quoteIdentifier(col)}`).join(", ")}) VALUES (${placeholders})`;
     const startTime = performance.now();
 
     try {
@@ -285,13 +286,13 @@ export class TursoProvider implements IDatabaseService {
     this.ensureConnected();
 
     const setClauses = Object.keys(data)
-      .map((col) => `"${col}" = ?`)
+      .map((col) => `${quoteIdentifier(col)} = ?`)
       .join(", ");
     const whereClauses = Object.keys(where)
-      .map((col) => `"${col}" = ?`)
+      .map((col) => `${quoteIdentifier(col)} = ?`)
       .join(" AND ");
 
-    const sql = `UPDATE "${tableName}" SET ${setClauses} WHERE ${whereClauses}`;
+    const sql = `UPDATE ${quoteIdentifier(tableName)} SET ${setClauses} WHERE ${whereClauses}`;
     const values = [...Object.values(data), ...Object.values(where)];
     const startTime = performance.now();
 
@@ -316,10 +317,10 @@ export class TursoProvider implements IDatabaseService {
     this.ensureConnected();
 
     const whereClauses = Object.keys(where)
-      .map((col) => `"${col}" = ?`)
+      .map((col) => `${quoteIdentifier(col)} = ?`)
       .join(" AND ");
 
-    const sql = `DELETE FROM "${tableName}" WHERE ${whereClauses}`;
+    const sql = `DELETE FROM ${quoteIdentifier(tableName)} WHERE ${whereClauses}`;
     const startTime = performance.now();
 
     try {

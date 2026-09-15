@@ -93,11 +93,9 @@ describe("PostgresProvider connection string", () => {
     );
   });
 
-  it("does not URL-encode credentials — a password with @ or / corrupts the DSN", async () => {
-    // KNOWN DEFECT (reported): buildConnectionString interpolates the raw
-    // password, so reserved URI characters silently redirect the host.
+  it("URL-encodes credentials containing reserved URI characters", async () => {
     const provider = makeProvider({ password: "p@ss/word" });
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue(baseConfig.id);
 
     await provider.connect();
 
@@ -105,7 +103,7 @@ describe("PostgresProvider connection string", () => {
       connectionString: string;
     };
     expect(connectionString).toBe(
-      "postgres://admin:p@ss/word@db.example.com:5432/app?sslmode=prefer"
+      "postgres://admin:p%40ss%2Fword@db.example.com:5432/app?sslmode=prefer"
     );
   });
 });
@@ -322,16 +320,14 @@ describe("PostgresProvider.getTableData SQL", () => {
     expect(result.totalCount).toBeUndefined();
   });
 
-  it("does not quote-escape the table identifier", async () => {
-    // KNOWN DEFECT (reported): an embedded double quote is not doubled, so a
-    // hostile identifier escapes the quoted-identifier context.
+  it("quote-escapes the table identifier", async () => {
     const provider = await connected();
     invokeMock.mockResolvedValue(emptyQueryResult);
 
     await provider.getTableData('users" ; DROP TABLE secrets --');
 
     expect(sqlAt(0)).toBe(
-      'SELECT * FROM "users" ; DROP TABLE secrets --" LIMIT 100 OFFSET 0'
+      'SELECT * FROM "users"" ; DROP TABLE secrets --" LIMIT 100 OFFSET 0'
     );
   });
 });

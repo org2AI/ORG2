@@ -7,6 +7,10 @@
 
 use std::time::Instant;
 
+fn quote_identifier(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\"\""))
+}
+
 use rusqlite::{params_from_iter, Connection, Result as SqliteResult};
 
 use super::types::{
@@ -79,7 +83,10 @@ pub fn get_tables(conn: &Connection) -> SqliteResult<Vec<TableInfo>> {
 }
 
 pub fn get_table_schema(conn: &Connection, table_name: &str) -> SqliteResult<Vec<ColumnInfo>> {
-    let mut stmt = conn.prepare(&format!("PRAGMA table_info(\"{}\")", table_name))?;
+    let mut stmt = conn.prepare(&format!(
+        "PRAGMA table_info({})",
+        quote_identifier(table_name)
+    ))?;
     let col_count = stmt.column_count();
     let rows = collect_rows(&mut stmt, col_count)?;
 
@@ -162,14 +169,14 @@ pub fn get_table_data(
         .and_then(|o| o.order_direction.as_deref())
         .unwrap_or("asc");
 
-    let mut sql = format!("SELECT * FROM \"{}\"", table_name);
+    let mut sql = format!("SELECT * FROM {}", quote_identifier(table_name));
     if let Some(col) = order_by {
         let dir = if order_dir.to_lowercase() == "desc" {
             "DESC"
         } else {
             "ASC"
         };
-        sql += &format!(" ORDER BY \"{}\" {}", col, dir);
+        sql += &format!(" ORDER BY {} {}", quote_identifier(col), dir);
     }
     sql += &format!(" LIMIT {} OFFSET {}", page_size, offset);
 
@@ -184,7 +191,7 @@ pub fn get_table_data(
     // Total count for pagination
     let total_count: i64 = conn
         .query_row(
-            &format!("SELECT COUNT(*) FROM \"{}\"", table_name),
+            &format!("SELECT COUNT(*) FROM {}", quote_identifier(table_name)),
             [],
             |row| row.get(0),
         )
@@ -266,13 +273,15 @@ pub fn insert(
     let placeholders = columns.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
     let col_list = columns
         .iter()
-        .map(|c| format!("\"{}\"", c))
+        .map(|c| quote_identifier(c))
         .collect::<Vec<_>>()
         .join(", ");
 
     let sql = format!(
-        "INSERT INTO \"{}\" ({}) VALUES ({})",
-        table_name, col_list, placeholders
+        "INSERT INTO {} ({}) VALUES ({})",
+        quote_identifier(table_name),
+        col_list,
+        placeholders
     );
 
     let start = Instant::now();
@@ -309,10 +318,13 @@ pub fn update(
     let set_cols: Vec<&String> = data.keys().collect();
     let where_cols: Vec<&String> = where_clause.keys().collect();
 
-    let set_clauses: Vec<String> = set_cols.iter().map(|c| format!("\"{}\" = ?", c)).collect();
+    let set_clauses: Vec<String> = set_cols
+        .iter()
+        .map(|c| format!("{} = ?", quote_identifier(c)))
+        .collect();
     let where_clauses: Vec<String> = where_cols
         .iter()
-        .map(|c| format!("\"{}\" = ?", c))
+        .map(|c| format!("{} = ?", quote_identifier(c)))
         .collect();
 
     let mut values: Vec<rusqlite::types::Value> = set_cols
@@ -326,8 +338,8 @@ pub fn update(
     );
 
     let sql = format!(
-        "UPDATE \"{}\" SET {} WHERE {}",
-        table_name,
+        "UPDATE {} SET {} WHERE {}",
+        quote_identifier(table_name),
         set_clauses.join(", "),
         where_clauses.join(" AND ")
     );
@@ -365,7 +377,7 @@ pub fn delete(
     let where_cols: Vec<&String> = where_clause.keys().collect();
     let clauses: Vec<String> = where_cols
         .iter()
-        .map(|c| format!("\"{}\" = ?", c))
+        .map(|c| format!("{} = ?", quote_identifier(c)))
         .collect();
     let values: Vec<rusqlite::types::Value> = where_cols
         .iter()
@@ -373,8 +385,8 @@ pub fn delete(
         .collect();
 
     let sql = format!(
-        "DELETE FROM \"{}\" WHERE {}",
-        table_name,
+        "DELETE FROM {} WHERE {}",
+        quote_identifier(table_name),
         clauses.join(" AND ")
     );
 
@@ -744,8 +756,11 @@ mod tests {
         assert_eq!(result.rows_affected, 1);
         assert_eq!(result.last_insert_id, Some(4));
 
-        let row = query(&conn, "SELECT nickname, score FROM users WHERE name = 'dave'")
-            .expect("read back");
+        let row = query(
+            &conn,
+            "SELECT nickname, score FROM users WHERE name = 'dave'",
+        )
+        .expect("read back");
         assert_eq!(row.values[0], vec![serde_json::Value::Null, json!(9.5)]);
     }
 
@@ -820,9 +835,15 @@ mod tests {
         // UPDATE does not produce a new rowid.
         assert_eq!(result.last_insert_id, None);
 
-        let rows = query(&conn, "SELECT name, score, nickname FROM users ORDER BY name")
-            .expect("read back");
-        assert_eq!(rows.values[0], vec![json!("alice"), json!(10.0), json!("zz")]);
+        let rows = query(
+            &conn,
+            "SELECT name, score, nickname FROM users ORDER BY name",
+        )
+        .expect("read back");
+        assert_eq!(
+            rows.values[0],
+            vec![json!("alice"), json!(10.0), json!("zz")]
+        );
         assert_eq!(rows.values[1][1], json!(2.25), "other rows untouched");
     }
 
@@ -907,6 +928,51 @@ mod tests {
 
         assert!(!result.success);
         assert!(result.error.unwrap().contains("no such column"));
+    }
+
+    #[test]
+    fn quoted_identifiers_work_across_schema_page_and_mutations() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE \"a\"\"b\" (\"c\"\"d\" TEXT)")
+            .unwrap();
+        let table = "a\"b";
+        let column = "c\"d";
+        assert!(
+            insert(&conn, table, &map(&[(column, json!("first"))]))
+                .unwrap()
+                .success
+        );
+        assert_eq!(get_table_schema(&conn, table).unwrap()[0].name, column);
+        let options = QueryOptions {
+            page: Some(1),
+            page_size: Some(100),
+            order_by: Some(column.into()),
+            order_direction: None,
+        };
+        assert_eq!(
+            get_table_data(&conn, table, Some(&options)).unwrap().values[0][0],
+            json!("first")
+        );
+        assert!(
+            update(
+                &conn,
+                table,
+                &map(&[(column, json!("second"))]),
+                &map(&[(column, json!("first"))])
+            )
+            .unwrap()
+            .success
+        );
+        assert_eq!(
+            delete(&conn, table, &map(&[(column, json!("second"))]))
+                .unwrap()
+                .rows_affected,
+            1
+        );
+        assert_eq!(
+            get_table_data(&conn, table, None).unwrap().total_count,
+            Some(0)
+        );
     }
 
     // ---------- file validation ----------

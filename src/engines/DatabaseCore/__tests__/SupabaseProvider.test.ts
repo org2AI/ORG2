@@ -395,15 +395,13 @@ describe("SupabaseProvider.getTableSchema", () => {
     ]);
   });
 
-  it("does not escape quotes in the table name it interpolates", async () => {
-    // KNOWN DEFECT (reported): tableName lands inside a single-quoted SQL
-    // literal with no escaping, so an apostrophe breaks (or rewrites) the query.
+  it("escapes quotes in the table-name literal", async () => {
     const provider = await connected();
     curlExecuteMock.mockResolvedValue(ok([]));
 
     await provider.getTableSchema("x' OR '1'='1");
 
-    expect(sqlAt(0)).toContain("AND c.table_name = 'x' OR '1'='1'");
+    expect(sqlAt(0)).toContain("AND c.table_name = 'x'' OR ''1''=''1'");
   });
 });
 

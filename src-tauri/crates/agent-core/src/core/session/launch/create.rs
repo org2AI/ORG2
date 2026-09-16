@@ -1,4 +1,4 @@
-//! Session creation logic.
+//! Persisted session creation owned by the launch application service.
 
 use crate::definitions::prefix_lookup::PENDING_SESSION_PLACEHOLDER;
 use crate::session::persistence as session_persistence;
@@ -24,39 +24,72 @@ pub(super) fn resolve_session_prefix(
     )
 }
 
-/// Helper: build a fresh Rust-agent session row + `SessionRuntime`.
-///
-/// Called from `session_launch_impl` (the unified create + send Tauri
-/// command). The retired `agent_create_session` command used to be the
-/// other caller before the unified launch landed — see commit history.
-#[allow(clippy::too_many_arguments)]
-pub(crate) async fn create_session_impl(
-    agent_type: Option<String>,
-    workspace_path: String,
-    model: Option<String>,
-    account_id: Option<String>,
-    name: Option<String>,
-    org_id: Option<String>,
-    project_id: Option<String>,
-    project_name: Option<String>,
-    work_item_id: Option<String>,
-    agent_role: Option<String>,
-    worktree_path: Option<String>,
-    project_slug: Option<String>,
-    agent_definition_id: Option<String>,
-    key_source: Option<String>,
-    agent_exec_mode: Option<String>,
-    product_mode: Option<String>,
-    native_harness_type: Option<String>,
-    parent_session_id: Option<String>,
-    durable_session_key: Option<String>,
-) -> Result<serde_json::Value, String> {
+/// Internal creation result. No serialization/JSON lookup is involved between
+/// creation and launch; the command adapter owns external response serialization.
+pub(super) struct CreatedSession {
+    pub session_id: String,
+    pub product_mode: Option<String>,
+}
+
+pub(super) struct CreateSessionRequest {
+    pub agent_type: Option<String>,
+    pub workspace_path: String,
+    pub model: Option<String>,
+    pub account_id: Option<String>,
+    pub name: Option<String>,
+    pub org_id: Option<String>,
+    pub project_id: Option<String>,
+    pub project_name: Option<String>,
+    pub work_item_id: Option<String>,
+    pub agent_role: Option<String>,
+    pub worktree_path: Option<String>,
+    pub project_slug: Option<String>,
+    pub agent_definition_id: Option<String>,
+    pub key_source: Option<String>,
+    pub agent_exec_mode: Option<String>,
+    pub product_mode: Option<String>,
+    pub native_harness_type: Option<String>,
+    pub parent_session_id: Option<String>,
+    pub durable_session_key: Option<String>,
+}
+
+/// Create or recover the durable session row before runtime materialization.
+pub(super) async fn create_session(
+    request: CreateSessionRequest,
+) -> Result<CreatedSession, String> {
+    tokio::task::spawn_blocking(move || create_session_on_worker(request))
+        .await
+        .map_err(|error| format!("Session creation worker failed: {error}"))?
+}
+
+fn create_session_on_worker(request: CreateSessionRequest) -> Result<CreatedSession, String> {
+    let CreateSessionRequest {
+        agent_type,
+        workspace_path,
+        model,
+        account_id,
+        name,
+        org_id,
+        project_id,
+        project_name,
+        work_item_id,
+        agent_role,
+        worktree_path,
+        project_slug,
+        agent_definition_id,
+        key_source,
+        agent_exec_mode,
+        product_mode,
+        native_harness_type,
+        parent_session_id,
+        durable_session_key,
+    } = request;
     // Trace the incoming key_source so drift between frontend and
     // backend posture is visible in logs. The field is now persisted
     // end-to-end on the rust-agent path (`agent_sessions.key_source`
     // column + typed `UnifiedSessionRecord.key_source`), wired below.
     if let Some(ref ks) = key_source {
-        tracing::debug!(key_source = %ks, "[session] create_session_impl key_source");
+        tracing::debug!(key_source = %ks, "[session] create_session key_source");
     }
 
     // Wire-typo guard for `key_source` — same fail-closed posture as the
@@ -210,10 +243,7 @@ pub(crate) async fn create_session_impl(
         };
         let resolved_product_mode = session.product_mode.clone();
 
-        tokio::task::spawn_blocking(move || session_persistence::upsert_session(&session))
-            .await
-            .map_err(|err| err.to_string())?
-            .map_err(|err| err.to_string())?;
+        session_persistence::upsert_session(&session).map_err(|err| err.to_string())?;
 
         tracing::info!("[agent_session] Created session: {}", session_id);
         resolved_product_mode
@@ -223,7 +253,7 @@ pub(crate) async fn create_session_impl(
         let sid = session_id.clone();
         let wid = wid.clone();
         let slug = slug_for_link;
-        let link_result = tokio::task::spawn_blocking(move || {
+        let link_result = (|| {
             use project_management::orchestrator::state_machine;
             use project_management::projects::io as projects_io;
 
@@ -257,28 +287,96 @@ pub(crate) async fn create_session_impl(
                 }
                 Err("Work item not found in any project".to_string())
             }
-        })
-        .await;
+        })();
         match link_result {
-            Ok(Ok(())) => {}
-            Ok(Err(err)) => {
-                tracing::error!(
-                    "[agent_session] Failed to replace pending session link: {}",
-                    err
-                );
-            }
+            Ok(()) => {}
             Err(err) => {
                 tracing::error!(
-                    "[agent_session] Task panicked replacing pending link: {}",
+                    "[agent_session] Failed to replace pending session link: {}",
                     err
                 );
             }
         }
     }
 
-    Ok(serde_json::json!({
-        "sessionId": session_id,
-        "workspacePath": workspace_path,
-        "productMode": resolved_product_mode,
-    }))
+    Ok(CreatedSession {
+        session_id,
+        product_mode: resolved_product_mode,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn request(workspace: &Path) -> CreateSessionRequest {
+        CreateSessionRequest {
+            agent_type: None,
+            workspace_path: workspace.to_string_lossy().into_owned(),
+            model: Some("test-model".into()),
+            account_id: Some("test-account".into()),
+            name: Some("typed creation".into()),
+            org_id: None,
+            project_id: None,
+            project_name: None,
+            work_item_id: None,
+            agent_role: None,
+            worktree_path: None,
+            project_slug: None,
+            agent_definition_id: Some(crate::definitions::SDE_AGENT_ID.into()),
+            key_source: Some("own_key".into()),
+            agent_exec_mode: Some("ask".into()),
+            product_mode: Some("ask".into()),
+            native_harness_type: None,
+            parent_session_id: None,
+            durable_session_key: Some("typed_create_regression".into()),
+        }
+    }
+
+    use std::path::Path;
+
+    #[tokio::test]
+    async fn typed_creation_persists_and_reuses_the_same_session_without_resetting_draft() {
+        let _sandbox = test_helpers::test_env::sandbox();
+        let workspace = tempfile::tempdir().unwrap();
+        {
+            let conn = database::db::get_connection().unwrap();
+            crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+            session_persistence::init(&conn).unwrap();
+        }
+        let created = create_session(request(workspace.path())).await.unwrap();
+        assert_eq!(created.product_mode.as_deref(), Some("ask"));
+        let row = session_persistence::get_session(&created.session_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.model.as_deref(), Some("test-model"));
+        assert_eq!(row.account_id.as_deref(), Some("test-account"));
+        assert_eq!(row.agent_exec_mode.as_deref(), Some("ask"));
+        session_persistence::update_draft_text(&created.session_id, Some("keep draft")).unwrap();
+        let again = create_session(request(workspace.path())).await.unwrap();
+        assert_eq!(again.session_id, created.session_id);
+        let row = session_persistence::get_session(&again.session_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.draft_text.as_deref(), Some("keep draft"));
+    }
+
+    #[tokio::test]
+    async fn invalid_creation_is_rejected_before_any_session_row_exists() {
+        let _sandbox = test_helpers::test_env::sandbox();
+        let workspace = tempfile::tempdir().unwrap();
+        let mut invalid = request(workspace.path());
+        invalid.key_source = Some("invalid-key-source".into());
+        let error = create_session(invalid)
+            .await
+            .err()
+            .expect("invalid key must fail");
+        assert!(error.contains("Unknown key_source"));
+        let conn = database::db::get_connection().unwrap();
+        crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM agent_sessions", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+    }
 }

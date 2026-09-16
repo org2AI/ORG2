@@ -483,18 +483,15 @@ async fn dispatch_snapshotted_session_launch(
     run: &project_management::projects::types::WorkItemRun,
     launch_snapshot: serde_json::Value,
 ) -> Result<String, String> {
-    let mut params: crate::state::commands::session::launch::SessionLaunchParams =
+    let mut params: crate::session::launch::service::SessionLaunchRequest =
         serde_json::from_value(launch_snapshot)
             .map_err(|err| format!("invalid durable session launch snapshot: {err}"))?;
     params.durable_run_id = Some(run.id.clone());
     let state = app.state::<crate::state::AgentAppState>();
     let org_store = app.state::<std::sync::Arc<crate::definitions::orgs::AgentOrgsStore>>();
-    let result = crate::state::commands::session::launch::session_launch_impl(
-        &state,
-        Some(org_store.inner()),
-        params,
-    )
-    .await?;
+    let result =
+        crate::session::launch::service::launch_session(&state, Some(org_store.inner()), params)
+            .await?;
     Ok(result.session_id)
 }
 

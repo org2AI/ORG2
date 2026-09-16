@@ -6,11 +6,13 @@
 //! wire/domain DTOs into `AgentRunLaunchRequest` instead of duplicating session
 //! creation or first-turn startup logic.
 
+mod create;
 mod launch_helpers;
 mod launch_org;
 #[cfg(test)]
 mod launch_tests;
 mod launch_workspace;
+pub mod service;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -655,36 +657,32 @@ pub(crate) async fn launch_rust_agent_run(
         _ => None,
     };
 
-    let create_result = crate::state::commands::session::create::create_session_impl(
-        None,
-        workspace_path.clone(),
-        request.resources.model.clone(),
-        request.resources.account_id.clone(),
-        Some(name.clone()),
-        Some(request.org_context.org_id.clone()),
-        request.org_context.project_id.clone(),
-        request.org_context.project_name.clone(),
-        work_item_id.clone(),
-        agent_role.clone(),
-        existing_worktree_path.clone(),
-        project_slug.clone(),
-        agent_definition_id.clone(),
-        request.resources.key_source.clone(),
-        request.mode.clone(),
-        request.product_mode.clone(),
-        request.resources.native_harness_type.clone(),
-        request.parent_session_id.clone(),
-        org_session_key
+    let create_result = create::create_session(create::CreateSessionRequest {
+        agent_type: None,
+        workspace_path: workspace_path.clone(),
+        model: request.resources.model.clone(),
+        account_id: request.resources.account_id.clone(),
+        name: Some(name.clone()),
+        org_id: Some(request.org_context.org_id.clone()),
+        project_id: request.org_context.project_id.clone(),
+        project_name: request.org_context.project_name.clone(),
+        work_item_id: work_item_id.clone(),
+        agent_role: agent_role.clone(),
+        worktree_path: existing_worktree_path.clone(),
+        project_slug: project_slug.clone(),
+        agent_definition_id: agent_definition_id.clone(),
+        key_source: request.resources.key_source.clone(),
+        agent_exec_mode: request.mode.clone(),
+        product_mode: request.product_mode.clone(),
+        native_harness_type: request.resources.native_harness_type.clone(),
+        parent_session_id: request.parent_session_id.clone(),
+        durable_session_key: org_session_key
             .clone()
             .or_else(|| request.durable_run_id.clone()),
-    )
+    })
     .await?;
 
-    let session_id = create_result
-        .get("sessionId")
-        .and_then(|value| value.as_str())
-        .ok_or("create_session_impl did not return sessionId")?
-        .to_string();
+    let session_id = create_result.session_id;
     if let Some(expected_session_id) = expected_root_session_id.as_deref() {
         if session_id != expected_session_id {
             return Err(format!(
@@ -692,10 +690,7 @@ pub(crate) async fn launch_rust_agent_run(
             ));
         }
     }
-    let resolved_product_mode = create_result
-        .get("productMode")
-        .and_then(|value| value.as_str())
-        .map(str::to_string);
+    let resolved_product_mode = create_result.product_mode;
 
     if starting_params.is_some() {
         persistence::update_org_member_id(&session_id, COORDINATOR_MEMBER_ID)

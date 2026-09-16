@@ -11,7 +11,6 @@ pub mod channel;
 mod coding;
 pub(crate) mod common;
 mod compaction;
-pub(crate) mod create;
 pub mod debug;
 mod follow_up_suggestions;
 mod gateway_cmds;

@@ -15,6 +15,7 @@
 //! - `diagnostics`: the bounded `publishDiagnostics` cache
 //! - `helpers`: pure-logic helpers (URI parsing, framing, sync-kind resolution)
 
+mod control;
 mod diagnostics;
 mod documents;
 mod features;
@@ -27,6 +28,7 @@ mod transport;
 // the split — `lsp::server::LspServer` plus the `pub(crate)` helpers the
 // crate's test modules reach for via `crate::server::…`.
 pub use lifecycle::LspServer;
+pub use transport::PendingResponse;
 
 // In a non-test build every consumer of these already lives inside
 // `server/` and imports the defining submodule directly, so rustc sees
@@ -49,9 +51,12 @@ pub(crate) use self::{
 mod tests;
 
 // `drain_pending_on_close` is exercised by the integration harness
-// in `tests/server_integration_tests.rs`, which wires a stub child
-// process via `tokio::io::duplex` to drive the EOF path without a
-// real LSP binary on disk.
+// in `tests/server_integration_tests.rs` with response channels; the
+// real stdio lifecycle is covered separately below.
 #[cfg(test)]
 #[path = "../tests/server_integration_tests.rs"]
 mod integration_tests;
+
+#[cfg(all(test, unix))]
+#[path = "../tests/stdio_lifecycle_tests.rs"]
+mod stdio_lifecycle_tests;

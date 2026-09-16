@@ -27,7 +27,7 @@
 
 #![cfg(debug_assertions)]
 
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::Json;
 use serde_json::json;
 use tauri::Manager;
@@ -70,15 +70,15 @@ pub async fn test_lsp_start(Json(body): Json<serde_json::Value>) -> Json<serde_j
         Err(error) => return err(error),
     };
 
-    let manager = manager_arc.lock().await;
+    let manager = manager_arc.lock().await.clone();
     match manager.start_server(&language, &root_path, handle).await {
-        Ok(()) => Json(json!({"ok": true})),
+        Ok(_) => Json(json!({"ok": true})),
         Err(error) => Json(json!({"ok": false, "error": error})),
     }
 }
 
 /// `POST /agent/test/lsp/stop`
-/// Body: `{ "language": "typescript" }`
+/// Body: `{ "language": "typescript", "root_path": "/abs/path" }`
 pub async fn test_lsp_stop(Json(body): Json<serde_json::Value>) -> Json<serde_json::Value> {
     let language = match body.get("language").and_then(|v| v.as_str()) {
         Some(s) if !s.is_empty() => s.to_string(),
@@ -88,8 +88,14 @@ pub async fn test_lsp_stop(Json(body): Json<serde_json::Value>) -> Json<serde_js
         Ok(arc) => arc,
         Err(error) => return err(error),
     };
-    let manager = manager_arc.lock().await;
-    match manager.stop_server(&language).await {
+    let Some(root) = body.get("root_path").and_then(|v| v.as_str()) else {
+        return err("root_path is required");
+    };
+    let Some(key) = server_key_for_language(&language, root) else {
+        return err("Unknown language");
+    };
+    let manager = manager_arc.lock().await.clone();
+    match manager.stop_server(&key).await {
         Ok(()) => Json(json!({"ok": true})),
         Err(error) => Json(json!({"ok": false, "error": error})),
     }
@@ -102,7 +108,7 @@ pub async fn test_lsp_running() -> Json<serde_json::Value> {
         Ok(arc) => arc,
         Err(error) => return err(error),
     };
-    let manager = manager_arc.lock().await;
+    let manager = manager_arc.lock().await.clone();
     let languages = manager.get_running_servers().await;
     Json(json!({"ok": true, "languages": languages}))
 }
@@ -132,14 +138,24 @@ pub async fn test_lsp_did_open(Json(body): Json<serde_json::Value>) -> Json<serd
         Ok(arc) => arc,
         Err(error) => return err(error),
     };
-    let manager = manager_arc.lock().await;
-    match manager.did_open(&language, &uri, version, &text).await {
+    let Some(root) = body.get("root_path").and_then(|v| v.as_str()) else {
+        return err("root_path is required");
+    };
+    let Some(key) = server_key_for_language(&language, root) else {
+        return err("Unknown language");
+    };
+    let manager = manager_arc.lock().await.clone();
+    let server = match manager.server(&key).await {
+        Ok(server) => server,
+        Err(error) => return err(error),
+    };
+    match server.did_open(&uri, &language, version, &text).await {
         Ok(()) => Json(json!({"ok": true})),
         Err(error) => Json(json!({"ok": false, "error": error})),
     }
 }
 
-/// `GET /agent/test/lsp/log/{language}`
+/// `GET /agent/test/lsp/log/{language}?root_path=...`
 /// Response shape:
 /// ```json
 /// {
@@ -149,13 +165,22 @@ pub async fn test_lsp_did_open(Json(body): Json<serde_json::Value>) -> Json<serd
 ///   "sample": [{ "tsMs": 1700..., "kind": "std_out", "line": "..." }]
 /// }
 /// ```
-pub async fn test_lsp_log(Path(language): Path<String>) -> Json<serde_json::Value> {
+pub async fn test_lsp_log(
+    Path(language): Path<String>,
+    Query(query): Query<std::collections::HashMap<String, String>>,
+) -> Json<serde_json::Value> {
     let manager_arc = match lsp_manager_arc() {
         Ok(arc) => arc,
         Err(error) => return err(error),
     };
-    let manager = manager_arc.lock().await;
-    let lines = manager.get_server_log(&language).await;
+    let manager = manager_arc.lock().await.clone();
+    let Some(root) = query.get("root_path") else {
+        return err("root_path is required");
+    };
+    let Some(key) = server_key_for_language(&language, root) else {
+        return err("Unknown language");
+    };
+    let lines = manager.get_server_log(&key).await;
 
     let mut std_in = 0u32;
     let mut std_out = 0u32;
@@ -221,7 +246,7 @@ pub async fn test_lsp_seed_broken(Json(body): Json<serde_json::Value>) -> Json<s
         Ok(arc) => arc,
         Err(error) => return err(error),
     };
-    let manager = manager_arc.lock().await;
+    let manager = manager_arc.lock().await.clone();
     manager.seed_broken_for_test(key, error_msg).await;
     Json(json!({"ok": true}))
 }

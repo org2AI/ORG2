@@ -107,8 +107,8 @@ impl ManageLspTool {
         let installed_servers = lsp_check_installed().await;
 
         let running_servers = {
-            let manager = self.lsp_manager.lock().await;
-            manager.get_running_servers().await
+            let manager = self.lsp_manager.lock().await.clone();
+            manager.running_at(&workspace_path).await
         };
         let running_server_set: HashSet<String> = running_servers.into_iter().collect();
 
@@ -150,8 +150,10 @@ impl ManageLspTool {
 
     async fn execute_running(&self) -> Result<String, ToolError> {
         let mut running_servers = {
-            let manager = self.lsp_manager.lock().await;
-            manager.get_running_servers().await
+            let manager = self.lsp_manager.lock().await.clone();
+            manager
+                .running_at(&self.workspace_root.to_string_lossy())
+                .await
         };
         running_servers.sort();
 
@@ -167,8 +169,13 @@ impl ManageLspTool {
         let workspace_config = lsp_get_workspace_config(workspace_path.clone());
         let server_info = self.find_language_info(&language).await?;
         let running = {
-            let manager = self.lsp_manager.lock().await;
-            manager.is_server_running(&language).await
+            let manager = self.lsp_manager.lock().await.clone();
+            manager
+                .is_server_running(&lsp::ServerKey::new(
+                    &workspace_path,
+                    canonical_server_id(&language),
+                ))
+                .await
         };
 
         let status = ManagedLspStatusResult {
@@ -236,12 +243,17 @@ impl ManageLspTool {
         let root_path = self.resolve_root_path(params);
 
         let running = {
-            let manager = self.lsp_manager.lock().await;
+            let manager = self.lsp_manager.lock().await.clone();
             manager
                 .start_server(&language, &root_path, self.app_handle.clone())
                 .await
                 .map_err(ToolError::ExecutionFailed)?;
-            manager.is_server_running(&language).await
+            manager
+                .is_server_running(&lsp::ServerKey::new(
+                    &root_path,
+                    canonical_server_id(&language),
+                ))
+                .await
         };
 
         serialize_pretty(&json!({
@@ -253,14 +265,23 @@ impl ManageLspTool {
 
     async fn execute_stop(&self, params: &Value) -> Result<String, ToolError> {
         let language = self.require_language(params)?;
+        let root_path = self.resolve_root_path(params);
 
         let running = {
-            let manager = self.lsp_manager.lock().await;
+            let manager = self.lsp_manager.lock().await.clone();
             manager
-                .stop_server(&language)
+                .stop_server(&lsp::ServerKey::new(
+                    &root_path,
+                    canonical_server_id(&language),
+                ))
                 .await
                 .map_err(ToolError::ExecutionFailed)?;
-            manager.is_server_running(&language).await
+            manager
+                .is_server_running(&lsp::ServerKey::new(
+                    &root_path,
+                    canonical_server_id(&language),
+                ))
+                .await
         };
 
         serialize_pretty(&json!({

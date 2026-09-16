@@ -1,230 +1,211 @@
-//! JSON-RPC transport: framed writes to the child's stdin, request-ID
-//! allocation, response correlation via `pending_requests`, and the
-//! typed request/notification convenience wrappers.
+//! Bounded JSON-RPC transport with owned request registrations.
+use super::{
+    control::{Stop, WriteGuard},
+    helpers::strip_framing_prefix,
+    lifecycle::LspServer,
+};
+use crate::protocol::*;
+use std::{
+    collections::HashMap,
+    sync::{atomic::Ordering, Arc},
+    time::Duration,
+};
+use tokio::{io::AsyncWriteExt, sync::oneshot};
 
-use std::collections::HashMap;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::AsyncWriteExt;
-use tokio::sync::oneshot;
+pub(super) type RpcResult = Result<serde_json::Value, JsonRpcError>;
+pub(super) type Pending = Arc<parking_lot::Mutex<HashMap<u64, oneshot::Sender<RpcResult>>>>;
+const WRITE_TIMEOUT: Duration = Duration::from_secs(5);
+const CANCEL_TIMEOUT: Duration = Duration::from_millis(100);
+const MAX_PENDING: usize = 256;
 
-use super::super::protocol::*;
-use super::helpers::strip_framing_prefix;
-use super::lifecycle::LspServer;
+/// Owns the registration until response, timeout, or caller cancellation.
+pub struct PendingResponse {
+    id: u64,
+    pending: Pending,
+    receiver: oneshot::Receiver<RpcResult>,
+    stdin: Arc<tokio::sync::Mutex<Option<tokio::process::ChildStdin>>>,
+    stop: Arc<Stop>,
+    cancel_slots: Arc<tokio::sync::Semaphore>,
+}
+impl Drop for PendingResponse {
+    fn drop(&mut self) {
+        let abandoned = self.pending.lock().remove(&self.id).is_some();
+        if abandoned && !self.stop.is_closed() {
+            let Ok(permit) = self.cancel_slots.clone().try_acquire_owned() else {
+                return;
+            };
+            if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+                let stdin = self.stdin.clone();
+                let stop = self.stop.clone();
+                let id = self.id;
+                runtime.spawn(async move {
+                    let _permit = permit;
+                    let body=serde_json::json!({"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":id}}).to_string();
+                    let _=tokio::time::timeout(CANCEL_TIMEOUT,write_frame(&stdin,&stop,&format_lsp_message(&body))).await;
+                });
+            }
+        }
+    }
+}
+impl PendingResponse {
+    pub async fn receive(mut self) -> Result<serde_json::Value, String> {
+        match (&mut self.receiver).await {
+            Ok(Ok(value)) => Ok(value),
+            Ok(Err(error)) => Err(format!(
+                "LSP JSON-RPC error {}: {}{}",
+                error.code,
+                error.message,
+                error.data.map(|d| format!(" ({d})")).unwrap_or_default()
+            )),
+            Err(_) => Err("LSP response channel closed".into()),
+        }
+    }
+}
 
-impl LspServer {
-    /// Write a framed LSP message to stdin. Centralised so `Option<ChildStdin>`
-    /// handling lives in exactly one place — every `send_*` path goes through
-    /// this. Returns a clear error if stdin was already taken by `shutdown`.
-    ///
-    /// Also pushes the JSON-RPC body (without the `Content-Length`
-    /// framing prefix) into the per-server log buffer so the
-    /// `LanguageServersPage` log drawer can show what the host sent.
-    async fn write_message(&self, message: &str) -> Result<(), String> {
-        let mut guard = self.stdin.lock().await;
-        let stdin = guard
-            .as_mut()
-            .ok_or_else(|| "LSP stdin closed (server is shutting down)".to_string())?;
+pub(super) async fn write_frame(
+    stdin: &Arc<tokio::sync::Mutex<Option<tokio::process::ChildStdin>>>,
+    stop: &Arc<Stop>,
+    message: &str,
+) -> Result<(), String> {
+    let write = async {
+        let mut stdin = stdin.lock().await;
+        let stdin = stdin.as_mut().ok_or("LSP stdin closed")?;
+        // The guard starts after acquiring the writer: abandoning a queued
+        // write cannot corrupt someone else's frame.
+        let mut guard = WriteGuard(stop.clone(), false);
         stdin
             .write_all(message.as_bytes())
             .await
-            .map_err(|e| format!("Failed to write to stdin: {}", e))?;
+            .map_err(|e| format!("LSP write failed: {e}"))?;
         stdin
             .flush()
             .await
-            .map_err(|e| format!("Failed to flush stdin: {}", e))?;
+            .map_err(|e| format!("LSP flush failed: {e}"))?;
+        guard.1 = true;
+        Ok(())
+    };
+    tokio::select! {
+        biased;
+        _ = stop.cancelled() => Err("LSP server closed".into()),
+        result = tokio::time::timeout(WRITE_TIMEOUT, write) => result.map_err(|_| "LSP write timed out".to_string())?,
+    }
+}
 
-        // Strip the LSP framing prefix before logging — the user
-        // doesn't care about `Content-Length: N\r\n\r\n`. The codec
-        // mirror (`crate::codec::LspCodec`) does the same on the
-        // inbound side.
-        let body = strip_framing_prefix(message);
-        self.log_buffer.push(crate::log_buffer::IoKind::StdIn, body);
-
+impl LspServer {
+    async fn write_message(&self, message: &str) -> Result<(), String> {
+        write_frame(&self.stdin, &self.stop, message).await?;
+        self.log_buffer.push(
+            crate::log_buffer::IoKind::StdIn,
+            strip_framing_prefix(message),
+        );
         Ok(())
     }
-
-    /// Send a request and return a receiver for the response.
-    ///
-    /// The returned `(id, receiver)` pair lets callers send a
-    /// `$/cancelRequest` notification with the matching id when their
-    /// per-request timeout fires. The receiver resolves when the stdout
-    /// listener receives a JSON-RPC response with the matching request
-    /// ID, or is `Canceled` if the listener drains the pending map on
-    /// EOF.
     pub async fn send_request_with_response(
         &self,
         method: &str,
         params: Option<serde_json::Value>,
-    ) -> Result<(u64, oneshot::Receiver<serde_json::Value>), String> {
+    ) -> Result<(u64, PendingResponse), String> {
+        if self.stop.is_closed() {
+            return Err("LSP server closed".into());
+        }
         let id = self.next_request_id.fetch_add(1, Ordering::Relaxed);
-
-        let request = JsonRpcRequest::new(id, method.to_string(), params);
-
-        let json = serde_json::to_string(&request)
-            .map_err(|e| format!("Failed to serialize request: {}", e))?;
-
-        let message = format_lsp_message(&json);
-
-        log::debug!("[LSP] Sending request {}: {}", id, method);
-
-        // Register the oneshot before writing so a fast response can never
-        // race ahead of the registration.
+        let json = serde_json::to_string(&JsonRpcRequest::new(id, method.to_string(), params))
+            .map_err(|e| e.to_string())?;
         let (sender, receiver) = oneshot::channel();
-        self.pending_requests.lock().insert(id, sender);
-
-        if let Err(err) = self.write_message(&message).await {
-            self.pending_requests.lock().remove(&id);
-            return Err(err);
-        }
-
-        Ok((id, receiver))
-    }
-
-    /// Best-effort `$/cancelRequest` for a previously-sent request.
-    ///
-    /// Called from per-request timeout sites so the server stops
-    /// computing a response we'll never read. Also evicts the pending
-    /// entry locally — the server's eventual response (if any) will
-    /// hit a missing pending entry and be dropped by the listener.
-    ///
-    /// Errors writing the cancel message are logged at `debug` and
-    /// otherwise swallowed: cancellation is advisory and the timeout
-    /// error path must not be masked by a write failure.
-    pub(super) async fn cancel_request(&self, id: u64) {
-        self.pending_requests.lock().remove(&id);
-        if let Err(err) = self
-            .send_notification("$/cancelRequest", Some(serde_json::json!({ "id": id })))
-            .await
         {
-            log::debug!(
-                "[LSP] Failed to send $/cancelRequest for {} request {}: {}",
-                self.language,
-                id,
-                err
-            );
+            let mut pending = self.pending_requests.lock();
+            if pending.len() >= MAX_PENDING {
+                return Err("Too many pending LSP requests".into());
+            }
+            pending.insert(id, sender);
         }
+        let response = PendingResponse {
+            id,
+            pending: self.pending_requests.clone(),
+            receiver,
+            stdin: self.stdin.clone(),
+            stop: self.stop.clone(),
+            cancel_slots: self.cancel_slots.clone(),
+        };
+        self.write_message(&format_lsp_message(&json)).await?;
+        Ok((id, response))
     }
-
-    /// Send a request (fire-and-forget, no awaitable response).
-    /// Returns the request ID.
     pub async fn send_request(
         &self,
         method: &str,
         params: Option<serde_json::Value>,
     ) -> Result<u64, String> {
         let id = self.next_request_id.fetch_add(1, Ordering::Relaxed);
-
-        let request = JsonRpcRequest::new(id, method.to_string(), params);
-
-        let json = serde_json::to_string(&request)
-            .map_err(|e| format!("Failed to serialize request: {}", e))?;
-
-        let message = format_lsp_message(&json);
-
-        log::debug!("[LSP] Sending request {}: {}", id, method);
-
-        self.write_message(&message).await?;
+        let json = serde_json::to_string(&JsonRpcRequest::new(id, method.to_string(), params))
+            .map_err(|e| e.to_string())?;
+        self.write_message(&format_lsp_message(&json)).await?;
         Ok(id)
     }
-
-    /// Send a notification (no response expected)
     pub async fn send_notification(
         &self,
         method: &str,
         params: Option<serde_json::Value>,
     ) -> Result<(), String> {
-        let notification = JsonRpcNotification::new(method.to_string(), params);
-
-        let json = serde_json::to_string(&notification)
-            .map_err(|e| format!("Failed to serialize notification: {}", e))?;
-
-        let message = format_lsp_message(&json);
-
-        log::debug!("[LSP] Sending notification: {}", method);
-
-        self.write_message(&message).await
+        let json = serde_json::to_string(&JsonRpcNotification::new(method.to_string(), params))
+            .map_err(|e| e.to_string())?;
+        self.write_message(&format_lsp_message(&json)).await
     }
-
-    /// Convenience wrapper that serializes a `lsp_types::*` payload via
-    /// `serde_json::to_value` before forwarding to `send_notification`.
-    /// Lets call sites stay typed without each one having to rebuild
-    /// the JSON-RPC envelope.
     pub(super) async fn send_typed_notification<P: serde::Serialize>(
         &self,
         method: &str,
         params: &P,
     ) -> Result<(), String> {
-        let value = serde_json::to_value(params)
-            .map_err(|err| format!("Failed to serialize {} params: {}", method, err))?;
-        self.send_notification(method, Some(value)).await
+        self.send_notification(
+            method,
+            Some(serde_json::to_value(params).map_err(|e| e.to_string())?),
+        )
+        .await
     }
-
-    /// Convenience wrapper that serializes a `lsp_types::*` payload via
-    /// `serde_json::to_value` before forwarding to
-    /// `send_request_with_response`. Returns the typed response (`R`)
-    /// or a string error.
-    ///
-    /// `method` is `&'static str` to match `request_with_timeout`'s
-    /// signature — every LSP method we send is a const string literal.
-    pub(super) async fn send_typed_request<P, R>(
+    pub(super) async fn send_typed_request<P: serde::Serialize, R: serde::de::DeserializeOwned>(
         &self,
         method: &'static str,
         params: &P,
         timeout: Duration,
-    ) -> Result<R, String>
-    where
-        P: serde::Serialize,
-        R: serde::de::DeserializeOwned,
-    {
-        let value = serde_json::to_value(params)
-            .map_err(|err| format!("Failed to serialize {} params: {}", method, err))?;
-        let raw = self.request_with_timeout(method, value, timeout).await?;
-        serde_json::from_value(raw)
-            .map_err(|err| format!("Failed to deserialize {} response: {}", method, err))
+    ) -> Result<R, String> {
+        let value = self
+            .request_with_timeout(
+                method,
+                serde_json::to_value(params).map_err(|e| e.to_string())?,
+                timeout,
+            )
+            .await?;
+        serde_json::from_value(value).map_err(|e| format!("Invalid {method} response: {e}"))
     }
-
-    /// Send a request, await the response with a timeout, and emit
-    /// `$/cancelRequest` if the timeout fires so the server stops
-    /// computing a result no one will read. Pre-init (capabilities
-    /// not yet stored) callers must skip this — `initialize` itself
-    /// has its own bespoke timeout path.
-    async fn request_with_timeout(
+    pub(super) async fn request_with_timeout(
         &self,
         method: &'static str,
         params: serde_json::Value,
         timeout: Duration,
     ) -> Result<serde_json::Value, String> {
-        let (id, receiver) = self
-            .send_request_with_response(method, Some(params))
-            .await?;
-        match tokio::time::timeout(timeout, receiver).await {
-            Ok(Ok(value)) => Ok(value),
-            Ok(Err(_)) => Err(format!("{} response channel closed", method)),
-            Err(_) => {
-                self.cancel_request(id).await;
-                Err(format!("{} timed out after {:?}", method, timeout))
+        let operation = async {
+            let (_, response) = self
+                .send_request_with_response(
+                    method,
+                    if params.is_null() { None } else { Some(params) },
+                )
+                .await?;
+            let result = response.receive().await;
+            if self.is_closed() {
+                return Err("LSP server closed".into());
             }
+            result
+        };
+        match tokio::time::timeout(timeout, operation).await {
+            Ok(result) => result,
+            Err(_) => Err(format!("{method} timed out after {timeout:?}")),
         }
     }
 }
 
-/// Drain every pending request, dropping the senders so awaiters resolve
-/// with `oneshot::error::RecvError` immediately instead of waiting for the
-/// per-request timeout.
-pub(crate) async fn drain_pending_on_close(
-    pending: &Arc<parking_lot::Mutex<HashMap<u64, oneshot::Sender<serde_json::Value>>>>,
-    language: &str,
+/// Generic so legacy response-channel tests exercise the same cleanup.
+pub(crate) async fn drain_pending_on_close<T>(
+    pending: &Arc<parking_lot::Mutex<HashMap<u64, oneshot::Sender<T>>>>,
+    _language: &str,
 ) {
-    let mut guard = pending.lock();
-    let count = guard.len();
-    if count > 0 {
-        log::info!(
-            "[LSP] Cancelling {} in-flight {} request(s) due to server close",
-            count,
-            language
-        );
-        guard.clear();
-    }
+    pending.lock().clear();
 }

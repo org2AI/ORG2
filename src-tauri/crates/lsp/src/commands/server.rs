@@ -20,63 +20,80 @@ pub async fn lsp_start_server(
     app_handle: tauri::AppHandle,
     lsp_manager: State<'_, LspManagerState>,
 ) -> Result<(), String> {
-    let manager = lsp_manager.lock().await;
+    let manager = lsp_manager.lock().await.clone();
     manager
         .start_server(&language, &root_path, app_handle)
         .await
+        .map(|_| ())
 }
 
 /// Stop an LSP server for a specific language
 #[tauri::command]
 pub async fn lsp_stop_server(
     language: String,
+    root_path: String,
     lsp_manager: State<'_, LspManagerState>,
 ) -> Result<(), String> {
-    let manager = lsp_manager.lock().await;
-    manager.stop_server(&language).await
+    let manager = lsp_manager.lock().await.clone();
+    manager.stop_server(&key(&language, &root_path)?).await
 }
 
 /// Notify LSP that a document was opened
 #[tauri::command]
 pub async fn lsp_did_open(
     language: String,
+    root_path: String,
     uri: String,
     version: i32,
     text: String,
     lsp_manager: State<'_, LspManagerState>,
 ) -> Result<(), String> {
-    let manager = lsp_manager.lock().await;
-    manager.did_open(&language, &uri, version, &text).await
+    let manager = lsp_manager.lock().await.clone();
+    manager
+        .server(&key(&language, &root_path)?)
+        .await?
+        .did_open(&uri, &language, version, &text)
+        .await
 }
 
 /// Notify LSP that a document changed
 #[tauri::command]
 pub async fn lsp_did_change(
     language: String,
+    root_path: String,
     uri: String,
     version: i32,
     text: String,
     lsp_manager: State<'_, LspManagerState>,
 ) -> Result<(), String> {
-    let manager = lsp_manager.lock().await;
-    manager.did_change(&language, &uri, version, &text).await
+    let manager = lsp_manager.lock().await.clone();
+    manager
+        .server(&key(&language, &root_path)?)
+        .await?
+        .did_change(&uri, version, &text)
+        .await
 }
 
 /// Notify LSP that a document was closed
 #[tauri::command]
 pub async fn lsp_did_close(
     language: String,
+    root_path: String,
     uri: String,
     lsp_manager: State<'_, LspManagerState>,
 ) -> Result<(), String> {
-    let manager = lsp_manager.lock().await;
-    manager.did_close(&language, &uri).await
+    let manager = lsp_manager.lock().await.clone();
+    manager
+        .server(&key(&language, &root_path)?)
+        .await?
+        .did_close(&uri)
+        .await
 }
 
 /// Shutdown all LSP servers
 #[tauri::command]
 pub async fn lsp_shutdown(lsp_manager: State<'_, LspManagerState>) -> Result<(), String> {
-    let manager = lsp_manager.lock().await;
+    let manager = lsp_manager.lock().await.clone();
     manager.shutdown().await
 }
 
@@ -98,7 +115,7 @@ pub struct BrokenServerInfo {
 pub async fn lsp_list_broken_servers(
     lsp_manager: State<'_, LspManagerState>,
 ) -> Result<Vec<BrokenServerInfo>, String> {
-    let manager = lsp_manager.lock().await;
+    let manager = lsp_manager.lock().await.clone();
     Ok(manager
         .broken_snapshot()
         .await
@@ -120,14 +137,14 @@ pub async fn lsp_revive_server(
     server_id: String,
     lsp_manager: State<'_, LspManagerState>,
 ) -> Result<usize, String> {
-    let manager = lsp_manager.lock().await;
+    let manager = lsp_manager.lock().await.clone();
     Ok(manager.revive_server(&server_id).await)
 }
 
 /// Clear every broken-cooldown entry. Returns the count cleared.
 #[tauri::command]
 pub async fn lsp_revive_all(lsp_manager: State<'_, LspManagerState>) -> Result<usize, String> {
-    let manager = lsp_manager.lock().await;
+    let manager = lsp_manager.lock().await.clone();
     Ok(manager.revive_all().await)
 }
 
@@ -141,10 +158,11 @@ pub async fn lsp_revive_all(lsp_manager: State<'_, LspManagerState>) -> Result<u
 #[tauri::command]
 pub async fn lsp_get_server_log(
     language: String,
+    root_path: String,
     lsp_manager: State<'_, LspManagerState>,
 ) -> Result<Vec<crate::log_buffer::LogLine>, String> {
-    let manager = lsp_manager.lock().await;
-    Ok(manager.get_server_log(&language).await)
+    let manager = lsp_manager.lock().await.clone();
+    Ok(manager.get_server_log(&key(&language, &root_path)?).await)
 }
 
 // ============================================
@@ -230,4 +248,9 @@ pub async fn lsp_reload_global_config() -> Result<GlobalLspConfig, String> {
     config::reload_config().await.map_err(|e| e.to_string())?;
     let config = config::global_config().read().await;
     Ok(GlobalLspConfig::from(config.clone()))
+}
+
+fn key(language: &str, root: &str) -> Result<crate::ServerKey, String> {
+    crate::server_key_for_language(language, root)
+        .ok_or_else(|| format!("No server for {language}"))
 }

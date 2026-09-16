@@ -12,26 +12,25 @@
 //! - [`post_edit`] — `get_post_edit_diagnostics` hook called by the
 //!   processor after every edit/write/patch tool.
 //!
-//! `mod.rs` itself owns the `LspTool` struct, document-version bookkeeping,
+//! `mod.rs` itself owns the `LspTool` struct, server leases,
 //! and the `Tool` impl that dispatches the four actions.
 
 mod format;
 mod language;
 mod post_edit;
-mod version;
 
 use async_trait::async_trait;
 use ignore::WalkBuilder;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 use tauri::AppHandle;
 use tokio::sync::Mutex;
 
 use crate::tools::names as tool_names;
 use crate::tools::traits::{required_string, Tool, ToolError};
-use lsp::LspManager;
+use lsp::{LspManager, ServerLease};
+use std::time::Duration;
 
 // Bring submodule helpers into scope so the tool impl below reads naturally,
 // and so unit tests in `tests.rs` can keep their `super::language_for_file`
@@ -43,7 +42,6 @@ use format::{
 use language::{
     document_language_id_for_file, infer_workspace_root, language_for_file, path_to_uri,
 };
-use version::DocumentVersionTracker;
 
 pub use post_edit::get_post_edit_diagnostics;
 
@@ -55,7 +53,6 @@ pub struct LspTool {
     lsp_manager: Arc<Mutex<LspManager>>,
     app_handle: AppHandle,
     workspace_root: PathBuf,
-    document_versions: DocumentVersionTracker,
 }
 
 impl LspTool {
@@ -68,7 +65,6 @@ impl LspTool {
             lsp_manager,
             app_handle,
             workspace_root,
-            document_versions: DocumentVersionTracker::new(),
         }
     }
 
@@ -77,72 +73,41 @@ impl LspTool {
         manager: &LspManager,
         language: &str,
         file_path: &str,
-    ) -> Result<bool, ToolError> {
-        if manager.is_server_running(language).await {
-            return Ok(false);
-        }
-
-        let root_path = infer_workspace_root(file_path, &self.workspace_root);
-        let root_path_str = root_path.to_string_lossy().to_string();
-        manager
-            .start_server(language, &root_path_str, self.app_handle.clone())
+    ) -> Result<(ServerLease, bool), ToolError> {
+        let root = infer_workspace_root(file_path, &self.workspace_root);
+        let key = lsp::server_key_for_language(language, &root.to_string_lossy())
+            .ok_or_else(|| ToolError::InvalidParams(format!("No server for {language}")))?;
+        let started = !manager.is_server_running(&key).await;
+        let server = manager
+            .start_server(language, &root.to_string_lossy(), self.app_handle.clone())
             .await
             .map_err(|error| {
                 ToolError::ExecutionFailed(format!(
-                    "Failed to start LSP server for '{}': {}",
-                    language, error
+                    "Failed to start LSP server for '{language}': {error}"
                 ))
             })?;
-
-        self.document_versions.reset(language).await;
-        tokio::time::sleep(Duration::from_millis(250)).await;
-        Ok(true)
+        if started {
+            tokio::time::sleep(Duration::from_millis(250)).await;
+        }
+        Ok((server, started))
     }
 
     async fn sync_document(
         &self,
-        manager: &LspManager,
-        language: &str,
+        server: &ServerLease,
         file_path: &str,
         uri: &str,
     ) -> Result<(), ToolError> {
         let content = tokio::fs::read_to_string(file_path)
             .await
-            .map_err(|error| {
-                ToolError::ExecutionFailed(format!(
-                    "Failed to read '{}' for LSP sync: {}",
-                    file_path, error
-                ))
-            })?;
-        let document_language_id = document_language_id_for_file(file_path).ok_or_else(|| {
-            ToolError::InvalidParams(format!(
-                "Cannot determine document language for file: {}",
-                file_path
-            ))
+            .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
+        let language = document_language_id_for_file(file_path).ok_or_else(|| {
+            ToolError::InvalidParams(format!("Unknown document language: {file_path}"))
         })?;
-        let version = self.document_versions.next(language, uri).await;
-
-        if version == 1 {
-            manager
-                .did_open(document_language_id, uri, version, &content)
-                .await
-                .map_err(|error| {
-                    ToolError::ExecutionFailed(format!(
-                        "Failed to open '{}' in LSP: {}",
-                        file_path, error
-                    ))
-                })
-        } else {
-            manager
-                .did_change(language, uri, version, &content)
-                .await
-                .map_err(|error| {
-                    ToolError::ExecutionFailed(format!(
-                        "Failed to update '{}' in LSP: {}",
-                        file_path, error
-                    ))
-                })
-        }
+        server
+            .sync_document(uri, language, &content)
+            .await
+            .map_err(ToolError::ExecutionFailed)
     }
 }
 
@@ -240,7 +205,7 @@ impl LspTool {
             ));
         }
 
-        let manager = self.lsp_manager.lock().await;
+        let manager = self.lsp_manager.lock().await.clone();
         let mut blocks: Vec<String> = Vec::new();
         let mut total_diagnostics: usize = 0;
         let mut skipped: Vec<String> = Vec::new();
@@ -252,17 +217,16 @@ impl LspTool {
             };
 
             let uri = path_to_uri(file_path);
-            let server_started = self
+            let (server, server_started) = self
                 .ensure_server_ready(&manager, language, file_path)
                 .await?;
-            self.sync_document(&manager, language, file_path, &uri)
-                .await?;
+            self.sync_document(&server, file_path, &uri).await?;
             if server_started {
                 tokio::time::sleep(Duration::from_millis(350)).await;
             }
 
-            let diagnostics = manager
-                .get_file_diagnostics(language, &uri)
+            let diagnostics = server
+                .get_file_diagnostics(&uri)
                 .await
                 .map_err(ToolError::ExecutionFailed)?;
             if diagnostics.is_empty() {
@@ -327,12 +291,11 @@ impl LspTool {
         })?;
 
         let uri = path_to_uri(&file_path);
-        let manager = self.lsp_manager.lock().await;
-        let server_started = self
+        let manager = self.lsp_manager.lock().await.clone();
+        let (server, server_started) = self
             .ensure_server_ready(&manager, language, &file_path)
             .await?;
-        self.sync_document(&manager, language, &file_path, &uri)
-            .await?;
+        self.sync_document(&server, &file_path, &uri).await?;
         if server_started {
             tokio::time::sleep(Duration::from_millis(350)).await;
         }
@@ -340,8 +303,8 @@ impl LspTool {
         match action {
             "definition" => {
                 let (line, character) = extract_position(params)?;
-                let result = manager
-                    .goto_definition(language, &uri, line, character)
+                let result = server
+                    .goto_definition(&uri, line, character)
                     .await
                     .map_err(ToolError::ExecutionFailed)?;
 
@@ -355,8 +318,8 @@ impl LspTool {
             }
             "references" => {
                 let (line, character) = extract_position(params)?;
-                let result = manager
-                    .find_references(language, &uri, line, character, true)
+                let result = server
+                    .find_references(&uri, line, character, true)
                     .await
                     .map_err(ToolError::ExecutionFailed)?;
 
@@ -372,8 +335,8 @@ impl LspTool {
             }
             "hover" => {
                 let (line, character) = extract_position(params)?;
-                let result = manager
-                    .hover(language, &uri, line, character)
+                let result = server
+                    .hover(&uri, line, character)
                     .await
                     .map_err(ToolError::ExecutionFailed)?;
 
@@ -386,8 +349,8 @@ impl LspTool {
                 ))
             }
             "document_symbol" => {
-                let result = manager
-                    .document_symbol(language, &uri)
+                let result = server
+                    .document_symbol(&uri)
                     .await
                     .map_err(ToolError::ExecutionFailed)?;
 
@@ -399,8 +362,8 @@ impl LspTool {
             }
             "workspace_symbol" => {
                 let query = params.get("query").and_then(Value::as_str).unwrap_or("");
-                let result = manager
-                    .workspace_symbol(language, query)
+                let result = server
+                    .workspace_symbol(query)
                     .await
                     .map_err(ToolError::ExecutionFailed)?;
 

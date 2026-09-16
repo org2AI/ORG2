@@ -29,30 +29,10 @@ impl LspServer {
             .await
     }
 
-    /// Notify server that a document changed by re-shipping the full
-    /// document text.
-    ///
-    /// Capability-gated on the cached
-    /// `ServerCapabilities.text_document_sync` resolved kind:
-    ///
-    /// * `Full` — send the single full-text change event.
-    /// * `Incremental` — also send the full-text event. Per the LSP
-    ///   spec, a server that advertises `Incremental` still accepts a
-    ///   single change event with no `range`, treating it as a full
-    ///   replacement (this is exactly how rust-analyzer / pyright
-    ///   behave today). We don't ship per-keystroke ranges here
-    ///   because no caller has a diff against the previous version —
-    ///   agent-core's post-edit refresh and `LspTool::ensure_open`
-    ///   both read the file from disk, and the frontend WebSocket
-    ///   producer ships the full buffer too. A future incremental
-    ///   wire path can be added when a change-set producer
-    ///   materializes (CodeMirror integration); that would grow a new
-    ///   arm here, not a parallel method, to keep the capability gate
-    ///   authoritative.
-    /// * `None` — server doesn't accept `didChange`; skip silently
-    ///   with a debug log so editor refreshes don't spam errors at
-    ///   servers that only sync on `didOpen`/`didClose` (rare, but
-    ///   the spec allows it).
+    /// Full-text synchronization for the agent query and post-edit callers.
+    /// Both use `sync_document` to share this server generation's open/version
+    /// state. Full and Incremental accept a replacement event without range;
+    /// None skips changes. The archived CodeMirror client is not a producer.
     pub async fn did_change(&self, uri: &str, version: i32, text: &str) -> Result<(), String> {
         let kind = self.resolved_sync_kind().await;
         if kind == TextDocumentSyncKind::NONE {
@@ -79,29 +59,17 @@ impl LspServer {
             .await
     }
 
-    /// Read the cached `text_document_sync` capability. Pre-init
-    /// callers (no capabilities stored yet) get `Full` so the
-    /// document still syncs — this matches the `require_capability`
-    /// "degrade open" contract used by hover / definition / refs.
-    ///
-    /// We collapse `Full` and `Incremental` into "send the change
-    /// notification" because today every caller has the full file
-    /// content (no per-keystroke diff is available — agent-core's
-    /// post-edit hook reads from disk, `LspTool::ensure_open` reads
-    /// from disk, the frontend WebSocket producer ships full text).
-    /// When a frontend producer that emits incremental ranges lands,
-    /// this helper grows a third return value and `did_change` gains
-    /// a new arm — see the LSP optimisation plan, Phase 11.
+    /// Before initialization default to Full; initialized servers use their
+    /// advertised sync kind. Current agent callers provide complete file text.
     async fn resolved_sync_kind(&self) -> TextDocumentSyncKind {
         resolve_sync_kind(self.capabilities.read().await.as_ref())
     }
 
     /// Notify server that a document was closed.
     ///
-    /// Also evicts the file's cached diagnostics — once the editor has
-    /// dropped the buffer there's no consumer for them, and keeping
-    /// stale entries around just bloats the bounded cache.
+    /// Releases this generation's document version and cached diagnostics.
     pub async fn did_close(&self, uri: &str) -> Result<(), String> {
+        let mut documents = self.documents.lock().await;
         let params = DidCloseTextDocumentParams {
             text_document: TextDocumentIdentifier {
                 uri: parse_uri(uri)?,
@@ -111,6 +79,7 @@ impl LspServer {
             .send_typed_notification("textDocument/didClose", &params)
             .await;
 
+        documents.remove(uri);
         self.diagnostics_cache.write().await.evict(uri);
 
         result
@@ -124,11 +93,56 @@ impl LspServer {
 
     /// Get cached diagnostics for a single file URI.
     /// Returns the typed `Diagnostic` list, or empty if none cached.
-    pub async fn get_file_diagnostics(&self, uri: &str) -> Vec<lsp_types::Diagnostic> {
+    pub async fn get_file_diagnostics(
+        &self,
+        uri: &str,
+    ) -> Result<Vec<lsp_types::Diagnostic>, String> {
+        if self.is_closed() {
+            return Err("LSP server closed".into());
+        }
         let cache = self.diagnostics_cache.read().await;
-        cache
+        if self.is_closed() {
+            return Err("LSP server closed".into());
+        }
+        Ok(cache
             .get(uri)
             .map(|params| params.diagnostics.clone())
-            .unwrap_or_default()
+            .unwrap_or_default())
+    }
+}
+
+impl LspServer {
+    /// The server generation owns open state and versions, shared by every
+    /// agent tool and the post-edit hook. A restarted lease starts empty.
+    pub async fn sync_document(&self, uri: &str, language: &str, text: &str) -> Result<(), String> {
+        let mut documents = self.documents.lock().await;
+        if !documents.contains_key(uri) && documents.len() >= 500 {
+            if let Some(oldest) = documents.keys().next().cloned() {
+                self.send_typed_notification(
+                    "textDocument/didClose",
+                    &DidCloseTextDocumentParams {
+                        text_document: TextDocumentIdentifier {
+                            uri: parse_uri(&oldest)?,
+                        },
+                    },
+                )
+                .await?;
+                documents.remove(&oldest);
+                self.diagnostics_cache.write().await.evict(&oldest);
+            }
+        }
+        let version = documents
+            .get(uri)
+            .copied()
+            .unwrap_or(0)
+            .checked_add(1)
+            .ok_or("LSP document version exhausted; restart server")?;
+        if version == 1 {
+            self.did_open(uri, language, version, text).await?;
+        } else {
+            self.did_change(uri, version, text).await?;
+        }
+        documents.insert(uri.to_string(), version);
+        Ok(())
     }
 }

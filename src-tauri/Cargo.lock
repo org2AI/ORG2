@@ -5218,7 +5218,6 @@ dependencies = [
  "git2",
  "memchr",
  "orgtrack_protocol",
- "orgtrack_sync",
  "prost",
  "prost-reflect",
  "regex",
@@ -5231,31 +5230,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "orgtrack_graph"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "orgtrack_sync",
- "rusqlite",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "orgtrack_protocol"
 version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "orgtrack_sync"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "sha2",
 ]
 
 [[package]]
@@ -5961,7 +5940,6 @@ dependencies = [
  "kqueue",
  "log",
  "notify",
- "orgtrack_sync",
  "rand 0.10.2",
  "reqwest 0.13.4",
  "rusqlite",

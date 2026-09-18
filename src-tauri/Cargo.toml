@@ -31,8 +31,6 @@ members = [
     "crates/orgtrack-core",
     "crates/orgtrack-pm-cli",
     "crates/orgtrack-protocol",
-    "crates/orgtrack-graph",
-    "crates/orgtrack-sync",
     "crates/perf-utils",
     "crates/project-management",
     "crates/search",

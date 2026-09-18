@@ -21,6 +21,7 @@ import { useAtomValue } from "jotai";
 import React, { memo } from "react";
 
 import { replayModeAtom } from "@src/engines/SessionCore";
+import { cellReplayKey } from "@src/store/ui/simulatorAtom";
 
 import { IndependentGridCell, SimpleGridCell } from "./components/GridCell";
 import { MultiTaskHeader } from "./components/MultiTaskHeader";
@@ -56,6 +57,7 @@ function getEventRenderSignature(event: RenderSignatureEvent): string {
 // ============================================
 
 const ActivitySimulatorGridComponent: React.FC<ActivitySimulatorGridProps> = ({
+  sessionId,
   layout = "1x1",
   currentEvent = null,
   events = [],
@@ -86,10 +88,11 @@ const ActivitySimulatorGridComponent: React.FC<ActivitySimulatorGridProps> = ({
           cellEvents = events;
         }
 
-        if (isMultiTaskMode && cell.threadId) {
+        if (isMultiTaskMode && cell.threadId && sessionId) {
           return (
             <IndependentGridCell
-              key={cell.threadId ?? cell.index}
+              key={cellReplayKey(sessionId, cell.threadId)}
+              sessionId={sessionId}
               index={cell.index}
               color={cell.color}
               title={cell.title}
@@ -104,6 +107,7 @@ const ActivitySimulatorGridComponent: React.FC<ActivitySimulatorGridProps> = ({
 
         return (
           <SimpleGridCell
+            sessionId={sessionId ?? ""}
             key={cell.index}
             index={cell.index}
             color={cell.color}
@@ -143,6 +147,7 @@ const arePropsEqual = (
   prev: ActivitySimulatorGridProps,
   next: ActivitySimulatorGridProps
 ): boolean => {
+  if (prev.sessionId !== next.sessionId) return false;
   if (prev.layout !== next.layout) return false;
   if (prev.forceAppType !== next.forceAppType) return false;
   if (prev.selectedThreadId !== next.selectedThreadId) return false;

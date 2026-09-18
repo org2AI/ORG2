@@ -48,6 +48,7 @@ import {
   chatFindInChatOpenAtomFamily,
   chatSearchSyncAtomFamily,
 } from "@src/store/ui/chatPanel/miscAtoms";
+import { clearCellReplaySessionAtom } from "@src/store/ui/simulatorAtom";
 import { clearTodosForSessionAtom } from "@src/store/ui/todoAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
@@ -223,6 +224,7 @@ export const removeSession = (sessionId: string) => {
   // abandoned-draft path.
   clearImageDraft(sessionId);
   store.set(clearTodosForSessionAtom, sessionId);
+  store.set(clearCellReplaySessionAtom, sessionId);
   removeGuestImportedSession(sessionId);
   // Rust-agent streaming-stop state (per-turn stop markers etc.). This single
   // chokepoint covers every removal path — sidebar delete, cloud remove, fork

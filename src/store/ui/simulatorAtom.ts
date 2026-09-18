@@ -70,8 +70,8 @@ simulatorShowDockAtom.debugLabel = "simulatorShowDockAtom";
 
 /**
  * Cell replay state for multi-task grid
- * Persists currentIndex for each threadId so state survives view switches
- * Key: threadId, Value: { currentIndex, isPlaying, hasUserOverride }
+ * Retains currentIndex for mounted owners and up to 256 recent inactive cells.
+ * Keys encode the owning session and thread, including empty thread names.
  *
  * `hasUserOverride` flips to `true` when the user manually controls a cell
  * (play, pause, drag progress, step prev/next, etc.). When true, the cell
@@ -83,29 +83,109 @@ export interface CellReplayPersistState {
   isPlaying: boolean;
   hasUserOverride?: boolean;
 }
-export const cellReplayStatesAtom = atom<
+export const MAX_CELL_REPLAY_STATES = 256;
+
+export function cellReplayKey(sessionId: string, threadId = ""): string {
+  return JSON.stringify([sessionId, threadId]);
+}
+
+const cellReplayStatesStorageAtom = atom<
   Record<string, CellReplayPersistState>
 >({});
+/** A mount owns one revocable writer; registrations are scoped to the Jotai store. */
+export interface CellReplayOwner {
+  cellId: string;
+  active: boolean;
+  onRemove: () => void;
+}
+const cellReplayOwnersAtom = atom<ReadonlySet<CellReplayOwner>>(
+  new Set<CellReplayOwner>()
+);
+
+type CellReplayStates = Record<string, CellReplayPersistState>;
+
+/** Drops the oldest inactive entries past the cap; returns `states` itself when none are dropped. */
+function evictInactiveCellStates(
+  states: CellReplayStates,
+  owners: ReadonlySet<CellReplayOwner>
+): CellReplayStates {
+  const activeKeys = new Set(
+    [...owners].filter((owner) => owner.active).map((owner) => owner.cellId)
+  );
+  const entries = Object.entries(states);
+  const inactive = entries.filter(([key]) => !activeKeys.has(key));
+  const overflow = inactive.length - MAX_CELL_REPLAY_STATES;
+  if (overflow <= 0) return states;
+  const evicted = new Set(inactive.slice(0, overflow).map(([key]) => key));
+  return Object.fromEntries(entries.filter(([key]) => !evicted.has(key)));
+}
+
+export const registerCellReplayOwnerAtom = atom(
+  null,
+  (get, set, owner: CellReplayOwner) => {
+    set(cellReplayOwnersAtom, new Set([...get(cellReplayOwnersAtom), owner]));
+    return () => {
+      owner.active = false;
+      const owners = new Set(get(cellReplayOwnersAtom));
+      owners.delete(owner);
+      set(cellReplayOwnersAtom, owners);
+      // Once the last owner closes, its state joins the inactive LRU. Publish
+      // only when that actually evicts something.
+      const states = get(cellReplayStatesStorageAtom);
+      const retained = evictInactiveCellStates(states, owners);
+      if (retained !== states) set(cellReplayStatesStorageAtom, retained);
+    };
+  }
+);
+
+export const cellReplayStatesAtom = atom(
+  (get) => get(cellReplayStatesStorageAtom),
+  (
+    get,
+    set,
+    update:
+      | CellReplayStates
+      | ((previous: CellReplayStates) => CellReplayStates)
+  ) => {
+    const previous = get(cellReplayStatesStorageAtom);
+    const next = typeof update === "function" ? update(previous) : update;
+    if (next === previous) return;
+    set(
+      cellReplayStatesStorageAtom,
+      evictInactiveCellStates(next, get(cellReplayOwnersAtom))
+    );
+  }
+);
 cellReplayStatesAtom.debugLabel = "cellReplayStatesAtom";
 
-/**
- * Global replay control for multi-task grid
- * When triggered, all cells start/stop playing simultaneously
- */
-export interface GlobalReplayState {
-  /** Whether global playback is active */
-  isPlaying: boolean;
-  /** Timestamp when play was triggered (used to sync cells) */
-  triggerTime: number;
-  /** Playback speed multiplier */
-  speed: number;
-}
-export const globalReplayStateAtom = atom<GlobalReplayState>({
-  isPlaying: false,
-  triggerTime: 0,
-  speed: 1,
-});
-globalReplayStateAtom.debugLabel = "globalReplayStateAtom";
+/** Session removal must not leave replay overrides available for resurrection. */
+export const clearCellReplaySessionAtom = atom(
+  null,
+  (get, set, sessionId: string) => {
+    const belongsToSession = (key: string) => {
+      try {
+        return (JSON.parse(key) as unknown[])[0] === sessionId;
+      } catch {
+        return key === sessionId;
+      }
+    };
+    // Revoke before publishing deletion: subscribers and queued work cannot
+    // recreate the record, even if the child view has not unmounted yet.
+    for (const owner of get(cellReplayOwnersAtom)) {
+      if (owner.active && belongsToSession(owner.cellId)) {
+        owner.active = false;
+        owner.onRemove();
+      }
+    }
+    const states = get(cellReplayStatesAtom);
+    const entries = Object.entries(states).filter(
+      ([key]) => !belongsToSession(key)
+    );
+    if (entries.length !== Object.keys(states).length) {
+      set(cellReplayStatesAtom, Object.fromEntries(entries));
+    }
+  }
+);
 
 /**
  * Simulator data source. Only `"real"` is currently produced — the atom is

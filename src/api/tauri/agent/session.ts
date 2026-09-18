@@ -10,14 +10,10 @@ import type { CliAgentType, NativeHarnessType } from "@src/api/types/keys";
 import { requireAgentOrgEnabled } from "@src/config/agentOrgAvailability";
 import type { OrgMemberLaunchOverride } from "@src/modules/MainApp/AgentOrgs/types";
 import type { WorkspaceSnapshot } from "@src/services/context/workspaceSnapshot";
-import type { SessionStatus } from "@src/types/session/session";
 import { isCliSession } from "@src/util/session/sessionDispatch";
 
 import type {
-  AgentStatusInfo,
   DeleteSessionReceipt,
-  FileResolution,
-  FileResolutionValue,
   HousekeeperContextCompactionState,
   ManualCompactResult,
   ModeSwitchChoice,
@@ -32,10 +28,6 @@ import type {
   SnapshotRecord,
   TodoItem,
 } from "./types";
-
-export async function listSessions(): Promise<string[]> {
-  return rpc.agentSession.listSessions();
-}
 
 export async function getSessionInfo(
   sessionId: string
@@ -69,12 +61,6 @@ export async function setHousekeeperContextCompactionEnabled(
   });
 }
 
-export async function compactHousekeeperContextNow(
-  sessionId: string
-): Promise<HousekeeperContextCompactionState> {
-  return rpc.agentSession.compactHousekeeperContextNow({ sessionId });
-}
-
 /** Cancel the active turn for a session using an explicit control-flow reason. */
 export const CANCEL_REASON = {
   USER_STOP: "user_stop",
@@ -97,14 +83,6 @@ export async function cancelSession(
   });
 }
 
-export async function removeSession(sessionId: string): Promise<void> {
-  return rpc.agentSession.removeSession({ sessionId });
-}
-
-export async function isAgentRunning(): Promise<boolean> {
-  return rpc.agentSession.isAgentRunning();
-}
-
 export async function loadMessages(
   sessionId: string
 ): Promise<SessionMessage[]> {
@@ -117,18 +95,10 @@ export async function getSession(
   return rpc.agentSession.getSession({ sessionId });
 }
 
-export async function listAllSessions(): Promise<SessionMeta[]> {
-  return rpc.agentSession.listAllSessions();
-}
-
 export async function deleteSession(
   sessionId: string
 ): Promise<DeleteSessionReceipt> {
   return rpc.agentSession.deleteSession({ sessionId });
-}
-
-export async function clearMessages(sessionId: string): Promise<void> {
-  await rpc.agentSession.clearMessages({ sessionId });
 }
 
 /**
@@ -163,16 +133,6 @@ export async function checkSnapshotChanges(
   return rpc.agentSession.checkSnapshotChanges({
     sessionId,
     createdAt,
-  });
-}
-
-export async function updateSessionStatus(
-  sessionId: string,
-  status: SessionStatus
-): Promise<boolean> {
-  return rpc.agentSession.updateSessionStatus({
-    sessionId,
-    status,
   });
 }
 
@@ -370,12 +330,6 @@ export async function getSessionFiles(
   return rpc.agentSession.getSessionFiles({ sessionId });
 }
 
-export async function getSessionWorkspacePath(
-  sessionId: string
-): Promise<string | null> {
-  return rpc.agentSession.getSessionWorkspacePath({ sessionId });
-}
-
 export async function getSnapshots(
   sessionId: string
 ): Promise<SnapshotRecord[]> {
@@ -407,70 +361,12 @@ export async function restoreSnapshot(
   });
 }
 
-export async function revertFileReview(
-  sessionId: string,
-  createdAt: string,
-  filePath: string,
-  workspacePath?: string
-): Promise<boolean> {
-  return rpc.agentSession.revertFileReview({
-    workspacePath: workspacePath ?? "",
-    filePath,
-    sessionId,
-    createdAt,
-  });
-}
-
-/**
- * Revert a single file within a snapshot back to its captured bytes.
- * `sessionId` is required. `workspacePath` is used only to resolve relative
- * `filePath` inputs; if `filePath` is already absolute, `workspacePath` can be
- * empty.
- */
-export async function revertFile(
-  sessionId: string,
-  snapshotHash: string,
-  filePath: string,
-  workspacePath?: string
-): Promise<boolean> {
-  return rpc.agentSession.revertFile({
-    workspacePath: workspacePath ?? "",
-    snapshotHash,
-    filePath,
-    sessionId,
-  });
-}
-
 export async function getTodos(sessionId: string): Promise<TodoItem[]> {
   return rpc.agentSession.getTodos({ sessionId });
 }
 
 export async function resolveReview(sessionId: string): Promise<number> {
   return rpc.agentSession.resolveReview({ sessionId });
-}
-
-export async function saveFileResolution(
-  sessionId: string,
-  filePath: string,
-  resolution: FileResolutionValue
-): Promise<void> {
-  return rpc.agentSession.saveFileResolution({
-    sessionId,
-    filePath,
-    resolution,
-  });
-}
-
-export async function getFileResolutions(
-  sessionId: string
-): Promise<FileResolution[]> {
-  return rpc.agentSession.getFileResolutions({
-    sessionId,
-  });
-}
-
-export async function getAgentStatus(): Promise<AgentStatusInfo> {
-  return rpc.agentSession.getAgentStatus();
 }
 
 // ============================================
@@ -567,24 +463,6 @@ export async function sessionLaunch(
 // ============================================
 
 /**
- * Start the Wingman observation loop for an existing session.
- *
- * `mission` is the user's stated goal, e.g.:
- * "Watch me implement the auth flow and tell me if I'm doing anything wrong."
- */
-export async function wingmanStart(
-  sessionId: string,
-  mission: string,
-  monitorIndex?: number
-): Promise<void> {
-  return rpc.agentSession.wingmanStart({
-    sessionId,
-    mission,
-    monitorIndex,
-  });
-}
-
-/**
  * Stop the Wingman observation loop. No-op if not currently running.
  */
 export async function wingmanStop(sessionId: string): Promise<void> {
@@ -595,13 +473,6 @@ export async function showDesktopOperationVisibilityTest(
   monitorIndex?: number
 ): Promise<void> {
   return rpc.agentSession.wingmanShowDesktopControlTest({ monitorIndex });
-}
-
-/**
- * Close Wingman UI surfaces. Fire-and-forget; used when the user clicks Stop / Close.
- */
-export async function wingmanCloseWindows(): Promise<void> {
-  return rpc.agentSession.wingmanCloseWindows();
 }
 
 /**

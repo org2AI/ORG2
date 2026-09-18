@@ -14,12 +14,15 @@ import {
 const log = createLogger("LoadedTurnRegistry");
 
 const loadedTurnsBySession = new Map<string, Map<string, number>>();
-const pendingLoads = new Map<string, Promise<void>>();
+const pendingLoads = new Map<
+  string,
+  { sessionId: string; load: Promise<void> }
+>();
 const registryGenerationBySession = new Map<string, number>();
 let nextRegistryGeneration = 1;
 
 function loadKey(sessionId: string, turnId: string): string {
-  return `${sessionId}:${turnId}`;
+  return JSON.stringify([sessionId, turnId]);
 }
 
 function getSessionLoadedTurns(sessionId: string): Map<string, number> {
@@ -38,11 +41,18 @@ export function captureLoadedTurnRegistryGeneration(sessionId: string): number {
   return generation;
 }
 
+export function isLoadedTurnRegistryGenerationCurrent(
+  sessionId: string,
+  generation: number
+): boolean {
+  return registryGenerationBySession.get(sessionId) === generation;
+}
+
 export function getPendingTurnLoad(
   sessionId: string,
   turnId: string
 ): Promise<void> | null {
-  return pendingLoads.get(loadKey(sessionId, turnId)) ?? null;
+  return pendingLoads.get(loadKey(sessionId, turnId))?.load ?? null;
 }
 
 export function trackPendingTurnLoad(
@@ -51,7 +61,8 @@ export function trackPendingTurnLoad(
   load: Promise<void>
 ): Promise<void> {
   const key = loadKey(sessionId, turnId);
-  pendingLoads.set(key, load);
+  const flight = { sessionId, load };
+  pendingLoads.set(key, flight);
   // `load` itself is returned to the caller below, so its rejection is
   // theirs to handle. This `.finally` spins off a *separate* promise chain
   // purely for bookkeeping (evicting the pending-load entry); nothing else
@@ -60,7 +71,7 @@ export function trackPendingTurnLoad(
   // bookkeeping has run — the caller's `load` promise still rejects normally.
   void load
     .finally(() => {
-      if (pendingLoads.get(key) === load) {
+      if (pendingLoads.get(key) === flight) {
         pendingLoads.delete(key);
       }
     })
@@ -78,7 +89,7 @@ export function markTurnBodyLoaded(
   turnId: string,
   generation: number
 ): void {
-  if (registryGenerationBySession.get(sessionId) !== generation) return;
+  if (!isLoadedTurnRegistryGenerationCurrent(sessionId, generation)) return;
   getSessionLoadedTurns(sessionId).set(turnId, Date.now());
 }
 
@@ -116,6 +127,9 @@ export async function pruneLoadedTurnBodies(
     .sort((left, right) => left[1] - right[1]);
 
   while (
+    // Clearing/replacing a session also invalidates an in-flight eviction
+    // sweep. Never send its remaining unloads into the replacement store.
+    loadedTurnsBySession.get(sessionId) === loadedTurns &&
     loadedTurns.size > maxLoadedHistoricalTurns &&
     unloadCandidates.length > 0
   ) {
@@ -140,8 +154,8 @@ export async function pruneLoadedTurnBodies(
 export function clearLoadedTurnRegistry(sessionId: string): void {
   loadedTurnsBySession.delete(sessionId);
   registryGenerationBySession.delete(sessionId);
-  for (const key of pendingLoads.keys()) {
-    if (key.startsWith(`${sessionId}:`)) {
+  for (const [key, flight] of pendingLoads) {
+    if (flight.sessionId === sessionId) {
       pendingLoads.delete(key);
     }
   }

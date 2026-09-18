@@ -29,6 +29,7 @@ import {
   getInstrumentedStore,
 } from "@src/util/core/state/instrumentedStore";
 
+import { forceTurnIdle } from "../../control/turnLifecycle";
 import {
   applySwitchPostLoadResult,
   reconcileInFlightHistory,
@@ -548,7 +549,7 @@ describe("reconcileInFlightHistory", () => {
       ]);
     });
 
-    it("never merges a replay next to live in-memory turn events", async () => {
+    it("replaces a partial mobile snapshot when a missed terminal is discovered", async () => {
       store.eventsBySession.set(SESSION_ID, [makeEvent("live-bubble")]);
       const adapter = makeAdapter({
         history: [makeEvent("replayed")],
@@ -563,13 +564,75 @@ describe("reconcileInFlightHistory", () => {
       reconcileInFlightHistory(SESSION_ID, adapter, liveRefs(), actions);
       await settle();
 
-      expect(recorded.loads).toEqual([]);
-      expect(store.api.set).not.toHaveBeenCalled();
+      expect(recorded.loads).toEqual([
+        {
+          sessionId: SESSION_ID,
+          events: [makeEvent("replayed")],
+          replace: true,
+        },
+      ]);
+      expect(store.api.set).toHaveBeenCalledOnce();
       expect(store.api.mergeEvents).not.toHaveBeenCalled();
-      // The post-load metadata still lands — only the replay is suppressed.
       expect(recorded.contextTokens).toEqual([55]);
       expect(recorded.runtimeStatus).toEqual(["completed"]);
     });
+
+    it("keeps live events during a run, then replaces them on completion", async () => {
+      store.eventsBySession.set(SESSION_ID, [makeEvent("live-bubble")]);
+      let attempt = 0;
+      const adapter = makeAdapter({
+        history: [makeEvent("replayed")],
+        postLoad: () => ({
+          runStatus: ++attempt === 1 ? "running" : "completed",
+          transcriptSource: "native",
+        }),
+      });
+      const { recorded, actions } = makeActions();
+      reconcileInFlightHistory(SESSION_ID, adapter, liveRefs(), actions);
+      await settle();
+      expect(adapter.loadHistoryCalls).toBe(2);
+      expect(store.api.set).toHaveBeenCalledOnce();
+      expect(store.api.mergeEvents).not.toHaveBeenCalled();
+      expect(recorded.loads).toHaveLength(1);
+      expect(recorded.loads[0].replace).toBe(true);
+    });
+
+    it("does not replace an active local turn based on a stale terminal status", async () => {
+      beginTurnDispatch(SESSION_ID);
+      store.eventsBySession.set(SESSION_ID, [makeEvent("new-turn")]);
+      const adapter = makeAdapter({
+        history: [makeEvent("old-turn")],
+        postLoad: { runStatus: "completed", transcriptSource: "native" },
+      });
+      const { recorded, actions } = makeActions();
+      reconcileInFlightHistory(SESSION_ID, adapter, liveRefs(), actions);
+      await settle();
+      expect(recorded.loads).toEqual([]);
+      expect(store.api.set).not.toHaveBeenCalled();
+      resetTurnLifecycleForTests();
+    });
+
+    it.each([false, true])(
+      "discards terminal replay superseded mid-read (already ended=%s)",
+      async (ended) => {
+        store.eventsBySession.set(SESSION_ID, [makeEvent("new-turn")]);
+        const adapter = makeAdapter({
+          history: [makeEvent("stale")],
+          postLoad: { runStatus: "completed", transcriptSource: "native" },
+          onLoadHistory: () => {
+            beginTurnDispatch(SESSION_ID);
+            if (ended) forceTurnIdle(SESSION_ID);
+          },
+        });
+        const { recorded, actions } = makeActions();
+        reconcileInFlightHistory(SESSION_ID, adapter, liveRefs(), actions);
+        await settle();
+        expect(recorded.loads).toEqual([]);
+        expect(recorded.runtimeStatus).toEqual([]);
+        expect(store.api.set).not.toHaveBeenCalled();
+        resetTurnLifecycleForTests();
+      }
+    );
 
     it("is idempotent across retries: a second tick re-replaces, never appends", async () => {
       const adapter = makeAdapter({

@@ -15,6 +15,7 @@
 import { COLLAB_SESSION_ACCESS_MODE } from "@src/store/collaboration/types";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session/sessionAtom/types";
+import { isCliSession } from "@src/util/session/sessionDispatch";
 
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
 import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
@@ -247,6 +248,22 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     } = prepared;
     let sharedFilesReady = false;
     const markPreparedClean = () => {
+      if (
+        prepared.cliHistoryMutation &&
+        (this.eventActivityStamps.get(sessionId) ?? 0) === stampAtRead
+      ) {
+        const acknowledged = this.getCursor(orgId, sessionId);
+        if (
+          acknowledged &&
+          acknowledged.cliHistoryEpoch !== prepared.cliHistoryMutation.epoch
+        ) {
+          this.setCursor({
+            ...acknowledged,
+            cliHistoryEpoch: prepared.cliHistoryMutation.epoch,
+          });
+        }
+      }
+
       this.markEventPlaneClean(
         orgId,
         session,
@@ -281,14 +298,33 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     // dance below returns without pushing on its first observation, and
     // hashing a GB-scale transcript just to skip would defeat this pass.
     const observedTotalEventCount = baseEventCount + events.length;
-    const shrink = this.pushGuards.observeShrink(
-      orgId,
-      sessionId,
-      observedTotalEventCount,
-      cursor?.pushedCount
-    );
-    if (shrink === "skip") return;
-    const confirmedShrink = shrink === "confirmed";
+    let confirmedShrink = false;
+    if (
+      isCliSession(sessionId) &&
+      cursor &&
+      observedTotalEventCount < cursor.pushedCount
+    ) {
+      const mutation = prepared.cliHistoryMutation;
+      confirmedShrink = Boolean(
+        observedTotalEventCount > 0 &&
+        mutation &&
+        cursor.cliHistoryEpoch !== undefined &&
+        mutation.epoch > cursor.cliHistoryEpoch &&
+        ["message_truncate", "file_rewind", "snapshot_restore"].includes(
+          mutation.reason
+        )
+      );
+      if (!confirmedShrink) return;
+    } else {
+      const shrink = this.pushGuards.observeShrink(
+        orgId,
+        sessionId,
+        observedTotalEventCount,
+        cursor?.pushedCount
+      );
+      if (shrink === "skip") return;
+      confirmedShrink = shrink === "confirmed";
+    }
 
     // A replay exposes its referenced files as independent immutable snapshots.
     // Register only after the source session exists; no transcript bytes/hashes

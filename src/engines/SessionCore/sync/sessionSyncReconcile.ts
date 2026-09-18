@@ -1,5 +1,6 @@
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 
+import { getTurnGeneration, isTurnActive } from "../control/turnLifecycle";
 import {
   type SessionLoadStateActions,
   applyPostLoadResult,
@@ -35,11 +36,17 @@ export function reconcileInFlightHistory(
   refs: Pick<SessionSyncRefs, "liveSessionIdRef">,
   actions: ReconcileStateActions
 ): void {
+  let turnGeneration = getTurnGeneration(sessionId);
+  const localTurnActiveAtStart = isTurnActive(sessionId);
   const reconcile = async () => {
     const reconcileController = new AbortController();
     for (const delayMs of IN_FLIGHT_HISTORY_RECONCILE_DELAYS_MS) {
       await waitForReconcileDelay(delayMs);
-      if (refs.liveSessionIdRef.current !== sessionId) return;
+      if (
+        refs.liveSessionIdRef.current !== sessionId ||
+        getTurnGeneration(sessionId) !== turnGeneration
+      )
+        return;
 
       const postLoadLifecycle = capturePostLoadLifecycleSnapshot(sessionId);
       const postResult = adapter.postLoad
@@ -69,14 +76,26 @@ export function reconcileInFlightHistory(
       // idempotent; the terminal reconcile owns the final canonical replace.
       if (postResult?.transcriptSource === "native") {
         const existingEvents = await eventStoreProxy.getEvents(sessionId);
-        if (refs.liveSessionIdRef.current !== sessionId) return;
-        if (existingEvents.length === 0) {
+        if (
+          refs.liveSessionIdRef.current !== sessionId ||
+          getTurnGeneration(sessionId) !== turnGeneration
+        )
+          return;
+        // A terminal discovered by polling must repair a partial snapshot
+        // even when its streamed terminal event was missed while off-screen.
+        const terminalReplay =
+          isTerminalRunStatus(postResult?.runStatus) && !localTurnActiveAtStart;
+        if (existingEvents.length === 0 || terminalReplay) {
           await hydrateSessionStoreBeforeDisplay(
             sessionId,
             persistedEvents,
             "replace"
           );
-          if (refs.liveSessionIdRef.current !== sessionId) return;
+          if (
+            refs.liveSessionIdRef.current !== sessionId ||
+            getTurnGeneration(sessionId) !== turnGeneration
+          )
+            return;
           actions.dispatchLoadSession({
             sessionId,
             events: persistedEvents,
@@ -97,6 +116,8 @@ export function reconcileInFlightHistory(
         lifecycleSnapshot: postLoadLifecycle,
         acceptTerminalForUnchangedGeneration: true,
       });
+      // Applying this response may itself advance the lifecycle generation.
+      turnGeneration = getTurnGeneration(sessionId);
       if (isTerminalRunStatus(postResult?.runStatus)) return;
     }
   };

@@ -159,18 +159,16 @@ pub fn set_server_enabled(
 }
 
 // ============================================
-// Tauri Commands
+// Public helpers
 // ============================================
 
 /// Get the LSP configuration for a workspace
-#[tauri::command]
 pub fn lsp_get_workspace_config(workspace_path: String) -> WorkspaceLspConfig {
     let settings = load_workspace_settings(&workspace_path);
     settings.lsp.into()
 }
 
 /// Set whether a language server is enabled for a workspace
-#[tauri::command]
 pub fn lsp_set_server_enabled(
     workspace_path: String,
     language: String,
@@ -180,7 +178,6 @@ pub fn lsp_set_server_enabled(
 }
 
 /// Check if a specific language server is enabled for a workspace
-#[tauri::command]
 pub fn lsp_is_server_enabled(workspace_path: String, language: String) -> bool {
     is_server_enabled(&workspace_path, &language)
 }

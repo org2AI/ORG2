@@ -1,6 +1,6 @@
 //! LSP Server Lifecycle Commands
 //!
-//! Tauri commands for managing LSP server processes:
+//! Helpers for managing LSP server processes:
 //! - Starting/stopping servers per language
 //! - Document notifications (open/change/close)
 //! - Retrieving diagnostics and server status
@@ -13,7 +13,6 @@ use super::LspManagerState;
 use crate::config::{self, CustomServerDef, LspConfig, ServerOverride};
 
 /// Start an LSP server for a specific language
-#[tauri::command]
 pub async fn lsp_start_server(
     language: String,
     root_path: String,
@@ -27,7 +26,6 @@ pub async fn lsp_start_server(
 }
 
 /// Stop an LSP server for a specific language
-#[tauri::command]
 pub async fn lsp_stop_server(
     language: String,
     lsp_manager: State<'_, LspManagerState>,
@@ -37,7 +35,6 @@ pub async fn lsp_stop_server(
 }
 
 /// Notify LSP that a document was opened
-#[tauri::command]
 pub async fn lsp_did_open(
     language: String,
     uri: String,
@@ -50,7 +47,6 @@ pub async fn lsp_did_open(
 }
 
 /// Notify LSP that a document changed
-#[tauri::command]
 pub async fn lsp_did_change(
     language: String,
     uri: String,
@@ -63,7 +59,6 @@ pub async fn lsp_did_change(
 }
 
 /// Notify LSP that a document was closed
-#[tauri::command]
 pub async fn lsp_did_close(
     language: String,
     uri: String,
@@ -74,7 +69,6 @@ pub async fn lsp_did_close(
 }
 
 /// Shutdown all LSP servers
-#[tauri::command]
 pub async fn lsp_shutdown(lsp_manager: State<'_, LspManagerState>) -> Result<(), String> {
     let manager = lsp_manager.lock().await;
     manager.shutdown().await
@@ -94,7 +88,6 @@ pub struct BrokenServerInfo {
 
 /// Snapshot of every server currently in broken-cooldown. Servers whose
 /// cooldown has already expired are filtered out by the manager.
-#[tauri::command]
 pub async fn lsp_list_broken_servers(
     lsp_manager: State<'_, LspManagerState>,
 ) -> Result<Vec<BrokenServerInfo>, String> {
@@ -115,7 +108,6 @@ pub async fn lsp_list_broken_servers(
 /// the next `start_server` call will retry instead of being rejected
 /// by the cooldown short-circuit. Returns the number of entries
 /// cleared.
-#[tauri::command]
 pub async fn lsp_revive_server(
     server_id: String,
     lsp_manager: State<'_, LspManagerState>,
@@ -125,7 +117,6 @@ pub async fn lsp_revive_server(
 }
 
 /// Clear every broken-cooldown entry. Returns the count cleared.
-#[tauri::command]
 pub async fn lsp_revive_all(lsp_manager: State<'_, LspManagerState>) -> Result<usize, String> {
     let manager = lsp_manager.lock().await;
     Ok(manager.revive_all().await)
@@ -138,7 +129,6 @@ pub async fn lsp_revive_all(lsp_manager: State<'_, LspManagerState>) -> Result<u
 /// `language`. An empty `Vec` is returned when no server is running
 /// for that language — the frontend treats it as "open the drawer on
 /// an inactive row" rather than an error.
-#[tauri::command]
 pub async fn lsp_get_server_log(
     language: String,
     lsp_manager: State<'_, LspManagerState>,
@@ -176,14 +166,12 @@ impl From<LspConfig> for GlobalLspConfig {
 }
 
 /// Get the global LSP configuration.
-#[tauri::command]
 pub async fn lsp_get_global_config() -> Result<GlobalLspConfig, String> {
     let config = config::global_config().read().await;
     Ok(GlobalLspConfig::from(config.clone()))
 }
 
 /// Update the global LSP configuration.
-#[tauri::command]
 pub async fn lsp_set_global_config(config: GlobalLspConfig) -> Result<(), String> {
     config::update_config(|cfg| {
         cfg.auto_install = config.auto_install;
@@ -195,7 +183,6 @@ pub async fn lsp_set_global_config(config: GlobalLspConfig) -> Result<(), String
 }
 
 /// Set the auto-install toggle.
-#[tauri::command]
 pub async fn lsp_set_auto_install(enabled: bool) -> Result<(), String> {
     config::update_config(|cfg| {
         cfg.auto_install = enabled;
@@ -205,7 +192,6 @@ pub async fn lsp_set_auto_install(enabled: bool) -> Result<(), String> {
 }
 
 /// Enable or disable a specific server.
-#[tauri::command]
 pub async fn lsp_set_server_enabled_global(server_id: String, enabled: bool) -> Result<(), String> {
     config::update_config(|cfg| {
         let override_config = cfg
@@ -225,7 +211,6 @@ pub async fn lsp_set_server_enabled_global(server_id: String, enabled: bool) -> 
 }
 
 /// Reload the global config from disk.
-#[tauri::command]
 pub async fn lsp_reload_global_config() -> Result<GlobalLspConfig, String> {
     config::reload_config().await.map_err(|e| e.to_string())?;
     let config = config::global_config().read().await;

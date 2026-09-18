@@ -1,6 +1,6 @@
 //! LSP Install/Uninstall Commands
 //!
-//! Tauri commands for generating install and uninstall commands
+//! Helpers for generating install and uninstall commands
 //! for language servers.
 
 use super::package_manager::{
@@ -52,7 +52,6 @@ pub struct UninstallCommandResult {
 
 /// Get the install command for a language server
 /// Returns the command that should be executed in a terminal
-#[tauri::command]
 pub fn lsp_get_install_command(language: String) -> InstallCommandResult {
     let install_hint = match install_hint_for_language(&language) {
         Ok(hint) => hint,
@@ -118,7 +117,6 @@ pub fn lsp_get_install_command(language: String) -> InstallCommandResult {
 }
 
 /// Get the uninstall command for a language server
-#[tauri::command]
 pub fn lsp_get_uninstall_command(language: String) -> UninstallCommandResult {
     let install_hint = match install_hint_for_language(&language) {
         Ok(hint) => hint,

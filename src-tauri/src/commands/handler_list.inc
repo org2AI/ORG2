@@ -156,7 +156,6 @@ integrations::github::commands::github_create_issue_comment,
 integrations::github::commands::github_list_repo_labels,
 integrations::github::commands::github_list_repo_assignees,
 integrations::github::detect::detect_github_credentials,
-integrations::github::profile::github_fetch_profile,
 project_management::sync::git_credentials::git_credential_for_remote,
 // Platform commands
 system_services::document_apps::document_applications,
@@ -274,7 +273,6 @@ session_persistence::get_session_tool_usage_attributions_for_call,
 // Git Bundle commands (for cloud session upload - preserves git history)
 // Git Bundle Sync commands (for pull/push during cloud sessions)
 // Git operations for conflict resolution
-git::bundle::git_commit,
 // Worktree PR base resolution (fetch PR head → git-resolvable base ref)
 git::pr_base::worktree_resolve_pr_base,
 // Git proxy detection
@@ -618,18 +616,6 @@ file_ops::filter_ignored_paths,
 file_ops::list_directory_filtered,
 file_ops::list_directory_tree,
 // Performance optimization commands
-// - Fast JSON processing (simd-json)
-perf_utils::parse_json_fast,
-perf_utils::stringify_json_fast,
-perf_utils::validate_json_fast,
-perf_utils::parse_json_file,
-perf_utils::parse_json_batch,
-// - Hash computation (SHA-256, Blake3)
-perf_utils::compute_sha256,
-perf_utils::compute_sha256_bytes,
-perf_utils::compute_blake3,
-perf_utils::compute_blake3_bytes,
-perf_utils::compute_blake3_batch,
 // - Diff and patch (fuzzy matching for AI code edits)
 perf_utils::diff_patch::compute_diff,
 perf_utils::diff_patch::apply_patch,

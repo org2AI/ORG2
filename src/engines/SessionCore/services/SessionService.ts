@@ -59,7 +59,6 @@ import type {
   SessionMergeParams,
   SessionMergeResult,
   SessionOpenParams,
-  SessionPauseResumeParams,
   SessionResumeCliParams,
   SessionSendMessageParams,
   SessionStatusInfo,
@@ -431,30 +430,6 @@ export const SessionService = {
       } else {
         throwServiceError(`Failed to resume ${sessionId}`, error);
       }
-    }
-  },
-
-  /**
-   * Resume a paused session.
-   *
-   * @deprecated Use `resumeCli` for CLI sessions. This method is retained
-   * for ActionSystem backward-compatibility.
-   */
-  async resume(params: SessionPauseResumeParams): Promise<void> {
-    const { sessionId } = params;
-    assertSupportsManagedOperation(sessionId, "resume");
-
-    try {
-      if (isAgentSession(sessionId)) {
-        throw new Error(
-          "Agent sessions cannot be resumed. Send a new message instead."
-        );
-      }
-
-      await invokeTauri("cli_agent_resume", { sessionId });
-      logger.info(`Resumed CLI session: ${sessionId}`);
-    } catch (error) {
-      throwServiceError(`Failed to resume ${sessionId}`, error);
     }
   },
 

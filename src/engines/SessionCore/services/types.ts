@@ -141,11 +141,6 @@ export interface SessionAnswerQuestionParams {
   answer: string;
 }
 
-export interface SessionPauseResumeParams {
-  /** Target session ID */
-  sessionId: string;
-}
-
 export interface SessionCancelParams {
   /** Target session ID */
   sessionId: string;

@@ -19,11 +19,19 @@ export const ChannelTypeSchema = z.enum(
 
 // ── Tool registry types ─────────────────────────────────────────────────────
 
+// Rust ToolDisplayBehavior uses serde(rename_all = "snake_case").
+const ToolDisplayBehaviorSchema = z.enum([
+  "instant",
+  "stream",
+  "wait_for_result",
+]);
+
 export const ToolActionSchema = z.object({
   name: z.string(),
   summary: z.string(),
   appSubtool: z.string().nullish(),
   chatBlock: z.string().nullish(),
+  displayBehavior: ToolDisplayBehaviorSchema.optional(),
   labelRunning: z.string().optional(),
   labelDone: z.string().optional(),
   labelFailed: z.string().optional(),
@@ -43,6 +51,7 @@ export const ToolInfoSchema = z.object({
   simulatorApp: z.string().optional(),
   appSubtool: z.string().optional(),
   chatBlock: z.string().optional(),
+  displayBehavior: ToolDisplayBehaviorSchema.optional(),
   humanToolKey: z.string().nullish(),
   hidden: z.boolean().optional(),
   labelRunning: z.string().optional(),

@@ -285,3 +285,7 @@ pub async fn agent_list_tools(
     }
     Ok(builtin_tool_info())
 }
+
+#[cfg(test)]
+#[path = "tools_tests.rs"]
+mod tests;

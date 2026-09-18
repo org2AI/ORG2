@@ -1,7 +1,7 @@
 /**
  * Regex Search API
  *
- * Regex-based code search: batch, streaming, and fast (ripgrep-core) variants.
+ * Bounded text search: batch, streaming, and fast event adapters.
  */
 import { rpc } from "@src/api/tauri/rpc";
 
@@ -10,12 +10,16 @@ import type { CodeSearchResult, SearchFilters } from "./types";
 export async function searchCodeRegex(
   query: string,
   repoPaths: string[],
-  filters?: SearchFilters
+  filters?: SearchFilters,
+  searchId?: string,
+  repoRoot?: string
 ): Promise<CodeSearchResult[]> {
   return rpc.searchRegex.search({
     query,
     repoPaths,
     filters,
+    searchId,
+    repoRoot,
   }) as Promise<CodeSearchResult[]>;
 }
 
@@ -46,8 +50,7 @@ export async function cancelSearch(searchId: string): Promise<boolean> {
 }
 
 /**
- * Fast search using grep-searcher (ripgrep core).
- * Uses memory-mapped files and SIMD-accelerated search for 5-10x speedup.
+ * Start the bounded native text-search worker and receive streamed results.
  */
 export async function searchCodeFast(
   searchId: string,

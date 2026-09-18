@@ -1,11 +1,6 @@
-/**
- * useSearchExecution Hook
- *
- * Handles regex search execution.
- * Manages streaming listeners, debounced triggering, and cleanup.
- */
+/** Own the entire search request, including asynchronous listener registration. */
 import { type UnlistenFn, listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   type SearchCompleteEvent,
@@ -13,368 +8,278 @@ import {
   cancelSearch,
   searchCodeFast,
   searchCodeRegex,
-  searchCodeStreaming,
 } from "@src/api/tauri/search";
 import { createLogger } from "@src/hooks/logger";
-import { useDebouncedCallback } from "@src/hooks/perf/useDebouncedCallback";
-import { shareSearchLineContext } from "@src/store/workstation/codeEditor/search";
+import i18n from "@src/i18n";
 import type {
-  SearchOptions as StoreSearchOptions,
-  SearchResultFile as StoreSearchResultFile,
+  SearchOptions,
+  SearchResultFile,
 } from "@src/store/workstation/codeEditor/search";
+import { shareSearchLineContext } from "@src/store/workstation/codeEditor/search";
 
 import { SEARCH_CONSTANTS } from "../config";
 import type { SearchMode } from "../types";
-import {
-  buildSearchFilters,
-  filterResultsByGlob,
-  parseFilePatterns,
-} from "./transformers";
+import { buildSearchFilters, parseFilePatterns } from "./transformers";
 import type { SearchResultActions } from "./types";
 
-const log = createLogger("useSearchExecution");
+const log = createLogger("FileSearch");
 
-// Module-level constants for search mode flags
-const USE_FAST_SEARCH = true;
-const USE_STREAMING_SEARCH = true;
-const FLUSH_INTERVAL_MS = 100;
-
-interface UseSearchExecutionParams {
-  query: string;
-  /** Sidebar search is automatic; search tabs submit explicitly. */
+interface Parameters {
+  /** Search tabs submit explicitly; sidebar searches remain automatic. */
   automatic?: boolean;
+  query: string;
   searchMode: SearchMode;
   repoPath: string;
   openFiles?: string[];
-  storeOptions: StoreSearchOptions;
+  storeOptions: SearchOptions;
   resultActions: SearchResultActions;
 }
-
+interface Owner {
+  id: string;
+  active: boolean;
+  unlisten: UnlistenFn[];
+  pending: SearchResultFile[];
+  timer?: ReturnType<typeof setTimeout>;
+  deadline?: ReturnType<typeof setTimeout>;
+  stop: () => void;
+}
 export interface UseSearchExecutionReturn {
-  /** Execute search */
-  search: () => Promise<void>;
-  /** Explicit refresh bypasses the completed-query cache. */
+  search: (maxResults?: number, loadMore?: boolean) => Promise<void>;
+  clear: () => void;
   refresh: () => Promise<void>;
 }
 
-export function useSearchExecution(
-  params: UseSearchExecutionParams
-): UseSearchExecutionReturn {
-  const {
-    query,
-    automatic = true,
+export function useSearchExecution({
+  automatic = true,
+  query,
+  searchMode,
+  repoPath,
+  openFiles,
+  storeOptions,
+  resultActions,
+}: Parameters): UseSearchExecutionReturn {
+  const owner = useRef<Owner | null>(null);
+  const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const key = JSON.stringify([
+    query.trim(),
     searchMode,
     repoPath,
-    openFiles,
+    [...(openFiles ?? [])].sort(),
     storeOptions,
-    resultActions,
-  } = params;
-
-  const {
-    setResults,
-    setLoading,
-    setError,
-    setHasMore,
-    setActualTotalMatches,
-    setActualTotalFiles,
-    appendResults,
-    clearAtom,
-  } = resultActions;
-
-  // Refs for managing search lifecycle
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const searchIdRef = useRef<string>("");
-  // Track the last executed search query+options to avoid re-searching on remount
-  // Format: "query|caseSensitive|wholeWord|useRegex|filesToInclude|filesToExclude"
-  const lastSearchKeyRef = useRef<string>("");
-
-  // Streaming infrastructure
-  const streamingUnlistenRef = useRef<UnlistenFn[]>([]);
-  // PERFORMANCE: Batch streaming results before updating atom
-  // This prevents excessive re-renders from rapid streaming events
-  const pendingResultsRef = useRef<StoreSearchResultFile[]>([]);
-  const flushTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Cleanup streaming listeners
-  const cleanupStreamingListeners = useCallback(async () => {
-    for (const unlisten of streamingUnlistenRef.current) {
-      await unlisten();
-    }
-    streamingUnlistenRef.current = [];
-    // Also cleanup pending results
-    if (flushTimeoutRef.current) {
-      clearTimeout(flushTimeoutRef.current);
-      flushTimeoutRef.current = null;
-    }
-    pendingResultsRef.current = [];
-  }, []);
-
-  // PERFORMANCE: Flush pending results to atom
-  const flushPendingResults = useCallback(() => {
-    if (pendingResultsRef.current.length > 0) {
-      appendResults(pendingResultsRef.current);
-      pendingResultsRef.current = [];
-    }
-    flushTimeoutRef.current = null;
-  }, [appendResults]);
-
-  const search = useCallback(async () => {
-    const trimmedQuery = query.trim();
-    if (!trimmedQuery) {
-      const previousSearchId = searchIdRef.current;
-      searchIdRef.current = "";
-      abortControllerRef.current?.abort();
-      if (previousSearchId) void cancelSearch(previousSearchId).catch(() => {});
-      await cleanupStreamingListeners();
-      if (searchIdRef.current !== "") return;
-      setLoading(false);
-      clearAtom();
-      lastSearchKeyRef.current = "";
-      return;
-    }
-
-    // Build a key that includes query, mode, AND relevant options
-    // This ensures we re-search when options or mode change, but not on remount
-    const searchKey = [
-      trimmedQuery,
-      searchMode,
-      storeOptions.caseSensitive,
-      storeOptions.wholeWord,
-      storeOptions.useRegex,
-      storeOptions.filesToInclude || "",
-      storeOptions.filesToExclude || "",
-      storeOptions.onlyOpenFiles,
-    ].join("|");
-
-    // IMPORTANT: Skip if this exact query+options was already searched
-    // This prevents re-searching on component remount (e.g., when clicking a result)
-    if (searchKey === lastSearchKeyRef.current) {
-      return;
-    }
-
-    // Track the search we're about to execute
-    lastSearchKeyRef.current = searchKey;
-
-    // Cancel previous search in backend before starting new one
-    if (searchIdRef.current) {
-      cancelSearch(searchIdRef.current).catch(() => {
-        // Ignore errors - previous search may have already completed
-      });
-    }
-
-    // Cancel previous request and cleanup listeners
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-    // Claim ownership before awaiting cleanup so a newer submit wins.
-    const searchId = `search-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    searchIdRef.current = searchId;
-    await cleanupStreamingListeners();
-    if (searchIdRef.current !== searchId) return;
-
-    setLoading(true);
-    setError(null);
-    setResults([]);
-    setHasMore(false);
-
-    // Parse file patterns from options
-    const includePatterns = parseFilePatterns(storeOptions.filesToInclude);
-    const excludePatterns = parseFilePatterns(storeOptions.filesToExclude);
-    const filters = buildSearchFilters(
-      storeOptions,
-      includePatterns,
-      excludePatterns
-    );
-    // ============================================
-    // REGEX MODE: Fast ripgrep-based text search
-    // ============================================
-
-    // Use streaming search for single repo (main use case)
-    const shouldUseStreaming =
-      (USE_FAST_SEARCH || USE_STREAMING_SEARCH) &&
-      !storeOptions.onlyOpenFiles &&
-      openFiles?.length === 0;
-
-    if (shouldUseStreaming) {
-      // STREAMING SEARCH - results arrive progressively
-      try {
-        // Setup event listeners before starting search
-        const resultUnlisten = await listen<SearchResultEvent>(
-          "search-result",
-          (event) => {
-            // Only process events for current search
-            if (event.payload.search_id !== searchIdRef.current) return;
-
-            const result = event.payload.result;
-
-            // PERFORMANCE: Batch results instead of appending immediately
-            // Queue result for batched update
-            pendingResultsRef.current.push(result);
-
-            // Schedule flush if not already scheduled
-            if (!flushTimeoutRef.current) {
-              flushTimeoutRef.current = setTimeout(() => {
-                flushPendingResults();
-              }, FLUSH_INTERVAL_MS);
-            }
-
-            // Use actual (real) totals for display
-            setActualTotalMatches(event.payload.actual_matches);
-            setActualTotalFiles(event.payload.actual_files);
-          }
-        );
-
-        if (searchIdRef.current !== searchId) {
-          resultUnlisten();
-          return;
-        }
-        const completeUnlisten = await listen<SearchCompleteEvent>(
-          "search-complete",
-          (event) => {
-            if (event.payload.search_id !== searchIdRef.current) return;
-
-            // PERFORMANCE: Flush any remaining pending results immediately
-            if (flushTimeoutRef.current) {
-              clearTimeout(flushTimeoutRef.current);
-              flushTimeoutRef.current = null;
-            }
-            flushPendingResults();
-
-            setLoading(false);
-            // Use actual totals from complete event
-            setActualTotalMatches(event.payload.total_matches);
-            setActualTotalFiles(event.payload.total_files);
-            setHasMore(event.payload.has_more);
-          }
-        );
-
-        if (searchIdRef.current !== searchId) {
-          resultUnlisten();
-          completeUnlisten();
-          return;
-        }
-        streamingUnlistenRef.current = [resultUnlisten, completeUnlisten];
-
-        // Use fast search (grep-searcher) if enabled
-        const searchFn = USE_FAST_SEARCH ? searchCodeFast : searchCodeStreaming;
-        await searchFn(searchId, trimmedQuery, repoPath, {
-          ...filters,
-          max_results: SEARCH_CONSTANTS.INITIAL_MAX_RESULTS,
-        });
-      } catch (err) {
-        if (searchIdRef.current !== searchId) return;
-        const errorMessage =
-          err instanceof Error ? err.message : "Search failed";
-        log.error("[useSearchExecution] Streaming search error:", errorMessage);
-        setError(errorMessage);
-        setLoading(false);
-      }
-      return;
-    }
-
-    // FALLBACK: Non-streaming search for open files mode
-    try {
-      const searchPaths =
-        storeOptions.onlyOpenFiles && openFiles && openFiles.length > 0
-          ? openFiles
-          : [repoPath];
-
-      const searchResults = await searchCodeRegex(trimmedQuery, searchPaths, {
-        ...filters,
-        max_results: SEARCH_CONSTANTS.INITIAL_MAX_RESULTS,
-      });
-
-      if (searchIdRef.current !== searchId) return;
-
-      // Filter results based on include/exclude glob patterns (client-side)
-      const filteredResults = filterResultsByGlob(
-        searchResults,
-        repoPath,
-        includePatterns,
-        excludePatterns
-      );
-
-      // Take first batch of files, not first batch of matches
-      const firstBatchFiles = filteredResults.slice(
-        0,
-        SEARCH_CONSTANTS.BATCH_SIZE
-      );
-      const hasMoreResults =
-        filteredResults.length > SEARCH_CONSTANTS.BATCH_SIZE;
-
-      setResults(shareSearchLineContext(firstBatchFiles));
-      setHasMore(hasMoreResults);
-
-      // Calculate actual totals from all results (not just first batch)
-      const allMatches = filteredResults.reduce(
-        (sum, file) => sum + file.matches.length,
-        0
-      );
-      setActualTotalMatches(allMatches);
-      setActualTotalFiles(filteredResults.length);
-    } catch (err) {
-      if (searchIdRef.current !== searchId) return;
-      const errorMessage = err instanceof Error ? err.message : "Search failed";
-      log.error("[useSearchExecution] Fallback search error:", errorMessage);
-      setError(errorMessage);
-      setResults([]);
-      setHasMore(false);
-    } finally {
-      if (searchIdRef.current === searchId) setLoading(false);
-    }
-  }, [
-    query,
-    searchMode,
-    repoPath,
-    openFiles,
-    storeOptions,
-    clearAtom,
-    cleanupStreamingListeners,
-    flushPendingResults,
-    setLoading,
-    setError,
-    setResults,
-    setHasMore,
-    setActualTotalMatches,
-    setActualTotalFiles,
   ]);
+  // Stable semantic snapshot: unrelated renders cannot restart a request.
+  const request = useMemo(
+    () =>
+      JSON.parse(key) as [string, SearchMode, string, string[], SearchOptions],
+    [key]
+  );
+  const release = useCallback(() => {
+    if (debounce.current) clearTimeout(debounce.current);
+    debounce.current = undefined;
+    const previous = owner.current;
+    owner.current = null;
+    if (!previous) return;
+    previous.active = false;
+    previous.stop();
+    if (previous.deadline) clearTimeout(previous.deadline);
+    if (previous.timer) clearTimeout(previous.timer);
+    previous.pending = [];
+    for (const unlisten of previous.unlisten) unlisten();
+    previous.unlisten = [];
+    void cancelSearch(previous.id).catch(() => undefined);
+  }, []);
+  const clear = useCallback(() => {
+    release();
+    resultActions.setLoading(false);
+    resultActions.setLoadingMore?.(false);
+    resultActions.clearAtom();
+  }, [release, resultActions]);
 
-  // Debounced search — keeps callback fresh via ref to avoid
-  // re-triggering when other search dependencies change
-  const debouncedSearch = useDebouncedCallback(() => {
-    search();
-  }, SEARCH_CONSTANTS.DEBOUNCE_MS);
+  const search = useCallback(
+    async (
+      maxResults: number = SEARCH_CONSTANTS.INITIAL_MAX_RESULTS,
+      loadMore = false
+    ) => {
+      release();
+      const [text, , root, files, options] = request;
+      if (!text || !root) {
+        resultActions.setLoading(false);
+        resultActions.setLoadingMore?.(false);
+        resultActions.clearAtom();
+        return;
+      }
+      let stop!: () => void;
+      const stopped = new Promise<void>((resolve) => {
+        stop = resolve;
+      });
+      let complete!: () => void;
+      const completed = new Promise<void>((resolve) => {
+        complete = resolve;
+      });
+      const current: Owner = {
+        stop,
+        id: `search-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        active: true,
+        unlisten: [],
+        pending: [],
+      };
+      owner.current = current;
+      const live = () => current.active && owner.current === current;
+      current.deadline = setTimeout(() => {
+        if (!live()) return;
+        resultActions.setError(
+          i18n.t("fileSearch.timeout", { ns: "navigation" })
+        );
+        resultActions.setLoading(false);
+        resultActions.setLoadingMore?.(false);
+        release();
+      }, 20_000);
+      const listenOwned = async <T>(
+        name: string,
+        handler: (event: { payload: T }) => void
+      ) => {
+        const registration = listen<T>(name, handler);
+        const handle = await Promise.race([
+          registration,
+          stopped.then(() => null),
+        ]);
+        if (!handle) {
+          void registration
+            .then((unlisten) => unlisten())
+            .catch(() => undefined);
+          return null;
+        }
+        if (!live()) {
+          handle();
+          return null;
+        }
+        current.unlisten.push(handle);
+        return handle;
+      };
+      const flush = () => {
+        current.timer = undefined;
+        if (!live() || !current.pending.length) return;
+        resultActions.appendResults(current.pending);
+        current.pending = [];
+      };
+      resultActions.setError(null);
+      resultActions.setLoading(true);
+      resultActions.setLoadingMore?.(loadMore);
+      if (!loadMore) resultActions.setResults([]);
+      resultActions.setHasMore(false);
+      let received = false;
+      const filters = {
+        ...buildSearchFilters(
+          options,
+          parseFilePatterns(options.filesToInclude),
+          parseFilePatterns(options.filesToExclude)
+        ),
+        max_results: Math.min(maxResults, SEARCH_CONSTANTS.MAX_TOTAL_RESULTS),
+      };
+      try {
+        if (options.onlyOpenFiles) {
+          const results = files.length
+            ? await Promise.race([
+                searchCodeRegex(text, files, filters, current.id, root),
+                stopped.then(() => []),
+              ])
+            : [];
+          if (!live()) return;
+          resultActions.setResults(shareSearchLineContext(results));
+          resultActions.setActualTotalFiles(results.length);
+          const total = results.reduce((n, file) => n + file.matches.length, 0);
+          resultActions.setActualTotalMatches(total);
+          resultActions.setHasMore(
+            total >= filters.max_results &&
+              total < SEARCH_CONSTANTS.MAX_TOTAL_RESULTS
+          );
+        } else {
+          const resultUnlisten = await listenOwned<SearchResultEvent>(
+            "search-result",
+            ({ payload }) => {
+              if (!live() || payload.search_id !== current.id) return;
+              // A larger request replaces its whole previous snapshot, including
+              // additional matches in a file which was already visible.
+              if (loadMore && !received) resultActions.setResults([]);
+              received = true;
+              current.pending.push(payload.result);
+              if (!current.timer) current.timer = setTimeout(flush, 100);
+              resultActions.setActualTotalMatches(payload.actual_matches);
+              resultActions.setActualTotalFiles(payload.actual_files);
+            }
+          );
+          if (!resultUnlisten) return;
+          const completeUnlisten = await listenOwned<SearchCompleteEvent>(
+            "search-complete",
+            ({ payload }) => {
+              if (!live() || payload.search_id !== current.id) return;
+              if (current.timer) clearTimeout(current.timer);
+              flush();
+              if (loadMore && !received) resultActions.setResults([]);
+              resultActions.setActualTotalMatches(payload.total_matches);
+              resultActions.setActualTotalFiles(payload.total_files);
+              resultActions.setHasMore(
+                payload.has_more &&
+                  payload.total_matches < SEARCH_CONSTANTS.MAX_TOTAL_RESULTS
+              );
+              if (payload.budget_exhausted)
+                resultActions.setError(
+                  i18n.t("fileSearch.budgetExceeded", { ns: "navigation" })
+                );
+              complete();
+            }
+          );
+          if (!completeUnlisten) return;
+          // IPC completion and queued WebView events can arrive in either order.
+          await Promise.race([
+            Promise.all([
+              searchCodeFast(current.id, text, root, filters),
+              completed,
+            ]),
+            stopped,
+          ]);
+        }
+      } catch (error) {
+        if (live())
+          resultActions.setError(
+            error instanceof Error ? error.message : String(error)
+          );
+      } finally {
+        if (current.deadline) clearTimeout(current.deadline);
+        if (live()) {
+          if (current.timer) clearTimeout(current.timer);
+          flush();
+          resultActions.setLoading(false);
+          resultActions.setLoadingMore?.(false);
+          for (const unlisten of current.unlisten) unlisten();
+          current.unlisten = [];
+          current.active = false;
+          owner.current = null;
+        }
+      }
+    },
+    [release, request, resultActions]
+  );
 
-  // Trigger debounced search when query or mode changes
   useEffect(() => {
-    if (!automatic) {
-      debouncedSearch.cancel();
-      return;
-    }
-    if (query.trim()) {
-      debouncedSearch();
-    } else {
-      debouncedSearch.cancel();
-      clearAtom();
-    }
-  }, [automatic, query, searchMode, debouncedSearch, clearAtom]); // searchMode triggers re-search when changed
-
-  // Cleanup streaming listeners on unmount
-  useEffect(() => {
+    if (!automatic) return;
+    // Cleanup runs on *every* semantic change, before the replacement debounce.
+    release();
+    resultActions.setLoading(false);
+    resultActions.setLoadingMore?.(false);
+    resultActions.clearAtom();
+    if (!request[0]) return;
+    debounce.current = setTimeout(() => {
+      debounce.current = undefined;
+      void search().catch((error) => log.error("Search failed", error));
+    }, SEARCH_CONSTANTS.DEBOUNCE_MS);
     return () => {
-      const previousSearchId = searchIdRef.current;
-      searchIdRef.current = "";
-      abortControllerRef.current?.abort();
-      if (previousSearchId) void cancelSearch(previousSearchId).catch(() => {});
-      cleanupStreamingListeners();
+      release();
     };
-  }, [cleanupStreamingListeners]);
+  }, [automatic, request, search, release, resultActions]);
 
-  const refresh = useCallback(() => {
-    lastSearchKeyRef.current = "";
-    return search();
-  }, [search]);
+  useEffect(() => () => release(), [release]);
+  const refresh = useCallback(() => search(), [search]);
 
-  return { search, refresh };
+  return { search, clear, refresh };
 }

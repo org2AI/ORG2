@@ -892,5 +892,10 @@
       "memberNote": "Diaktifkan oleh admin — sesi yang memenuhi syarat diunggah di latar belakang tanpa perlu Anda membuka ruang kerja ini."
     },
     "userName": "Nama pengguna"
+  },
+  "fileSearch": {
+    "replaceFailed": "Penggantian dihentikan karena hasil atau file berubah, atau penulisan gagal. Beberapa file mungkin sudah diperbarui. Cari lagi sebelum mencoba ulang.",
+    "budgetExceeded": "Pencarian mencapai batas sumber daya. Hasil hanya sebagian; persempit cakupan pencarian.",
+    "timeout": "Waktu pencarian habis. Persempit cakupan pencarian dan coba lagi."
   }
 }

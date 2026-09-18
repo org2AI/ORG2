@@ -1,169 +1,242 @@
-//! Global state, cancellation registry, and file collection helpers.
-
+//! Bounded file enumeration and request ownership shared by search adapters.
+use super::types::SearchFilters;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
-use super::types::SearchFilters;
-
-// ── Global State ────────────────────────────────────────────────────────
-
-/// Map of active search IDs to their cancellation flags.
+pub(super) const MAX_FILES: usize = 20_000;
+pub(super) const MAX_SCAN_TIME: Duration = Duration::from_secs(10);
+pub(super) const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024;
 static ACTIVE_SEARCHES: std::sync::LazyLock<RwLock<HashMap<String, Arc<AtomicBool>>>> =
     std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
-
-// ── Cancellation Registry ───────────────────────────────────────────────
-
-/// Register a new search and return its cancellation flag.
-pub(super) fn register_search(search_id: &str) -> Arc<AtomicBool> {
-    let flag = Arc::new(AtomicBool::new(false));
-    ACTIVE_SEARCHES
-        .write()
-        .unwrap()
-        .insert(search_id.to_string(), flag.clone());
-    flag
+// Short-lived, bounded tombstones close the IPC race where cancel arrives
+// before its start command has registered. IDs are unique per request.
+static CANCELLED_STARTS: std::sync::LazyLock<RwLock<HashMap<String, Instant>>> =
+    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
+pub(super) fn register_search(id: &str) -> Result<Arc<AtomicBool>, String> {
+    if id.is_empty() || id.len() > 256 {
+        return Err("Invalid search ID length".into());
+    }
+    let mut active = ACTIVE_SEARCHES.write().unwrap();
+    if active.contains_key(id) {
+        return Err("Search ID is already active".into());
+    }
+    if active.len() >= 8 {
+        return Err("Too many active searches; retry after cancelling a search".into());
+    }
+    let was_cancelled = {
+        let mut pending = CANCELLED_STARTS.write().unwrap();
+        pending.retain(|_, at| at.elapsed() < std::time::Duration::from_secs(30));
+        pending.remove(id).is_some()
+    };
+    let flag = Arc::new(AtomicBool::new(was_cancelled));
+    active.insert(id.into(), flag.clone());
+    Ok(flag)
 }
-
-/// Unregister a search when it completes.
-pub(super) fn unregister_search(search_id: &str) {
-    ACTIVE_SEARCHES.write().unwrap().remove(search_id);
+pub(super) fn unregister_search(id: &str) {
+    ACTIVE_SEARCHES.write().unwrap().remove(id);
 }
-
-/// Cancel a search by setting its cancellation flag.
 #[tauri::command]
 pub fn cancel_search(search_id: String) -> bool {
-    if let Some(flag) = ACTIVE_SEARCHES.read().unwrap().get(&search_id) {
+    if search_id.is_empty() || search_id.len() > 256 {
+        return false;
+    }
+    let active = ACTIVE_SEARCHES.read().unwrap();
+    if let Some(flag) = active.get(&search_id) {
         flag.store(true, Ordering::Relaxed);
-        println!("🛑 [Search] Cancelled search: {}", search_id);
         true
     } else {
+        let mut pending = CANCELLED_STARTS.write().unwrap();
+        pending.retain(|_, at| at.elapsed() < std::time::Duration::from_secs(30));
+        if pending.len() >= 128 {
+            if let Some(oldest) = pending
+                .iter()
+                .min_by_key(|(_, at)| *at)
+                .map(|(id, _)| id.clone())
+            {
+                pending.remove(&oldest);
+            }
+        }
+        pending.insert(search_id, Instant::now());
         false
     }
 }
-
-// ── File Helpers ────────────────────────────────────────────────────────
-
-/// Read file content safely.
-pub(super) fn read_file_content(path: &Path) -> Option<String> {
-    std::fs::read_to_string(path).ok()
+/// Bounded UTF-8 context. Match offsets remain relative to the original line.
+pub(super) fn get_same_line_context(line: &str, start: usize, end: usize) -> (String, String) {
+    let before = &line[..start];
+    let from = before
+        .char_indices()
+        .rev()
+        .nth(159)
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+    let after = &line[end..];
+    let to = after
+        .char_indices()
+        .nth(160)
+        .map(|(i, _)| i)
+        .unwrap_or(after.len());
+    (before[from..].into(), after[..to].into())
 }
-
-/// Get context on the SAME LINE around a match.
-/// Returns (before_on_line, after_on_line).
-pub(super) fn get_same_line_context(
-    line: &str,
-    match_start: usize,
-    match_end: usize,
-) -> (String, String) {
-    let before = if match_start > 0 {
-        line[..match_start].to_string()
-    } else {
-        String::new()
-    };
-
-    let after = if match_end < line.len() {
-        line[match_end..].to_string()
-    } else {
-        String::new()
-    };
-
-    (before, after)
+pub(super) struct CollectedFiles {
+    pub files: Vec<PathBuf>,
+    pub fingerprint: u64,
+    pub truncated: bool,
 }
-
-/// Walk directory and collect supported files using parallel `ignore` crate.
-/// This is the same library that ripgrep uses internally.
-pub(super) fn collect_files(root: &Path, filters: &SearchFilters) -> Vec<PathBuf> {
-    use ignore::WalkBuilder;
-    use std::sync::Mutex;
-
-    let files = Mutex::new(Vec::new());
-
-    let exclude_dirs = filters.exclude_dirs.clone().unwrap_or_else(|| {
-        vec![
-            "node_modules".into(),
-            ".git".into(),
-            "target".into(),
-            "dist".into(),
-            "build".into(),
-            ".next".into(),
-            "__pycache__".into(),
-            ".venv".into(),
-            "venv".into(),
-        ]
-    });
-
-    let extensions: Option<Vec<String>> = filters
-        .file_extensions
+fn globs(patterns: &Option<Vec<String>>) -> Result<globset::GlobSet, String> {
+    let mut builder = globset::GlobSetBuilder::new();
+    for pattern in patterns.as_deref().unwrap_or_default() {
+        if pattern.len() > 1024 {
+            return Err("Search glob is too long".into());
+        }
+        builder.add(
+            globset::GlobBuilder::new(pattern)
+                .literal_separator(true)
+                .build()
+                .map_err(|e| format!("Invalid file glob: {e}"))?,
+        );
+    }
+    builder.build().map_err(|e| e.to_string())
+}
+pub(super) fn collect_files_bounded(
+    root: &Path,
+    filters: &SearchFilters,
+    cancelled: &AtomicBool,
+    started: Instant,
+) -> Result<CollectedFiles, String> {
+    collect_files_bounded_at(root, filters, cancelled, started, root)
+}
+pub(super) fn collect_files_bounded_at(
+    root: &Path,
+    filters: &SearchFilters,
+    cancelled: &AtomicBool,
+    started: Instant,
+    glob_root: &Path,
+) -> Result<CollectedFiles, String> {
+    if filters
+        .include_globs
         .as_ref()
-        .map(|exts| exts.iter().map(|s| s.to_string()).collect());
-
-    let mut builder = WalkBuilder::new(root);
+        .is_some_and(|v| v.len() > 100)
+        || filters
+            .exclude_globs
+            .as_ref()
+            .is_some_and(|v| v.len() > 100)
+    {
+        return Err("Too many search globs".into());
+    }
+    let includes = globs(&filters.include_globs)?;
+    let excludes = globs(&filters.exclude_globs)?;
+    let excluded = filters.exclude_dirs.clone().unwrap_or_else(|| {
+        [
+            "node_modules",
+            ".git",
+            "target",
+            "dist",
+            "build",
+            ".next",
+            "__pycache__",
+            ".venv",
+            "venv",
+        ]
+        .map(String::from)
+        .to_vec()
+    });
+    let mut builder = ignore::WalkBuilder::new(root);
     builder
         .hidden(false)
         .git_ignore(true)
         .git_global(true)
         .git_exclude(true)
-        .threads(
-            std::thread::available_parallelism()
-                .map(|n| n.get())
-                .unwrap_or(1)
-                .min(8),
-        );
-
-    builder.build_parallel().run(|| {
-        let files = &files;
-        let exclude_dirs = &exclude_dirs;
-        let extensions = &extensions;
-
-        Box::new(move |entry| {
-            let entry = match entry {
-                Ok(e) => e,
-                Err(_) => return ignore::WalkState::Continue,
-            };
-
-            let path = entry.path();
-
-            if path.is_dir() {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if exclude_dirs.iter().any(|e| e == name) {
-                        return ignore::WalkState::Skip;
-                    }
-                }
-                return ignore::WalkState::Continue;
-            }
-
-            if !path.is_file() {
-                return ignore::WalkState::Continue;
-            }
-
-            // Explicit extension filter: exact match only.
-            // No filter: include EVERY file except known-binary extensions.
-            // The old default ("extension must belong to a known programming
-            // language") silently dropped logs, configs, and extension-less
-            // files — a grep over ~/.orgii/logs returned 0 matches with no
-            // error. Content-level binary detection is the searcher's job.
-            let ext = path.extension().and_then(|e| e.to_str());
-            let should_include = match (extensions.as_ref(), ext) {
-                (Some(exts), Some(ext)) => {
-                    exts.iter().any(|e| e == ext || e == &format!(".{}", ext))
-                }
-                (Some(_), None) => false,
-                (None, Some(ext)) => !BINARY_EXTENSIONS.contains(&ext.to_lowercase().as_str()),
-                (None, None) => true,
-            };
-
-            if should_include {
-                files.lock().unwrap().push(path.to_path_buf());
-            }
-
-            ignore::WalkState::Continue
-        })
+        .follow_links(false);
+    builder.filter_entry(move |e| {
+        !e.file_type().is_some_and(|t| t.is_dir())
+            || !excluded
+                .iter()
+                .any(|name| e.file_name() == std::ffi::OsStr::new(name))
     });
-
-    files.into_inner().unwrap()
+    let mut files = Vec::new();
+    let mut paths_bytes = 0;
+    let mut visited = 0;
+    let mut truncated = false;
+    // Check before obtaining the iterator's next entry too: cancellation must
+    // stop enumeration, not merely skip the subsequent content search.
+    let mut walker = builder.build();
+    while !cancelled.load(Ordering::Relaxed) {
+        if started.elapsed() >= MAX_SCAN_TIME || visited >= MAX_FILES * 4 {
+            truncated = true;
+            break;
+        }
+        let Some(entry) = walker.next() else {
+            break;
+        };
+        visited += 1;
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => {
+                truncated = true;
+                continue;
+            }
+        };
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let relative = path
+            .strip_prefix(glob_root)
+            .ok()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(path);
+        let filename = path.file_name().map(Path::new).unwrap_or(path);
+        if (!includes.is_empty() && !includes.is_match(relative) && !includes.is_match(filename))
+            || excludes.is_match(relative)
+            || excludes.is_match(filename)
+        {
+            continue;
+        }
+        let ext = path.extension().and_then(|s| s.to_str());
+        let include = match (&filters.file_extensions, ext) {
+            (Some(exts), Some(ext)) => exts.iter().any(|e| e.trim_start_matches('.') == ext),
+            (Some(_), None) => false,
+            (None, Some(ext)) => !BINARY_EXTENSIONS.contains(&ext.to_lowercase().as_str()),
+            (None, None) => true,
+        };
+        if !include {
+            continue;
+        }
+        paths_bytes += path.as_os_str().len();
+        if files.len() >= MAX_FILES || paths_bytes > 4 * 1024 * 1024 {
+            truncated = true;
+            break;
+        }
+        files.push(path.to_path_buf());
+    }
+    files.sort();
+    let mut fingerprint = std::collections::hash_map::DefaultHasher::new();
+    for path in &files {
+        if cancelled.load(Ordering::Relaxed) || started.elapsed() >= MAX_SCAN_TIME {
+            truncated = true;
+            break;
+        }
+        path.hash(&mut fingerprint);
+        match std::fs::metadata(path) {
+            Ok(meta) => {
+                meta.len().hash(&mut fingerprint);
+                meta.modified().ok().hash(&mut fingerprint);
+            }
+            Err(_) => {
+                truncated = true;
+            }
+        }
+    }
+    Ok(CollectedFiles {
+        files,
+        fingerprint: fingerprint.finish(),
+        truncated,
+    })
 }
-
 /// File extensions that are always binary — excluded from the no-filter
 /// default so the regex searcher doesn't waste time on them.
 const BINARY_EXTENSIONS: &[&str] = &[

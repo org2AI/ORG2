@@ -45,8 +45,12 @@ pub struct CodeLocation {
     pub text: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SearchFilters {
+    #[serde(default)]
+    pub include_globs: Option<Vec<String>>,
+    #[serde(default)]
+    pub exclude_globs: Option<Vec<String>>,
     pub file_extensions: Option<Vec<String>>,
     pub exclude_dirs: Option<Vec<String>>,
     pub case_sensitive: Option<bool>,

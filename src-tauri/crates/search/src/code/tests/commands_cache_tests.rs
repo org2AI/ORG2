@@ -10,6 +10,8 @@ static CACHE_MUTEX: Mutex<()> = Mutex::new(());
 
 fn default_filters() -> SearchFilters {
     SearchFilters {
+        include_globs: None,
+        exclude_globs: None,
         case_sensitive: None,
         use_regex: None,
         max_results: None,
@@ -152,4 +154,58 @@ fn cache_preserves_limit_hit_flag() {
     assert_eq!(cached.total_files, 100);
 
     clear_search_cache();
+}
+
+#[test]
+fn keys_include_all_filters_and_clear_rejects_inflight_fill() {
+    let _lock = CACHE_MUTEX.lock().unwrap();
+    let filters = default_filters();
+    let base = SearchCacheKey::new("complete-key", "/fixture", &filters);
+    for changed in [
+        SearchFilters {
+            file_extensions: Some(vec!["ts".into()]),
+            ..filters.clone()
+        },
+        SearchFilters {
+            exclude_dirs: Some(vec!["vendor".into()]),
+            ..filters.clone()
+        },
+        SearchFilters {
+            include_globs: Some(vec!["src/**".into()]),
+            ..filters.clone()
+        },
+        SearchFilters {
+            exclude_globs: Some(vec!["**/*.test.ts".into()]),
+            ..filters.clone()
+        },
+        SearchFilters {
+            whole_word: Some(true),
+            ..filters.clone()
+        },
+    ] {
+        assert_ne!(
+            base.hash_key(),
+            SearchCacheKey::new("complete-key", "/fixture", &changed).hash_key()
+        );
+    }
+    clear_search_cache();
+    cache_result(&base, vec![], 0, 0, false);
+    assert!(get_cached_result(&base).is_none());
+}
+
+#[test]
+fn oversized_cache_entries_are_not_retained() {
+    let _lock = CACHE_MUTEX.lock().unwrap();
+    let key = SearchCacheKey::new("huge", "/fixture", &default_filters());
+    cache_result(
+        &key,
+        vec![CodeSearchResult {
+            file_path: "a".repeat(4 * 1024 * 1024),
+            matches: vec![],
+        }],
+        0,
+        1,
+        false,
+    );
+    assert!(get_cached_result(&key).is_none());
 }

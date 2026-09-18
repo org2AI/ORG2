@@ -47,6 +47,7 @@ const actions = {
 const Probe = forwardRef<ReturnType<typeof useSearchExecution>>(
   (_props, ref) => {
     const search = useSearchExecution({
+      automatic: false,
       query: "needle",
       searchMode: "regex",
       repoPath: "/repo",
@@ -60,7 +61,7 @@ const Probe = forwardRef<ReturnType<typeof useSearchExecution>>(
 );
 Probe.displayName = "SearchRefreshProbe";
 
-it("deduplicates normal searches while explicit refresh replaces the previous listeners", async () => {
+it("explicit refresh replaces the previous active request and its listeners", async () => {
   const environment = globalThis as typeof globalThis & {
     IS_REACT_ACT_ENVIRONMENT?: boolean;
   };
@@ -72,12 +73,11 @@ it("deduplicates normal searches while explicit refresh replaces the previous li
   try {
     await act(async () => root.render(createElement(Probe, { ref })));
     await act(async () => {
-      await ref.current!.search();
-      await ref.current!.search();
+      void ref.current!.refresh();
     });
     expect(api.search).toHaveBeenCalledTimes(1);
     await act(async () => {
-      await ref.current!.refresh();
+      void ref.current!.refresh();
     });
     expect(api.search).toHaveBeenCalledTimes(2);
     expect(api.cancel).toHaveBeenCalledTimes(1);

@@ -9,6 +9,7 @@ import type { SearchResultFile as StoreSearchResultFile } from "@src/store/works
  */
 export interface SearchResultActions {
   setResults: (results: StoreSearchResultFile[]) => void;
+  setLoadingMore?: (loading: boolean) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setHasMore: (hasMore: boolean) => void;

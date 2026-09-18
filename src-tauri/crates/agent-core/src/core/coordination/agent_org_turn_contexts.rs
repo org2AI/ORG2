@@ -259,7 +259,6 @@ impl AgentOrgTurnAdmission {
         }
     }
 
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn task_execution(
         org_run_id: impl Into<String>,
         session_id: impl Into<String>,
@@ -319,7 +318,6 @@ impl AgentOrgTurnAdmission {
         request
     }
 
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn direct_member(
         org_run_id: impl Into<String>,
         session_id: impl Into<String>,
@@ -343,7 +341,6 @@ impl AgentOrgTurnAdmission {
         }
     }
 
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn group_mention(
         org_run_id: impl Into<String>,
         session_id: impl Into<String>,
@@ -365,7 +362,6 @@ impl AgentOrgTurnAdmission {
         }
     }
 
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn member_inbox(
         org_run_id: impl Into<String>,
         session_id: impl Into<String>,

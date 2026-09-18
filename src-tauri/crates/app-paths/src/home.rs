@@ -35,7 +35,7 @@ fn native_transcript_home_override() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-fn external_history_home_override() -> Option<PathBuf> {
+pub(crate) fn external_history_home_override() -> Option<PathBuf> {
     std::env::var_os("ORGII_EXTERNAL_HISTORY_HOME")
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)

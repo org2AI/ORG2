@@ -16,6 +16,7 @@ import type {
   SupabaseConnectionConfig,
   TableInfo,
 } from "../types";
+import { quoteIdentifier, quoteLiteral } from "./sqlSyntax";
 
 interface ManagementApiError {
   message?: string;
@@ -135,7 +136,7 @@ export class SupabaseProvider implements IDatabaseService {
         table_name as name,
         table_type
       FROM information_schema.tables 
-      WHERE table_schema = '${this.schema}'
+      WHERE table_schema = ${quoteLiteral(this.schema)}
         AND table_type IN ('BASE TABLE', 'VIEW')
       ORDER BY table_name
     `;
@@ -149,7 +150,7 @@ export class SupabaseProvider implements IDatabaseService {
 
     const countPromises = tables.slice(0, 50).map(async (table) => {
       try {
-        const countSql = `SELECT COUNT(*) as count FROM "${this.schema}"."${table.name}"`;
+        const countSql = `SELECT COUNT(*) as count FROM ${quoteIdentifier(this.schema)}.${quoteIdentifier(table.name)}`;
         const countResult = await this.executeManagementApi(countSql);
         if (countResult[0]?.count !== undefined) {
           table.rowCount = Number(countResult[0].count);
@@ -182,11 +183,11 @@ export class SupabaseProvider implements IDatabaseService {
           ON tc.constraint_name = ku.constraint_name
           AND tc.table_schema = ku.table_schema
         WHERE tc.constraint_type = 'PRIMARY KEY'
-          AND tc.table_schema = '${this.schema}'
-          AND tc.table_name = '${tableName}'
+          AND tc.table_schema = ${quoteLiteral(this.schema)}
+          AND tc.table_name = ${quoteLiteral(tableName)}
       ) pk ON c.column_name = pk.column_name
-      WHERE c.table_schema = '${this.schema}'
-        AND c.table_name = '${tableName}'
+      WHERE c.table_schema = ${quoteLiteral(this.schema)}
+        AND c.table_name = ${quoteLiteral(tableName)}
       ORDER BY c.ordinal_position
     `;
 
@@ -222,9 +223,9 @@ export class SupabaseProvider implements IDatabaseService {
     const startTime = performance.now();
     const offset = (page - 1) * pageSize;
 
-    let sql = `SELECT * FROM "${this.schema}"."${tableName}"`;
+    let sql = `SELECT * FROM ${quoteIdentifier(this.schema)}.${quoteIdentifier(tableName)}`;
     if (orderBy) {
-      sql += ` ORDER BY "${orderBy}" ${orderDirection.toUpperCase()}`;
+      sql += ` ORDER BY ${quoteIdentifier(orderBy)} ${orderDirection.toUpperCase()}`;
     }
     sql += ` LIMIT ${pageSize} OFFSET ${offset}`;
 
@@ -233,7 +234,7 @@ export class SupabaseProvider implements IDatabaseService {
 
     let totalCount: number | undefined;
     try {
-      const countSql = `SELECT COUNT(*) as count FROM "${this.schema}"."${tableName}"`;
+      const countSql = `SELECT COUNT(*) as count FROM ${quoteIdentifier(this.schema)}.${quoteIdentifier(tableName)}`;
       const countResult = await this.executeManagementApi(countSql);
       if (countResult[0]?.count !== undefined) {
         totalCount = Number(countResult[0].count);
@@ -313,7 +314,7 @@ export class SupabaseProvider implements IDatabaseService {
     const values = columns.map((col) => this.formatValue(data[col]));
 
     const sql = `
-      INSERT INTO "${this.schema}"."${tableName}" (${columns.map((col) => `"${col}"`).join(", ")})
+      INSERT INTO ${quoteIdentifier(this.schema)}.${quoteIdentifier(tableName)} (${columns.map((col) => `${quoteIdentifier(col)}`).join(", ")})
       VALUES (${values.join(", ")})
       RETURNING *
     `;
@@ -346,14 +347,14 @@ export class SupabaseProvider implements IDatabaseService {
     const startTime = performance.now();
 
     const setClause = Object.entries(data)
-      .map(([col, val]) => `"${col}" = ${this.formatValue(val)}`)
+      .map(([col, val]) => `${quoteIdentifier(col)} = ${this.formatValue(val)}`)
       .join(", ");
     const whereClause = Object.entries(where)
-      .map(([col, val]) => `"${col}" = ${this.formatValue(val)}`)
+      .map(([col, val]) => `${quoteIdentifier(col)} = ${this.formatValue(val)}`)
       .join(" AND ");
 
     const sql = `
-      UPDATE "${this.schema}"."${tableName}"
+      UPDATE ${quoteIdentifier(this.schema)}.${quoteIdentifier(tableName)}
       SET ${setClause}
       WHERE ${whereClause}
       RETURNING *
@@ -381,11 +382,11 @@ export class SupabaseProvider implements IDatabaseService {
     const startTime = performance.now();
 
     const whereClause = Object.entries(where)
-      .map(([col, val]) => `"${col}" = ${this.formatValue(val)}`)
+      .map(([col, val]) => `${quoteIdentifier(col)} = ${this.formatValue(val)}`)
       .join(" AND ");
 
     const sql = `
-      DELETE FROM "${this.schema}"."${tableName}"
+      DELETE FROM ${quoteIdentifier(this.schema)}.${quoteIdentifier(tableName)}
       WHERE ${whereClause}
       RETURNING *
     `;

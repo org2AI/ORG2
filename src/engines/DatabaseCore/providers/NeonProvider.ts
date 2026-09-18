@@ -16,6 +16,7 @@ import type {
   QueryResult,
   TableInfo,
 } from "../types";
+import { quoteIdentifier, quoteLiteral } from "./sqlSyntax";
 
 interface NeonApiError {
   message?: string;
@@ -160,7 +161,7 @@ export class NeonProvider implements IDatabaseService {
     for (const table of tables.slice(0, 50)) {
       try {
         const countResult = await this.executeHttp(
-          `SELECT COUNT(*) as count FROM "public"."${table.name}"`
+          `SELECT COUNT(*) as count FROM "public".${quoteIdentifier(table.name)}`
         );
         if (countResult.rows.length > 0) {
           table.rowCount = Number(countResult.rows[0][0]);
@@ -193,10 +194,10 @@ export class NeonProvider implements IDatabaseService {
           AND tc.table_schema = ku.table_schema
         WHERE tc.constraint_type = 'PRIMARY KEY'
           AND tc.table_schema = 'public'
-          AND tc.table_name = '${tableName}'
+          AND tc.table_name = ${quoteLiteral(tableName)}
       ) pk ON c.column_name = pk.column_name
       WHERE c.table_schema = 'public'
-        AND c.table_name = '${tableName}'
+        AND c.table_name = ${quoteLiteral(tableName)}
       ORDER BY c.ordinal_position
     `);
 
@@ -226,9 +227,9 @@ export class NeonProvider implements IDatabaseService {
     const offset = (page - 1) * pageSize;
     const startTime = performance.now();
 
-    let sql = `SELECT * FROM "public"."${tableName}"`;
+    let sql = `SELECT * FROM "public".${quoteIdentifier(tableName)}`;
     if (orderBy) {
-      sql += ` ORDER BY "${orderBy}" ${orderDirection.toUpperCase()}`;
+      sql += ` ORDER BY ${quoteIdentifier(orderBy)} ${orderDirection.toUpperCase()}`;
     }
     sql += ` LIMIT ${pageSize} OFFSET ${offset}`;
 
@@ -238,7 +239,7 @@ export class NeonProvider implements IDatabaseService {
     let totalCount: number | undefined;
     try {
       const countResult = await this.executeHttp(
-        `SELECT COUNT(*) FROM "public"."${tableName}"`
+        `SELECT COUNT(*) FROM "public".${quoteIdentifier(tableName)}`
       );
       if (countResult.rows.length > 0) {
         totalCount = Number(countResult.rows[0][0]);
@@ -304,7 +305,7 @@ export class NeonProvider implements IDatabaseService {
     const values = columns.map((col) => this.formatValue(data[col]));
 
     const sql = `
-      INSERT INTO "public"."${tableName}" (${columns.map((col) => `"${col}"`).join(", ")})
+      INSERT INTO "public".${quoteIdentifier(tableName)} (${columns.map((col) => `${quoteIdentifier(col)}`).join(", ")})
       VALUES (${values.join(", ")})
       RETURNING *
     `;
@@ -339,14 +340,14 @@ export class NeonProvider implements IDatabaseService {
     const startTime = performance.now();
 
     const setClause = Object.entries(data)
-      .map(([col, val]) => `"${col}" = ${this.formatValue(val)}`)
+      .map(([col, val]) => `${quoteIdentifier(col)} = ${this.formatValue(val)}`)
       .join(", ");
     const whereClause = Object.entries(where)
-      .map(([col, val]) => `"${col}" = ${this.formatValue(val)}`)
+      .map(([col, val]) => `${quoteIdentifier(col)} = ${this.formatValue(val)}`)
       .join(" AND ");
 
     const sql = `
-      UPDATE "public"."${tableName}"
+      UPDATE "public".${quoteIdentifier(tableName)}
       SET ${setClause}
       WHERE ${whereClause}
       RETURNING *
@@ -377,11 +378,11 @@ export class NeonProvider implements IDatabaseService {
     const startTime = performance.now();
 
     const whereClause = Object.entries(where)
-      .map(([col, val]) => `"${col}" = ${this.formatValue(val)}`)
+      .map(([col, val]) => `${quoteIdentifier(col)} = ${this.formatValue(val)}`)
       .join(" AND ");
 
     const sql = `
-      DELETE FROM "public"."${tableName}"
+      DELETE FROM "public".${quoteIdentifier(tableName)}
       WHERE ${whereClause}
       RETURNING *
     `;

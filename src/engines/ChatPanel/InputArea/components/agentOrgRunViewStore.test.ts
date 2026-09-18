@@ -510,6 +510,36 @@ describe("Agent Org run-view store", () => {
     unsubscribeWorker();
   });
 
+  it("keeps a newly selected Team isolated when another Team resolves late", async () => {
+    vi.useFakeTimers();
+    const firstTeamRequest = deferred<ReturnType<typeof runView>>();
+    const secondTeamRequest = deferred<ReturnType<typeof runView>>();
+    mocks.subscribeAgentOrgStateChanges.mockReturnValue(
+      mocks.unsubscribeStateChanges
+    );
+    mocks.getAgentOrgSessionRunView
+      .mockReturnValueOnce(firstTeamRequest.promise)
+      .mockReturnValueOnce(secondTeamRequest.promise);
+
+    const unsubscribeFirst = subscribeAgentOrgRunView("root-a", vi.fn());
+    const unsubscribeSecond = subscribeAgentOrgRunView("root-b", vi.fn());
+
+    await vi.advanceTimersByTimeAsync(AGENT_ORG_BOOTSTRAP_JOIN_TIMEOUT_MS);
+    secondTeamRequest.resolve(runViewForRoot("idle", "run-b", "root-b"));
+    await flushPromises();
+    firstTeamRequest.resolve(runViewForRoot("running", "run-a", "root-a"));
+    await flushPromises();
+
+    expect(getAgentOrgRunViewSnapshot("root-b").view?.context.runId).toBe(
+      "run-b"
+    );
+    expect(getAgentOrgRunViewSnapshot("root-a").view?.context.runId).toBe(
+      "run-a"
+    );
+    unsubscribeFirst();
+    unsubscribeSecond();
+  });
+
   it("runs one follow-up refresh when a push arrives during an in-flight read", async () => {
     vi.useFakeTimers();
     let backendChangeHandler:

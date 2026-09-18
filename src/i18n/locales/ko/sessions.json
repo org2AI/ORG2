@@ -2112,7 +2112,7 @@
         "cancelled": "취소됨",
         "failed": "실패"
       },
-      "title": "Agent 팀 개요",
+      "title": "팀 개요",
       "summary": "활성 {{active}}개 · 처리 대기 {{pending}}개",
       "loadFailed": "팀 개요 로드 실패",
       "tasks": "작업",
@@ -2187,9 +2187,7 @@
       "activeMembers": "활성 구성원",
       "inFlightTurns": "진행 중인 턴",
       "openTasks": "열린 작업",
-      "blockingInbox": "차단 중인 받은 편지함",
-      "blockersTitle": "완료를 계속 차단하는 항목",
-      "unknownBlocker": "알 수 없는 시스템 차단 요소"
+      "blockingInbox": "차단 중인 받은 편지함"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}}에게 직접 작업",
@@ -2354,7 +2352,6 @@
     },
     "triggerLabel": "그룹 채팅",
     "userMessageOutcomeUnknown": "전달 결과를 알 수 없습니다. 원래 전달을 다시 시도하세요.",
-    "coordinatorLabel": "코디네이터",
     "youLabel": "나",
     "retry": "다시 시도",
     "memberCount_one": "멤버 {{count}}명",

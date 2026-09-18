@@ -414,7 +414,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
     // coordinator-scoped feed, and header actions such as collapse-all are
     // keyed by the coordinator session id.
     const chatHistorySessionId = groupChatViewActive
-      ? sessionId
+      ? queueSessionId
       : agentOrgInteractionSessionId;
     const {
       suggestions: followUpSuggestions,
@@ -572,7 +572,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                   <ChatViewHistorySurface
                     sessionId={
                       groupChatViewActive
-                        ? sessionId
+                        ? chatHistorySessionId
                         : runnerBindings.sourceSessionId
                     }
                     groupChatViewActive={groupChatViewActive}

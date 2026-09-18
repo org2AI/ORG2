@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import {
   AGENT_ORG_RUN_STATUS,
   type AgentOrgGroupConversationItem,
-  type AgentOrgGroupDeliveryInput,
   type AgentOrgRunMemberView,
   type AgentOrgRunView,
   isAgentOrgGroupConversationItem,
@@ -26,9 +25,21 @@ import type {
   SubmitOverrideInput,
 } from "@src/engines/ChatPanel/hooks/useInputArea/types";
 import { createLogger } from "@src/hooks/logger";
-import { activeSessionIdAtom } from "@src/store/session";
+import { claimPipelineSessionAtom } from "@src/store/session";
 import { groupChatViewSessionIdAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
+import {
+  type GroupChatRetryEnvelope,
+  groupChatRetryRequest,
+  isDurableGroupDeliveryOutcomeUnknown,
+  isGroupRetryEnvelopeDurable,
+} from "./agentOrgGroupChatRetry";
+import {
+  isDirectAgentOrgMemberView,
+  shouldBlockPausedAgentOrgGroupChatSubmit,
+  shouldRouteAgentOrgGroupChatSubmit,
+  shouldUseAgentOrgMemberGroupTransport,
+} from "./agentOrgGroupChatRouting";
 import {
   getAgentOrgGroupProjectionSnapshot,
   useAgentOrgGroupProjection,
@@ -41,15 +52,6 @@ interface OptimisticGroupTurn {
   item: AgentOrgGroupConversationItem;
 }
 
-export interface GroupChatRetryEnvelope {
-  fingerprint: string;
-  deliveries: AgentOrgGroupDeliveryInput[];
-  content: string;
-  displayText: string;
-  images?: string[];
-  targetMemberNames: string[];
-}
-
 interface GroupRootRetryEnvelope {
   turnIntentId: string;
   clientMessageId: string;
@@ -59,73 +61,11 @@ interface GroupRootRetryEnvelope {
   targetMemberName: string;
 }
 
-export function groupChatRetryRequest(envelope: GroupChatRetryEnvelope): {
-  deliveries: AgentOrgGroupDeliveryInput[];
-  content: string;
-  displayText: string;
-  images?: string[];
-} {
-  return {
-    deliveries: envelope.deliveries.map((delivery) => ({ ...delivery })),
-    content: envelope.content,
-    displayText: envelope.displayText,
-    images: envelope.images?.slice(),
-  };
-}
-
-export function isDurableGroupDeliveryOutcomeUnknown(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("group_delivery_commit_before_kick_fault") ||
-    message.includes("group_delivery_response_loss_after_kick_fault") ||
-    message.includes("group_delivery_kick_failed")
-  );
-}
-
-export function isGroupRetryEnvelopeDurable(
-  envelope: GroupChatRetryEnvelope,
-  durableTurnIds: ReadonlySet<string>
-): boolean {
-  return envelope.deliveries.every((delivery) =>
-    durableTurnIds.has(delivery.turnIntentId)
-  );
-}
-
 interface UseAgentOrgGroupChatControllerOptions {
   sessionId: string;
   agentOrgRunView: AgentOrgRunView | null;
   currentAgentOrgMember: AgentOrgRunMemberView | null;
   refreshAgentOrgRunView: () => Promise<void>;
-}
-
-export function isDirectAgentOrgMemberView(
-  currentAgentOrgMember: AgentOrgRunMemberView | null
-): boolean {
-  return currentAgentOrgMember !== null && !currentAgentOrgMember.isCoordinator;
-}
-
-export function shouldRouteAgentOrgGroupChatSubmit(
-  groupChatViewActive: boolean,
-  directMemberView: boolean,
-  memberMentionCount: number
-): boolean {
-  if (directMemberView) return false;
-  return groupChatViewActive || memberMentionCount > 0;
-}
-
-export function shouldUseAgentOrgMemberGroupTransport(
-  targetMemberIds: ReadonlyArray<string>
-): boolean {
-  return targetMemberIds.length > 0;
-}
-
-export function shouldBlockPausedAgentOrgGroupChatSubmit(
-  runStatus: AgentOrgRunView["runStatus"],
-  targetMemberIds: ReadonlyArray<string>
-): boolean {
-  return (
-    runStatus === AGENT_ORG_RUN_STATUS.PAUSED && targetMemberIds.length === 0
-  );
 }
 
 function optimisticItem(input: {
@@ -172,7 +112,7 @@ export function useAgentOrgGroupChatController({
   refreshAgentOrgRunView,
 }: UseAgentOrgGroupChatControllerOptions) {
   const { t } = useTranslation("sessions");
-  const setActiveSessionId = useSetAtom(activeSessionIdAtom);
+  const claimPipelineSession = useSetAtom(claimPipelineSessionAtom);
   const groupChatViewSessionId = useAtomValue(groupChatViewSessionIdAtom);
   const setGroupChatViewSessionId = useSetAtom(groupChatViewSessionIdAtom);
   const groupChatDefaultAppliedRef = useRef<Set<string>>(new Set());
@@ -195,13 +135,20 @@ export function useAgentOrgGroupChatController({
   >(null);
 
   const directMemberView = isDirectAgentOrgMemberView(currentAgentOrgMember);
+  const groupRootSessionId = agentOrgRunView?.context.rootSessionId ?? null;
+  const groupChatViewAvailable = groupRootSessionId !== null;
   const groupChatViewActive =
-    groupChatViewSessionId === sessionId && !directMemberView;
-  const groupChatViewAvailable = Boolean(agentOrgRunView);
+    groupChatViewAvailable &&
+    groupChatViewSessionId === sessionId &&
+    !directMemberView;
+  // `sessionId` owns this ChatView surface. Group history and actions belong
+  // to the Team's canonical Root even when the surface was opened from a
+  // sidebar Member session.
+  const groupChatSessionId = groupRootSessionId ?? sessionId;
   const runId = agentOrgRunView?.context.runId ?? null;
   const projection = useAgentOrgGroupProjection(
     runId,
-    sessionId,
+    groupChatSessionId,
     groupChatViewActive
   );
   const refreshProjection = projection.refresh;
@@ -209,7 +156,7 @@ export function useAgentOrgGroupChatController({
   const agentOrgInteractionSessionId =
     currentAgentOrgMember?.sessionRuntime?.sessionId ?? sessionId;
   const queueSessionId = groupChatViewActive
-    ? sessionId
+    ? groupChatSessionId
     : agentOrgInteractionSessionId;
 
   useEffect(() => {
@@ -252,18 +199,35 @@ export function useAgentOrgGroupChatController({
   const handleGroupChatViewToggle = useCallback(
     (active: boolean) => {
       groupChatDefaultAppliedRef.current.add(sessionId);
-      if (active) setActiveSessionId(sessionId);
+      if (active) {
+        if (!groupRootSessionId) return;
+        claimPipelineSession(groupRootSessionId);
+      }
       setGroupChatViewSessionId(active ? sessionId : null);
     },
-    [sessionId, setActiveSessionId, setGroupChatViewSessionId]
+    [
+      claimPipelineSession,
+      groupRootSessionId,
+      sessionId,
+      setGroupChatViewSessionId,
+    ]
   );
 
   useEffect(() => {
     if (!sessionId || !groupChatViewAvailable) return;
     if (groupChatDefaultAppliedRef.current.has(sessionId)) return;
     groupChatDefaultAppliedRef.current.add(sessionId);
+    // A sidebar-opened Member must remain a direct-work surface until the
+    // user explicitly chooses Group. Mark the default as considered so a
+    // later Coordinator selection cannot accidentally reveal Group.
+    if (directMemberView) return;
     setGroupChatViewSessionId(sessionId);
-  }, [groupChatViewAvailable, sessionId, setGroupChatViewSessionId]);
+  }, [
+    directMemberView,
+    groupChatViewAvailable,
+    sessionId,
+    setGroupChatViewSessionId,
+  ]);
 
   useEffect(() => {
     if (groupChatViewActive && !groupChatViewAvailable) {
@@ -299,10 +263,10 @@ export function useAgentOrgGroupChatController({
     agentOrgRunView?.runStatus === AGENT_ORG_RUN_STATUS.PAUSED;
 
   const handleResumeGroupChatRun = useCallback(async () => {
-    if (!sessionId || isResumingGroupChat) return;
+    if (!groupRootSessionId || isResumingGroupChat) return;
     setIsResumingGroupChat(true);
     try {
-      await resumeAgentOrgRun(sessionId);
+      await resumeAgentOrgRun(groupRootSessionId);
       await Promise.all([refreshAgentOrgRunView(), refreshProjection()]);
     } catch (error: unknown) {
       logger.error("Failed to resume Agent Team run from Group:", error);
@@ -310,10 +274,10 @@ export function useAgentOrgGroupChatController({
       setIsResumingGroupChat(false);
     }
   }, [
+    groupRootSessionId,
     isResumingGroupChat,
     refreshAgentOrgRunView,
     refreshProjection,
-    sessionId,
   ]);
 
   const handleGroupChatSubmitOverride = useCallback(
@@ -393,7 +357,7 @@ export function useAgentOrgGroupChatController({
         setOptimisticTurns((current) => [...current, pending]);
         try {
           await sendAgentOrgGroupRootMessage({
-            sessionId,
+            sessionId: groupChatSessionId,
             turnIntentId,
             clientMessageId,
             content: route.agentBody,
@@ -494,7 +458,7 @@ export function useAgentOrgGroupChatController({
       try {
         const request = groupChatRetryRequest(envelope);
         await sendAgentOrgGroupChatMessage(
-          sessionId,
+          groupChatSessionId,
           request.deliveries,
           request.content,
           request.displayText,
@@ -529,8 +493,8 @@ export function useAgentOrgGroupChatController({
       agentOrgRunView,
       directMemberView,
       groupChatViewActive,
+      groupChatSessionId,
       refreshProjection,
-      sessionId,
       t,
     ]
   );
@@ -543,7 +507,7 @@ export function useAgentOrgGroupChatController({
     try {
       if (rootEnvelope) {
         await sendAgentOrgGroupRootMessage({
-          sessionId,
+          sessionId: groupChatSessionId,
           turnIntentId: rootEnvelope.turnIntentId,
           clientMessageId: rootEnvelope.clientMessageId,
           content: rootEnvelope.content,
@@ -553,7 +517,7 @@ export function useAgentOrgGroupChatController({
       } else if (envelope) {
         const request = groupChatRetryRequest(envelope);
         await sendAgentOrgGroupChatMessage(
-          sessionId,
+          groupChatSessionId,
           request.deliveries,
           request.content,
           request.displayText,
@@ -571,7 +535,7 @@ export function useAgentOrgGroupChatController({
     } finally {
       setIsRetryingGroupChat(false);
     }
-  }, [isRetryingGroupChat, refreshProjection, sessionId]);
+  }, [groupChatSessionId, isRetryingGroupChat, refreshProjection]);
 
   const withPendingAction = useCallback(
     async (turnIntentId: string, action: () => Promise<void>) => {
@@ -602,11 +566,11 @@ export function useAgentOrgGroupChatController({
     (item: AgentOrgGroupConversationItem) =>
       withPendingAction(item.turnIntentId, async () => {
         await stopAgentOrgGroupDelivery({
-          sessionId,
+          sessionId: groupChatSessionId,
           turnIntentId: item.turnIntentId,
         });
       }),
-    [sessionId, withPendingAction]
+    [groupChatSessionId, withPendingAction]
   );
 
   const handleRetryGroupDelivery = useCallback(
@@ -623,14 +587,14 @@ export function useAgentOrgGroupChatController({
           return;
         }
         await retryAgentOrgGroupDelivery({
-          sessionId,
+          sessionId: groupChatSessionId,
           sourceTurnIntentId: item.turnIntentId,
           retryTurnIntentId:
             item.retryMode === "rekick" ? undefined : crypto.randomUUID(),
           acknowledgePossibleDuplicate,
         });
       }),
-    [sessionId, t, withPendingAction]
+    [groupChatSessionId, t, withPendingAction]
   );
 
   const groupChatPendingMessage = useMemo(() => {

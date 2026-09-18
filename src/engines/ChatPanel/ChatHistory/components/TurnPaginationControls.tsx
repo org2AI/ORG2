@@ -6,24 +6,12 @@
  * buttons.
  */
 import React, { memo } from "react";
-import { createPortal } from "react-dom";
-import { useTranslation } from "react-i18next";
 
 import type { AgentOrgRunMemberView } from "@src/api/tauri/agent";
-import Button from "@src/components/Button";
-import { DropdownPanel } from "@src/components/Dropdown/exports";
-import {
-  DROPDOWN_CLASSES,
-  DROPDOWN_ITEM,
-} from "@src/components/Dropdown/tokens";
-import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
 import TurnNavigationToolbar from "@src/components/TurnNavigationToolbar/TurnNavigationToolbar";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
-import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
-import { AgentOrgWriterBadge } from "@src/engines/ChatPanel/blocks/OrgTaskBadges";
-import { useDropdownEngine } from "@src/hooks/dropdown";
-import { AiNetworkIcon, ArrowDown01Icon, HugeiconsIcon } from "@src/icons";
-import { isAgentOrgMemberEmpty } from "@src/util/agentOrg/memberActivity";
+
+import AgentOrgSurfaceSwitcher from "./AgentOrgSurfaceSwitcher";
 
 interface TurnPaginationControlsProps {
   agentName?: string | null;
@@ -77,28 +65,6 @@ interface TurnPaginationControlsProps {
   groupChatViewAvailable?: boolean;
 }
 
-const SELECT_TRIGGER_BASE =
-  "flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-lg px-2 text-[13px] font-normal text-text-1 transition-colors";
-const SELECT_CHEVRON_CLASS = "shrink-0 text-text-3 transition-transform";
-
-const MEMBER_RUNTIME_STATUS_LABEL_KEYS: Record<string, string> = {
-  idle: "planner.agentOrgMemberStatus.idle",
-  running: "planner.agentOrgMemberStatus.running",
-  waiting_for_user: "planner.agentOrgMemberStatus.waitingForUser",
-  completed: "planner.agentOrgMemberStatus.completed",
-  failed: "planner.agentOrgMemberStatus.failed",
-  cancelled: "planner.agentOrgMemberStatus.cancelled",
-  user_intervention: "planner.agentOrgMemberStatus.userIntervention",
-};
-
-function formatFallbackStatusLabel(status: string): string {
-  return status
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 // memo: every parent re-render (e.g. each chat-history snapshot or
 // turn-page selection) would otherwise re-mount the whole toolbar,
 // causing the round selector to visibly flash on prev/next clicks.
@@ -132,236 +98,31 @@ const TurnPaginationControls: React.FC<TurnPaginationControlsProps> = memo(
     onGroupChatViewToggle,
     groupChatViewAvailable = false,
   }) => {
-    const { t } = useTranslation();
-    const switchableMembers = agentOrgMembers.filter(
-      (member) => member.sessionRuntime
-    );
-    const hasGroupChatToggle =
-      groupChatViewAvailable && Boolean(onGroupChatViewToggle);
-    const canSwitchAgentOrgMember =
-      (switchableMembers.length > 1 && Boolean(onAgentOrgMemberSelect)) ||
-      hasGroupChatToggle;
     const hasAgentOrgOverview = Boolean(agentOrgOverviewPanel);
-    // Resolve by memberId when available (handles members that share a
-    // `name`); fall back to name match for legacy callers.
-    const currentAgentOrgMember = currentMemberId
-      ? agentOrgMembers.find((member) => member.memberId === currentMemberId)
-      : agentName
-        ? agentOrgMembers.find((member) => member.name === agentName)
-        : undefined;
-    // Verbatim labels: coordinator → "Coordinator", everyone else →
-    // their stored member name. No `agentOrgRoles.*` localisation —
-    // role names are product identifiers, not UI copy.
-    const groupChatLabel = t("sessions:groupChat.triggerLabel", {
-      defaultValue: "Group chat",
-    });
-    const currentAgentNameLabel = groupChatViewActive
-      ? groupChatLabel
-      : currentAgentOrgMember?.isCoordinator
-        ? "Coordinator"
-        : (currentAgentOrgMember?.name ?? agentName ?? null);
-    const {
-      isOpen: isMemberSwitcherOpen,
-      isPositioned: isMemberSwitcherPositioned,
-      setIsOpen: setMemberSwitcherOpen,
-      close: closeMemberSwitcher,
-      triggerRef: memberSwitcherTriggerRef,
-      panelRef: memberSwitcherPanelRef,
-      panelPosition: memberSwitcherPanelPosition,
-    } = useDropdownEngine<HTMLButtonElement>({
-      disabled: !canSwitchAgentOrgMember,
-      gap: 4,
-      placement: "bottom",
-      align: "left",
-    });
+    const hasAgentOrgSurface =
+      hasAgentOrgOverview || Boolean(agentName) || groupChatViewActive;
 
     const agentOrgLeading = (
-      <>
-        {hasAgentOrgOverview && (
-          <>
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              data-agent-org-overview-trigger="true"
-              className={
-                agentOrgOverviewOpen ? "bg-surface-hover! text-primary-6!" : ""
-              }
-              onClick={() => {
-                closeMemberSwitcher();
-                setTurnPageListOpen(false);
-                setAgentOrgOverviewOpen((open) => !open);
-              }}
-              aria-label={t("sessions:planner.agentOrgOverview.title")}
-              title={t("sessions:planner.agentOrgOverview.title")}
-              icon={
-                <HugeiconsIcon
-                  icon={AiNetworkIcon}
-                  data-icon="network"
-                  size={DROPDOWN_ITEM.iconSize}
-                  strokeWidth={1.75}
-                />
-              }
-            />
-            {agentName && <HeaderSectionSeparator />}
-          </>
-        )}
-        {currentAgentNameLabel && (
-          <>
-            <Button
-              layout="custom"
-              appearance="custom"
-              ref={memberSwitcherTriggerRef}
-              htmlType="button"
-              data-testid="agent-org-member-switcher-trigger"
-              className={`${SELECT_TRIGGER_BASE} disabled:cursor-default ${
-                canSwitchAgentOrgMember
-                  ? `cursor-pointer ${SURFACE_TOKENS.hover}`
-                  : ""
-              } ${isMemberSwitcherOpen ? SURFACE_TOKENS.selected : ""}`}
-              disabled={!canSwitchAgentOrgMember}
-              onClick={() => {
-                if (!canSwitchAgentOrgMember) return;
-                setAgentOrgOverviewOpen(false);
-                setTurnPageListOpen(false);
-                if (!isMemberSwitcherOpen) {
-                  void onAgentOrgRunViewRefresh?.();
-                }
-                setMemberSwitcherOpen(!isMemberSwitcherOpen);
-              }}
-            >
-              <span className="truncate">{currentAgentNameLabel}</span>
-              {canSwitchAgentOrgMember && (
-                <HugeiconsIcon
-                  icon={ArrowDown01Icon}
-                  data-icon="chevron-down"
-                  size={DROPDOWN_ITEM.iconSize}
-                  className={`${SELECT_CHEVRON_CLASS} ${
-                    isMemberSwitcherOpen ? "rotate-180" : ""
-                  }`}
-                />
-              )}
-            </Button>
-            {isMemberSwitcherOpen &&
-              isMemberSwitcherPositioned &&
-              createPortal(
-                <DropdownPanel
-                  ref={memberSwitcherPanelRef}
-                  className="min-w-[180px]"
-                  animated={false}
-                  maxHeight="none"
-                  style={{
-                    position: "fixed",
-                    top: memberSwitcherPanelPosition.top,
-                    left: memberSwitcherPanelPosition.left,
-                  }}
-                >
-                  <div className={DROPDOWN_CLASSES.optionsContainer}>
-                    {hasGroupChatToggle && (
-                      <>
-                        <Button
-                          layout="custom"
-                          appearance="custom"
-                          htmlType="button"
-                          role="menuitem"
-                          data-testid="agent-org-group-chat-toggle"
-                          className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} ${
-                            groupChatViewActive
-                              ? DROPDOWN_CLASSES.itemSelected
-                              : ""
-                          }`}
-                          onClick={() => {
-                            onGroupChatViewToggle?.(true);
-                            closeMemberSwitcher();
-                          }}
-                        >
-                          <span className="min-w-0 flex-1 truncate text-left">
-                            {groupChatLabel}
-                          </span>
-                        </Button>
-                        <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-                      </>
-                    )}
-                    {switchableMembers.map((member) => {
-                      const isCurrent =
-                        !groupChatViewActive &&
-                        (currentMemberId
-                          ? member.memberId === currentMemberId
-                          : member.name === agentName);
-                      const runtimeStatus = member.sessionRuntime?.status ?? "";
-                      const memberLabel = member.isCoordinator
-                        ? "Coordinator"
-                        : member.name;
-                      const hasNoTasksAndNoInbox =
-                        !member.isCoordinator && isAgentOrgMemberEmpty(member);
-                      const runtimeStatusLabelKey =
-                        MEMBER_RUNTIME_STATUS_LABEL_KEYS[runtimeStatus];
-                      const runtimeStatusLabel = member.activity
-                        ? t(
-                            `sessions:planner.agentOrgIntervention.activity.${member.activity.kind}`,
-                            { count: member.queuedUserDirectedCount }
-                          )
-                        : hasNoTasksAndNoInbox
-                          ? t("sessions:planner.agentOrgMemberStatus.noTasks", {
-                              defaultValue: "No tasks",
-                            })
-                          : runtimeStatus
-                            ? runtimeStatusLabelKey
-                              ? t(`sessions:${runtimeStatusLabelKey}`)
-                              : formatFallbackStatusLabel(runtimeStatus)
-                            : "";
-                      return (
-                        <Button
-                          layout="custom"
-                          appearance="custom"
-                          key={member.memberId}
-                          htmlType="button"
-                          role="menuitem"
-                          data-testid={`agent-org-member-switcher-option-${member.memberId}`}
-                          className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} ${
-                            isCurrent ? DROPDOWN_CLASSES.itemSelected : ""
-                          }`}
-                          onClick={() => {
-                            if (groupChatViewActive) {
-                              onGroupChatViewToggle?.(false);
-                            }
-                            onAgentOrgMemberSelect?.(member);
-                            closeMemberSwitcher();
-                          }}
-                        >
-                          <span className="flex min-w-0 flex-1 items-center gap-1 truncate text-left">
-                            <span className="truncate">{memberLabel}</span>
-                            {member.writerCapable && !member.isCoordinator && (
-                              <AgentOrgWriterBadge>
-                                {t(
-                                  "sessions:planner.agentOrgIntervention.writerBadge"
-                                )}
-                              </AgentOrgWriterBadge>
-                            )}
-                          </span>
-                          {runtimeStatusLabel && (
-                            <span className="shrink-0 text-[11px] text-text-3">
-                              {runtimeStatusLabel}
-                            </span>
-                          )}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </DropdownPanel>,
-                document.body
-              )}
-            {agentName && turnPaginationEnabled ? (
-              <HeaderSectionSeparator />
-            ) : null}
-          </>
-        )}
-      </>
+      <AgentOrgSurfaceSwitcher
+        currentMemberId={currentMemberId}
+        currentMemberName={agentName}
+        members={agentOrgMembers}
+        overviewAvailable={hasAgentOrgOverview}
+        overviewOpen={agentOrgOverviewOpen}
+        setOverviewOpen={setAgentOrgOverviewOpen}
+        onMemberSelect={onAgentOrgMemberSelect}
+        onRunViewRefresh={onAgentOrgRunViewRefresh}
+        groupChatActive={groupChatViewActive}
+        groupChatAvailable={groupChatViewAvailable}
+        onGroupChatToggle={onGroupChatViewToggle}
+        onCloseSiblingMenu={() => setTurnPageListOpen(false)}
+        siblingMenuOpen={turnPageListOpen}
+        showTrailingSeparator={Boolean(agentName) && turnPaginationEnabled}
+      />
     );
 
     if (!turnPaginationEnabled) {
-      if (!hasAgentOrgOverview && !currentAgentNameLabel) return null;
+      if (!hasAgentOrgSurface) return null;
       return (
         <div
           className={`flex h-10 min-h-10 shrink-0 items-center gap-1.5 px-2 text-xs text-text-3 ${CHAT_PANEL_WIDTH_TOKENS.contentWidth}`}
@@ -380,7 +141,6 @@ const TurnPaginationControls: React.FC<TurnPaginationControlsProps> = memo(
         listOpen={turnPageListOpen}
         onToggleList={() => {
           setAgentOrgOverviewOpen(false);
-          closeMemberSwitcher();
           setTurnPageListOpen((open) => !open);
         }}
         sortAscending={turnPageSortAscending}

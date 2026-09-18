@@ -2112,7 +2112,7 @@
         "cancelled": "Отменено",
         "failed": "Ошибка"
       },
-      "title": "Обзор Команды Agent",
+      "title": "Обзор команды",
       "summary": "{{active}} активны · {{pending}} требуют обработки",
       "loadFailed": "Не удалось загрузить обзор команды",
       "tasks": "Задачи",
@@ -2187,9 +2187,7 @@
       "activeMembers": "Активные участники",
       "inFlightTurns": "Выполняемые ходы",
       "openTasks": "Открытые задачи",
-      "blockingInbox": "Блокирующие входящие сообщения",
-      "blockersTitle": "Что ещё мешает завершению",
-      "unknownBlocker": "Неизвестная системная блокировка"
+      "blockingInbox": "Блокирующие входящие сообщения"
     },
     "agentOrgIntervention": {
       "directTitle": "Прямая работа с {{member}}",
@@ -2354,7 +2352,6 @@
     },
     "triggerLabel": "Групповой чат",
     "userMessageOutcomeUnknown": "Результат доставки неизвестен. Повторите исходную доставку.",
-    "coordinatorLabel": "Координатор",
     "youLabel": "Вы",
     "retry": "Повторить",
     "memberCount_one": "{{count}} участник",

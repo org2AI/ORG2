@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -10,10 +10,9 @@ import type {
 import { isAgentOrgGroupConversationItem } from "@src/api/tauri/agent";
 import Button from "@src/components/Button";
 import { ViewportLayoutMutationProvider } from "@src/components/ViewportLayoutMutationContext";
-import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
+import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import {
   AlertCircleIcon,
-  HierarchyCircle01Icon,
   HugeiconsIcon,
   InformationCircleIcon,
   RotateLeft01Icon,
@@ -26,6 +25,9 @@ import {
   EMPTY_FOLLOW_AGENT_NAV,
   type ScrollNavState,
 } from "../ChatHistory.types";
+import AgentOrgOverviewTray from "../components/AgentOrgOverviewTray";
+import AgentOrgSurfaceSwitcher from "../components/AgentOrgSurfaceSwitcher";
+import { useAgentOrgOverviewDisclosure } from "../hooks/useAgentOrgOverviewDisclosure";
 import { useTranscriptViewport } from "../viewport/useTranscriptViewport";
 import GroupChatMessageBubble from "./GroupChatMessageBubble";
 
@@ -39,6 +41,8 @@ interface AgentOrgGroupProjectionViewProps {
   actionError: string | null;
   actionPendingTurns: ReadonlySet<string>;
   overviewPanel: React.ReactNode;
+  overviewScopeKey: string;
+  surfaceBgClass: string;
   bottomInset: number;
   viewportSessionKey: string;
   onScrollNavChange: (state: ScrollNavState) => void;
@@ -95,6 +99,8 @@ const AgentOrgGroupProjectionView: React.FC<
   actionError,
   actionPendingTurns,
   overviewPanel,
+  overviewScopeKey,
+  surfaceBgClass,
   bottomInset,
   viewportSessionKey,
   onScrollNavChange,
@@ -106,7 +112,17 @@ const AgentOrgGroupProjectionView: React.FC<
   onRetry,
 }) => {
   const { t } = useTranslation("sessions");
-  const [overviewOpen, setOverviewOpen] = useState(false);
+  const { open: overviewOpen, setOpen: setOverviewOpen } =
+    useAgentOrgOverviewDisclosure({
+      available: Boolean(overviewPanel),
+      scopeKey: overviewScopeKey,
+    });
+  const handleGroupChatToggle = useCallback(
+    (active: boolean) => {
+      if (!active) onExitGroup();
+    },
+    [onExitGroup]
+  );
   const archived = runStatus === "archived";
   const tailItem = items.at(-1);
   const tailContentFingerprint =
@@ -150,54 +166,31 @@ const AgentOrgGroupProjectionView: React.FC<
   return (
     <ViewportLayoutMutationProvider value={preserveForLayoutMutation}>
       <section
-        className="flex h-full min-h-0 flex-col bg-chat-pane"
+        className={`flex h-full min-h-0 flex-col ${surfaceBgClass}`}
         data-testid="agent-org-group-projection"
         aria-label={t("groupChat.projection.title")}
       >
-        <header className="flex min-h-10 flex-wrap items-center gap-1 border-b border-border-1 px-2 py-1">
-          <Button size="small" variant="primary" disabled>
-            {t("groupChat.triggerLabel")}
-          </Button>
-          {members
-            .filter((member) => member.sessionRuntime)
-            .map((member) => (
-              <Button
-                key={member.memberId}
-                size="small"
-                variant="tertiary"
-                appearance="ghost"
-                onClick={() => {
-                  onExitGroup();
-                  onMemberSelect(member);
-                }}
-              >
-                {member.isCoordinator
-                  ? t("groupChat.coordinatorLabel")
-                  : member.name}
-              </Button>
-            ))}
-          <Button
-            size="small"
-            variant="tertiary"
-            appearance="ghost"
-            icon={
-              <HugeiconsIcon
-                icon={HierarchyCircle01Icon}
-                data-icon="network"
-                size={14}
-              />
-            }
-            aria-expanded={overviewOpen}
-            onClick={() => setOverviewOpen((open) => !open)}
+        <header className="shrink-0 border-b border-border-1">
+          <div
+            className={`flex h-10 min-h-10 max-w-full min-w-0 items-center gap-1.5 overflow-hidden px-2 text-xs text-text-3 ${CHAT_PANEL_WIDTH_TOKENS.contentWidth}`}
           >
-            {t("planner.agentOrgOverview.title")}
-          </Button>
+            <AgentOrgSurfaceSwitcher
+              members={members}
+              overviewAvailable={Boolean(overviewPanel)}
+              overviewOpen={overviewOpen}
+              setOverviewOpen={setOverviewOpen}
+              onMemberSelect={onMemberSelect}
+              groupChatActive
+              groupChatAvailable
+              onGroupChatToggle={handleGroupChatToggle}
+            />
+          </div>
         </header>
 
-        {overviewOpen && (
-          <div className="max-h-96 flex-shrink-0 overflow-y-auto border-b border-border-1 p-2">
+        {overviewOpen && overviewPanel && (
+          <AgentOrgOverviewTray surfaceBgClass={surfaceBgClass}>
             {overviewPanel}
-          </div>
+          </AgentOrgOverviewTray>
         )}
 
         <div
@@ -209,7 +202,8 @@ const AgentOrgGroupProjectionView: React.FC<
           onScroll={() => handleScroll()}
         >
           <div
-            className={`mx-auto w-full ${DETAIL_PANEL_TOKENS.contentMaxWidth}`}
+            data-testid="agent-org-group-projection-content"
+            className={`mx-auto w-full ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
           >
             <div className="mb-3 flex items-center gap-2 px-2 text-xs text-text-3">
               <HugeiconsIcon

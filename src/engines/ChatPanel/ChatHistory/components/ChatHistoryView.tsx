@@ -2,7 +2,6 @@ import React, { useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import type { AgentOrgRunMemberView } from "@src/api/tauri/agent";
-import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import { ChatLoadingBlock } from "@src/engines/ChatPanel/blocks/primitives";
 import { resolveTranscriptTopPaddingPx } from "@src/engines/ChatPanel/header/chatPanelHeaderLayout";
@@ -24,6 +23,7 @@ import {
   useGroupHeaderRenderer,
 } from "../hooks/useGroupHeaderRenderer";
 import type { useReloadSession } from "../hooks/useReloadSession";
+import AgentOrgOverviewTray from "./AgentOrgOverviewTray";
 import ChatHistoryEmptyState from "./ChatHistoryEmptyState";
 import ChatPinnedHeaderLayer from "./ChatPinnedHeaderLayer";
 import ChatSearchBar from "./ChatSearchBar";
@@ -404,20 +404,9 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
 
         <div className="flex min-h-0 flex-1 flex-col">
           {agentOrgOverviewOpen && agentOrgOverviewPanel && (
-            <div
-              className={`scrollbar-hide max-h-[45%] shrink-0 overflow-y-auto ${surfaceBgClass}`}
-            >
-              <div
-                className={`mx-auto w-full px-2 pb-2 ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
-              >
-                <div
-                  data-agent-org-overview-panel="true"
-                  className={`${DROPDOWN_CLASSES.panel} p-1`}
-                >
-                  {agentOrgOverviewPanel}
-                </div>
-              </div>
-            </div>
+            <AgentOrgOverviewTray surfaceBgClass={surfaceBgClass}>
+              {agentOrgOverviewPanel}
+            </AgentOrgOverviewTray>
           )}
 
           <div

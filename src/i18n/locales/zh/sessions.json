@@ -2112,7 +2112,7 @@
         "cancelled": "已取消",
         "failed": "失败"
       },
-      "title": "Agent 团队概览",
+      "title": "团队概览",
       "summary": "{{active}} 个活跃 · {{pending}} 条待处理",
       "loadFailed": "团队概览加载失败",
       "tasks": "任务",
@@ -2187,9 +2187,7 @@
       "activeMembers": "活跃成员",
       "inFlightTurns": "进行中的轮次",
       "openTasks": "未完成任务",
-      "blockingInbox": "阻塞中的收件箱",
-      "blockersTitle": "仍在阻碍完成的事项",
-      "unknownBlocker": "未知系统阻塞项"
+      "blockingInbox": "阻塞中的收件箱"
     },
     "agentOrgIntervention": {
       "directTitle": "直接交给 {{member}} 工作",
@@ -2315,7 +2313,6 @@
   },
   "groupChat": {
     "triggerLabel": "群聊",
-    "coordinatorLabel": "协调者",
     "youLabel": "你",
     "retry": "重试",
     "memberCount_one": "{{count}} 位成员",

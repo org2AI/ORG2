@@ -216,7 +216,27 @@ pub(super) fn open(
     {
         let bundle = installed_bundle(agent)?;
         profile.prepare_launch_directories()?;
-        lifecycle::open(agent, profile, &bundle, check_owner)
+        let history_ready = agent != "claude_desktop"
+            || crate::agent_sessions::cli::native_materializer::isolated_claude_history::import(
+                profile,
+            )?;
+        lifecycle::open(agent, profile, &bundle, check_owner.clone())?;
+        // First launch creates the vendor-owned account/project identity. Wait
+        // only within this user action; no background poll or watcher survives.
+        if !history_ready {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            loop {
+                check_owner()?;
+                if crate::agent_sessions::cli::native_materializer::isolated_claude_history::import(
+                    profile,
+                )? || std::time::Instant::now() >= deadline
+                {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(250));
+            }
+        }
+        Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {

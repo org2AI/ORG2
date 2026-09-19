@@ -1031,6 +1031,7 @@
     "advancedDescription": "Custom API connections and one-time credential migration",
     "marketApps": {
       "isolatedStorage": "This official App uses separate settings and conversation storage. Your main App and CLI keep their settings. Earlier conversations are not imported automatically",
+      "isolatedClaudeStorage": "Code history is copied when opening this app; new messages stay here. Main App and CLI settings stay unchanged. Reopen Claude if imported conversations are not yet visible",
       "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
       "loading": "Loading official packages…",
       "loadFailed": "Official packages could not be loaded",

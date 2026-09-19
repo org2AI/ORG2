@@ -62,3 +62,70 @@ Updated local validation:
 - `cargo clippy -p org2 --lib --tests -- -D warnings`: passed (1m 51s). No Desktop runtime result is inferred from these tests.
 
 Performance verdict: blocked for full runtime acceptance. Unit and source evidence cover bounded discovery and additive writes; real Desktop cold start, idle/hidden resource measurements, hot index discovery, history continuation, restore and Windows runtime were not performed by this audit.
+
+## Isolated Market App follow-up
+
+The real product launch exposed a separate boundary: Market uses a scoped
+Electron profile and `CLAUDE_CONFIG_DIR`, so standard `Claude-3p` backfill alone
+cannot make its history resumable. The Open app entry point now prepares missing
+transcript snapshots and then publishes discovery rows into that exact managed
+profile. The source account/catalog remains read-only; destination history is
+insert-only and credentials/settings are excluded. First resume drops the old
+provider model and uses the package's configured default. Source changes during
+copy or a partial trailing JSONL record prevent publication.
+
+Resource ownership: this is one explicit user action in `spawn_blocking`, under
+the existing owner/config barriers. It creates no idle watcher, timer, global
+cache, or repeated background scan. First-profile registration retries terminate
+within five seconds. Snapshot copying has a 15-second budget, 64 KiB buffer,
+128 MiB per-transcript cap and 1536 MiB per-pass cap; metadata and insertion bounds
+remain those of the shared catalog importer. Previously imported conversations
+are durable user data and are retained on Restore. There is no automatic merge
+of later source/destination edits and no deletion of source history.
+
+Architecture follow-up (all ten layers): compilation/tests below; shared catalog
+selection and insert writer reused; snapshot import named separately from shared
+catalog backfill; gateway versus isolated profile explicitly distinguished;
+missing registration skips without fabricating identity; provider format logic
+stays in native materialization; UI/docs describe one-way snapshots; serialized
+rows strip grants/model; both cold and warm Open app invoke the same importer;
+source/destination resolution follows the same cwd/UUID mapping with separate
+roots. No public RPC schema, credentials, or official-index writers changed.
+
+Additional runtime gates: first registration, existing profile, already-running
+profile, repeated open, imported history display and continuation, billing and
+Restore. Regression fixtures cover content-before-discovery, missing/partial/
+oversized transcripts, byte/time caps, forbidden links, credential exclusion,
+existing destination preservation, and recovery after content commit before row
+publication. Final command results and actual UI evidence are recorded separately;
+these implementation statements do not claim the runtime gates passed.
+
+Runtime follow-up found a cold-process gap: the isolated profile survived an
+ORG2 restart but its local proxy listener did not start. Market Open app now
+awaits the existing bounded proxy readiness gate after validating the selection
+and taking the owner barrier. It reuses the existing two-worker proxy supervisor;
+no new listener, retry policy or idle poll is introduced by history import.
+
+### Measured follow-up (macOS, isolated Market profile)
+
+- A real Open app imported 93 discovery rows and 93 transcript snapshots
+  (1,179,519,890 bytes). All 93 source transcript SHA-256 hashes stayed unchanged.
+- The package window displayed Gateway / AC · Fable 5.1, and the selected
+  imported acceptance conversation rendered its 18 original messages.
+- A continuation was submitted after explicit workspace trust. Credential helper
+  succeeded, but the old build had no proxy listener after ORG2 restart; no new
+  Market request or ledger posting resulted. This is not a successful model call.
+- With the follow-up build, a cold ORG2 process had no listener before Open app;
+  Open app started the loopback listener in that process. All 93 isolated
+  transcripts survived the repeated import byte-for-byte, including the pending
+  continuation. The vendor log loaded the persisted catalog after restart.
+- Desktop automation then could not address the content window (menus remained
+  available). UI continuation, billing, live discovery without restarting, and
+  final Restore remain unverified; source/port/file checks do not replace them.
+- Final materializer regression: 53 passed, 1 intentionally ignored child helper.
+  Frontend production build, 8 GiB Node typecheck, changed-file ESLint and native
+  debug App build passed. The default-heap typecheck initially exhausted memory;
+  the larger-heap retry passed.
+
+No frontend action controls changed. The existing settings description is the
+only UI change; its screenshot is in `docs/claude-desktop-history/`.

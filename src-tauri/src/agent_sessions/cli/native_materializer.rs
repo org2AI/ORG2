@@ -39,6 +39,7 @@ use super::native_transcript::TRANSCRIPT_SOURCE_NATIVE;
 use super::parsers::codex_app_server as codex_native_catalog;
 use super::persistence;
 
+pub(crate) mod isolated_claude_history;
 mod storage;
 use storage::NativeStorageOwner;
 
@@ -1569,6 +1570,17 @@ fn backfill_claude_desktop_gateway_catalog_between(
     official_root: &Path,
     gateway_root: &Path,
 ) -> Result<usize, String> {
+    backfill_claude_desktop_catalog_with(official_root, gateway_root, true, |cwd, id| {
+        Ok(claude_native_paths(None, cwd, id).native_path.is_file())
+    })
+}
+
+fn backfill_claude_desktop_catalog_with(
+    official_root: &Path,
+    gateway_root: &Path,
+    inherit_model: bool,
+    mut prepare_transcript: impl FnMut(&Path, &str) -> Result<bool, String>,
+) -> Result<usize, String> {
     if !official_root.is_dir() || !gateway_root.is_dir() {
         return Ok(0);
     }
@@ -1619,19 +1631,19 @@ fn backfill_claude_desktop_gateway_catalog_between(
             if Uuid::parse_str(native_id).is_err() || listed.contains(native_id) {
                 continue;
             }
-            // A row without its transcript would open as an empty session.
-            if !claude_native_paths(None, Path::new(cwd), native_id)
-                .native_path
-                .is_file()
-            {
-                continue;
-            }
             let target = target_dir.join(format!("local_{native_id}.json"));
             if target.exists() {
                 continue;
             }
+            // Commit the resumable content before making a row discoverable.
+            if !prepare_transcript(Path::new(cwd), native_id)? {
+                continue;
+            }
             let mut inherited = serde_json::Map::new();
             for field in CLAUDE_DESKTOP_GATEWAY_INHERITED_FIELDS {
+                if *field == "model" && !inherit_model {
+                    continue;
+                }
                 if let Some(value) = row.get(*field).filter(|value| !value.is_null()) {
                     inherited.insert((*field).to_string(), value.clone());
                 }
@@ -4646,6 +4658,60 @@ mod tests {
         fs::create_dir_all(path.parent().expect("transcript directory"))
             .expect("create transcript directory");
         fs::write(&path, b"{}\n").expect("write transcript");
+    }
+
+    #[test]
+    fn isolated_market_open_imports_into_managed_profile_not_standard_gateway() {
+        let sandbox = test_env::sandbox();
+        let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
+        let (_, official_project, _, standard_project) =
+            claude_desktop_profiles_fixture(sandbox.path());
+        let profile = agent_cli::managed_config::native_app::NativeAppProfile::new(
+            "claude_desktop",
+            "https://market.example",
+            "buyer",
+        )
+        .unwrap();
+        assert!(!isolated_claude_history::import(&profile).unwrap());
+        assert!(!profile.home().exists());
+        let account = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+        let org = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+        let target = profile
+            .home()
+            .join("claude-code-sessions")
+            .join(account)
+            .join(org);
+        fs::create_dir_all(&target).unwrap();
+        fs::write(
+            profile.home().join("config.json"),
+            json!({"lastKnownAccountUuid":account}).to_string(),
+        )
+        .unwrap();
+        fs::write(
+            target
+                .parent()
+                .unwrap()
+                .join(format!("{org}.profile-origin.json")),
+            json!({"mode":"local","org":org}).to_string(),
+        )
+        .unwrap();
+        let id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+        let cwd = sandbox.path().join("workspace");
+        write_claude_transcript(&cwd, id);
+        fs::write(
+            official_project.join(format!("local_{id}.json")),
+            json!({"cliSessionId":id,"sessionId":format!("local_{id}"),"cwd":cwd}).to_string(),
+        )
+        .unwrap();
+        assert!(isolated_claude_history::import(&profile).unwrap());
+        assert!(target.join(format!("local_{id}.json")).is_file());
+        assert!(!standard_project.join(format!("local_{id}.json")).exists());
+        let imported = profile
+            .system_home()
+            .join(".claude/projects")
+            .join(sanitize_claude_project_name(&cwd))
+            .join(format!("{id}.jsonl"));
+        assert_eq!(fs::read(imported).unwrap(), b"{}\n");
     }
 
     #[test]

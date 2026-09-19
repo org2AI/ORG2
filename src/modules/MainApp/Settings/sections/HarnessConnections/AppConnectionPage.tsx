@@ -292,7 +292,11 @@ export default function AppConnectionPage({
             <span className={SECTION_DESCRIPTION_CLASSES}>{status}</span>
             {state.view?.config.nativeApp && (
               <span className={SECTION_DESCRIPTION_CLASSES}>
-                {t("harnessConnections.marketApps.isolatedStorage")}
+                {t(
+                  target === "claude_desktop"
+                    ? "harnessConnections.marketApps.isolatedClaudeStorage"
+                    : "harnessConnections.marketApps.isolatedStorage"
+                )}
               </span>
             )}
             {issue && <span className="text-sm text-warning-6">{issue}</span>}

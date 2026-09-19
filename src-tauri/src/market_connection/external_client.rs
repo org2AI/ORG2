@@ -42,6 +42,10 @@ pub async fn open(agent: String, key: String, model: String) -> Result<(), Strin
         profile.validate_launch(&status)?;
     }
     let barrier = super::source::operation_barrier(&lease).await?;
+    // A saved isolated profile can outlive the process that applied it. Its
+    // configuration is still valid after restart, but the listener is not.
+    // Wait for readiness before dispatching either a new or existing client.
+    crate::cli_managed_proxy::ensure_managed_proxy_running().await?;
     tokio::task::spawn_blocking(move || {
         let _barrier = barrier;
         lease.check()?;

@@ -94,3 +94,33 @@ rows without restarting still requires a real Desktop test.
 ## References
 
 The separate configuration boundary follows [Anthropic's Desktop gateway documentation](https://code.claude.com/docs/en/llm-gateway-connect#desktop-app). Local profile storage, auth schemes, and model fields follow the [Desktop configuration reference](https://claude.com/docs/third-party/claude-desktop/configuration). The UI workflow was informed by [cc-switch's Desktop guide](https://github.com/farion1231/cc-switch/blob/main/docs/user-manual/en/2-providers/2.6-claude-desktop.md); no upstream implementation was copied.
+
+## Isolated Market App history
+
+Market's **Open app** action also imports missing Code conversations into that
+Cloud/user's isolated Claude profile. This is a snapshot import: it copies the
+main transcript before inserting the discovery row, never replaces either
+existing file, and never copies credentials, settings, or remembered grants.
+The first resumed turn uses the package profile's default model rather than an
+old provider model. New turns stay in the isolated profile; they are not merged
+back into the main App, nor do later main-App turns overwrite an imported copy.
+Chat, Cowork, subagent sidecar transcripts and external attachments are not
+imported by this path. Restore preserves imported conversations.
+
+Import runs only on the explicit Open app action, inside the existing owner and
+configuration barriers. Desktop must register its own account/project identity;
+first launch waits at most five seconds for that registration, without retaining
+a watcher. If registration or UI discovery is late, quit Claude and use Open app
+again. No profile IDs or directories are linked or fabricated.
+
+Each pass retains the bounded catalog scan and 512-row insertion cap. Main
+transcripts are limited to 128 MiB each and 1536 MiB total per action, streamed in
+64 KiB chunks with a 15-second copy budget. In-progress partial JSONL records
+and files changed during copying are skipped for a later action. Existing
+content survives a retry or a crash before catalog publication. Files beyond
+these bounds are not promised to appear; native runtime acceptance is separate
+from the importer regression tests.
+
+Opening a saved Market client after restarting ORG2 waits for the local managed
+proxy to become ready before dispatching the client. A saved configuration alone
+does not establish that its loopback listener is running.

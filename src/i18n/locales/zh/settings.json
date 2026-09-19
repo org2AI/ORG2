@@ -1031,6 +1031,7 @@
     "advancedDescription": "自定义 API 连接和一次性凭据迁移",
     "marketApps": {
       "isolatedStorage": "此官方 App 使用独立配置和对话存储，不会更改主 App 或 CLI 的配置。旧对话不会自动导入",
+      "isolatedClaudeStorage": "打开此 App 时复制 Code 历史，新消息保存在此独立 App 内，主 App 和 CLI 配置不变；若导入的对话尚未显示，请退出并重开 Claude",
       "workspaceHelp": "为当前 App 选择套餐和模型。各 App 独立保存选择，切换 ORG2 聊天来源不会修改 App。",
       "loading": "正在加载官方套餐…",
       "loadFailed": "无法加载官方套餐",

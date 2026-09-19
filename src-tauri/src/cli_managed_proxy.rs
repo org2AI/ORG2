@@ -928,7 +928,7 @@ fn compatible_key_ids_for_agent(agent_name: &str) -> Vec<String> {
         .collect()
 }
 
-async fn ensure_managed_proxy_running() -> Result<(), String> {
+pub(crate) async fn ensure_managed_proxy_running() -> Result<(), String> {
     start_cli_managed_proxy_thread();
     for _ in 0..20 {
         if PROXY_RUNNING.load(Ordering::SeqCst) {

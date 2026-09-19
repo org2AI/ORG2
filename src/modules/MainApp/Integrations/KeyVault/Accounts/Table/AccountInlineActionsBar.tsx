@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
-import { buildCodexReauthPath } from "@src/config/mainAppPaths";
+import { buildAccountReauthPath } from "@src/config/mainAppPaths";
 import { AccountStatusIndicator } from "@src/features/KeyVault/AccountStatusIndicator";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
@@ -12,7 +12,7 @@ import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import { InlineCardFooter } from "../../shared/InlineCardPrimitives";
 import {
   areAccountRefreshActionsDisabled,
-  shouldShowCodexReconnect,
+  reconnectableOAuthAgent,
 } from "./accountInlineActions";
 
 interface AccountInlineActionsBarProps {
@@ -50,7 +50,7 @@ export const AccountInlineActionsBar: React.FC<
     useRefreshSpin(onRefreshModels ?? (() => {}), refreshingModels);
 
   const showEdit = !account.listingId && account.hasLocalKey && onEdit;
-  const showCodexReconnect = shouldShowCodexReconnect(account);
+  const reconnectAgent = reconnectableOAuthAgent(account);
   const anyRefreshing = areAccountRefreshActionsDisabled(
     refreshing,
     refreshingModels
@@ -61,11 +61,13 @@ export const AccountInlineActionsBar: React.FC<
       <div className="mr-auto flex min-h-7 items-center">
         <AccountStatusIndicator account={account} />
       </div>
-      {showCodexReconnect ? (
+      {reconnectAgent ? (
         <Button
           variant="primary"
           size="small"
-          onClick={() => navigate(buildCodexReauthPath(account.id))}
+          onClick={() =>
+            navigate(buildAccountReauthPath(reconnectAgent, account.id))
+          }
           title={tCommon("errors.reconnectCodex")}
         >
           {tCommon("errors.reconnectCodex")}

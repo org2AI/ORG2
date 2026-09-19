@@ -3,6 +3,7 @@ import { ContentWritingIcon, ContrastIcon } from "@src/icons";
 import {
   SETTINGS_ROUTE_ROOT,
   SETTINGS_SECTION_TABS,
+  buildAccountReauthPath,
   buildCodexReauthPath,
   classifySettingsRouteRoot,
   filterDevModeIntegrationItems,
@@ -11,7 +12,7 @@ import {
   getPathIcon,
   getSegmentIcon,
   isIntegrationCategoryAvailable,
-  parseCodexReauthIntent,
+  parseAccountReauthIntent,
   parseSettingsSectionTab,
 } from "./mainAppPaths";
 
@@ -88,24 +89,39 @@ describe("classifySettingsRouteRoot", () => {
   });
 });
 
-describe("Codex reauthentication route", () => {
-  it("opens the Key Vault wizard for the failed account and auto-starts OAuth", () => {
+describe("account reauthentication route", () => {
+  it("opens the Key Vault wizard for the failed Codex account and auto-starts OAuth", () => {
     const path = buildCodexReauthPath("account-123");
 
     expect(path).toBe(
       "/orgii/app/settings/integrations/models?wizard=key-add&id=account-123&reauth=codex&autoStart=true"
     );
-    expect(parseCodexReauthIntent(path.split("?")[1])).toEqual({
-      active: true,
+    expect(parseAccountReauthIntent(path.split("?")[1])).toEqual({
+      agent: "codex",
       autoStart: true,
     });
   });
 
-  it("does not activate for an ordinary Key Vault wizard", () => {
-    expect(parseCodexReauthIntent("?wizard=key-add")).toEqual({
-      active: false,
+  it("opens the wizard for a Claude Code account without auto-starting", () => {
+    const path = buildAccountReauthPath("claude_code", "account-456");
+
+    expect(path).toBe(
+      "/orgii/app/settings/integrations/models?wizard=key-add&id=account-456&reauth=claude_code"
+    );
+    expect(parseAccountReauthIntent(path.split("?")[1])).toEqual({
+      agent: "claude_code",
       autoStart: false,
     });
+  });
+
+  it("does not activate for an ordinary Key Vault wizard or an unknown agent", () => {
+    expect(parseAccountReauthIntent("?wizard=key-add")).toEqual({
+      agent: null,
+      autoStart: false,
+    });
+    expect(
+      parseAccountReauthIntent("?wizard=key-add&reauth=cursor&autoStart=true")
+    ).toEqual({ agent: null, autoStart: false });
   });
 });
 

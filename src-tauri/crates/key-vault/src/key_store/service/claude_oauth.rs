@@ -1,18 +1,25 @@
 //! Claude Code OAuth token refresh: expiry detection plus the locked
-//! refresh-token exchange that persists the rotated access token.
+//! refresh-token exchange that persists the rotated access token. Accounts
+//! copied from the Claude Code CLI share its rotating refresh token; see
+//! `claude_cli_auth` for how the vault stays in step with it.
 
 use chrono::{Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::super::types::{AuthMethod, ModelKey, ModelType, OAuthRefreshOutcome};
+use super::claude_cli_auth::{
+    adoptable_claude_cli_login, is_linked_to_claude_cli, may_recover_from_claude_cli,
+    ClaudeCliLoginSource,
+};
+use super::oauth_health::is_permanent_oauth_refresh_failure;
 use super::{KeyService, OAUTH_REFRESH_EXPIRY_SKEW_SECONDS, OAUTH_REFRESH_REQUEST_TIMEOUT};
 
 const CLAUDE_CODE_TOKEN_URL: &str = "https://platform.claude.com/v1/oauth/token";
 const CLAUDE_CODE_REFRESH_TOKEN_URL_OVERRIDE_ENV: &str = "CLAUDE_CODE_REFRESH_TOKEN_URL_OVERRIDE";
 const CLAUDE_CODE_CLIENT_ID: &str = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
-const CLAUDE_CODE_REFRESH_TOKEN_ENV: &str = "CLAUDE_CODE_REFRESH_TOKEN";
-const CLAUDE_CODE_EXPIRES_IN_ENV: &str = "CLAUDE_CODE_EXPIRES_IN";
-const CLAUDE_CODE_EXPIRES_AT_ENV: &str = "CLAUDE_CODE_EXPIRES_AT";
+pub(super) const CLAUDE_CODE_REFRESH_TOKEN_ENV: &str = "CLAUDE_CODE_REFRESH_TOKEN";
+pub(super) const CLAUDE_CODE_EXPIRES_IN_ENV: &str = "CLAUDE_CODE_EXPIRES_IN";
+pub(super) const CLAUDE_CODE_EXPIRES_AT_ENV: &str = "CLAUDE_CODE_EXPIRES_AT";
 
 #[derive(Debug, Serialize)]
 struct ClaudeCodeRefreshRequest<'a> {
@@ -106,6 +113,25 @@ impl KeyService {
         key_id: &str,
         rejected_access_token: &str,
     ) -> Result<OAuthRefreshOutcome, String> {
+        self.refresh_claude_code_oauth_key_with(
+            key_id,
+            rejected_access_token,
+            ClaudeCliLoginSource::local().as_ref(),
+            std::env::var(CLAUDE_CODE_REFRESH_TOKEN_URL_OVERRIDE_ENV).ok(),
+        )
+        .await
+    }
+
+    /// `refresh_claude_code_oauth_key` with its two environment inputs
+    /// explicit: the Claude Code CLI login the key may share, and the token
+    /// endpoint override.
+    pub(crate) async fn refresh_claude_code_oauth_key_with(
+        &self,
+        key_id: &str,
+        rejected_access_token: &str,
+        cli_login: Option<&ClaudeCliLoginSource>,
+        token_url_override: Option<String>,
+    ) -> Result<OAuthRefreshOutcome, String> {
         let key = self
             .get_key_by_id(key_id)
             .ok_or_else(|| format!("Key not found: {}", key_id))?;
@@ -169,6 +195,18 @@ impl KeyService {
             return Ok(OAuthRefreshOutcome::AlreadyRotated(Box::new(key)));
         }
 
+        // Reload before refreshing: a linked key's refresh token may already
+        // have been spent — and replaced — by the Claude Code CLI.
+        if let Some(source) = cli_login.filter(|_| is_linked_to_claude_cli(&key)) {
+            if let Some(login) =
+                adoptable_claude_cli_login(&key, rejected_access_token, source).await
+            {
+                if let Some(adopted) = self.adopt_claude_cli_login(key_id, login)? {
+                    return Ok(OAuthRefreshOutcome::AlreadyRotated(Box::new(adopted)));
+                }
+            }
+        }
+
         let refresh_token = key
             .env_vars
             .get(CLAUDE_CODE_REFRESH_TOKEN_ENV)
@@ -182,14 +220,13 @@ impl KeyService {
             client_id: CLAUDE_CODE_CLIENT_ID,
         };
 
-        let token_url_override = std::env::var(CLAUDE_CODE_REFRESH_TOKEN_URL_OVERRIDE_ENV).ok();
         let token_url = token_url_override
             .clone()
             .unwrap_or_else(|| CLAUDE_CODE_TOKEN_URL.to_string());
         tracing::info!(
             "[key-vault] Claude Code OAuth refresh request start key={} endpoint_override={} refresh_len={} access_len={}",
             key_id,
-            std::env::var(CLAUDE_CODE_REFRESH_TOKEN_URL_OVERRIDE_ENV).is_ok(),
+            token_url_override.is_some(),
             refresh_token.len(),
             rejected_access_token.len()
         );
@@ -267,6 +304,19 @@ impl KeyService {
                 status,
                 message
             );
+            // Another holder spent this refresh token first. When that holder
+            // is the Claude Code CLI, its login already carries the replacement.
+            if is_permanent_oauth_refresh_failure(&message) {
+                if let Some(source) = cli_login.filter(|_| may_recover_from_claude_cli(&key)) {
+                    if let Some(login) =
+                        adoptable_claude_cli_login(&key, rejected_access_token, source).await
+                    {
+                        if let Some(adopted) = self.adopt_claude_cli_login(key_id, login)? {
+                            return Ok(OAuthRefreshOutcome::AlreadyRotated(Box::new(adopted)));
+                        }
+                    }
+                }
+            }
             self.record_oauth_refresh_failure(key_id, &message)?;
             return Err(message);
         }

@@ -72,3 +72,40 @@ it("submits literal IDs and labels without draft rows or re-enabling disabled mo
   expect(submit.mock.lastCall?.[0].enabled_models).toEqual([]);
   await act(async () => root.unmount());
 });
+
+it("records the setup method the account was added with", async () => {
+  const submit = vi.fn();
+  let wizard!: ReturnType<typeof useWizard>;
+  function Harness() {
+    const result = useWizard({
+      onSubmit: submit,
+      initialData: {
+        agent_type: "codex",
+        auth_method: "oauth",
+        oauth_session_token: "fixture-access-token",
+        account_metadata: { email: "user@example.invalid" },
+      },
+    });
+    useEffect(() => {
+      wizard = result;
+    }, [result]);
+    return null;
+  }
+  const root = createRoot(document.createElement("div"));
+  await act(async () => root.render(createElement(Harness)));
+
+  // Untouched selector: the Codex step shows sign-in.
+  act(() => wizard.submit());
+  expect(submit.mock.lastCall?.[0].account_metadata).toEqual({
+    email: "user@example.invalid",
+    setup_method: "signin",
+  });
+
+  act(() => wizard.updateData({ setup_method: "autodetect" }));
+  act(() => wizard.submit());
+  expect(submit.mock.lastCall?.[0].account_metadata).toEqual({
+    email: "user@example.invalid",
+    setup_method: "autodetect",
+  });
+  await act(async () => root.unmount());
+});

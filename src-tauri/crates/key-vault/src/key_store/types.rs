@@ -384,6 +384,14 @@ fn generate_key_id() -> String {
     Uuid::new_v4().to_string()[..8].to_string()
 }
 
+/// `account_metadata` key recording how the account was added, so reconnect
+/// can offer the same method again. Values mirror the wizard's setup methods
+/// (`signin`, `autodetect`, `enter_token`, ...).
+pub const ACCOUNT_SETUP_METHOD_METADATA_KEY: &str = "setup_method";
+/// Setup method of an account copied from another tool's local login (wizard
+/// auto-detect or the credential scan). Its tokens are shared with that tool.
+pub const ACCOUNT_SETUP_METHOD_AUTODETECT: &str = "autodetect";
+
 /// Stored API key / token entry for a CLI agent or provider.
 ///
 /// Two boolean flags express the listing state:

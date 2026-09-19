@@ -12,7 +12,7 @@ const OAUTH_TEMPORARY_UNAVAILABLE_SECONDS: i64 = 30 * 60;
 const OAUTH_RATE_LIMIT_FALLBACK_SECONDS: i64 = 5 * 60;
 const OAUTH_REFRESH_FAILURE_COOLDOWN_SECONDS: i64 = 5 * 60;
 
-fn is_permanent_oauth_refresh_failure(error_message: &str) -> bool {
+pub(super) fn is_permanent_oauth_refresh_failure(error_message: &str) -> bool {
     let lower = error_message.to_lowercase();
     lower.contains("refresh token not found or invalid")
         || lower.contains("refresh_token_reused")

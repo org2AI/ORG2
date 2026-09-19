@@ -295,6 +295,49 @@ async fn detect_claude_code_oauth() -> Option<DetectedKey> {
     Some(credential)
 }
 
+/// The Claude Code CLI's own login as it is stored on this machine right now.
+/// The vault's refresh path re-reads it for accounts that were copied from it.
+#[derive(Debug, Clone)]
+pub(crate) struct LocalClaudeCodeLogin {
+    pub access_token: String,
+    pub refresh_token: Option<String>,
+    pub expires_at_millis: Option<i64>,
+}
+
+pub(crate) const LOCAL_CLAUDE_CODE_PROFILE_URL: &str = CLAUDE_CODE_OAUTH_PROFILE_URL;
+
+/// Blocking: on macOS and Windows this goes through the OS credential store.
+pub(crate) fn read_local_claude_code_login() -> Option<LocalClaudeCodeLogin> {
+    parse_local_claude_code_login(&read_local_claude_credentials()?)
+}
+
+pub(crate) fn parse_local_claude_code_login(
+    credentials_json: &str,
+) -> Option<LocalClaudeCodeLogin> {
+    let credentials = parse_claude_oauth_credentials(credentials_json)?;
+    let non_empty = |token: Option<String>| {
+        token
+            .map(|token| token.trim().to_string())
+            .filter(|token| !token.is_empty())
+    };
+    Some(LocalClaudeCodeLogin {
+        access_token: non_empty(credentials.access_token)?,
+        refresh_token: non_empty(credentials.refresh_token),
+        expires_at_millis: credentials.expires_at.map(|millis| millis as i64),
+    })
+}
+
+/// Identity metadata (`email`, `organization_uuid`, ...) of the account an
+/// access token belongs to — the same fields a scan stores on the key.
+pub(crate) async fn fetch_claude_code_account_metadata_at(
+    profile_url: &str,
+    access_token: &str,
+) -> Result<HashMap<String, String>, String> {
+    fetch_claude_code_oauth_profile_at(profile_url, access_token)
+        .await
+        .map(claude_code_account_metadata)
+}
+
 fn read_local_claude_credentials() -> Option<String> {
     if let Some(credentials_json) = read_claude_keychain_credentials() {
         return Some(credentials_json);
@@ -449,8 +492,23 @@ async fn fetch_claude_code_oauth_identity(access_token: &str) -> Option<ClaudeCo
 async fn fetch_claude_code_oauth_profile(
     access_token: &str,
 ) -> Result<ClaudeCodeAccountIdentity, String> {
-    let response = reqwest::Client::new()
-        .get(CLAUDE_CODE_OAUTH_PROFILE_URL)
+    fetch_claude_code_oauth_profile_at(CLAUDE_CODE_OAUTH_PROFILE_URL, access_token).await
+}
+
+async fn fetch_claude_code_oauth_profile_at(
+    profile_url: &str,
+    access_token: &str,
+) -> Result<ClaudeCodeAccountIdentity, String> {
+    let mut client_builder = reqwest::Client::builder();
+    if profile_url != CLAUDE_CODE_OAUTH_PROFILE_URL {
+        // Override endpoints are loopback test servers; keep an inherited
+        // HTTP(S)_PROXY from routing them away.
+        client_builder = client_builder.no_proxy();
+    }
+    let response = client_builder
+        .build()
+        .map_err(|err| format!("Claude Code OAuth profile client build failed: {err}"))?
+        .get(profile_url)
         .header("Authorization", format!("Bearer {}", access_token.trim()))
         .header("anthropic-beta", CLAUDE_CODE_OAUTH_BETA)
         .header("User-Agent", CLAUDE_CODE_OAUTH_USER_AGENT)

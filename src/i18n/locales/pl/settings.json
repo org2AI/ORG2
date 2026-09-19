@@ -1111,5 +1111,15 @@
     "walletIncluded": "Wszystkie zawarte modele korzystają z salda portfela.",
     "walletUnavailable": "Rozliczanie z portfela nie jest jeszcze dostępne. Odśwież po aktualizacji usługi.",
     "walletConsent": "Włącz wszystkie modele tego pakietu w wyświetlonym zakresie cen. Faktyczne użycie jest rozliczane bezpośrednio z salda portfela; osobny budżet pakietu nie jest wymagany."
+  },
+  "marketSupply": {
+    "title": "Sprzedawaj moc obliczeniową",
+    "description": "Połącz konto z subskrypcją, aby udostępniać zasoby pakietom Market, a następnie zarządzaj udziałem w pakietach w witrynie Market",
+    "claude": "Połącz subskrypcję Claude",
+    "codex": "Połącz subskrypcję Codex",
+    "manage": "Zarządzaj udziałem w pakietach",
+    "connecting": "Zatwierdź dostęp na karcie dostawcy w przeglądarce; ORG2 automatycznie odbierze wynik",
+    "connected": "Konto dostawcy połączone. Wybierz jego pakiety w witrynie Market",
+    "failed": "Nie udało się potwierdzić połączenia. Sprawdź swoje konta Market przed ponowną próbą"
   }
 }

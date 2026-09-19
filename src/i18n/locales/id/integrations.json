@@ -1663,8 +1663,6 @@
   "marketConnection": {
     "loadingPurchases": "Memuat paket resmi…",
     "purchasesFailed": "Tidak dapat memuat paket resmi. Coba lagi.",
-    "platformUnavailable": "Koneksi pembeli Market tidak tersedia di platform ini karena penyimpanan kredensial yang aman tidak didukung",
-    "authorizationSaved": "Otorisasi Market disimpan. Pilih paket resmi dan model di ORG2.",
     "failed": "Tidak dapat terhubung ke Market. Silakan coba lagi.",
     "title": "Paket resmi",
     "launchFailed": "Tidak dapat mengaktifkan paket yang dipilih. Segarkan katalog dan periksa saldo dompet serta otorisasi penggunaan."

@@ -1111,5 +1111,15 @@
     "walletIncluded": "Todos os modelos incluídos utilizam o saldo da sua carteira.",
     "walletUnavailable": "A cobrança pela carteira ainda não está disponível. Atualize após a atualização do serviço.",
     "walletConsent": "Ative todos os modelos deste pacote na faixa de preços exibida. O uso real é cobrado diretamente do saldo da sua carteira; não é necessário um orçamento separado para o pacote."
+  },
+  "marketSupply": {
+    "title": "Vender capacidade de computação",
+    "description": "Conecte uma conta com assinatura para fornecer recursos aos pacotes do Market e gerencie a participação no site do Market",
+    "claude": "Conectar assinatura do Claude",
+    "codex": "Conectar assinatura do Codex",
+    "manage": "Gerenciar participação em pacotes",
+    "connecting": "Autorize o acesso na aba do provedor; o ORG2 receberá o resultado automaticamente",
+    "connected": "Conta fornecedora conectada. Escolha os pacotes no site do Market",
+    "failed": "Não foi possível confirmar a conexão. Verifique suas contas do Market antes de tentar novamente"
   }
 }

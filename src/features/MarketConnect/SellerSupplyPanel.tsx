@@ -80,7 +80,7 @@ export default function SellerSupplyPanel() {
                   attempt.current?.abort();
                 }}
               >
-                {t("common:cancel", "Cancel")}
+                {t("common:actions.cancel", "Cancel")}
               </Button>
             )}
             <Button

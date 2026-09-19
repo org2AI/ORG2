@@ -1111,5 +1111,15 @@
     "walletIncluded": "Tous les modèles inclus utilisent le solde de votre portefeuille.",
     "walletUnavailable": "La facturation du portefeuille n’est pas encore disponible. Actualisez après la mise à jour du service.",
     "walletConsent": "Activez tous les modèles de ce forfait dans la fourchette de prix affichée. L’utilisation réelle est débitée directement du solde de votre portefeuille ; aucun budget distinct n’est requis pour le forfait."
+  },
+  "marketSupply": {
+    "title": "Vendre de la puissance de calcul",
+    "description": "Connectez un compte avec abonnement pour alimenter les forfaits Market, puis gérez sa participation sur le site Market",
+    "claude": "Connecter un abonnement Claude",
+    "codex": "Connecter un abonnement Codex",
+    "manage": "Gérer la participation aux forfaits",
+    "connecting": "Autorisez l’accès dans l’onglet du fournisseur ; ORG2 recevra automatiquement le résultat",
+    "connected": "Compte fournisseur connecté. Choisissez ses forfaits sur le site Market",
+    "failed": "La connexion n’a pas pu être confirmée. Vérifiez vos comptes Market avant de réessayer"
   }
 }

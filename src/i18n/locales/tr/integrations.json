@@ -1663,8 +1663,6 @@
   "marketConnection": {
     "loadingPurchases": "Loading official packages…",
     "purchasesFailed": "Could not load official packages. Try again.",
-    "platformUnavailable": "Bu platform güvenli kimlik bilgisi depolamayı desteklemediği için Market alıcı bağlantıları kullanılamıyor",
-    "authorizationSaved": "Market authorization saved. Choose an official package and model in ORG2.",
     "failed": "Market bağlantısı kurulamadı. Lütfen tekrar deneyin.",
     "title": "Official packages",
     "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."

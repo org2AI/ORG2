@@ -1663,8 +1663,6 @@
   "marketConnection": {
     "loadingPurchases": "正在读取官方套餐…",
     "purchasesFailed": "无法读取官方套餐，请重试。",
-    "platformUnavailable": "当前平台不支持安全保存凭据，暂时无法连接 Market 买家工作区",
-    "authorizationSaved": "已保存 Market 授权，现在可以在 ORG2 中选择官方套餐和模型。",
     "failed": "无法连接到 Market，请重试。",
     "title": "官方套餐",
     "launchFailed": "无法启用所选套餐。请刷新套餐，检查钱包余额和用量授权后重试。"

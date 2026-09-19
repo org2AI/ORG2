@@ -1663,8 +1663,6 @@
   "marketConnection": {
     "loadingPurchases": "Loading official packages…",
     "purchasesFailed": "Could not load official packages. Try again.",
-    "platformUnavailable": "このプラットフォームは認証情報の安全な保存に対応していないため、Market の購入者ワークスペースには接続できません",
-    "authorizationSaved": "Market authorization saved. Choose an official package and model in ORG2.",
     "failed": "Market に接続できませんでした。もう一度お試しください。",
     "title": "Official packages",
     "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."

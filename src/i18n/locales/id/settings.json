@@ -1111,5 +1111,15 @@
     "walletIncluded": "Semua model yang disertakan menggunakan saldo dompet Anda.",
     "walletUnavailable": "Penagihan melalui dompet belum tersedia. Segarkan setelah layanan diperbarui.",
     "walletConsent": "Aktifkan semua model dalam paket ini pada rentang harga yang ditampilkan. Penggunaan aktual ditagihkan langsung dari saldo dompet Anda; tidak diperlukan anggaran paket terpisah."
+  },
+  "marketSupply": {
+    "title": "Jual kapasitas komputasi",
+    "description": "Hubungkan akun berlangganan untuk memasok paket Market, lalu kelola keikutsertaan paket di situs Market",
+    "claude": "Hubungkan langganan Claude",
+    "codex": "Hubungkan langganan Codex",
+    "manage": "Kelola keikutsertaan paket",
+    "connecting": "Setujui akses di tab browser penyedia; ORG2 akan menerima hasilnya secara otomatis",
+    "connected": "Akun pemasok terhubung. Pilih paketnya di situs Market",
+    "failed": "Koneksi belum dapat dikonfirmasi. Periksa akun Market Anda sebelum mencoba lagi"
   }
 }

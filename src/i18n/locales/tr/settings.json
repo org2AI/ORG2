@@ -1111,5 +1111,15 @@
     "walletIncluded": "Dahil olan tüm modeller cüzdan bakiyenizi kullanır.",
     "walletUnavailable": "Cüzdan faturalandırması henüz kullanılamıyor. Hizmet güncellendikten sonra yenileyin.",
     "walletConsent": "Bu paketteki tüm modelleri gösterilen fiyat aralığında etkinleştirin. Gerçek kullanım doğrudan cüzdan bakiyenizden tahsil edilir; ayrı bir paket bütçesi gerekmez."
+  },
+  "marketSupply": {
+    "title": "İşlem kapasitesi satın",
+    "description": "Market paketlerine kaynak sağlamak için bir abonelik hesabı bağlayın, ardından Market web sitesinde paket katılımını yönetin",
+    "claude": "Claude aboneliğini bağla",
+    "codex": "Codex aboneliğini bağla",
+    "manage": "Paket katılımını yönet",
+    "connecting": "Sağlayıcının tarayıcı sekmesinde erişimi onaylayın; ORG2 sonucu otomatik olarak alır",
+    "connected": "Kaynak sağlayıcı hesabı bağlandı. Market web sitesinde paketlerini seçin",
+    "failed": "Bağlantı doğrulanamadı. Yeniden denemeden önce Market hesaplarınızı kontrol edin"
   }
 }

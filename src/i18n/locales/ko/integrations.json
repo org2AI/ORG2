@@ -1663,8 +1663,6 @@
   "marketConnection": {
     "loadingPurchases": "Loading official packages…",
     "purchasesFailed": "Could not load official packages. Try again.",
-    "platformUnavailable": "이 플랫폼은 자격 증명의 안전한 저장을 지원하지 않아 Market 구매자 작업 공간에 연결할 수 없습니다",
-    "authorizationSaved": "Market authorization saved. Choose an official package and model in ORG2.",
     "failed": "Market에 연결할 수 없습니다. 다시 시도해 주세요.",
     "title": "Official packages",
     "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."

@@ -14,7 +14,7 @@ The App connections settings page offers **Sell compute → Connect Claude / Cod
 
 One native attempt and one per-store frontend operation may be active. No idle polling is added. OAuth opens a loopback listener only after an explicit connect action; callback, denial, expiry, cancellation or owner invalidation drops it. Frontend subscriptions and abort listeners are disposed in `finally` and on panel unmount. A pending proof expires after five minutes and is replaced after identity invalidation. Network requests and response sizes are bounded. The provider wait cannot outlive the short-lived seller capability. Once completion begins, the native task reads its authoritative outcome even if the initiating webview closes; a changed owner cannot receive that result.
 
-The entry point uses shared Section and Button components, preserves the existing connection-card layout, and adds no raw action controls or custom button geometry. English and Chinese copy is provided; other locales use English fallback for this new section.
+The entry point uses shared Section and Button components, preserves the existing connection-card layout, and adds no raw action controls or custom button geometry. Localized copy is provided in every supported locale for this new section.
 
 ## Verification limits
 

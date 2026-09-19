@@ -1059,6 +1059,7 @@ fn test_codex_cli_oauth_sync_does_not_overwrite_newer_key_vault_token() {
                 access_token: Some("cli-access".to_string()),
                 refresh_token: Some("cli-refresh".to_string()),
                 id_token: Some("cli-id".to_string()),
+                expires_at: None,
             },
         )
         .unwrap();

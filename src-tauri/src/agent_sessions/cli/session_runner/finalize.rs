@@ -17,12 +17,12 @@ use key_vault::key_store::{ModelType, KEY_SERVICE};
 
 use super::super::parsers::{canonicalize_cli_error_message, is_codex_fallback_metadata_notice};
 use super::super::persistence::{self, CodeSession};
-use super::super::types::SessionStatus;
+use super::super::types::{KeySource, SessionStatus};
 use super::cursor_usage::fetch_cursor_usage_for_session;
 use super::helpers::{clear_live_status, flush_and_broadcast};
 use super::oauth_setup::is_cli_oauth_failure_message;
 use super::proxy_release::release_proxy_token_for_session;
-use super::token_sync::sync_codex_cli_auth_to_key_vault;
+use super::token_sync::{sync_codex_cli_auth_to_key_vault, sync_kiro_cli_auth_to_key_vault};
 use crate::api::websocket_handler;
 
 const CURSOR_HISTORY_READY_ATTEMPTS: usize = 3;
@@ -299,10 +299,27 @@ pub(super) async fn finalize_session_run(
 
     let setup_is_codex_oauth = *agent == ModelType::Codex && oauth_retry_eligible;
     let setup_access_token = env_vars.get("OPENAI_API_KEY").cloned();
+    // Own-key Kiro OAuth runs inside the account-scoped profile that
+    // `configure_agent_profile` seeded from KIRO_ACCESS_TOKEN; hosted-key runs
+    // use a throwaway proxy HOME and API-key runs never seed an auth record.
+    let setup_kiro_access_token =
+        if *agent == ModelType::Kiro && session.key_source == KeySource::OwnKey {
+            env_vars.get("KIRO_ACCESS_TOKEN").cloned()
+        } else {
+            None
+        };
     let setup_account_id = account_id.map(str::to_string);
     let setup_session_id = session_id.to_string();
     let setup_cli_session_id = cli_session_id_out.clone();
     let _ = tokio::task::spawn_blocking(move || {
+        if setup_kiro_access_token.is_some() {
+            if let Err(err) = sync_kiro_cli_auth_to_key_vault(
+                setup_account_id.as_deref(),
+                setup_kiro_access_token.as_deref(),
+            ) {
+                tracing::warn!("[CodeSession] Failed to sync Kiro CLI auth tokens: {}", err);
+            }
+        }
         if setup_is_codex_oauth {
             if let Err(err) = sync_codex_cli_auth_to_key_vault(
                 setup_account_id.as_deref(),

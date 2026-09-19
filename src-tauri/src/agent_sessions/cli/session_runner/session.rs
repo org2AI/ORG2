@@ -31,6 +31,7 @@ use super::helpers::{emit_chunk, persist_attached_images};
 use super::oauth_setup::{
     is_cli_oauth_retry_eligible, refresh_cli_oauth_for_retry, sanitize_cli_oauth_env_for_child,
 };
+use super::token_sync::reconcile_codex_cli_profile_before_launch;
 
 mod mcp_inject;
 mod skills_resolve;
@@ -514,6 +515,18 @@ pub(crate) async fn run_session_with_ide_context(
         if let Some(account_id) = session.account_id.as_deref() {
             selected_key = match agent {
                 ModelType::Codex => {
+                    let profile_account_id = account_id.to_string();
+                    let reconciled = tokio::task::spawn_blocking(move || {
+                        reconcile_codex_cli_profile_before_launch(&profile_account_id)
+                    })
+                    .await
+                    .map_err(|err| format!("Codex profile reconcile task failed: {err}"))?;
+                    if let Err(err) = reconciled {
+                        tracing::warn!(
+                            "[CodeSession] Failed to reconcile Codex CLI profile tokens: {}",
+                            err
+                        );
+                    }
                     Some(KEY_SERVICE.ensure_codex_oauth_key_fresh(account_id).await?)
                 }
                 ModelType::ClaudeCode => Some(

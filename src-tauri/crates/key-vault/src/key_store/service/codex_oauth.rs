@@ -36,7 +36,7 @@ struct CodexRefreshErrorResponse {
 }
 
 impl KeyService {
-    fn jwt_expires_at(token: &str) -> Option<chrono::DateTime<Utc>> {
+    pub(super) fn jwt_expires_at(token: &str) -> Option<chrono::DateTime<Utc>> {
         let payload = token.split('.').nth(1)?;
         use base64::Engine;
         let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD

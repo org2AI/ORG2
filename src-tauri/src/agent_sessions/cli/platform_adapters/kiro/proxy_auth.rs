@@ -15,15 +15,21 @@ use std::path::{Path, PathBuf};
 
 use rusqlite::params;
 
+use super::profile_tokens::{decide_own_key_seed, record_vault_agreement, OwnKeySeedDecision};
+
 const KIRO_DEVICE_REG_KEY: &str = "kirocli:odic:device-registration";
-const KIRO_TOKEN_KEY: &str = "kirocli:odic:token";
+pub(super) const KIRO_TOKEN_KEY: &str = "kirocli:odic:token";
+/// Written where the vault key has no refresh token / expiry. The profile
+/// read-back maps these back to "absent" so they can never reach the vault.
+pub(super) const OWN_KEY_REFRESH_TOKEN_PLACEHOLDER: &str = "orgii_managed";
+pub(super) const OWN_KEY_EXPIRES_AT_PLACEHOLDER: &str = "2099-12-31T23:59:59Z";
 const KIRO_SCOPES: &[&str] = &[
     "codewhisperer:completions",
     "codewhisperer:analysis",
     "codewhisperer:conversations",
 ];
 
-fn kiro_sqlite_relative_path() -> PathBuf {
+pub(super) fn kiro_sqlite_relative_path() -> PathBuf {
     #[cfg(target_os = "macos")]
     {
         PathBuf::from("Library/Application Support/kiro-cli/data.sqlite3")
@@ -173,6 +179,12 @@ pub fn setup_proxy_auth_db(
     Ok(temp_home)
 }
 
+/// Prepare the account-scoped HOME an own-key `kiro-cli` runs in.
+///
+/// The profile's auth records are only (re)seeded from the vault when
+/// [`decide_own_key_seed`] says the vault is the newer side: `kiro-cli`
+/// rotates its single-use refresh token inside this profile, so blindly
+/// re-seeding would hand the child a token it has already spent.
 pub fn setup_own_key_home(
     profile_home: &Path,
     env_vars: &HashMap<String, String>,
@@ -191,11 +203,20 @@ pub fn setup_own_key_home(
         }
         return Err("Kiro own-key session requires KIRO_ACCESS_TOKEN or KIRO_API_KEY".to_string());
     };
-    let refresh_token = env_vars
+    let vault_refresh_token = env_vars
         .get("KIRO_REFRESH_TOKEN")
         .map(|value| value.trim())
-        .filter(|value| !value.is_empty())
-        .unwrap_or("orgii_managed");
+        .filter(|value| !value.is_empty());
+    if decide_own_key_seed(profile_home, access_token, vault_refresh_token)
+        == OwnKeySeedDecision::KeepProfile
+    {
+        prepare_kiro_home(profile_home)?;
+        log::info!(
+            "[KiroProxy] Kept own-key profile tokens: kiro-cli rotated them since the last Key Vault sync"
+        );
+        return Ok(());
+    }
+    let refresh_token = vault_refresh_token.unwrap_or(OWN_KEY_REFRESH_TOKEN_PLACEHOLDER);
     let region = env_vars
         .get("KIRO_REGION")
         .map(|value| value.trim())
@@ -220,7 +241,7 @@ pub fn setup_own_key_home(
         .get("KIRO_EXPIRES_AT")
         .map(|value| value.trim())
         .filter(|value| !value.is_empty())
-        .unwrap_or("2099-12-31T23:59:59Z");
+        .unwrap_or(OWN_KEY_EXPIRES_AT_PLACEHOLDER);
 
     let token_json = serde_json::json!({
         "access_token": access_token,
@@ -242,6 +263,7 @@ pub fn setup_own_key_home(
 
     let db_path = profile_home.join(kiro_sqlite_relative_path());
     write_kiro_auth_records(&db_path, &token_json, &device_reg_json)?;
+    record_vault_agreement(profile_home, access_token, vault_refresh_token);
     prepare_kiro_home(profile_home)?;
     log::info!("[KiroProxy] Created own-key auth DB at {:?}", db_path);
     Ok(())

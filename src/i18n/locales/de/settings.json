@@ -1111,15 +1111,5 @@
     "walletIncluded": "Alle enthaltenen Modelle nutzen dein Wallet-Guthaben.",
     "walletUnavailable": "Wallet-Abrechnung ist noch nicht verfügbar. Aktualisiere nach der Dienstaktualisierung.",
     "walletConsent": "Aktiviere alle Modelle dieses Pakets im angezeigten Preisbereich. Die tatsächliche Nutzung wird direkt von deinem Wallet-Guthaben abgebucht; ein separates Paketbudget ist nicht erforderlich."
-  },
-  "marketSupply": {
-    "title": "Rechenleistung verkaufen",
-    "description": "Verbinde ein Abonnementkonto, um Market-Pakete bereitzustellen, und verwalte anschließend die Paketteilnahme auf der Market-Website",
-    "claude": "Claude-Abonnement verbinden",
-    "codex": "Codex-Abonnement verbinden",
-    "manage": "Paketteilnahme verwalten",
-    "connecting": "Genehmige den Zugriff im Browser-Tab des Anbieters; ORG2 empfängt das Ergebnis automatisch",
-    "connected": "Anbieterkonto verbunden. Wähle die Pakete auf der Market-Website aus",
-    "failed": "Die Verbindung konnte nicht bestätigt werden. Prüfe deine Market-Konten, bevor du es erneut versuchst"
   }
 }

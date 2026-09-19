@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => ({
   open: vi.fn(),
   error: vi.fn(),
   signIn: vi.fn(),
+  seller: vi.fn(),
 }));
+vi.mock("./sellerShortcut", () => ({ requestSellerShortcut: mocks.seller }));
 vi.mock("./rpc", () => ({ loadConnections: mocks.load }));
 vi.mock("./events", () => ({
   MARKET_CONNECTION_OPEN_EVENT: "open",
@@ -34,6 +36,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   signedInStore();
   mocks.load.mockResolvedValue({ connections: [connection] });
+  mocks.seller.mockResolvedValue(undefined);
 });
 it("opens the same account catalog used without a website link", async () => {
   expect(handleMarketConnectionUrl(link)).toBe(true);
@@ -42,13 +45,16 @@ it("opens the same account catalog used without a website link", async () => {
   );
   expect(mocks.signIn).not.toHaveBeenCalled();
 });
-it("retired seller and authorization links cannot start work", () => {
+it("seller shortcuts only request consent and retired authorization links cannot enroll", () => {
   for (const raw of [
     "orgii://market/seller/connect?provider=claude&region=sjc",
     "orgii://market/authorized?code=secret&state=secret",
   ]) {
     expect(handleMarketConnectionUrl(raw)).toBe(true);
   }
+  expect(mocks.seller).toHaveBeenCalledExactlyOnceWith(
+    "orgii://market/seller/connect?provider=claude&region=sjc"
+  );
   expect(mocks.load).not.toHaveBeenCalled();
   expect(mocks.open).not.toHaveBeenCalled();
 });

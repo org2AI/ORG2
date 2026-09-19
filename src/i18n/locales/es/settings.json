@@ -1111,15 +1111,5 @@
     "walletIncluded": "Todos los modelos incluidos utilizan el saldo de tu monedero.",
     "walletUnavailable": "La facturación del monedero aún no está disponible. Actualiza cuando se actualice el servicio.",
     "walletConsent": "Activa todos los modelos de este paquete dentro del rango de precios mostrado. El uso real se cobra directamente del saldo de tu monedero; no se requiere un presupuesto separado para el paquete."
-  },
-  "marketSupply": {
-    "title": "Vender capacidad de cómputo",
-    "description": "Conecta una cuenta con suscripción para proporcionar recursos a los paquetes de Market y gestiona su participación en el sitio web de Market",
-    "claude": "Conectar suscripción de Claude",
-    "codex": "Conectar suscripción de Codex",
-    "manage": "Gestionar participación en paquetes",
-    "connecting": "Autoriza el acceso en la pestaña del proveedor; ORG2 recibirá el resultado automáticamente",
-    "connected": "Cuenta de proveedor conectada. Elige sus paquetes en el sitio web de Market",
-    "failed": "No se pudo confirmar la conexión. Revisa tus cuentas de Market antes de volver a intentarlo"
   }
 }

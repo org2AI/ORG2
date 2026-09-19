@@ -1111,15 +1111,5 @@
     "walletIncluded": "All included models use your wallet balance.",
     "walletUnavailable": "Wallet billing is not available yet. Refresh after the service is updated.",
     "walletConsent": "Enable every model in this package at the displayed price range. Actual usage is charged directly from your wallet balance; no separate package budget is required."
-  },
-  "marketSupply": {
-    "title": "Sell compute",
-    "description": "Connect a subscription account to supply Market packages, then manage package participation on the Market website",
-    "claude": "Connect Claude subscription",
-    "codex": "Connect Codex subscription",
-    "manage": "Manage package participation",
-    "connecting": "Approve access in the provider browser tab; ORG2 will receive the result automatically",
-    "connected": "Supply account connected. Choose its packages on the Market website",
-    "failed": "Connection could not be confirmed. Check your Market accounts before retrying"
   }
 }

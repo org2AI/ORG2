@@ -12,7 +12,6 @@ import {
   SectionContainer,
   SectionRow,
 } from "@src/components/layout/Section";
-import SellerSupplyPanel from "@src/features/MarketConnect/SellerSupplyPanel";
 import {
   configureExternalMarketCatalog,
   isMarketManagedView,
@@ -528,7 +527,6 @@ export default function AppConnectionPage({
           )}
         </SectionContainer>
       )}
-      <SellerSupplyPanel />
     </div>
   );
 }

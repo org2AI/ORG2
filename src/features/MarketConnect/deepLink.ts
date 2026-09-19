@@ -11,6 +11,7 @@ import {
 } from "./events";
 import { captureMarketOwner } from "./identity";
 import { loadConnections } from "./rpc";
+import { requestSellerShortcut } from "./sellerShortcut";
 import { isMarketAppUrl } from "./urlPolicy";
 
 let busy = false;
@@ -24,13 +25,15 @@ export function handleMarketConnectionUrl(raw: string): boolean {
     return false;
   }
   if (!isMarketAppUrl(url)) return false;
-  // Browser callbacks no longer own account discovery. Unsupported seller
-  // shortcuts must report failure rather than silently implying a connection.
-  if (url.pathname !== "/connect") {
-    if (url.pathname.startsWith("/seller/"))
-      Message.error(i18n.t("integrations:marketConnection.failed"));
+  // A seller shortcut requests explicit consent; it never authorizes or enrolls.
+  if (url.pathname === "/seller/connect") {
+    void requestSellerShortcut(raw).catch(() =>
+      Message.error(i18n.t("integrations:marketConnection.failed"))
+    );
     return true;
   }
+  // Retired website authorization callbacks cannot complete any enrollment.
+  if (url.pathname !== "/connect") return true;
   if (
     raw.length > 2048 ||
     url.username ||

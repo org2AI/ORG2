@@ -140,3 +140,31 @@ it("requires a desktop OAuth login before creating native work", async () => {
   ).rejects.toThrow("market_reauthorization_required");
   expect(mocks.invoke).not.toHaveBeenCalled();
 });
+
+it("preserves the requested region and refuses a substituted native proof", async () => {
+  mocks.invoke.mockImplementation(async (p: { command: string }) =>
+    p.command === "market_seller_begin"
+      ? { ...proof, region: "fra" }
+      : p.command === "market_seller_complete"
+        ? result
+        : undefined
+  );
+  await connectSellerAccount(
+    "claude",
+    new AbortController().signal,
+    store,
+    "fra"
+  );
+  expect(
+    mocks.invoke.mock.calls.find(
+      ([p]) => p.command === "market_seller_begin"
+    )?.[1]
+  ).toEqual({ provider: "claude", region: "fra" });
+  expect(JSON.parse(mocks.fetch.mock.calls[0][1].body).region).toBe("fra");
+  await expect(
+    connectSellerAccount("claude", new AbortController().signal, store, "sjc")
+  ).rejects.toThrow("invalid_seller_authorization");
+  expect(
+    commands().filter((command) => command === "market_seller_complete")
+  ).toHaveLength(1);
+});

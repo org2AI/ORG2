@@ -1,6 +1,6 @@
 # App-initiated package supply authorization
 
-The App connections settings page offers **Sell compute → Connect Claude / Codex subscription**. The signed-in App authorizes the operation directly over HTTPS; the Market website and OS protocol callbacks do not carry this enrollment. Provider names select the required OAuth adapter, not a listing or a package pricing model. Package participation remains an account-owned Market backend resource managed on the website.
+The Market website owns seller management and its account-connection entry point. Its `market/seller/connect` shortcut opens a transient shared App confirmation dialog showing the selected service and the current App account. The user must confirm that this is the same identity used on the website before provider authorization begins. There is no permanent seller-management panel in App settings. After confirmation, the signed-in App authorizes directly over HTTPS; no browser approval callback is needed. Provider names select the OAuth adapter, while package participation remains an account-owned backend resource managed on the website. Buyer package discovery remains independent of every shortcut.
 
 ## Boundaries
 
@@ -12,9 +12,9 @@ The App connections settings page offers **Sell compute → Connect Claude / Cod
 
 ## Resource lifecycle
 
-One native attempt and one per-store frontend operation may be active. No idle polling is added. OAuth opens a loopback listener only after an explicit connect action; callback, denial, expiry, cancellation or owner invalidation drops it. Frontend subscriptions and abort listeners are disposed in `finally` and on panel unmount. A pending proof expires after five minutes and is replaced after identity invalidation. Network requests and response sizes are bounded. The provider wait cannot outlive the short-lived seller capability. Once completion begins, the native task reads its authoritative outcome even if the initiating webview closes; a changed owner cannot receive that result.
+One native attempt and one per-store frontend operation may be active. No idle polling is added. OAuth opens a loopback listener only after an explicit connect action; callback, denial, expiry, cancellation or owner invalidation drops it. Frontend subscriptions and abort listeners are disposed in `finally` and on dialog-host unmount. A pending proof expires after five minutes and is replaced after identity invalidation. Network requests and response sizes are bounded. The provider wait cannot outlive the short-lived seller capability. Once completion begins, the native task reads its authoritative outcome even if the initiating webview closes; a changed owner cannot receive that result.
 
-The entry point uses shared Section and Button components, preserves the existing connection-card layout, and adds no raw action controls or custom button geometry. Localized copy is provided in every supported locale for this new section.
+The transient confirmation uses shared Modal and Button components. Existing connection-card layout is unchanged. Confirmation and result copy is provided in all 15 locales; the removed permanent panel's translation keys are deleted. Strict parsing rejects duplicated fields and passes the selected region unchanged. Closing or changing owner cancels consent and any started authorization.
 
 ## Verification limits
 

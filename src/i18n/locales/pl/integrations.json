@@ -1665,6 +1665,11 @@
     "purchasesFailed": "Could not load official packages. Try again.",
     "failed": "Nie udało się połączyć z Market. Spróbuj ponownie.",
     "title": "Official packages",
-    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization.",
+    "sellerTitle": "Połącz konto dostawcy",
+    "sellerConfirmAccount": "Połączyć {{provider}} z kontem aplikacji {{account}}? Upewnij się, że używasz tego samego konta w witrynie Market.",
+    "sellerConnecting": "Zatwierdź dostęp na karcie dostawcy w przeglądarce; ORG2 automatycznie odbierze wynik",
+    "sellerConnected": "Konto dostawcy połączone. Wybierz jego pakiety w witrynie Market",
+    "sellerUnconfirmed": "Nie udało się potwierdzić połączenia. Sprawdź swoje konta Market przed ponowną próbą"
   }
 }

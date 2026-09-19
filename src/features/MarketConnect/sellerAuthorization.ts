@@ -1,4 +1,4 @@
-/** App-owned seller authorization. Website navigation carries no credentials or state. */
+/** App-owned authorization. A website shortcut carries selection, never consent or credentials. */
 import { z } from "zod/v4";
 
 import { defineProcedure, typedInvoke } from "@src/api/tauri/rpc/invoke";
@@ -71,7 +71,8 @@ async function readApproval(response: Response) {
 export async function connectSellerAccount(
   provider: "claude" | "codex",
   signal: AbortSignal,
-  store: MarketStore = getInstrumentedStore()
+  store: MarketStore = getInstrumentedStore(),
+  region = "sjc"
 ) {
   if (flights.has(store)) throw Error("seller_connection_in_progress");
   flights.add(store);
@@ -101,10 +102,10 @@ export async function connectSellerAccount(
         const fresh = store.get(org2CloudAuthAtom);
         if (!fresh?.oauthClientId)
           throw Error("market_reauthorization_required");
-        const request = await typedInvoke(begin, { provider, region: "sjc" });
+        const request = await typedInvoke(begin, { provider, region });
         started = true;
         check();
-        if (request.provider !== provider || request.region !== "sjc")
+        if (request.provider !== provider || request.region !== region)
           throw Error("invalid_seller_authorization");
         const response = await fetch(
           marketConsoleUrl("/api/auth/native/seller/authorize-desktop"),

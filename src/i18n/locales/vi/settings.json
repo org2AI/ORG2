@@ -1111,15 +1111,5 @@
     "walletIncluded": "Tất cả mô hình trong gói sử dụng số dư ví của bạn.",
     "walletUnavailable": "Thanh toán bằng ví chưa khả dụng. Hãy làm mới sau khi dịch vụ được cập nhật.",
     "walletConsent": "Bật mọi mô hình trong gói này theo khoảng giá hiển thị. Chi phí sử dụng thực tế được trừ trực tiếp từ số dư ví; không cần ngân sách riêng cho gói."
-  },
-  "marketSupply": {
-    "title": "Bán tài nguyên tính toán",
-    "description": "Kết nối tài khoản có gói đăng ký để cung cấp tài nguyên cho các gói Market, rồi quản lý việc tham gia gói trên trang web Market",
-    "claude": "Kết nối gói đăng ký Claude",
-    "codex": "Kết nối gói đăng ký Codex",
-    "manage": "Quản lý việc tham gia gói",
-    "connecting": "Phê duyệt quyền truy cập trong thẻ trình duyệt của nhà cung cấp; ORG2 sẽ tự động nhận kết quả",
-    "connected": "Đã kết nối tài khoản cung cấp tài nguyên. Chọn các gói trên trang web Market",
-    "failed": "Không thể xác nhận kết nối. Kiểm tra các tài khoản Market trước khi thử lại"
   }
 }

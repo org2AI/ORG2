@@ -21,6 +21,4 @@ export const searchRegex = {
     .input(schemas.searchRegex.CancelSearchInput)
     .output(z.boolean())
     .build(),
-
-  clearCache: defineProcedure("clear_search_cache").build(),
 } as const;

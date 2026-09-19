@@ -11,8 +11,9 @@
 //!    diff hunks are matched against provenance entries by line-range overlap,
 //!    and matches are recorded in `commit_lineage`.
 //!
-//! 3. **Analytics**: `get_session_impact()` queries both tables to produce a
-//!    summary of files touched, functions created, and commits influenced.
+//! 3. **Analytics**: `analytics::get_session_impact()` queries both tables to
+//!    produce a summary of files touched, functions created, and commits
+//!    influenced.
 
 pub mod analytics;
 pub mod commit_tracker;
@@ -58,21 +59,4 @@ pub fn delete_session_lineage_with_connection(
         [session_id],
     )?;
     Ok(())
-}
-
-#[tauri::command]
-pub async fn get_session_impact(session_id: String) -> Result<serde_json::Value, String> {
-    tokio::task::spawn_blocking(move || {
-        analytics::get_session_impact(&session_id)
-            .map(|impact| serde_json::to_value(impact).unwrap_or_default())
-    })
-    .await
-    .map_err(|err| err.to_string())?
-}
-
-#[tauri::command]
-pub async fn get_provenance_session_ids() -> Result<Vec<String>, String> {
-    tokio::task::spawn_blocking(analytics::get_provenance_session_ids)
-        .await
-        .map_err(|err| err.to_string())?
 }

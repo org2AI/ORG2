@@ -83,8 +83,8 @@ pub(super) fn cache_result(
     SEARCH_CACHE.write().unwrap().put(hash, cached);
 }
 
-/// Clear the search cache (called when files change).
-#[tauri::command]
+/// Clear the search cache (called from crate tests when files change).
+#[cfg(test)]
 pub fn clear_search_cache() {
     SEARCH_CACHE.write().unwrap().clear();
     info!("search::cache: cache cleared");

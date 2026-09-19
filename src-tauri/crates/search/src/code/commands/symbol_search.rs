@@ -1,11 +1,10 @@
 //! Symbol search and code intelligence commands (symbols, go-to-definition, find-references).
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use tracing::{debug, info, warn};
 
-use super::super::intelligence::{TreeSitterFile, ALL_LANGUAGES};
+use super::super::intelligence::TreeSitterFile;
 use super::helpers::{collect_files, read_file_content};
 use super::types::{CodeLocation, CodeSymbolInfo, SearchFilters, SymbolSearchResult};
 
@@ -281,24 +280,4 @@ pub fn find_references(
     }
 
     Ok(vec![])
-}
-
-/// Get supported languages.
-#[tauri::command]
-pub fn get_supported_languages() -> Vec<HashMap<String, Vec<String>>> {
-    ALL_LANGUAGES
-        .iter()
-        .map(|lang| {
-            let mut info = HashMap::new();
-            info.insert(
-                "language_ids".to_string(),
-                lang.language_ids.iter().map(|s| s.to_string()).collect(),
-            );
-            info.insert(
-                "extensions".to_string(),
-                lang.file_extensions.iter().map(|s| s.to_string()).collect(),
-            );
-            info
-        })
-        .collect()
 }

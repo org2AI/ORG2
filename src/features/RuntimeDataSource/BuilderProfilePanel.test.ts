@@ -18,7 +18,6 @@ const api = vi.hoisted(() => ({
 vi.mock("@src/api/tauri/builderProfile", () => ({
   builderProfileOverview: api.overview,
   builderProfileExtract: api.extract,
-  AXIS_ORDER: ["ME", "DA", "FW", "SH"],
 }));
 
 vi.mock("react-i18next", () => ({

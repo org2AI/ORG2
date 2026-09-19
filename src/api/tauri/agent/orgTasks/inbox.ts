@@ -1,5 +1,3 @@
-export const AGENT_ORG_USER_SENDER_ID = "_user" as const;
-
 export interface AgentOrgInboxPreviewRow {
   id: number;
   recipientAgentId: string;

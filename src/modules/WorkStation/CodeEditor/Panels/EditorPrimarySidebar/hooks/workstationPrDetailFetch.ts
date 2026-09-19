@@ -10,7 +10,9 @@
  */
 import {
   type GitHubChecksSummary,
+  type GitHubDeploymentsSummary,
   getChecksLocal,
+  getDeploymentsLocal,
   getPRLocal,
   listIssueCommentsLocal,
   listIssueTimelineLocal,
@@ -70,10 +72,16 @@ export async function fetchPrDetailBundle(
   const headSha = readString(detail, ["head", "sha"]);
   const baseRef = readString(detail, ["base", "ref"]);
 
-  let checks: GitHubChecksSummary | null = null;
-  if (headSha) {
-    checks = await getChecksLocal(repoFullName, headSha).catch(() => null);
-  }
+  // Deployments are recorded against the head branch, checks against its tip.
+  const headRef = readString(detail, ["head", "ref"]);
+  const [checks, deployments] = await Promise.all([
+    headSha
+      ? getChecksLocal(repoFullName, headSha).catch(() => null)
+      : Promise.resolve<GitHubChecksSummary | null>(null),
+    headRef
+      ? getDeploymentsLocal(repoFullName, headRef).catch(() => null)
+      : Promise.resolve<GitHubDeploymentsSummary | null>(null),
+  ]);
 
   const bundle: PrDetailBundle = {
     detail,
@@ -85,6 +93,7 @@ export async function fetchPrDetailBundle(
     commits,
     files,
     checks,
+    deployments,
     timeline,
   };
   return bundle;

@@ -15,6 +15,7 @@
  */
 import type {
   GitHubChecksSummary,
+  GitHubDeploymentsSummary,
   GitHubIssue,
   GitHubIssueComment,
   GitHubIssueTimelineItem,
@@ -66,6 +67,8 @@ export interface CachedPrDetail {
   commits: Record<string, unknown>[];
   files: PrFile[];
   checks: GitHubChecksSummary | null;
+  /** Head-branch deployments; null until read or when the read failed. */
+  deployments: GitHubDeploymentsSummary | null;
   /** The PR's GitHub issue-timeline (a PR is an issue in GitHub's REST API). */
   timeline: GitHubIssueTimelineItem[];
   cachedAt: number;

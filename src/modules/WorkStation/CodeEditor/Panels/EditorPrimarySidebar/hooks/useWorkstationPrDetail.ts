@@ -35,6 +35,7 @@ import {
 } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import { readRequestedReviewers } from "@src/util/git/pr/prLevelActions";
 
+import { useWorkstationPrChecksPolling } from "./useWorkstationPrChecksPolling";
 import { useWorkstationPrMutations } from "./useWorkstationPrMutations";
 import { useWorkstationPrPickerCandidates } from "./useWorkstationPrPickerCandidates";
 import {
@@ -49,12 +50,15 @@ export interface UseWorkstationPrDetailOptions {
   repoId?: string;
   /** The PR selected in the sidebar, or null when nothing is selected. */
   pr: PrIdentity | null;
+  /** The panel's root element; CI polling pauses while it is not rendered. */
+  visibilityRef?: React.RefObject<HTMLElement | null>;
 }
 
 export function useWorkstationPrDetail({
   repoPath,
   repoId,
   pr,
+  visibilityRef,
 }: UseWorkstationPrDetailOptions) {
   const scopeKey = workstationPrScopeKey(repoId, repoPath, pr?.number);
   const setSelectedPr = useSetAtom(workstationSelectedPrAtomFamily(scopeKey));
@@ -141,6 +145,7 @@ export function useWorkstationPrDetail({
         commits: bundle.commits,
         files: bundle.files,
         checks: bundle.checks,
+        deployments: bundle.deployments,
         timeline: bundle.timeline,
         loading: false,
         refreshing: false,
@@ -255,6 +260,23 @@ export function useWorkstationPrDetail({
     if (pr) loadDetail(pr, { force: true });
   }, [pr, loadDetail]);
 
+  // ── Live CI status ────────────────────────────────────────────────────────
+
+  const reconcile = useCallback(
+    (identity: PrIdentity) => loadDetail(identity, { reconcile: true }),
+    [loadDetail]
+  );
+  const { refreshChecks } = useWorkstationPrChecksPolling({
+    repoFullName,
+    pr,
+    scopeKey,
+    mountedRef,
+    requestIdsRef,
+    prActionPending,
+    reconcile,
+    visibilityRef,
+  });
+
   // Publish callbacks.
   useEffect(() => {
     setCallbacks({
@@ -336,6 +358,7 @@ export function useWorkstationPrDetail({
       labelCandidatesError,
       prActionPending,
       refresh,
+      refreshChecks,
       latestHeadShaRef,
     }),
     [
@@ -362,6 +385,7 @@ export function useWorkstationPrDetail({
       labelCandidatesError,
       prActionPending,
       refresh,
+      refreshChecks,
     ]
   );
 }

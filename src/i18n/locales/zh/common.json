@@ -1099,6 +1099,93 @@
         "autoMergeEnabled": "已启用自动合并",
         "inMergeQueue": "正在合并队列中等待"
       },
+      "mergeBox": {
+        "checksFailed": "部分检查未成功",
+        "checksPending": "部分检查尚未完成",
+        "checksPassed": "所有检查均已通过",
+        "checksSkipped": "所有检查均已跳过",
+        "counts": {
+          "failing": "{{count}} 项失败",
+          "inProgress": "{{count}} 项进行中",
+          "skipped": "{{count}} 项已跳过",
+          "successful": "{{count}} 项成功",
+          "summary_one": "检查：{{parts}}",
+          "summary_other": "检查：{{parts}}"
+        },
+        "check": {
+          "queued": "排队中",
+          "started": "{{time}}开始",
+          "successfulIn": "成功，用时 {{duration}}",
+          "failingAfter": "运行 {{duration}} 后失败",
+          "skipped": "已跳过",
+          "successful": "成功",
+          "failing": "失败"
+        },
+        "deployments": {
+          "label": "部署",
+          "none": "暂无部署",
+          "active_one": "{{count}} 个活跃部署",
+          "active_other": "{{count}} 个活跃部署",
+          "view": "查看部署",
+          "notDeployed": "此分支尚未部署",
+          "deployed": "此分支已成功部署",
+          "deploying": "此分支正在部署",
+          "deployFailed": "此分支部署时出错",
+          "deployInactive": "此分支已不再部署",
+          "state": {
+            "active": "活跃",
+            "pending": "进行中",
+            "failure": "失败",
+            "inactive": "非活跃"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "更改已批准",
+            "detail": "已提交批准评审"
+          },
+          "reviewRequired": {
+            "title": "需要评审",
+            "detail": "至少需要一个批准评审才能合并"
+          },
+          "reviewChangesRequested": {
+            "title": "已请求更改",
+            "detail": "评审者要求在合并前进行更改"
+          },
+          "noConflicts": {
+            "title": "与基础分支没有冲突",
+            "detail": "可以自动执行合并"
+          },
+          "hasConflicts": {
+            "title": "此分支存在必须解决的冲突",
+            "detail": "请在头部分支上解决冲突，然后推送"
+          },
+          "outOfDate": {
+            "title": "此分支落后于基础分支",
+            "detail": "请将基础分支的最新更改合并到此分支"
+          },
+          "checkingConflicts": {
+            "title": "正在检查能否自动合并…",
+            "detail": "请稍候，GitHub 正在检查分支状态"
+          },
+          "autoMergeEnabled": {
+            "title": "已启用自动合并",
+            "detail": "满足要求后，此拉取请求将自动合并"
+          },
+          "inMergeQueue": {
+            "title": "正在合并队列中等待",
+            "detail": "到达队列最前端时，GitHub 会将其合并"
+          }
+        },
+        "merged": {
+          "title": "拉取请求已成功合并并关闭",
+          "detail": "可以安全删除头部分支"
+        },
+        "closed": {
+          "title": "已关闭，但有未合并的提交",
+          "detail": "此拉取请求已关闭。重新打开后才能合并"
+        }
+      },
       "commits": {
         "backToList": "全部提交",
         "none": "无提交",

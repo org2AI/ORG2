@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "Automatisches Zusammenführen aktiviert",
         "inMergeQueue": "Wartet in der Merge-Warteschlange"
       },
+      "mergeBox": {
+        "checksFailed": "Einige Checks waren nicht erfolgreich",
+        "checksPending": "Einige Checks sind noch nicht abgeschlossen",
+        "checksPassed": "Alle Checks bestanden",
+        "checksSkipped": "Alle Checks wurden übersprungen",
+        "counts": {
+          "failing": "{{count}} fehlgeschlagen",
+          "inProgress": "{{count}} laufend",
+          "skipped": "{{count}} übersprungen",
+          "successful": "{{count}} erfolgreich",
+          "summary_one": "Check: {{parts}}",
+          "summary_other": "Checks: {{parts}}"
+        },
+        "check": {
+          "queued": "In Warteschlange",
+          "started": "Gestartet {{time}}",
+          "successfulIn": "Erfolgreich in {{duration}}",
+          "failingAfter": "Fehlgeschlagen nach {{duration}}",
+          "skipped": "Übersprungen",
+          "successful": "Erfolgreich",
+          "failing": "Fehlgeschlagen"
+        },
+        "deployments": {
+          "label": "Deployments",
+          "none": "Keine Deployments",
+          "active_one": "{{count}} aktives Deployment",
+          "active_other": "{{count}} aktive Deployments",
+          "view": "Deployment anzeigen",
+          "notDeployed": "Dieser Branch wurde nicht bereitgestellt",
+          "deployed": "Dieser Branch wurde erfolgreich bereitgestellt",
+          "deploying": "Dieser Branch wird gerade bereitgestellt",
+          "deployFailed": "Beim Bereitstellen dieses Branch ist ein Fehler aufgetreten",
+          "deployInactive": "Dieser Branch ist nicht mehr bereitgestellt",
+          "state": {
+            "active": "Aktiv",
+            "pending": "Läuft",
+            "failure": "Fehlgeschlagen",
+            "inactive": "Inaktiv"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Änderungen genehmigt",
+            "detail": "Ein genehmigendes Review wurde eingereicht"
+          },
+          "reviewRequired": {
+            "title": "Review erforderlich",
+            "detail": "Zum Zusammenführen ist mindestens ein genehmigendes Review erforderlich"
+          },
+          "reviewChangesRequested": {
+            "title": "Änderungen angefordert",
+            "detail": "Ein Reviewer hat vor dem Zusammenführen Änderungen angefordert"
+          },
+          "noConflicts": {
+            "title": "Keine Konflikte mit dem Basis-Branch",
+            "detail": "Das Zusammenführen kann automatisch erfolgen"
+          },
+          "hasConflicts": {
+            "title": "Dieser Branch hat Konflikte, die gelöst werden müssen",
+            "detail": "Konflikte im Head-Branch lösen, dann pushen"
+          },
+          "outOfDate": {
+            "title": "Dieser Branch ist nicht auf dem Stand des Basis-Branch",
+            "detail": "Die neuesten Änderungen des Basis-Branch in diesen Branch zusammenführen"
+          },
+          "checkingConflicts": {
+            "title": "Automatische Zusammenführbarkeit wird geprüft…",
+            "detail": "Einen Moment, GitHub prüft den Status des Branch"
+          },
+          "autoMergeEnabled": {
+            "title": "Automatisches Zusammenführen aktiviert",
+            "detail": "Dieser Pull Request wird zusammengeführt, sobald die Anforderungen erfüllt sind"
+          },
+          "inMergeQueue": {
+            "title": "Wartet in der Merge-Warteschlange",
+            "detail": "GitHub führt ihn zusammen, sobald er an der Spitze der Warteschlange ist"
+          }
+        },
+        "merged": {
+          "title": "Pull Request erfolgreich zusammengeführt und geschlossen",
+          "detail": "Der Head-Branch kann sicher gelöscht werden"
+        },
+        "closed": {
+          "title": "Mit nicht zusammengeführten Commits geschlossen",
+          "detail": "Dieser Pull Request ist geschlossen. Zum Zusammenführen erneut öffnen"
+        }
+      },
       "commits": {
         "backToList": "Alle Commits",
         "none": "Keine Commits",

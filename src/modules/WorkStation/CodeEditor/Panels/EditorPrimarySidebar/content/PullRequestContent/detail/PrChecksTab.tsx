@@ -20,6 +20,8 @@ import {
 } from "@src/services/git/ciCheckState";
 import { linkAnchorProps } from "@src/util/ui/openLink";
 
+import { PrChecksRefreshButton } from "./PrChecksRefreshButton";
+
 interface CheckRowProps {
   state: CiCheckState;
   name: string;
@@ -125,9 +127,10 @@ export const PrChecksTab: React.FC<PrChecksTabProps> = ({
       <div className={`${DETAIL_PANEL_TOKENS.headerWidth} px-4 py-4`}>
         <div className="mb-3 flex items-center gap-2">
           <CiCheckStateIcon state={overall} />
-          <span className="text-[13px] font-medium text-text-1">
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-1">
             {summaryLabel}
           </span>
+          <PrChecksRefreshButton testId="pr-checks-tab-refresh" />
         </div>
 
         <div className="overflow-hidden rounded-xl border border-border-1">

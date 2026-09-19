@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "Automatyczne scalanie włączone",
         "inMergeQueue": "Oczekuje w kolejce scalania"
       },
+      "mergeBox": {
+        "checksFailed": "Niektóre kontrole zakończyły się niepowodzeniem",
+        "checksPending": "Niektóre kontrole jeszcze się nie zakończyły",
+        "checksPassed": "Wszystkie kontrole zakończone pomyślnie",
+        "checksSkipped": "Wszystkie kontrole zostały pominięte",
+        "counts": {
+          "failing": "{{count}} z błędem",
+          "inProgress": "{{count}} w toku",
+          "skipped": "{{count}} pominięto",
+          "successful": "{{count}} pomyślnie",
+          "summary_one": "Kontrola: {{parts}}",
+          "summary_other": "Kontrole: {{parts}}"
+        },
+        "check": {
+          "queued": "W kolejce",
+          "started": "Rozpoczęto {{time}}",
+          "successfulIn": "Zakończono pomyślnie w {{duration}}",
+          "failingAfter": "Niepowodzenie po {{duration}}",
+          "skipped": "Pominięto",
+          "successful": "Powodzenie",
+          "failing": "Niepowodzenie"
+        },
+        "deployments": {
+          "label": "Wdrożenia",
+          "none": "Brak wdrożeń",
+          "active_one": "{{count}} aktywne wdrożenie",
+          "active_other": "Aktywne wdrożenia: {{count}}",
+          "view": "Zobacz wdrożenie",
+          "notDeployed": "Ta gałąź nie została wdrożona",
+          "deployed": "Ta gałąź została pomyślnie wdrożona",
+          "deploying": "Trwa wdrażanie tej gałęzi",
+          "deployFailed": "Podczas wdrażania tej gałęzi wystąpił błąd",
+          "deployInactive": "Ta gałąź nie jest już wdrożona",
+          "state": {
+            "active": "Aktywne",
+            "pending": "W toku",
+            "failure": "Niepowodzenie",
+            "inactive": "Nieaktywne"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Zmiany zatwierdzone",
+            "detail": "Przesłano zatwierdzającą recenzję"
+          },
+          "reviewRequired": {
+            "title": "Wymagana recenzja",
+            "detail": "Do scalenia wymagana jest co najmniej jedna zatwierdzająca recenzja"
+          },
+          "reviewChangesRequested": {
+            "title": "Zażądano zmian",
+            "detail": "Recenzent zażądał zmian przed scaleniem"
+          },
+          "noConflicts": {
+            "title": "Brak konfliktów z gałęzią bazową",
+            "detail": "Scalanie można wykonać automatycznie"
+          },
+          "hasConflicts": {
+            "title": "Ta gałąź ma konflikty, które trzeba rozwiązać",
+            "detail": "Rozwiąż konflikty w gałęzi źródłowej, a następnie wypchnij zmiany"
+          },
+          "outOfDate": {
+            "title": "Ta gałąź jest nieaktualna względem gałęzi bazowej",
+            "detail": "Scal najnowsze zmiany z gałęzi bazowej z tą gałęzią"
+          },
+          "checkingConflicts": {
+            "title": "Sprawdzanie możliwości automatycznego scalenia…",
+            "detail": "Poczekaj chwilę, GitHub sprawdza stan gałęzi"
+          },
+          "autoMergeEnabled": {
+            "title": "Automatyczne scalanie włączone",
+            "detail": "Ten pull request zostanie scalony po spełnieniu wymagań"
+          },
+          "inMergeQueue": {
+            "title": "Oczekuje w kolejce scalania",
+            "detail": "GitHub scali go, gdy znajdzie się na początku kolejki"
+          }
+        },
+        "merged": {
+          "title": "Pull request pomyślnie scalony i zamknięty",
+          "detail": "Gałąź źródłową można bezpiecznie usunąć"
+        },
+        "closed": {
+          "title": "Zamknięto z niescalonymi commitami",
+          "detail": "Ten pull request jest zamknięty. Otwórz go ponownie, aby scalić"
+        }
+      },
       "commits": {
         "backToList": "Wszystkie commity",
         "none": "Brak commitów",

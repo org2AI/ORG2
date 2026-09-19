@@ -64,6 +64,7 @@ vi.mock("../../../hooks/useWorkstationPrDetail", () => ({
     submitReview: vi.fn(),
     replyInlineComment: vi.fn(),
     mergePullRequest: vi.fn(),
+    refreshChecks: vi.fn(() => Promise.resolve()),
     setPullRequestAutoMerge: vi.fn(),
     updatePullRequestDraft: vi.fn(),
     updatePullRequestState: vi.fn(),
@@ -98,6 +99,7 @@ vi.mock("./PrConversationTab", () => ({
     props: Record<string, unknown> & {
       flowHeader?: ReactNode;
       inlineProperties?: ReactNode;
+      mergeBox?: ReactNode;
     }
   ) => {
     childProps.conversation = props;
@@ -105,7 +107,8 @@ vi.mock("./PrConversationTab", () => ({
       "div",
       { "data-testid": "conversation-tab" },
       props.flowHeader,
-      props.inlineProperties
+      props.inlineProperties,
+      props.mergeBox
     );
   },
 }));
@@ -603,7 +606,16 @@ describe("PrDetailPanel tabs", () => {
       );
     });
 
-    const actions = container.querySelector('[data-testid="pr-level-actions"]');
+    // It sits beside the merge button in the conversation's merge box; the
+    // rail keeps merge and close only.
+    expect(
+      container
+        .querySelector('[data-testid="pr-level-actions"]')
+        ?.querySelector('[data-testid="pr-convert-to-draft-action"]')
+    ).toBeNull();
+    const actions = container.querySelector(
+      '[data-testid="pr-merge-box-actions"]'
+    );
     const convertAction = actions?.querySelector(
       '[data-testid="pr-convert-to-draft-action"]'
     );
@@ -612,7 +624,7 @@ describe("PrDetailPanel tabs", () => {
       convertAction?.querySelector('[data-icon="git-pull-request-draft"]')
     ).not.toBeNull();
 
-    // The action moved out of the merge dropdown into the actions stack.
+    // The action is its own button, never an entry of the merge dropdown.
     const mergeAction = container.querySelector<HTMLButtonElement>(
       '[data-testid="pr-merge-action"]'
     );

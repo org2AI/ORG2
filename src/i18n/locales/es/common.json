@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "Fusión automática activada",
         "inMergeQueue": "Esperando en la cola de fusión"
       },
+      "mergeBox": {
+        "checksFailed": "Algunas comprobaciones no se completaron correctamente",
+        "checksPending": "Algunas comprobaciones aún no han terminado",
+        "checksPassed": "Todas las comprobaciones pasaron",
+        "checksSkipped": "Se omitieron todas las comprobaciones",
+        "counts": {
+          "failing": "{{count}} con fallos",
+          "inProgress": "{{count}} en curso",
+          "skipped": "{{count}} omitidas",
+          "successful": "{{count}} con éxito",
+          "summary_one": "Comprobación: {{parts}}",
+          "summary_other": "Comprobaciones: {{parts}}"
+        },
+        "check": {
+          "queued": "En cola",
+          "started": "Iniciada {{time}}",
+          "successfulIn": "Correcta en {{duration}}",
+          "failingAfter": "Fallida tras {{duration}}",
+          "skipped": "Omitida",
+          "successful": "Correcta",
+          "failing": "Fallida"
+        },
+        "deployments": {
+          "label": "Despliegues",
+          "none": "Sin despliegues",
+          "active_one": "{{count}} despliegue activo",
+          "active_other": "{{count}} despliegues activos",
+          "view": "Ver despliegue",
+          "notDeployed": "Esta rama no se ha desplegado",
+          "deployed": "Esta rama se desplegó correctamente",
+          "deploying": "Esta rama se está desplegando",
+          "deployFailed": "Se produjo un error al desplegar esta rama",
+          "deployInactive": "Esta rama ya no está desplegada",
+          "state": {
+            "active": "Activo",
+            "pending": "En curso",
+            "failure": "Fallido",
+            "inactive": "Inactivo"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Cambios aprobados",
+            "detail": "Se envió una revisión de aprobación"
+          },
+          "reviewRequired": {
+            "title": "Revisión requerida",
+            "detail": "Se requiere al menos una revisión de aprobación para fusionar"
+          },
+          "reviewChangesRequested": {
+            "title": "Cambios solicitados",
+            "detail": "Un revisor solicitó cambios antes de fusionar"
+          },
+          "noConflicts": {
+            "title": "Sin conflictos con la rama base",
+            "detail": "La fusión se puede realizar automáticamente"
+          },
+          "hasConflicts": {
+            "title": "Esta rama tiene conflictos que deben resolverse",
+            "detail": "Resuelve los conflictos en la rama de origen y luego haz push"
+          },
+          "outOfDate": {
+            "title": "Esta rama está desactualizada respecto a la rama base",
+            "detail": "Fusiona los últimos cambios de la rama base en esta rama"
+          },
+          "checkingConflicts": {
+            "title": "Comprobando si se puede fusionar automáticamente…",
+            "detail": "Espera un momento mientras GitHub comprueba el estado de la rama"
+          },
+          "autoMergeEnabled": {
+            "title": "Fusión automática activada",
+            "detail": "Este pull request se fusionará cuando se cumplan sus requisitos"
+          },
+          "inMergeQueue": {
+            "title": "Esperando en la cola de fusión",
+            "detail": "GitHub lo fusionará cuando llegue al frente de la cola"
+          }
+        },
+        "merged": {
+          "title": "Pull request fusionado y cerrado correctamente",
+          "detail": "La rama de origen se puede eliminar con seguridad"
+        },
+        "closed": {
+          "title": "Cerrado con commits sin fusionar",
+          "detail": "Este pull request está cerrado. Vuelve a abrirlo para fusionarlo"
+        }
+      },
       "commits": {
         "backToList": "Todos los commits",
         "none": "Sin commits",

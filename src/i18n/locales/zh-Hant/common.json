@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "已啟用自動合併",
         "inMergeQueue": "正在合併佇列中等待"
       },
+      "mergeBox": {
+        "checksFailed": "部分檢查未成功",
+        "checksPending": "部分檢查尚未完成",
+        "checksPassed": "所有檢查均已通過",
+        "checksSkipped": "所有檢查均已略過",
+        "counts": {
+          "failing": "{{count}} 項失敗",
+          "inProgress": "{{count}} 項進行中",
+          "skipped": "{{count}} 項已略過",
+          "successful": "{{count}} 項成功",
+          "summary_one": "檢查：{{parts}}",
+          "summary_other": "檢查：{{parts}}"
+        },
+        "check": {
+          "queued": "排隊中",
+          "started": "{{time}}開始",
+          "successfulIn": "成功，耗時 {{duration}}",
+          "failingAfter": "執行 {{duration}} 後失敗",
+          "skipped": "已略過",
+          "successful": "成功",
+          "failing": "失敗"
+        },
+        "deployments": {
+          "label": "部署",
+          "none": "尚無部署",
+          "active_one": "{{count}} 個使用中的部署",
+          "active_other": "{{count}} 個使用中的部署",
+          "view": "檢視部署",
+          "notDeployed": "此分支尚未部署",
+          "deployed": "此分支已成功部署",
+          "deploying": "此分支正在部署",
+          "deployFailed": "此分支部署時發生錯誤",
+          "deployInactive": "此分支已不再部署",
+          "state": {
+            "active": "使用中",
+            "pending": "進行中",
+            "failure": "失敗",
+            "inactive": "未使用"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "變更已核准",
+            "detail": "已提交核准審查"
+          },
+          "reviewRequired": {
+            "title": "需要審查",
+            "detail": "至少需要一個核准審查才能合併"
+          },
+          "reviewChangesRequested": {
+            "title": "已要求變更",
+            "detail": "審查者要求在合併前進行變更"
+          },
+          "noConflicts": {
+            "title": "與基礎分支沒有衝突",
+            "detail": "可以自動執行合併"
+          },
+          "hasConflicts": {
+            "title": "此分支存在必須解決的衝突",
+            "detail": "請在頭部分支上解決衝突，然後推送"
+          },
+          "outOfDate": {
+            "title": "此分支落後於基礎分支",
+            "detail": "請將基礎分支的最新變更合併到此分支"
+          },
+          "checkingConflicts": {
+            "title": "正在檢查能否自動合併…",
+            "detail": "請稍候，GitHub 正在檢查分支狀態"
+          },
+          "autoMergeEnabled": {
+            "title": "已啟用自動合併",
+            "detail": "滿足要求後，此拉取請求將自動合併"
+          },
+          "inMergeQueue": {
+            "title": "正在合併佇列中等待",
+            "detail": "到達佇列最前端時，GitHub 會將其合併"
+          }
+        },
+        "merged": {
+          "title": "拉取請求已成功合併並關閉",
+          "detail": "可以安全刪除頭部分支"
+        },
+        "closed": {
+          "title": "已關閉，但有未合併的提交",
+          "detail": "此拉取請求已關閉。重新開啟後才能合併"
+        }
+      },
       "commits": {
         "backToList": "全部提交",
         "none": "無提交",

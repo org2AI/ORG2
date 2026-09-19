@@ -5,6 +5,12 @@
  * stacked full-width for the GitHub-style operations sidebar. The merge
  * split-button keeps the full merge-method + auto-merge + draft dropdown;
  * reviewer management lives in the sidebar's Reviewers section.
+ *
+ * The `mergeBox` layout is the same merge control sized for GitHub's merge
+ * box under the conversation: the split button hugs its label, "Convert to
+ * draft" sits beside it, and the reason merging is (un)available follows. The
+ * rail keeps merge and close / reopen only — converting to draft lives in the
+ * box alone, so the two never offer it twice on one screen.
  */
 import type { TFunction } from "i18next";
 import React, { useState } from "react";
@@ -49,6 +55,7 @@ interface PrLevelActionsProps {
   ) => Promise<void>;
   onDraftChange: (draft: boolean) => Promise<void>;
   onStateChange: (state: "open" | "closed") => Promise<void>;
+  layout?: "rail" | "mergeBox";
 }
 
 const GIT_MERGE_METHOD_LABELS = new Set([
@@ -89,8 +96,13 @@ const ACTION_TOOLTIP_KEYS: Record<string, string> = {
 
 function localizedActionLabel(t: TFunction, label: string): string {
   if (GIT_MERGE_METHOD_LABELS.has(label)) return label;
+  // These two verdicts are the merge-status headlines, so they share that
+  // wording instead of carrying a second translation of the same phrase.
   if (label === "Ready to merge") {
     return t("git.pr.mergeStatus.ableToMerge", label);
+  }
+  if (label === "Merge conflicts") {
+    return t("git.pr.mergeStatus.conflicts", label);
   }
   const key = ACTION_LABEL_KEYS[label];
   return key ? t(`git.pr.actions.${key}`, label) : label;
@@ -124,8 +136,10 @@ export const PrLevelActions: React.FC<PrLevelActionsProps> = ({
   onSetAutoMerge,
   onDraftChange,
   onStateChange,
+  layout = "rail",
 }) => {
   const { t } = useTranslation("common");
+  const inMergeBox = layout === "mergeBox";
   const [mergeMenuVisible, setMergeMenuVisible] = useState(false);
   const presentation = presentPullRequestActions({
     detail,
@@ -281,116 +295,168 @@ export const PrLevelActions: React.FC<PrLevelActionsProps> = ({
       : presentation.label
   );
 
+  const mergeDropdown = (
+    <Dropdown
+      droplist={mergePanel}
+      trigger="click"
+      // The rail's button spans its column, so its menu hangs from the right
+      // edge; in the merge box the button sits at the left of a wide row, and
+      // a right-hung menu would spill out of the box to the left.
+      position={inMergeBox ? "bottom-start" : "bottom-end"}
+      popupVisible={mergeMenuVisible}
+      onVisibleChange={setMergeMenuVisible}
+      getPopupContainer={() => document.body}
+      avoidViewportOverflow
+    >
+      <div />
+    </Dropdown>
+  );
+  // The dropdown measures its own zero-width anchor, which the split button
+  // renders after its segments — i.e. at the right edge. Pinning the anchor to
+  // the button's bottom-left corner is what makes "start" mean the left edge.
+  const mergeMenu = inMergeBox ? (
+    <div className="absolute bottom-0 left-0" data-merge-menu-anchor>
+      {mergeDropdown}
+    </div>
+  ) : (
+    mergeDropdown
+  );
+
+  const mergeButton = (
+    <SplitButton
+      variant={
+        presentation.hasConflicts || presentation.status === "draft"
+          ? "secondary"
+          : "primary"
+      }
+      tone={
+        presentation.hasConflicts
+          ? "danger"
+          : presentation.status === "draft"
+            ? undefined
+            : presentation.status === "merged"
+              ? "merged"
+              : "success"
+      }
+      size="small"
+      icon={
+        presentation.status === "draft" ? (
+          <HugeiconsIcon
+            icon={GitPullRequestDraftIcon}
+            data-icon="git-pull-request-draft"
+            size={14}
+            aria-hidden
+          />
+        ) : presentation.hasConflicts ? (
+          <HugeiconsIcon
+            icon={CancelCircleIcon}
+            data-icon="xcircle"
+            size={14}
+            aria-hidden
+          />
+        ) : presentation.directMergeAvailable ? (
+          <HugeiconsIcon
+            icon={CheckmarkCircle01Icon}
+            data-icon="check-circle-2"
+            size={14}
+            aria-hidden
+          />
+        ) : (
+          <HugeiconsIcon
+            icon={GitMergeIcon}
+            data-icon="git-merge"
+            size={14}
+            aria-hidden
+          />
+        )
+      }
+      loading={pending}
+      disabled={primaryDisabled}
+      className={[
+        primaryDisabled ? "opacity-100!" : "",
+        presentation.status === "draft" ? "bg-fill-3! text-text-1!" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      title={localizedActionTooltip(t, presentation.tooltip)}
+      onClick={runPrimaryMergeAction}
+      menu={mergeMenu}
+      onMenuButtonClick={(event) => {
+        event.stopPropagation();
+        setMergeMenuVisible((visible) => !visible);
+      }}
+      menuOpen={mergeMenuVisible}
+      menuButtonLabel={primaryActionLabel}
+      widthMode={inMergeBox ? "hug" : "fill"}
+      menuSegmentWidth={28}
+      // `centerLabel` lifts the icon out of flow to center the label of a
+      // full-width button; on one that hugs its label the icon lands outside.
+      contentAlignment={inMergeBox ? undefined : "whole"}
+      centerLabel={!inMergeBox}
+      data-testid={inMergeBox ? "pr-merge-box-action" : "pr-merge-action"}
+    >
+      {inMergeBox ? (
+        // A hugging split button ends its label flush against the menu
+        // segment's divider; the rail's full-width one has room to spare.
+        <span className="pr-2">{primaryActionLabel}</span>
+      ) : (
+        primaryActionLabel
+      )}
+    </SplitButton>
+  );
+
+  if (inMergeBox) {
+    const mergeBoxHint =
+      ACTION_TOOLTIP_KEYS[presentation.tooltip] === "merge"
+        ? null
+        : localizedActionTooltip(t, presentation.tooltip);
+    return (
+      <section
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-2"
+        aria-label={t("git.pr.actions.label", "Pull request actions")}
+        data-testid="pr-merge-box-actions"
+      >
+        <div className="shrink-0">{mergeButton}</div>
+        {presentation.status === "open" ? (
+          <Button
+            variant="secondary"
+            size="small"
+            className="shrink-0"
+            icon={
+              <HugeiconsIcon
+                icon={GitPullRequestDraftIcon}
+                data-icon="git-pull-request-draft"
+                size={14}
+                aria-hidden
+              />
+            }
+            disabled={interactionDisabled}
+            onClick={() => void changeDraftState(true)}
+            data-testid="pr-convert-to-draft-action"
+          >
+            {t("git.pr.actions.convertToDraft", "Convert to draft")}
+          </Button>
+        ) : null}
+        {/* Only a state that needs explaining gets a hint; "merge this" beside
+            a green merge button says nothing. Sized to its full sentence and
+            never shrunk, so a row too narrow for it sends the whole hint under
+            the buttons instead of squeezing it into a wrapped column. */}
+        {mergeBoxHint ? (
+          <span className="max-w-full shrink-0 grow basis-auto text-[12px] leading-[18px] text-text-3">
+            {mergeBoxHint}
+          </span>
+        ) : null}
+      </section>
+    );
+  }
+
   return (
     <section
       className="flex w-full flex-col gap-2"
       aria-label={t("git.pr.actions.label", "Pull request actions")}
       data-testid="pr-level-actions"
     >
-      <SplitButton
-        variant={
-          presentation.hasConflicts || presentation.status === "draft"
-            ? "secondary"
-            : "primary"
-        }
-        tone={
-          presentation.hasConflicts
-            ? "danger"
-            : presentation.status === "draft"
-              ? undefined
-              : presentation.status === "merged"
-                ? "merged"
-                : "success"
-        }
-        size="small"
-        icon={
-          presentation.status === "draft" ? (
-            <HugeiconsIcon
-              icon={GitPullRequestDraftIcon}
-              data-icon="git-pull-request-draft"
-              size={14}
-              aria-hidden
-            />
-          ) : presentation.hasConflicts ? (
-            <HugeiconsIcon
-              icon={CancelCircleIcon}
-              data-icon="xcircle"
-              size={14}
-              aria-hidden
-            />
-          ) : presentation.directMergeAvailable ? (
-            <HugeiconsIcon
-              icon={CheckmarkCircle01Icon}
-              data-icon="check-circle-2"
-              size={14}
-              aria-hidden
-            />
-          ) : (
-            <HugeiconsIcon
-              icon={GitMergeIcon}
-              data-icon="git-merge"
-              size={14}
-              aria-hidden
-            />
-          )
-        }
-        loading={pending}
-        disabled={primaryDisabled}
-        className={[
-          primaryDisabled ? "opacity-100!" : "",
-          presentation.status === "draft" ? "bg-fill-3! text-text-1!" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        title={localizedActionTooltip(t, presentation.tooltip)}
-        onClick={runPrimaryMergeAction}
-        menu={
-          <Dropdown
-            droplist={mergePanel}
-            trigger="click"
-            popupVisible={mergeMenuVisible}
-            onVisibleChange={setMergeMenuVisible}
-            getPopupContainer={() => document.body}
-            avoidViewportOverflow
-          >
-            <div />
-          </Dropdown>
-        }
-        onMenuButtonClick={(event) => {
-          event.stopPropagation();
-          setMergeMenuVisible((visible) => !visible);
-        }}
-        menuOpen={mergeMenuVisible}
-        menuButtonLabel={primaryActionLabel}
-        widthMode="fill"
-        menuSegmentWidth={28}
-        contentAlignment="whole"
-        centerLabel
-        data-testid="pr-merge-action"
-      >
-        {primaryActionLabel}
-      </SplitButton>
-
-      {presentation.status === "open" ? (
-        <Button
-          size="small"
-          long
-          centerLabel
-          icon={
-            <HugeiconsIcon
-              icon={GitPullRequestDraftIcon}
-              data-icon="git-pull-request-draft"
-              size={14}
-              aria-hidden
-            />
-          }
-          disabled={interactionDisabled}
-          onClick={() => void changeDraftState(true)}
-          data-testid="pr-convert-to-draft-action"
-        >
-          {t("git.pr.actions.convertToDraft", "Convert to draft")}
-        </Button>
-      ) : null}
+      {mergeButton}
 
       {canChangeState ? (
         <Button

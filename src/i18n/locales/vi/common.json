@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "Đã bật tự động hợp nhất",
         "inMergeQueue": "Đang chờ trong hàng đợi hợp nhất"
       },
+      "mergeBox": {
+        "checksFailed": "Một số kiểm tra không thành công",
+        "checksPending": "Một số kiểm tra chưa hoàn tất",
+        "checksPassed": "Tất cả kiểm tra đều đạt",
+        "checksSkipped": "Tất cả kiểm tra đã bị bỏ qua",
+        "counts": {
+          "failing": "{{count}} thất bại",
+          "inProgress": "{{count}} đang chạy",
+          "skipped": "{{count}} đã bỏ qua",
+          "successful": "{{count}} thành công",
+          "summary_one": "Kiểm tra: {{parts}}",
+          "summary_other": "Kiểm tra: {{parts}}"
+        },
+        "check": {
+          "queued": "Đang xếp hàng",
+          "started": "Bắt đầu {{time}}",
+          "successfulIn": "Thành công sau {{duration}}",
+          "failingAfter": "Thất bại sau {{duration}}",
+          "skipped": "Đã bỏ qua",
+          "successful": "Thành công",
+          "failing": "Thất bại"
+        },
+        "deployments": {
+          "label": "Triển khai",
+          "none": "Không có bản triển khai nào",
+          "active_one": "{{count}} bản triển khai đang hoạt động",
+          "active_other": "{{count}} bản triển khai đang hoạt động",
+          "view": "Xem bản triển khai",
+          "notDeployed": "Nhánh này chưa được triển khai",
+          "deployed": "Nhánh này đã được triển khai thành công",
+          "deploying": "Nhánh này đang được triển khai",
+          "deployFailed": "Đã xảy ra lỗi khi triển khai nhánh này",
+          "deployInactive": "Nhánh này không còn được triển khai",
+          "state": {
+            "active": "Đang hoạt động",
+            "pending": "Đang tiến hành",
+            "failure": "Thất bại",
+            "inactive": "Không hoạt động"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Thay đổi đã được phê duyệt",
+            "detail": "Một đánh giá phê duyệt đã được gửi"
+          },
+          "reviewRequired": {
+            "title": "Cần đánh giá",
+            "detail": "Cần ít nhất một đánh giá phê duyệt để hợp nhất"
+          },
+          "reviewChangesRequested": {
+            "title": "Đã yêu cầu thay đổi",
+            "detail": "Một người đánh giá đã yêu cầu thay đổi trước khi hợp nhất"
+          },
+          "noConflicts": {
+            "title": "Không có xung đột với nhánh cơ sở",
+            "detail": "Có thể hợp nhất tự động"
+          },
+          "hasConflicts": {
+            "title": "Nhánh này có xung đột cần được giải quyết",
+            "detail": "Giải quyết xung đột trên nhánh nguồn, sau đó push"
+          },
+          "outOfDate": {
+            "title": "Nhánh này cũ hơn nhánh cơ sở",
+            "detail": "Hợp nhất các thay đổi mới nhất của nhánh cơ sở vào nhánh này"
+          },
+          "checkingConflicts": {
+            "title": "Đang kiểm tra khả năng hợp nhất tự động…",
+            "detail": "Vui lòng chờ trong khi GitHub kiểm tra trạng thái nhánh"
+          },
+          "autoMergeEnabled": {
+            "title": "Đã bật tự động hợp nhất",
+            "detail": "Pull request này sẽ được hợp nhất khi đáp ứng đủ yêu cầu"
+          },
+          "inMergeQueue": {
+            "title": "Đang chờ trong hàng đợi hợp nhất",
+            "detail": "GitHub sẽ hợp nhất khi nó lên đầu hàng đợi"
+          }
+        },
+        "merged": {
+          "title": "Pull request đã được hợp nhất và đóng thành công",
+          "detail": "Có thể xóa nhánh nguồn một cách an toàn"
+        },
+        "closed": {
+          "title": "Đã đóng với các commit chưa hợp nhất",
+          "detail": "Pull request này đã đóng. Mở lại để hợp nhất"
+        }
+      },
       "commits": {
         "backToList": "Tất cả commit",
         "none": "Không có commit",

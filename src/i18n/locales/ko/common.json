@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "자동 병합 활성화됨",
         "inMergeQueue": "병합 대기열에서 대기 중"
       },
+      "mergeBox": {
+        "checksFailed": "일부 검사가 성공하지 못함",
+        "checksPending": "일부 검사가 아직 완료되지 않음",
+        "checksPassed": "모든 검사 통과",
+        "checksSkipped": "모든 검사를 건너뜀",
+        "counts": {
+          "failing": "{{count}}건 실패",
+          "inProgress": "{{count}}건 진행 중",
+          "skipped": "{{count}}건 건너뜀",
+          "successful": "{{count}}건 성공",
+          "summary_one": "검사: {{parts}}",
+          "summary_other": "검사: {{parts}}"
+        },
+        "check": {
+          "queued": "대기 중",
+          "started": "{{time}} 시작됨",
+          "successfulIn": "{{duration}} 만에 성공",
+          "failingAfter": "{{duration}} 후 실패",
+          "skipped": "건너뜀",
+          "successful": "성공",
+          "failing": "실패"
+        },
+        "deployments": {
+          "label": "배포",
+          "none": "배포 없음",
+          "active_one": "활성 배포 {{count}}건",
+          "active_other": "활성 배포 {{count}}건",
+          "view": "배포 보기",
+          "notDeployed": "이 브랜치는 배포되지 않았습니다",
+          "deployed": "이 브랜치가 성공적으로 배포되었습니다",
+          "deploying": "이 브랜치를 배포하는 중입니다",
+          "deployFailed": "이 브랜치를 배포하는 중 오류가 발생했습니다",
+          "deployInactive": "이 브랜치는 더 이상 배포되어 있지 않습니다",
+          "state": {
+            "active": "활성",
+            "pending": "진행 중",
+            "failure": "실패",
+            "inactive": "비활성"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "변경 사항 승인됨",
+            "detail": "승인 리뷰가 제출되었습니다"
+          },
+          "reviewRequired": {
+            "title": "리뷰 필요",
+            "detail": "병합하려면 승인 리뷰가 하나 이상 필요합니다"
+          },
+          "reviewChangesRequested": {
+            "title": "변경 요청됨",
+            "detail": "리뷰어가 병합 전에 변경을 요청했습니다"
+          },
+          "noConflicts": {
+            "title": "기준 브랜치와 충돌 없음",
+            "detail": "병합을 자동으로 수행할 수 있습니다"
+          },
+          "hasConflicts": {
+            "title": "이 브랜치에 해결해야 할 충돌이 있음",
+            "detail": "헤드 브랜치에서 충돌을 해결한 다음 푸시하세요"
+          },
+          "outOfDate": {
+            "title": "이 브랜치가 기준 브랜치보다 오래됨",
+            "detail": "기준 브랜치의 최신 변경 사항을 이 브랜치에 병합하세요"
+          },
+          "checkingConflicts": {
+            "title": "자동 병합 가능 여부 확인 중…",
+            "detail": "GitHub에서 브랜치 상태를 확인하는 동안 잠시 기다려 주세요"
+          },
+          "autoMergeEnabled": {
+            "title": "자동 병합 활성화됨",
+            "detail": "요구 사항이 충족되면 이 풀 리퀘스트가 병합됩니다"
+          },
+          "inMergeQueue": {
+            "title": "병합 대기열에서 대기 중",
+            "detail": "대기열의 맨 앞에 도달하면 GitHub에서 병합합니다"
+          }
+        },
+        "merged": {
+          "title": "풀 리퀘스트가 성공적으로 병합되고 닫힘",
+          "detail": "헤드 브랜치를 안전하게 삭제할 수 있습니다"
+        },
+        "closed": {
+          "title": "병합되지 않은 커밋이 있는 상태로 닫힘",
+          "detail": "이 풀 리퀘스트는 닫혀 있습니다. 병합하려면 다시 여세요"
+        }
+      },
       "commits": {
         "backToList": "모든 커밋",
         "none": "커밋 없음",

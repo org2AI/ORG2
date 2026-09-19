@@ -218,7 +218,7 @@ describe("PR-level action presentation", () => {
 });
 
 describe("PR-level action button labels", () => {
-  // The sidebar renders "Close" and "Convert to draft" as standalone buttons,
+  // "Close" (rail) and "Convert to draft" (merge box) are standalone buttons,
   // so both keys have to resolve in every shipped language rather than falling
   // back to the English default baked into the t() call.
   it.each(SUPPORTED_LANGUAGES)(

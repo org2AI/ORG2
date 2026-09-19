@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "Otomatik birleştirme etkin",
         "inMergeQueue": "Birleştirme kuyruğunda bekliyor"
       },
+      "mergeBox": {
+        "checksFailed": "Bazı kontroller başarılı olmadı",
+        "checksPending": "Bazı kontroller henüz tamamlanmadı",
+        "checksPassed": "Tüm kontroller başarılı",
+        "checksSkipped": "Tüm kontroller atlandı",
+        "counts": {
+          "failing": "{{count}} başarısız",
+          "inProgress": "{{count}} devam ediyor",
+          "skipped": "{{count}} atlandı",
+          "successful": "{{count}} başarılı",
+          "summary_one": "Kontrol: {{parts}}",
+          "summary_other": "Kontroller: {{parts}}"
+        },
+        "check": {
+          "queued": "Kuyrukta",
+          "started": "{{time}} başladı",
+          "successfulIn": "{{duration}} içinde başarılı",
+          "failingAfter": "{{duration}} sonra başarısız",
+          "skipped": "Atlandı",
+          "successful": "Başarılı",
+          "failing": "Başarısız"
+        },
+        "deployments": {
+          "label": "Dağıtımlar",
+          "none": "Dağıtım yok",
+          "active_one": "{{count}} etkin dağıtım",
+          "active_other": "{{count}} etkin dağıtım",
+          "view": "Dağıtımı görüntüle",
+          "notDeployed": "Bu dal dağıtılmadı",
+          "deployed": "Bu dal başarıyla dağıtıldı",
+          "deploying": "Bu dal dağıtılıyor",
+          "deployFailed": "Bu dal dağıtılırken bir hata oluştu",
+          "deployInactive": "Bu dal artık dağıtımda değil",
+          "state": {
+            "active": "Etkin",
+            "pending": "Devam ediyor",
+            "failure": "Başarısız",
+            "inactive": "Etkin değil"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Değişiklikler onaylandı",
+            "detail": "Onaylayan bir inceleme gönderildi"
+          },
+          "reviewRequired": {
+            "title": "İnceleme gerekli",
+            "detail": "Birleştirmek için en az bir onaylayan inceleme gerekli"
+          },
+          "reviewChangesRequested": {
+            "title": "Değişiklik istendi",
+            "detail": "Bir inceleyici birleştirmeden önce değişiklik istedi"
+          },
+          "noConflicts": {
+            "title": "Temel dal ile çakışma yok",
+            "detail": "Birleştirme otomatik olarak yapılabilir"
+          },
+          "hasConflicts": {
+            "title": "Bu dalda çözülmesi gereken çakışmalar var",
+            "detail": "Çakışmaları kaynak dalda çözün, ardından gönderin"
+          },
+          "outOfDate": {
+            "title": "Bu dal temel dala göre güncel değil",
+            "detail": "Temel daldaki en son değişiklikleri bu dala birleştirin"
+          },
+          "checkingConflicts": {
+            "title": "Otomatik birleştirilebilirlik kontrol ediliyor…",
+            "detail": "GitHub dalın durumunu kontrol ederken lütfen bekleyin"
+          },
+          "autoMergeEnabled": {
+            "title": "Otomatik birleştirme etkin",
+            "detail": "Bu pull request, gereksinimleri karşılandığında birleştirilir"
+          },
+          "inMergeQueue": {
+            "title": "Birleştirme kuyruğunda bekliyor",
+            "detail": "Kuyruğun başına geldiğinde GitHub onu birleştirir"
+          }
+        },
+        "merged": {
+          "title": "Pull request başarıyla birleştirildi ve kapatıldı",
+          "detail": "Kaynak dal güvenle silinebilir"
+        },
+        "closed": {
+          "title": "Birleştirilmemiş commit'lerle kapatıldı",
+          "detail": "Bu pull request kapalı. Birleştirmek için yeniden açın"
+        }
+      },
       "commits": {
         "backToList": "Tüm commitler",
         "none": "Commit yok",

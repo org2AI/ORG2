@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "自動マージを有効にしました",
         "inMergeQueue": "マージキューで待機中"
       },
+      "mergeBox": {
+        "checksFailed": "一部のチェックが成功しませんでした",
+        "checksPending": "一部のチェックがまだ完了していません",
+        "checksPassed": "すべてのチェックに合格しました",
+        "checksSkipped": "すべてのチェックがスキップされました",
+        "counts": {
+          "failing": "{{count}} 件失敗",
+          "inProgress": "{{count}} 件実行中",
+          "skipped": "{{count}} 件スキップ",
+          "successful": "{{count}} 件成功",
+          "summary_one": "チェック: {{parts}}",
+          "summary_other": "チェック: {{parts}}"
+        },
+        "check": {
+          "queued": "キュー登録済み",
+          "started": "{{time}}に開始",
+          "successfulIn": "{{duration}}で成功",
+          "failingAfter": "{{duration}}後に失敗",
+          "skipped": "スキップ",
+          "successful": "成功",
+          "failing": "失敗"
+        },
+        "deployments": {
+          "label": "デプロイ",
+          "none": "デプロイはありません",
+          "active_one": "{{count}} 件のアクティブなデプロイ",
+          "active_other": "{{count}} 件のアクティブなデプロイ",
+          "view": "デプロイを表示",
+          "notDeployed": "このブランチはデプロイされていません",
+          "deployed": "このブランチは正常にデプロイされました",
+          "deploying": "このブランチをデプロイ中です",
+          "deployFailed": "このブランチのデプロイ中にエラーが発生しました",
+          "deployInactive": "このブランチは現在デプロイされていません",
+          "state": {
+            "active": "アクティブ",
+            "pending": "進行中",
+            "failure": "失敗",
+            "inactive": "非アクティブ"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "変更が承認されました",
+            "detail": "承認レビューが送信されました"
+          },
+          "reviewRequired": {
+            "title": "レビューが必要",
+            "detail": "マージするには、少なくとも 1 件の承認レビューが必要です"
+          },
+          "reviewChangesRequested": {
+            "title": "変更がリクエストされました",
+            "detail": "レビュアーがマージ前に変更をリクエストしました"
+          },
+          "noConflicts": {
+            "title": "ベースブランチと競合はありません",
+            "detail": "マージは自動的に実行できます"
+          },
+          "hasConflicts": {
+            "title": "このブランチには解決が必要な競合があります",
+            "detail": "head ブランチで競合を解決してからプッシュしてください"
+          },
+          "outOfDate": {
+            "title": "このブランチはベースブランチより古い状態です",
+            "detail": "ベースブランチの最新の変更をこのブランチにマージしてください"
+          },
+          "checkingConflicts": {
+            "title": "自動マージできるか確認中…",
+            "detail": "GitHub がブランチの状態を確認しています。しばらくお待ちください"
+          },
+          "autoMergeEnabled": {
+            "title": "自動マージを有効にしました",
+            "detail": "要件が満たされると、このプルリクエストはマージされます"
+          },
+          "inMergeQueue": {
+            "title": "マージキューで待機中",
+            "detail": "キューの先頭に達すると GitHub がマージします"
+          }
+        },
+        "merged": {
+          "title": "プルリクエストは正常にマージされ、クローズされました",
+          "detail": "head ブランチは安全に削除できます"
+        },
+        "closed": {
+          "title": "未マージのコミットを残してクローズされました",
+          "detail": "このプルリクエストはクローズされています。マージするには再オープンしてください"
+        }
+      },
       "commits": {
         "backToList": "すべてのコミット",
         "none": "コミットなし",

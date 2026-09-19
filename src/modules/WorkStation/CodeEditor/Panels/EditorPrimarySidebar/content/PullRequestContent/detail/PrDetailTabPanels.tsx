@@ -13,6 +13,8 @@ import { PrChecksTab } from "./PrChecksTab";
 import { PrCommitsTab } from "./PrCommitsTab";
 import { PrConversationTab } from "./PrConversationTab";
 import { PrFlowHeader } from "./PrFlowHeader";
+import { PrLevelActions } from "./PrLevelActions";
+import { PrMergeBox } from "./PrMergeBox";
 import type { WorkstationPrDetailController } from "./types";
 
 interface PrDetailTabPanelsProps {
@@ -55,8 +57,43 @@ export function PrDetailTabPanels({
   setConversationContentNode,
   onFileSelect,
 }: PrDetailTabPanelsProps): React.ReactNode {
-  const { repoFullName, addComment, submitReview, replyInlineComment } =
-    controller;
+  const {
+    repoFullName,
+    addComment,
+    submitReview,
+    replyInlineComment,
+    mergePullRequest,
+    setPullRequestAutoMerge,
+    updatePullRequestDraft,
+    updatePullRequestState,
+    prActionPending,
+  } = controller;
+
+  // Held back until the pull request itself has loaded: every verdict in the
+  // box is read from `detail`, and an empty box would claim "blocked".
+  const mergeBox = state.detail ? (
+    <PrMergeBox
+      detail={state.detail}
+      fallbackStatus={currentIdentity.status}
+      checks={state.checks}
+      deployments={state.deployments}
+      reviews={state.reviews}
+      actions={
+        <PrLevelActions
+          layout="mergeBox"
+          identity={currentIdentity}
+          detail={state.detail}
+          checks={state.checks}
+          disabled={!repoFullName}
+          pending={prActionPending}
+          onMerge={mergePullRequest}
+          onSetAutoMerge={setPullRequestAutoMerge}
+          onDraftChange={updatePullRequestDraft}
+          onStateChange={updatePullRequestState}
+        />
+      }
+    />
+  ) : null;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -72,6 +109,7 @@ export function PrDetailTabPanels({
         >
           <PrConversationTab
             inlineProperties={inlineProperties}
+            mergeBox={mergeBox}
             flowHeader={
               <PrFlowHeader
                 identity={currentIdentity}

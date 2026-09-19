@@ -28,6 +28,8 @@ import {
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 import { classNames } from "@src/util/ui/classNames";
 
+import { PrChecksRefreshButton } from "./PrChecksRefreshButton";
+
 interface PrCheckRowProps {
   item: CiCheckItem;
   onOpenDetails: (url: string) => void;
@@ -143,6 +145,10 @@ export function PrChecksPanel({
             {`${counts.success}/${counts.total}`}
           </span>
         ) : null}
+        <PrChecksRefreshButton
+          iconSize={DROPDOWN_ITEM.iconSize}
+          testId="pr-checks-panel-refresh"
+        />
       </div>
 
       <div className={DROPDOWN_CLASSES.optionsContainerBelowHeader}>

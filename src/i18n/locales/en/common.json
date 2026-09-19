@@ -1135,6 +1135,93 @@
         "autoMergeEnabled": "Auto-merge enabled",
         "inMergeQueue": "Waiting in the merge queue"
       },
+      "mergeBox": {
+        "checksFailed": "Some checks were not successful",
+        "checksPending": "Some checks haven't completed yet",
+        "checksPassed": "All checks have passed",
+        "checksSkipped": "All checks were skipped",
+        "counts": {
+          "failing": "{{count}} failing",
+          "inProgress": "{{count}} in progress",
+          "skipped": "{{count}} skipped",
+          "successful": "{{count}} successful",
+          "summary_one": "{{parts}} check",
+          "summary_other": "{{parts}} checks"
+        },
+        "check": {
+          "queued": "Queued",
+          "started": "Started {{time}}",
+          "successfulIn": "Successful in {{duration}}",
+          "failingAfter": "Failing after {{duration}}",
+          "skipped": "Skipped",
+          "successful": "Successful",
+          "failing": "Failing"
+        },
+        "deployments": {
+          "label": "Deployments",
+          "none": "No deployments",
+          "active_one": "{{count}} active deployment",
+          "active_other": "{{count}} active deployments",
+          "view": "View deployment",
+          "notDeployed": "This branch has not been deployed",
+          "deployed": "This branch was successfully deployed",
+          "deploying": "This branch is being deployed",
+          "deployFailed": "This branch had an error being deployed",
+          "deployInactive": "This branch is no longer deployed",
+          "state": {
+            "active": "Active",
+            "pending": "In progress",
+            "failure": "Failed",
+            "inactive": "Inactive"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Changes approved",
+            "detail": "An approving review was submitted"
+          },
+          "reviewRequired": {
+            "title": "Review required",
+            "detail": "At least one approving review is required to merge"
+          },
+          "reviewChangesRequested": {
+            "title": "Changes requested",
+            "detail": "A reviewer requested changes before merging"
+          },
+          "noConflicts": {
+            "title": "No conflicts with the base branch",
+            "detail": "Merging can be performed automatically"
+          },
+          "hasConflicts": {
+            "title": "This branch has conflicts that must be resolved",
+            "detail": "Resolve the conflicts on the head branch, then push"
+          },
+          "outOfDate": {
+            "title": "This branch is out of date with the base branch",
+            "detail": "Merge the latest base branch changes into this branch"
+          },
+          "checkingConflicts": {
+            "title": "Checking for the ability to merge automatically…",
+            "detail": "Hang in there while GitHub checks the branch's status"
+          },
+          "autoMergeEnabled": {
+            "title": "Auto-merge enabled",
+            "detail": "This pull request merges once its requirements are met"
+          },
+          "inMergeQueue": {
+            "title": "Waiting in the merge queue",
+            "detail": "GitHub merges it when it reaches the front of the queue"
+          }
+        },
+        "merged": {
+          "title": "Pull request successfully merged and closed",
+          "detail": "The head branch can be safely deleted"
+        },
+        "closed": {
+          "title": "Closed with unmerged commits",
+          "detail": "This pull request is closed. Reopen it to merge"
+        }
+      },
       "commits": {
         "backToList": "All commits",
         "none": "No commits",

@@ -22,6 +22,7 @@ import {
   isBranchPullRequestStatusFresh,
   loadBranchPullRequestStatusCoalesced,
   nextBranchCiPollDelayMs,
+  nextChecksPollDelayMs,
   resolveBranchCiStatus,
   setCachedBranchPullRequestStatus,
 } from "./branchPullRequestStatus";
@@ -85,6 +86,28 @@ describe("branch pull request status", () => {
     expect(
       nextBranchCiPollDelayMs({ ...base, pr, checks: checks("failure") })
     ).toBe(BRANCH_CI_SAFETY_POLL_MS);
+  });
+
+  it("gives the pull request detail view the same schedule from checks alone", () => {
+    const cases: Array<GitHubChecksSummary | null> = [
+      null,
+      checks("pending"),
+      checks("pending", false),
+      checks("success"),
+      checks("failure"),
+    ];
+    for (const attempt of [0, 1, 2, 3, 9]) {
+      for (const summary of cases) {
+        expect(nextChecksPollDelayMs({ attempt, checks: summary })).toBe(
+          nextBranchCiPollDelayMs({
+            attempt,
+            checks: summary,
+            checksUnavailable: false,
+            pr,
+          })
+        );
+      }
+    }
   });
 
   it("backs off while checks run and caps the interval", () => {

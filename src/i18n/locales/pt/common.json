@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "Mesclagem automática ativada",
         "inMergeQueue": "Aguardando na fila de mesclagem"
       },
+      "mergeBox": {
+        "checksFailed": "Algumas verificações não foram bem-sucedidas",
+        "checksPending": "Algumas verificações ainda não foram concluídas",
+        "checksPassed": "Todas as verificações passaram",
+        "checksSkipped": "Todas as verificações foram ignoradas",
+        "counts": {
+          "failing": "{{count}} com falha",
+          "inProgress": "{{count}} em andamento",
+          "skipped": "{{count}} ignoradas",
+          "successful": "{{count}} com sucesso",
+          "summary_one": "Verificação: {{parts}}",
+          "summary_other": "Verificações: {{parts}}"
+        },
+        "check": {
+          "queued": "Na fila",
+          "started": "Iniciada {{time}}",
+          "successfulIn": "Bem-sucedida em {{duration}}",
+          "failingAfter": "Com falha após {{duration}}",
+          "skipped": "Ignorada",
+          "successful": "Bem-sucedida",
+          "failing": "Com falha"
+        },
+        "deployments": {
+          "label": "Implantações",
+          "none": "Nenhuma implantação",
+          "active_one": "{{count}} implantação ativa",
+          "active_other": "{{count}} implantações ativas",
+          "view": "Ver implantação",
+          "notDeployed": "Este branch não foi implantado",
+          "deployed": "Este branch foi implantado com sucesso",
+          "deploying": "Este branch está sendo implantado",
+          "deployFailed": "Ocorreu um erro ao implantar este branch",
+          "deployInactive": "Este branch não está mais implantado",
+          "state": {
+            "active": "Ativa",
+            "pending": "Em andamento",
+            "failure": "Falhou",
+            "inactive": "Inativa"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Alterações aprovadas",
+            "detail": "Uma revisão de aprovação foi enviada"
+          },
+          "reviewRequired": {
+            "title": "Revisão necessária",
+            "detail": "É necessária pelo menos uma revisão de aprovação para mesclar"
+          },
+          "reviewChangesRequested": {
+            "title": "Alterações solicitadas",
+            "detail": "Um revisor solicitou alterações antes da mesclagem"
+          },
+          "noConflicts": {
+            "title": "Sem conflitos com o branch base",
+            "detail": "A mesclagem pode ser feita automaticamente"
+          },
+          "hasConflicts": {
+            "title": "Este branch tem conflitos que precisam ser resolvidos",
+            "detail": "Resolva os conflitos no branch head e depois faça push"
+          },
+          "outOfDate": {
+            "title": "Este branch está desatualizado em relação ao branch base",
+            "detail": "Mescle as alterações mais recentes do branch base neste branch"
+          },
+          "checkingConflicts": {
+            "title": "Verificando se é possível mesclar automaticamente…",
+            "detail": "Aguarde enquanto o GitHub verifica o status do branch"
+          },
+          "autoMergeEnabled": {
+            "title": "Mesclagem automática ativada",
+            "detail": "Este pull request será mesclado quando os requisitos forem atendidos"
+          },
+          "inMergeQueue": {
+            "title": "Aguardando na fila de mesclagem",
+            "detail": "O GitHub o mesclará quando chegar à frente da fila"
+          }
+        },
+        "merged": {
+          "title": "Pull request mesclado e fechado com sucesso",
+          "detail": "O branch head pode ser excluído com segurança"
+        },
+        "closed": {
+          "title": "Fechado com commits não mesclados",
+          "detail": "Este pull request está fechado. Reabra-o para mesclar"
+        }
+      },
       "commits": {
         "backToList": "Todos os commits",
         "none": "Sem commits",

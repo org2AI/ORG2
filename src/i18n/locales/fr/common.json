@@ -1216,6 +1216,93 @@
         "autoMergeEnabled": "Fusion automatique activée",
         "inMergeQueue": "En attente dans la file de fusion"
       },
+      "mergeBox": {
+        "checksFailed": "Certaines vérifications ont échoué",
+        "checksPending": "Certaines vérifications ne sont pas encore terminées",
+        "checksPassed": "Toutes les vérifications ont réussi",
+        "checksSkipped": "Toutes les vérifications ont été ignorées",
+        "counts": {
+          "failing": "{{count}} en échec",
+          "inProgress": "{{count}} en cours",
+          "skipped": "{{count}} ignorées",
+          "successful": "{{count}} réussies",
+          "summary_one": "Vérification : {{parts}}",
+          "summary_other": "Vérifications : {{parts}}"
+        },
+        "check": {
+          "queued": "En file d'attente",
+          "started": "Démarrée {{time}}",
+          "successfulIn": "Réussie en {{duration}}",
+          "failingAfter": "En échec après {{duration}}",
+          "skipped": "Ignorée",
+          "successful": "Réussie",
+          "failing": "En échec"
+        },
+        "deployments": {
+          "label": "Déploiements",
+          "none": "Aucun déploiement",
+          "active_one": "{{count}} déploiement actif",
+          "active_other": "{{count}} déploiements actifs",
+          "view": "Voir le déploiement",
+          "notDeployed": "Cette branche n'a pas été déployée",
+          "deployed": "Cette branche a été déployée avec succès",
+          "deploying": "Cette branche est en cours de déploiement",
+          "deployFailed": "Une erreur s'est produite lors du déploiement de cette branche",
+          "deployInactive": "Cette branche n'est plus déployée",
+          "state": {
+            "active": "Actif",
+            "pending": "En cours",
+            "failure": "Échec",
+            "inactive": "Inactif"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Modifications approuvées",
+            "detail": "Une revue d'approbation a été soumise"
+          },
+          "reviewRequired": {
+            "title": "Revue requise",
+            "detail": "Au moins une revue d'approbation est requise pour fusionner"
+          },
+          "reviewChangesRequested": {
+            "title": "Modifications demandées",
+            "detail": "Un relecteur a demandé des modifications avant la fusion"
+          },
+          "noConflicts": {
+            "title": "Aucun conflit avec la branche de base",
+            "detail": "La fusion peut être effectuée automatiquement"
+          },
+          "hasConflicts": {
+            "title": "Cette branche présente des conflits à résoudre",
+            "detail": "Résolvez les conflits sur la branche de tête, puis poussez"
+          },
+          "outOfDate": {
+            "title": "Cette branche est en retard sur la branche de base",
+            "detail": "Fusionnez les dernières modifications de la branche de base dans cette branche"
+          },
+          "checkingConflicts": {
+            "title": "Vérification de la possibilité de fusion automatique…",
+            "detail": "Patientez pendant que GitHub vérifie l'état de la branche"
+          },
+          "autoMergeEnabled": {
+            "title": "Fusion automatique activée",
+            "detail": "Cette pull request sera fusionnée une fois ses exigences satisfaites"
+          },
+          "inMergeQueue": {
+            "title": "En attente dans la file de fusion",
+            "detail": "GitHub la fusionnera lorsqu'elle arrivera en tête de la file"
+          }
+        },
+        "merged": {
+          "title": "Pull request fusionnée et fermée avec succès",
+          "detail": "La branche de tête peut être supprimée en toute sécurité"
+        },
+        "closed": {
+          "title": "Fermée avec des commits non fusionnés",
+          "detail": "Cette pull request est fermée. Rouvrez-la pour fusionner"
+        }
+      },
       "commits": {
         "backToList": "Tous les commits",
         "none": "Aucun commit",

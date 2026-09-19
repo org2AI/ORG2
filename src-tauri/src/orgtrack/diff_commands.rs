@@ -10,9 +10,8 @@ use std::path::Path;
 
 use database::db::get_connection;
 use orgtrack_core::canonical::{
-    AgentMetadata, CommitLinkRecord, SessionCheckpointFileStateRecord, SessionCheckpointRecord,
-    SessionDiffChunkRecord, SessionEditArtifactRecord, SessionFinalDiffRecord, SessionRecord,
-    SOURCE_ORGII_RUST_AGENTS,
+    AgentMetadata, CommitLinkRecord, SessionDiffChunkRecord, SessionEditArtifactRecord,
+    SessionFinalDiffRecord, SessionRecord, SOURCE_ORGII_RUST_AGENTS,
 };
 use orgtrack_core::edit_extraction::final_diff_from_chunks;
 use orgtrack_core::privacy::ORGTRACK_SCHEMA_VERSION;
@@ -59,28 +58,6 @@ pub async fn orgtrack_get_session_edit_artifacts(
         }
         let store = SqliteRecordStore::new(&conn);
         store.list_edit_artifacts(source.as_deref(), session_id.as_deref())
-    })
-    .await
-    .map_err(|err| err.to_string())?
-}
-
-#[tauri::command]
-pub async fn orgtrack_get_session_diff_chunks(
-    source: Option<String>,
-    session_id: Option<String>,
-) -> Result<Vec<SessionDiffChunkRecord>, String> {
-    record_orgtrack_command_call("orgtrack_get_session_diff_chunks");
-    tokio::task::spawn_blocking(move || {
-        let conn = get_connection().map_err(|err| err.to_string())?;
-        if source.as_deref().is_none_or(|s| s == "codex_app") {
-            if let Some(id) = session_id.as_deref() {
-                if let Some(imported) = super::imported_changes::read(&conn, id)? {
-                    return Ok(imported.chunks);
-                }
-            }
-        }
-        let store = SqliteRecordStore::new(&conn);
-        store.list_diff_chunks(source.as_deref(), session_id.as_deref())
     })
     .await
     .map_err(|err| err.to_string())?
@@ -272,38 +249,13 @@ pub async fn orgtrack_get_diff_replay_preview(
     .map_err(|err| err.to_string())?
 }
 
-#[tauri::command]
-pub async fn orgtrack_get_session_commit_links(
-    session_id: Option<String>,
-) -> Result<Vec<CommitLinkRecord>, String> {
-    record_orgtrack_command_call("orgtrack_get_session_commit_links");
-    tokio::task::spawn_blocking(move || {
-        let conn = get_connection().map_err(|err| err.to_string())?;
-        let store = SqliteRecordStore::new(&conn);
-        let commit_links = store.list_commit_links()?;
-        Ok(match session_id {
-            Some(session_id) => commit_links
-                .into_iter()
-                .filter(|link| {
-                    link.session_ids
-                        .iter()
-                        .any(|linked_id| linked_id == &session_id)
-                })
-                .collect(),
-            None => commit_links,
-        })
-    })
-    .await
-    .map_err(|err| err.to_string())?
-}
-
 /// Debug-only: seed an orgtrack commit link for WDIO Submissions-tab specs.
 ///
 /// Commit links are normally derived from a real provider run parsing a
 /// `git commit` / `git push` shell event — an async path WDIO specs cannot
 /// reach. This wire writes a `CommitLinkRecord` directly (camelCase JSON,
 /// `observed_in_terminal_output` reachability) so
-/// `orgtrack_get_session_commit_links` returns it and the Submissions tab
+/// `orgtrack_get_diff_replay_preview` returns it and the Submissions tab
 /// renders the commit exactly like a live push. Returns Err in release builds.
 #[tauri::command]
 pub async fn debug_seed_commit_link(session_id: String, commit_sha: String) -> Result<(), String> {
@@ -405,35 +357,6 @@ pub async fn debug_seed_final_diff(
             differs_from_summed_chunks: false,
             computed_at: chrono::Utc::now().to_rfc3339(),
         })
-    })
-    .await
-    .map_err(|err| err.to_string())?
-}
-
-#[tauri::command]
-pub async fn orgtrack_get_session_checkpoints(
-    source: Option<String>,
-    session_id: Option<String>,
-) -> Result<Vec<SessionCheckpointRecord>, String> {
-    record_orgtrack_command_call("orgtrack_get_session_checkpoints");
-    tokio::task::spawn_blocking(move || {
-        let conn = get_connection().map_err(|err| err.to_string())?;
-        let store = SqliteRecordStore::new(&conn);
-        store.list_session_checkpoints(source.as_deref(), session_id.as_deref())
-    })
-    .await
-    .map_err(|err| err.to_string())?
-}
-
-#[tauri::command]
-pub async fn orgtrack_get_checkpoint_file_states(
-    checkpoint_id: String,
-) -> Result<Vec<SessionCheckpointFileStateRecord>, String> {
-    record_orgtrack_command_call("orgtrack_get_checkpoint_file_states");
-    tokio::task::spawn_blocking(move || {
-        let conn = get_connection().map_err(|err| err.to_string())?;
-        let store = SqliteRecordStore::new(&conn);
-        store.list_checkpoint_file_states(&checkpoint_id)
     })
     .await
     .map_err(|err| err.to_string())?

@@ -91,13 +91,6 @@ export const lineage = {
     .output(z.array(schemas.lineage.OrgtrackSessionEditArtifactSchema))
     .build(),
 
-  orgtrackGetSessionDiffChunks: defineProcedure(
-    "orgtrack_get_session_diff_chunks"
-  )
-    .input(schemas.lineage.OrgtrackSessionArtifactQueryInput)
-    .output(z.array(schemas.lineage.OrgtrackSessionDiffChunkSchema))
-    .build(),
-
   orgtrackGetSessionFinalDiffs: defineProcedure(
     "orgtrack_get_session_final_diffs"
   )
@@ -110,26 +103,5 @@ export const lineage = {
   )
     .input(schemas.lineage.OrgtrackDiffReplayPreviewInput)
     .output(schemas.lineage.OrgtrackDiffReplayPreviewSchema)
-    .build(),
-
-  orgtrackGetSessionCommitLinks: defineProcedure(
-    "orgtrack_get_session_commit_links"
-  )
-    .input(z.object({ sessionId: z.string().optional() }).optional())
-    .output(z.array(schemas.lineage.OrgtrackCommitLinkSchema))
-    .build(),
-
-  orgtrackGetSessionCheckpoints: defineProcedure(
-    "orgtrack_get_session_checkpoints"
-  )
-    .input(schemas.lineage.OrgtrackSessionArtifactQueryInput)
-    .output(z.array(schemas.lineage.OrgtrackSessionCheckpointSchema))
-    .build(),
-
-  orgtrackGetCheckpointFileStates: defineProcedure(
-    "orgtrack_get_checkpoint_file_states"
-  )
-    .input(schemas.lineage.OrgtrackCheckpointFileStateInput)
-    .output(z.array(schemas.lineage.OrgtrackCheckpointFileStateSchema))
     .build(),
 } as const;

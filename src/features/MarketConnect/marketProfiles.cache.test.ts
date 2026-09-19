@@ -7,7 +7,6 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
-import { MARKET_PROFILES_CHANGED_EVENT } from "./events";
 import { USER_B, authFor, signedInStore } from "./identity.test-utils";
 import {
   invalidateMarketProfileCache,
@@ -31,7 +30,7 @@ beforeEach(() => {
     connections: [
       {
         identity_user_id: "11111111-1111-4111-8111-111111111111",
-        workspace_id: "ws_account",
+        workspace_id: "ws_account_test",
         target: "org2",
         phase: "authorization_saved",
       },
@@ -73,7 +72,7 @@ function picker() {
   };
 }
 
-it("invalidates a closed picker without fetching, then imports the newly enabled package on reopening", async () => {
+it("refreshes website package changes on app focus without a deep link or idle fetch", async () => {
   const view = picker();
   expect((await view.render(true)).profiles).toEqual([]);
   expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
@@ -90,8 +89,8 @@ it("invalidates a closed picker without fetching, then imports the newly enabled
   };
   mocks.loadEntries.mockResolvedValue([entry]);
   await act(async () => {
-    window.dispatchEvent(new Event(MARKET_PROFILES_CHANGED_EVENT));
-    window.dispatchEvent(new Event(MARKET_PROFILES_CHANGED_EVENT));
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("focus"));
   });
   expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
   expect(
@@ -188,3 +187,39 @@ it("invalidates already rendered rows through a React-batched A to B to A transi
   expect((await view.render(true)).profiles).toEqual([]);
   expect(mocks.loadEntries).toHaveBeenCalledTimes(2);
 });
+
+for (const secondEnabled of [false, true]) {
+  it(`shares one focus refresh with another ${secondEnabled ? "open" : "closed"} picker`, async () => {
+    const first = picker();
+    const second = picker();
+    await first.render(true);
+    await second.render(secondEnabled);
+    expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+    mocks.loadEntries.mockResolvedValue([
+      {
+        workspace_id: "ws_purchase",
+        entitlement_id: "pa_focused",
+        service_id: "pkg_focused",
+        service_name: "Focused package",
+        models: ["claude-sonnet-5"],
+        models_by_agent: { claude: ["claude-sonnet-5"], codex: [] },
+        status: "active",
+        expires_at: null,
+      },
+    ]);
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(
+      (await first.render(true)).profiles.map(
+        (profile) => profile.entitlementId
+      )
+    ).toEqual(["pa_focused"]);
+    expect(
+      (await second.render(true)).profiles.map(
+        (profile) => profile.entitlementId
+      )
+    ).toEqual(["pa_focused"]);
+    expect(mocks.loadEntries).toHaveBeenCalledTimes(2);
+  });
+}

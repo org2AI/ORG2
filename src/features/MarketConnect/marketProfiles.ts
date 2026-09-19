@@ -372,6 +372,9 @@ interface ProfileCache {
 }
 // One bounded cache per application store, rather than sharing users between stores.
 const caches = new WeakMap<MarketStore, ProfileCache>();
+// Several mounted pickers share a store and receive the same focus event.
+// Invalidate once so later listeners do not discard the first listener's load.
+const focusEvents = new WeakMap<MarketStore, Event>();
 function cacheFor(store: MarketStore): ProfileCache {
   let cache = caches.get(store);
   if (!cache) {
@@ -433,9 +436,8 @@ export async function loadCachedMarketExecutionProfiles(
 }
 
 /**
- * Loads Market profiles only while a profile picker needs them. Browser/app
- * handoff emits `market-profiles-changed`, which refreshes this source without
- * requiring an ORG2 restart.
+ * Loads Market profiles while a picker needs them. Returning from the website
+ * refreshes the account catalog without requiring a custom-protocol handoff.
  */
 const EMPTY_PROFILES: MarketExecutionProfile[] = [];
 
@@ -527,16 +529,26 @@ export function useMarketExecutionProfiles(options: {
     const handleProfilesChanged = () => {
       load(true).catch(() => undefined);
     };
+    const focused = (event: Event) => {
+      if (focusEvents.get(store) !== event) {
+        focusEvents.set(store, event);
+        invalidateMarketProfileCache(store);
+      }
+      if (enabled) load(false).catch(() => undefined);
+    };
+    window.addEventListener("focus", focused);
     window.addEventListener(
       MARKET_PROFILES_CHANGED_EVENT,
       handleProfilesChanged
     );
-    return () =>
+    return () => {
+      window.removeEventListener("focus", focused);
       window.removeEventListener(
         MARKET_PROFILES_CHANGED_EVENT,
         handleProfilesChanged
       );
-  }, [load]);
+    };
+  }, [enabled, load, store]);
 
   const currentOwner = !!ownerKey && resultOwner.current === ownerKey;
   const visibleProfiles = currentOwner ? profiles : EMPTY_PROFILES;

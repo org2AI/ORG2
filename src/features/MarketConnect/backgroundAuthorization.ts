@@ -9,6 +9,7 @@ import {
 } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
+import type { MarketStore } from "./identity";
 import { isTrustedMarketPage, marketConsoleUrl } from "./urlPolicy";
 
 const nonce = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
@@ -26,7 +27,9 @@ const codeSchema = z.strictObject({
 
 async function readCode(response: Response) {
   // Error pages and server payloads are never included in diagnostics.
-  if (!response.ok || !response.body) throw Error("market_request_failed");
+  if (!response.ok)
+    throw Error(`market_request_failed_http_${response.status}`);
+  if (!response.body) throw Error("invalid_market_authorization_response");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let text = "";
@@ -53,6 +56,7 @@ async function readCode(response: Response) {
 }
 
 export async function authorizeMarketInBackground(options: {
+  store?: MarketStore;
   authorization: URL;
   selection: URL;
   auth: Org2CloudAuthState;
@@ -60,7 +64,7 @@ export async function authorizeMarketInBackground(options: {
   cancel: () => Promise<void>;
 }): Promise<void> {
   const { authorization, selection, auth } = options;
-  const store = getInstrumentedStore();
+  const store = options.store ?? getInstrumentedStore();
   const endpoint = getCloudEndpoint();
   const controller = new AbortController();
   let cancellation: Promise<void> | undefined;

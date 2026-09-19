@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import { defineProcedure, typedInvoke } from "@src/api/tauri/rpc/invoke";
 import { CliConfigManagedStatusSchema } from "@src/api/tauri/rpc/schemas/agentOrgs";
 
+import { authorizeMarketAccount } from "./accountConnection";
 import { withFreshMarketOwner } from "./auth";
 import type { MarketStore } from "./identity";
 
@@ -67,7 +68,26 @@ const moduleStatus = defineProcedure("market_connection_status")
   )
   .build();
 export const loadConnections = (store?: MarketStore) =>
-  withFreshMarketOwner(() => typedInvoke(moduleStatus), undefined, store);
+  withFreshMarketOwner(
+    async () => {
+      let status = await typedInvoke(moduleStatus);
+      if (
+        status.enabled &&
+        status.buyer_persistent_credentials &&
+        !status.connections.some(
+          (connection) =>
+            connection.target === "org2" &&
+            connection.phase === "authorization_saved"
+        )
+      ) {
+        await authorizeMarketAccount(status.app_scheme, store);
+        status = await typedInvoke(moduleStatus);
+      }
+      return status;
+    },
+    undefined,
+    store
+  );
 const input = z.object({
   identityUserId: z.string().uuid(),
   workspaceId: z.string(),

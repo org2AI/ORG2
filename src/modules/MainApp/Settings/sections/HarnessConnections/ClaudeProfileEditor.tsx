@@ -13,6 +13,7 @@ import {
 } from "@src/components/layout/Section";
 
 import ClaudeModelMappings from "./ClaudeModelMappings";
+import ConnectionChoiceCard from "./ConnectionChoiceCard";
 import {
   newClaudeProfile,
   useClaudeProfileEditor,
@@ -134,12 +135,10 @@ export default function ClaudeProfileEditor({
           )}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {view?.profiles?.map((profile) => (
-              <Button
+              <ConnectionChoiceCard
                 key={profile.id}
                 disabled={disabled || dirty}
                 aria-pressed={draft?.id === profile.id}
-                style={{ height: "auto" }}
-                className="min-w-0 justify-start p-3 text-left aria-pressed:border-primary-6 aria-pressed:text-primary-6"
                 onClick={() => edit(profile)}
               >
                 <span className="flex min-w-0 flex-col gap-1">
@@ -159,7 +158,7 @@ export default function ClaudeProfileEditor({
                     {profile.endpoint}
                   </span>
                 </span>
-              </Button>
+              </ConnectionChoiceCard>
             ))}
           </div>
         </div>

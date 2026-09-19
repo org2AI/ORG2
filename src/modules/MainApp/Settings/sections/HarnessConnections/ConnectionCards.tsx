@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import type { HarnessConnectionView } from "@src/api/tauri/rpc/schemas/agentOrgs";
 import Button from "@src/components/Button";
 
+import ConnectionChoiceCard from "./ConnectionChoiceCard";
+
 export default function ConnectionCards({
   choices,
   selected,
@@ -30,17 +32,15 @@ export default function ConnectionCards({
     >
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {choices.map((choice) => (
-          <Button
+          <ConnectionChoiceCard
             key={choice.keyId}
             disabled={disabled || Boolean(choice.reason)}
-            style={{ height: "auto" }}
             aria-pressed={
               Array.isArray(selected)
                 ? selected.includes(choice.keyId)
                 : selected === choice.keyId
             }
             onClick={() => onSelect(choice.keyId)}
-            className="min-w-0 justify-start p-3 text-left whitespace-normal aria-pressed:border-primary-6 aria-pressed:text-primary-6"
           >
             <span className="flex min-w-0 flex-col gap-1">
               <span className="truncate font-medium" title={choice.name}>
@@ -56,14 +56,14 @@ export default function ConnectionCards({
               {(choice.reason ||
                 description?.(choice.keyId) ||
                 choice.endpoint) && (
-                <span className="text-xs break-all text-text-3">
+                <span className="text-xs break-words text-text-3">
                   {choice.reason ??
                     description?.(choice.keyId) ??
                     choice.endpoint}
                 </span>
               )}
             </span>
-          </Button>
+          </ConnectionChoiceCard>
         ))}
       </div>
       {onAdd && (

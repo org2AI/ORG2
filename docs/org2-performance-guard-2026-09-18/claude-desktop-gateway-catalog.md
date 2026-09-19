@@ -204,3 +204,50 @@ Still unverified: hot discovery of newly added rows without restarting, fresh
 profile first-registration runtime behavior, Windows runtime, and final resource
 sampling. Reopening is a verified discovery fallback, not proof that Desktop
 always requires a restart. No installer release or PR merge was performed.
+
+### Additional lifecycle acceptance (2026-09-18 evening)
+
+A synthetic discovery row and two-message transcript were created only in the
+isolated package profile while Claude was running. The running sidebar did not
+show the new row. After normal Quit and ORG2 Open app, the sidebar displayed
+`PR1985 HOT DISCOVERY 0919 synthetic fixture`; opening it displayed both fixture
+messages and the configured package model. No prompt was submitted. This proves
+restart discovery for this build and fixture, not that every Desktop version
+always requires restarting. The fixture was moved into a private evidence archive
+after Quit. Official discovery files were not edited.
+
+Repeated Open app focused the same Claude root process rather than creating a
+second one. Normal Quit removed Claude and its descendants. Restore then returned
+ORG2 to **Original setup** with the restore-success message. Imported real
+conversations were retained; only the synthetic fixture was archived.
+
+Twenty-second process samples used CPU-time deltas, with RSS at interval end:
+
+| State                         | ORG2 root CPU | ORG2 root RSS |      Claude family CPU |
+| ----------------------------- | ------------: | ------------: | ---------------------: |
+| Visible idle                  |         0.15% |     121.1 MiB |            about 4.85% |
+| Hidden/minimized idle         |         0.05% |     121.8 MiB |            about 2.45% |
+| Immediately after Claude Quit |         2.84% |     184.0 MiB | no remaining processes |
+| After Restore, later sample   |         1.00% |     200.4 MiB | no remaining processes |
+
+These are observations, not a performance improvement claim. The visible and
+hidden samples used different screens; the latter included a resumed-history
+CLI process. Descendant tracking excludes launchd-owned WebKit and other system
+processes. Document visibility was not instrumented. The later ORG2 RSS increase
+has not been attributed to this feature; long-duration and full process-family
+measurements remain open, so these samples do not establish a memory-leak pass.
+
+The rebased feature on develop `2f60797d3d` passed 112 frontend tests, complete
+TypeScript checking with an 8 GiB heap, changed-page ESLint and the standard
+production webpack build. The four-commit feature patch was byte-identical after
+rebase. These compile checks do not imply that the running native artifact
+contains the newly merged upstream UI.
+
+Remaining acceptance: fresh unregistered-profile first launch, Windows runtime,
+long-duration memory/whole-process lifecycle, and native runtime rebuilt against
+the final upstream UI. Real payment collection is outside this local test ledger
+acceptance. No merge, production deployment or installer release was performed.
+
+Performance verdict: blocked — long-duration/full-process measurements and fresh
+profile registration are not yet evidenced; the bounded import tests, observed
+short samples and successful process cleanup remain valid partial evidence.

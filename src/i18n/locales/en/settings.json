@@ -288,7 +288,6 @@
       "codex": "Codex"
     },
     "iconStyle": "Icon style",
-    "iconStyleDesc": "Monochrome desaturates file-type and model icons so they read as interface, not as logos",
     "iconStyleOptions": {
       "colorful": "Colorful",
       "monochrome": "Monochrome"
@@ -619,7 +618,6 @@
     "diffViewMode": "Diff view",
     "gitBlame": "Git blame",
     "splitDiffCenteredLineNumbers": "Centered line numbers in split diff",
-    "splitDiffCenteredLineNumbersDesc": "Show both line-number columns between the two panes, as GitHub does, instead of at each pane's left edge.",
     "shellsOpenWith": "Shells open with",
     "shellsOpenWithDesc": "Initial working directory for new terminals",
     "repoPath": "Repo path",

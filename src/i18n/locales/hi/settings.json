@@ -288,7 +288,6 @@
       "codex": "Codex"
     },
     "iconStyle": "आइकन शैली",
-    "iconStyleDesc": "मोनोक्रोम फ़ाइल-प्रकार और मॉडल आइकनों का रंग फीका कर देता है ताकि वे लोगो नहीं, बल्कि इंटरफ़ेस का हिस्सा लगें",
     "iconStyleOptions": {
       "colorful": "रंगीन",
       "monochrome": "मोनोक्रोम"
@@ -619,7 +618,6 @@
     "diffViewMode": "डिफ़ व्यू",
     "gitBlame": "Git blame",
     "splitDiffCenteredLineNumbers": "स्प्लिट diff में बीच में पंक्ति संख्याएँ",
-    "splitDiffCenteredLineNumbersDesc": "दोनों पंक्ति-संख्या कॉलम को हर पैन के बाएँ किनारे के बजाय GitHub की तरह दोनों पैन के बीच दिखाएँ।",
     "shellsOpenWith": "शेल इसके साथ खुलते हैं",
     "shellsOpenWithDesc": "नए टर्मिनल के लिए प्रारंभिक वर्किंग डायरेक्टरी",
     "repoPath": "रिपॉज़िटरी पाथ",

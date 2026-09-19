@@ -28,6 +28,16 @@ import {
 } from "@src/config/windowChromeRadius";
 import { useSetting } from "@src/hooks/settings/useSettings";
 import { HugeiconsIcon, MonitorIcon, MoonIcon, Sun01Icon } from "@src/icons";
+import {
+  type IconStyle,
+  IconStyleFigure,
+} from "@src/modules/MainApp/Settings/previews/IconStyleFigure";
+import {
+  LabelWithPreview,
+  PreviewGrid,
+  previewItems,
+  withOptionPreviews,
+} from "@src/modules/MainApp/Settings/previews/primitives";
 import { BackgroundSettings } from "@src/modules/MainApp/Settings/subpages/BackgroundPage/BackgroundSettings";
 import {
   FeaturesSection as EditorFeaturesSection,
@@ -67,6 +77,8 @@ export const APPEARANCE_TAB_KEYS = {
 
 const SPOTLIGHT_PLACEMENT_OPTIONS: SpotlightPlacement[] = ["top", "center"];
 const IS_MACOS_HOST = resolveHostDesktop() === HOST_DESKTOP.MACOS;
+
+const renderIconStyle = (style: IconStyle) => <IconStyleFigure style={style} />;
 
 /**
  * Only meaningful while the sidebar is translucent — at an opaque surface the
@@ -434,14 +446,22 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
             </SectionRow>
             <SectionRow
               settingsSearchKeys="general.iconStyle"
-              label={t("general.iconStyle")}
-              description={t("general.iconStyleDesc")}
+              label={
+                <LabelWithPreview
+                  label={t("general.iconStyle")}
+                  preview={
+                    <PreviewGrid
+                      items={previewItems(iconStyleOptions, renderIconStyle)}
+                    />
+                  }
+                />
+              }
             >
               <SegmentedTextPill<"colorful" | "monochrome">
                 ariaLabel={t("general.iconStyle")}
                 value={iconStyle}
                 onChange={setIconStyle}
-                options={iconStyleOptions}
+                options={withOptionPreviews(iconStyleOptions, renderIconStyle)}
                 size="large"
                 dataTestId="icon-style-select"
               />

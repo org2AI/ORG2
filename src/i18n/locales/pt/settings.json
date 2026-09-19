@@ -207,7 +207,6 @@
       "codex": "Codex"
     },
     "iconStyle": "Estilo dos ícones",
-    "iconStyleDesc": "Monocromático dessatura os ícones de tipo de arquivo e de modelo para que pareçam interface, não logotipos",
     "iconStyleOptions": {
       "colorful": "Colorido",
       "monochrome": "Monocromático"
@@ -538,7 +537,6 @@
     "diffViewMode": "Visualização de diff",
     "gitBlame": "Git blame",
     "splitDiffCenteredLineNumbers": "Números de linha centralizados no diff dividido",
-    "splitDiffCenteredLineNumbersDesc": "Mostra as duas colunas de números de linha entre os dois painéis, como no GitHub, em vez de na borda esquerda de cada painel.",
     "shellsOpenWith": "Shells abrem em",
     "shellsOpenWithDesc": "Diretório de trabalho inicial para novos terminais",
     "repoPath": "Caminho do Repo",

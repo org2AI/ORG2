@@ -288,7 +288,6 @@
       "codex": "Codex"
     },
     "iconStyle": "图标风格",
-    "iconStyleDesc": "单色模式会去除文件类型与模型图标的颜色，使其融入界面而非作为标识出现",
     "iconStyleOptions": {
       "colorful": "彩色",
       "monochrome": "单色"
@@ -619,7 +618,6 @@
     "diffViewMode": "差异视图",
     "gitBlame": "Git Blame",
     "splitDiffCenteredLineNumbers": "并排差异视图行号居中",
-    "splitDiffCenteredLineNumbersDesc": "将两列行号都显示在左右两栏之间（类似 GitHub），而不是各自显示在每栏左侧。",
     "shellsOpenWith": "Shell 打开方式",
     "shellsOpenWithDesc": "新终端的初始工作目录",
     "repoPath": "仓库路径",

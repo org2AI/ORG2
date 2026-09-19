@@ -16,6 +16,21 @@ import {
   type CreatorComposerPosition,
 } from "@src/config/sessionCreatorConfig";
 import { useAgentConfig } from "@src/hooks/config/useAgentConfig";
+import {
+  CompactInputFigure,
+  ComposerGlowFigure,
+  InputPositionFigure,
+  PinnedSkillsFigure,
+  RepoBarPositionFigure,
+  SeparateEffortFigure,
+} from "@src/modules/MainApp/Settings/previews/composerPreviews";
+import {
+  LabelWithPreview,
+  PreviewGrid,
+  offOnPreview,
+  previewItems,
+  withOptionPreviews,
+} from "@src/modules/MainApp/Settings/previews/primitives";
 import { DEFAULT_CHAT_APPEARANCE } from "@src/store/config/configAtom";
 import { compactComposerInputAtom } from "@src/store/session/compactComposerInputAtom";
 import { composerGlowVisibleAtom } from "@src/store/session/composerGlowVisibleAtom";
@@ -42,6 +57,13 @@ import {
   linkOpenTargetAtom,
 } from "@src/store/ui/linkOpenTargetAtom";
 
+const renderInputPosition = (position: CreatorComposerPosition) => (
+  <InputPositionFigure position={position} />
+);
+const renderRepoBarPosition = (position: CreatorRepoChromePosition) => (
+  <RepoBarPositionFigure position={position} />
+);
+
 const LINK_OPEN_TARGET_LABEL_KEYS = {
   internal: "sessions:chat.navigation.internalBrowser",
   external: "sessions:chat.navigation.externalBrowser",
@@ -53,6 +75,8 @@ interface PreferenceSwitchRowProps {
   onCheckedChange: (checked: boolean) => void;
   dataTestId: string;
   settingsSearchKeys?: string;
+  /** Info-icon tooltip sketching the setting's Off/On states. */
+  preview?: React.ReactNode;
 }
 
 function PreferenceSwitchRow({
@@ -61,9 +85,15 @@ function PreferenceSwitchRow({
   onCheckedChange,
   dataTestId,
   settingsSearchKeys,
+  preview,
 }: PreferenceSwitchRowProps) {
   return (
-    <SectionRow settingsSearchKeys={settingsSearchKeys} label={label}>
+    <SectionRow
+      settingsSearchKeys={settingsSearchKeys}
+      label={
+        preview ? <LabelWithPreview label={label} preview={preview} /> : label
+      }
+    >
       <Switch
         checked={checked}
         onCheckedChange={onCheckedChange}
@@ -161,6 +191,20 @@ const NewChatPageSection: React.FC = () => {
   const [repoBarPosition, setRepoBarPosition] = useAtom(
     creatorRepoChromePositionAtom
   );
+  const inputPositionOptions = [
+    {
+      value: CREATOR_COMPOSER_POSITION.BOTTOM,
+      label: t("sessions:chat.startPage.positionBottom"),
+    },
+    {
+      value: CREATOR_COMPOSER_POSITION.MIDDLE,
+      label: t("sessions:chat.startPage.positionMiddle"),
+    },
+  ] as const;
+  const repoBarPositionOptions = [
+    { value: "top", label: t("sessions:chat.startPage.positionUp") },
+    { value: "bottom", label: t("sessions:chat.startPage.positionDown") },
+  ] as const;
 
   return (
     <SectionContainer title={t("appearance.newChatPage")}>
@@ -176,37 +220,53 @@ const NewChatPageSection: React.FC = () => {
         onCheckedChange={setLaunchpadActionsVisible}
         dataTestId="new-chat-page-quick-actions-switch"
       />
-      <SectionRow label={t("sessions:chat.startPage.inputPosition")}>
+      <SectionRow
+        label={
+          <LabelWithPreview
+            label={t("sessions:chat.startPage.inputPosition")}
+            preview={
+              <PreviewGrid
+                items={previewItems(inputPositionOptions, renderInputPosition)}
+              />
+            }
+          />
+        }
+      >
         <SegmentedTextPill<CreatorComposerPosition>
           ariaLabel={t("sessions:chat.startPage.inputPosition")}
           value={composerPosition}
           onChange={setComposerPosition}
-          options={[
-            {
-              value: CREATOR_COMPOSER_POSITION.BOTTOM,
-              label: t("sessions:chat.startPage.positionBottom"),
-            },
-            {
-              value: CREATOR_COMPOSER_POSITION.MIDDLE,
-              label: t("sessions:chat.startPage.positionMiddle"),
-            },
-          ]}
+          options={withOptionPreviews(
+            inputPositionOptions,
+            renderInputPosition
+          )}
           size="large"
           dataTestId="new-chat-page-input-position-select"
         />
       </SectionRow>
-      <SectionRow label={t("sessions:chat.startPage.repoBarPosition")}>
+      <SectionRow
+        label={
+          <LabelWithPreview
+            label={t("sessions:chat.startPage.repoBarPosition")}
+            preview={
+              <PreviewGrid
+                items={previewItems(
+                  repoBarPositionOptions,
+                  renderRepoBarPosition
+                )}
+              />
+            }
+          />
+        }
+      >
         <SegmentedTextPill<CreatorRepoChromePosition>
           ariaLabel={t("sessions:chat.startPage.repoBarPosition")}
           value={repoBarPosition}
           onChange={setRepoBarPosition}
-          options={[
-            { value: "top", label: t("sessions:chat.startPage.positionUp") },
-            {
-              value: "bottom",
-              label: t("sessions:chat.startPage.positionDown"),
-            },
-          ]}
+          options={withOptionPreviews(
+            repoBarPositionOptions,
+            renderRepoBarPosition
+          )}
           size="large"
           dataTestId="new-chat-page-repo-bar-position-select"
         />
@@ -351,24 +411,28 @@ export const ChatPanelAppearanceTab: React.FC = () => {
           checked={pinnedActionsVisible}
           onCheckedChange={setPinnedActionsVisible}
           dataTestId="composer-pinned-skills-switch"
+          preview={offOnPreview(PinnedSkillsFigure)}
         />
         <PreferenceSwitchRow
           label={t("sessions:chat.compactInput")}
           checked={compactComposerInput}
           onCheckedChange={setCompactComposerInput}
           dataTestId="composer-compact-input-switch"
+          preview={offOnPreview(CompactInputFigure)}
         />
         <PreferenceSwitchRow
           label={t("sessions:chat.composerGlow")}
           checked={composerGlowVisible}
           onCheckedChange={setComposerGlowVisible}
           dataTestId="composer-glow-switch"
+          preview={offOnPreview(ComposerGlowFigure)}
         />
         <PreferenceSwitchRow
           label={t("sessions:chat.separateEffortPill")}
           checked={separateEffortPill}
           onCheckedChange={setSeparateEffortPill}
           dataTestId="composer-separate-effort-pill-switch"
+          preview={offOnPreview(SeparateEffortFigure)}
         />
       </SectionContainer>
 

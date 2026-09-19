@@ -207,7 +207,6 @@
       "codex": "Codex"
     },
     "iconStyle": "圖示樣式",
-    "iconStyleDesc": "單色模式會去除檔案類型與模型圖示的顏色，使其看起來像介面元素而非標誌",
     "iconStyleOptions": {
       "colorful": "彩色",
       "monochrome": "單色"
@@ -538,7 +537,6 @@
     "diffViewMode": "差異檢視",
     "gitBlame": "Git Blame",
     "splitDiffCenteredLineNumbers": "並排差異檢視行號置中",
-    "splitDiffCenteredLineNumbersDesc": "將兩欄行號都顯示在左右兩欄之間（類似 GitHub），而不是各自顯示在每欄左側。",
     "shellsOpenWith": "Shell 打開方式",
     "shellsOpenWithDesc": "新終端的初始工作目錄",
     "repoPath": "倉庫路徑",

@@ -207,7 +207,6 @@
       "codex": "Codex"
     },
     "iconStyle": "아이콘 스타일",
-    "iconStyleDesc": "단색은 파일 유형 및 모델 아이콘의 채도를 낮춰 로고가 아닌 인터페이스처럼 보이게 합니다",
     "iconStyleOptions": {
       "colorful": "컬러",
       "monochrome": "단색"
@@ -538,7 +537,6 @@
     "diffViewMode": "Diff 보기",
     "gitBlame": "Git blame",
     "splitDiffCenteredLineNumbers": "분할 diff 줄 번호 가운데 정렬",
-    "splitDiffCenteredLineNumbersDesc": "두 줄 번호 열을 각 창의 왼쪽 가장자리 대신 GitHub처럼 두 창 사이에 표시합니다.",
     "shellsOpenWith": "Shell 열기 방식",
     "shellsOpenWithDesc": "새 터미널의 초기 작업 디렉토리",
     "repoPath": "저장소 경로",

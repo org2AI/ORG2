@@ -94,7 +94,7 @@ const PrCiStatusIndicator: React.FC<PrCiStatusIndicatorProps> = ({
       : status === "failure"
         ? "text-danger-6"
         : status === "pending"
-          ? "text-warning-6"
+          ? "text-primary-6"
           : "text-text-3";
 
   return (

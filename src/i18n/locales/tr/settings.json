@@ -207,7 +207,6 @@
       "codex": "Codex"
     },
     "iconStyle": "Simge stili",
-    "iconStyleDesc": "Tek renkli, dosya türü ve model simgelerinin doygunluğunu azaltarak logo yerine arayüz gibi görünmelerini sağlar",
     "iconStyleOptions": {
       "colorful": "Renkli",
       "monochrome": "Tek renkli"
@@ -538,7 +537,6 @@
     "diffViewMode": "Fark görünümü",
     "gitBlame": "Git blame",
     "splitDiffCenteredLineNumbers": "Bölünmüş fark görünümünde ortalanmış satır numaraları",
-    "splitDiffCenteredLineNumbersDesc": "Her iki satır numarası sütununu, her panelin sol kenarı yerine GitHub'daki gibi iki panelin arasında gösterir.",
     "shellsOpenWith": "Kabuklar şununla açılır",
     "shellsOpenWithDesc": "Yeni terminaller için başlangıç çalışma dizini",
     "repoPath": "Depo yolu",

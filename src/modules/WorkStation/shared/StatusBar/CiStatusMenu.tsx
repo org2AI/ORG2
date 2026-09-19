@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import { CiCheckStateIcon } from "@src/components/CiCheckStateIcon";
 import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
@@ -27,13 +28,9 @@ import { useActiveRepoRef } from "@src/hooks/git/useActiveRepoRef";
 import { useBranchPullRequestStatus } from "@src/hooks/git/useBranchPullRequestStatus";
 import {
   ArrowUpRight01Icon,
-  CancelCircleIcon,
-  CheckmarkCircle01Icon,
   CircleDashedIcon,
-  CircleSlashIcon,
   GitPullRequestIcon,
   HugeiconsIcon,
-  Loading03Icon,
   Refresh04Icon,
 } from "@src/icons";
 import type { BranchCiStatus } from "@src/services/git/branchPullRequestStatus";
@@ -60,66 +57,15 @@ interface CiStatusMenuProps {
   headRevision?: string;
 }
 
-function CheckStateIcon({
-  state,
-  size = MENU_ICON_SIZE,
-}: {
-  state: CiCheckState;
-  size?: number;
-}): React.ReactNode {
-  switch (state) {
-    case "success":
-      return (
-        <HugeiconsIcon
-          icon={CheckmarkCircle01Icon}
-          data-icon="check-circle-2"
-          size={size}
-          strokeWidth={1.9}
-          className="text-success-6"
-        />
-      );
-    case "failure":
-      return (
-        <HugeiconsIcon
-          icon={CancelCircleIcon}
-          data-icon="xcircle"
-          size={size}
-          strokeWidth={1.9}
-          className="text-danger-6"
-        />
-      );
-    case "pending":
-      return (
-        <HugeiconsIcon
-          icon={Loading03Icon}
-          data-icon="loader"
-          size={size}
-          strokeWidth={1.9}
-          className="animate-spin text-warning-6"
-        />
-      );
-    default:
-      return (
-        <HugeiconsIcon
-          icon={CircleSlashIcon}
-          data-icon="circle-slash"
-          size={size}
-          strokeWidth={1.9}
-          className="text-text-3"
-        />
-      );
-  }
-}
-
 function BranchCiIcon({ status }: { status: BranchCiStatus }): React.ReactNode {
   switch (status) {
     case "success":
-      return <CheckStateIcon state="success" size={13} />;
+      return <CiCheckStateIcon state="success" size={13} />;
     case "failure":
-      return <CheckStateIcon state="failure" size={13} />;
+      return <CiCheckStateIcon state="failure" size={13} />;
     case "pending":
     case "checking":
-      return <CheckStateIcon state="pending" size={13} />;
+      return <CiCheckStateIcon state="pending" size={13} />;
     default:
       return (
         <HugeiconsIcon
@@ -159,7 +105,7 @@ const CheckRow: React.FC<CheckRowProps> = memo(({ item, onOpenDetails }) => {
     <div className={DROPDOWN_CLASSES.menuControlItem}>
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         <span className="shrink-0">
-          <CheckStateIcon state={item.state} />
+          <CiCheckStateIcon state={item.state} size={MENU_ICON_SIZE} />
         </span>
         <span className="min-w-0 flex-1 truncate text-text-1" title={title}>
           {item.name}

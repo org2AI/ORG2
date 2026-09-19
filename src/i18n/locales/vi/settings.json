@@ -207,7 +207,6 @@
       "codex": "Codex"
     },
     "iconStyle": "Kiểu biểu tượng",
-    "iconStyleDesc": "Đơn sắc làm giảm bão hòa các biểu tượng loại tệp và mô hình để chúng trông như giao diện, không phải logo",
     "iconStyleOptions": {
       "colorful": "Nhiều màu",
       "monochrome": "Đơn sắc"
@@ -538,7 +537,6 @@
     "diffViewMode": "Chế độ xem khác biệt",
     "gitBlame": "Git blame",
     "splitDiffCenteredLineNumbers": "Số dòng căn giữa trong diff chia đôi",
-    "splitDiffCenteredLineNumbersDesc": "Hiển thị cả hai cột số dòng ở giữa hai khung, giống GitHub, thay vì ở mép trái của mỗi khung.",
     "shellsOpenWith": "Shell mở với",
     "shellsOpenWithDesc": "Thư mục làm việc ban đầu cho terminal mới",
     "repoPath": "Đường dẫn kho",

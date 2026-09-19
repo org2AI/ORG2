@@ -207,7 +207,6 @@
       "codex": "Codex"
     },
     "iconStyle": "アイコンスタイル",
-    "iconStyleDesc": "モノクロはファイル種別とモデルのアイコンの彩度を落とし、ロゴではなくインターフェースとして見えるようにします",
     "iconStyleOptions": {
       "colorful": "カラー",
       "monochrome": "モノクロ"
@@ -538,7 +537,6 @@
     "diffViewMode": "差分表示",
     "gitBlame": "Git blame",
     "splitDiffCenteredLineNumbers": "分割差分の行番号中央揃え",
-    "splitDiffCenteredLineNumbersDesc": "両方の行番号列を各ペインの左端ではなく、GitHub のように 2 つのペインの間に表示します。",
     "shellsOpenWith": "Shell の開き方",
     "shellsOpenWithDesc": "新しい Terminal の初期作業ディレクトリ",
     "repoPath": "リポジトリパス",

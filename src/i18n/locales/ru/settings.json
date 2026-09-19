@@ -207,7 +207,6 @@
       "codex": "Codex"
     },
     "iconStyle": "Стиль иконок",
-    "iconStyleDesc": "Монохромный режим обесцвечивает иконки типов файлов и моделей, чтобы они читались как интерфейс, а не как логотипы",
     "iconStyleOptions": {
       "colorful": "Цветные",
       "monochrome": "Монохромные"
@@ -538,7 +537,6 @@
     "diffViewMode": "Вид различий",
     "gitBlame": "Git blame",
     "splitDiffCenteredLineNumbers": "Номера строк по центру в разделённом diff",
-    "splitDiffCenteredLineNumbersDesc": "Показывать обе колонки номеров строк между панелями, как в GitHub, а не у левого края каждой панели.",
     "shellsOpenWith": "Shell открывается с",
     "shellsOpenWithDesc": "Начальная рабочая директория для новых терминалов",
     "repoPath": "Путь репо",

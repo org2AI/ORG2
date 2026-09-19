@@ -2,7 +2,7 @@
  * CiCheckStateIcon
  *
  * The one glyph vocabulary for a CI verdict — green tick, red cross, spinning
- * amber loader, muted slash — shared by every surface that renders check state
+ * primary loader, muted slash — shared by every surface that renders check state
  * (the Checks tab, the merge-status rail, and its checks panel) so a passing
  * check never reads differently between them.
  */
@@ -31,7 +31,7 @@ const STATE_ICONS = {
   pending: {
     icon: Loading03Icon,
     dataIcon: "loader",
-    className: "animate-spin text-warning-6",
+    className: "animate-spin text-primary-6",
   },
   neutral: {
     icon: CircleSlashIcon,

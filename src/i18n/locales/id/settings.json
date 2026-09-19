@@ -288,7 +288,6 @@
       "codex": "Codex"
     },
     "iconStyle": "Gaya ikon",
-    "iconStyleDesc": "Monokrom menghilangkan warna ikon jenis file dan model sehingga tampak sebagai bagian antarmuka, bukan sebagai logo",
     "iconStyleOptions": {
       "colorful": "Berwarna",
       "monochrome": "Monokrom"
@@ -619,7 +618,6 @@
     "diffViewMode": "Tampilan diff",
     "gitBlame": "Git blame",
     "splitDiffCenteredLineNumbers": "Nomor baris di tengah pada diff terpisah",
-    "splitDiffCenteredLineNumbersDesc": "Tampilkan kedua kolom nomor baris di antara dua panel, seperti GitHub, bukan di tepi kiri tiap panel.",
     "shellsOpenWith": "Shell dibuka di",
     "shellsOpenWithDesc": "Direktori kerja awal untuk terminal baru",
     "repoPath": "Path repo",

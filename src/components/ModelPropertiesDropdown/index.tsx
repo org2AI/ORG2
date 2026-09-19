@@ -483,7 +483,6 @@ export const ModelPropertiesDropdown: React.FC<
             <Button
               size="small"
               variant="tertiary"
-              appearance="soft"
               data-testid="model-properties-cancel"
               onClick={closeDiscarding}
             >

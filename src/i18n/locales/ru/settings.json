@@ -950,6 +950,7 @@
     "advancedDescription": "Пользовательские API-подключения и одноразовый импорт учетных данных",
     "marketApps": {
       "isolatedStorage": "Это официальное приложение использует отдельные настройки и хранилище разговоров. Настройки основного приложения и CLI сохраняются. Предыдущие разговоры не импортируются автоматически",
+      "isolatedClaudeStorage": "При открытии этого приложения история Code копируется сюда; новые сообщения остаются здесь. Настройки основного приложения и CLI не меняются. Перезапустите Claude, если импортированные разговоры ещё не видны",
       "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
       "loading": "Loading official packages…",
       "loadFailed": "Official packages could not be loaded",

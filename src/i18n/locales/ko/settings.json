@@ -950,6 +950,7 @@
     "advancedDescription": "사용자 지정 API 연결 및 일회성 자격 증명 이전",
     "marketApps": {
       "isolatedStorage": "이 공식 앱은 별도의 설정과 대화 저장소를 사용합니다. 기본 앱과 CLI의 설정은 유지됩니다. 이전 대화는 자동으로 가져오지 않습니다",
+      "isolatedClaudeStorage": "이 앱을 열면 Code 기록이 복사되며 새 메시지는 여기에 저장됩니다. 기본 앱과 CLI 설정은 변경되지 않습니다. 가져온 대화가 보이지 않으면 Claude를 다시 여세요",
       "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
       "loading": "Loading official packages…",
       "loadFailed": "Official packages could not be loaded",

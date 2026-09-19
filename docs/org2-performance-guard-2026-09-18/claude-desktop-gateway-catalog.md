@@ -129,3 +129,31 @@ no new listener, retry policy or idle poll is introduced by history import.
 
 No frontend action controls changed. The existing settings description is the
 only UI change; its screenshot is in `docs/claude-desktop-history/`.
+
+### Restart and Restore follow-up
+
+After quitting and reopening the package App through ORG2, the desktop tool
+recovered and the imported conversation still displayed its original history.
+The resumed request reached the proxy but received HTTP 402 `wallet_insufficient`
+from the local Market wallet. The chat did not produce a successful model reply
+or a charge. Zero-priced request records were present; they are not evidence of
+a successful chat. Additional local test funding is awaiting user approval.
+
+The package App was then quit normally and **Restore original setup** returned
+ORG2 to **Original setup** with its success message. All 93 isolated transcript
+hashes survived Restore, and all 93 source hashes still matched the pre-import
+baseline. Opening the normal Claude App showed its existing Max account and the
+original acceptance conversation through message 18, without the package-only
+continuation or the Gateway model alias. This verifies isolated-to-original
+configuration recovery and retention, not successful paid continuation.
+
+Hot discovery probe: temporarily moved one untouched, ORG2-materialized row out
+of the isolated catalog while Desktop ran, then restored the exact bytes. The
+sidebar kept its cached row. The official catalog was not edited. This does not
+establish that every addition requires a process restart; live list invalidation
+remains unproven, so reopening remains the reliable fallback used in acceptance.
+
+Remote CI exposed two omissions: missing translations in 13 locales and unused
+macOS-only import code in Windows production builds. Added all translations and
+gated the import module to macOS Market builds or tests. `check:i18n-keys` now
+reports zero new findings; Windows CI must validate the final head separately.

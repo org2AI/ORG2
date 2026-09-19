@@ -950,6 +950,7 @@
     "advancedDescription": "自訂 API 連線和一次性憑證遷移",
     "marketApps": {
       "isolatedStorage": "此官方 App 使用獨立設定和對話儲存，不會變更主 App 或 CLI 的設定。舊對話不會自動匯入",
+      "isolatedClaudeStorage": "開啟此 App 時複製 Code 歷史，新訊息保存在此獨立 App 內，主 App 和 CLI 設定不變；若匯入的對話尚未顯示，請退出並重新開啟 Claude",
       "workspaceHelp": "为当前 App 选择套餐和模型。各 App 独立保存选择，切换 ORG2 聊天来源不会修改 App。",
       "loading": "正在加载官方套餐…",
       "loadFailed": "无法加载官方套餐",

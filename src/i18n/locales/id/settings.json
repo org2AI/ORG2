@@ -1031,6 +1031,7 @@
     "advancedDescription": "Koneksi API kustom dan migrasi kredensial satu kali",
     "marketApps": {
       "isolatedStorage": "Aplikasi resmi ini memakai pengaturan dan penyimpanan percakapan terpisah. Pengaturan aplikasi utama dan CLI tetap dipertahankan. Percakapan lama tidak diimpor otomatis",
+      "isolatedClaudeStorage": "Riwayat Code disalin saat aplikasi ini dibuka; pesan baru tetap di sini. Pengaturan aplikasi utama dan CLI tidak berubah. Buka kembali Claude jika percakapan yang diimpor belum terlihat",
       "workspaceHelp": "Pilih paket dan model untuk aplikasi ini. Setiap aplikasi menyimpan pilihannya sendiri; mengubah sumber obrolan ORG2 tidak memperbarui aplikasi.",
       "loading": "Memuat paket resmi…",
       "loadFailed": "Paket resmi tidak dapat dimuat",

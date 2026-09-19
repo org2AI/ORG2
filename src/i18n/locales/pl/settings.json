@@ -950,6 +950,7 @@
     "advancedDescription": "Niestandardowe połączenia API i jednorazowy import poświadczeń",
     "marketApps": {
       "isolatedStorage": "Ta oficjalna aplikacja używa osobnych ustawień i pamięci rozmów. Główna aplikacja i CLI zachowują swoje ustawienia. Wcześniejsze rozmowy nie są importowane automatycznie",
+      "isolatedClaudeStorage": "Historia Code jest kopiowana przy otwieraniu tej aplikacji; nowe wiadomości pozostają tutaj. Ustawienia głównej aplikacji i CLI nie zmieniają się. Otwórz Claude ponownie, jeśli zaimportowane rozmowy nie są jeszcze widoczne",
       "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
       "loading": "Loading official packages…",
       "loadFailed": "Official packages could not be loaded",

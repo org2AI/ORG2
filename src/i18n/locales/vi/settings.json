@@ -950,6 +950,7 @@
     "advancedDescription": "Kết nối API tùy chỉnh và di chuyển thông tin xác thực một lần",
     "marketApps": {
       "isolatedStorage": "Ứng dụng chính thức này dùng cài đặt và bộ nhớ hội thoại riêng. Ứng dụng chính và CLI giữ nguyên cài đặt. Các hội thoại cũ không được nhập tự động",
+      "isolatedClaudeStorage": "Lịch sử Code được sao chép khi mở ứng dụng này; tin nhắn mới được lưu tại đây. Cài đặt của ứng dụng chính và CLI không thay đổi. Hãy mở lại Claude nếu chưa thấy các cuộc trò chuyện đã nhập",
       "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
       "loading": "Loading official packages…",
       "loadFailed": "Official packages could not be loaded",

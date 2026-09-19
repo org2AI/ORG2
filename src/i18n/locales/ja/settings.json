@@ -950,6 +950,7 @@
     "advancedDescription": "カスタム API 接続と一度限りの認証情報移行",
     "marketApps": {
       "isolatedStorage": "この公式アプリは独立した設定と会話ストレージを使用します。メインアプリと CLI の設定は変更されません。以前の会話は自動でインポートされません",
+      "isolatedClaudeStorage": "このアプリを開くと Code の履歴がコピーされ、新しいメッセージはこのアプリ内に保存されます。メインアプリと CLI の設定は変更されません。インポートした会話が表示されない場合は Claude を再起動してください",
       "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
       "loading": "Loading official packages…",
       "loadFailed": "Official packages could not be loaded",

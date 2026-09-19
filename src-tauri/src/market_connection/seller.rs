@@ -113,14 +113,13 @@ mod enabled {
         check()?;
         tracing::info!(stage = "provider_start", "Market seller operation started");
         let started = std::time::Instant::now();
-        let authorization = grant.start().await.map_err(|error| {
+        let authorization = grant.start().await.inspect_err(|error| {
             tracing::warn!(
                 stage = "provider_start",
                 elapsed_ms = started.elapsed().as_millis() as u64,
                 "Market seller operation duration"
             );
             failure("provider_start_or_validation", error);
-            error
         })?;
         tracing::info!(
             stage = "provider_authorization_validated",
@@ -129,9 +128,8 @@ mod enabled {
         );
         check()?;
         let url = authorization.browser_url().to_owned();
-        let receiver = authorization.listen().await.map_err(|error| {
+        let receiver = authorization.listen().await.inspect_err(|error| {
             failure("callback_listen", error);
-            error
         })?;
         tracing::info!(
             stage = "callback_listening",

@@ -1142,6 +1142,9 @@ agent_core::state::commands::session::wingman_show_desktop_control_test,
 agent_core::state::commands::session::wingman_list_monitors,
 
 // Optional Market module: disabled builds return an explicit unavailable result.
+crate::market_connection::seller::market_seller_begin,
+crate::market_connection::seller::market_seller_complete,
+crate::market_connection::seller::market_seller_cancel,
 crate::market_connection::market_connection_begin,
 crate::market_connection::market_connection_complete,
 crate::market_connection::market_connection_cancel,

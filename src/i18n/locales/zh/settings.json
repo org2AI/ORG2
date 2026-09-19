@@ -1111,5 +1111,15 @@
     "walletIncluded": "包含全部模型，直接使用钱包余额。",
     "walletUnavailable": "钱包直扣暂不可用，请在服务更新后刷新。",
     "walletConsent": "按所示价格区间启用此套餐的全部模型，实际用量直接从钱包余额扣费，无需为套餐单独预存或设置额度。"
+  },
+  "marketSupply": {
+    "title": "出售算力",
+    "description": "连接订阅账号为 Market 套餐提供算力，然后在 Market 网站管理套餐参与情况",
+    "claude": "连接 Claude 订阅",
+    "codex": "连接 Codex 订阅",
+    "manage": "管理套餐参与情况",
+    "connecting": "请在服务商浏览器页面完成授权，ORG2 会自动接收结果",
+    "connected": "供给账号已连接，请在 Market 网站选择参与的套餐",
+    "failed": "暂时无法确认连接结果，请先查看 Market 账号列表再重试"
   }
 }

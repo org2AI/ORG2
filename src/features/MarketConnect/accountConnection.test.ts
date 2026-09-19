@@ -1,12 +1,20 @@
 // @vitest-environment jsdom
 import { beforeEach, expect, it, vi } from "vitest";
 
+import { RpcError } from "@src/api/tauri/rpc/invoke";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 
 import { USER_A, USER_B, authFor, signedInStore } from "./identity.test-utils";
 import { loadConnections } from "./rpc";
 
-const mocks = vi.hoisted(() => ({ invoke: vi.fn(), authorize: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  authorize: vi.fn(),
+  warn: vi.fn(),
+}));
+vi.mock("@src/hooks/logger", () => ({
+  createLogger: () => ({ warn: mocks.warn }),
+}));
 vi.mock("@src/api/tauri/rpc/invoke", async (original) => ({
   ...(await original<typeof import("@src/api/tauri/rpc/invoke")>()),
   typedInvoke: mocks.invoke,
@@ -117,4 +125,39 @@ it("reuses an existing owner grant without hiding packages behind reauthorizatio
   mocks.invoke.mockResolvedValueOnce({ ...status, connections: [existing] });
   expect((await loadConnections(store)).connections).toEqual([existing]);
   expect(mocks.authorize).not.toHaveBeenCalled();
+});
+
+it("logs the bounded native failure cause rather than the RPC command", async () => {
+  mocks.invoke.mockImplementation(async (p: { command: string }) => {
+    if (p.command === "market_connection_status") return status;
+    if (p.command === "market_connection_begin")
+      return "https://market.org2.dev/buyer/connect/authorize";
+    if (p.command === "market_connection_complete")
+      throw new RpcError(
+        p.command,
+        "invalid_connection_grant",
+        "invalid_connection_grant"
+      );
+  });
+  await expect(loadConnections(store)).rejects.toThrow(
+    "invalid_connection_grant"
+  );
+  expect(mocks.warn).toHaveBeenCalledWith(
+    "Account discovery failed at complete: invalid_connection_grant"
+  );
+});
+it.each([
+  "https://example.test/?code=private",
+  "invalid_connection_grant https://example.test/?code=private",
+  "og2ms.v1.private",
+  "market_" + "x".repeat(81),
+  { code: "invalid_connection_grant", token: "private" },
+])("does not log payloads or unbounded failure text", async (cause) => {
+  mocks.authorize.mockRejectedValueOnce(
+    new RpcError("market_connection_complete", "sensitive response", cause)
+  );
+  await expect(loadConnections(store)).rejects.toThrow();
+  expect(mocks.warn).toHaveBeenCalledWith(
+    "Account discovery failed at authorize: request_failed"
+  );
 });

@@ -1,7 +1,11 @@
 /** Account discovery uses the signed-in desktop identity, never a browser handoff. */
 import { z } from "zod/v4";
 
-import { defineProcedure, typedInvoke } from "@src/api/tauri/rpc/invoke";
+import {
+  RpcError,
+  defineProcedure,
+  typedInvoke,
+} from "@src/api/tauri/rpc/invoke";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { createLogger } from "@src/hooks/logger";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
@@ -79,11 +83,15 @@ export async function authorizeMarketAccount(
       completed = true;
     } catch (error) {
       // Only bounded diagnostic codes; never tokens, URLs or response bodies.
-      const message = error instanceof Error ? error.message : String(error);
+      const cause = error instanceof RpcError ? error.cause : error;
+      const message = cause instanceof Error ? cause.message : cause;
       const code =
-        message.match(
-          /(?:market|invalid|secure|native)_[a-z0-9_]{1,80}/
-        )?.[0] ?? "request_failed";
+        typeof message === "string" &&
+        /^(?:market|invalid|secure|native|connection|credential|no_pending)_[a-z0-9_]{1,80}$/.test(
+          message
+        )
+          ? message
+          : "request_failed";
       logger.warn(`Account discovery failed at ${stage}: ${code}`);
       throw error;
     } finally {

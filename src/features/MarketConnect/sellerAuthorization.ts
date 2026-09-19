@@ -1,13 +1,38 @@
 /** App-owned authorization. A website shortcut carries selection, never consent or credentials. */
 import { z } from "zod/v4";
 
-import { defineProcedure, typedInvoke } from "@src/api/tauri/rpc/invoke";
+import {
+  RpcError,
+  defineProcedure,
+  typedInvoke,
+} from "@src/api/tauri/rpc/invoke";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
+import { createLogger } from "@src/hooks/logger";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 import { withFreshMarketOwner } from "./auth";
 import { type MarketStore, captureMarketOwner } from "./identity";
 import { marketConsoleUrl } from "./urlPolicy";
+
+const logger = createLogger("MarketSeller");
+const diagnosticCodes = new Set([
+  "market_reauthorization_required",
+  "market_identity_mismatch",
+  "market_identity_changed",
+  "market_cloud_sign_in_required",
+  "market_cloud_verification_unavailable",
+  "market_request_failed",
+  "invalid_seller_authorization",
+  "seller_connection_cancelled",
+  "seller_connection_in_progress",
+  "seller_exchange_failed",
+  "invalid_seller_grant",
+  "seller_operation_uncertain",
+  "seller_operation_failed",
+  "invalid_seller_start",
+  "seller_callback_unavailable",
+  "seller_browser_open_failed",
+]);
 
 const nonce = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 const selection = z.strictObject({
@@ -80,6 +105,7 @@ export async function connectSellerAccount(
   let cancellation: Promise<unknown> | undefined;
   let started = false;
   let completed = false;
+  let stage = "identity";
   const stop = () => {
     controller.abort();
     if (started)
@@ -102,11 +128,13 @@ export async function connectSellerAccount(
         const fresh = store.get(org2CloudAuthAtom);
         if (!fresh?.oauthClientId)
           throw Error("market_reauthorization_required");
+        stage = "begin";
         const request = await typedInvoke(begin, { provider, region });
         started = true;
         check();
         if (request.provider !== provider || request.region !== region)
           throw Error("invalid_seller_authorization");
+        stage = "authorize";
         const response = await fetch(
           marketConsoleUrl("/api/auth/native/seller/authorize-desktop"),
           {
@@ -136,6 +164,7 @@ export async function connectSellerAccount(
           remaining > 91_000
         )
           throw Error("invalid_seller_authorization");
+        stage = "native_complete";
         const connected = await typedInvoke(complete, {
           code: result.code,
           state: result.state,
@@ -149,6 +178,17 @@ export async function connectSellerAccount(
       store,
       controller.signal
     );
+  } catch (error) {
+    const cause = error instanceof RpcError ? error.cause : error;
+    const message = cause instanceof Error ? cause.message : cause;
+    const code =
+      typeof message === "string" &&
+      (diagnosticCodes.has(message) ||
+        /^market_request_failed_http_[45][0-9]{2}$/.test(message))
+        ? message
+        : "seller_request_failed";
+    logger.warn(`Seller authorization failed at ${stage}: ${code}`);
+    throw error;
   } finally {
     if (!completed) stop();
     await cancellation;

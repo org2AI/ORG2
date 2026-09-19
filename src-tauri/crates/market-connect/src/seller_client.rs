@@ -52,13 +52,24 @@ impl SellerBinding {
     }
 }
 impl SellerConnection {
+    fn operation_timeout(&self, operation: &str, now: i64) -> Result<Duration, &'static str> {
+        let remaining = self.expires_at.saturating_sub(now);
+        if remaining <= 0 {
+            return Err("seller_connection_expired");
+        }
+        // Cold supply placement includes an adapter readiness wait of up to
+        // sixty seconds. Only start needs this allowance; the capability's
+        // remaining lifetime still bounds every request.
+        let limit = if operation == "start" { 90_000 } else { 15_000 };
+        Ok(Duration::from_millis(remaining.min(limit) as u64))
+    }
     async fn operation(
         &self,
         operation: &str,
         body: serde_json::Value,
     ) -> Result<Vec<u8>, &'static str> {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(15))
+            .timeout(self.operation_timeout(operation, chrono::Utc::now().timestamp_millis())?)
             .redirect(reqwest::redirect::Policy::none())
             .build()
             .map_err(|_| "seller_transport_unavailable")?;
@@ -72,6 +83,21 @@ impl SellerConnection {
             .send()
             .await
             .map_err(|_| "seller_operation_uncertain")?;
+        if !response.status().is_success() {
+            return Err(match response.status().as_u16() {
+                400 => "seller_operation_http_400",
+                401 => "seller_operation_http_401",
+                403 => "seller_operation_http_403",
+                404 => "seller_operation_http_404",
+                409 => "seller_operation_http_409",
+                429 => "seller_operation_http_429",
+                500 => "seller_operation_http_500",
+                502 => "seller_operation_http_502",
+                503 => "seller_operation_http_503",
+                504 => "seller_operation_http_504",
+                _ => "seller_operation_failed",
+            });
+        }
         bounded_response(response)
             .await
             .map_err(|_| "seller_operation_failed")
@@ -246,6 +272,37 @@ mod tests {
         let proof = flow.take_redemption(&"a".repeat(43), &state).unwrap();
         let value = serde_json::json!({"token":format!("og2sn_{}","b".repeat(43)),"identity_user_id":"11111111-1111-4111-8111-111111111111","session_version":0,"connection_id":format!("seller_native_{}","c".repeat(32)),"provider":"claude","region":"sjc","state":state,"expires_at":(chrono::Utc::now()+chrono::Duration::minutes(5)).to_rfc3339(),"market_url":control_origin().unwrap()});
         (proof, value)
+    }
+    #[test]
+    fn cold_start_timeout_is_bounded_by_the_seller_grant() {
+        let (proof, value) = fixture();
+        let mut grant =
+            SellerConnection::parse(&serde_json::to_vec(&value).unwrap(), &proof).unwrap();
+        let now = chrono::Utc::now().timestamp_millis();
+        grant.expires_at = now + 300_000;
+        assert_eq!(
+            grant.operation_timeout("start", now).unwrap(),
+            Duration::from_secs(90)
+        );
+        for operation in ["complete", "status", "cancel"] {
+            assert_eq!(
+                grant.operation_timeout(operation, now).unwrap(),
+                Duration::from_secs(15)
+            );
+        }
+        grant.expires_at = now + 7_000;
+        assert_eq!(
+            grant.operation_timeout("start", now).unwrap(),
+            Duration::from_secs(7)
+        );
+        assert_eq!(
+            grant.operation_timeout("cancel", now).unwrap(),
+            Duration::from_secs(7)
+        );
+        assert_eq!(
+            grant.operation_timeout("start", now + 7_000).unwrap_err(),
+            "seller_connection_expired"
+        );
     }
     #[test]
     fn binding_receipts_never_accept_credentials_or_empty_ids() {

@@ -1,15 +1,23 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { RpcError } from "@src/api/tauri/rpc/invoke";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 
 import { USER_A, USER_B, authFor, signedInStore } from "./identity.test-utils";
 import { connectSellerAccount } from "./sellerAuthorization";
 
-const mocks = vi.hoisted(() => ({ invoke: vi.fn(), fetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  fetch: vi.fn(),
+  warn: vi.fn(),
+}));
 vi.mock("@src/api/tauri/rpc/invoke", async (original) => ({
   ...(await original<typeof import("@src/api/tauri/rpc/invoke")>()),
   typedInvoke: mocks.invoke,
+}));
+vi.mock("@src/hooks/logger", () => ({
+  createLogger: () => ({ warn: mocks.warn }),
 }));
 vi.mock("./auth", () => ({
   withFreshMarketOwner: (work: () => Promise<unknown>) => work(),
@@ -167,4 +175,26 @@ it("preserves the requested region and refuses a substituted native proof", asyn
   expect(
     commands().filter((command) => command === "market_seller_complete")
   ).toHaveLength(1);
+});
+
+it.each([
+  ["seller_operation_uncertain", "seller_operation_uncertain"],
+  [
+    "seller_operation_uncertain https://example.test/?code=private",
+    "seller_request_failed",
+  ],
+  ["og2sn_private", "seller_request_failed"],
+  [{ token: "private" }, "seller_request_failed"],
+])("logs only allowlisted native machine codes", async (cause, code) => {
+  mocks.invoke.mockImplementation(async (p: { command: string }) => {
+    if (p.command === "market_seller_begin") return proof;
+    if (p.command === "market_seller_complete")
+      throw new RpcError(p.command, "private detail", cause);
+  });
+  await expect(
+    connectSellerAccount("claude", new AbortController().signal, store)
+  ).rejects.toThrow();
+  expect(mocks.warn).toHaveBeenCalledWith(
+    `Seller authorization failed at native_complete: ${code}`
+  );
 });

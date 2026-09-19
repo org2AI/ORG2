@@ -251,3 +251,25 @@ acceptance. No merge, production deployment or installer release was performed.
 Performance verdict: blocked — long-duration/full-process measurements and fresh
 profile registration are not yet evidenced; the bounded import tests, observed
 short samples and successful process cleanup remain valid partial evidence.
+
+### Fresh isolated-profile registration
+
+With Claude stopped and ORG2 showing Original setup, the existing test profile
+was moved intact to a private backup. Normal App connections configuration and
+Open app created a fresh profile. Desktop registered its own identity; ORG2
+imported 93 discovery rows and 93 transcripts without inventing account IDs.
+The first Code tab still showed an empty list. Normal Quit followed by ORG2 Open
+app populated the list, and opening the acceptance conversation displayed its
+original 18 messages with the package model. No new prompt was submitted.
+
+After the test, normal Quit and Restore original setup succeeded. The fresh
+profile was archived intact and the previous managed profile restored, retaining
+all previously verified package-only turns. Official catalogs and source
+transcripts were not modified. This closes the fresh-registration acceptance
+cell with an explicit first-launch limitation: users may need to reopen Claude
+to see imported history. The existing settings text describes that fallback.
+
+Performance verdict: blocked — fresh registration is now tested, but full process
+coverage, long-duration resource measurements and final upstream native runtime
+remain open. This does not invalidate the completed import, restart and Restore
+checks above.

@@ -61,6 +61,28 @@ pub(crate) fn start_backend_services(
                 "[CLI Sessions] reconciled pending native App catalog refreshes"
             );
         }
+        // Same startup slot: list everyday Claude Code sessions in Claude
+        // Desktop's gateway-mode profile. Bounded, additive and a no-op for
+        // anyone who has never opened that profile.
+        match tokio::task::spawn_blocking(
+            agent_sessions::cli::native_materializer::backfill_claude_desktop_gateway_catalog,
+        )
+        .await
+        {
+            Ok(Ok(0)) => {}
+            Ok(Ok(added)) => tracing::info!(
+                added,
+                "[CLI Sessions] listed Claude Code sessions in Claude Desktop gateway mode"
+            ),
+            Ok(Err(error)) => tracing::warn!(
+                error = %error,
+                "[CLI Sessions] Claude Desktop gateway catalog backfill failed"
+            ),
+            Err(error) => tracing::warn!(
+                error = %error,
+                "[CLI Sessions] Claude Desktop gateway catalog backfill task failed"
+            ),
+        }
     });
 
     system_services::app_menu::setup_menu_events(app.handle());

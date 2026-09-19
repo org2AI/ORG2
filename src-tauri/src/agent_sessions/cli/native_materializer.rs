@@ -32,7 +32,7 @@ use super::native_ir::{
 #[cfg(test)]
 use super::native_ir::{native_item_semantically_equal, native_items_from_chunks};
 use super::native_store::{
-    append_suffix_atomically, copy_file_atomically, lock_claude_transcript,
+    append_suffix_atomically, copy_file_atomically, create_file_atomically, lock_claude_transcript,
     native_transcript_revision, replace_file_link_atomically, write_file_atomically,
 };
 use super::native_transcript::TRANSCRIPT_SOURCE_NATIVE;
@@ -47,6 +47,7 @@ const CLAUDE_PROJECT_INDEX_VERSION: u64 = 1;
 const CLAUDE_DESKTOP_ACCOUNT_SCAN_LIMIT: usize = 64;
 const CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT: usize = 2_048;
 const CLAUDE_DESKTOP_METADATA_SCAN_LIMIT: usize = 10_000;
+const CLAUDE_DESKTOP_METADATA_MAX_BYTES: u64 = 256 * 1024;
 // Codex stores rollouts in a date-sharded directory tree. Resolving the same
 // native UUID by walking that tree on every turn makes a long-running session
 // progressively more expensive even though its path is immutable. Cache only
@@ -279,6 +280,15 @@ fn remove_file_if_present(path: &Path) -> Result<bool, String> {
 
 fn atomic_json(path: &Path, value: &Value) -> Result<(), String> {
     write_file_atomically(path, "json.tmp", "native metadata", |file| {
+        serde_json::to_writer_pretty(&mut *file, value)
+            .map_err(|error| format!("serialize native metadata: {error}"))?;
+        std::io::Write::write_all(file, b"\n")
+            .map_err(|error| format!("serialize native metadata: {error}"))
+    })
+}
+
+fn insert_json(path: &Path, value: &Value) -> Result<bool, String> {
+    create_file_atomically(path, "Claude Desktop discovery row", |file| {
         serde_json::to_writer_pretty(&mut *file, value)
             .map_err(|error| format!("serialize native metadata: {error}"))?;
         std::io::Write::write_all(file, b"\n")
@@ -1116,6 +1126,12 @@ fn remove_claude_project_index_entry_at(
 /// catalog so Desktop can discover materialized sessions without fabricating
 /// another conversation history.
 fn claude_desktop_sessions_root() -> PathBuf {
+    claude_desktop_data_dir()
+        .join("Claude")
+        .join("claude-code-sessions")
+}
+
+fn claude_desktop_data_dir() -> PathBuf {
     let home = app_paths::native_transcript_home_dir();
     #[cfg(target_os = "windows")]
     let data_dir = home.join("AppData").join("Roaming");
@@ -1123,12 +1139,64 @@ fn claude_desktop_sessions_root() -> PathBuf {
     let data_dir = home.join("Library").join("Application Support");
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     let data_dir = home.join(".config");
-    data_dir.join("Claude").join("claude-code-sessions")
+    data_dir
+}
+
+/// Claude Desktop keeps a second, independent catalog for its third-party
+/// (gateway) deployment mode. Both catalogs point at the same Claude Code
+/// transcripts, so a session is only missing from the gateway-mode Code tab
+/// because no discovery row names it there. On Windows the 3P profile lives
+/// under the local, not the roaming, application data directory.
+fn claude_desktop_third_party_sessions_root() -> PathBuf {
+    #[cfg(target_os = "windows")]
+    let data_dir = app_paths::native_transcript_home_dir()
+        .join("AppData")
+        .join("Local");
+    #[cfg(not(target_os = "windows"))]
+    let data_dir = claude_desktop_data_dir();
+    data_dir.join("Claude-3p").join("claude-code-sessions")
+}
+
+/// Every Desktop catalog that already exists on this machine, official first.
+/// A profile the user has never opened is never created on their behalf.
+fn claude_desktop_sessions_roots() -> Vec<PathBuf> {
+    [
+        claude_desktop_sessions_root(),
+        claude_desktop_third_party_sessions_root(),
+    ]
+    .into_iter()
+    .filter(|root| root.is_dir())
+    .collect()
+}
+
+/// The project directory a gateway-mode profile registered for itself. Desktop
+/// records it beside the directory as `<org>.profile-origin.json` with
+/// `mode: "local"`; an official profile has no such marker, so this never
+/// invents a project for a signed-in account.
+fn claude_desktop_local_profile_project_dir(account_dir: &Path) -> Option<PathBuf> {
+    let mut budget = CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT;
+    bounded_directory_paths(account_dir, &mut budget)
+        .into_iter()
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.ends_with(".profile-origin.json"))
+        })
+        .find_map(|marker| {
+            let origin = claude_desktop_row(&marker)?;
+            if origin["mode"].as_str() != Some("local") {
+                return None;
+            }
+            let org = origin["org"].as_str()?;
+            Uuid::parse_str(org).ok()?;
+            let project_dir = account_dir.join(org);
+            project_dir.is_dir().then_some(project_dir)
+        })
 }
 
 fn claude_desktop_active_account_id(sessions_root: &Path) -> Option<String> {
     let config_path = sessions_root.parent()?.join("config.json");
-    let config = serde_json::from_slice::<Value>(&fs::read(config_path).ok()?).ok()?;
+    let config = claude_desktop_row(&config_path)?;
     let account_id = config["lastKnownAccountUuid"].as_str()?;
     Uuid::parse_str(account_id).ok()?;
     Some(account_id.to_string())
@@ -1183,9 +1251,7 @@ fn claude_desktop_session_path(
         {
             let exact_path = project_dir.join(&expected_filename);
             if exact_path.is_file() {
-                let is_same_session = fs::read(&exact_path)
-                    .ok()
-                    .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok())
+                let is_same_session = claude_desktop_row(&exact_path)
                     .and_then(|value| value["cliSessionId"].as_str().map(str::to_string))
                     .as_deref()
                     == Some(native_id);
@@ -1197,10 +1263,7 @@ fn claude_desktop_session_path(
                 if path.extension().and_then(|value| value.to_str()) != Some("json") {
                     continue;
                 }
-                let Some(value) = fs::read(&path)
-                    .ok()
-                    .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok())
-                else {
+                let Some(value) = claude_desktop_row(&path) else {
                     continue;
                 };
                 if value["cliSessionId"].as_str() == Some(native_id) {
@@ -1233,10 +1296,7 @@ fn claude_desktop_session_path(
             if path.extension().and_then(|value| value.to_str()) != Some("json") {
                 continue;
             }
-            let Some(value) = fs::read(&path)
-                .ok()
-                .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok())
-            else {
+            let Some(value) = claude_desktop_row(&path) else {
                 continue;
             };
             let matches_cwd = ["cwd", "originCwd"].into_iter().any(|field| {
@@ -1262,7 +1322,10 @@ fn claude_desktop_session_path(
             break;
         }
     }
-    matching_project.map(|(_, path)| path.join(expected_filename))
+    matching_project
+        .map(|(_, path)| path)
+        .or_else(|| claude_desktop_local_profile_project_dir(&active_account_dir))
+        .map(|path| path.join(expected_filename))
 }
 
 fn assistant_turn_count(items: &[NativeConversationItem]) -> usize {
@@ -1298,7 +1361,19 @@ fn publish_claude_desktop_session(
         // inventing identifiers that the App has never registered.
         return Ok(None);
     };
-    publish_claude_desktop_session_at_path(session, cwd, native_id, native_path, items, path)
+    publish_claude_desktop_session_at_path(
+        session,
+        cwd,
+        native_id,
+        native_path,
+        items,
+        ClaudeDesktopCatalogWrite::RefreshOfficial(path),
+    )
+}
+
+enum ClaudeDesktopCatalogWrite {
+    RefreshOfficial(PathBuf),
+    InsertGateway(PathBuf),
 }
 
 fn publish_claude_desktop_session_at_path(
@@ -1307,9 +1382,18 @@ fn publish_claude_desktop_session_at_path(
     native_id: &str,
     native_path: &Path,
     items: &[NativeConversationItem],
-    path: PathBuf,
+    publication: ClaudeDesktopCatalogWrite,
 ) -> Result<Option<PathBuf>, String> {
+    let (path, insert_only) = match publication {
+        ClaudeDesktopCatalogWrite::RefreshOfficial(path) => (path, false),
+        ClaudeDesktopCatalogWrite::InsertGateway(path) => (path, true),
+    };
     let _guard = lock_claude_project_index(&path)?;
+    // Gateway discovery is additive. Even an ORG2-created row may have since
+    // been edited by Desktop; do not overwrite its title, model or grants.
+    if insert_only && fs::symlink_metadata(&path).is_ok() {
+        return Ok(None);
+    }
     let previous = match fs::read(&path) {
         Ok(raw) => Some(serde_json::from_slice::<Value>(&raw).map_err(|error| {
             format!(
@@ -1386,7 +1470,13 @@ fn publish_claude_desktop_session_at_path(
     if is_new {
         object.insert("orgiiMaterialization".to_string(), json!(true));
     }
-    atomic_json(&path, &metadata)?;
+    if insert_only {
+        if !insert_json(&path, &metadata)? {
+            return Ok(None);
+        }
+    } else {
+        atomic_json(&path, &metadata)?;
+    }
     let published: Value = serde_json::from_slice(
         &fs::read(&path).map_err(|error| format!("read back Claude Desktop metadata: {error}"))?,
     )
@@ -1409,8 +1499,18 @@ fn publish_claude_desktop_session_at_path(
 }
 
 fn remove_orgii_claude_desktop_session(cwd: &Path, native_id: &str) -> Result<(), String> {
-    let sessions_root = claude_desktop_sessions_root();
-    let Some(path) = claude_desktop_session_path(&sessions_root, cwd, native_id) else {
+    for sessions_root in claude_desktop_sessions_roots() {
+        remove_orgii_claude_desktop_session_at(&sessions_root, cwd, native_id)?;
+    }
+    Ok(())
+}
+
+fn remove_orgii_claude_desktop_session_at(
+    sessions_root: &Path,
+    cwd: &Path,
+    native_id: &str,
+) -> Result<(), String> {
+    let Some(path) = claude_desktop_session_path(sessions_root, cwd, native_id) else {
         return Ok(());
     };
     let _guard = lock_claude_project_index(&path)?;
@@ -1424,6 +1524,162 @@ fn remove_orgii_claude_desktop_session(cwd: &Path, native_id: &str) -> Result<()
         remove_file_if_present(&path)?;
     }
     Ok(())
+}
+
+/// Rows copied into the gateway-mode catalog on one pass. Desktop sessions are
+/// tiny JSON files, but the pass runs at startup and must stay bounded.
+const CLAUDE_DESKTOP_GATEWAY_BACKFILL_LIMIT: usize = 512;
+
+/// Discovery fields a gateway-mode row may inherit. Everything that grants or
+/// remembers a permission (permission mode, computer-use and browser grants,
+/// always-allowed reasons, bypass choices) is deliberately left behind: the
+/// gateway profile starts every inherited session from Desktop's defaults.
+const CLAUDE_DESKTOP_GATEWAY_INHERITED_FIELDS: &[&str] = &[
+    "sessionId",
+    "cliSessionId",
+    "cwd",
+    "originCwd",
+    "createdAt",
+    "lastFocusedAt",
+    "lastActivityAt",
+    "title",
+    "titleSource",
+    "model",
+    "isArchived",
+    "completedTurns",
+];
+
+/// Make the user's everyday Claude Code sessions discoverable when Claude
+/// Desktop runs in third-party (gateway) mode.
+///
+/// Both Desktop profiles read the same Claude Code transcripts; only their
+/// discovery rows are separate. For every row of the official profile's active
+/// account whose transcript still exists, add a row to the gateway profile
+/// unless that session is already listed there. Nothing is copied but the
+/// small discovery row, the official profile is only read, existing gateway
+/// rows are never rewritten, and a machine that has never opened the gateway
+/// profile is left untouched. Returns the number of rows added.
+pub(crate) fn backfill_claude_desktop_gateway_catalog() -> Result<usize, String> {
+    let official_root = claude_desktop_sessions_root();
+    let gateway_root = claude_desktop_third_party_sessions_root();
+    backfill_claude_desktop_gateway_catalog_between(&official_root, &gateway_root)
+}
+
+fn backfill_claude_desktop_gateway_catalog_between(
+    official_root: &Path,
+    gateway_root: &Path,
+) -> Result<usize, String> {
+    if !official_root.is_dir() || !gateway_root.is_dir() {
+        return Ok(0);
+    }
+    let Some(official_account) = claude_desktop_active_account_id(official_root) else {
+        return Ok(0);
+    };
+    let Some(gateway_account) = claude_desktop_active_account_id(gateway_root) else {
+        return Ok(0);
+    };
+    let Some(target_dir) =
+        claude_desktop_local_profile_project_dir(&gateway_root.join(gateway_account))
+    else {
+        return Ok(0);
+    };
+
+    // Sessions the gateway profile already lists, under any file name.
+    let mut listed = HashSet::new();
+    let mut metadata_budget = CLAUDE_DESKTOP_METADATA_SCAN_LIMIT;
+    for path in bounded_directory_paths(&target_dir, &mut metadata_budget) {
+        if let Some(native_id) = claude_desktop_row(&path).and_then(|row| {
+            let native_id = row["cliSessionId"].as_str()?;
+            Uuid::parse_str(native_id).ok()?;
+            Some(native_id.to_string())
+        }) {
+            listed.insert(native_id);
+        }
+    }
+
+    let mut added = 0usize;
+    let mut project_budget = CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT;
+    let mut metadata_budget = CLAUDE_DESKTOP_METADATA_SCAN_LIMIT;
+    'projects: for project_dir in
+        bounded_directory_paths(&official_root.join(official_account), &mut project_budget)
+            .into_iter()
+            .filter(|path| path.is_dir())
+    {
+        for path in bounded_directory_paths(&project_dir, &mut metadata_budget) {
+            if added >= CLAUDE_DESKTOP_GATEWAY_BACKFILL_LIMIT {
+                break 'projects;
+            }
+            let Some(row) = claude_desktop_row(&path) else {
+                continue;
+            };
+            let (Some(native_id), Some(cwd)) = (row["cliSessionId"].as_str(), row["cwd"].as_str())
+            else {
+                continue;
+            };
+            if Uuid::parse_str(native_id).is_err() || listed.contains(native_id) {
+                continue;
+            }
+            // A row without its transcript would open as an empty session.
+            if !claude_native_paths(None, Path::new(cwd), native_id)
+                .native_path
+                .is_file()
+            {
+                continue;
+            }
+            let target = target_dir.join(format!("local_{native_id}.json"));
+            if target.exists() {
+                continue;
+            }
+            let mut inherited = serde_json::Map::new();
+            for field in CLAUDE_DESKTOP_GATEWAY_INHERITED_FIELDS {
+                if let Some(value) = row.get(*field).filter(|value| !value.is_null()) {
+                    inherited.insert((*field).to_string(), value.clone());
+                }
+            }
+            inherited.insert("permissionMode".to_string(), json!("default"));
+            inherited.insert("remoteMcpServersConfig".to_string(), json!([]));
+            inherited.insert("alwaysAllowedReasons".to_string(), json!([]));
+            inherited.insert("sessionPermissionUpdates".to_string(), json!([]));
+            inherited.insert("classifierSummaryEnabled".to_string(), json!(true));
+            inherited.insert("orgiiMaterialization".to_string(), json!(true));
+            let _guard = lock_claude_project_index(&target)?;
+            if target.exists() {
+                continue;
+            }
+            if !insert_json(&target, &Value::Object(inherited))? {
+                continue;
+            }
+            listed.insert(native_id.to_string());
+            added += 1;
+        }
+        if metadata_budget == 0 {
+            break;
+        }
+    }
+    Ok(added)
+}
+
+fn claude_desktop_row(path: &Path) -> Option<Value> {
+    if path.extension().and_then(|value| value.to_str()) != Some("json") {
+        return None;
+    }
+    let metadata = fs::symlink_metadata(path).ok()?;
+    if !metadata.is_file() || metadata.len() > CLAUDE_DESKTOP_METADATA_MAX_BYTES {
+        return None;
+    }
+    // Bound the read itself as well: Desktop can append after the metadata
+    // check. A corrupt or unexpected catalog file must not allocate its size.
+    let mut bytes = Vec::new();
+    fs::File::open(path)
+        .ok()?
+        .take(CLAUDE_DESKTOP_METADATA_MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    if bytes.len() as u64 > CLAUDE_DESKTOP_METADATA_MAX_BYTES {
+        return None;
+    }
+    let row = serde_json::from_slice::<Value>(&bytes).ok()?;
+    row.is_object().then_some(row)
 }
 
 /// Refresh the native Claude App catalog from metadata written by the actual
@@ -2655,12 +2911,15 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
             // Its Code tab discovers the provider JSONL through this separate
             // metadata row. Publish it from the same deferred owner and only
             // into an existing provider-registered account/project directory.
-            let desktop_root = claude_desktop_sessions_root();
-            let desktop_path = desktop_root
-                .is_dir()
-                .then(|| claude_desktop_session_path(&desktop_root, &cwd, &native_id))
-                .flatten();
-            if let Some(desktop_path) = desktop_path {
+            let official_root = claude_desktop_sessions_root();
+            let desktop_paths = claude_desktop_sessions_roots()
+                .into_iter()
+                .filter_map(|root| {
+                    claude_desktop_session_path(&root, &cwd, &native_id)
+                        .map(|path| (root == official_root, path))
+                })
+                .collect::<Vec<_>>();
+            if !desktop_paths.is_empty() {
                 let items = match parsed_items {
                     Some(items) => items,
                     None => {
@@ -2674,14 +2933,31 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
                     .ok_or_else(|| {
                         format!("CLI session {session_id} disappeared before Claude Desktop catalog refresh")
                     })?;
-                publish_claude_desktop_session_at_path(
-                    &session,
-                    &cwd,
-                    &native_id,
-                    &native_path,
-                    &items,
-                    desktop_path,
-                )?;
+                for (is_official, desktop_path) in desktop_paths {
+                    let published = publish_claude_desktop_session_at_path(
+                        &session,
+                        &cwd,
+                        &native_id,
+                        &native_path,
+                        &items,
+                        if is_official {
+                            ClaudeDesktopCatalogWrite::RefreshOfficial(desktop_path)
+                        } else {
+                            ClaudeDesktopCatalogWrite::InsertGateway(desktop_path)
+                        },
+                    );
+                    match published {
+                        Ok(_) => {}
+                        // The gateway-mode catalog is a convenience projection:
+                        // it must never hold back the official catalog receipt.
+                        Err(error) if !is_official => tracing::warn!(
+                            session_id = %session_id,
+                            error = %error,
+                            "failed to publish Claude Desktop gateway-mode session row"
+                        ),
+                        Err(error) => return Err(error),
+                    }
+                }
             }
             receipt
         }
@@ -4318,6 +4594,341 @@ mod tests {
             Some(active_project.join(format!("local_{new_native_id}.json"))),
             "a new row must be placed under the active account"
         );
+    }
+
+    /// Two Desktop profiles over one sandbox home: an official catalog with an
+    /// active account, and a gateway (third-party) catalog that registered its
+    /// own local project.
+    fn claude_desktop_profiles_fixture(home: &Path) -> (PathBuf, PathBuf, PathBuf, PathBuf) {
+        let official_root = claude_desktop_sessions_root();
+        let gateway_root = claude_desktop_third_party_sessions_root();
+        assert!(official_root.starts_with(home) && gateway_root.starts_with(home));
+        let official_project = official_root
+            .join("33333333-3333-4333-8333-333333333333")
+            .join("44444444-4444-4444-8444-444444444444");
+        let gateway_account = gateway_root.join("d6d6d6d6-d6d6-4d6d-8d6d-d6d6d6d6d6d6");
+        let gateway_project = gateway_account.join("00000000-0000-4000-8000-000000000001");
+        fs::create_dir_all(&official_project).expect("create official project");
+        fs::create_dir_all(&gateway_project).expect("create gateway project");
+        for (root, account) in [
+            (&official_root, "33333333-3333-4333-8333-333333333333"),
+            (&gateway_root, "d6d6d6d6-d6d6-4d6d-8d6d-d6d6d6d6d6d6"),
+        ] {
+            fs::write(
+                root.parent()
+                    .expect("profile directory")
+                    .join("config.json"),
+                serde_json::to_vec(&json!({ "lastKnownAccountUuid": account }))
+                    .expect("encode profile config"),
+            )
+            .expect("write profile config");
+        }
+        fs::write(
+            gateway_account.join("00000000-0000-4000-8000-000000000001.profile-origin.json"),
+            serde_json::to_vec(&json!({
+                "mode": "local",
+                "org": "00000000-0000-4000-8000-000000000001",
+                "createdAt": 1
+            }))
+            .expect("encode profile origin"),
+        )
+        .expect("write profile origin");
+        (
+            official_root,
+            official_project,
+            gateway_root,
+            gateway_project,
+        )
+    }
+
+    fn write_claude_transcript(cwd: &Path, native_id: &str) {
+        let path = claude_native_paths(None, cwd, native_id).native_path;
+        fs::create_dir_all(path.parent().expect("transcript directory"))
+            .expect("create transcript directory");
+        fs::write(&path, b"{}\n").expect("write transcript");
+    }
+
+    #[test]
+    fn claude_desktop_gateway_profile_places_new_rows_in_its_own_local_project() {
+        let sandbox = test_env::sandbox();
+        let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
+        let cwd = sandbox.path().join("gateway-worktree");
+        fs::create_dir_all(&cwd).expect("create workspace");
+        let (official_root, _, gateway_root, gateway_project) =
+            claude_desktop_profiles_fixture(sandbox.path());
+        assert_eq!(
+            claude_desktop_sessions_roots(),
+            vec![official_root.clone(), gateway_root.clone()],
+            "official first, then the gateway profile"
+        );
+
+        let native_id = "77777777-7777-4777-8777-777777777777";
+        assert_eq!(
+            claude_desktop_session_path(&gateway_root, &cwd, native_id),
+            Some(gateway_project.join(format!("local_{native_id}.json"))),
+            "with no row for this folder yet, the gateway profile's own project is used"
+        );
+        assert_eq!(
+            claude_desktop_session_path(&official_root, &cwd, native_id),
+            None,
+            "a signed-in profile has no origin marker, so no project is invented for it"
+        );
+
+        // A marker that is not a local profile, or names a missing project, is ignored.
+        let account = gateway_project
+            .parent()
+            .expect("gateway account")
+            .to_path_buf();
+        fs::write(
+            account.join("00000000-0000-4000-8000-000000000001.profile-origin.json"),
+            serde_json::to_vec(
+                &json!({"mode": "remote", "org": "00000000-0000-4000-8000-000000000001"}),
+            )
+            .expect("encode remote origin"),
+        )
+        .expect("rewrite origin");
+        assert_eq!(
+            claude_desktop_session_path(&gateway_root, &cwd, native_id),
+            None
+        );
+    }
+
+    #[test]
+    fn claude_desktop_gateway_roots_skip_a_profile_that_was_never_opened() {
+        let sandbox = test_env::sandbox();
+        let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
+        let official_root = claude_desktop_sessions_root();
+        fs::create_dir_all(&official_root).expect("create official catalog");
+        assert_eq!(claude_desktop_sessions_roots(), vec![official_root]);
+        assert_eq!(
+            backfill_claude_desktop_gateway_catalog().expect("backfill"),
+            0
+        );
+        assert!(
+            !claude_desktop_third_party_sessions_root().exists(),
+            "the gateway profile is never created on the user's behalf"
+        );
+    }
+
+    #[test]
+    fn claude_desktop_gateway_publication_never_rewrites_existing_rows() {
+        let sandbox = test_env::sandbox();
+        let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
+        let cwd = sandbox.path().join("gateway-worktree");
+        fs::create_dir_all(&cwd).expect("workspace");
+        let (_, _, _, gateway_project) = claude_desktop_profiles_fixture(sandbox.path());
+        let native_id = "77777777-7777-4777-8777-777777777777";
+        write_claude_transcript(&cwd, native_id);
+        let native_path = claude_native_paths(None, &cwd, native_id).native_path;
+        let session_id = "cliagent-additive-gateway-index";
+        create_native_claude_session(session_id, "anthropic-additive-gateway", &cwd);
+        let session = persistence::get_session(session_id)
+            .expect("session store")
+            .expect("session");
+        let path = gateway_project.join(format!("local_{native_id}.json"));
+        let items = [message("gateway-user", "user", "ORG2's new title")];
+        for owned in [false, true] {
+            let original = serde_json::to_vec(&json!({
+                "sessionId": format!("local_{native_id}"), "cliSessionId": native_id,
+                "title": "Renamed in Desktop", "model": "Desktop-selected-model",
+                "permissionMode": "plan", "completedTurns": 42,
+                "orgiiMaterialization": owned,
+            }))
+            .expect("original row");
+            fs::write(&path, &original).expect("seed Desktop row");
+            assert!(publish_claude_desktop_session_at_path(
+                &session,
+                &cwd,
+                native_id,
+                &native_path,
+                &items,
+                ClaudeDesktopCatalogWrite::InsertGateway(path.clone()),
+            )
+            .expect("additive publish")
+            .is_none());
+            assert_eq!(fs::read(&path).expect("preserved row"), original);
+        }
+        fs::remove_file(&path).expect("remove fixture row");
+        assert!(publish_claude_desktop_session_at_path(
+            &session,
+            &cwd,
+            native_id,
+            &native_path,
+            &items,
+            ClaudeDesktopCatalogWrite::InsertGateway(path.clone()),
+        )
+        .expect("publish missing row")
+        .is_some());
+        assert_eq!(
+            claude_desktop_row(&path).expect("new row")["orgiiMaterialization"],
+            true
+        );
+    }
+
+    #[test]
+    fn claude_desktop_catalog_reader_rejects_oversized_rows() {
+        let sandbox = test_env::sandbox();
+        let path = sandbox.path().join("local-large.json");
+        let oversized = json!({"title": "x".repeat(CLAUDE_DESKTOP_METADATA_MAX_BYTES as usize)});
+        fs::write(
+            &path,
+            serde_json::to_vec(&oversized).expect("encode large row"),
+        )
+        .expect("write large row");
+        assert!(claude_desktop_row(&path).is_none());
+        fs::write(&path, br#"{"title":"ordinary metadata"}"#).expect("write small row");
+        assert_eq!(
+            claude_desktop_row(&path).expect("small row")["title"],
+            "ordinary metadata"
+        );
+    }
+
+    #[test]
+    fn claude_desktop_gateway_backfill_continues_after_its_insert_budget() {
+        let sandbox = test_env::sandbox();
+        let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
+        let cwd = sandbox.path().join("many-everyday-sessions");
+        fs::create_dir_all(&cwd).expect("workspace");
+        let (_, official_project, _, gateway_project) =
+            claude_desktop_profiles_fixture(sandbox.path());
+        for _ in 0..=CLAUDE_DESKTOP_GATEWAY_BACKFILL_LIMIT {
+            let native_id = Uuid::new_v4().to_string();
+            write_claude_transcript(&cwd, &native_id);
+            fs::write(
+                official_project.join(format!("local_{native_id}.json")),
+                serde_json::to_vec(&json!({"sessionId": format!("local_{native_id}"),
+                    "cliSessionId": native_id, "cwd": cwd, "title": "Everyday"}))
+                .expect("encode source row"),
+            )
+            .expect("source row");
+        }
+        assert_eq!(
+            backfill_claude_desktop_gateway_catalog().expect("first startup"),
+            CLAUDE_DESKTOP_GATEWAY_BACKFILL_LIMIT
+        );
+        assert_eq!(
+            backfill_claude_desktop_gateway_catalog().expect("second startup"),
+            1
+        );
+        assert_eq!(
+            backfill_claude_desktop_gateway_catalog().expect("third startup"),
+            0
+        );
+        let count = fs::read_dir(&gateway_project)
+            .expect("gateway catalog")
+            .flatten()
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))
+            .count();
+        assert_eq!(count, CLAUDE_DESKTOP_GATEWAY_BACKFILL_LIMIT + 1);
+    }
+
+    #[test]
+    fn claude_desktop_gateway_backfill_lists_everyday_sessions_without_their_grants() {
+        let sandbox = test_env::sandbox();
+        let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
+        let cwd = sandbox.path().join("everyday-worktree");
+        fs::create_dir_all(&cwd).expect("create workspace");
+        let (_, official_project, _, gateway_project) =
+            claude_desktop_profiles_fixture(sandbox.path());
+
+        let everyday = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+        let already_listed = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+        let transcript_gone = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+        for native_id in [everyday, already_listed, transcript_gone] {
+            fs::write(
+                official_project.join(format!("local_{native_id}.json")),
+                serde_json::to_vec(&json!({
+                    "sessionId": format!("local_{native_id}"),
+                    "cliSessionId": native_id,
+                    "cwd": cwd,
+                    "originCwd": cwd,
+                    "createdAt": 10,
+                    "lastActivityAt": 20,
+                    "title": "Everyday session",
+                    "model": "claude-sonnet-5",
+                    "permissionMode": "bypassPermissions",
+                    "bypassChosenInApp": true,
+                    "cuAllowedApps": ["Finder"],
+                    "alwaysAllowedReasons": ["trusted"],
+                    "remoteMcpServersConfig": [{"name": "private"}]
+                }))
+                .expect("encode official row"),
+            )
+            .expect("write official row");
+        }
+        write_claude_transcript(&cwd, everyday);
+        write_claude_transcript(&cwd, already_listed);
+        // Desktop itself listed this one under its own file name.
+        let desktop_owned = gateway_project.join("local_desktop-owned.json");
+        fs::write(
+            &desktop_owned,
+            serde_json::to_vec(&json!({"sessionId": "local_desktop-owned", "cliSessionId": already_listed, "cwd": cwd, "title": "Desktop's own"}))
+                .expect("encode gateway row"),
+        )
+        .expect("write gateway row");
+        let official_before = fs::read(official_project.join(format!("local_{everyday}.json")))
+            .expect("read official row");
+
+        assert_eq!(
+            backfill_claude_desktop_gateway_catalog().expect("backfill"),
+            1
+        );
+
+        let row: Value = serde_json::from_slice(
+            &fs::read(gateway_project.join(format!("local_{everyday}.json")))
+                .expect("read added row"),
+        )
+        .expect("decode added row");
+        assert_eq!(row["cliSessionId"], everyday);
+        assert_eq!(row["title"], "Everyday session");
+        assert_eq!(row["model"], "claude-sonnet-5");
+        assert_eq!(row["orgiiMaterialization"], true);
+        assert_eq!(
+            row["permissionMode"], "default",
+            "no inherited permission mode"
+        );
+        assert_eq!(row["alwaysAllowedReasons"], json!([]));
+        assert_eq!(row["remoteMcpServersConfig"], json!([]));
+        for granted in ["bypassChosenInApp", "cuAllowedApps"] {
+            assert!(
+                row.get(granted).is_none(),
+                "{granted} must not cross profiles"
+            );
+        }
+        assert!(!gateway_project
+            .join(format!("local_{already_listed}.json"))
+            .exists());
+        assert!(!gateway_project
+            .join(format!("local_{transcript_gone}.json"))
+            .exists());
+        let owned: Value =
+            serde_json::from_slice(&fs::read(&desktop_owned).expect("read owned row"))
+                .expect("decode owned row");
+        assert_eq!(
+            owned["title"], "Desktop's own",
+            "Desktop's own rows are never rewritten"
+        );
+        assert_eq!(
+            fs::read(official_project.join(format!("local_{everyday}.json"))).expect("reread"),
+            official_before,
+            "the official profile is only read"
+        );
+        assert_eq!(
+            backfill_claude_desktop_gateway_catalog().expect("second backfill"),
+            0,
+            "a second pass adds nothing"
+        );
+
+        // Removal only ever takes back rows ORG2 wrote, in either profile.
+        remove_orgii_claude_desktop_session(&cwd, everyday).expect("remove ORG2 row");
+        assert!(!gateway_project
+            .join(format!("local_{everyday}.json"))
+            .exists());
+        remove_orgii_claude_desktop_session(&cwd, already_listed).expect("skip Desktop row");
+        assert!(desktop_owned.exists());
+        assert!(official_project
+            .join(format!("local_{already_listed}.json"))
+            .exists());
     }
 
     #[test]

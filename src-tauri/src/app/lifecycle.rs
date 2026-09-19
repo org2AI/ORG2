@@ -180,6 +180,44 @@ pub(crate) fn handle_page_load(
     }
 }
 
+#[cfg(all(target_os = "macos", feature = "market-connect"))]
+fn is_market_navigation(url: &url::Url, scheme: &str) -> bool {
+    url.scheme() == scheme
+        && url.host_str() == Some("market")
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.port().is_none()
+        && url.fragment().is_none()
+        && matches!(url.path(), "/connect" | "/seller/connect")
+}
+
+#[cfg(all(test, target_os = "macos", feature = "market-connect"))]
+#[test]
+fn market_navigation_restores_only_the_configured_app_shortcuts() {
+    for raw in [
+        "orgii://market/connect?workspace_id=ws_account&target=org2",
+        "orgii://market/seller/connect?provider=claude&region=sjc",
+    ] {
+        assert!(is_market_navigation(
+            &url::Url::parse(raw).unwrap(),
+            "orgii"
+        ));
+    }
+    for raw in [
+        "https://market/connect",
+        "orgii://other/connect",
+        "orgii://market/authorized?code=fixture",
+        "orgii://market/seller/authorized",
+        "orgii://user@market/connect",
+        "orgii://market/connect#fragment",
+    ] {
+        assert!(!is_market_navigation(
+            &url::Url::parse(raw).unwrap(),
+            "orgii"
+        ));
+    }
+}
+
 /// Process-level run-event loop: macOS open/reopen behavior and the ordered
 /// shutdown sequence on exit.
 pub(crate) fn handle_run_event(app_handle: &tauri::AppHandle, event: tauri::RunEvent) {
@@ -189,9 +227,21 @@ pub(crate) fn handle_run_event(app_handle: &tauri::AppHandle, event: tauri::RunE
     match event {
         #[cfg(target_os = "macos")]
         tauri::RunEvent::Opened { urls } => {
+            #[cfg(feature = "market-connect")]
+            if market_connect::app_scheme()
+                .is_ok_and(|scheme| urls.iter().any(|url| is_market_navigation(url, scheme)))
+            {
+                // AppKit delivered the URL to the existing process, without
+                // the single-instance callback that restores its window.
+                // Queue activation after this native open event has returned.
+                let app = app_handle.clone();
+                dispatch2::DispatchQueue::main().exec_async(move || {
+                    super::plugins::restore_main_window(&app);
+                });
+            }
             tracing::info!(
                 count = urls.len(),
-                "[OpenedFiles] Ignoring native macOS open event"
+                "[OpenedFiles] Native macOS open event delivered"
             );
         }
         // macOS: clicking the dock icon when all windows are closed should reopen the main window

@@ -137,7 +137,7 @@ recovered and the imported conversation still displayed its original history.
 The resumed request reached the proxy but received HTTP 402 `wallet_insufficient`
 from the local Market wallet. The chat did not produce a successful model reply
 or a charge. Zero-priced request records were present; they are not evidence of
-a successful chat. Additional local test funding is awaiting user approval.
+a successful chat. This funding blocker was resolved by the authorized local test credits described below.
 
 The package App was then quit normally and **Restore original setup** returned
 ORG2 to **Original setup** with its success message. All 93 isolated transcript
@@ -157,3 +157,50 @@ Remote CI exposed two omissions: missing translations in 13 locales and unused
 macOS-only import code in Windows production builds. Added all translations and
 gated the import module to macOS Market builds or tests. `check:i18n-keys` now
 reports zero new findings; Windows CI must validate the final head separately.
+
+### Successful continuation, cache billing and final Restore
+
+The user approved local ledger test credits ($5, then $2); these are not real
+Stripe collection. The real Desktop request used a 64,000-token output limit
+and about 255 KB of JSON, so the existing conservative admission quote exceeded
+$6.22. Admission correctly refused the earlier $5.527101 balance. Cloud PRs
+#120/#121 now return available balance, required reservation and shortfall for
+that 402; the balance check itself is unchanged.
+
+With $7.527101 available, the isolated package App resumed the imported
+`HISTORY-FABLE-0910` conversation and answered its original marker correctly.
+After a normal Quit and another ORG2 Open app, the successful turn remained and
+a second request answered `HISTORY-FABLE-0910 REOPEN_OK`. No workspace trust was
+requested again. A third diagnostic turn replied `BILLING_TRACE_OK`.
+
+| Verified request                    | Buyer charge | Seller payable | Evidence                                                                |
+| ----------------------------------- | -----------: | -------------: | ----------------------------------------------------------------------- |
+| Original-history continuation       |    $0.874541 |      $0.641330 | 73 input, 56 output, 93,002 cache-write tokens                          |
+| Quit/reopen continuation            |    $0.019665 |      $0.014421 | 27 input, 24 output, 120 cache-write and 93,002 cache-read tokens       |
+| Diagnostic chat                     |    $0.018488 |      $0.013558 | 27 input, 14 output, 31 cache-write and 93,170 cache-read tokens        |
+| Captured automatic input suggestion |    $0.023126 |      $0.016959 | Request hash matched a separate `SUGGESTION MODE` prompt to its receipt |
+
+There was also an earlier $0.022755 receipt ($0.016687 seller payable) without a
+corresponding chat transcript turn. It resembles the subsequently captured
+suggestion request, but its purpose was not captured at dispatch time and is
+not asserted as proven. The older, pre-existing $0.002306 receipt is likewise
+not resolved by this new evidence.
+
+All five paid receipts were independently recalculated using the snapshotted
+buyer/seller rates and the documented sum-then-half-up settlement rounding.
+Each request had exactly one hold, seller leg, spread leg and unused-hold return;
+all five request reserves closed to zero. There were 36 additional zero-charge
+records. Total usage charge was $0.958575 and remaining local wallet $6.568526.
+The temporary diagnostic probes were removed and were never committed.
+
+After quitting the package App, Restore returned ORG2 to Original setup. The
+normal Claude App reopened with the existing Max account, standard Fable model
+label and the original history ending at message 18. Package turns did not leak
+into it; all 93 source transcript hashes still matched the pre-import baseline.
+
+![Imported history survives Quit/reopen and continues with the package model](../claude-desktop-history/package-history-continuation.png)
+
+Still unverified: hot discovery of newly added rows without restarting, fresh
+profile first-registration runtime behavior, Windows runtime, and final resource
+sampling. Reopening is a verified discovery fallback, not proof that Desktop
+always requires a restart. No installer release or PR merge was performed.

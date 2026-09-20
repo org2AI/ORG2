@@ -38,7 +38,10 @@ beforeEach(() => {
   });
   mocks.loadEntries.mockResolvedValue([]);
 });
-afterEach(() => cleanup.splice(0).forEach((dispose) => dispose()));
+afterEach(() => {
+  cleanup.splice(0).forEach((dispose) => dispose());
+  vi.restoreAllMocks();
+});
 
 function picker() {
   let enabled = true;
@@ -89,6 +92,7 @@ it("refreshes website package changes on app focus without a deep link or idle f
     expires_at: null,
   };
   mocks.loadEntries.mockResolvedValue([entry]);
+  vi.spyOn(Date, "now").mockReturnValue(Date.now() + 30_001);
   await act(async () => {
     window.dispatchEvent(new Event("focus"));
     window.dispatchEvent(new Event("focus"));
@@ -208,6 +212,7 @@ for (const secondEnabled of [false, true]) {
         expires_at: null,
       },
     ]);
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 30_001);
     await act(async () => {
       window.dispatchEvent(new Event("focus"));
     });
@@ -254,7 +259,7 @@ it("updates an already open picker when its pending catalog settles", async () =
   expect(view.current().profiles).toHaveLength(1);
 });
 
-it("settles an open picker after focus invalidates its in-flight catalog", async () => {
+it("shares an in-flight catalog across focus events without invalidation", async () => {
   let finish!: (entries: Entry[]) => void;
   mocks.loadEntries.mockImplementationOnce(
     () =>
@@ -286,5 +291,114 @@ it("settles an open picker after focus invalidates its in-flight catalog", async
   });
   expect(view.current().loading).toBe(false);
   expect(view.current().profiles).toHaveLength(1);
-  expect(mocks.loadEntries).toHaveBeenCalledTimes(2);
+  expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+});
+
+it("bounds picker waiting without replaying the shared request, and retries explicitly", async () => {
+  vi.useFakeTimers();
+  try {
+    let finish!: (entries: Entry[]) => void;
+    mocks.loadEntries.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const view = picker();
+    await view.render(true);
+    for (let i = 0; i < 6; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+        if (i < 5) window.dispatchEvent(new Event("focus"));
+      });
+    }
+
+    expect(view.current().loading).toBe(false);
+    expect(view.current().error).toBe("market_catalog_load_timeout");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+    let retry!: Promise<void>;
+    await act(async () => {
+      retry = view.current().refresh();
+    });
+    expect(view.current().loading).toBe(true);
+    expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish([]);
+      await retry;
+    });
+    expect(view.current().loading).toBe(false);
+    expect(view.current().error).toBeNull();
+    expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("does not overwrite the timeout with a late catalog until explicit retry", async () => {
+  vi.useFakeTimers();
+  try {
+    let finish!: (entries: Entry[]) => void;
+    mocks.loadEntries.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const view = picker();
+    await view.render(true);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    await act(async () => {
+      finish([]);
+    });
+    expect(view.current().error).toBe("market_catalog_load_timeout");
+    expect(view.current().loading).toBe(false);
+    await act(async () => {
+      await view.current().refresh();
+    });
+    expect(view.current().error).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("disposes an old-owner wait and never shows its timeout after logout", async () => {
+  vi.useFakeTimers();
+  try {
+    let finish!: (entries: Entry[]) => void;
+    mocks.loadEntries.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const view = picker();
+    await view.render(true);
+    await act(async () => {
+      getInstrumentedStore().set(org2CloudAuthAtom, null);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+      finish([]);
+    });
+    expect(view.current().loading).toBe(false);
+    expect(view.current().error).toBeNull();
+    expect(view.current().profiles).toEqual([]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("reuses a fresh catalog on repeated focus without another request", async () => {
+  const view = picker();
+  await view.render(true);
+  await act(async () => {
+    for (let i = 0; i < 10; i++) window.dispatchEvent(new Event("focus"));
+  });
+  expect(view.current().loading).toBe(false);
+  expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
 });

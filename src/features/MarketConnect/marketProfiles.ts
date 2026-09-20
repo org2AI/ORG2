@@ -6,6 +6,7 @@ import {
   type CliAgentType,
   type ModelType,
 } from "@src/api/tauri/rpc/schemas/validation";
+import { createLogger } from "@src/hooks/logger";
 import type { RecentModelEntry } from "@src/store/session/recentModelEntriesAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
@@ -26,6 +27,43 @@ import {
   prepareSessionSource,
 } from "./rpc";
 import { authorizedProfile } from "./usageAuthorization";
+
+// Match the existing foreground native-owner refresh budget. This bounds only
+// the picker wait: the shared authorization/catalog operation stays single-flight.
+const CATALOG_WAIT_MS = 30_000;
+const catalogLogger = createLogger("MarketPackages");
+function waitForCatalog<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  const started = Date.now();
+  return new Promise<T>((resolve, reject) => {
+    const finish = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+    };
+    const abort = () => {
+      finish();
+      reject(Error("market_catalog_wait_cancelled"));
+    };
+    const timer = setTimeout(() => {
+      finish();
+      catalogLogger.warn(
+        `stage=catalog_wait elapsed_ms=${Date.now() - started} code=market_catalog_load_timeout`
+      );
+      reject(Error("market_catalog_load_timeout"));
+    }, CATALOG_WAIT_MS);
+    signal.addEventListener("abort", abort, { once: true });
+    if (signal.aborted) abort();
+    work.then(
+      (result) => {
+        finish();
+        resolve(result);
+      },
+      (error: unknown) => {
+        finish();
+        reject(error);
+      }
+    );
+  });
+}
 
 export type MarketProfileAgent = "claude_code" | "codex";
 export type MarketConnectionTarget =
@@ -372,9 +410,6 @@ interface ProfileCache {
 }
 // One bounded cache per application store, rather than sharing users between stores.
 const caches = new WeakMap<MarketStore, ProfileCache>();
-// Several mounted pickers share a store and receive the same focus event.
-// Invalidate once so later listeners do not discard the first listener's load.
-const focusEvents = new WeakMap<MarketStore, Event>();
 function cacheFor(store: MarketStore): ProfileCache {
   let cache = caches.get(store);
   if (!cache) {
@@ -455,15 +490,21 @@ export function useMarketExecutionProfiles(options: {
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
   const generationRef = useRef(0);
+  const waiterRef = useRef<AbortController | null>(null);
 
   const load = useCallback(
     async (force = false) => {
-      if (force) invalidateMarketProfileCache(store);
-      if (!enabled || !ownerKey) return;
+      if (force && !cacheFor(store).flight) invalidateMarketProfileCache(store);
+      if (!enabled || !ownerKey || waiterRef.current) return;
       const generation = ++generationRef.current;
+      const waiter = new AbortController();
+      waiterRef.current = waiter;
       setLoading(true);
       try {
-        const result = await loadCachedMarketExecutionProfiles(false, store);
+        const result = await waitForCatalog(
+          loadCachedMarketExecutionProfiles(false, store),
+          waiter.signal
+        );
         if (generation !== generationRef.current) return;
         if (store.get(marketOwnerKeyAtom) !== ownerKey) return;
         resultOwner.current = ownerKey;
@@ -486,6 +527,7 @@ export function useMarketExecutionProfiles(options: {
         resultOwner.current = ownerKey;
         setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
+        if (waiterRef.current === waiter) waiterRef.current = null;
         if (generation === generationRef.current) {
           setLoading(false);
           setHasLoaded(true);
@@ -502,6 +544,8 @@ export function useMarketExecutionProfiles(options: {
     () =>
       store.sub(marketOwnerKeyAtom, () => {
         generationRef.current++;
+        waiterRef.current?.abort();
+        waiterRef.current = null;
         resultOwner.current = null;
         setOwnerRevision((revision) => revision + 1);
       }),
@@ -522,6 +566,8 @@ export function useMarketExecutionProfiles(options: {
     load(false).catch(() => undefined);
     return () => {
       requestGeneration.current++;
+      waiterRef.current?.abort();
+      waiterRef.current = null;
     };
   }, [enabled, load, ownerRevision]);
 
@@ -529,11 +575,9 @@ export function useMarketExecutionProfiles(options: {
     const handleProfilesChanged = () => {
       load(true).catch(() => undefined);
     };
-    const focused = (event: Event) => {
-      if (focusEvents.get(store) !== event) {
-        focusEvents.set(store, event);
-        invalidateMarketProfileCache(store);
-      }
+    // Focus is an on-demand cache read, not a forced refresh. Repeated focus
+    // events reuse fresh data or the existing flight and never extend its wait.
+    const focused = () => {
       if (enabled) load(false).catch(() => undefined);
     };
     window.addEventListener("focus", focused);

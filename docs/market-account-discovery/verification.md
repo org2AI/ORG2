@@ -9,9 +9,14 @@ historical stored grants are not removed: package discovery must not filter vali
 grants by a new workspace naming convention.
 
 The account authorization flight and package cache are scoped to the Jotai store
-and current Cloud owner. Identity changes invalidate pending results. A shared
-focus event invalidates each store once, even with both open and closed pickers.
-There is no new polling timer.
+and current Cloud owner. Identity changes invalidate pending results. Focus reads the shared 30-second cache on demand; it does not invalidate a fresh
+catalog or restart an in-flight request. Closed pickers do not fetch. There is no
+polling timer. A foreground picker waits at most 30 seconds, matching the existing
+native-owner refresh budget, then shows a retryable error. This bounds UI waiting,
+not the underlying shared authorization operation; late results cannot overwrite
+the timeout, and an explicit retry can reuse the same pending operation. Returning
+from a website edit may reuse data up to 30 seconds old; explicit refresh remains
+available.
 
 ## Initial native evidence (2026-09-19, macOS)
 

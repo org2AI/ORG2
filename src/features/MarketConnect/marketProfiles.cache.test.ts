@@ -56,6 +56,7 @@ function picker() {
   }
   cleanup.push(() => act(() => root.unmount()));
   return {
+    current: () => current!,
     async render(open: boolean) {
       enabled = open;
       await act(async () => {
@@ -223,3 +224,67 @@ for (const secondEnabled of [false, true]) {
     expect(mocks.loadEntries).toHaveBeenCalledTimes(2);
   });
 }
+
+it("updates an already open picker when its pending catalog settles", async () => {
+  let finish!: (entries: Entry[]) => void;
+  mocks.loadEntries.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const view = picker();
+  await view.render(true);
+  expect(view.current().loading).toBe(true);
+  await act(async () => {
+    finish([
+      {
+        workspace_id: "ws_purchase",
+        entitlement_id: "pa_async",
+        service_id: "pkg_async",
+        service_name: "Async Package",
+        models: ["claude-sonnet-5"],
+        models_by_agent: { claude: ["claude-sonnet-5"], codex: [] },
+        status: "active",
+        expires_at: null,
+      },
+    ]);
+  });
+  expect(view.current().loading).toBe(false);
+  expect(view.current().profiles).toHaveLength(1);
+});
+
+it("settles an open picker after focus invalidates its in-flight catalog", async () => {
+  let finish!: (entries: Entry[]) => void;
+  mocks.loadEntries.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const view = picker();
+  const closed = picker();
+  await view.render(true);
+  await closed.render(false);
+  await act(async () => {
+    window.dispatchEvent(new Event("focus"));
+  });
+  expect(view.current().loading).toBe(true);
+  const entry: Entry = {
+    workspace_id: "ws_purchase",
+    entitlement_id: "pa_async",
+    service_id: "pkg_async",
+    service_name: "Async Package",
+    models: ["claude-sonnet-5"],
+    models_by_agent: { claude: ["claude-sonnet-5"], codex: [] },
+    status: "active",
+    expires_at: null,
+  };
+  mocks.loadEntries.mockResolvedValue([entry]);
+  await act(async () => {
+    finish([entry]);
+  });
+  expect(view.current().loading).toBe(false);
+  expect(view.current().profiles).toHaveLength(1);
+  expect(mocks.loadEntries).toHaveBeenCalledTimes(2);
+});

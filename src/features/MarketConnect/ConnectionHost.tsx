@@ -4,7 +4,6 @@ import { buildSettingsPath } from "@src/config/mainAppPaths/settings";
 import { ROUTES } from "@src/config/routes";
 import { useAppNavigate } from "@src/hooks/navigation/useAppNavigate";
 
-import SellerAuthorizationHost from "./SellerAuthorizationHost";
 import UsageAuthorizationHost from "./UsageAuthorizationHost";
 import {
   MARKET_AUTHORIZATION_SAVED_EVENT,
@@ -34,10 +33,5 @@ export default function ConnectionHost() {
       window.removeEventListener(MARKET_CONNECTION_OPEN_EVENT, manual);
     };
   }, [navigate]);
-  return (
-    <>
-      <UsageAuthorizationHost />
-      <SellerAuthorizationHost />
-    </>
-  );
+  return <UsageAuthorizationHost />;
 }

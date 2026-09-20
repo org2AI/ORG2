@@ -151,10 +151,6 @@ fn changes() -> &'static tokio::sync::watch::Sender<u64> {
     static CHANGES: OnceLock<tokio::sync::watch::Sender<u64>> = OnceLock::new();
     CHANGES.get_or_init(|| tokio::sync::watch::channel(0).0)
 }
-// A bounded seller operation subscribes only while a provider authorization is active.
-pub(super) fn subscribe_changes() -> tokio::sync::watch::Receiver<u64> {
-    refresh_changes().subscribe()
-}
 fn refresh_changes() -> &'static tokio::sync::watch::Sender<u64> {
     static CHANGES: OnceLock<tokio::sync::watch::Sender<u64>> = OnceLock::new();
     CHANGES.get_or_init(|| tokio::sync::watch::channel(0).0)

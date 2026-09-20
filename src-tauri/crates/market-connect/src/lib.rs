@@ -1,10 +1,5 @@
-//! Native Market transport; credentials remain inside the desktop host.
-mod seller_callback;
-mod seller_client;
-mod seller_enrollment;
-pub use seller_callback::{SellerAuthorization, SellerProvider};
-pub use seller_client::{SellerBinding, SellerConnection};
-pub use seller_enrollment::{SellerEnrollment, SellerProof, SellerRedemption, SellerSelection};
+//! ORG2 Market enrollment protocol. No Tauri, UI, KeyVault, billing or config
+//! writer dependency. The desktop host owns secure storage and client adapters.
 mod services;
 pub use services::{ActivateService, ManagedAccess, ManagedModel, ManagedService};
 mod client;

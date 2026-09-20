@@ -1665,11 +1665,6 @@
     "purchasesFailed": "Could not load official packages. Try again.",
     "failed": "Verbindung mit Market fehlgeschlagen. Bitte versuche es erneut.",
     "title": "Official packages",
-    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization.",
-    "sellerTitle": "Anbieterkonto verbinden",
-    "sellerConfirmAccount": "{{provider}} für das App-Konto {{account}} verbinden? Vergewissern Sie sich, dass Sie auf der Market-Website dasselbe Konto verwenden.",
-    "sellerConnecting": "Genehmige den Zugriff im Browser-Tab des Anbieters; ORG2 empfängt das Ergebnis automatisch",
-    "sellerConnected": "Anbieterkonto verbunden. Wähle die Pakete auf der Market-Website aus",
-    "sellerUnconfirmed": "Die Verbindung konnte nicht bestätigt werden. Prüfe deine Market-Konten, bevor du es erneut versuchst"
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

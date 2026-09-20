@@ -1665,11 +1665,6 @@
     "purchasesFailed": "Could not load official packages. Try again.",
     "failed": "Market に接続できませんでした。もう一度お試しください。",
     "title": "Official packages",
-    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization.",
-    "sellerTitle": "供給アカウントを接続",
-    "sellerConfirmAccount": "アプリのアカウント {{account}} に {{provider}} を接続しますか？Market ウェブサイトで使用しているものと同じアカウントであることを確認してください。",
-    "sellerConnecting": "プロバイダーのブラウザータブでアクセスを承認してください。ORG2が結果を自動で受け取ります",
-    "sellerConnected": "提供用アカウントを接続しました。Marketサイトで参加するパッケージを選んでください",
-    "sellerUnconfirmed": "接続を確認できませんでした。再試行する前にMarketアカウントを確認してください"
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

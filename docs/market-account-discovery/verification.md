@@ -13,7 +13,7 @@ and current Cloud owner. Identity changes invalidate pending results. A shared
 focus event invalidates each store once, even with both open and closed pickers.
 There is no new polling timer.
 
-## Native evidence (2026-09-19, macOS)
+## Initial native evidence (2026-09-19, macOS)
 
 Built the actual Tauri app from develop plus this change, using production frontend
 assets and the market-connect feature. Opened Settings → App connections → Configure
@@ -37,9 +37,13 @@ inside the app without a website link.
 | Scope/isolation | keep    | Cloud owner captured before work and checked on completion         | Cancel/discard stale identity results                                      | Account-switch and single-flight tests  |
 | Rendering       | fix     | Standard Button adds inline geometry and a truncated label wrapper | Shared custom-layout choice card owns multiline geometry and token surface | Native screenshot and editor navigation |
 
-No CPU/RSS improvement is claimed. Successful package execution and its full native
-lifecycle cannot be measured while the authorization service is unavailable.
-Performance verdict: blocked at the native package authorization boundary.
+No CPU/RSS improvement is claimed. After the production identity configuration was
+corrected, the native App independently discovered Advanced Coding. Package
+activation and model execution remain unverified because supply was not enrolled.
+The final 4522 bundle also launched normally into Workstation. These observations
+predate removal of the experimental native seller flow; the revised bundle still
+requires native acceptance. Seller authorization now belongs entirely to the
+website; its identity and provider callback are not authorized by the App.
 
 ## UI audit
 

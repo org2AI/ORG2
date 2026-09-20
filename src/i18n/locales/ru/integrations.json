@@ -1665,11 +1665,6 @@
     "purchasesFailed": "Could not load official packages. Try again.",
     "failed": "Не удалось подключиться к Market. Повторите попытку.",
     "title": "Official packages",
-    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization.",
-    "sellerTitle": "Подключить аккаунт поставщика",
-    "sellerConfirmAccount": "Подключить {{provider}} для аккаунта приложения {{account}}? Убедитесь, что на сайте Market вы используете тот же аккаунт.",
-    "sellerConnecting": "Разрешите доступ на вкладке провайдера в браузере; ORG2 автоматически получит результат",
-    "sellerConnected": "Аккаунт поставщика подключён. Выберите пакеты на сайте Market",
-    "sellerUnconfirmed": "Не удалось подтвердить подключение. Проверьте свои аккаунты Market перед повторной попыткой"
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

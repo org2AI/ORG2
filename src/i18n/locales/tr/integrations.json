@@ -1665,11 +1665,6 @@
     "purchasesFailed": "Could not load official packages. Try again.",
     "failed": "Market bağlantısı kurulamadı. Lütfen tekrar deneyin.",
     "title": "Official packages",
-    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization.",
-    "sellerTitle": "Sağlayıcı hesabını bağla",
-    "sellerConfirmAccount": "{{provider}}, uygulamadaki {{account}} hesabına bağlansın mı? Market web sitesinde de aynı hesabı kullandığınızdan emin olun.",
-    "sellerConnecting": "Sağlayıcının tarayıcı sekmesinde erişimi onaylayın; ORG2 sonucu otomatik olarak alır",
-    "sellerConnected": "Kaynak sağlayıcı hesabı bağlandı. Market web sitesinde paketlerini seçin",
-    "sellerUnconfirmed": "Bağlantı doğrulanamadı. Yeniden denemeden önce Market hesaplarınızı kontrol edin"
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

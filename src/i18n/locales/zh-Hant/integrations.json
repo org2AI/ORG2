@@ -1665,11 +1665,6 @@
     "purchasesFailed": "无法读取官方套餐，请重试。",
     "failed": "無法連線至 Market，請重試。",
     "title": "官方套餐",
-    "launchFailed": "无法启用所选套餐。请刷新套餐，检查钱包余额和用量授权后重试。",
-    "sellerTitle": "連接供給帳戶",
-    "sellerConfirmAccount": "要將 {{provider}} 連接到 App 目前的帳戶 {{account}} 嗎？請確認與 Market 網站登入的是同一帳戶。",
-    "sellerConnecting": "請在供應商的瀏覽器分頁中批准存取；ORG2 會自動接收結果",
-    "sellerConnected": "供應帳號已連接，請在 Market 網站選擇參與的套餐",
-    "sellerUnconfirmed": "無法確認連接結果，重試前請先檢查 Market 帳號"
+    "launchFailed": "无法启用所选套餐。请刷新套餐，检查钱包余额和用量授权后重试。"
   }
 }

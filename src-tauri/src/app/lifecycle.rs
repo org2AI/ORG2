@@ -188,26 +188,22 @@ fn is_market_navigation(url: &url::Url, scheme: &str) -> bool {
         && url.password().is_none()
         && url.port().is_none()
         && url.fragment().is_none()
-        && matches!(url.path(), "/connect" | "/seller/connect")
+        && url.path() == "/connect"
 }
 
 #[cfg(all(test, target_os = "macos", feature = "market-connect"))]
 #[test]
 fn market_navigation_restores_only_the_configured_app_shortcuts() {
-    for raw in [
-        "orgii://market/connect?workspace_id=ws_account&target=org2",
-        "orgii://market/seller/connect?provider=claude&region=sjc",
-    ] {
-        assert!(is_market_navigation(
-            &url::Url::parse(raw).unwrap(),
-            "orgii"
-        ));
-    }
+    assert!(is_market_navigation(
+        &url::Url::parse("orgii://market/connect?workspace_id=ws_account&target=org2").unwrap(),
+        "orgii"
+    ));
     for raw in [
         "https://market/connect",
         "orgii://other/connect",
         "orgii://market/authorized?code=fixture",
         "orgii://market/seller/authorized",
+        "orgii://market/seller/connect?provider=claude&region=sjc",
         "orgii://user@market/connect",
         "orgii://market/connect#fragment",
     ] {

@@ -1665,11 +1665,6 @@
     "purchasesFailed": "Could not load official packages. Try again.",
     "failed": "Không thể kết nối với Market. Vui lòng thử lại.",
     "title": "Official packages",
-    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization.",
-    "sellerTitle": "Kết nối tài khoản cung cấp",
-    "sellerConfirmAccount": "Kết nối {{provider}} cho tài khoản ứng dụng {{account}}? Hãy đảm bảo đây cũng là tài khoản bạn dùng trên trang web Market.",
-    "sellerConnecting": "Phê duyệt quyền truy cập trong thẻ trình duyệt của nhà cung cấp; ORG2 sẽ tự động nhận kết quả",
-    "sellerConnected": "Đã kết nối tài khoản cung cấp tài nguyên. Chọn các gói trên trang web Market",
-    "sellerUnconfirmed": "Không thể xác nhận kết nối. Kiểm tra các tài khoản Market trước khi thử lại"
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

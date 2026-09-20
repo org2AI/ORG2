@@ -185,7 +185,10 @@ export function useUnifiedModelPaletteData({
   const refreshAllModels = useCallback(async () => {
     setRefreshingAllModels(true);
     try {
-      const summary = await refreshModelAccounts(allAccounts, refresh);
+      const [summary] = await Promise.all([
+        refreshModelAccounts(allAccounts, refresh),
+        refreshMarketProfiles(),
+      ]);
       if (summary) {
         Message[refreshSummaryTone(summary)](
           formatRefreshSummary(summary, t),
@@ -201,7 +204,7 @@ export function useUnifiedModelPaletteData({
     } finally {
       setRefreshingAllModels(false);
     }
-  }, [allAccounts, refresh, t]);
+  }, [allAccounts, refresh, refreshMarketProfiles, t]);
 
   return {
     accounts,

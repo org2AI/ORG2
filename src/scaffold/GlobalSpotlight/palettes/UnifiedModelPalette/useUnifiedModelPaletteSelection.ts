@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { KEY_SOURCE } from "@src/api/tauri/session";
 import { Message } from "@src/components/Message";
+import { marketActivationErrorCode } from "@src/features/MarketConnect/activationError";
 import { captureMarketOwner } from "@src/features/MarketConnect/identity";
 import {
   findMarketSourceForRecent,
@@ -12,6 +13,7 @@ import {
 } from "@src/features/MarketConnect/marketProfiles";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
+import { createLogger } from "@src/hooks/logger";
 import {
   accountHasModel,
   accountModelIds as listAccountModelIds,
@@ -28,6 +30,8 @@ import {
 import { buildSourceOptions, toSourceOption } from "./sourceItems";
 import type { SourceOption } from "./types";
 import { resolveVariantReselection } from "./variantReselect";
+
+const marketLogger = createLogger("MarketPackages");
 
 type ActiveColumn = "models" | "sources";
 
@@ -287,8 +291,16 @@ export function useUnifiedModelPaletteSelection({
           });
           if (options?.close ?? closeOnSourceSelect) onClose();
         })
-        .catch(() => {
-          Message.error(t("marketConnection.launchFailed"));
+        .catch((error: unknown) => {
+          const code = marketActivationErrorCode(error);
+          marketLogger.warn(`stage=activate code=${code}`);
+          Message.error(
+            t(
+              code === "model_temporarily_unavailable"
+                ? "status.unavailable"
+                : "marketConnection.launchFailed"
+            )
+          );
         })
         .finally(() => {
           owner.dispose();

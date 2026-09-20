@@ -18,8 +18,14 @@ website navigation. Website links for seller management remain website links.
 
 ## Acceptance boundary
 
-Previous native seller experiments reached the official provider login page but
-did not complete provider OAuth or enroll supply. Those experiments do not verify
-the website-owned flow. The website manual callback, new supply enrollment, native
-package execution through the selected region, and corresponding buyer/seller/admin
-ledger reconciliation require fresh end-to-end acceptance.
+The final website flow has historical successful provider authorization, supply
+enrollment and native package-call/ledger evidence. The earlier App-owned seller
+experiments were removed and cannot establish acceptance of the website's final
+cancellation or recovery behavior. See the versioned evidence and limitations in
+[Account package discovery verification](../market-account-discovery/verification.md).
+
+Cloud tests additionally exercise callback ownership/state/expiry, cross-process
+completion/cancellation, duplicate provider identities and restart cleanup with a
+real isolated database and mock provider. These are not a replacement for final
+website OAuth cancellation/restart UI acceptance, independent buyer/seller testing
+or Stripe payment and payout acceptance.

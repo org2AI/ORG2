@@ -1,6 +1,5 @@
 import type { Connection } from "./rpc";
 
-export const MARKET_AUTHORIZATION_SAVED_EVENT = "market-authorization-saved";
 export const MARKET_CONNECTION_OPEN_EVENT = "market-connection-open";
 export const MARKET_PROFILES_CHANGED_EVENT = "market-profiles-changed";
 export const MARKET_CONNECTION_ERROR_EVENT = "market-connection-error";
@@ -22,15 +21,6 @@ export interface MarketConnectionErrorDetail {
   code: MarketConnectionErrorCode;
   operation: MarketConnectionOperation;
   target?: Connection["target"];
-}
-
-export function parseMarketTarget(value: string | null) {
-  return value === "claude-code" ||
-    value === "claude-app" ||
-    value === "codex" ||
-    value === "org2"
-    ? value
-    : undefined;
 }
 
 export function classifyMarketConnectionError(
@@ -76,9 +66,7 @@ export function classifyMarketConnectionError(
  * domain-specific invalidation event instead of being routed through settings.
  */
 export function dispatchMarketConnection(
-  type:
-    | typeof MARKET_AUTHORIZATION_SAVED_EVENT
-    | typeof MARKET_CONNECTION_OPEN_EVENT,
+  type: typeof MARKET_CONNECTION_OPEN_EVENT,
   connection: Connection
 ) {
   window.dispatchEvent(new CustomEvent(type, { detail: connection }));

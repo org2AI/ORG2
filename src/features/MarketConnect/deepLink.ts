@@ -4,6 +4,7 @@ import { openOrg2CloudSignIn } from "@src/features/Org2Cloud/useOrg2CloudSignIn"
 import i18n from "@src/i18n";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
+import { marketActivationErrorCode } from "./activationError";
 import {
   MARKET_CONNECTION_OPEN_EVENT,
   dispatchMarketConnection,
@@ -49,15 +50,17 @@ export function handleMarketConnectionUrl(raw: string): boolean {
   busy = true;
   (async () => {
     let resume = false;
+    const signInAndResume = () =>
+      openOrg2CloudSignIn({
+        onSignedIn: () => {
+          resume = true;
+          if (!busy) handleMarketConnectionUrl(raw);
+        },
+      });
     try {
       const store = getInstrumentedStore();
       if (!store.get(org2CloudAuthAtom)) {
-        await openOrg2CloudSignIn({
-          onSignedIn: () => {
-            resume = true;
-            if (!busy) handleMarketConnectionUrl(raw);
-          },
-        });
+        await signInAndResume();
         return;
       }
       const auth = store.get(org2CloudAuthAtom)!;
@@ -73,6 +76,16 @@ export function handleMarketConnectionUrl(raw: string): boolean {
         );
         if (!connection) throw Error("market_reauthorization_required");
         dispatchMarketConnection(MARKET_CONNECTION_OPEN_EVENT, connection);
+      } catch (error) {
+        owner.assertCurrent();
+        if (
+          !auth.oauthClientId &&
+          marketActivationErrorCode(error) === "market_reauthorization_required"
+        ) {
+          await signInAndResume();
+          return;
+        }
+        throw error;
       } finally {
         owner.dispose();
       }

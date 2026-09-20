@@ -97,3 +97,27 @@ it("signs in normally then resumes navigation", async () => {
   );
   expect(mocks.signIn).toHaveBeenCalledTimes(1);
 });
+
+it("upgrades a legacy signed-in session through PKCE when Market requires authorization", async () => {
+  const store = signedInStore();
+  mocks.load.mockRejectedValueOnce(Error("market_reauthorization_required"));
+  mocks.signIn.mockImplementationOnce(
+    async ({ onSignedIn }: { onSignedIn: () => void }) => {
+      store.set(org2CloudAuthAtom, { ...authFor(), oauthClientId: USER_A });
+      onSignedIn();
+    }
+  );
+  handleMarketConnectionUrl(link);
+  await vi.waitFor(() =>
+    expect(mocks.open).toHaveBeenCalledWith("open", connection)
+  );
+  expect(mocks.signIn).toHaveBeenCalledTimes(1);
+  expect(mocks.load).toHaveBeenCalledTimes(2);
+});
+
+it("does not start login for a legacy user's network failure", async () => {
+  mocks.load.mockRejectedValueOnce(Error("market_request_failed"));
+  handleMarketConnectionUrl(link);
+  await vi.waitFor(() => expect(mocks.error).toHaveBeenCalled());
+  expect(mocks.signIn).not.toHaveBeenCalled();
+});

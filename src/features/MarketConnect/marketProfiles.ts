@@ -6,10 +6,13 @@ import {
   type CliAgentType,
   type ModelType,
 } from "@src/api/tauri/rpc/schemas/validation";
+import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
+import { openOrg2CloudSignIn } from "@src/features/Org2Cloud/useOrg2CloudSignIn";
 import { createLogger } from "@src/hooks/logger";
 import type { RecentModelEntry } from "@src/store/session/recentModelEntriesAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
+import { marketActivationErrorCode } from "./activationError";
 import { MARKET_PROFILES_CHANGED_EVENT } from "./events";
 import {
   type MarketStore,
@@ -360,44 +363,56 @@ export async function loadMarketExecutionProfilesWithDiagnostics(
     store
   );
   try {
-    const status = await loadConnections(store);
-    if (!scope.isCurrent()) return { profiles: [], errors: [] };
-    const connections = status.connections.filter(
-      (connection) =>
-        connection.target === "org2" &&
-        connection.phase === "authorization_saved" &&
-        marketConnectionMatchesOwner(connection.identity_user_id, ownerKey)
-    );
-    const results = await Promise.allSettled(
-      connections.map(async (connection) =>
-        adaptMarketEntries(connection, await loadEntries(connection, store))
-      )
-    );
-    if (!scope.isCurrent()) return { profiles: [], errors: [] };
-    return {
-      profiles: dedupeMarketProfiles(
-        results.flatMap((result) =>
-          result.status === "fulfilled" ? result.value : []
+    let status = await loadConnections(store);
+    let recovered = false;
+    for (;;) {
+      if (!scope.isCurrent()) return { profiles: [], errors: [] };
+      const connections = status.connections.filter(
+        (connection) =>
+          connection.target === "org2" &&
+          connection.phase === "authorization_saved" &&
+          marketConnectionMatchesOwner(connection.identity_user_id, ownerKey)
+      );
+      const results = await Promise.allSettled(
+        connections.map(async (connection) =>
+          adaptMarketEntries(connection, await loadEntries(connection, store))
         )
-      ),
-      errors: results.flatMap((result) =>
-        result.status === "rejected" ? [result.reason] : []
-      ),
-    };
+      );
+      if (!scope.isCurrent()) return { profiles: [], errors: [] };
+      if (
+        !recovered &&
+        results.some(
+          (result) =>
+            result.status === "rejected" &&
+            marketActivationErrorCode(result.reason) ===
+              "market_reauthorization_required"
+        )
+      ) {
+        // Only retry a read after a definitive authority rejection. Never replay
+        // model calls or financial mutations, or turn network failures into login.
+        recovered = true;
+        // Native invalidates only the rejected persisted credential. Recheck
+        // status so a concurrently replaced valid grant is reused, not rotated.
+        status = await loadConnections(store);
+        continue;
+      }
+      return {
+        profiles: dedupeMarketProfiles(
+          results.flatMap((result) =>
+            result.status === "fulfilled" ? result.value : []
+          )
+        ),
+        errors: results.flatMap((result) =>
+          result.status === "rejected" ? [result.reason] : []
+        ),
+      };
+    }
   } catch (error) {
     if (!scope.isCurrent()) return { profiles: [], errors: [] };
     throw error;
   } finally {
     scope.dispose();
   }
-}
-
-export async function loadMarketExecutionProfiles(): Promise<
-  MarketExecutionProfile[]
-> {
-  const result = await loadMarketExecutionProfilesWithDiagnostics();
-  if (result.errors.length > 0) throw result.errors[0];
-  return result.profiles;
 }
 
 interface ProfileCache {
@@ -407,6 +422,7 @@ interface ProfileCache {
   generation: number;
   flight: Promise<MarketProfileLoadResult> | null;
   flightGeneration: number;
+  invalidations: WeakSet<Event>;
 }
 // One bounded cache per application store, rather than sharing users between stores.
 const caches = new WeakMap<MarketStore, ProfileCache>();
@@ -420,6 +436,7 @@ function cacheFor(store: MarketStore): ProfileCache {
       generation: 0,
       flight: null,
       flightGeneration: 0,
+      invalidations: new WeakSet(),
     };
     const owned = cache;
     // Store-lifetime narrow subscription: no timer, request, or token-refresh work.
@@ -433,16 +450,25 @@ function cacheFor(store: MarketStore): ProfileCache {
   return cache;
 }
 export function invalidateMarketProfileCache(
-  store: MarketStore = getInstrumentedStore()
+  store: MarketStore = getInstrumentedStore(),
+  event?: Event
 ): void {
   const cache = cacheFor(store);
+  // All mounted pickers receive the same event. Invalidate once per store,
+  // without retaining events or starting requests for closed consumers.
+  if (event) {
+    if (cache.invalidations.has(event)) return;
+    cache.invalidations.add(event);
+  }
   cache.value = null;
   cache.generation++;
 }
 export async function loadCachedMarketExecutionProfiles(
   force = false,
-  store: MarketStore = getInstrumentedStore()
+  store: MarketStore = getInstrumentedStore(),
+  signal?: AbortSignal
 ): Promise<MarketProfileLoadResult> {
+  if (signal?.aborted) throw Error("market_catalog_wait_cancelled");
   const cache = cacheFor(store);
   if (force) invalidateMarketProfileCache(store);
   if (!cache.owner) return { profiles: [], errors: [] };
@@ -450,7 +476,7 @@ export async function loadCachedMarketExecutionProfiles(
   if (cache.flight) {
     if (cache.flightGeneration === cache.generation) return cache.flight;
     await cache.flight.catch(() => undefined);
-    return loadCachedMarketExecutionProfiles(false, store);
+    return loadCachedMarketExecutionProfiles(false, store, signal);
   }
   const generation = cache.generation;
   cache.flightGeneration = generation;
@@ -491,53 +517,108 @@ export function useMarketExecutionProfiles(options: {
   const [hasLoaded, setHasLoaded] = useState(false);
   const generationRef = useRef(0);
   const waiterRef = useRef<AbortController | null>(null);
+  const pendingLoad = useRef<Promise<void> | null>(null);
 
   const load = useCallback(
-    async (force = false) => {
-      if (force && !cacheFor(store).flight) invalidateMarketProfileCache(store);
-      if (!enabled || !ownerKey || waiterRef.current) return;
+    (force = false): Promise<void> => {
+      if (force) invalidateMarketProfileCache(store);
+      if (!enabled || !ownerKey) return Promise.resolve();
+      if (waiterRef.current) return pendingLoad.current ?? Promise.resolve();
       const generation = ++generationRef.current;
       const waiter = new AbortController();
       waiterRef.current = waiter;
       setLoading(true);
-      try {
-        const result = await waitForCatalog(
-          loadCachedMarketExecutionProfiles(false, store),
-          waiter.signal
-        );
-        if (generation !== generationRef.current) return;
-        if (store.get(marketOwnerKeyAtom) !== ownerKey) return;
-        resultOwner.current = ownerKey;
-        setProfiles(result.profiles);
-        setError(
-          result.errors.length > 0
-            ? result.errors
-                .map((cause) =>
-                  cause instanceof Error ? cause.message : String(cause)
+      const task = (async () => {
+        try {
+          const readCurrent = async (): Promise<MarketProfileLoadResult> => {
+            for (;;) {
+              const revision = cacheFor(store).generation;
+              let result: MarketProfileLoadResult;
+              try {
+                result = await loadCachedMarketExecutionProfiles(
+                  false,
+                  store,
+                  waiter.signal
+                );
+              } catch (cause) {
+                if (
+                  waiter.signal.aborted ||
+                  generation !== generationRef.current ||
+                  store.get(marketOwnerKeyAtom) !== ownerKey ||
+                  revision === cacheFor(store).generation
                 )
-                .join("; ")
-            : null
-        );
-      } catch (cause) {
-        if (
-          generation !== generationRef.current ||
-          store.get(marketOwnerKeyAtom) !== ownerKey
-        )
-          return;
-        resultOwner.current = ownerKey;
-        setError(cause instanceof Error ? cause.message : String(cause));
-      } finally {
-        if (waiterRef.current === waiter) waiterRef.current = null;
-        if (generation === generationRef.current) {
-          setLoading(false);
-          setHasLoaded(true);
+                  throw cause;
+                // A newer invalidation supersedes errors as well as old rows.
+                continue;
+              }
+              if (waiter.signal.aborted)
+                throw Error("market_catalog_wait_cancelled");
+              if (
+                generation !== generationRef.current ||
+                store.get(marketOwnerKeyAtom) !== ownerKey
+              )
+                return { profiles: [], errors: [] };
+              if (revision === cacheFor(store).generation) return result;
+              // An invalidation during this read owns one fresh read, shared by
+              // all consumers. Keep the original foreground deadline throughout.
+            }
+          };
+          const result = await waitForCatalog(readCurrent(), waiter.signal);
+          if (generation !== generationRef.current) return;
+          if (store.get(marketOwnerKeyAtom) !== ownerKey) return;
+          resultOwner.current = ownerKey;
+          setProfiles(result.profiles);
+          setError(
+            result.errors.length > 0
+              ? result.errors
+                  .map((cause) =>
+                    cause instanceof Error ? cause.message : String(cause)
+                  )
+                  .join("; ")
+              : null
+          );
+        } catch (cause) {
+          if (
+            generation !== generationRef.current ||
+            store.get(marketOwnerKeyAtom) !== ownerKey
+          )
+            return;
+          resultOwner.current = ownerKey;
+          setError(cause instanceof Error ? cause.message : String(cause));
+        } finally {
+          waiter.abort();
+          if (waiterRef.current === waiter) {
+            waiterRef.current = null;
+            pendingLoad.current = null;
+          }
+          if (generation === generationRef.current) {
+            setLoading(false);
+            setHasLoaded(true);
+          }
         }
-      }
+      })();
+      pendingLoad.current = task;
+      return task;
     },
     [enabled, ownerKey, store]
   );
 
-  const refresh = useCallback(async () => load(true), [load]);
+  const refresh = useCallback(async () => {
+    if (
+      enabled &&
+      ownerKey &&
+      error === "market_reauthorization_required" &&
+      !store.get(org2CloudAuthAtom)?.oauthClientId
+    ) {
+      await openOrg2CloudSignIn({
+        onSignedIn: () => {
+          window.dispatchEvent(new Event(MARKET_PROFILES_CHANGED_EVENT));
+        },
+      });
+      return;
+    }
+    await load(true);
+  }, [enabled, ownerKey, error, store, load]);
 
   // Observe every transition even when React batches A → B → A into one render.
   useEffect(
@@ -572,8 +653,9 @@ export function useMarketExecutionProfiles(options: {
   }, [enabled, load, ownerRevision]);
 
   useEffect(() => {
-    const handleProfilesChanged = () => {
-      load(true).catch(() => undefined);
+    const handleProfilesChanged = (event: Event) => {
+      invalidateMarketProfileCache(store, event);
+      load(false).catch(() => undefined);
     };
     // Focus is an on-demand cache read, not a forced refresh. Repeated focus
     // events reuse fresh data or the existing flight and never extend its wait.

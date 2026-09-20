@@ -17,6 +17,10 @@ import type { Entry } from "./rpc";
 const mocks = vi.hoisted(() => ({
   loadConnections: vi.fn(),
   loadEntries: vi.fn(),
+  signIn: vi.fn(),
+}));
+vi.mock("@src/features/Org2Cloud/useOrg2CloudSignIn", () => ({
+  openOrg2CloudSignIn: mocks.signIn,
 }));
 vi.mock("./rpc", () => ({ ...mocks, prepareSessionSource: vi.fn() }));
 vi.mock("./usageAuthorization", () => ({ authorizedProfile: vi.fn() }));
@@ -331,7 +335,7 @@ it("bounds picker waiting without replaying the shared request, and retries expl
     });
     expect(view.current().loading).toBe(false);
     expect(view.current().error).toBeNull();
-    expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+    expect(mocks.loadEntries).toHaveBeenCalledTimes(2);
   } finally {
     vi.useRealTimers();
   }
@@ -400,5 +404,173 @@ it("reuses a fresh catalog on repeated focus without another request", async () 
     for (let i = 0; i < 10; i++) window.dispatchEvent(new Event("focus"));
   });
   expect(view.current().loading).toBe(false);
+  expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+});
+
+it.each(["event", "refresh"])(
+  "coalesces %s invalidation during a pending read without publishing stale entries",
+  async (kind) => {
+    let finish!: (entries: Entry[]) => void;
+    mocks.loadEntries.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const first = picker(),
+      second = picker(),
+      closed = picker();
+    await first.render(true);
+    await second.render(true);
+    await closed.render(false);
+    let refresh: Promise<void> | undefined;
+    await act(async () => {
+      if (kind === "event") {
+        for (let i = 0; i < 5; i++)
+          window.dispatchEvent(new Event("market-profiles-changed"));
+      } else {
+        refresh = first.current().refresh();
+        void first.current().refresh();
+      }
+    });
+    expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish([
+        {
+          workspace_id: "ws_purchase",
+          entitlement_id: "pa_old",
+          service_id: "old",
+          service_name: "Removed package",
+          models: ["model"],
+          models_by_agent: { claude: ["model"], codex: [] },
+          status: "active",
+          expires_at: null,
+        },
+      ]);
+      await refresh;
+    });
+    expect(first.current().profiles).toEqual([]);
+    expect(second.current().profiles).toEqual([]);
+    expect(first.current().loading).toBe(false);
+    expect(mocks.loadEntries).toHaveBeenCalledTimes(2);
+  }
+);
+
+it("does not duplicate an event refresh across open and closed pickers", async () => {
+  const first = picker(),
+    second = picker(),
+    closed = picker();
+  await first.render(true);
+  await second.render(true);
+  await closed.render(false);
+  await act(async () => {
+    window.dispatchEvent(new Event("market-profiles-changed"));
+  });
+  expect(mocks.loadEntries).toHaveBeenCalledTimes(2);
+});
+
+it.each(["close", "timeout"])(
+  "does not continue an invalidated read after %s",
+  async (stop) => {
+    vi.useFakeTimers();
+    try {
+      let finish!: (entries: Entry[]) => void;
+      mocks.loadEntries.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          })
+      );
+      const view = picker();
+      await view.render(true);
+      await act(async () => {
+        window.dispatchEvent(new Event("market-profiles-changed"));
+      });
+      if (stop === "close") await view.render(false);
+      else
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30_000);
+        });
+      await act(async () => {
+        finish([]);
+      });
+      expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+      if (stop === "timeout")
+        expect(view.current().error).toBe("market_catalog_load_timeout");
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+);
+
+it("upgrades a legacy login only on explicit retry, then refreshes mounted pickers", async () => {
+  mocks.loadConnections.mockRejectedValueOnce(
+    Error("market_reauthorization_required")
+  );
+  const view = picker();
+  await view.render(true);
+  expect(mocks.signIn).not.toHaveBeenCalled();
+  mocks.signIn.mockImplementationOnce(
+    async ({ onSignedIn }: { onSignedIn: () => void }) => {
+      getInstrumentedStore().set(org2CloudAuthAtom, {
+        ...authFor(),
+        oauthClientId: USER_B,
+      });
+      onSignedIn();
+    }
+  );
+  await act(async () => {
+    await view.current().refresh();
+  });
+  expect(mocks.signIn).toHaveBeenCalledTimes(1);
+  expect(view.current().error).toBeNull();
+  expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+});
+
+it("does not start a follow-up read after a timed-out retry is closed", async () => {
+  vi.useFakeTimers();
+  try {
+    let finish!: (entries: Entry[]) => void;
+    mocks.loadEntries.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const view = picker();
+    await view.render(true);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    await act(async () => {
+      void view.current().refresh();
+    });
+    await view.render(false);
+    await act(async () => {
+      finish([]);
+    });
+    expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("rereads an invalidated catalog even when the obsolete request fails", async () => {
+  let reject!: (error: Error) => void;
+  mocks.loadConnections.mockImplementationOnce(
+    () =>
+      new Promise((_, fail) => {
+        reject = fail;
+      })
+  );
+  const view = picker();
+  await view.render(true);
+  await act(async () => {
+    window.dispatchEvent(new Event("market-profiles-changed"));
+    reject(Error("market_request_failed"));
+  });
+  expect(view.current().error).toBeNull();
+  expect(view.current().loading).toBe(false);
+  expect(mocks.loadConnections).toHaveBeenCalledTimes(2);
   expect(mocks.loadEntries).toHaveBeenCalledTimes(1);
 });

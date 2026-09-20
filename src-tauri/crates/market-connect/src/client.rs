@@ -124,6 +124,25 @@ impl Grant {
         platform_store(&account, &raw)?;
         Ok(account)
     }
+    /// Compare the rejected access token while holding the process lock. A late
+    /// response must never invalidate a newer enrollment or rotated credential.
+    fn invalidate_rejected_with(
+        raw: &str,
+        metadata: &ConnectionMetadata,
+        rejected: &str,
+        write: impl FnOnce(&str) -> Result<(), &'static str>,
+    ) -> Result<(), &'static str> {
+        if raw.len() > 16384 {
+            return Err("credential_record_too_large");
+        }
+        let Ok(grant) = serde_json::from_str::<Self>(raw) else {
+            return Ok(()); // Already invalid or pending renewal.
+        };
+        if grant.metadata() == *metadata && grant.token == rejected {
+            write("{\"reauthorization_required\":true}")?;
+        }
+        Ok(())
+    }
 }
 /// One owner per instance/user/workspace/target. The host retains this owner for
 /// the managed selection and retires it after restoring the client configuration.
@@ -303,6 +322,22 @@ impl Connection {
             .send()
             .await
             .map_err(|_| "market_request_failed")?;
+        if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+            let instance = self.instance.clone();
+            let metadata = self.metadata.clone();
+            let rejected = access.token;
+            tokio::task::spawn_blocking(move || {
+                let _lock = crate::process_lock::acquire(&instance)?;
+                let account = store_account(&instance, &metadata);
+                let raw = platform_load(&account)?;
+                Grant::invalidate_rejected_with(&raw, &metadata, &rejected, |value| {
+                    platform_store(&account, value)
+                })
+            })
+            .await
+            .map_err(|_| "credential_store_unavailable")??;
+            return Err("market_reauthorization_required");
+        }
         bounded_response_limit(
             response,
             if path.starts_with("/v1/market/packages?") {
@@ -609,6 +644,52 @@ pub(crate) mod tests {
         assert!(g.validate_at(200000, true).is_err());
         assert!(Grant::decode_stored(&raw, &g.metadata(), 200000).is_ok());
         assert!(Grant::decode_stored(&raw, &g.metadata(), 86400000).is_err());
+    }
+    #[test]
+    fn rejected_access_invalidates_only_the_matching_persisted_grant() {
+        let grant = fixture();
+        let raw = serde_json::to_string(&grant).unwrap();
+        let mut stored = raw.clone();
+        Grant::invalidate_rejected_with(&raw, &grant.metadata(), &grant.token, |value| {
+            stored = value.to_owned();
+            Ok(())
+        })
+        .unwrap();
+        assert!(Grant::decode_stored(&stored, &grant.metadata(), 1000).is_err());
+
+        for (record, metadata, rejected) in [
+            (raw.as_str(), grant.metadata(), "og2ms.v1.older"),
+            (
+                raw.as_str(),
+                ConnectionMetadata {
+                    workspace_id: "ws_other".into(),
+                    ..grant.metadata()
+                },
+                grant.token.as_str(),
+            ),
+            (
+                "{\"renewal_pending\":true}",
+                grant.metadata(),
+                grant.token.as_str(),
+            ),
+        ] {
+            Grant::invalidate_rejected_with(record, &metadata, rejected, |_| {
+                panic!("late rejection must preserve a replacement or already invalid grant")
+            })
+            .unwrap();
+        }
+    }
+
+    #[test]
+    fn rejected_grant_write_failure_is_not_reported_as_success() {
+        let grant = fixture();
+        let raw = serde_json::to_string(&grant).unwrap();
+        assert_eq!(
+            Grant::invalidate_rejected_with(&raw, &grant.metadata(), &grant.token, |_| {
+                Err("credential_store_write_failed")
+            }),
+            Err("credential_store_write_failed")
+        );
     }
     #[test]
     fn stored_grant_cannot_change_owner_workspace_or_target() {

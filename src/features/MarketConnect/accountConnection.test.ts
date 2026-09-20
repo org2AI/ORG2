@@ -5,6 +5,7 @@ import { RpcError } from "@src/api/tauri/rpc/invoke";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 
 import { USER_A, USER_B, authFor, signedInStore } from "./identity.test-utils";
+import { loadMarketExecutionProfilesWithDiagnostics } from "./marketProfiles";
 import { loadConnections } from "./rpc";
 
 const mocks = vi.hoisted(() => ({
@@ -124,6 +125,142 @@ it("reuses an existing owner grant without hiding packages behind reauthorizatio
   const existing = { ...connection, workspace_id: "ws_existing_purchase" };
   mocks.invoke.mockResolvedValueOnce({ ...status, connections: [existing] });
   expect((await loadConnections(store)).connections).toEqual([existing]);
+  expect(mocks.authorize).not.toHaveBeenCalled();
+});
+
+it("reauthorizes a rejected grant once and binds the catalog to its replacement", async () => {
+  const old = { ...connection, workspace_id: "ws_old_purchase" };
+  let phase = "old";
+  mocks.invoke.mockImplementation(
+    async (p: { command: string }, input?: { workspaceId: string }) => {
+      if (p.command === "market_connection_status")
+        return {
+          ...status,
+          connections:
+            phase === "new"
+              ? [{ ...old, phase: "reauthorization_required" }, connection]
+              : [
+                  {
+                    ...old,
+                    phase:
+                      phase === "rejected"
+                        ? "reauthorization_required"
+                        : old.phase,
+                  },
+                ],
+        };
+      if (p.command === "market_connection_options") {
+        if (input?.workspaceId === old.workspace_id) {
+          phase = "rejected";
+          throw new RpcError(
+            p.command,
+            "authorization rejected",
+            "market_reauthorization_required"
+          );
+        }
+        return [
+          {
+            workspace_id: "ws_package",
+            entitlement_id: "pa_test",
+            service_id: "test",
+            service_name: "Recovered",
+            models: ["model"],
+            models_by_agent: { claude: ["model"], codex: [] },
+            status: "active",
+            expires_at: null,
+          },
+        ];
+      }
+      if (p.command === "market_connection_begin")
+        return "https://market.org2.dev/buyer/connect/authorize?fixture=1";
+      if (p.command === "market_connection_complete") {
+        phase = "new";
+        return connection;
+      }
+    }
+  );
+  const result = await loadMarketExecutionProfilesWithDiagnostics(store);
+  expect(result.errors).toEqual([]);
+  expect(result.profiles[0]?.connection).toEqual(connection);
+  expect(mocks.authorize).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+  "market_reauthorization_required",
+  "market_request_failed",
+  "managed_service_unavailable",
+])("bounds catalog recovery for %s", async (code) => {
+  let saved = true;
+  mocks.invoke.mockImplementation(async (p: { command: string }) => {
+    if (p.command === "market_connection_status")
+      return {
+        ...status,
+        connections: [
+          {
+            ...connection,
+            phase: saved ? "authorization_saved" : "reauthorization_required",
+          },
+        ],
+      };
+    if (p.command === "market_connection_options") {
+      if (code === "market_reauthorization_required") saved = false;
+      throw new RpcError(p.command, code, code);
+    }
+    if (p.command === "market_connection_begin")
+      return "https://market.org2.dev/buyer/connect/authorize?fixture=1";
+    if (p.command === "market_connection_complete") {
+      saved = true;
+      return connection;
+    }
+  });
+  const result = await loadMarketExecutionProfilesWithDiagnostics(store);
+  expect(result.profiles).toEqual([]);
+  expect(result.errors).toHaveLength(1);
+  expect(mocks.authorize).toHaveBeenCalledTimes(
+    code === "market_reauthorization_required" ? 1 : 0
+  );
+});
+
+it("reuses a concurrent credential replacement after a late authorization rejection", async () => {
+  let reads = 0;
+  mocks.invoke.mockImplementation(async (p: { command: string }) => {
+    if (p.command === "market_connection_status")
+      return { ...status, connections: [connection] };
+    if (p.command === "market_connection_options") {
+      if (reads++ === 0)
+        throw new RpcError(
+          p.command,
+          "rejected",
+          "market_reauthorization_required"
+        );
+      return [];
+    }
+  });
+  expect(await loadMarketExecutionProfilesWithDiagnostics(store)).toEqual({
+    profiles: [],
+    errors: [],
+  });
+  expect(mocks.authorize).not.toHaveBeenCalled();
+  expect(reads).toBe(2);
+});
+
+it("does not recover a rejected catalog after the owner changes", async () => {
+  mocks.invoke.mockImplementation(async (p: { command: string }) => {
+    if (p.command === "market_connection_status")
+      return { ...status, connections: [connection] };
+    if (p.command === "market_connection_options") {
+      store.set(org2CloudAuthAtom, authFor(USER_B));
+      throw new RpcError(
+        p.command,
+        "rejected",
+        "market_reauthorization_required"
+      );
+    }
+  });
+  expect(await loadMarketExecutionProfilesWithDiagnostics(store)).toEqual({
+    profiles: [],
+    errors: [],
+  });
   expect(mocks.authorize).not.toHaveBeenCalled();
 });
 

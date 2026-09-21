@@ -216,10 +216,28 @@ pub(super) fn open(
     {
         let bundle = installed_bundle(agent)?;
         profile.prepare_launch_directories()?;
-        let history_ready = agent != "claude_desktop"
-            || crate::agent_sessions::cli::native_materializer::isolated_claude_history::import(
-                profile,
-            )?;
+        // Only this audited release's local namespace may be prepared before
+        // launch. Other compatible Desktop releases retain vendor discovery.
+        let can_prepare_history = agent == "claude_desktop"
+            && plist::Value::from_file(bundle.join("Contents/Info.plist"))
+                .ok()
+                .and_then(|v| {
+                    v.as_dictionary()?
+                        .get("CFBundleShortVersionString")?
+                        .as_string()
+                        .map(str::to_owned)
+                })
+                .as_deref()
+                == Some("2.2553.1");
+        let history_ready = if can_prepare_history {
+            crate::agent_sessions::cli::native_materializer::isolated_claude_history::prepare_before_launch(profile)?;
+            true
+        } else {
+            agent != "claude_desktop"
+                || crate::agent_sessions::cli::native_materializer::isolated_claude_history::import(
+                    profile,
+                )?
+        };
         lifecycle::open(agent, profile, &bundle, check_owner.clone())?;
         // First launch creates the vendor-owned account/project identity. Wait
         // only within this user action; no background poll or watcher survives.

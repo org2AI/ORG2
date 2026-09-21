@@ -1580,14 +1580,11 @@ fn backfill_claude_desktop_catalog_with(
     official_root: &Path,
     gateway_root: &Path,
     inherit_model: bool,
-    mut prepare_transcript: impl FnMut(&Path, &str) -> Result<bool, String>,
+    prepare_transcript: impl FnMut(&Path, &str) -> Result<bool, String>,
 ) -> Result<usize, String> {
     if !official_root.is_dir() || !gateway_root.is_dir() {
         return Ok(0);
     }
-    let Some(official_account) = claude_desktop_active_account_id(official_root) else {
-        return Ok(0);
-    };
     let Some(gateway_account) = claude_desktop_active_account_id(gateway_root) else {
         return Ok(0);
     };
@@ -1597,10 +1594,27 @@ fn backfill_claude_desktop_catalog_with(
         return Ok(0);
     };
 
+    backfill_claude_desktop_catalog_into(
+        official_root,
+        &target_dir,
+        inherit_model,
+        prepare_transcript,
+    )
+}
+
+fn backfill_claude_desktop_catalog_into(
+    official_root: &Path,
+    target_dir: &Path,
+    inherit_model: bool,
+    mut prepare_transcript: impl FnMut(&Path, &str) -> Result<bool, String>,
+) -> Result<usize, String> {
+    let Some(official_account) = claude_desktop_active_account_id(official_root) else {
+        return Ok(0);
+    };
     // Sessions the gateway profile already lists, under any file name.
     let mut listed = HashSet::new();
     let mut metadata_budget = CLAUDE_DESKTOP_METADATA_SCAN_LIMIT;
-    for path in bounded_directory_paths(&target_dir, &mut metadata_budget) {
+    for path in bounded_directory_paths(target_dir, &mut metadata_budget) {
         if let Some(native_id) = claude_desktop_row(&path).and_then(|row| {
             let native_id = row["cliSessionId"].as_str()?;
             Uuid::parse_str(native_id).ok()?;
@@ -1632,7 +1646,15 @@ fn backfill_claude_desktop_catalog_with(
             if Uuid::parse_str(native_id).is_err() || listed.contains(native_id) {
                 continue;
             }
-            let target = target_dir.join(format!("local_{native_id}.json"));
+            // Desktop's UI identity can differ from the CLI transcript UUID.
+            // Its subsequent metadata writes use sessionId, so the filename must agree.
+            let Some(session_id) = row["sessionId"].as_str().filter(|id| {
+                id.strip_prefix("local_")
+                    .is_some_and(|id| Uuid::parse_str(id).is_ok())
+            }) else {
+                continue;
+            };
+            let target = target_dir.join(format!("{session_id}.json"));
             if target.exists() {
                 continue;
             }
@@ -4659,6 +4681,54 @@ mod tests {
         fs::create_dir_all(path.parent().expect("transcript directory"))
             .expect("create transcript directory");
         fs::write(&path, b"{}\n").expect("write transcript");
+    }
+
+    #[test]
+    fn isolated_market_first_launch_prepares_history_without_vendor_startup() {
+        use base64::engine::general_purpose::STANDARD;
+        let sandbox = test_env::sandbox();
+        let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
+        let (_, official_project, _, standard_project) =
+            claude_desktop_profiles_fixture(sandbox.path());
+        let profile = agent_cli::managed_config::native_app::NativeAppProfile::new(
+            "claude_desktop",
+            "https://market.example",
+            "first-open-buyer",
+        )
+        .unwrap();
+        let cwd = sandbox.path().join("workspace");
+        let id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+        write_claude_transcript(&cwd, id);
+        let source = official_project.join(format!("local_{id}.json"));
+        let bytes = json!({"cliSessionId":id,"sessionId":format!("local_{id}"),"cwd":cwd,
+            "permissionMode":"bypassPermissions"})
+        .to_string();
+        fs::write(&source, &bytes).unwrap();
+        profile.prepare_launch_directories().unwrap();
+        isolated_claude_history::prepare_before_launch(&profile).unwrap();
+        let identity = fs::read(profile.home().join("ant-did")).unwrap();
+        let account = String::from_utf8(STANDARD.decode(&identity).unwrap()).unwrap();
+        let row = profile
+            .home()
+            .join("claude-code-sessions")
+            .join(account)
+            .join("00000000-0000-4000-8000-000000000001")
+            .join(format!("local_{id}.json"));
+        let imported: Value = serde_json::from_slice(&fs::read(&row).unwrap()).unwrap();
+        assert_eq!(imported["permissionMode"], "default");
+        assert!(!profile.home().join("config.json").exists());
+        assert!(!standard_project.join(format!("local_{id}.json")).exists());
+        assert_eq!(fs::read_to_string(&source).unwrap(), bytes);
+        isolated_claude_history::prepare_before_launch(&profile).unwrap();
+        assert_eq!(fs::read(profile.home().join("ant-did")).unwrap(), identity);
+        assert_eq!(
+            fs::read_dir(row.parent().unwrap())
+                .unwrap()
+                .flatten()
+                .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))
+                .count(),
+            1
+        );
     }
 
     #[test]
